@@ -1,0 +1,73 @@
+{
+  "apps": [
+    {
+      "appId": "example-app",
+      "packageId": "nqmcqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+      "name": "Example App",
+      "summary": "A self-hosted demo app for Sandstorm.",
+      "description": "## Example App\n\nThis is a sample entry demonstrating the fields needed for Sandstorm compatibility (install URL, checksum, signature). Replace with your own apps.",
+      "author": {"id": "your-id", "name": "Your Name"},
+      "upstreamAuthor": "Original Author",
+      "categories": ["Utilities", "Demo"],
+      "license": "Apache-2.0",
+      "webLink": "https://example.com",
+      "codeLink": "https://github.com/example/app",
+      "bugReportLink": "https://github.com/example/app/issues",
+      "imageId": "logo-image-purple.png",
+      "screenshots": [
+        "screenshot-1.png",
+        "screenshot-2.png"
+      ],
+      "versions": [
+        {
+          "number": "1.0.0",
+          "packageId": "nqmcqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+          "downloadUrl": "https://example.com/downloads/example-app-1.0.0.spk",
+          "sha256": "<insert sha256 of spk>",
+          "pgpSignature": "-----BEGIN PGP SIGNATURE-----\n...signature here...\n-----END PGP SIGNATURE-----",
+          "changelog": "Initial release",
+          "createdAt": "2024-01-15T00:00:00Z"
+        },
+        {
+          "number": "0.9.0",
+          "packageId": "nqmcqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+          "downloadUrl": "https://example.com/downloads/example-app-0.9.0.spk",
+          "sha256": "<insert sha256 of spk>",
+          "pgpSignature": "",
+          "changelog": "Beta",
+          "createdAt": "2023-12-01T00:00:00Z"
+        }
+      ],
+      "createdAt": "2023-11-01T00:00:00Z",
+      "updatedAt": "2024-01-15T00:00:00Z"
+    },
+    {
+      "appId": "another-app",
+      "packageId": "w5cqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+      "name": "Another App",
+      "summary": "Second sample listing.",
+      "description": "Replace or extend these entries with your own apps. The UI will automatically list them.",
+      "author": {"id": "org", "name": "Your Org"},
+      "categories": ["Productivity"],
+      "license": "MIT",
+      "webLink": "https://example.org",
+      "codeLink": "https://git.example.org/another-app",
+      "bugReportLink": "https://git.example.org/another-app/issues",
+      "imageId": "",
+      "screenshots": [],
+      "versions": [
+        {
+          "number": "0.4.2",
+          "packageId": "w5cqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+          "downloadUrl": "https://example.org/another-app-0.4.2.spk",
+          "sha256": "<sha256>",
+          "pgpSignature": "",
+          "changelog": "Minor improvements",
+          "createdAt": "2023-10-01T00:00:00Z"
+        }
+      ],
+      "createdAt": "2023-08-01T00:00:00Z",
+      "updatedAt": "2023-10-01T00:00:00Z"
+    }
+  ]
+}

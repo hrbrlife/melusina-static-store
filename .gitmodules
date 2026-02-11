@@ -2,3 +2,7 @@
 	path = packages/hrbrlife/BLOOM_FINAL
 	url = https://github.com/hrbrlife/BLOOM_FINAL.git
 	branch = publish
+[submodule "packages/hrbrlife/INSTASYS_MAIL"]
+	path = packages/hrbrlife/INSTASYS_MAIL
+	url = https://github.com/hrbrlife/INSTASYS_MAIL.git
+	branch = publish

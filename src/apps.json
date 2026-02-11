@@ -58,6 +58,32 @@
         }
       ],
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg"
+    },
+    {
+      "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
+      "name": "Instasys Mail",
+      "version": "0.3.0",
+      "versionNumber": 1,
+      "packageId": "00000000000000000000000000000000",
+      "shortDescription": "Email client",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/INSTASYS_MAIL",
+      "codeLink": "https://github.com/hrbrlife/INSTASYS_MAIL",
+      "upstreamAuthor": "Instasys Mail",
+      "createdAt": 1770847158527,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "f3cd84828edd7ee0ab403658a9dd03e9.svg",
+      "description": "",
+      "screenshots": []
     }
   ]
 }

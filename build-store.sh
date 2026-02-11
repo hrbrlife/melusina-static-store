@@ -26,6 +26,12 @@ APPS_OUT="$OUTPUT_DIR/apps"
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 
+# Sandstorm binary update hosting
+SANDSTORM_SRC="../sandstorm"
+UPDATE_OUT="$OUTPUT_DIR/update"
+UPDATE_KEYRING="$SANDSTORM_SRC/keys/melusina-update-keyring"
+UPDATE_TOOL="$SANDSTORM_SRC/tmp/sandstorm/update-tool"
+
 # --- Parse flags --------------------------------------------------------------
 AGGREGATE_ONLY=false
 DRY_RUN=false
@@ -304,7 +310,7 @@ fi
 info "Assembling $OUTPUT_DIR/..."
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT"
 
 # Copy Vite build output
 if [[ -d "dist" ]]; then
@@ -394,7 +400,75 @@ with open('$APPS_OUT/index.json', 'w') as f:
 print(f'  Wrote {len(apps)} apps to $APPS_OUT/index.json')
 "
 
-# --- Step 6: Summary ---------------------------------------------------------
+# --- Step 6: Package Sandstorm binary update ---------------------------------
+info "Packaging Sandstorm binary update..."
+
+SANDSTORM_TARBALL=""
+SANDSTORM_BUILD_NUM=""
+
+# Find the latest tarball from the sandstorm build dir
+if [[ -d "$SANDSTORM_SRC" ]]; then
+  # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast)
+  for f in "$SANDSTORM_SRC"/sandstorm-[0-9]*.tar.xz; do
+    [[ "$f" == *-fast.tar.xz ]] && continue
+    [[ -f "$f" ]] || continue
+    SANDSTORM_TARBALL="$f"
+  done
+
+  if [[ -n "$SANDSTORM_TARBALL" ]]; then
+    # Extract build number from filename: sandstorm-0.tar.xz → 0
+    SANDSTORM_BUILD_NUM="$(basename "$SANDSTORM_TARBALL" | sed 's/sandstorm-\([0-9]*\)\.tar\.xz/\1/')"
+    TARBALL_SIZE="$(du -h "$SANDSTORM_TARBALL" | cut -f1)"
+    info "Found sandstorm build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
+
+    # Copy tarball to update/
+    cp "$SANDSTORM_TARBALL" "$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz"
+    ok "Copied tarball to $UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz"
+
+    # Sign the tarball if keyring and update-tool exist
+    if [[ -f "$UPDATE_KEYRING" && -x "$UPDATE_TOOL" ]]; then
+      "$UPDATE_TOOL" sign "$UPDATE_KEYRING" "$SANDSTORM_TARBALL" \
+        > "$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
+      ok "Signed update: sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
+    else
+      warn "Skipping update signature (keyring or update-tool not found)"
+      warn "  Keyring: $UPDATE_KEYRING (exists: $(test -f "$UPDATE_KEYRING" && echo yes || echo no))"
+      warn "  Tool:    $UPDATE_TOOL (exists: $(test -x "$UPDATE_TOOL" && echo yes || echo no))"
+    fi
+
+    # Write channel files — all channels point to the same build for now
+    for channel in dev stable; do
+      echo -n "$SANDSTORM_BUILD_NUM" > "$UPDATE_OUT/$channel"
+    done
+    ok "Channel files written (dev=$SANDSTORM_BUILD_NUM, stable=$SANDSTORM_BUILD_NUM)"
+
+    # Copy install.sh if present
+    if [[ -f "$SANDSTORM_SRC/install.sh" ]]; then
+      cp "$SANDSTORM_SRC/install.sh" "$UPDATE_OUT/install.sh"
+      ok "Copied install.sh to $UPDATE_OUT/"
+    fi
+
+    # Write a version manifest for programmatic access
+    cat > "$UPDATE_OUT/manifest.json" <<MANIFEST_EOF
+{
+  "build": $SANDSTORM_BUILD_NUM,
+  "channel": "dev",
+  "tarball": "sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz",
+  "sha256": "$(sha256sum "$SANDSTORM_TARBALL" | cut -d' ' -f1)",
+  "size": $(stat -c%s "$SANDSTORM_TARBALL"),
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+MANIFEST_EOF
+    ok "Wrote $UPDATE_OUT/manifest.json"
+  else
+    warn "No sandstorm tarball found in $SANDSTORM_SRC/"
+  fi
+else
+  warn "Sandstorm source dir not found: $SANDSTORM_SRC"
+  warn "Skipping binary update packaging"
+fi
+
+# --- Step 7: Summary ---------------------------------------------------------
 echo ""
 ok "Build complete!"
 echo ""
@@ -411,7 +485,7 @@ echo ""
 info "To deploy, push $OUTPUT_DIR/ contents to the publish branch:"
 echo ""
 echo "  git checkout publish"
-echo "  rm -rf apps assets images packages verifier index.html .nojekyll"
+echo "  rm -rf apps assets images packages verifier screenshots update index.html .nojekyll"
 echo "  cp -r $OUTPUT_DIR/* $OUTPUT_DIR/.nojekyll ."
 echo "  git add -A && git commit -m 'Store build $(date +%Y-%m-%d)'"
 echo "  git push origin publish --force"

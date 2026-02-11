@@ -1,0 +1,18 @@
+{
+  "apps": [
+    {
+      "appId": "example-app",
+      "packageId": "nqmcqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+      "name": "Example App",
+      "versionNumber": 1,
+      "version": "1.0.0"
+    },
+    {
+      "appId": "another-app",
+      "packageId": "w5cqs9spcdpmqyuxemf0tsgwn8awfvswc0mdneetrvdexrk",
+      "name": "Another App",
+      "versionNumber": 1,
+      "version": "0.4.2"
+    }
+  ]
+}

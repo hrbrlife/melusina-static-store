@@ -142,8 +142,10 @@ if [[ ! -d "$PACKAGES_DIR" ]]; then
   mkdir -p "$PACKAGES_DIR"
 fi
 
-# Collect all app entries as JSON lines
-APP_JSON_LINES=""
+# Collect all app entries as JSON lines (one per line) in a temp file
+# Using a file avoids bash variable expansion mangling \n escapes in JSON strings
+APP_JSON_FILE="$(mktemp)"
+trap 'rm -f "$APP_JSON_FILE"' EXIT
 
 for developer_dir in "$PACKAGES_DIR"/*/; do
   [[ -d "$developer_dir" ]] || continue
@@ -246,12 +248,7 @@ else:
 print(json.dumps(m, separators=(',', ':')))
 ")"
 
-      if [[ -n "$APP_JSON_LINES" ]]; then
-        APP_JSON_LINES="${APP_JSON_LINES}
-${json_entry}"
-      else
-        APP_JSON_LINES="$json_entry"
-      fi
+      echo "$json_entry" >> "$APP_JSON_FILE"
       else
         ((ERRORS++)) || true
       fi
@@ -284,14 +281,13 @@ if ! $AGGREGATE_ONLY; then
   python3 -c "
 import json
 
-lines = '''$APP_JSON_LINES'''.strip().split('\n')
 apps = []
-for line in lines:
-    line = line.strip()
-    if line:
-        apps.append(json.loads(line))
+with open('$APP_JSON_FILE') as f:
+    for line in f:
+        line = line.strip()
+        if line:
+            apps.append(json.loads(line))
 
-# Sort by name for consistent ordering
 apps.sort(key=lambda a: a.get('name', '').lower())
 
 with open('src/apps.json', 'w') as f:
@@ -385,12 +381,12 @@ info "Writing $APPS_OUT/index.json..."
 python3 -c "
 import json
 
-lines = '''$APP_JSON_LINES'''.strip().split('\n')
 apps = []
-for line in lines:
-    line = line.strip()
-    if line:
-        apps.append(json.loads(line))
+with open('$APP_JSON_FILE') as f:
+    for line in f:
+        line = line.strip()
+        if line:
+            apps.append(json.loads(line))
 
 apps.sort(key=lambda a: a.get('name', '').lower())
 

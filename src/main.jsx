@@ -23,7 +23,6 @@ const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
 
 const screenshotUrl = (appId, shot) => {
   const file = typeof shot === "string" ? shot : shot.url || "";
-  // Support both "screenshots/foo.png" relative paths and bare "foo.png" filenames
   if (file.startsWith("screenshots/")) {
     return `${APP_INDEX_BASE}/screenshots/${appId}/${file.replace("screenshots/", "")}`;
   }
@@ -40,22 +39,23 @@ const installUrl = (host, app) => {
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 
-/* ─── design tokens ───────────────────────────────────────────────────────── */
+/* ─── design tokens (light) ───────────────────────────────────────────────── */
 
 const T = {
-  bg: "#0f0f13",
-  surface: "#1a1a24",
-  card: "#1e1e2a",
-  cardHover: "#262638",
-  border: "#2a2a3d",
-  accent: "#7c5bf5",
-  accentHover: "#6a4be0",
-  accentGlow: "rgba(124,91,245,.25)",
-  green: "#22c55e",
-  text: "#eaeaf0",
-  textSec: "#9898ad",
-  textDim: "#5d5d77",
-  radius: 16,
+  bg: "#f5f5f7",
+  surface: "#ffffff",
+  card: "#ffffff",
+  cardHover: "#f8f6ff",
+  border: "#e2e2ea",
+  borderLight: "#efefef",
+  accent: "#6c47d9",
+  accentHover: "#5a38c4",
+  accentGlow: "rgba(108,71,217,.18)",
+  green: "#16a34a",
+  text: "#1a1a2e",
+  textSec: "#5c5c78",
+  textDim: "#9898ad",
+  radius: 14,
   radiusSm: 10,
 };
 
@@ -70,29 +70,36 @@ body{
 }
 a{color:${T.accent};text-decoration:none}
 a:hover{color:${T.accentHover}}
-::selection{background:${T.accentGlow};color:#fff}
+::selection{background:${T.accentGlow};color:${T.text}}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:${T.border};border-radius:3px}
 input,select,button{font:inherit;color:inherit}
 img{display:block;max-width:100%}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-scroll{scrollbar-width:none}
 
-.ss-strip{display:flex;gap:12px;overflow-x:auto;padding:4px 0 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.ss-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 0 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
 .ss-strip::-webkit-scrollbar{height:4px}
 .ss-strip::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
-.ss-strip img{scroll-snap-align:start;border-radius:12px;border:1px solid ${T.border};cursor:pointer;transition:transform .15s,border-color .15s;object-fit:cover;flex-shrink:0}
-.ss-strip img:hover{transform:scale(1.03);border-color:${T.accent}}
+.ss-strip img{scroll-snap-align:start;border-radius:10px;border:1px solid ${T.border};cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;object-fit:cover;flex-shrink:0}
+.ss-strip img:hover{transform:scale(1.03);border-color:${T.accent};box-shadow:0 4px 16px ${T.accentGlow}}
 
-.lightbox-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease-out;cursor:zoom-out}
-.lightbox-overlay img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:pop .2s ease-out}
+.card-shots{display:flex;gap:6px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.card-shots::-webkit-scrollbar{display:none}
+.card-shots img{border-radius:8px;border:1px solid ${T.border};object-fit:cover;flex-shrink:0;cursor:pointer;transition:border-color .15s}
+.card-shots img:hover{border-color:${T.accent}}
+
+.lightbox-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease-out;cursor:zoom-out}
+.lightbox-overlay img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pop .2s ease-out}
+
+.detail-grid{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+@media(max-width:720px){.detail-grid{grid-template-columns:1fr}}
 `;
 
 /* ─── small components ─────────────────────────────────────────────────────── */
@@ -102,7 +109,7 @@ function Badge({ children, color }) {
     <span style={{
       display: "inline-block", padding: "3px 10px", fontSize: 11,
       fontWeight: 600, letterSpacing: ".03em", borderRadius: 20,
-      background: color || T.border, color: T.text, whiteSpace: "nowrap",
+      background: color || T.borderLight, color: T.textSec, whiteSpace: "nowrap",
     }}>
       {children}
     </span>
@@ -129,7 +136,7 @@ function AppIcon({ app, size = 48 }) {
     <img src={src} alt="" loading="lazy" onError={() => setErr(true)}
       style={{
         width: size, height: size, borderRadius: T.radiusSm,
-        objectFit: "contain", background: T.surface, flexShrink: 0,
+        objectFit: "contain", background: T.bg, flexShrink: 0,
       }}
     />
   );
@@ -145,11 +152,11 @@ function HostBar({ host, setHost }) {
       <button onClick={() => setOpen(!open)} style={{
         display: "flex", alignItems: "center", gap: 8, padding: "8px 14px",
         border: `1px solid ${ok ? T.green : T.border}`,
-        borderRadius: T.radiusSm, background: ok ? "rgba(34,197,94,.08)" : "transparent",
+        borderRadius: T.radiusSm, background: ok ? "rgba(22,163,74,.06)" : T.surface,
         cursor: "pointer", fontSize: 13, color: ok ? T.green : T.textSec, transition: "all .2s",
       }}>
         <span style={{ fontSize: 10 }}>{ok ? "●" : "○"}</span>
-        <span className="host-label">{ok ? "Connected" : "Connect"}</span>
+        <span>{ok ? "Connected" : "Connect"}</span>
         <span style={{ fontSize: 9, opacity: .5 }}>▾</span>
       </button>
       {open && (
@@ -157,20 +164,18 @@ function HostBar({ host, setHost }) {
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
           <div style={{
             position: "absolute", right: 0, top: "calc(100% + 8px)",
-            background: T.card, border: `1px solid ${T.border}`, borderRadius: T.radius,
+            background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
             padding: 18, zIndex: 100, width: 300,
-            boxShadow: "0 16px 48px rgba(0,0,0,.6)", animation: "pop .15s ease-out",
+            boxShadow: "0 12px 40px rgba(0,0,0,.12)", animation: "pop .15s ease-out",
           }}>
             <label style={{
               display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase",
               letterSpacing: ".06em", color: T.textSec, marginBottom: 8,
-            }}>
-              Sandstorm Server URL
-            </label>
+            }}>Sandstorm Server URL</label>
             <input type="url" placeholder="https://sandstorm.example.com" value={host}
               onChange={(e) => setHost(e.target.value)} autoFocus
               style={{
-                width: "100%", padding: "10px 12px", background: T.surface,
+                width: "100%", padding: "10px 12px", background: T.bg,
                 border: `1px solid ${T.border}`, borderRadius: 8, color: T.text,
                 fontSize: 14, outline: "none",
               }}
@@ -187,11 +192,12 @@ function HostBar({ host, setHost }) {
   );
 }
 
-/* ─── App Card ─────────────────────────────────────────────────────────────── */
+/* ─── App Card (with screenshot thumbnails) ────────────────────────────────── */
 
 function AppCard({ app, onSelect, host }) {
   const [hov, setHov] = useState(false);
   const url = installUrl(host, app);
+  const shots = app.screenshots || [];
 
   return (
     <div role="button" tabIndex={0}
@@ -200,68 +206,75 @@ function AppCard({ app, onSelect, host }) {
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         background: hov ? T.cardHover : T.card,
-        border: `1px solid ${hov ? "rgba(124,91,245,.45)" : T.border}`,
-        borderRadius: T.radius, padding: 20, cursor: "pointer",
+        border: `1px solid ${hov ? "rgba(108,71,217,.35)" : T.border}`,
+        borderRadius: T.radius, cursor: "pointer",
         transition: "all .2s ease",
-        transform: hov ? "translateY(-3px)" : "none",
-        boxShadow: hov
-          ? `0 12px 36px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04)`
-          : `0 1px 4px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.02)`,
-        display: "flex", flexDirection: "column", gap: 16,
+        transform: hov ? "translateY(-2px)" : "none",
+        boxShadow: hov ? "0 8px 28px rgba(0,0,0,.08)" : "0 1px 3px rgba(0,0,0,.05)",
+        display: "flex", flexDirection: "column",
         animation: "fadeUp .4s ease-out both",
-        height: "100%",
+        height: "100%", overflow: "hidden",
       }}
     >
-      {/* top row: icon + text */}
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-        <AppIcon app={app} size={52} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{
-            fontSize: 16, fontWeight: 700, margin: 0,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {app.name}
-          </h3>
-          <p style={{
-            fontSize: 13, color: T.textSec, margin: "5px 0 0", lineHeight: 1.45,
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}>
-            {app.shortDescription || app.summary || ""}
-          </p>
-        </div>
-      </div>
-
-      {/* bottom row: badges + action */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 8, marginTop: "auto",
-      }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-          {(app.categories || []).slice(0, 2).map((c) => (
-            <Badge key={c}>{c}</Badge>
+      {/* screenshot thumbnails */}
+      {shots.length > 0 && (
+        <div className="card-shots" style={{ padding: "10px 10px 0" }}>
+          {shots.slice(0, 4).map((s, i) => (
+            <img key={i} src={screenshotUrl(app.appId, s)}
+              alt={shotCaption(s) || `Screenshot ${i + 1}`}
+              loading="lazy"
+              style={{ width: 120, height: 75 }}
+              onClick={(e) => { e.stopPropagation(); onSelect(app.appId); }}
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
           ))}
         </div>
-        {url ? (
-          <a href={url} target="_blank" rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5,
-              padding: "7px 18px", background: T.accent, color: "#fff",
-              fontWeight: 600, fontSize: 12, borderRadius: 20, whiteSpace: "nowrap",
-              textDecoration: "none", boxShadow: `0 2px 12px ${T.accentGlow}`,
-              transition: "all .15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = T.accentHover; e.currentTarget.style.transform = "scale(1.05)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = T.accent; e.currentTarget.style.transform = "none"; }}
-          >
-            Install
-          </a>
-        ) : (
-          <span style={{ fontSize: 12, color: T.textDim, whiteSpace: "nowrap" }}>
-            v{app.version || app.versionNumber || "—"}
-          </span>
-        )}
+      )}
+
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <AppIcon app={app} size={48} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{
+              fontSize: 15, fontWeight: 700, margin: 0, color: T.text,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{app.name}</h3>
+            <p style={{
+              fontSize: 13, color: T.textSec, margin: "4px 0 0", lineHeight: 1.45,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}>
+              {app.shortDescription || app.summary || ""}
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 8, marginTop: "auto",
+        }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+            {(app.categories || []).slice(0, 2).map((c) => <Badge key={c}>{c}</Badge>)}
+          </div>
+          {url ? (
+            <a href={url} target="_blank" rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "7px 18px", background: T.accent, color: "#fff",
+                fontWeight: 600, fontSize: 12, borderRadius: 20, whiteSpace: "nowrap",
+                textDecoration: "none", boxShadow: `0 2px 10px ${T.accentGlow}`,
+                transition: "all .15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.accentHover; e.currentTarget.style.transform = "scale(1.05)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = T.accent; e.currentTarget.style.transform = "none"; }}
+            >Install</a>
+          ) : (
+            <span style={{ fontSize: 12, color: T.textDim, whiteSpace: "nowrap" }}>
+              v{app.version || app.versionNumber || "—"}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -288,11 +301,11 @@ function ScreenshotGallery({ screenshots, appId }) {
             <div key={i} style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
               <img src={screenshotUrl(appId, s)} alt={shotCaption(s) || `Screenshot ${i + 1}`}
                 onClick={() => setLightbox(i)}
-                style={{ width: 280, height: 175 }}
+                style={{ width: 320, height: 200 }}
                 onError={(e) => { e.target.parentElement.style.display = "none"; }}
               />
               {shotCaption(s) && (
-                <span style={{ fontSize: 11, color: T.textDim, maxWidth: 280, lineHeight: 1.4 }}>
+                <span style={{ fontSize: 12, color: T.textDim, maxWidth: 320, lineHeight: 1.4 }}>
                   {shotCaption(s)}
                 </span>
               )}
@@ -305,7 +318,7 @@ function ScreenshotGallery({ screenshots, appId }) {
           {screenshots.length > 1 && (
             <button onClick={(e) => { e.stopPropagation(); prev(); }} style={{
               position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)",
-              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.15)",
+              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.2)",
               color: "#fff", width: 44, height: 44, borderRadius: "50%",
               fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             }}>‹</button>
@@ -313,7 +326,7 @@ function ScreenshotGallery({ screenshots, appId }) {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "92vw" }}>
             <img src={screenshotUrl(appId, screenshots[lightbox])} alt="" onClick={(e) => e.stopPropagation()} style={{ cursor: "default" }} />
             {shotCaption(screenshots[lightbox]) && (
-              <p style={{ color: "rgba(255,255,255,.8)", fontSize: 14, textAlign: "center", maxWidth: 600 }}>
+              <p style={{ color: "rgba(255,255,255,.85)", fontSize: 14, textAlign: "center", maxWidth: 600 }}>
                 {shotCaption(screenshots[lightbox])}
               </p>
             )}
@@ -324,7 +337,7 @@ function ScreenshotGallery({ screenshots, appId }) {
           {screenshots.length > 1 && (
             <button onClick={(e) => { e.stopPropagation(); next(); }} style={{
               position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
-              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.15)",
+              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.2)",
               color: "#fff", width: 44, height: 44, borderRadius: "50%",
               fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             }}>›</button>
@@ -335,17 +348,16 @@ function ScreenshotGallery({ screenshots, appId }) {
   );
 }
 
-/* ─── Detail Sheet (slide-in panel) ────────────────────────────────────────── */
+/* ─── Detail Page (fullscreen, replaces grid) ──────────────────────────────── */
 
-function DetailSheet({ app, host, onClose }) {
+function DetailPage({ app, host, onClose }) {
   const url = installUrl(host, app);
-  const [lbIdx, setLbIdx] = useState(null);
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
-    document.body.style.overflow = "hidden";
+    window.scrollTo(0, 0);
     window.addEventListener("keydown", h);
-    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+    return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
   if (!app) return null;
@@ -369,168 +381,157 @@ function DetailSheet({ app, host, onClose }) {
   ];
 
   return (
-    <>
-      {/* backdrop */}
-      <div onClick={onClose} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.6)",
-        backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-        zIndex: 500, animation: "fadeIn .2s ease-out",
-      }} />
-
-      {/* panel */}
+    <div style={{ minHeight: "100dvh", background: T.bg, animation: "fadeIn .15s ease-out" }}>
+      {/* top bar */}
       <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0,
-        width: "min(520px, 100vw)", background: T.surface,
-        borderLeft: `1px solid ${T.border}`, zIndex: 501,
-        overflowY: "auto", animation: "slideIn .25s ease-out",
-        display: "flex", flexDirection: "column",
+        position: "sticky", top: 0, zIndex: 200,
+        background: "rgba(255,255,255,.88)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        borderBottom: `1px solid ${T.border}`,
       }}>
-        {/* close btn */}
-        <button onClick={onClose} aria-label="Close" style={{
-          position: "sticky", top: 0, alignSelf: "flex-end",
-          margin: "16px 16px 0 0", width: 38, height: 38,
-          borderRadius: "50%", border: `1px solid ${T.border}`, background: T.card,
-          color: T.textSec, fontSize: 16, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 10, flexShrink: 0, transition: "all .15s",
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = T.cardHover; e.currentTarget.style.color = T.text; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = T.card; e.currentTarget.style.color = T.textSec; }}
-        >✕</button>
+        <div style={{
+          maxWidth: 960, margin: "0 auto", padding: "12px 24px",
+          display: "flex", alignItems: "center", gap: 14,
+        }}>
+          <button onClick={onClose} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "7px 16px", borderRadius: 8,
+            border: `1px solid ${T.border}`, background: T.surface,
+            color: T.textSec, fontSize: 13, fontWeight: 600,
+            cursor: "pointer", transition: "all .15s",
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.color = T.accent; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}
+          >← Back</button>
+          <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{app.name}</span>
+        </div>
+      </div>
 
-        <div style={{ padding: "0 28px 48px", flex: 1 }}>
-          {/* hero */}
-          <div style={{ display: "flex", gap: 20, alignItems: "center", marginBottom: 28 }}>
-            <AppIcon app={app} size={80} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0, lineHeight: 1.15, letterSpacing: "-.02em" }}>
-                {app.name}
-              </h2>
-              <p style={{ color: T.textSec, fontSize: 14, margin: "8px 0 0", lineHeight: 1.5 }}>
-                {app.shortDescription || app.summary || ""}
-              </p>
-            </div>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 24px 80px" }}>
+        {/* hero */}
+        <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 32, flexWrap: "wrap" }}>
+          <AppIcon app={app} size={88} />
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: "-.03em", color: T.text }}>
+              {app.name}
+            </h1>
+            <p style={{ color: T.textSec, fontSize: 16, margin: "10px 0 0", lineHeight: 1.5 }}>
+              {app.shortDescription || app.summary || ""}
+            </p>
           </div>
+        </div>
 
-          {/* actions */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 28 }}>
-            {url ? (
-              <a href={url} target="_blank" rel="noreferrer" style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "13px 32px",
-                background: `linear-gradient(135deg, ${T.accent}, #9b6dff)`,
-                color: "#fff", fontWeight: 700, fontSize: 15, borderRadius: 14,
-                textDecoration: "none",
-                boxShadow: `0 4px 24px ${T.accentGlow}, inset 0 1px 0 rgba(255,255,255,.15)`,
-                transition: "transform .15s, box-shadow .15s",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.04)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
-              >
-                <span style={{ fontSize: 18 }}>↓</span> Install App
-              </a>
-            ) : (
+        {/* actions */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 32 }}>
+          {url ? (
+            <a href={url} target="_blank" rel="noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "14px 36px", background: T.accent, color: "#fff",
+              fontWeight: 700, fontSize: 15, borderRadius: 12, textDecoration: "none",
+              boxShadow: `0 4px 20px ${T.accentGlow}`, transition: "transform .15s, background .15s",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.03)"; e.currentTarget.style.background = T.accentHover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.background = T.accent; }}
+            ><span style={{ fontSize: 18 }}>↓</span> Install App</a>
+          ) : (
+            <div style={{
+              padding: "14px 28px", background: T.surface, color: T.textDim,
+              borderRadius: 12, fontSize: 14, border: `1px solid ${T.border}`,
+            }}>Connect your server to install</div>
+          )}
+          {app.webLink && (
+            <a href={app.webLink} target="_blank" rel="noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "14px 24px", background: T.surface,
+              border: `1px solid ${T.border}`, color: T.text,
+              fontWeight: 600, fontSize: 14, borderRadius: 12,
+              textDecoration: "none", transition: "border-color .15s",
+            }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.accent)}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
+            >Website ↗</a>
+          )}
+          {app.codeLink && (
+            <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "14px 24px", background: T.surface,
+              border: `1px solid ${T.border}`, color: T.text,
+              fontWeight: 600, fontSize: 14, borderRadius: 12,
+              textDecoration: "none", transition: "border-color .15s",
+            }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.accent)}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
+            >Source ↗</a>
+          )}
+        </div>
+
+        {/* tags */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 32 }}>
+          {(app.categories || []).map((c) => <Badge key={c} color={T.accent + "18"}>{c}</Badge>)}
+          {app.isOpenSource && <Badge color="rgba(22,163,74,.12)">Open Source</Badge>}
+        </div>
+
+        {/* screenshots */}
+        <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
+
+        {/* description + info sidebar */}
+        <div className="detail-grid">
+          <div>
+            {app.description && (
               <div style={{
-                padding: "13px 28px", background: T.card, color: T.textDim,
-                borderRadius: 14, fontSize: 14, border: `1px solid ${T.border}`,
+                padding: 24, background: T.surface,
+                borderRadius: T.radius, border: `1px solid ${T.border}`,
               }}>
-                Connect your server to install
+                <div style={{
+                  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                  letterSpacing: ".07em", color: T.textSec, marginBottom: 14,
+                }}>About</div>
+                <div style={{ fontSize: 14, lineHeight: 1.75, color: T.text, whiteSpace: "pre-wrap" }}>
+                  {app.description}
+                </div>
               </div>
             )}
-            {app.webLink && (
-              <a href={app.webLink} target="_blank" rel="noreferrer" style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "13px 22px", background: T.card,
-                border: `1px solid ${T.border}`, color: T.text,
-                fontWeight: 600, fontSize: 14, borderRadius: 14,
-                textDecoration: "none", transition: "border-color .15s",
-              }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.textSec)}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
-              >Website ↗</a>
-            )}
-            {app.codeLink && (
-              <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "13px 22px", background: T.card,
-                border: `1px solid ${T.border}`, color: T.text,
-                fontWeight: 600, fontSize: 14, borderRadius: 14,
-                textDecoration: "none", transition: "border-color .15s",
-              }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.textSec)}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
-              >Source ↗</a>
-            )}
           </div>
 
-          {/* tags */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
-            {(app.categories || []).map((c) => (
-              <Badge key={c} color={T.accent + "22"}>{c}</Badge>
-            ))}
-            {app.isOpenSource && <Badge color="rgba(34,197,94,.15)">Open Source</Badge>}
-          </div>
-
-          {/* screenshots */}
-          <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
-
-          {/* long description */}
-          {app.description && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{
-              marginBottom: 28, padding: "20px 22px", background: T.card,
-              borderRadius: T.radius, border: `1px solid ${T.border}`,
+              background: T.surface, borderRadius: T.radius,
+              border: `1px solid ${T.border}`, overflow: "hidden",
             }}>
               <div style={{
+                padding: "14px 20px", borderBottom: `1px solid ${T.border}`,
                 fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: ".07em", color: T.textSec, marginBottom: 12,
-              }}>About</div>
-              <div style={{
-                fontSize: 14, lineHeight: 1.7, color: T.text, whiteSpace: "pre-wrap",
-              }}>
-                {app.description}
-              </div>
+                letterSpacing: ".07em", color: T.textSec,
+              }}>Details</div>
+              {rows.map(([label, val], i) => (
+                <div key={label} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                  gap: 12, padding: "12px 20px",
+                  borderBottom: i < rows.length - 1 ? `1px solid ${T.borderLight}` : "none",
+                  fontSize: 13,
+                }}>
+                  <span style={{ color: T.textSec, flexShrink: 0 }}>{label}</span>
+                  <span style={{ textAlign: "right", wordBreak: "break-word" }}>{val}</span>
+                </div>
+              ))}
             </div>
-          )}
 
-          {/* info table */}
-          <div style={{
-            background: T.card, borderRadius: T.radius,
-            border: `1px solid ${T.border}`, overflow: "hidden",
-          }}>
             <div style={{
-              padding: "14px 20px", borderBottom: `1px solid ${T.border}`,
-              fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".07em", color: T.textSec,
-            }}>Details</div>
-            {rows.map(([label, val], i) => (
-              <div key={label} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                gap: 16, padding: "13px 20px",
-                borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : "none",
-                fontSize: 14,
-              }}>
-                <span style={{ color: T.textSec, flexShrink: 0 }}>{label}</span>
-                <span style={{ textAlign: "right", wordBreak: "break-word" }}>{val}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* app id */}
-          <div style={{
-            marginTop: 20, padding: "14px 20px", background: T.card,
-            borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
-          }}>
-            <span style={{
-              display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".07em", color: T.textDim, marginBottom: 6,
-            }}>App ID</span>
-            <code style={{ fontSize: 11, color: T.textSec, wordBreak: "break-all", lineHeight: 1.6 }}>
-              {app.appId}
-            </code>
+              padding: "14px 20px", background: T.surface,
+              borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
+            }}>
+              <span style={{
+                display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: ".07em", color: T.textDim, marginBottom: 6,
+              }}>App ID</span>
+              <code style={{ fontSize: 11, color: T.textSec, wordBreak: "break-all", lineHeight: 1.6 }}>
+                {app.appId}
+              </code>
+            </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -570,32 +571,41 @@ function App() {
   const onSelect = useCallback((id) => setSelectedId(id), []);
   const onClose = useCallback(() => setSelectedId(null), []);
 
+  /* fullscreen detail replaces the grid view */
+  if (selectedApp) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <DetailPage app={selectedApp} host={host} onClose={onClose} />
+      </>
+    );
+  }
+
   return (
     <>
       <style>{CSS}</style>
 
-      {/* ── sticky header ── */}
+      {/* header */}
       <header style={{
         position: "sticky", top: 0, zIndex: 200,
-        background: "rgba(15,15,19,.82)",
-        backdropFilter: "blur(24px) saturate(1.5)",
-        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
+        background: "rgba(255,255,255,.88)",
+        backdropFilter: "blur(20px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
         borderBottom: `1px solid ${T.border}`,
       }}>
         <div style={{
           maxWidth: 1200, margin: "0 auto", padding: "12px 20px",
           display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
         }}>
-          {/* logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: "auto" }}>
             <div style={{
               width: 34, height: 34, borderRadius: 10,
               background: `linear-gradient(135deg, ${T.accent}, #9b6dff)`,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 17, fontWeight: 900, color: "#fff",
-              boxShadow: `0 2px 12px ${T.accentGlow}`,
+              boxShadow: `0 2px 10px ${T.accentGlow}`,
             }}>M</div>
-            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-.02em" }}>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-.02em", color: T.text }}>
               Melusina
               <span style={{ color: T.textSec, fontWeight: 400, marginLeft: 6, fontSize: 15 }}>
                 App Market
@@ -603,7 +613,6 @@ function App() {
             </span>
           </div>
 
-          {/* search */}
           <div style={{ position: "relative", flex: "1 1 180px", maxWidth: 340 }}>
             <span style={{
               position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
@@ -625,7 +634,7 @@ function App() {
         </div>
       </header>
 
-      {/* ── categories ── */}
+      {/* categories */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 20px 0" }}>
         <div className="cat-scroll" style={{
           display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6,
@@ -636,24 +645,20 @@ function App() {
             return (
               <button key={c} onClick={() => setCategory(c)} style={{
                 padding: "7px 18px", borderRadius: 20, border: "none",
-                background: active ? T.accent : T.card,
+                background: active ? T.accent : T.surface,
                 color: active ? "#fff" : T.textSec,
                 fontSize: 13, fontWeight: 600, cursor: "pointer",
                 whiteSpace: "nowrap", transition: "all .15s", flexShrink: 0,
-              }}>
-                {c}
-              </button>
+                boxShadow: active ? `0 2px 10px ${T.accentGlow}` : "none",
+              }}>{c}</button>
             );
           })}
         </div>
       </div>
 
-      {/* ── grid ── */}
+      {/* grid */}
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 20px 80px" }}>
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginBottom: 18,
-        }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <span style={{ fontSize: 13, color: T.textDim }}>
             {filtered.length} app{filtered.length !== 1 ? "s" : ""}
             {category !== "All" ? ` in ${category}` : ""}
@@ -663,11 +668,11 @@ function App() {
         {filtered.length > 0 ? (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))",
             gap: 16,
           }}>
             {filtered.map((app, i) => (
-              <div key={app.appId} style={{ animationDelay: `${i * 50}ms` }}>
+              <div key={app.appId} style={{ animationDelay: `${i * 40}ms` }}>
                 <AppCard app={app} onSelect={onSelect} host={host} />
               </div>
             ))}
@@ -680,13 +685,8 @@ function App() {
           </div>
         )}
       </main>
-
-      {/* ── detail sheet ── */}
-      {selectedApp && <DetailSheet app={selectedApp} host={host} onClose={onClose} />}
     </>
   );
 }
-
-/* ─── mount ────────────────────────────────────────────────────────────────── */
 
 createRoot(document.getElementById("root")).render(<App />);

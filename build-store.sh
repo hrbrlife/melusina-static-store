@@ -209,6 +209,34 @@ m['imageId'] = '$image_id'
 if isinstance(m.get('createdAt'), float):
     m['createdAt'] = int(m['createdAt'])
 
+# Pass through description (optional long-form text)
+# If description.md exists alongside metadata.json, use it as fallback
+import os
+m.setdefault('description', '')
+if not m['description']:
+    desc_md = os.path.join(os.path.dirname('$meta_file'), 'description.md')
+    if os.path.isfile(desc_md):
+        m['description'] = open(desc_md).read().strip()
+
+# Screenshots: pass through from metadata, or auto-discover from screenshots/ dir
+# Supports both {url, caption} objects and plain filename strings
+if 'screenshots' not in m or not m['screenshots']:
+    ss_dir = os.path.join(os.path.dirname('$meta_file'), 'screenshots')
+    if os.path.isdir(ss_dir):
+        shots = sorted([f for f in os.listdir(ss_dir) if f.lower().endswith(('.png','.jpg','.jpeg','.gif','.webp'))])
+        m['screenshots'] = [{'url': 'screenshots/' + f, 'caption': ''} for f in shots]
+    else:
+        m['screenshots'] = []
+else:
+    # Normalize: if entries are plain strings, wrap them
+    norm = []
+    for s in m['screenshots']:
+        if isinstance(s, str):
+            norm.append({'url': s, 'caption': ''})
+        else:
+            norm.append(s)
+    m['screenshots'] = norm
+
 print(json.dumps(m, separators=(',', ':')))
 ")"
 
@@ -276,7 +304,7 @@ fi
 info "Assembling $OUTPUT_DIR/..."
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots"
 
 # Copy Vite build output
 if [[ -d "dist" ]]; then
@@ -329,6 +357,15 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
         cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
         ((SPK_COUNT++)) || true
+      fi
+
+      # Copy screenshots (named by appId directory)
+      if [[ -d "$app_dir/screenshots" ]]; then
+        app_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['appId'])")"
+        mkdir -p "$OUTPUT_DIR/screenshots/$app_id"
+        for shot in "$app_dir"/screenshots/*.{png,jpg,jpeg,gif,webp}; do
+          [[ -f "$shot" ]] && cp "$shot" "$OUTPUT_DIR/screenshots/$app_id/"
+        done
       fi
     done
   done

@@ -22,6 +22,41 @@
         "twitterUsername": "",
         "picture": ""
       },
+      "description": "Self-hosted KYC identity verification platform for Sandstorm. Run compliant identity checks entirely on your own server with document upload, facial verification, OTP confirmation, and AI-assisted review.",
+      "screenshots": [
+        {
+          "url": "screenshots/01-admin-dashboard.png",
+          "caption": "Station admin dashboard showing active verification cases"
+        },
+        {
+          "url": "screenshots/02-share-link.png",
+          "caption": "Creating a shareable verification link for respondents"
+        },
+        {
+          "url": "screenshots/03-kyc-start.png",
+          "caption": "Respondent begins the identity verification process"
+        },
+        {
+          "url": "screenshots/04-terms-accepted.png",
+          "caption": "Terms and conditions acceptance step"
+        },
+        {
+          "url": "screenshots/05-document-upload.png",
+          "caption": "Document upload with supported ID types"
+        },
+        {
+          "url": "screenshots/06-face-capture.png",
+          "caption": "Live facial verification capture"
+        },
+        {
+          "url": "screenshots/07-verification-complete.png",
+          "caption": "Respondent completes all verification steps"
+        },
+        {
+          "url": "screenshots/08-admin-final-review.png",
+          "caption": "Administrator reviews completed verification case"
+        }
+      ],
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg"
     }
   ]

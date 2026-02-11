@@ -21,6 +21,18 @@ const fmtDate = (v) => {
 
 const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
 
+const screenshotUrl = (appId, shot) => {
+  const file = typeof shot === "string" ? shot : shot.url || "";
+  // Support both "screenshots/foo.png" relative paths and bare "foo.png" filenames
+  if (file.startsWith("screenshots/")) {
+    return `${APP_INDEX_BASE}/screenshots/${appId}/${file.replace("screenshots/", "")}`;
+  }
+  return `${APP_INDEX_BASE}/screenshots/${appId}/${file}`;
+};
+
+const shotCaption = (shot) =>
+  typeof shot === "string" ? "" : shot.caption || "";
+
 const installUrl = (host, app) => {
   const h = sanitizeHost(host);
   if (!h || !app.packageId) return null;
@@ -72,6 +84,15 @@ img{display:block;max-width:100%}
 
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-scroll{scrollbar-width:none}
+
+.ss-strip{display:flex;gap:12px;overflow-x:auto;padding:4px 0 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.ss-strip::-webkit-scrollbar{height:4px}
+.ss-strip::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
+.ss-strip img{scroll-snap-align:start;border-radius:12px;border:1px solid ${T.border};cursor:pointer;transition:transform .15s,border-color .15s;object-fit:cover;flex-shrink:0}
+.ss-strip img:hover{transform:scale(1.03);border-color:${T.accent}}
+
+.lightbox-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease-out;cursor:zoom-out}
+.lightbox-overlay img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:pop .2s ease-out}
 `;
 
 /* ─── small components ─────────────────────────────────────────────────────── */
@@ -246,10 +267,79 @@ function AppCard({ app, onSelect, host }) {
   );
 }
 
+/* ─── Screenshot Gallery ───────────────────────────────────────────────────── */
+
+function ScreenshotGallery({ screenshots, appId }) {
+  const [lightbox, setLightbox] = useState(null);
+  if (!screenshots || screenshots.length === 0) return null;
+
+  const prev = () => setLightbox((i) => (i > 0 ? i - 1 : screenshots.length - 1));
+  const next = () => setLightbox((i) => (i < screenshots.length - 1 ? i + 1 : 0));
+
+  return (
+    <>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: ".07em", color: T.textSec, marginBottom: 12,
+        }}>Screenshots</div>
+        <div className="ss-strip">
+          {screenshots.map((s, i) => (
+            <div key={i} style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <img src={screenshotUrl(appId, s)} alt={shotCaption(s) || `Screenshot ${i + 1}`}
+                onClick={() => setLightbox(i)}
+                style={{ width: 280, height: 175 }}
+                onError={(e) => { e.target.parentElement.style.display = "none"; }}
+              />
+              {shotCaption(s) && (
+                <span style={{ fontSize: 11, color: T.textDim, maxWidth: 280, lineHeight: 1.4 }}>
+                  {shotCaption(s)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      {lightbox !== null && (
+        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+          {screenshots.length > 1 && (
+            <button onClick={(e) => { e.stopPropagation(); prev(); }} style={{
+              position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)",
+              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.15)",
+              color: "#fff", width: 44, height: 44, borderRadius: "50%",
+              fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>‹</button>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "92vw" }}>
+            <img src={screenshotUrl(appId, screenshots[lightbox])} alt="" onClick={(e) => e.stopPropagation()} style={{ cursor: "default" }} />
+            {shotCaption(screenshots[lightbox]) && (
+              <p style={{ color: "rgba(255,255,255,.8)", fontSize: 14, textAlign: "center", maxWidth: 600 }}>
+                {shotCaption(screenshots[lightbox])}
+              </p>
+            )}
+            <span style={{ color: "rgba(255,255,255,.4)", fontSize: 12 }}>
+              {lightbox + 1} / {screenshots.length}
+            </span>
+          </div>
+          {screenshots.length > 1 && (
+            <button onClick={(e) => { e.stopPropagation(); next(); }} style={{
+              position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+              background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.15)",
+              color: "#fff", width: 44, height: 44, borderRadius: "50%",
+              fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>›</button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─── Detail Sheet (slide-in panel) ────────────────────────────────────────── */
 
 function DetailSheet({ app, host, onClose }) {
   const url = installUrl(host, app);
+  const [lbIdx, setLbIdx] = useState(null);
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -380,6 +470,27 @@ function DetailSheet({ app, host, onClose }) {
             ))}
             {app.isOpenSource && <Badge color="rgba(34,197,94,.15)">Open Source</Badge>}
           </div>
+
+          {/* screenshots */}
+          <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
+
+          {/* long description */}
+          {app.description && (
+            <div style={{
+              marginBottom: 28, padding: "20px 22px", background: T.card,
+              borderRadius: T.radius, border: `1px solid ${T.border}`,
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: ".07em", color: T.textSec, marginBottom: 12,
+              }}>About</div>
+              <div style={{
+                fontSize: 14, lineHeight: 1.7, color: T.text, whiteSpace: "pre-wrap",
+              }}>
+                {app.description}
+              </div>
+            </div>
+          )}
 
           {/* info table */}
           <div style={{

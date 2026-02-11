@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 19.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 150 150" style="enable-background:new 0 0 150 150;" xml:space="preserve">
+<style type="text/css">
+	.Drop_x0020_Shadow{fill:none;}
+	.Outer_x0020_Glow_x0020_5_x0020_pt{fill:none;}
+	.Blue_x0020_Neon{fill:none;stroke:#8AACDA;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;}
+	.Chrome_x0020_Highlight{fill:url(#SVGID_1_);stroke:#FFFFFF;stroke-width:0.3629;stroke-miterlimit:1;}
+	.Jive_GS{fill:#FFDD00;}
+	.Alyssa_GS{fill:#A6D0E4;}
+	.st0{fill:#00A592;}
+	.st1{fill:#09B9A5;}
+	.st2{fill:#00897A;}
+	.st3{fill:#FEFEFE;}
+</style>
+<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="-75" y1="-75" x2="-75" y2="-76">
+	<stop  offset="0" style="stop-color:#656565"/>
+	<stop  offset="0.618" style="stop-color:#1B1B1B"/>
+	<stop  offset="0.6292" style="stop-color:#545454"/>
+	<stop  offset="0.9831" style="stop-color:#3E3E3E"/>
+</linearGradient>
+<rect y="13" class="st0" width="150" height="137"/>
+<rect class="st1" width="150" height="13.1"/>
+<path class="st2" d="M132.9,52l-14.3-14.2c-1.6-1.6-4.1-1.6-5.7,0L62.3,88.5L38.5,64.8c-1.6-1.6-4.1-1.6-5.7,0L18.6,79
+	c-1.6,1.6-1.6,4.1,0,5.7l40.8,40.8c1.6,1.6,4.1,1.6,5.7,0l67.8-67.9C134.5,56.1,134.5,53.5,132.9,52z"/>
+<path class="st3" d="M132.9,47.5l-14.3-14.2c-1.6-1.6-4.1-1.6-5.7,0L62.3,84L38.5,60.3c-1.6-1.6-4.1-1.6-5.7,0L18.6,74.6
+	c-1.6,1.6-1.6,4.1,0,5.7l40.8,40.8c1.6,1.6,4.1,1.6,5.7,0l67.8-67.9C134.5,51.6,134.5,49.1,132.9,47.5z"/>
+</svg>

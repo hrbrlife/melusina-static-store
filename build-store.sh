@@ -127,7 +127,10 @@ for f in ['name']:
   return $errors
 }
 
-# Walk packages/<developer>/<app>/
+# Walk packages/<developer>/<submodule>/<app>/
+# Structure: packages/hrbrlife/BLOOM_FINAL/bloom-identity/metadata.json
+#            ^^^^^^^^^ ^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^^^^
+#            pkg_dir   dev     repo/submod  app folder
 if [[ ! -d "$PACKAGES_DIR" ]]; then
   warn "No $PACKAGES_DIR/ directory found. Creating it."
   mkdir -p "$PACKAGES_DIR"
@@ -140,21 +143,27 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
   [[ -d "$developer_dir" ]] || continue
   developer_name="$(basename "$developer_dir")"
 
-  for app_dir in "$developer_dir"*/; do
-    [[ -d "$app_dir" ]] || continue
-    app_slug="$(basename "$app_dir")"
-    meta_file="$app_dir/metadata.json"
+  for repo_dir in "$developer_dir"*/; do
+    [[ -d "$repo_dir" ]] || continue
+    repo_name="$(basename "$repo_dir")"
 
-    ((TOTAL++)) || true
+    for app_dir in "$repo_dir"*/; do
+      [[ -d "$app_dir" ]] || continue
+      # Skip hidden dirs like .git
+      [[ "$(basename "$app_dir")" == .* ]] && continue
+      app_slug="$(basename "$app_dir")"
+      meta_file="$app_dir/metadata.json"
 
-    if [[ ! -f "$meta_file" ]]; then
-      fail "$developer_name/$app_slug: no metadata.json"
-      ((ERRORS++)) || true
-      continue
-    fi
+      ((TOTAL++)) || true
 
-    if validate_metadata "$meta_file" "$app_dir"; then
-      ok "$developer_name/$app_slug"
+      if [[ ! -f "$meta_file" ]]; then
+        fail "$developer_name/$repo_name/$app_slug: no metadata.json"
+        ((ERRORS++)) || true
+        continue
+      fi
+
+      if validate_metadata "$meta_file" "$app_dir"; then
+        ok "$developer_name/$repo_name/$app_slug"
       ((VALID++)) || true
 
       # Determine icon file and generate imageId
@@ -209,9 +218,10 @@ ${json_entry}"
       else
         APP_JSON_LINES="$json_entry"
       fi
-    else
-      ((ERRORS++)) || true
-    fi
+      else
+        ((ERRORS++)) || true
+      fi
+    done
   done
 done
 
@@ -294,28 +304,33 @@ SPK_COUNT=0
 for developer_dir in "$PACKAGES_DIR"/*/; do
   [[ -d "$developer_dir" ]] || continue
 
-  for app_dir in "$developer_dir"*/; do
-    [[ -d "$app_dir" ]] || continue
-    meta_file="$app_dir/metadata.json"
-    [[ -f "$meta_file" ]] || continue
+  for repo_dir in "$developer_dir"*/; do
+    [[ -d "$repo_dir" ]] || continue
 
-    # Copy icon
-    if [[ -f "$app_dir/icon.svg" ]]; then
-      icon_hash="$(md5sum "$app_dir/icon.svg" | cut -d' ' -f1)"
-      cp "$app_dir/icon.svg" "$IMAGES_OUT/${icon_hash}.svg"
-      ((ICON_COUNT++)) || true
-    elif [[ -f "$app_dir/icon.png" ]]; then
-      icon_hash="$(md5sum "$app_dir/icon.png" | cut -d' ' -f1)"
-      cp "$app_dir/icon.png" "$IMAGES_OUT/${icon_hash}.png"
-      ((ICON_COUNT++)) || true
-    fi
+    for app_dir in "$repo_dir"*/; do
+      [[ -d "$app_dir" ]] || continue
+      [[ "$(basename "$app_dir")" == .* ]] && continue
+      meta_file="$app_dir/metadata.json"
+      [[ -f "$meta_file" ]] || continue
 
-    # Copy SPK (named by packageId for Sandstorm install URL compatibility)
-    if [[ -f "$app_dir/app.spk" ]]; then
-      pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
-      cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
-      ((SPK_COUNT++)) || true
-    fi
+      # Copy icon
+      if [[ -f "$app_dir/icon.svg" ]]; then
+        icon_hash="$(md5sum "$app_dir/icon.svg" | cut -d' ' -f1)"
+        cp "$app_dir/icon.svg" "$IMAGES_OUT/${icon_hash}.svg"
+        ((ICON_COUNT++)) || true
+      elif [[ -f "$app_dir/icon.png" ]]; then
+        icon_hash="$(md5sum "$app_dir/icon.png" | cut -d' ' -f1)"
+        cp "$app_dir/icon.png" "$IMAGES_OUT/${icon_hash}.png"
+        ((ICON_COUNT++)) || true
+      fi
+
+      # Copy SPK (named by packageId for Sandstorm install URL compatibility)
+      if [[ -f "$app_dir/app.spk" ]]; then
+        pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
+        cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
+        ((SPK_COUNT++)) || true
+      fi
+    done
   done
 done
 

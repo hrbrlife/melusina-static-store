@@ -1,0 +1,4 @@
+[submodule "packages/hrbrlife/BLOOM_FINAL"]
+	path = packages/hrbrlife/BLOOM_FINAL
+	url = https://github.com/hrbrlife/BLOOM_FINAL.git
+	branch = publish

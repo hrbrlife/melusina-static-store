@@ -63,8 +63,8 @@
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "Instasys Mail",
       "version": "0.3.0",
-      "versionNumber": 1,
-      "packageId": "00000000000000000000000000000000",
+      "versionNumber": 3,
+      "packageId": "9333d01c3ae9f380ffd73d3062193260",
       "shortDescription": "Email client",
       "categories": [
         "Productivity"
@@ -81,9 +81,14 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "f3cd84828edd7ee0ab403658a9dd03e9.svg",
-      "description": "",
-      "screenshots": []
+      "description": "Instasys Mail is a native email client for [Sandstorm](https://sandstorm.io), built with Go and HTMX. It connects directly to Sandstorm's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Sandstorm sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## How It Works\n\nEach Sandstorm grain is an independent mailbox. Email arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Sandstorm grain sandbox",
+      "screenshots": [
+        {
+          "url": "screenshots/01-inbox.png",
+          "caption": "inbox"
+        }
+      ],
+      "imageId": "3cc06a80d318170436eb3d844c5a2773.svg"
     }
   ]
 }

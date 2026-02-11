@@ -1,0 +1,367 @@
+#!/usr/bin/env bash
+#
+# build-store.sh — Aggregate app submodules into a deployable static store.
+#
+# Walks packages/<developer>/<app>/ directories (submodule publish branches),
+# reads each metadata.json, copies icons and SPKs, generates apps/index.json,
+# and builds the Vite frontend. The result is a complete publish-ready tree
+# in dist-publish/ that can be force-pushed to the publish branch.
+#
+# Usage:
+#   ./build-store.sh              # full build (submodule init + npm + vite + aggregate)
+#   ./build-store.sh --aggregate  # skip vite build, just re-aggregate metadata
+#   ./build-store.sh --dry-run    # validate metadata only, don't write anything
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# --- Configuration -----------------------------------------------------------
+PACKAGES_DIR="packages"
+OUTPUT_DIR="dist-publish"
+IMAGES_OUT="$OUTPUT_DIR/images"
+PACKAGES_OUT="$OUTPUT_DIR/packages"
+APPS_OUT="$OUTPUT_DIR/apps"
+VERIFIER_SRC="verifier"
+BASE_URL="https://hrbrlife.github.io/melusina-static-store"
+
+# --- Parse flags --------------------------------------------------------------
+AGGREGATE_ONLY=false
+DRY_RUN=false
+for arg in "$@"; do
+  case "$arg" in
+    --aggregate) AGGREGATE_ONLY=true ;;
+    --dry-run)   DRY_RUN=true ;;
+    -h|--help)
+      echo "Usage: $0 [--aggregate] [--dry-run]"
+      echo "  --aggregate  Skip Vite build, just re-aggregate submodule metadata"
+      echo "  --dry-run    Validate all metadata without writing any output"
+      exit 0 ;;
+    *) echo "Unknown flag: $arg"; exit 1 ;;
+  esac
+done
+
+# --- Colors -------------------------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
+ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
+
+# --- Step 0: Init submodules -------------------------------------------------
+info "Initializing submodules..."
+git submodule update --init --recursive 2>/dev/null || true
+
+# --- Step 1: Validate and collect metadata ------------------------------------
+info "Scanning $PACKAGES_DIR/ for app bundles..."
+
+REQUIRED_FIELDS=(appId name version versionNumber packageId shortDescription categories isOpenSource webLink codeLink upstreamAuthor createdAt)
+REQUIRED_AUTHOR_FIELDS=(name)
+
+TOTAL=0
+VALID=0
+ERRORS=0
+APPS_JSON_ENTRIES=""
+
+validate_metadata() {
+  local meta_file="$1"
+  local app_dir="$2"
+  local errors=0
+
+  # Check it's valid JSON
+  if ! python3 -m json.tool "$meta_file" > /dev/null 2>&1; then
+    fail "$app_dir: metadata.json is not valid JSON"
+    return 1
+  fi
+
+  # Check required top-level fields
+  for field in "${REQUIRED_FIELDS[@]}"; do
+    if ! python3 -c "
+import json, sys
+d = json.load(open('$meta_file'))
+if '$field' not in d:
+    sys.exit(1)
+if isinstance(d['$field'], str) and d['$field'].strip() == '' and '$field' not in ('codeLink',):
+    sys.exit(1)
+" 2>/dev/null; then
+      fail "$app_dir: missing or empty required field '$field'"
+      ((errors++)) || true
+    fi
+  done
+
+  # Check author object
+  if ! python3 -c "
+import json, sys
+d = json.load(open('$meta_file'))
+a = d.get('author', {})
+if not isinstance(a, dict):
+    sys.exit(1)
+for f in ['name']:
+    if f not in a or not a[f].strip():
+        sys.exit(1)
+" 2>/dev/null; then
+    fail "$app_dir: missing or empty 'author.name'"
+    ((errors++)) || true
+  fi
+
+  # Check icon exists
+  local has_icon=false
+  [[ -f "$app_dir/icon.svg" ]] && has_icon=true
+  [[ -f "$app_dir/icon.png" ]] && has_icon=true
+  if ! $has_icon; then
+    fail "$app_dir: no icon.svg or icon.png found"
+    ((errors++)) || true
+  fi
+
+  # Check SPK exists
+  if [[ ! -f "$app_dir/app.spk" ]]; then
+    warn "$app_dir: no app.spk found (metadata-only entry)"
+  fi
+
+  return $errors
+}
+
+# Walk packages/<developer>/<app>/
+if [[ ! -d "$PACKAGES_DIR" ]]; then
+  warn "No $PACKAGES_DIR/ directory found. Creating it."
+  mkdir -p "$PACKAGES_DIR"
+fi
+
+# Collect all app entries as JSON lines
+APP_JSON_LINES=""
+
+for developer_dir in "$PACKAGES_DIR"/*/; do
+  [[ -d "$developer_dir" ]] || continue
+  developer_name="$(basename "$developer_dir")"
+
+  for app_dir in "$developer_dir"*/; do
+    [[ -d "$app_dir" ]] || continue
+    app_slug="$(basename "$app_dir")"
+    meta_file="$app_dir/metadata.json"
+
+    ((TOTAL++)) || true
+
+    if [[ ! -f "$meta_file" ]]; then
+      fail "$developer_name/$app_slug: no metadata.json"
+      ((ERRORS++)) || true
+      continue
+    fi
+
+    if validate_metadata "$meta_file" "$app_dir"; then
+      ok "$developer_name/$app_slug"
+      ((VALID++)) || true
+
+      # Determine icon file and generate imageId
+      local_icon=""
+      icon_ext=""
+      if [[ -f "$app_dir/icon.svg" ]]; then
+        local_icon="$app_dir/icon.svg"
+        icon_ext="svg"
+      elif [[ -f "$app_dir/icon.png" ]]; then
+        local_icon="$app_dir/icon.png"
+        icon_ext="png"
+      fi
+
+      # Generate a stable imageId from md5 of the icon content
+      if [[ -n "$local_icon" ]]; then
+        image_hash="$(md5sum "$local_icon" | cut -d' ' -f1)"
+        image_id="${image_hash}.${icon_ext}"
+      else
+        image_id=""
+      fi
+
+      # Build the JSON entry, injecting the computed imageId
+      json_entry="$(python3 -c "
+import json, sys
+
+with open('$meta_file') as f:
+    m = json.load(f)
+
+# Ensure author has all subfields
+author = m.get('author', {})
+for k in ('name', 'githubUsername', 'keybaseUsername', 'twitterUsername', 'picture'):
+    author.setdefault(k, '')
+m['author'] = author
+
+# Ensure categories is a list
+if not isinstance(m.get('categories'), list):
+    m['categories'] = []
+
+# Set imageId from icon hash
+m['imageId'] = '$image_id'
+
+# Ensure createdAt is an int
+if isinstance(m.get('createdAt'), float):
+    m['createdAt'] = int(m['createdAt'])
+
+print(json.dumps(m, separators=(',', ':')))
+")"
+
+      if [[ -n "$APP_JSON_LINES" ]]; then
+        APP_JSON_LINES="${APP_JSON_LINES}
+${json_entry}"
+      else
+        APP_JSON_LINES="$json_entry"
+      fi
+    else
+      ((ERRORS++)) || true
+    fi
+  done
+done
+
+echo ""
+info "Scan complete: $TOTAL apps found, $VALID valid, $ERRORS errors"
+
+if [[ "$ERRORS" -gt 0 ]]; then
+  fail "Fix the errors above before building."
+  exit 1
+fi
+
+if $DRY_RUN; then
+  ok "Dry run complete. All $VALID apps passed validation."
+  exit 0
+fi
+
+if [[ "$VALID" -eq 0 ]]; then
+  warn "No valid apps found in $PACKAGES_DIR/. Building with empty catalog."
+fi
+
+# --- Step 2: Build Vite frontend (unless --aggregate) -------------------------
+if ! $AGGREGATE_ONLY; then
+  info "Generating src/apps.json from submodule metadata..."
+
+  # Build the apps.json that Vite will bundle
+  python3 -c "
+import json
+
+lines = '''$APP_JSON_LINES'''.strip().split('\n')
+apps = []
+for line in lines:
+    line = line.strip()
+    if line:
+        apps.append(json.loads(line))
+
+# Sort by name for consistent ordering
+apps.sort(key=lambda a: a.get('name', '').lower())
+
+with open('src/apps.json', 'w') as f:
+    json.dump({'apps': apps}, f, indent=2)
+
+print(f'  Wrote {len(apps)} apps to src/apps.json')
+"
+
+  info "Running Vite build..."
+  npm install --silent 2>/dev/null
+  npx vite build 2>&1 | grep -v "^$"
+  echo ""
+fi
+
+# --- Step 3: Assemble dist-publish/ ------------------------------------------
+info "Assembling $OUTPUT_DIR/..."
+
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier"
+
+# Copy Vite build output
+if [[ -d "dist" ]]; then
+  cp dist/index.html "$OUTPUT_DIR/index.html"
+  cp dist/assets/* "$OUTPUT_DIR/assets/"
+else
+  fail "No dist/ directory. Run without --aggregate first."
+  exit 1
+fi
+
+# Copy verifier
+if [[ -f "$VERIFIER_SRC/index.html" ]]; then
+  cp "$VERIFIER_SRC/index.html" "$OUTPUT_DIR/verifier/index.html"
+fi
+
+# .nojekyll
+touch "$OUTPUT_DIR/.nojekyll"
+
+# --- Step 4: Copy icons and SPKs from submodules -----------------------------
+info "Copying icons and packages from submodules..."
+
+ICON_COUNT=0
+SPK_COUNT=0
+
+for developer_dir in "$PACKAGES_DIR"/*/; do
+  [[ -d "$developer_dir" ]] || continue
+
+  for app_dir in "$developer_dir"*/; do
+    [[ -d "$app_dir" ]] || continue
+    meta_file="$app_dir/metadata.json"
+    [[ -f "$meta_file" ]] || continue
+
+    # Copy icon
+    if [[ -f "$app_dir/icon.svg" ]]; then
+      icon_hash="$(md5sum "$app_dir/icon.svg" | cut -d' ' -f1)"
+      cp "$app_dir/icon.svg" "$IMAGES_OUT/${icon_hash}.svg"
+      ((ICON_COUNT++)) || true
+    elif [[ -f "$app_dir/icon.png" ]]; then
+      icon_hash="$(md5sum "$app_dir/icon.png" | cut -d' ' -f1)"
+      cp "$app_dir/icon.png" "$IMAGES_OUT/${icon_hash}.png"
+      ((ICON_COUNT++)) || true
+    fi
+
+    # Copy SPK (named by packageId for Sandstorm install URL compatibility)
+    if [[ -f "$app_dir/app.spk" ]]; then
+      pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
+      cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
+      ((SPK_COUNT++)) || true
+    fi
+  done
+done
+
+info "Copied $ICON_COUNT icons, $SPK_COUNT SPK packages"
+
+# --- Step 5: Write apps/index.json -------------------------------------------
+info "Writing $APPS_OUT/index.json..."
+
+python3 -c "
+import json
+
+lines = '''$APP_JSON_LINES'''.strip().split('\n')
+apps = []
+for line in lines:
+    line = line.strip()
+    if line:
+        apps.append(json.loads(line))
+
+apps.sort(key=lambda a: a.get('name', '').lower())
+
+with open('$APPS_OUT/index.json', 'w') as f:
+    json.dump({'apps': apps}, f, indent=2)
+
+print(f'  Wrote {len(apps)} apps to $APPS_OUT/index.json')
+"
+
+# --- Step 6: Summary ---------------------------------------------------------
+echo ""
+ok "Build complete!"
+echo ""
+info "Output in $OUTPUT_DIR/:"
+find "$OUTPUT_DIR" -type f | sort | head -30
+TOTAL_FILES="$(find "$OUTPUT_DIR" -type f | wc -l)"
+if [[ "$TOTAL_FILES" -gt 30 ]]; then
+  echo "  ... and $((TOTAL_FILES - 30)) more files"
+fi
+echo ""
+TOTAL_SIZE="$(du -sh "$OUTPUT_DIR" | cut -f1)"
+info "Total size: $TOTAL_SIZE"
+echo ""
+info "To deploy, push $OUTPUT_DIR/ contents to the publish branch:"
+echo ""
+echo "  git checkout publish"
+echo "  rm -rf apps assets images packages verifier index.html .nojekyll"
+echo "  cp -r $OUTPUT_DIR/* $OUTPUT_DIR/.nojekyll ."
+echo "  git add -A && git commit -m 'Store build $(date +%Y-%m-%d)'"
+echo "  git push origin publish --force"
+echo "  git checkout main"
+echo ""

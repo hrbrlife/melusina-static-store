@@ -89,9 +89,9 @@
     {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
       "name": "Bureau",
-      "version": "2.0.0",
-      "versionNumber": 3,
-      "packageId": "049d54e8f31fdb31de87a3e3c1958a85",
+      "version": "2.0.1",
+      "versionNumber": 4,
+      "packageId": "6e66ca22f79be5475157c009a6bd76c9",
       "shortDescription": "Office Suite: Spreadsheet, Document, Diagram and miniPaint",
       "description": "Bureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types: Spreadsheet, Document, Diagram, and miniPaint, each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.",
       "categories": [
@@ -133,7 +133,7 @@
         "picture": ""
       },
       "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg",
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/049d54e8f31fdb31de87a3e3c1958a85"
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/6e66ca22f79be5475157c009a6bd76c9"
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",

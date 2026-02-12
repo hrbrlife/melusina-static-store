@@ -191,33 +191,6 @@
       "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
       "description": "",
       "screenshots": []
-    },
-    {
-      "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
-      "name": "Teleport",
-      "version": "1.0.0",
-      "versionNumber": 2,
-      "packageId": "3629b6f725aa42703820ce2eb4aafc6a",
-      "shortDescription": "Multi-grain workflow engine with bots, chat, and capabilities",
-      "categories": [
-        "Productivity",
-        "Developer Tools"
-      ],
-      "isOpenSource": true,
-      "webLink": "https://sails.to",
-      "codeLink": "https://github.com/hrbrlife/melusina_teleport2",
-      "upstreamAuthor": "Sails.to",
-      "createdAt": 1739404800000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "imageId": "375a7190308801d6b1e7f0743ba5069e.svg",
-      "description": "",
-      "screenshots": []
     }
   ]
 }

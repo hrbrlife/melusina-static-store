@@ -23,6 +23,10 @@ OUTPUT_DIR="dist-publish"
 IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
+MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
+RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1"
+MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
+RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1"
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 
@@ -219,6 +223,12 @@ if isinstance(m.get('createdAt'), float):
 # Pass through description (optional long-form text)
 # If description.md exists alongside metadata.json, use it as fallback
 import os
+
+# For large SPKs (>$MAX_SPK_SIZE), point to GitHub Releases instead of Pages
+spk_path = os.path.join(os.path.dirname('$meta_file'), 'app.spk')
+if os.path.isfile(spk_path) and os.path.getsize(spk_path) > $MAX_SPK_SIZE:
+    m['packageUrl'] = '$RELEASES_BASE/' + m.get('packageId', '')
+
 m.setdefault('description', '')
 if not m['description']:
     desc_md = os.path.join(os.path.dirname('$meta_file'), 'description.md')
@@ -356,7 +366,12 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       # Copy SPK (named by packageId for Sandstorm install URL compatibility)
       if [[ -f "$app_dir/app.spk" ]]; then
         pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
-        cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
+        spk_size=$(stat -c%s "$app_dir/app.spk")
+        if [[ $spk_size -gt $MAX_SPK_SIZE ]]; then
+          warn "$app_dir/app.spk is $(( spk_size / 1024 / 1024 ))MB — using GitHub Releases URL"
+        else
+          cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
+        fi
         ((SPK_COUNT++)) || true
       fi
 

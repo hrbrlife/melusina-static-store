@@ -60,11 +60,38 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg"
     },
     {
+      "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+      "name": "BotMother",
+      "version": "1.0.0",
+      "versionNumber": 1,
+      "packageId": "3750fccb7475e93d16c7b68d48403516",
+      "shortDescription": "Telegram bot manager with message routing and chatrooms",
+      "categories": [
+        "Productivity",
+        "Social"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/melusina_botmother",
+      "codeLink": "https://github.com/hrbrlife/melusina_botmother",
+      "upstreamAuthor": "BotMother",
+      "createdAt": 1770857129000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "97a202b2edd1138111f555dd1122cbf0.png",
+      "description": "",
+      "screenshots": []
+    },
+    {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
       "name": "Bureau",
       "version": "2.0.0",
-      "versionNumber": 2,
-      "packageId": "f6eee6b9cb7190bd558ed14926906ae6",
+      "versionNumber": 3,
+      "packageId": "049d54e8f31fdb31de87a3e3c1958a85",
       "shortDescription": "Office Suite: Spreadsheet, Document, Diagram and miniPaint",
       "description": "Bureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types: Spreadsheet, Document, Diagram, and miniPaint, each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.",
       "categories": [
@@ -106,7 +133,7 @@
         "picture": ""
       },
       "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg",
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/f6eee6b9cb7190bd558ed14926906ae6"
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/049d54e8f31fdb31de87a3e3c1958a85"
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
@@ -138,6 +165,59 @@
         }
       ],
       "imageId": "3cc06a80d318170436eb3d844c5a2773.svg"
+    },
+    {
+      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+      "name": "MiniGit",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "0b2cb8a2264ba30769ea77eb25dbd27e",
+      "shortDescription": "Lightweight Git hosting",
+      "categories": [
+        "Developer Tools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/alexeikarp/MiniGit",
+      "codeLink": "https://github.com/alexeikarp/MiniGit",
+      "upstreamAuthor": "alexeikarp",
+      "createdAt": 1770857174000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "alexeikarp",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
+      "description": "",
+      "screenshots": []
+    },
+    {
+      "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+      "name": "Teleport",
+      "version": "1.0.0",
+      "versionNumber": 2,
+      "packageId": "3629b6f725aa42703820ce2eb4aafc6a",
+      "shortDescription": "Multi-grain workflow engine with bots, chat, and capabilities",
+      "categories": [
+        "Productivity",
+        "Developer Tools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://sails.to",
+      "codeLink": "https://github.com/hrbrlife/melusina_teleport2",
+      "upstreamAuthor": "Sails.to",
+      "createdAt": 1739404800000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "375a7190308801d6b1e7f0743ba5069e.svg",
+      "description": "",
+      "screenshots": []
     }
   ]
 }

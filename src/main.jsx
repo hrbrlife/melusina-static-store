@@ -376,7 +376,7 @@ function DetailPage({ app, host, onClose }) {
     </>],
     ["Upstream", app.upstreamAuthor || "—"],
     ["Published", fmtDate(app.createdAt)],
-    ["License", app.isOpenSource ? "Open Source" : "Proprietary"],
+    ["License", app.isOpenSource ? "Open Source" : "BSL 1.1 (→ AGPLv3 after 2 years)"],
     ["Package ID", <code key="p" style={{ fontSize: 11, color: T.textDim, wordBreak: "break-all" }}>{app.packageId}</code>],
   ];
 
@@ -469,6 +469,7 @@ function DetailPage({ app, host, onClose }) {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 32 }}>
           {(app.categories || []).map((c) => <Badge key={c} color={T.accent + "18"}>{c}</Badge>)}
           {app.isOpenSource && <Badge color="rgba(22,163,74,.12)">Open Source</Badge>}
+          {!app.isOpenSource && <Badge color="rgba(234,88,12,.12)">BSL 1.1</Badge>}
         </div>
 
         {/* screenshots */}

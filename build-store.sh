@@ -162,13 +162,12 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       app_slug="$(basename "$app_dir")"
       meta_file="$app_dir/metadata.json"
 
-      ((TOTAL++)) || true
-
       if [[ ! -f "$meta_file" ]]; then
-        fail "$developer_name/$repo_name/$app_slug: no metadata.json"
-        ((ERRORS++)) || true
+        # Not an app directory — skip silently
         continue
       fi
+
+      ((TOTAL++)) || true
 
       if validate_metadata "$meta_file" "$app_dir"; then
         ok "$developer_name/$repo_name/$app_slug"

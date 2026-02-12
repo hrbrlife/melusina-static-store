@@ -147,10 +147,10 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "0900cb1e267235081754e7f1ca5ab850",
+      "packageId": "5ad8504944c9805184c6ff8daf518fcc",
       "name": "MiniGit",
-      "version": "0.1.0",
-      "versionNumber": 2,
+      "version": "0.2.0",
+      "versionNumber": 3,
       "shortDescription": "Lightweight Git hosting with web viewer",
       "categories": [
         "developerTools"

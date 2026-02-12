@@ -88,10 +88,10 @@
     },
     {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-      "packageId": "1bd0a583d41c685924ed56a1ac1761c4",
+      "packageId": "437646feae58528faf70504da04d99e2",
       "name": "Bureau",
       "version": "2.0.6",
-      "versionNumber": 8,
+      "versionNumber": 9,
       "shortDescription": "Office Suite: Spreadsheet, Document, and miniPaint",
       "categories": [
         "productivity",
@@ -146,10 +146,10 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "2f674026841f762bf0dfb9af7d40f659",
+      "packageId": "0900cb1e267235081754e7f1ca5ab850",
       "name": "MiniGit",
       "version": "0.1.0",
-      "versionNumber": 1,
+      "versionNumber": 2,
       "shortDescription": "Lightweight Git hosting with web viewer",
       "categories": [
         "developerTools"
@@ -172,10 +172,10 @@
     },
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
-      "packageId": "371d2ac15c7245aa3ab403d70cfa21c3",
+      "packageId": "6a679f815d1d675de20202621bdc32a0",
       "name": "Shell Tester",
       "version": "0.1.0",
-      "versionNumber": 1,
+      "versionNumber": 2,
       "shortDescription": "Melusina shell extension tester",
       "categories": [
         "developerTools"

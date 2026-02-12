@@ -35,7 +35,7 @@ const shotCaption = (shot) =>
 const installUrl = (host, app) => {
   const h = sanitizeHost(host);
   if (!h || !app.packageId) return null;
-  const pkg = `${APP_INDEX_BASE}/packages/${app.packageId}`;
+  const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 

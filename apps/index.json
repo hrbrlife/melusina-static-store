@@ -90,8 +90,8 @@
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
       "name": "Bureau",
       "version": "2.0.0",
-      "versionNumber": 2,
-      "packageId": "f6eee6b9cb7190bd558ed14926906ae6",
+      "versionNumber": 3,
+      "packageId": "049d54e8f31fdb31de87a3e3c1958a85",
       "shortDescription": "Office Suite: Spreadsheet, Document, Diagram and miniPaint",
       "description": "Bureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types: Spreadsheet, Document, Diagram, and miniPaint, each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.",
       "categories": [
@@ -133,7 +133,7 @@
         "picture": ""
       },
       "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg",
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/f6eee6b9cb7190bd558ed14926906ae6"
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/049d54e8f31fdb31de87a3e3c1958a85"
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
@@ -193,21 +193,21 @@
       "screenshots": []
     },
     {
-      "appId": "pga7svpkrcpr7ep935m61aar1a79zk1hqu59ccpgd87h5rhfd6gh",
+      "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
       "name": "Teleport",
       "version": "1.0.0",
-      "versionNumber": 1,
-      "packageId": "835f469700cf8b68978af4d2ebb216ba",
-      "shortDescription": "Telegram bot manager with message routing and chatrooms",
+      "versionNumber": 2,
+      "packageId": "3629b6f725aa42703820ce2eb4aafc6a",
+      "shortDescription": "Multi-grain workflow engine with bots, chat, and capabilities",
       "categories": [
         "Productivity",
-        "Social"
+        "Developer Tools"
       ],
       "isOpenSource": true,
-      "webLink": "https://github.com/hrbrlife/melusina_teleport2",
+      "webLink": "https://sails.to",
       "codeLink": "https://github.com/hrbrlife/melusina_teleport2",
-      "upstreamAuthor": "Teleport",
-      "createdAt": 1770857174000,
+      "upstreamAuthor": "Sails.to",
+      "createdAt": 1739404800000,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -215,8 +215,8 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "Melusina-native Telegram bot management system with BotMother message hub, Telegram webhook handlers, and chatroom auto-reply engine. Built with Go + Cap'n Proto for native Sandstorm integration.",
-      "imageId": "dfa2206b9b601a448961df6218b88b25.svg",
+      "imageId": "375a7190308801d6b1e7f0743ba5069e.svg",
+      "description": "",
       "screenshots": []
     }
   ]

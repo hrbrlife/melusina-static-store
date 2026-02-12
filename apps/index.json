@@ -89,11 +89,10 @@
     {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
       "name": "Bureau",
-      "version": "2.0.5",
-      "versionNumber": 1,
-      "packageId": "5a6e5806c42fbc8e6642515b7c19146b",
-      "shortDescription": "Office Suite: Spreadsheet, Document, Diagram and miniPaint",
-      "description": "Bureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types: Spreadsheet, Document, Diagram, and miniPaint, each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.",
+      "version": "2.0.6",
+      "versionNumber": 2,
+      "packageId": "53d1bbb04f3f657e61318f9dc2e47742",
+      "shortDescription": "Office Suite: Spreadsheet, Document, and miniPaint",
       "categories": [
         "Productivity",
         "Office"
@@ -102,38 +101,18 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1770892198000,
-      "screenshots": [
-        {
-          "url": "screenshot_docs.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_docs2.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_graphs.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_image.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_sheets.png",
-          "caption": ""
-        }
-      ],
+      "createdAt": 1739290000000,
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/53d1bbb04f3f657e61318f9dc2e47742",
       "author": {
-        "name": "alexeikarp",
+        "name": "Alexei Karpov",
         "githubUsername": "hrbrlife",
         "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/5a6e5806c42fbc8e6642515b7c19146b",
-      "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg"
+      "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg",
+      "description": "# Bureau Office Suite\n\nBureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types \u2014 **Spreadsheet**, **Document**, **Diagram**, and **miniPaint** \u2014 each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.\n\n## Grain Types\n\n### Spreadsheet\nA full-featured collaborative spreadsheet with real-time multi-user editing via WebSocket. Supports cell styling, merged cells, comments, column/row operations, search, pagination, CSV/JSON/XLSX import and export, undo/redo, and named version snapshots you can browse and restore.\n\n### Document\nA rich-text document editor built on TipTap and Yjs CRDT, providing conflict-free real-time collaborative editing. Supports bold, italic, underline, strikethrough, headings (H1\u2013H3), bullet and ordered lists, blockquotes, code blocks, horizontal rules, and tables. Includes named version snapshots with restore.\n\n### Diagram\nA collaborative diagramming tool for flowcharts, org charts, network diagrams, and freeform drawings. Supports shapes, connectors, text labels, and export. Real-time sync and snapshot versioning included.\n\n### miniPaint\nAn integrated image editor based on miniPaint. Supports layers, filters (blur, sharpen, brightness, contrast, etc.), drawing tools, crop, resize, rotate, and export to PNG/JPG/BMP/WebP. Collaborative lock-based editing with snapshot versioning.\n\n## Key Features\n\n- **Live Collaboration**: All four grain types support real-time multi-user editing via WebSocket with presence indicators and user counts.\n- **Snapshots**: Every grain type supports named version snapshots \u2014 save, browse, compare, and restore previous versions of your work at any time.\n- **Sandstorm Permissions**: Four permission levels (Viewer, Commenter, Editor, Admin) enforced server-side via Sandstorm capability system.\n- **Powerbox Integration**: Grains can link to each other via Sandstorm Powerbox for cross-grain references.\n- **Offline-Ready**: Each grain stores data locally in SQLite and syncs when reconnected.\n- **Export**: Spreadsheets export to CSV, JSON, XLSX. Documents export to HTML. Images export to PNG/JPG/BMP/WebP.",
+      "screenshots": []
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
@@ -169,27 +148,27 @@
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
       "name": "MiniGit",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "0b2cb8a2264ba30769ea77eb25dbd27e",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "packageId": "478eb81c5b968fa4d454cc7029619744",
       "shortDescription": "Lightweight Git hosting",
       "categories": [
         "Developer Tools"
       ],
-      "isOpenSource": true,
-      "webLink": "https://github.com/alexeikarp/MiniGit",
-      "codeLink": "https://github.com/alexeikarp/MiniGit",
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/MiniGit",
+      "codeLink": "https://github.com/hrbrlife/MiniGit",
       "upstreamAuthor": "alexeikarp",
-      "createdAt": 1770857174000,
+      "createdAt": 1739290000000,
       "author": {
-        "name": "alexeikarp",
+        "name": "Alexei Karpov",
         "githubUsername": "alexeikarp",
         "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
       "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
-      "description": "",
+      "description": "A simple wrapper around git-http-backend and GitWeb, providing an extremely lightweight way to host\na web-browsable Git repository.\n\nYou can connect through your Git client to pull or push, and you can connect through your web browser\nto search file contents and explore revision history.\n\nYou can also push to a special branch named `public` in order to publish its\nstatic contents at a public Pearl URL.",
       "screenshots": []
     },
     {

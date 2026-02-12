@@ -1,0 +1,2 @@
+packages/* filter=lfs diff=lfs merge=lfs -text
+update/*.tar.xz filter=lfs diff=lfs merge=lfs -text

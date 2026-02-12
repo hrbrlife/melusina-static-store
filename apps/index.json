@@ -60,6 +60,54 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg"
     },
     {
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "name": "Bureau",
+      "version": "2.0.0",
+      "versionNumber": 2,
+      "packageId": "f6eee6b9cb7190bd558ed14926906ae6",
+      "shortDescription": "Office Suite: Spreadsheet, Document, Diagram and miniPaint",
+      "description": "Bureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types: Spreadsheet, Document, Diagram, and miniPaint, each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1770847202000,
+      "screenshots": [
+        {
+          "url": "screenshot_docs.png",
+          "caption": ""
+        },
+        {
+          "url": "screenshot_docs2.png",
+          "caption": ""
+        },
+        {
+          "url": "screenshot_graphs.png",
+          "caption": ""
+        },
+        {
+          "url": "screenshot_image.png",
+          "caption": ""
+        },
+        {
+          "url": "screenshot_sheets.png",
+          "caption": ""
+        }
+      ],
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg"
+    },
+    {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "Instasys Mail",
       "version": "0.3.0",

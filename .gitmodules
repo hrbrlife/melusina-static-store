@@ -10,3 +10,15 @@
 	path = packages/hrbrlife/CHEESESPREAD
 	url = https://github.com/hrbrlife/CHEESESPREAD.git
 	branch = publish
+[submodule "packages/hrbrlife/MiniGit"]
+	path = packages/hrbrlife/MiniGit
+	url = https://github.com/hrbrlife/MiniGit.git
+	branch = publish
+[submodule "packages/hrbrlife/MELUSINA_BOTMOTHER"]
+	path = packages/hrbrlife/MELUSINA_BOTMOTHER
+	url = https://github.com/hrbrlife/MELUSINA_BOTMOTHER.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina_teleport2"]
+	path = packages/hrbrlife/melusina_teleport2
+	url = https://github.com/hrbrlife/melusina_teleport2.git
+	branch = publish

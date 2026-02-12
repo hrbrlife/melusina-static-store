@@ -18,3 +18,7 @@
 	path = packages/hrbrlife/MELUSINA_BOTMOTHER
 	url = https://github.com/hrbrlife/MELUSINA_BOTMOTHER.git
 	branch = publish
+[submodule "packages/hrbrlife/shell_tester"]
+	path = packages/hrbrlife/shell_tester
+	url = https://github.com/hrbrlife/shell_tester.git
+	branch = publish

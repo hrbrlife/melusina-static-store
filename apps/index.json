@@ -88,7 +88,7 @@
     },
     {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-      "packageId": "706095f213b8b4e5cf19f28fb44f18e7",
+      "packageId": "1bd0a583d41c685924ed56a1ac1761c4",
       "name": "Bureau",
       "version": "2.0.6",
       "versionNumber": 8,
@@ -111,7 +111,6 @@
       },
       "screenshots": [],
       "imageId": "7cc39c7e4eeec32ab8fb27bd03a0ca01.svg",
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/706095f213b8b4e5cf19f28fb44f18e7",
       "description": "# Bureau Office Suite\n\nBureau is a multi-grain collaborative office suite for Sandstorm. It packages four distinct grain types \u2014 **Spreadsheet**, **Document**, **Diagram**, and **miniPaint** \u2014 each running as an isolated Sandstorm grain with its own data store, permissions, and real-time collaboration.\n\n## Grain Types\n\n### Spreadsheet\nA full-featured collaborative spreadsheet with real-time multi-user editing via WebSocket. Supports cell styling, merged cells, comments, column/row operations, search, pagination, CSV/JSON/XLSX import and export, undo/redo, and named version snapshots you can browse and restore.\n\n### Document\nA rich-text document editor built on TipTap and Yjs CRDT, providing conflict-free real-time collaborative editing. Supports bold, italic, underline, strikethrough, headings (H1\u2013H3), bullet and ordered lists, blockquotes, code blocks, horizontal rules, and tables. Includes named version snapshots with restore.\n\n### Diagram\nA collaborative diagramming tool for flowcharts, org charts, network diagrams, and freeform drawings. Supports shapes, connectors, text labels, and export. Real-time sync and snapshot versioning included.\n\n### miniPaint\nAn integrated image editor based on miniPaint. Supports layers, filters (blur, sharpen, brightness, contrast, etc.), drawing tools, crop, resize, rotate, and export to PNG/JPG/BMP/WebP. Collaborative lock-based editing with snapshot versioning.\n\n## Key Features\n\n- **Live Collaboration**: All four grain types support real-time multi-user editing via WebSocket with presence indicators and user counts.\n- **Snapshots**: Every grain type supports named version snapshots \u2014 save, browse, compare, and restore previous versions of your work at any time.\n- **Sandstorm Permissions**: Four permission levels (Viewer, Commenter, Editor, Admin) enforced server-side via Sandstorm capability system.\n- **Powerbox Integration**: Grains can link to each other via Sandstorm Powerbox for cross-grain references.\n- **Offline-Ready**: Each grain stores data locally in SQLite and syncs when reconnected.\n- **Export**: Spreadsheets export to CSV, JSON, XLSX. Documents export to HTML. Images export to PNG/JPG/BMP/WebP."
     },
     {

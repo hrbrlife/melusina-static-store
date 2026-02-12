@@ -117,10 +117,10 @@
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "Instasys Mail",
-      "version": "0.3.0",
-      "versionNumber": 3,
-      "packageId": "9333d01c3ae9f380ffd73d3062193260",
-      "shortDescription": "Email client",
+      "version": "0.4.0",
+      "versionNumber": 4,
+      "packageId": "cb3ede80dda93a864df8e3466466a591",
+      "shortDescription": "Email system with mail server control",
       "categories": [
         "Productivity"
       ],

@@ -60,6 +60,33 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg"
     },
     {
+      "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+      "name": "BotMother",
+      "version": "1.0.0",
+      "versionNumber": 1,
+      "packageId": "3750fccb7475e93d16c7b68d48403516",
+      "shortDescription": "Telegram bot manager with message routing and chatrooms",
+      "categories": [
+        "Productivity",
+        "Social"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/melusina_botmother",
+      "codeLink": "https://github.com/hrbrlife/melusina_botmother",
+      "upstreamAuthor": "BotMother",
+      "createdAt": 1770857129000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "97a202b2edd1138111f555dd1122cbf0.png",
+      "description": "",
+      "screenshots": []
+    },
+    {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
       "name": "Bureau",
       "version": "2.0.0",
@@ -138,6 +165,59 @@
         }
       ],
       "imageId": "3cc06a80d318170436eb3d844c5a2773.svg"
+    },
+    {
+      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+      "name": "MiniGit",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "0b2cb8a2264ba30769ea77eb25dbd27e",
+      "shortDescription": "Lightweight Git hosting",
+      "categories": [
+        "Developer Tools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/alexeikarp/MiniGit",
+      "codeLink": "https://github.com/alexeikarp/MiniGit",
+      "upstreamAuthor": "alexeikarp",
+      "createdAt": 1770857174000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "alexeikarp",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
+      "description": "",
+      "screenshots": []
+    },
+    {
+      "appId": "pga7svpkrcpr7ep935m61aar1a79zk1hqu59ccpgd87h5rhfd6gh",
+      "name": "Teleport",
+      "version": "1.0.0",
+      "versionNumber": 1,
+      "packageId": "835f469700cf8b68978af4d2ebb216ba",
+      "shortDescription": "Telegram bot manager with message routing and chatrooms",
+      "categories": [
+        "Productivity",
+        "Social"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/melusina_teleport2",
+      "codeLink": "https://github.com/hrbrlife/melusina_teleport2",
+      "upstreamAuthor": "Teleport",
+      "createdAt": 1770857174000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "Melusina-native Telegram bot management system with BotMother message hub, Telegram webhook handlers, and chatroom auto-reply engine. Built with Go + Cap'n Proto for native Sandstorm integration.",
+      "imageId": "dfa2206b9b601a448961df6218b88b25.svg",
+      "screenshots": []
     }
   ]
 }

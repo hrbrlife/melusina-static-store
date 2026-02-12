@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a237e"/>
+      <stop offset="100%" stop-color="#4a148c"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="20" fill="url(#bg)"/>
+  <g transform="translate(64,64)">
+    <!-- Teleport ring -->
+    <circle cx="0" cy="0" r="36" fill="none" stroke="#7c4dff" stroke-width="4" stroke-dasharray="12 6"/>
+    <circle cx="0" cy="0" r="24" fill="none" stroke="#b388ff" stroke-width="2"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="8" fill="#e8eaf6"/>
+    <!-- Arrow -->
+    <path d="M-4,-28 L4,-28 L0,-38 Z" fill="#7c4dff"/>
+    <path d="M-4,28 L4,28 L0,38 Z" fill="#7c4dff"/>
+    <path d="M-28,-4 L-28,4 L-38,0 Z" fill="#7c4dff"/>
+    <path d="M28,-4 L28,4 L38,0 Z" fill="#7c4dff"/>
+  </g>
+  <text x="64" y="108" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#e8eaf6">TELEPORT</text>
+</svg>

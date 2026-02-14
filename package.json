@@ -9,9 +9,7 @@
     "store:build": "bash build-store.sh",
     "store:aggregate": "bash build-store.sh --aggregate",
     "store:validate": "bash build-store.sh --dry-run",
-    "publish": "make publish",
-    "publish:aggregate": "make publish-aggregate",
-    "publish:deploy": "make publish-deploy"
+    "publish": "make publish"
   },
   "dependencies": {
     "react": "^18.2.0",

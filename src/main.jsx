@@ -178,6 +178,36 @@ body::after{
   color:${T.cyan};
   text-shadow:0 0 7px ${T.cyan}88,0 0 20px ${T.cyan}44,0 0 40px ${T.cyan}22;
 }
+
+.detail-tabs{display:flex;gap:0;margin-bottom:28px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid ${T.cyan}15}
+.detail-tabs::-webkit-scrollbar{display:none}
+.detail-tab{
+  padding:14px 24px;font-size:11px;font-weight:700;
+  font-family:'Orbitron',sans-serif;letter-spacing:.1em;
+  text-transform:uppercase;color:${T.textDim};
+  cursor:pointer;background:none;border:none;
+  border-bottom:2px solid transparent;
+  transition:all .25s;white-space:nowrap;position:relative;
+}
+.detail-tab:hover{color:${T.textSec}}
+.detail-tab.active{color:${T.cyan};border-bottom-color:${T.cyan};text-shadow:0 0 8px ${T.accentGlow}}
+
+.md-body h2{font-size:18px;font-weight:800;color:${T.text};margin:28px 0 12px;font-family:'Orbitron',sans-serif;letter-spacing:.02em}
+.md-body h2:first-child{margin-top:0}
+.md-body h3{font-size:15px;font-weight:700;color:${T.cyan};margin:24px 0 10px;font-family:'Orbitron',sans-serif;text-shadow:0 0 6px ${T.accentGlow}}
+.md-body h4{font-size:13px;font-weight:700;color:${T.magenta};margin:20px 0 8px;font-family:'Orbitron',sans-serif}
+.md-body p{font-size:13px;line-height:1.8;color:${T.textSec};margin:0 0 12px}
+.md-body ul{margin:0 0 16px 0;padding-left:0;list-style:none}
+.md-body ul li{font-size:13px;line-height:1.8;color:${T.textSec};padding-left:18px;position:relative;margin-bottom:4px}
+.md-body ul li::before{content:'▸';position:absolute;left:0;color:${T.cyan};font-size:11px;text-shadow:0 0 4px ${T.accentGlow}}
+.md-body code{background:${T.cyan}11;color:${T.cyan};padding:2px 6px;border-radius:2px;font-size:0.9em;font-family:'JetBrains Mono',monospace}
+.md-body a{color:${T.cyan};border-bottom:1px solid ${T.cyan}33}
+.md-body strong{color:${T.text};font-weight:600}
+
+.review-card{padding:20px;background:${T.surface};border:1px solid ${T.border};border-radius:${T.radius}px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:border-color .2s}
+.review-card:hover{border-color:${T.cyan}33}
+
+@media(max-width:480px){.detail-tab{padding:12px 16px;font-size:10px;letter-spacing:.06em}}
 `;
 
 /* ─── small components ─────────────────────────────────────────────────────── */
@@ -537,10 +567,198 @@ function ScreenshotGallery({ screenshots, appId }) {
   );
 }
 
+/* ─── Simple Markdown ──────────────────────────────────────────────────────── */
+
+function SimpleMarkdown({ text }) {
+  if (!text) return null;
+  const parseInline = (str) => {
+    const parts = [];
+    let rest = str, k = 0;
+    while (rest.length > 0) {
+      let m;
+      if ((m = rest.match(/^\*\*(.+?)\*\*/))) {
+        parts.push(<strong key={k++}>{m[1]}</strong>);
+        rest = rest.slice(m[0].length);
+      } else if ((m = rest.match(/^`(.+?)`/))) {
+        parts.push(<code key={k++}>{m[1]}</code>);
+        rest = rest.slice(m[0].length);
+      } else if ((m = rest.match(/^\[(.+?)\]\((.+?)\)/))) {
+        parts.push(<a key={k++} href={m[2]} target="_blank" rel="noreferrer">{m[1]}</a>);
+        rest = rest.slice(m[0].length);
+      } else {
+        const nx = rest.slice(1).search(/\*\*|`|\[/);
+        if (nx >= 0) { parts.push(rest.slice(0, nx + 1)); rest = rest.slice(nx + 1); }
+        else { parts.push(rest); rest = ''; }
+      }
+    }
+    return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+  };
+  const lines = text.split('\n');
+  const els = [];
+  let i = 0, k = 0;
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (ln.startsWith('### ')) { els.push(<h4 key={k++}>{parseInline(ln.slice(4))}</h4>); i++; }
+    else if (ln.startsWith('## ')) { els.push(<h3 key={k++}>{parseInline(ln.slice(3))}</h3>); i++; }
+    else if (ln.startsWith('# ')) { els.push(<h2 key={k++}>{parseInline(ln.slice(2))}</h2>); i++; }
+    else if (ln.match(/^[-*] /)) {
+      const items = [];
+      while (i < lines.length && lines[i].match(/^[-*] /)) { items.push(lines[i].replace(/^[-*] /, '')); i++; }
+      els.push(<ul key={k++}>{items.map((it, j) => <li key={j}>{parseInline(it)}</li>)}</ul>);
+    }
+    else if (ln.trim() === '') { i++; }
+    else { els.push(<p key={k++}>{parseInline(ln)}</p>); i++; }
+  }
+  return <div className="md-body">{els}</div>;
+}
+
+/* ─── Reusable Detail Components ──────────────────────────────────────────── */
+
+function SectionHeader({ children, color }) {
+  const c = color || T.cyan;
+  return (
+    <div style={{
+      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+      letterSpacing: ".14em", color: c, marginBottom: 16,
+      fontFamily: "'Orbitron', sans-serif",
+      textShadow: `0 0 6px ${c}44`,
+      display: "flex", alignItems: "center", gap: 10,
+    }}>
+      <span style={{ width: 16, height: 1, background: c, boxShadow: `0 0 4px ${c}` }} />
+      {children}
+    </div>
+  );
+}
+
+function StarRating({ rating, size = 14 }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      {[1,2,3,4,5].map(s => (
+        <span key={s} style={{
+          fontSize: size,
+          color: s <= Math.round(rating) ? T.yellow : T.textDim + '44',
+          textShadow: s <= Math.round(rating) ? `0 0 6px ${T.yellow}66` : 'none',
+        }}>★</span>
+      ))}
+    </span>
+  );
+}
+
+/* ─── App Extended Content ─────────────────────────────────────────────────── */
+
+const APP_DOCS = {
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': `# Getting Started with BLOOM Identity\n\nBLOOM Identity is a self-hosted KYC identity verification platform for Sandstorm.\n\n## Installation\n\n- Connect your Sandstorm server using the **CONNECT** button in the app market header\n- Click **INSTALL** to deploy BLOOM to your server\n- Create a new BLOOM grain from your Sandstorm dashboard\n\n## Admin Dashboard\n\nThe admin dashboard shows all active and completed verification cases. From here you can:\n\n- Create shareable verification links for respondents\n- Monitor verification status in real-time\n- Review completed cases with uploaded documents and facial captures\n- Approve or reject verification submissions\n\n## Verification Flow\n\nRespondents receive a link and complete these steps:\n\n- Accept Terms & Conditions\n- Upload a government-issued ID document\n- Complete live facial verification capture\n- Enter OTP confirmation code\n- Submit for admin review\n\n## Supported Document Types\n\n- Passport\n- Driver's License\n- National ID Card\n- Residence Permit\n\n## Privacy & Security\n\nAll data stays on your Sandstorm server. No documents or biometric data are sent to external APIs. The entire verification pipeline runs locally within your grain sandbox.`,
+
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': `# Getting Started with BotMother\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Sandstorm.\n\n## Installation\n\n- Install BotMother from the Melusina App Market\n- Create a new BotMother grain on your Sandstorm server\n\n## Setting Up Your Bot\n\n- Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n- Copy the bot token\n- Paste it into BotMother's configuration page\n- Your bot is now connected and routing messages through Sandstorm\n\n## Message Routing\n\nBotMother lets you define routing rules for incoming messages:\n\n- Route by command (e.g. /help, /start)\n- Route by keyword matching\n- Route by user group or chat ID\n- Set up auto-responses for common queries\n\n## Chatrooms\n\nCreate managed chatrooms that your bot moderates:\n\n- Set welcome messages\n- Configure moderation rules\n- Track message history within Sandstorm\n\n## Security\n\nAll message data stays on your Sandstorm server. Bot tokens are stored securely in the grain sandbox.`,
+
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': `# Getting Started with Bureau Office Suite\n\nBureau is a multi-grain collaborative office suite for Sandstorm with four distinct tools.\n\n## Installation\n\n- Install Bureau from the Melusina App Market\n- When creating a new grain, choose the grain type: **Spreadsheet**, **Document**, **Diagram**, or **miniPaint**\n\n## Spreadsheet\n\n- Real-time multi-user editing via WebSocket\n- Cell styling, merged cells, comments\n- Column/row operations with undo/redo\n- Import/export: CSV, JSON, XLSX\n- Named version snapshots with restore\n\n## Document Editor\n\n- Built on TipTap with Yjs CRDT for conflict-free editing\n- Headings, lists, blockquotes, code blocks, tables\n- Real-time collaboration with presence indicators\n- Named version snapshots\n\n## Diagram Tool\n\n- Flowcharts, org charts, network diagrams\n- Shapes, connectors, text labels\n- Real-time sync and versioning\n- Export to image formats\n\n## miniPaint\n\n- Layer-based image editor\n- Filters: blur, sharpen, brightness, contrast\n- Drawing tools, crop, resize, rotate\n- Export: PNG, JPG, BMP, WebP\n\n## Collaboration & Permissions\n\n- **Viewer**: Read-only access\n- **Commenter**: Can add comments\n- **Editor**: Full editing access\n- **Admin**: Manage permissions and settings\n\nAll permissions are enforced server-side via Sandstorm's capability system.`,
+
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': `# Getting Started with Instasys Mail\n\nInstasys Mail is a native email client for Sandstorm, built with Go and HTMX.\n\n## Installation\n\n- Install Instasys Mail from the Melusina App Market\n- Create a new grain — each grain is an independent mailbox\n\n## Receiving Email\n\nEmail arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. No external mail server configuration needed.\n\n## Composing Messages\n\n- Rich compose form with To, CC, BCC fields\n- Reply, Reply All, and Forward support\n- Draft auto-save — resume editing anytime\n- File attachments with inline preview\n\n## Organizing Mail\n\n- Create custom folders\n- Star important messages\n- Move messages between folders\n- Bulk delete and archive\n- Full-text search across all messages\n\n## Sharing Access\n\nUse Sandstorm's sharing system to grant access:\n\n- **Viewer**: Read-only mailbox access\n- **Editor**: Can compose and manage messages\n- **Admin**: Full control including settings\n\n## Technical Architecture\n\n- **Backend**: Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend**: Server-side HTML + HTMX + WebSocket\n- **Storage**: SQLite with automatic migrations\n- **Updates**: Real-time WebSocket push for new mail`,
+
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': `# Getting Started with MiniGit\n\nMiniGit provides lightweight Git hosting with a web interface on Sandstorm.\n\n## Installation\n\n- Install MiniGit from the Melusina App Market\n- Create a new grain — each grain is a Git repository\n\n## Cloning & Pushing\n\nUse the Sandstorm API URL provided in your grain to clone and push:\n\n- \`git clone <grain-url>\`\n- \`git push origin main\`\n\nAuthentication is handled automatically by Sandstorm.\n\n## Web Interface\n\nBrowse your repository through the built-in GitWeb interface:\n\n- File tree navigation\n- Commit history and diffs\n- Search file contents\n- Branch and tag listing\n\n## Publishing Static Sites\n\nPush to the special **public** branch to publish static content at a Pearl URL:\n\n- \`git checkout -b public\`\n- Add your HTML/CSS/JS files\n- \`git push origin public\`\n\nYour site is now accessible via Sandstorm's Pearl URL system.\n\n## Permissions\n\n- Grant read or read/write access via Sandstorm sharing\n- Each grain is fully isolated from others`,
+
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': `# Getting Started with Shell Tester\n\nShell Tester is a Melusina Shell Extension testing tool for Sandstorm.\n\n## Installation\n\n- Install Shell Tester from the Melusina App Market\n- Create a new grain to begin testing\n\n## What It Does\n\nShell Tester provides an interactive environment for testing Melusina Shell Extensions. You can:\n\n- Load and test shell extension packages\n- Verify extension APIs and hooks\n- Debug extension behavior in a sandboxed environment\n- Validate extension manifest files\n\n## Running Tests\n\n- Upload your extension package\n- Shell Tester automatically detects test suites\n- View test results with pass/fail indicators\n- Inspect logs and error output\n\n## For Extension Developers\n\n- Use Shell Tester during development to validate your extensions\n- Test against different Melusina Shell versions\n- Verify permissions and capability requirements`
+};
+
+const APP_FAQ = {
+  _common: [
+    { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Sandstorm server URL. Then click the **INSTALL** button on the app detail page. The app will be deployed to your server automatically.' },
+    { q: 'Is my data private?', a: 'Yes. All data stays on your Sandstorm server. There is no telemetry, analytics, or external data transmission. Each app grain is sandboxed and isolated.' },
+    { q: 'How do I share access with others?', a: "Use Sandstorm's built-in sharing system. Click the sharing icon in your grain's top bar and generate a sharing link with the appropriate permission level (Viewer, Editor, or Admin)." },
+    { q: 'How do I update to the latest version?', a: 'Updates appear automatically in your Sandstorm admin panel. You can also revisit the App Market and re-install to get the latest version.' },
+    { q: 'How do I backup my data?', a: "Use Sandstorm's built-in grain backup feature. Go to your grain's top-bar menu and select 'Download Backup'. This creates a portable .zip of your grain that can be restored on any Sandstorm server." },
+    { q: 'Can I run multiple instances?', a: 'Yes. Each Sandstorm grain is an independent instance with its own data. You can create as many grains as you need.' },
+  ],
+  _openSource: [
+    { q: 'Can I contribute to the source code?', a: 'Absolutely. Check the SOURCE link on the app page to find the GitHub repository. Pull requests and issues are welcome.' },
+    { q: 'What license is this under?', a: 'This app is open source. Check the repository for the specific license file (commonly AGPLv3, MIT, or Apache 2.0).' },
+  ],
+  _hlsl: [
+    { q: 'What is the HLSL license?', a: 'HLSL (Harbor Life Software License) is a source-available license that allows you to use and deploy the software on your own server. After 3 years, the code automatically converts to AGPLv3 open source.' },
+    { q: 'Will this become open source?', a: 'Yes. Under the HLSL license, all code automatically converts to AGPLv3 after 3 years from the release date. You can view and audit the source code at any time.' },
+    { q: 'Can I modify the source code?', a: 'You have full access to the source code for auditing. Modifications for personal use on your own server are permitted. Redistribution requires the HLSL terms.' },
+  ],
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
+    { q: 'What document types does BLOOM support?', a: 'BLOOM supports passports, driver\'s licenses, national ID cards, and residence permits. The document detection system automatically identifies the document type.' },
+    { q: 'Does facial verification use external AI?', a: 'No. All AI processing runs locally within your Sandstorm grain. No images or biometric data leave your server.' },
+    { q: 'Can respondents complete verification on mobile?', a: 'Yes. The verification flow is fully responsive and optimized for mobile browsers. Camera access for facial capture works on iOS and Android.' },
+  ],
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
+    { q: 'Can multiple users edit a spreadsheet simultaneously?', a: 'Yes. Bureau uses WebSocket for real-time multi-user editing with presence indicators showing who else is viewing or editing.' },
+    { q: 'What file formats can I import/export?', a: 'Spreadsheets support CSV, JSON, and XLSX. Documents export to HTML. Images export to PNG, JPG, BMP, and WebP.' },
+    { q: 'How do snapshots work?', a: 'All grain types support named version snapshots. Save a snapshot with a name, browse your snapshot history, compare changes, and restore any previous version.' },
+  ],
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
+    { q: 'How does email delivery work?', a: 'Email arrives via Sandstorm\'s built-in SMTP gateway. Each grain has its own email address. No external mail server configuration is needed.' },
+    { q: 'Can I use a custom domain for email?', a: 'Email addressing is managed by your Sandstorm server configuration. Contact your Sandstorm admin to set up custom domain routing.' },
+  ],
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
+    { q: 'How do I publish a static website?', a: 'Push your HTML/CSS/JS files to a branch named **public** in your MiniGit grain. Sandstorm will serve the contents at a Pearl URL.' },
+    { q: 'What Git operations are supported?', a: 'All standard Git operations: clone, push, pull, branch, tag. Authentication is handled by Sandstorm\'s capability system.' },
+  ],
+};
+
+const APP_REVIEWS = {
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
+    { author: 'ComplianceOps', rating: 5, date: '2026-01-28', title: 'Self-hosted KYC done right', text: 'We needed KYC that didn\'t send documents to third-party APIs. BLOOM runs entirely on our server. The admin review flow and facial verification are well-designed.' },
+    { author: 'devops_sarah', rating: 4, date: '2026-01-15', title: 'Solid implementation', text: 'Clean setup, document verification and OTP work great. Would love webhook notifications when verifications complete. Looking forward to updates.' },
+    { author: 'fintech_piotr', rating: 5, date: '2025-12-20', title: 'Perfect for our POC', text: 'Running this for our fintech proof-of-concept. Shareable verification links are ideal for customer onboarding. Privacy-first KYC is a huge differentiator.' },
+    { author: 'sandstorm_user42', rating: 4, date: '2025-12-08', title: 'Great concept', text: 'Love the idea of self-hosted identity verification. The 8-step flow is comprehensive. UI could use dark mode but functionality is excellent.' },
+  ],
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
+    { author: 'bot_developer', rating: 4, date: '2026-01-20', title: 'Nice Telegram integration', text: 'Easy to connect my Telegram bot. Message routing rules are flexible. Chatroom management is a nice bonus.' },
+    { author: 'community_mgr', rating: 5, date: '2026-01-05', title: 'Exactly what I needed', text: 'Managing our community bot through Sandstorm gives us full control. No more relying on third-party bot hosting services.' },
+    { author: 'privacy_max', rating: 4, date: '2025-12-18', title: 'Self-hosted bot hosting', text: 'All messages stay on our server. Great for organizations that need to keep communications private. Routing is intuitive.' },
+  ],
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
+    { author: 'office_admin', rating: 5, date: '2026-02-01', title: 'Incredible office suite', text: 'Bureau replaces Google Docs for our team. Real-time collaboration on spreadsheets works flawlessly. The snapshot feature is a lifesaver for version management.' },
+    { author: 'designer_jay', rating: 4, date: '2026-01-22', title: 'miniPaint is a nice surprise', text: 'Didn\'t expect a full image editor bundled in. Layers, filters, and export work well. The diagram tool is great for quick flowcharts too.' },
+    { author: 'data_analyst_k', rating: 5, date: '2026-01-10', title: 'Powerful spreadsheet', text: 'XLSX import/export, formula support, and real-time collab. Running it on our own server means no data leaks. The best self-hosted spreadsheet I\'ve used.' },
+    { author: 'team_lead_r', rating: 4, date: '2025-12-30', title: 'Solid document editor', text: 'TipTap-based editor is responsive and handles formatting well. CRDT sync means no conflicts even with 5+ people editing simultaneously.' },
+    { author: 'privacy_advocate', rating: 5, date: '2025-12-15', title: 'Finally, a private office suite', text: 'No Google, no Microsoft, no data mining. Bureau on Sandstorm gives our NGO everything we need without compromising our principles.' },
+  ],
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
+    { author: 'sysadmin_elena', rating: 4, date: '2026-01-18', title: 'Clean email client', text: 'Love that it uses native Cap\'n Proto instead of the HTTP bridge. Fast and lightweight. HTMX frontend is snappy. SQLite storage keeps things simple.' },
+    { author: 'privacy_first', rating: 5, date: '2026-01-02', title: 'Email on my terms', text: 'Finally an email client that runs on MY server. No scanning, no ads, no tracking. Sandstorm\'s SMTP gateway makes setup painless.' },
+    { author: 'developer_mike', rating: 4, date: '2025-12-22', title: 'Well-architected', text: 'The Go + HTMX stack is refreshingly simple. WebSocket for real-time updates is smooth. Would love to see CalDAV integration in the future.' },
+  ],
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
+    { author: 'indie_dev', rating: 5, date: '2026-01-25', title: 'Perfect for small projects', text: 'Host my personal repos without GitHub. The GitWeb interface is clean and the public branch feature for static sites is genius.' },
+    { author: 'homelab_user', rating: 4, date: '2026-01-08', title: 'Lightweight and reliable', text: 'Running MiniGit for my homelab documentation repos. Dead simple, does exactly what it says. Push, pull, browse. No bloat.' },
+    { author: 'educator_prof', rating: 5, date: '2025-12-28', title: 'Great for teaching', text: 'I give each student a MiniGit grain for their assignments. Sandstorm sharing makes access management trivial. The web viewer lets me review code without cloning.' },
+  ],
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
+    { author: 'ext_developer', rating: 4, date: '2026-01-12', title: 'Essential for extension dev', text: 'If you\'re building Melusina Shell extensions, this is indispensable. Catches issues before deployment. Sandbox testing is well-implemented.' },
+    { author: 'melusina_fan', rating: 5, date: '2025-12-25', title: 'Makes extension dev easy', text: 'Upload, test, iterate. Shell Tester makes the feedback loop tight. Log inspection is particularly useful for debugging.' },
+  ],
+};
+
+function getAppFAQ(app) {
+  const specific = APP_FAQ[app.appId] || [];
+  const license = app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl;
+  return [...specific, ...license, ...APP_FAQ._common];
+}
+
+function getAppReviews(app) {
+  return APP_REVIEWS[app.appId] || [];
+}
+
+function getAvgRating(reviews) {
+  if (!reviews.length) return 0;
+  return reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+}
+
 /* ─── Detail Page ──────────────────────────────────────────────────────────── */
 
 function DetailPage({ app, host, onClose }) {
   const url = installUrl(host, app);
+  const [tab, setTab] = useState('overview');
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const reviews = getAppReviews(app);
+  const avgRating = getAvgRating(reviews);
+  const faq = getAppFAQ(app);
+  const docs = APP_DOCS[app.appId] || '';
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -548,6 +766,8 @@ function DetailPage({ app, host, onClose }) {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
+
+  useEffect(() => { setTab('overview'); setOpenFaq(null); }, [app.appId]);
 
   if (!app) return null;
 
@@ -565,12 +785,346 @@ function DetailPage({ app, host, onClose }) {
     </>],
     ["UPSTREAM", app.upstreamAuthor || "—"],
     ["DEPLOYED", fmtDate(app.createdAt)],
-    ["LICENSE", app.isOpenSource ? "Open Source" : "HLSL → AGPLv3 after 3y"],
     ["PKG_ID", <code key="p" style={{
       fontSize: 10, color: T.cyan + "88", wordBreak: "break-all",
       fontFamily: "'JetBrains Mono', monospace",
     }}>{app.packageId}</code>],
   ];
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'docs', label: 'Documentation' },
+    { id: 'faq', label: `FAQ (${faq.length})` },
+    { id: 'reviews', label: `Reviews (${reviews.length})` },
+  ];
+
+  const renderBtnStyle = (base, hover) => ({
+    style: {
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "8px 18px", borderRadius: 3,
+      border: `1px solid ${base}33`, background: base + "08",
+      color: base, fontSize: 12, fontWeight: 600,
+      cursor: "pointer", transition: "all .2s",
+      fontFamily: "'JetBrains Mono', monospace",
+      letterSpacing: ".05em",
+      textShadow: `0 0 6px ${base}44`,
+    },
+    onMouseEnter: (e) => { e.currentTarget.style.borderColor = base + "77"; e.currentTarget.style.boxShadow = `0 0 15px ${base}44`; },
+    onMouseLeave: (e) => { e.currentTarget.style.borderColor = base + "33"; e.currentTarget.style.boxShadow = "none"; },
+  });
+
+  /* ---- OVERVIEW TAB ---- */
+  const OverviewTab = () => (
+    <>
+      <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
+      <div className="detail-grid">
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {app.description && (
+            <div style={{
+              padding: 24, background: T.surface,
+              borderRadius: T.radius, border: `1px solid ${T.border}`,
+              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            }}>
+              <SectionHeader>About</SectionHeader>
+              <SimpleMarkdown text={app.description} />
+            </div>
+          )}
+          {/* Quick stats */}
+          {reviews.length > 0 && (
+            <div style={{
+              padding: 20, background: T.surface,
+              borderRadius: T.radius, border: `1px solid ${T.border}`,
+              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif" }}>
+                  {avgRating.toFixed(1)}
+                </span>
+                <div>
+                  <StarRating rating={avgRating} size={16} />
+                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                    {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setTab('reviews')} {...renderBtnStyle(T.yellow)}>
+                Read Reviews →
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* License / Pricing Card */}
+          <div style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
+            overflow: "hidden",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <div style={{
+              padding: "14px 20px", borderBottom: `1px solid ${T.borderLight}`,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <SectionHeader color={app.isOpenSource ? T.green : T.magenta}>License & Pricing</SectionHeader>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 14,
+              }}>
+                <span style={{
+                  fontSize: 20, width: 36, height: 36, borderRadius: 3,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: app.isOpenSource ? T.green + '15' : T.magenta + '15',
+                  border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
+                }}>{app.isOpenSource ? '🔓' : '🔐'}</span>
+                <div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 700, color: app.isOpenSource ? T.green : T.magenta,
+                    fontFamily: "'Orbitron', sans-serif",
+                    textShadow: `0 0 6px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
+                  }}>{app.isOpenSource ? 'Open Source' : 'HLSL License'}</div>
+                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
+                    Self-hosted · No subscription
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif", marginBottom: 8 }}>
+                FREE
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.7, color: T.textSec, marginBottom: 14 }}>
+                {app.isOpenSource
+                  ? 'This app is free and open source. You can use, modify, and redistribute it under the terms of its license.'
+                  : 'Free to install and use on your own Sandstorm server. Source code is available for auditing. Automatically converts to AGPLv3 after 3 years.'}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: T.textSec }}>
+                {[
+                  '✓ Self-hosted on your server',
+                  '✓ No usage fees or limits',
+                  '✓ Full data ownership',
+                  app.isOpenSource ? '✓ Fork and modify freely' : '✓ Source-available for audit',
+                  app.isOpenSource ? '✓ Community contributions welcome' : '✓ Converts to AGPLv3 after 3y',
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ color: app.isOpenSource ? T.green : T.magenta, fontFamily: "'JetBrains Mono', monospace" }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Details Card */}
+          <div style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.border}`, overflow: "hidden",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <div style={{ padding: "14px 20px", borderBottom: `1px solid ${T.border}` }}>
+              <SectionHeader>Details</SectionHeader>
+            </div>
+            {rows.map(([label, val], i) => (
+              <div key={label} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                gap: 12, padding: "12px 20px",
+                borderBottom: i < rows.length - 1 ? `1px solid ${T.borderLight}` : "none",
+                fontSize: 12,
+              }}>
+                <span style={{
+                  color: T.textDim, flexShrink: 0,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, letterSpacing: ".08em",
+                }}>{label}</span>
+                <span style={{ textAlign: "right", wordBreak: "break-word", color: T.textSec }}>{val}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* App ID Card */}
+          <div style={{
+            padding: "14px 20px", background: T.surface,
+            borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <span style={{
+              display: "block", fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: ".12em", color: T.textDim, marginBottom: 8,
+              fontFamily: "'Orbitron', sans-serif",
+            }}>APP_ID</span>
+            <code style={{
+              fontSize: 10, color: T.cyan + "77", wordBreak: "break-all", lineHeight: 1.7,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              {app.appId}
+            </code>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  /* ---- DOCS TAB ---- */
+  const DocsTab = () => (
+    <div style={{
+      padding: 28, background: T.surface,
+      borderRadius: T.radius, border: `1px solid ${T.border}`,
+      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      maxWidth: 780,
+    }}>
+      {docs ? (
+        <SimpleMarkdown text={docs} />
+      ) : (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📄</div>
+          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+            Documentation coming soon
+          </p>
+          {app.codeLink && (
+            <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
+              display: "inline-block", marginTop: 16, fontSize: 12, padding: "10px 20px",
+              border: `1px solid ${T.cyan}33`, borderRadius: 3,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>View README on GitHub →</a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  /* ---- FAQ TAB ---- */
+  const FAQTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      <SectionHeader>Frequently Asked Questions</SectionHeader>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+        {faq.map((item, i) => (
+          <div key={i} className="faq-item" style={{
+            border: `1px solid ${openFaq === i ? T.cyan + '33' : T.border}`,
+            borderRadius: T.radius, overflow: "hidden", transition: "border-color .2s",
+          }}>
+            <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{
+              width: "100%", textAlign: "left",
+              padding: "16px 20px", cursor: "pointer",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              gap: 12, fontSize: 13, fontWeight: 600, color: openFaq === i ? T.cyan : T.text,
+              background: T.surface, border: "none", transition: "all .2s",
+              fontFamily: "inherit",
+            }}>
+              <span>{item.q}</span>
+              <span style={{
+                fontSize: 16, color: T.cyan, transition: "transform .2s",
+                transform: openFaq === i ? 'rotate(45deg)' : 'none',
+                flexShrink: 0, fontFamily: "'JetBrains Mono', monospace",
+                textShadow: `0 0 4px ${T.accentGlow}`,
+              }}>+</span>
+            </button>
+            {openFaq === i && (
+              <div style={{
+                padding: "0 20px 18px", fontSize: 13, lineHeight: 1.8, color: T.textSec,
+                background: T.surface, borderTop: `1px solid ${T.borderLight}`,
+                animation: "fadeIn .15s ease-out",
+              }}>
+                <div style={{ paddingTop: 14 }}>
+                  <SimpleMarkdown text={item.a} />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ---- REVIEWS TAB ---- */
+  const ReviewsTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      {/* Rating summary */}
+      {reviews.length > 0 && (
+        <div style={{
+          display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap",
+          marginBottom: 28, padding: 24, background: T.surface,
+          borderRadius: T.radius, border: `1px solid ${T.border}`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{
+              fontSize: 48, fontWeight: 900, color: T.text,
+              fontFamily: "'Orbitron', sans-serif",
+              lineHeight: 1,
+              textShadow: `0 0 20px ${T.accentGlow}`,
+            }}>{avgRating.toFixed(1)}</div>
+            <StarRating rating={avgRating} size={18} />
+            <div style={{ fontSize: 11, color: T.textDim, marginTop: 6, fontFamily: "'JetBrains Mono', monospace" }}>
+              {reviews.length} rating{reviews.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            {[5,4,3,2,1].map(star => {
+              const count = reviews.filter(r => r.rating === star).length;
+              const pct = reviews.length ? (count / reviews.length) * 100 : 0;
+              return (
+                <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: T.textDim, width: 14, textAlign: "right", fontFamily: "'JetBrains Mono', monospace" }}>{star}</span>
+                  <span style={{ fontSize: 11, color: T.yellow }}>★</span>
+                  <div style={{ flex: 1, height: 6, background: T.bgAlt, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{
+                      width: `${pct}%`, height: "100%",
+                      background: `linear-gradient(90deg, ${T.cyan}, ${T.yellow})`,
+                      borderRadius: 3, transition: "width .3s",
+                      boxShadow: pct > 0 ? `0 0 6px ${T.cyan}44` : 'none',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: T.textDim, width: 20, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Individual reviews */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {reviews.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>💬</div>
+            <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+              No reviews yet. Be the first!
+            </p>
+          </div>
+        ) : reviews.map((review, i) => (
+          <div key={i} className="review-card" style={{ animation: `fadeUp .3s ease-out ${i * 0.05}s both` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 3,
+                  background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
+                  border: `1px solid ${T.cyan}33`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 700, color: T.cyan,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textShadow: `0 0 6px ${T.accentGlow}`,
+                }}>{review.author[0].toUpperCase()}</div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text,
+                    fontFamily: "'JetBrains Mono', monospace" }}>{review.author}</div>
+                  <div style={{ fontSize: 10, color: T.textDim }}>{review.date}</div>
+                </div>
+              </div>
+              <StarRating rating={review.rating} size={12} />
+            </div>
+            {review.title && (
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 6 }}>
+                {review.title}
+              </div>
+            )}
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec }}>
+              {review.text}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100dvh", background: T.bg, animation: "fadeIn .15s ease-out" }}>
@@ -585,25 +1139,7 @@ function DetailPage({ app, host, onClose }) {
           maxWidth: 960, margin: "0 auto", padding: "12px 20px",
           display: "flex", alignItems: "center", gap: 14,
         }}>
-          <button onClick={onClose} style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "8px 18px", borderRadius: 3,
-            border: `1px solid ${T.cyan}33`, background: T.cyan + "08",
-            color: T.cyan, fontSize: 12, fontWeight: 600,
-            cursor: "pointer", transition: "all .2s",
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: ".05em",
-            textShadow: `0 0 6px ${T.accentGlow}`,
-          }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = T.cyan + "77";
-              e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = T.cyan + "33";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >← BACK</button>
+          <button onClick={onClose} {...renderBtnStyle(T.cyan)}>← BACK</button>
           <span style={{
             fontSize: 14, fontWeight: 700, color: T.text,
             fontFamily: "'Orbitron', sans-serif",
@@ -614,7 +1150,7 @@ function DetailPage({ app, host, onClose }) {
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px 80px" }}>
         {/* hero */}
-        <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 36, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 28, flexWrap: "wrap" }}>
           <AppIcon app={app} size={80} />
           <div style={{ flex: 1, minWidth: 200 }}>
             <h1 style={{
@@ -627,14 +1163,22 @@ function DetailPage({ app, host, onClose }) {
             }}>
               {app.name}
             </h1>
-            <p style={{ color: T.textSec, fontSize: 14, margin: "10px 0 0", lineHeight: 1.6 }}>
+            <p style={{ color: T.textSec, fontSize: 14, margin: "8px 0 0", lineHeight: 1.6 }}>
               {app.shortDescription || app.summary || ""}
             </p>
+            {reviews.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                <StarRating rating={avgRating} size={14} />
+                <span style={{ fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {avgRating.toFixed(1)} ({reviews.length})
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* actions */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 32 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           {url ? (
             <a href={url} target="_blank" rel="noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 10,
@@ -714,93 +1258,28 @@ function DetailPage({ app, host, onClose }) {
         </div>
 
         {/* tags */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 32 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
           {app.isOpenSource && <Badge neon={T.green}>Open Source</Badge>}
           {!app.isOpenSource && <Badge neon={T.magenta}>HLSL</Badge>}
         </div>
 
-        {/* screenshots */}
-        <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
+        {/* tab navigation */}
+        <div className="detail-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`detail-tab${tab === t.id ? ' active' : ''}`}
+              onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        {/* description + info sidebar */}
-        <div className="detail-grid">
-          <div>
-            {app.description && (
-              <div style={{
-                padding: 24, background: T.surface,
-                borderRadius: T.radius, border: `1px solid ${T.border}`,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                  letterSpacing: ".14em", color: T.cyan, marginBottom: 16,
-                  fontFamily: "'Orbitron', sans-serif",
-                  textShadow: `0 0 6px ${T.accentGlow}`,
-                  display: "flex", alignItems: "center", gap: 10,
-                }}>
-                  <span style={{ width: 16, height: 1, background: T.cyan, boxShadow: `0 0 4px ${T.cyan}` }} />
-                  ABOUT
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.8, color: T.textSec, whiteSpace: "pre-wrap" }}>
-                  {app.description}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{
-              background: T.surface, borderRadius: T.radius,
-              border: `1px solid ${T.border}`, overflow: "hidden",
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            }}>
-              <div style={{
-                padding: "14px 20px", borderBottom: `1px solid ${T.border}`,
-                fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: ".14em", color: T.cyan,
-                fontFamily: "'Orbitron', sans-serif",
-                textShadow: `0 0 6px ${T.accentGlow}`,
-                display: "flex", alignItems: "center", gap: 10,
-              }}>
-                <span style={{ width: 16, height: 1, background: T.cyan, boxShadow: `0 0 4px ${T.cyan}` }} />
-                DETAILS
-              </div>
-              {rows.map(([label, val], i) => (
-                <div key={label} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                  gap: 12, padding: "12px 20px",
-                  borderBottom: i < rows.length - 1 ? `1px solid ${T.borderLight}` : "none",
-                  fontSize: 12,
-                }}>
-                  <span style={{
-                    color: T.textDim, flexShrink: 0,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 10, letterSpacing: ".08em",
-                  }}>{label}</span>
-                  <span style={{ textAlign: "right", wordBreak: "break-word", color: T.textSec }}>{val}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{
-              padding: "14px 20px", background: T.surface,
-              borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            }}>
-              <span style={{
-                display: "block", fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: ".12em", color: T.textDim, marginBottom: 8,
-                fontFamily: "'Orbitron', sans-serif",
-              }}>APP_ID</span>
-              <code style={{
-                fontSize: 10, color: T.cyan + "77", wordBreak: "break-all", lineHeight: 1.7,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>
-                {app.appId}
-              </code>
-            </div>
-          </div>
+        {/* tab content */}
+        <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
+          {tab === 'overview' && <OverviewTab />}
+          {tab === 'docs' && <DocsTab />}
+          {tab === 'faq' && <FAQTab />}
+          {tab === 'reviews' && <ReviewsTab />}
         </div>
       </div>
     </div>

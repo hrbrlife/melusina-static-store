@@ -173,29 +173,29 @@
     },
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
-      "packageId": "6a679f815d1d675de20202621bdc32a0",
       "name": "Shell Tester",
-      "version": "0.1.0",
-      "versionNumber": 2,
-      "shortDescription": "Melusina shell extension tester",
+      "version": "0.1.4",
+      "versionNumber": 1,
+      "packageId": "0c4af4844d6411e219f7f71c1aa4a5cd",
+      "shortDescription": "Melusina Shell Extension Tester",
       "categories": [
-        "developerTools"
+        "Developer Tools"
       ],
-      "isOpenSource": true,
+      "isOpenSource": false,
       "webLink": "https://github.com/hrbrlife/shell_tester",
       "codeLink": "https://github.com/hrbrlife/shell_tester",
       "upstreamAuthor": "Shell Tester",
-      "createdAt": 1739318400,
+      "createdAt": 1771075908000,
       "author": {
-        "name": "Alexei Karpov",
+        "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
-      "screenshots": [],
       "imageId": "d1ba2752fc9a9b6df28d64805c889a3c.svg",
-      "description": "# Shell Tester\n\nA minimal Sandstorm grain for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** \u2014 Test wallet signing operations via Melusina shell capabilities\n- **OTP** \u2014 Verify one-time password generation and validation\n- **NFTs** \u2014 Test NFT-related operations through shell extensions\n- **Solana RPC** \u2014 Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis grain is intended for developers and testers working on Melusina platform integrations."
+      "description": "",
+      "screenshots": []
     }
   ]
 }

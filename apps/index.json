@@ -10,7 +10,7 @@
       "categories": [
         "Productivity"
       ],
-      "isOpenSource": true,
+      "isOpenSource": false,
       "webLink": "https://bloom.identity",
       "codeLink": "https://github.com/hrbrlife/BLOOM_FINAL",
       "upstreamAuthor": "BLOOM Identity",
@@ -70,7 +70,7 @@
         "Productivity",
         "Social"
       ],
-      "isOpenSource": true,
+      "isOpenSource": false,
       "webLink": "https://github.com/hrbrlife/melusina_botmother",
       "codeLink": "https://github.com/hrbrlife/melusina_botmother",
       "upstreamAuthor": "BotMother",

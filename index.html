@@ -2,11 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Static Sandstorm App Market</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#07070d" />
+    <meta name="description" content="Cyberpunk app marketplace for Melusina Sandstorm" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Melusina" />
+    <meta name="msapplication-TileColor" content="#07070d" />
+    <meta name="msapplication-TileImage" content="icons/melulogo-144.png" />
+    <title>Melusina App Market</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="icons/melulogo.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/melulogo-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/melulogo-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js', { scope: '/melusina-static-store/' })
+            .then(reg => console.log('[SW] registered:', reg.scope))
+            .catch(err => console.warn('[SW] registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>

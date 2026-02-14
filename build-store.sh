@@ -326,6 +326,14 @@ else
   exit 1
 fi
 
+# Copy PWA assets from public/
+if [[ -d "public/icons" ]]; then
+  cp -r public/icons "$OUTPUT_DIR/icons"
+  echo "  Copied PWA icons"
+fi
+[[ -f "public/manifest.json" ]] && cp public/manifest.json "$OUTPUT_DIR/manifest.json" && echo "  Copied manifest.json"
+[[ -f "public/sw.js" ]] && cp public/sw.js "$OUTPUT_DIR/sw.js" && echo "  Copied sw.js"
+
 # Copy verifier
 if [[ -f "$VERIFIER_SRC/index.html" ]]; then
   cp "$VERIFIER_SRC/index.html" "$OUTPUT_DIR/verifier/index.html"

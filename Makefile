@@ -23,14 +23,15 @@ publish:
 		|| { echo "Must be on $(MAIN_BRANCH)"; exit 1; }
 	@test -d "$(OUTPUT_DIR)" || { echo "No $(OUTPUT_DIR)/ — run build-store.sh first"; exit 1; }
 
-	@# --- Stage to temp dir (while on main so LFS files are real) ---
+	@# --- Stage to temp dir OUTSIDE the repo (survives branch switch) ---
 	@echo "=== Staging ==="
-	rm -rf .staging-tmp && mkdir -p .staging-tmp
-	cp -a $(OUTPUT_DIR)/. .staging-tmp/
+	STMP=$$(mktemp -d /tmp/store-publish.XXXXXX)
+	trap 'rm -rf "$$STMP"' EXIT
+	cp -a $(OUTPUT_DIR)/. "$$STMP/"
 	@if [ -d update ]; then \
 		echo "  Copying update/ (LFS-resolved)"; \
-		mkdir -p .staging-tmp/update; \
-		cp -a update/. .staging-tmp/update/; \
+		mkdir -p "$$STMP/update"; \
+		cp -a update/. "$$STMP/update/"; \
 	fi
 
 	@# --- Commit and push main ---
@@ -43,7 +44,7 @@ publish:
 	@echo "=== Split large files ==="
 	@SPLIT=0; \
 	while IFS= read -r -d '' bigfile; do \
-		rel="$${bigfile#.staging-tmp/}"; \
+		rel="$${bigfile#$$STMP/}"; \
 		sz=$$(( $$(stat -c%s "$$bigfile") / 1024 / 1024 )); \
 		echo "  Splitting $$rel ($${sz} MB)"; \
 		orig_sha=$$(sha256sum "$$bigfile" | cut -d' ' -f1); \
@@ -73,14 +74,14 @@ m['split']=True; m['partsManifest']=os.path.basename('$${bigfile}.parts.json'); 
 json.dump(m,open('$$mdir/manifest.json','w'),indent=2)"; \
 		fi; \
 		SPLIT=$$((SPLIT+1)); \
-	done < <(find .staging-tmp -type f -size +$(MAX_FILE_SIZE)c -print0); \
+	done < <(find "$$STMP" -type f -size +$(MAX_FILE_SIZE)c -print0); \
 	[ "$$SPLIT" -eq 0 ] && echo "  Nothing to split"
 
 	@# --- Deploy to publish branch ---
 	@echo "=== Deploy to publish ==="
 	git checkout $(PUBLISH_BRANCH) 2>/dev/null
 	find . -maxdepth 1 -not -name '.git' -not -name '.' -exec rm -rf {} + 2>/dev/null || true
-	cp -a .staging-tmp/. .
+	cp -a "$$STMP"/. .
 	touch .nojekyll
 	rm -f .gitattributes
 	@# Verify nothing is oversized
@@ -95,8 +96,8 @@ json.dump(m,open('$$mdir/manifest.json','w'),indent=2)"; \
 		|| { git commit -m "Store publish $$(date +%Y-%m-%d\ %H:%M)" --quiet; \
 		     git push $(REMOTE) $(PUBLISH_BRANCH) --force 2>&1 | tail -5; }
 	git checkout $(MAIN_BRANCH) --quiet 2>/dev/null
-	rm -rf .staging-tmp
+	rm -rf "$$STMP"
 	@echo "=== Done ==="
 
 clean:
-	rm -rf .staging-tmp
+	@echo "Nothing to clean (staging uses /tmp/)"

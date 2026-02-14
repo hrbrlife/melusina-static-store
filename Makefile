@@ -21,7 +21,18 @@ publish:
 	@test -d .git || { echo "Not a git repo"; exit 1; }
 	@test "$$(git branch --show-current)" = "$(MAIN_BRANCH)" \
 		|| { echo "Must be on $(MAIN_BRANCH)"; exit 1; }
-	@test -d "$(OUTPUT_DIR)" || { echo "No $(OUTPUT_DIR)/ — run build-store.sh first"; exit 1; }
+
+	@# --- Pull submodules ---
+	@echo "=== Updating submodules ==="
+	git submodule update --init --recursive --remote
+	git add -A
+	git diff --cached --quiet || git commit -m "update submodules" --quiet
+
+	@# --- Build store ---
+	@echo "=== Building store ==="
+	bash build-store.sh
+
+	@test -d "$(OUTPUT_DIR)" || { echo "Build failed — no $(OUTPUT_DIR)/"; exit 1; }
 
 	@# --- Stage to temp dir OUTSIDE the repo (survives branch switch) ---
 	@echo "=== Staging ==="

@@ -40,32 +40,34 @@ const installUrl = (host, app) => {
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 
-/* ─── cyberpunk design tokens ─────────────────────────────────────────────── */
+/* ─── palm beach sunset tokens ────────────────────────────────────────────── */
 
 const T = {
-  bg: "#07070d",
-  bgAlt: "#0c0c18",
-  surface: "rgba(12, 12, 28, 0.85)",
-  card: "rgba(15, 15, 35, 0.7)",
-  cardHover: "rgba(20, 20, 50, 0.85)",
-  border: "rgba(0, 255, 255, 0.1)",
-  borderHover: "rgba(0, 255, 255, 0.4)",
-  borderLight: "rgba(0, 255, 255, 0.06)",
-  cyan: "#00f0ff",
-  magenta: "#ff2d8a",
-  green: "#00ff88",
-  purple: "#a855f7",
-  yellow: "#ffd000",
-  accent: "#00f0ff",
-  accentHover: "#00d4e0",
-  accentGlow: "rgba(0, 240, 255, 0.25)",
-  magentaGlow: "rgba(255, 45, 138, 0.25)",
-  greenGlow: "rgba(0, 255, 136, 0.2)",
-  text: "#e8e8f0",
-  textSec: "#8888a8",
-  textDim: "#55556a",
-  radius: 4,
-  radiusSm: 3,
+  bg: "#110e24",
+  bgAlt: "#1a1535",
+  surface: "rgba(24, 18, 52, 0.72)",
+  card: "rgba(28, 22, 58, 0.55)",
+  cardHover: "rgba(42, 32, 78, 0.7)",
+  border: "rgba(192, 132, 252, 0.1)",
+  borderHover: "rgba(0, 229, 255, 0.35)",
+  borderLight: "rgba(192, 132, 252, 0.06)",
+  cyan: "#00e5ff",
+  magenta: "#ff7eb3",
+  green: "#4ade80",
+  purple: "#c084fc",
+  yellow: "#ffd166",
+  coral: "#ff7eb3",
+  peach: "#ffb86c",
+  accent: "#00e5ff",
+  accentHover: "#33ebff",
+  accentGlow: "rgba(0, 229, 255, 0.18)",
+  magentaGlow: "rgba(255, 126, 179, 0.2)",
+  greenGlow: "rgba(74, 222, 128, 0.15)",
+  text: "#f0eaff",
+  textSec: "#b0a3cc",
+  textDim: "#6e5f8a",
+  radius: 8,
+  radiusSm: 6,
 };
 
 /* ─── global CSS ───────────────────────────────────────────────────────────── */
@@ -75,7 +77,8 @@ const CSS = `
 html{font-size:15px;-webkit-text-size-adjust:100%}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:${T.bg};
+  background:linear-gradient(170deg, #0e0b1f 0%, #1a1040 25%, #2a1550 45%, #251245 60%, #1a1040 78%, #110e24 100%);
+  background-attachment:fixed;
   color:${T.text};
   overflow-x:hidden;
   min-height:100dvh;
@@ -96,26 +99,28 @@ img{display:block;max-width:100%}
 body::before{
   content:'';position:fixed;inset:0;z-index:-2;
   background:
-    linear-gradient(${T.cyan}08 1px, transparent 1px),
-    linear-gradient(90deg, ${T.cyan}08 1px, transparent 1px);
-  background-size:60px 60px;
-  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black 30%,transparent 80%);
-  -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black 30%,transparent 80%);
+    radial-gradient(ellipse 140% 50% at 50% 108%, rgba(255,126,179,0.12), transparent 65%),
+    radial-gradient(ellipse 90% 35% at 18% 80%, rgba(255,184,108,0.08), transparent 55%),
+    radial-gradient(ellipse 110% 40% at 80% 85%, rgba(192,132,252,0.09), transparent 60%),
+    radial-gradient(ellipse 70% 25% at 40% 12%, rgba(0,229,255,0.05), transparent 50%),
+    radial-gradient(ellipse 50% 20% at 65% 5%, rgba(192,132,252,0.04), transparent 45%);
 }
 body::after{
   content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
-    radial-gradient(ellipse 600px 400px at 20% 10%, ${T.cyan}09, transparent),
-    radial-gradient(ellipse 500px 500px at 80% 80%, ${T.magenta}08, transparent),
-    radial-gradient(ellipse 400px 300px at 50% 50%, ${T.purple}06, transparent);
+    radial-gradient(ellipse 700px 400px at 12% 18%, ${T.purple}0c, transparent),
+    radial-gradient(ellipse 600px 500px at 85% 70%, ${T.magenta}0b, transparent),
+    radial-gradient(ellipse 900px 350px at 50% 95%, rgba(255,184,108,0.07), transparent),
+    radial-gradient(ellipse 500px 400px at 65% 35%, ${T.cyan}06, transparent),
+    radial-gradient(ellipse 400px 300px at 35% 55%, rgba(192,132,252,0.05), transparent);
 }
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
 @keyframes glowPulse{
-  0%,100%{box-shadow:0 0 5px ${T.cyan}33,0 0 20px ${T.cyan}11,inset 0 0 15px ${T.cyan}08}
-  50%{box-shadow:0 0 10px ${T.cyan}55,0 0 40px ${T.cyan}22,inset 0 0 25px ${T.cyan}11}
+  0%,100%{box-shadow:0 0 5px ${T.purple}33,0 0 20px ${T.purple}11,inset 0 0 15px ${T.purple}08}
+  50%{box-shadow:0 0 10px ${T.purple}55,0 0 40px ${T.purple}22,inset 0 0 25px ${T.purple}11}
 }
 @keyframes scanLine{
   0%{transform:translateY(-100%)}
@@ -158,7 +163,7 @@ body::after{
 
 .lightbox-overlay{
   position:fixed;inset:0;z-index:900;
-  background:rgba(0,0,0,.92);
+  background:rgba(14,11,30,.92);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   display:flex;align-items:center;justify-content:center;
   animation:fadeIn .2s ease-out;cursor:zoom-out;
@@ -175,8 +180,9 @@ body::after{
 @media(max-width:480px){html{font-size:14px}}
 
 .neon-text{
-  color:${T.cyan};
-  text-shadow:0 0 7px ${T.cyan}88,0 0 20px ${T.cyan}44,0 0 40px ${T.cyan}22;
+  background:linear-gradient(135deg, ${T.cyan}, ${T.magenta});
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 8px ${T.cyan}55) drop-shadow(0 0 20px ${T.magenta}33);
 }
 
 .detail-tabs{display:flex;gap:0;margin-bottom:28px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid ${T.cyan}15}
@@ -273,7 +279,7 @@ function HostBar({ host, setHost }) {
       <button onClick={() => setOpen(!open)} style={{
         display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
         border: `1px solid ${ok ? T.green + "66" : T.cyan + "33"}`,
-        borderRadius: T.radiusSm, background: ok ? T.green + "11" : "rgba(0,240,255,0.05)",
+        borderRadius: T.radiusSm, background: ok ? T.green + "11" : "rgba(192,132,252,0.07)",
         cursor: "pointer", fontSize: 12, color: ok ? T.green : T.cyan,
         fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
         letterSpacing: ".05em", textTransform: "uppercase",
@@ -294,12 +300,12 @@ function HostBar({ host, setHost }) {
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
           <div style={{
             position: "absolute", right: 0, top: "calc(100% + 8px)",
-            background: "rgba(10, 10, 25, 0.95)",
-            border: `1px solid ${T.cyan}44`,
+            background: "rgba(22, 16, 48, 0.95)",
+            border: `1px solid ${T.purple}44`,
             borderRadius: T.radius,
             padding: 20, zIndex: 100, width: 320,
-            boxShadow: `0 0 30px ${T.accentGlow}, 0 20px 60px rgba(0,0,0,.5)`,
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            boxShadow: `0 0 30px ${T.magentaGlow}, 0 20px 60px rgba(0,0,0,.4)`,
+            backdropFilter: "blur(24px) saturate(1.3)", WebkitBackdropFilter: "blur(24px) saturate(1.3)",
             animation: "pop .15s ease-out",
           }}>
             <label style={{
@@ -311,8 +317,8 @@ function HostBar({ host, setHost }) {
             <input type="url" placeholder="https://sandstorm.example.com" value={host}
               onChange={(e) => setHost(e.target.value)} autoFocus
               style={{
-                width: "100%", padding: "12px 14px", background: "rgba(0,240,255,0.04)",
-                border: `1px solid ${T.cyan}33`, borderRadius: 3, color: T.text,
+                width: "100%", padding: "12px 14px", background: "rgba(192,132,252,0.06)",
+                border: `1px solid ${T.purple}33`, borderRadius: T.radiusSm, color: T.text,
                 fontSize: 13, outline: "none", transition: "border-color .2s, box-shadow .2s",
                 fontFamily: "'JetBrains Mono', monospace",
               }}
@@ -358,8 +364,8 @@ function AppCard({ app, onSelect, host }) {
         transition: "all .3s ease",
         transform: hov ? "translateY(-3px)" : "none",
         boxShadow: hov
-          ? `0 0 25px ${T.accentGlow}, 0 10px 40px rgba(0,0,0,.4), inset 0 0 30px ${T.cyan}06`
-          : `0 2px 10px rgba(0,0,0,.3), inset 0 0 20px ${T.cyan}04`,
+          ? `0 0 25px ${T.accentGlow}, 0 10px 40px rgba(0,0,0,.3), 0 0 60px ${T.magentaGlow}, inset 0 0 30px ${T.purple}08`
+          : `0 2px 10px rgba(0,0,0,.2), inset 0 0 20px ${T.purple}06`,
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
         display: "flex", flexDirection: "column",
         animation: "fadeUp .5s ease-out both",
@@ -374,8 +380,8 @@ function AppCard({ app, onSelect, host }) {
         }}>
           <div style={{
             width: "100%", height: "2px",
-            background: `linear-gradient(90deg, transparent, ${T.cyan}44, transparent)`,
-            animation: "scanLine 1.5s linear infinite",
+            background: `linear-gradient(90deg, transparent, ${T.purple}33, ${T.magenta}22, transparent)`,
+            animation: "scanLine 2s linear infinite",
           }} />
         </div>
       )}
@@ -1127,13 +1133,14 @@ function DetailPage({ app, host, onClose }) {
   );
 
   return (
-    <div style={{ minHeight: "100dvh", background: T.bg, animation: "fadeIn .15s ease-out" }}>
+    <div style={{ minHeight: "100dvh", animation: "fadeIn .15s ease-out" }}>
       {/* top bar */}
       <div style={{
         position: "sticky", top: 0, zIndex: 200,
-        background: "rgba(7, 7, 13, 0.9)",
-        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        borderBottom: `1px solid ${T.cyan}22`,
+        background: "linear-gradient(135deg, rgba(17,14,36,0.92), rgba(30,20,58,0.88))",
+        backdropFilter: "blur(24px) saturate(1.5)", WebkitBackdropFilter: "blur(24px) saturate(1.5)",
+        borderBottom: `1px solid ${T.purple}20`,
+        boxShadow: "0 4px 30px rgba(17,14,36,0.5), inset 0 -1px 0 rgba(192,132,252,0.08)",
       }}>
         <div style={{
           maxWidth: 960, margin: "0 auto", padding: "12px 20px",
@@ -1157,9 +1164,10 @@ function DetailPage({ app, host, onClose }) {
               fontSize: 28, fontWeight: 800, margin: 0,
               fontFamily: "'Orbitron', sans-serif",
               letterSpacing: ".02em",
-              background: `linear-gradient(135deg, ${T.cyan}, ${T.magenta})`,
+              background: `linear-gradient(135deg, ${T.cyan}, ${T.purple}, ${T.magenta})`,
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              filter: `drop-shadow(0 0 12px ${T.purple}44)`,
             }}>
               {app.name}
             </h1>
@@ -1338,10 +1346,11 @@ function App() {
       {/* header */}
       <header style={{
         position: "sticky", top: 0, zIndex: 200,
-        background: "rgba(7, 7, 13, 0.88)",
-        backdropFilter: "blur(20px) saturate(1.4)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
-        borderBottom: `1px solid ${T.cyan}18`,
+        background: "linear-gradient(135deg, rgba(17,14,36,0.92), rgba(30,20,58,0.88))",
+        backdropFilter: "blur(24px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(24px) saturate(1.5)",
+        borderBottom: `1px solid ${T.purple}20`,
+        boxShadow: "0 4px 30px rgba(17,14,36,0.5), inset 0 -1px 0 rgba(192,132,252,0.08)",
       }}>
         <div style={{
           maxWidth: 1200, margin: "0 auto", padding: "12px 16px",
@@ -1382,8 +1391,8 @@ function App() {
               onChange={(e) => setQuery(e.target.value)}
               style={{
                 width: "100%", padding: "10px 14px 10px 34px",
-                background: "rgba(0,240,255,0.04)",
-                border: `1px solid ${T.cyan}22`, borderRadius: 3, color: T.text,
+                background: "rgba(192,132,252,0.06)",
+                border: `1px solid ${T.purple}22`, borderRadius: T.radiusSm, color: T.text,
                 fontSize: 13, outline: "none", transition: "all .2s",
                 fontFamily: "'JetBrains Mono', monospace",
               }}
@@ -1412,11 +1421,11 @@ function App() {
             const active = category === c;
             return (
               <button key={c} onClick={() => setCategory(c)} style={{
-                padding: "8px 20px", borderRadius: 2,
-                border: `1px solid ${active ? T.cyan + "66" : T.cyan + "18"}`,
+                padding: "8px 20px", borderRadius: T.radiusSm,
+                border: `1px solid ${active ? T.cyan + "55" : T.purple + "18"}`,
                 background: active
-                  ? `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}11)`
-                  : "rgba(0,240,255,0.03)",
+                  ? `linear-gradient(135deg, ${T.cyan}18, ${T.purple}15)`
+                  : "rgba(192,132,252,0.04)",
                 color: active ? T.cyan : T.textSec,
                 fontSize: 11, fontWeight: 600, cursor: "pointer",
                 whiteSpace: "nowrap", transition: "all .25s", flexShrink: 0,
@@ -1479,11 +1488,12 @@ function App() {
         )}
       </main>
 
-      {/* bottom neon line */}
+      {/* bottom sunset glow */}
       <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg, transparent, ${T.cyan}44, ${T.magenta}44, transparent)`,
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 3,
+        background: `linear-gradient(90deg, transparent, ${T.peach}44, ${T.magenta}55, ${T.purple}44, ${T.cyan}33, transparent)`,
         pointerEvents: "none",
+        boxShadow: `0 0 20px ${T.magenta}22, 0 0 40px ${T.purple}11`,
       }} />
     </>
   );

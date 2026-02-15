@@ -202,6 +202,12 @@ body::after{
 .detail-tab:hover{color:${T.textSec}}
 .detail-tab.active{color:${T.cyan};border-bottom-color:${T.cyan};text-shadow:0 0 8px ${T.accentGlow}}
 
+.doc-layout{display:flex;gap:24px;align-items:flex-start}
+.doc-sidebar{position:sticky;top:80px;min-width:180px;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+@media(max-width:720px){.doc-layout{flex-direction:column}.doc-sidebar{position:static;flex-direction:row;overflow-x:auto;min-width:0;padding-bottom:4px}.doc-sidebar::-webkit-scrollbar{display:none}}
+.fee-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.fee-grid-2{grid-template-columns:1fr}}
+
 .md-body h2{font-size:18px;font-weight:800;color:${T.text};margin:28px 0 12px;font-family:'Orbitron',sans-serif;letter-spacing:.02em}
 .md-body h2:first-child{margin-top:0}
 .md-body h3{font-size:15px;font-weight:700;color:${T.cyan};margin:24px 0 10px;font-family:'Orbitron',sans-serif;text-shadow:0 0 6px ${T.accentGlow}}
@@ -467,10 +473,10 @@ function AppCard({ app, onSelect, host }) {
           }}>{app.name}</h3>
           <p style={{
             fontSize: 12, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}>
-            {app.shortDescription || app.summary || ""}
+            <SimpleMarkdown text={app.shortDescription || app.summary || ""} />
           </p>
         </div>
 
@@ -780,10 +786,69 @@ const APP_REVIEWS = {
   ],
 };
 
+const APP_VERSIONS = {
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
+    { version: '1.2.0', date: '2026-01-28', changes: ['Added residence permit support', 'Improved facial detection accuracy', 'Added case export for compliance'] },
+    { version: '1.1.0', date: '2025-11-15', changes: ['OTP verification flow', 'Multi-language support for verification pages', 'Admin notes on cases'] },
+    { version: '1.0.0', date: '2025-09-01', changes: ['Initial release', 'Passport and driver\'s license verification', 'Admin dashboard with real-time status', 'Shareable verification links'] },
+  ],
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
+    { version: '2.0.0', date: '2026-01-20', changes: ['Chatroom management overhaul', 'Inline keyboard support', 'Message scheduling'] },
+    { version: '1.1.0', date: '2025-10-10', changes: ['Auto-response rules engine', 'User group routing', 'Improved webhook reliability'] },
+    { version: '1.0.0', date: '2025-07-15', changes: ['Initial release', 'Telegram bot connection', 'Basic message routing', 'Chat history logging'] },
+  ],
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
+    { version: '3.1.0', date: '2026-02-01', changes: ['miniPaint layer compositing improvements', 'Diagram auto-layout algorithm', 'XLSX formula support expanded'] },
+    { version: '3.0.0', date: '2025-12-15', changes: ['Added miniPaint image editor', 'Diagram tool with real-time sync', 'Named version snapshots for all grain types'] },
+    { version: '2.0.0', date: '2025-09-20', changes: ['Document editor powered by TipTap + Yjs CRDT', 'Real-time presence indicators', 'Comments system'] },
+    { version: '1.0.0', date: '2025-06-01', changes: ['Initial release', 'Spreadsheet with WebSocket collaboration', 'CSV and JSON import/export'] },
+  ],
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
+    { version: '1.3.0', date: '2026-01-18', changes: ['Full-text search across all messages', 'Bulk operations (delete, archive, move)', 'Draft auto-save'] },
+    { version: '1.2.0', date: '2025-11-01', changes: ['Custom folder support', 'Star/flag messages', 'Improved attachment handling'] },
+    { version: '1.1.0', date: '2025-08-20', changes: ['Reply, Reply All, Forward support', 'CC/BCC fields', 'WebSocket push for new mail'] },
+    { version: '1.0.0', date: '2025-06-15', changes: ['Initial release', 'Native Cap\'n Proto RPC integration', 'HTMX frontend', 'SQLite storage backend'] },
+  ],
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
+    { version: '1.1.0', date: '2026-01-25', changes: ['Public branch static site publishing', 'Improved diff viewer', 'Search file contents'] },
+    { version: '1.0.0', date: '2025-08-01', changes: ['Initial release', 'Git hosting with GitWeb interface', 'Clone, push, pull support', 'Sandstorm capability-based auth'] },
+  ],
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
+    { version: '1.1.0', date: '2026-01-12', changes: ['Extension manifest validator', 'Multi-version shell testing', 'Improved log output formatting'] },
+    { version: '1.0.0', date: '2025-10-01', changes: ['Initial release', 'Shell extension package loader', 'Test suite auto-detection', 'Sandbox test environment'] },
+  ],
+};
+
+const APP_FEES = {
+  _platform: {
+    selfHosted: { price: 'FREE', description: 'Run on your own Sandstorm server with no ongoing fees' },
+    plans: [
+      { tier: 'Starter', sol: '0.1', storage: '1 GB', grains: 5 },
+      { tier: 'Standard', sol: '0.5', storage: '10 GB', grains: 25 },
+      { tier: 'Professional', sol: '2.0', storage: '50 GB', grains: 100 },
+      { tier: 'Enterprise', sol: '10.0', storage: '500 GB', grains: '\u221e' },
+    ],
+    grainNote: 'Each app instance is a grain. Share NFTs (~0.005 SOL tx fee) enable per-user access within your plan quota.',
+    storageNote: 'Storage is included in your pBay plan tier. Self-hosted deployments have unlimited storage.',
+    ipfsNote: 'Publish permanent IPFS snapshots via Arweave for ~0.01\u20130.5 AR per snapshot depending on data size. Your data becomes permanently available on the decentralized web.',
+    paymentNote: 'All payments are in SOL on the Solana blockchain via Phantom, Solflare, or Backpack wallets.',
+  },
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
+    { service: 'Telegram Bot API', cost: 'Free', note: 'Telegram provides the bot API at no cost' },
+  ],
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
+    { service: 'Postmark Email API', cost: 'Optional', note: 'For enhanced outbound email delivery. Free tier: 100 emails/mo' },
+  ],
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
+    { service: 'No third-party APIs required', cost: '\u2014', note: 'All verification runs locally within your grain' },
+  ],
+};
+
 function getAppFAQ(app) {
-  const specific = APP_FAQ[app.appId] || [];
-  const license = app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl;
-  return [...specific, ...license, ...APP_FAQ._common];
+  const specific = (APP_FAQ[app.appId] || []).map((item, i) => i === 0 ? { ...item, featured: true } : item);
+  const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl).map((item, i) => i === 0 ? { ...item, featured: true } : item);
+  const common = APP_FAQ._common.map((item, i) => i === 1 ? { ...item, featured: true } : item);
+  return [...specific, ...license, ...common];
 }
 
 function getAppReviews(app) {
@@ -799,13 +864,23 @@ function getAvgRating(reviews) {
 
 function DetailPage({ app, host, onClose }) {
   const url = installUrl(host, app);
-  const [tab, setTab] = useState('overview');
-  const [openFaq, setOpenFaq] = useState(null);
-
-  const reviews = getAppReviews(app);
-  const avgRating = getAvgRating(reviews);
-  const faq = getAppFAQ(app);
+  const reviews = useMemo(() => getAppReviews(app), [app]);
+  const avgRating = useMemo(() => getAvgRating(reviews), [reviews]);
+  const faq = useMemo(() => getAppFAQ(app), [app]);
   const docs = APP_DOCS[app.appId] || '';
+  const versions = APP_VERSIONS[app.appId] || [];
+  const appFees = APP_FEES[app.appId] || [];
+  const platformFees = APP_FEES._platform;
+
+  const featuredFaqSet = useMemo(() => {
+    const s = new Set();
+    faq.forEach((item, i) => { if (item.featured) s.add(i); });
+    return s;
+  }, [faq]);
+
+  const [tab, setTab] = useState('overview');
+  const [openFaq, setOpenFaq] = useState(() => new Set(featuredFaqSet));
+  const [docSection, setDocSection] = useState(0);
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -814,7 +889,7 @@ function DetailPage({ app, host, onClose }) {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  useEffect(() => { setTab('overview'); setOpenFaq(null); }, [app.appId]);
+  useEffect(() => { setTab('overview'); setOpenFaq(new Set(featuredFaqSet)); setDocSection(0); }, [app.appId, featuredFaqSet]);
 
   if (!app) return null;
 
@@ -841,6 +916,8 @@ function DetailPage({ app, host, onClose }) {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'docs', label: 'Documentation' },
+    { id: 'fees', label: 'Fees' },
+    { id: 'versions', label: `Versions (${versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${reviews.length})` },
   ];
@@ -1012,72 +1089,127 @@ function DetailPage({ app, host, onClose }) {
   );
 
   /* ---- DOCS TAB ---- */
-  const DocsTab = () => (
-    <div style={{
-      padding: 28, background: T.surface,
-      borderRadius: T.radius, border: `1px solid ${T.border}`,
-      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      maxWidth: 780,
-    }}>
-      {docs ? (
-        <SimpleMarkdown text={docs} />
-      ) : (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📄</div>
-          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-            Documentation coming soon
-          </p>
-          {app.codeLink && (
-            <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
-              display: "inline-block", marginTop: 16, fontSize: 12, padding: "10px 20px",
-              border: `1px solid ${T.cyan}33`, borderRadius: 3,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}>View README on GitHub →</a>
-          )}
+  const docSections = useMemo(() => {
+    if (!docs) return [];
+    const raw = docs.split(/\n(?=## )/);
+    return raw.map((part) => {
+      const fl = part.split('\n')[0];
+      let title;
+      if (fl.startsWith('# ')) title = fl.replace(/^# /, '');
+      else if (fl.startsWith('## ')) title = fl.replace(/^## /, '');
+      else title = 'Introduction';
+      return { title, content: part };
+    });
+  }, [docs]);
+
+  const DocsTab = () => {
+    if (!docs) return (
+      <div style={{ textAlign: "center", padding: "60px 20px" }}>
+        <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📄</div>
+        <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+          Documentation coming soon
+        </p>
+        {app.codeLink && (
+          <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
+            display: "inline-block", marginTop: 16, fontSize: 12, padding: "10px 20px",
+            border: `1px solid ${T.cyan}33`, borderRadius: 3,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>View README on GitHub →</a>
+        )}
+      </div>
+    );
+    return (
+      <div className="doc-layout">
+        {docSections.length > 1 && (
+          <div className="doc-sidebar" style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.border}`, padding: 12,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".14em", color: T.textDim, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>
+              Sections
+            </div>
+            {docSections.map((s, i) => (
+              <button key={i} onClick={() => setDocSection(i)} style={{
+                textAlign: "left", padding: "8px 12px", border: "none", cursor: "pointer",
+                borderRadius: T.radiusSm, fontSize: 12, fontWeight: 600,
+                fontFamily: "'JetBrains Mono', monospace",
+                background: docSection === i ? T.cyan + "15" : "transparent",
+                color: docSection === i ? T.cyan : T.textSec,
+                borderLeft: docSection === i ? `2px solid ${T.cyan}` : "2px solid transparent",
+                transition: "all .2s", whiteSpace: "nowrap",
+                textShadow: docSection === i ? `0 0 6px ${T.accentGlow}` : "none",
+              }}>
+                {s.title}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{
+          flex: 1, padding: 28, background: T.surface,
+          borderRadius: T.radius, border: `1px solid ${T.border}`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          maxWidth: 780, minWidth: 0,
+        }}>
+          <SimpleMarkdown text={docSections[docSection]?.content || docs} />
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   /* ---- FAQ TAB ---- */
+  const toggleFaq = (i) => {
+    setOpenFaq(prev => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return next;
+    });
+  };
+
   const FAQTab = () => (
     <div style={{ maxWidth: 780 }}>
       <SectionHeader>Frequently Asked Questions</SectionHeader>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-        {faq.map((item, i) => (
-          <div key={i} className="faq-item" style={{
-            border: `1px solid ${openFaq === i ? T.cyan + '33' : T.border}`,
-            borderRadius: T.radius, overflow: "hidden", transition: "border-color .2s",
-          }}>
-            <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{
-              width: "100%", textAlign: "left",
-              padding: "16px 20px", cursor: "pointer",
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              gap: 12, fontSize: 13, fontWeight: 600, color: openFaq === i ? T.cyan : T.text,
-              background: T.surface, border: "none", transition: "all .2s",
-              fontFamily: "inherit",
+        {faq.map((item, i) => {
+          const isOpen = openFaq.has(i);
+          return (
+            <div key={i} className="faq-item" style={{
+              border: `1px solid ${isOpen ? T.cyan + '33' : T.border}`,
+              borderRadius: T.radius, overflow: "hidden", transition: "border-color .2s",
             }}>
-              <span>{item.q}</span>
-              <span style={{
-                fontSize: 16, color: T.cyan, transition: "transform .2s",
-                transform: openFaq === i ? 'rotate(45deg)' : 'none',
-                flexShrink: 0, fontFamily: "'JetBrains Mono', monospace",
-                textShadow: `0 0 4px ${T.accentGlow}`,
-              }}>+</span>
-            </button>
-            {openFaq === i && (
-              <div style={{
-                padding: "0 20px 18px", fontSize: 13, lineHeight: 1.8, color: T.textSec,
-                background: T.surface, borderTop: `1px solid ${T.borderLight}`,
-                animation: "fadeIn .15s ease-out",
+              <button onClick={() => toggleFaq(i)} style={{
+                width: "100%", textAlign: "left",
+                padding: "16px 20px", cursor: "pointer",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                gap: 12, fontSize: 13, fontWeight: 600, color: isOpen ? T.cyan : T.text,
+                background: T.surface, border: "none", transition: "all .2s",
+                fontFamily: "inherit",
               }}>
-                <div style={{ paddingTop: 14 }}>
-                  <SimpleMarkdown text={item.a} />
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {item.featured && <span style={{ fontSize: 8, color: T.yellow, textShadow: `0 0 4px ${T.yellow}66` }}>★</span>}
+                  {item.q}
+                </span>
+                <span style={{
+                  fontSize: 16, color: T.cyan, transition: "transform .2s",
+                  transform: isOpen ? 'rotate(45deg)' : 'none',
+                  flexShrink: 0, fontFamily: "'JetBrains Mono', monospace",
+                  textShadow: `0 0 4px ${T.accentGlow}`,
+                }}>+</span>
+              </button>
+              {isOpen && (
+                <div style={{
+                  padding: "0 20px 18px", fontSize: 13, lineHeight: 1.8, color: T.textSec,
+                  background: T.surface, borderTop: `1px solid ${T.borderLight}`,
+                  animation: "fadeIn .15s ease-out",
+                }}>
+                  <div style={{ paddingTop: 14 }}>
+                    <SimpleMarkdown text={item.a} />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1169,6 +1301,193 @@ function DetailPage({ app, host, onClose }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+
+  /* ---- VERSIONS TAB ---- */
+  const VersionsTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      <SectionHeader>Version History</SectionHeader>
+      {versions.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📋</div>
+          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+            Version history coming soon
+          </p>
+        </div>
+      ) : (
+        <div style={{ position: "relative", paddingLeft: 28, marginTop: 16 }}>
+          <div style={{ position: "absolute", left: 5, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, ${T.cyan}44, ${T.purple}22, transparent)` }} />
+          {versions.map((v, i) => (
+            <div key={i} style={{ position: "relative", marginBottom: 32, animation: `fadeUp .3s ease-out ${i * 0.08}s both` }}>
+              <div style={{
+                position: "absolute", left: -28, top: 4, width: 12, height: 12,
+                borderRadius: "50%", background: i === 0 ? T.cyan : T.bgAlt,
+                border: `2px solid ${i === 0 ? T.cyan : T.textDim + '44'}`,
+                boxShadow: i === 0 ? `0 0 10px ${T.cyan}66` : "none",
+              }} />
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+                <span style={{
+                  fontSize: 16, fontWeight: 800,
+                  color: i === 0 ? T.cyan : T.text,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textShadow: i === 0 ? `0 0 8px ${T.accentGlow}` : "none",
+                }}>v{v.version}</span>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v.date}</span>
+                {i === 0 && <Badge neon={T.cyan}>Latest</Badge>}
+              </div>
+              <div style={{
+                padding: "16px 20px", background: T.surface,
+                borderRadius: T.radius, border: `1px solid ${i === 0 ? T.cyan + '22' : T.border}`,
+                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              }}>
+                {v.changes.map((c, j) => (
+                  <div key={j} style={{
+                    fontSize: 13, color: T.textSec, lineHeight: 1.8,
+                    paddingLeft: 16, position: "relative",
+                  }}>
+                    <span style={{ position: "absolute", left: 0, color: T.cyan, fontSize: 11, textShadow: `0 0 4px ${T.accentGlow}` }}>▸</span>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  /* ---- FEES TAB ---- */
+  const FeesTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      {/* App Price */}
+      <div style={{
+        padding: 28, background: T.surface, borderRadius: T.radius,
+        border: `1px solid ${T.green}33`, marginBottom: 20,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <SectionHeader color={T.green}>App Price</SectionHeader>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <span style={{
+            fontSize: 36, fontWeight: 900, color: T.green,
+            fontFamily: "'Orbitron', sans-serif",
+            textShadow: `0 0 15px ${T.greenGlow}`,
+          }}>FREE</span>
+          <span style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
+            {platformFees.selfHosted.description}
+          </span>
+        </div>
+      </div>
+
+      {/* pBay Hosting Plans */}
+      <div style={{
+        padding: 28, background: T.surface, borderRadius: T.radius,
+        border: `1px solid ${T.border}`, marginBottom: 20,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <SectionHeader color={T.purple}>pBay Hosted Plans</SectionHeader>
+        <p style={{ fontSize: 13, color: T.textSec, marginBottom: 20, lineHeight: 1.7 }}>
+          Prefer managed hosting? Use pBay — plans are denominated in SOL on the Solana blockchain.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          {platformFees.plans.map((plan) => (
+            <div key={plan.tier} style={{
+              padding: 20, borderRadius: T.radius,
+              border: `1px solid ${plan.tier === 'Professional' ? T.cyan + '44' : T.border}`,
+              background: plan.tier === 'Professional' ? T.cyan + '08' : "transparent",
+              position: "relative",
+            }}>
+              {plan.tier === 'Professional' && (
+                <div style={{
+                  position: "absolute", top: -1, right: 16, padding: "2px 10px",
+                  background: T.cyan, color: T.bg, fontSize: 9, fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif", letterSpacing: ".08em",
+                  borderRadius: "0 0 4px 4px",
+                }}>POPULAR</div>
+              )}
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.text, fontFamily: "'Orbitron', sans-serif", marginBottom: 8 }}>
+                {plan.tier}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 12 }}>
+                <span style={{ fontSize: 24, fontWeight: 900, color: T.cyan, fontFamily: "'Orbitron', sans-serif" }}>
+                  {plan.sol}
+                </span>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>SOL/mo</span>
+              </div>
+              <div style={{ fontSize: 11, color: T.textSec, lineHeight: 1.8 }}>
+                <div>{plan.storage} storage</div>
+                <div>{typeof plan.grains === 'number' ? plan.grains + ' grains' : plan.grains + ' grains'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: T.textDim, marginTop: 16, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>
+          {platformFees.paymentNote}
+        </p>
+      </div>
+
+      {/* Per-Grain Model */}
+      <div style={{
+        padding: 24, background: T.surface, borderRadius: T.radius,
+        border: `1px solid ${T.border}`, marginBottom: 20,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <SectionHeader color={T.yellow}>Per-Grain & Share NFTs</SectionHeader>
+        <p style={{ fontSize: 13, color: T.textSec, lineHeight: 1.8 }}>
+          {platformFees.grainNote}
+        </p>
+      </div>
+
+      {/* Third-Party API Fees */}
+      {appFees.length > 0 && (
+        <div style={{
+          padding: 24, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.peach}33`, marginBottom: 20,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <SectionHeader color={T.peach}>Third-Party Services</SectionHeader>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {appFees.map((fee, i) => (
+              <div key={i} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                gap: 16, padding: "12px 16px",
+                border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{fee.service}</div>
+                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{fee.note}</div>
+                </div>
+                <Badge neon={fee.cost === 'Free' ? T.green : T.peach}>{fee.cost}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Storage & IPFS */}
+      <div className="fee-grid-2">
+        <div style={{
+          padding: 24, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.border}`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <SectionHeader>Storage</SectionHeader>
+          <p style={{ fontSize: 12, color: T.textSec, lineHeight: 1.8 }}>
+            {platformFees.storageNote}
+          </p>
+        </div>
+        <div style={{
+          padding: 24, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.magenta}22`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <SectionHeader color={T.magenta}>IPFS Forever Snapshots</SectionHeader>
+          <p style={{ fontSize: 12, color: T.textSec, lineHeight: 1.8 }}>
+            {platformFees.ipfsNote}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1327,6 +1646,8 @@ function DetailPage({ app, host, onClose }) {
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
           {tab === 'docs' && <DocsTab />}
+          {tab === 'fees' && <FeesTab />}
+          {tab === 'versions' && <VersionsTab />}
           {tab === 'faq' && <FAQTab />}
           {tab === 'reviews' && <ReviewsTab />}
         </div>

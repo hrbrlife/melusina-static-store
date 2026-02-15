@@ -24,7 +24,7 @@ publish:
 
 	@# --- Pull submodules ---
 	@echo "=== Updating submodules ==="
-	git submodule update --init --recursive --remote
+	git submodule update --init --remote
 	git add -A
 	git diff --cached --quiet || git commit -m "update submodules" --quiet
 

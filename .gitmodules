@@ -22,3 +22,8 @@
 	path = packages/hrbrlife/shell_tester
 	url = https://github.com/hrbrlife/shell_tester.git
 	branch = publish
+[submodule "packages/hrbrlife/Melusina"]
+	path = packages/hrbrlife/Melusina
+	url = https://github.com/hrbrlife/Melusina.git
+	branch = pbay-app
+	fetchRecurseSubmodules = false

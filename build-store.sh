@@ -66,7 +66,7 @@ fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
 
 # --- Step 0: Init submodules -------------------------------------------------
 info "Initializing submodules..."
-git submodule update --init --recursive 2>/dev/null || true
+git submodule update --init 2>/dev/null || true
 
 # --- Step 1: Validate and collect metadata ------------------------------------
 info "Scanning $PACKAGES_DIR/ for app bundles..."

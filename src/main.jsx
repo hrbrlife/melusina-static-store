@@ -152,14 +152,18 @@ body::after{
   box-shadow:0 0 20px ${T.accentGlow},0 4px 16px rgba(0,0,0,.5);
 }
 
-.card-shots{display:flex;gap:6px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.card-shots::-webkit-scrollbar{display:none}
-.card-shots img{
-  border-radius:3px;border:1px solid ${T.border};
-  object-fit:cover;flex-shrink:0;cursor:pointer;
-  transition:border-color .2s,box-shadow .2s;
-}
-.card-shots img:hover{border-color:${T.cyan};box-shadow:0 0 12px ${T.accentGlow}}
+.card-slideshow{position:relative;overflow:hidden;aspect-ratio:16/9;background:${T.bgAlt};border-radius:${T.radius}px ${T.radius}px 0 0}
+.card-slideshow-track{display:flex;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform}
+.card-slideshow-slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card-slideshow-slide img{width:100%;height:100%;object-fit:cover}
+.card-slideshow-icon{display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:linear-gradient(135deg,${T.bgAlt},rgba(42,32,78,0.5))}
+.card-slideshow-dots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:4}
+.card-slideshow-dot{width:6px;height:6px;border-radius:50%;border:none;padding:0;cursor:pointer;transition:all .25s;background:rgba(255,255,255,.35)}
+.card-slideshow-dot.active{background:${T.cyan};box-shadow:0 0 6px ${T.cyan}88;width:16px;border-radius:3px}
+.card-slideshow-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:4;width:28px;height:28px;border-radius:50%;border:none;background:rgba(17,14,36,.7);color:${T.text};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.card-slideshow:hover .card-slideshow-nav{opacity:1}
+.card-slideshow-nav.prev{left:6px}
+.card-slideshow-nav.next{right:6px}
 
 .lightbox-overlay{
   position:fixed;inset:0;z-index:900;
@@ -344,12 +348,73 @@ function HostBar({ host, setHost }) {
   );
 }
 
+/* ─── Card Slideshow ────────────────────────────────────────────────────────── */
+
+function CardSlideshow({ app, shots }) {
+  const [idx, setIdx] = useState(0);
+  const total = 1 + shots.length; // icon + screenshots
+
+  const startX = React.useRef(null);
+  const onTouchStart = (e) => { startX.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (startX.current === null) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    if (Math.abs(dx) > 40) {
+      if (dx < 0 && idx < total - 1) setIdx(idx + 1);
+      else if (dx > 0 && idx > 0) setIdx(idx - 1);
+    }
+    startX.current = null;
+  };
+
+  return (
+    <div className="card-slideshow"
+      onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="card-slideshow-track" style={{ transform: `translateX(-${idx * 100}%)` }}>
+        {/* slide 0: app icon */}
+        <div className="card-slideshow-slide">
+          <div className="card-slideshow-icon">
+            <AppIcon app={app} size={72} />
+          </div>
+        </div>
+        {/* slides 1+: screenshots */}
+        {shots.map((s, i) => (
+          <div key={i} className="card-slideshow-slide">
+            <img src={screenshotUrl(app.appId, s)}
+              alt={shotCaption(s) || `Screenshot ${i + 1}`}
+              loading="lazy"
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+          </div>
+        ))}
+      </div>
+      {/* dots */}
+      {total > 1 && (
+        <div className="card-slideshow-dots">
+          {Array.from({ length: total }).map((_, i) => (
+            <button key={i} className={`card-slideshow-dot${i === idx ? ' active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); setIdx(i); }} />
+          ))}
+        </div>
+      )}
+      {/* prev/next arrows */}
+      {total > 1 && idx > 0 && (
+        <button className="card-slideshow-nav prev"
+          onClick={(e) => { e.stopPropagation(); setIdx(idx - 1); }}>‹</button>
+      )}
+      {total > 1 && idx < total - 1 && (
+        <button className="card-slideshow-nav next"
+          onClick={(e) => { e.stopPropagation(); setIdx(idx + 1); }}>›</button>
+      )}
+    </div>
+  );
+}
+
 /* ─── App Card ─────────────────────────────────────────────────────────────── */
 
 function AppCard({ app, onSelect, host }) {
   const [hov, setHov] = useState(false);
   const url = installUrl(host, app);
-  const shots = app.screenshots || [];
+  const shots = (app.screenshots || []).slice(0, 5);
 
   return (
     <div role="button" tabIndex={0}
@@ -386,51 +451,27 @@ function AppCard({ app, onSelect, host }) {
         </div>
       )}
 
-      {/* corner accent */}
-      <div style={{
-        position: "absolute", top: 0, right: 0, width: 30, height: 30,
-        borderBottom: `1px solid ${hov ? T.cyan + "44" : T.cyan + "15"}`,
-        borderLeft: `1px solid ${hov ? T.cyan + "44" : T.cyan + "15"}`,
-        borderRadius: `0 ${T.radius}px 0 0`,
-        transition: "border-color .3s",
-      }} />
+      {/* slideshow: icon first, then screenshots */}
+      <CardSlideshow app={app} shots={shots} />
 
-      {/* screenshots */}
-      {shots.length > 0 && (
-        <div className="card-shots" style={{ padding: "10px 10px 0" }}>
-          {shots.slice(0, 4).map((s, i) => (
-            <img key={i} src={screenshotUrl(app.appId, s)}
-              alt={shotCaption(s) || `Screenshot ${i + 1}`}
-              loading="lazy"
-              style={{ width: 120, height: 75 }}
-              onClick={(e) => { e.stopPropagation(); onSelect(app.appId); }}
-              onError={(e) => { e.target.style.display = "none"; }}
-            />
-          ))}
-        </div>
-      )}
-
-      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          <AppIcon app={app} size={48} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{
-              fontSize: 14, fontWeight: 700, margin: 0,
-              fontFamily: "'Orbitron', sans-serif",
-              color: hov ? T.cyan : T.text,
-              textShadow: hov ? `0 0 10px ${T.accentGlow}` : "none",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              transition: "color .3s, text-shadow .3s",
-              letterSpacing: ".02em",
-            }}>{app.name}</h3>
-            <p style={{
-              fontSize: 12, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}>
-              {app.shortDescription || app.summary || ""}
-            </p>
-          </div>
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1, position: "relative", zIndex: 2 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{
+            fontSize: 14, fontWeight: 700, margin: 0,
+            fontFamily: "'Orbitron', sans-serif",
+            color: hov ? T.cyan : T.text,
+            textShadow: hov ? `0 0 10px ${T.accentGlow}` : "none",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            transition: "color .3s, text-shadow .3s",
+            letterSpacing: ".02em",
+          }}>{app.name}</h3>
+          <p style={{
+            fontSize: 12, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}>
+            {app.shortDescription || app.summary || ""}
+          </p>
         </div>
 
         <div style={{
@@ -452,7 +493,7 @@ function AppCard({ app, onSelect, host }) {
                 fontFamily: "'Orbitron', sans-serif",
                 fontWeight: 700, fontSize: 10, letterSpacing: ".1em",
                 textTransform: "uppercase",
-                borderRadius: 2, whiteSpace: "nowrap",
+                borderRadius: T.radiusSm, whiteSpace: "nowrap",
                 textDecoration: "none",
                 textShadow: `0 0 8px ${T.accentGlow}`,
                 boxShadow: `0 0 12px ${T.accentGlow}`,

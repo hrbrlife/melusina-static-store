@@ -83,17 +83,16 @@ publish: build
 	@# --- Deploy: orphan commit directly to publish (no checkout, no re-upload) ---
 	@echo "=== Deploy to publish ==="
 	@# Create a new git index from the staging directory
-	TINDEX=$$(mktemp /tmp/store-index.XXXXXX)
+	TINDEX=$$(mktemp -u /tmp/store-index.XXXXXX)
 	export GIT_INDEX_FILE="$$TINDEX"
 	@# Add all staged files to a temporary index
-	(cd "$$STMP" && find . -not -name '.' -not -path './.git/*' -type f -print0 \
-		| xargs -0 git --git-dir="$(CURDIR)/.git" --work-tree="$$STMP" add --force)
+	GIT_DIR="$(CURDIR)/.git" GIT_WORK_TREE="$$STMP" git add -A
 	@# Create a tree object from the index
-	TREE=$$(git write-tree)
+	TREE=$$(GIT_DIR="$(CURDIR)/.git" git write-tree)
 	@# Create an orphan commit (no parent)
-	COMMIT=$$(echo "Store publish $$(date +%Y-%m-%d\ %H:%M)" | git commit-tree "$$TREE")
+	COMMIT=$$(echo "Store publish $$(date +%Y-%m-%d\ %H:%M)" | GIT_DIR="$(CURDIR)/.git" git commit-tree "$$TREE")
 	@# Update the publish branch ref to point at this commit
-	git update-ref refs/heads/$(PUBLISH_BRANCH) "$$COMMIT"
+	GIT_DIR="$(CURDIR)/.git" git update-ref refs/heads/$(PUBLISH_BRANCH) "$$COMMIT"
 	rm -f "$$TINDEX"
 	unset GIT_INDEX_FILE
 	@# Push — only new/changed objects get uploaded

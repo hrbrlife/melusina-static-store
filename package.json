@@ -12,9 +12,12 @@
     "publish": "make publish"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/orbitron": "^5.2.8",
+    "date-fns": "^2.30.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "date-fns": "^2.30.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",

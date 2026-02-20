@@ -1,6 +1,32 @@
 {
   "apps": [
     {
+      "appId": "aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0",
+      "name": "AI Lagoon",
+      "version": "1.0.0",
+      "versionNumber": 1,
+      "packageId": "79d177d692748ce2098ef5175d2ba82d",
+      "shortDescription": "AI collaboration and exploration platform",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/AI_Lagoon",
+      "codeLink": "https://github.com/hrbrlife/AI_Lagoon",
+      "upstreamAuthor": "AI Lagoon",
+      "createdAt": 1771200000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "",
+      "screenshots": [],
+      "imageId": "cf46fc94cac821e90bb8c49ef4ad6ea9.svg"
+    },
+    {
       "appId": "qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h",
       "name": "BLOOM Identity",
       "version": "1.0.0",
@@ -144,6 +170,58 @@
         }
       ],
       "imageId": "3cc06a80d318170436eb3d844c5a2773.svg"
+    },
+    {
+      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+      "packageId": "5ad8504944c9805184c6ff8daf518fcc",
+      "name": "MiniGit",
+      "version": "0.2.0",
+      "versionNumber": 3,
+      "shortDescription": "Lightweight Git hosting with web viewer",
+      "categories": [
+        "developerTools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/MiniGit",
+      "codeLink": "https://github.com/hrbrlife/MiniGit",
+      "upstreamAuthor": "alexeikarp",
+      "createdAt": 1739318400,
+      "author": {
+        "name": "Alexei Karpov",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
+      "description": "A simple wrapper around git-http-backend and GitWeb, providing an extremely lightweight way to host\na web-browsable Git repository.\n\nYou can connect through your Git client to pull or push, and you can connect through your web browser\nto search file contents and explore revision history.\n\nYou can also push to a special branch named `public` in order to publish its\nstatic contents at a public Pearl URL."
+    },
+    {
+      "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+      "name": "Shell Tester",
+      "version": "0.1.4",
+      "versionNumber": 1,
+      "packageId": "0c4af4844d6411e219f7f71c1aa4a5cd",
+      "shortDescription": "Melusina Shell Extension Tester",
+      "categories": [
+        "Developer Tools"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/shell_tester",
+      "codeLink": "https://github.com/hrbrlife/shell_tester",
+      "upstreamAuthor": "Shell Tester",
+      "createdAt": 1771075908000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "d1ba2752fc9a9b6df28d64805c889a3c.svg",
+      "description": "",
+      "screenshots": []
     }
   ]
 }

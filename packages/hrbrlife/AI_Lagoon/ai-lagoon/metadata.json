@@ -1,0 +1,25 @@
+{
+  "appId": "aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0",
+  "name": "AI Lagoon",
+  "version": "1.0.0",
+  "versionNumber": 1,
+  "packageId": "79d177d692748ce2098ef5175d2ba82d",
+  "shortDescription": "AI collaboration and exploration platform",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/AI_Lagoon",
+  "codeLink": "https://github.com/hrbrlife/AI_Lagoon",
+  "upstreamAuthor": "AI Lagoon",
+  "createdAt": 1771200000000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

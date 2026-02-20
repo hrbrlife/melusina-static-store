@@ -1,7 +1,7 @@
 {
-  "name": "Melusina App Market",
+  "name": "Melusina App Bazaar",
   "short_name": "Melusina",
-  "description": "Cyberpunk app marketplace for Melusina Sandstorm",
+  "description": "Cyberpunk app bazaar for Melusina Sandstorm",
   "start_url": "/melusina-static-store/",
   "scope": "/melusina-static-store/",
   "display": "standalone",

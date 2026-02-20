@@ -1753,7 +1753,7 @@ function App() {
                 fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: ".12em", textTransform: "uppercase",
               }}>
-                APP.BAZAAR
+                APP BAZAAR
               </span>
             </span>
           </div>

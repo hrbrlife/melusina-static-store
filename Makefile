@@ -1,7 +1,8 @@
-# Makefile — Deploy dist-publish/ to the publish branch
+# Makefile — Build and deploy the Melusina App Bazaar
 #
-#   make publish   Stage dist-publish/ + update/, split files >95MB, push to publish branch
-#   make clean     Remove staging artifacts
+#   make publish   Build store, push to publish branch (fast orphan deploy)
+#   make build     Build only (no deploy)
+#   make clean     Remove build artifacts
 #
 SHELL       := /bin/bash
 .ONESHELL:
@@ -14,44 +15,37 @@ OUTPUT_DIR     := dist-publish
 MAX_FILE_SIZE  := $$((95 * 1024 * 1024))
 CHUNK_SIZE     := 90M
 
-.PHONY: publish clean
+.PHONY: publish build clean dev
 
-publish:
+build:
+	@echo "=== Building store ==="
+	bash build-store.sh
+	@test -d "$(OUTPUT_DIR)" || { echo "Build failed — no $(OUTPUT_DIR)/"; exit 1; }
+	@echo "=== Build complete ==="
+
+dev:
+	@npm install --silent 2>/dev/null
+	npx vite
+
+publish: build
 	@# --- Preflight ---
 	@test -d .git || { echo "Not a git repo"; exit 1; }
 	@test "$$(git branch --show-current)" = "$(MAIN_BRANCH)" \
 		|| { echo "Must be on $(MAIN_BRANCH)"; exit 1; }
 
-	@# --- Pull submodules ---
-	@echo "=== Updating submodules ==="
-	git submodule update --init --remote
-	git add -A
-	git diff --cached --quiet || git commit -m "update submodules" --quiet
-
-	@# --- Build store ---
-	@echo "=== Building store ==="
-	bash build-store.sh
-
-	@test -d "$(OUTPUT_DIR)" || { echo "Build failed — no $(OUTPUT_DIR)/"; exit 1; }
-
-	@# --- Stage to temp dir OUTSIDE the repo (survives branch switch) ---
+	@# --- Stage to temp dir ---
 	@echo "=== Staging ==="
 	STMP=$$(mktemp -d /tmp/store-publish.XXXXXX)
 	trap 'rm -rf "$$STMP"' EXIT
 	cp -a $(OUTPUT_DIR)/. "$$STMP/"
 	@if [ -d update ]; then \
-		echo "  Copying update/ (LFS-resolved)"; \
+		echo "  Copying update/"; \
 		mkdir -p "$$STMP/update"; \
 		cp -a update/. "$$STMP/update/"; \
 	fi
+	touch "$$STMP/.nojekyll"
 
-	@# --- Commit and push main ---
-	@echo "=== Push main ==="
-	git add -A
-	git diff --cached --quiet || git commit -m "Store build $$(date +%Y-%m-%d)" --quiet
-	git push $(REMOTE) $(MAIN_BRANCH) 2>&1 | tail -3
-
-	@# --- Split files >95 MB into 90 MB chunks ---
+	@# --- Split files >95 MB ---
 	@echo "=== Split large files ==="
 	@SPLIT=0; \
 	while IFS= read -r -d '' bigfile; do \
@@ -76,39 +70,36 @@ publish:
 			"$$orig_name" "$$orig_sha" "$$orig_size" "$$parts" \
 			> "$${bigfile}.parts.json"; \
 		echo "  → $$(ls "$${bigfile}".part* | wc -l) parts"; \
-		mdir=$$(dirname "$$bigfile"); \
-		if [ -f "$$mdir/manifest.json" ] && echo "$$orig_name" | grep -q '^sandstorm-.*\.tar\.xz$$'; then \
-			python3 -c " \
-import json, os; \
-m=json.load(open('$$mdir/manifest.json')); p=json.load(open('$${bigfile}.parts.json')); \
-m['split']=True; m['partsManifest']=os.path.basename('$${bigfile}.parts.json'); m['parts']=p['parts']; \
-json.dump(m,open('$$mdir/manifest.json','w'),indent=2)"; \
-		fi; \
 		SPLIT=$$((SPLIT+1)); \
 	done < <(find "$$STMP" -type f -size +$(MAX_FILE_SIZE)c -print0); \
 	[ "$$SPLIT" -eq 0 ] && echo "  Nothing to split"
 
-	@# --- Deploy to publish branch ---
-	@echo "=== Deploy to publish ==="
-	git checkout $(PUBLISH_BRANCH) 2>/dev/null
-	find . -maxdepth 1 -not -name '.git' -not -name '.' -exec rm -rf {} + 2>/dev/null || true
-	cp -a "$$STMP"/. .
-	touch .nojekyll
-	rm -f .gitattributes
-	@# Verify nothing is oversized
-	@OVER=0; \
-	while IFS= read -r -d '' f; do \
-		[ "$$(stat -c%s "$$f")" -gt $(MAX_FILE_SIZE) ] && { echo "FAIL: $$f too large"; OVER=$$((OVER+1)); }; \
-	done < <(find . -not -path './.git/*' -type f -print0); \
-	[ "$$OVER" -gt 0 ] && { git checkout $(MAIN_BRANCH) --quiet; exit 1; }
+	@# --- Commit main (submodule updates, build artifacts) ---
+	@echo "=== Commit main ==="
 	git add -A
-	git diff --cached --quiet \
-		&& echo "  No changes" \
-		|| { git commit -m "Store publish $$(date +%Y-%m-%d\ %H:%M)" --quiet; \
-		     git push $(REMOTE) $(PUBLISH_BRANCH) --force 2>&1 | tail -5; }
-	git checkout $(MAIN_BRANCH) --quiet 2>/dev/null
+	git diff --cached --quiet || git commit -m "Store build $$(date +%Y-%m-%d)" --quiet
+	git push $(REMOTE) $(MAIN_BRANCH) || true
+
+	@# --- Deploy: orphan commit directly to publish (no checkout, no re-upload) ---
+	@echo "=== Deploy to publish ==="
+	@# Create a new git index from the staging directory
+	TINDEX=$$(mktemp /tmp/store-index.XXXXXX)
+	export GIT_INDEX_FILE="$$TINDEX"
+	@# Add all staged files to a temporary index
+	(cd "$$STMP" && find . -not -name '.' -not -path './.git/*' -type f -print0 \
+		| xargs -0 git --git-dir="$(CURDIR)/.git" --work-tree="$$STMP" add --force)
+	@# Create a tree object from the index
+	TREE=$$(git write-tree)
+	@# Create an orphan commit (no parent)
+	COMMIT=$$(echo "Store publish $$(date +%Y-%m-%d\ %H:%M)" | git commit-tree "$$TREE")
+	@# Update the publish branch ref to point at this commit
+	git update-ref refs/heads/$(PUBLISH_BRANCH) "$$COMMIT"
+	rm -f "$$TINDEX"
+	unset GIT_INDEX_FILE
+	@# Push — only new/changed objects get uploaded
+	git push $(REMOTE) $(PUBLISH_BRANCH) --force
 	rm -rf "$$STMP"
 	@echo "=== Done ==="
 
 clean:
-	@echo "Nothing to clean (staging uses /tmp/)"
+	rm -rf dist dist-publish .staging-tmp

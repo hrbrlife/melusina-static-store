@@ -720,7 +720,6 @@ const APP_DOCS = {
 
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': `# Getting Started with BotMother\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Sandstorm.\n\n## Installation\n\n- Install BotMother from the Melusina App Bazaar\n- Create a new BotMother grain on your Sandstorm server\n\n## Setting Up Your Bot\n\n- Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n- Copy the bot token\n- Paste it into BotMother's configuration page\n- Your bot is now connected and routing messages through Sandstorm\n\n## Message Routing\n\nBotMother lets you define routing rules for incoming messages:\n\n- Route by command (e.g. /help, /start)\n- Route by keyword matching\n- Route by user group or chat ID\n- Set up auto-responses for common queries\n\n## Chatrooms\n\nCreate managed chatrooms that your bot moderates:\n\n- Set welcome messages\n- Configure moderation rules\n- Track message history within Sandstorm\n\n## Security\n\nAll message data stays on your Sandstorm server. Bot tokens are stored securely in the grain sandbox.`,
 
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': `# Getting Started with Bureau Office Suite\n\nBureau is a multi-grain collaborative office suite for Sandstorm with four distinct tools.\n\n## Installation\n\n- Install Bureau from the Melusina App Bazaar\n- When creating a new grain, choose the grain type: **Spreadsheet**, **Document**, **Diagram**, or **miniPaint**\n\n## Spreadsheet\n\n- Real-time multi-user editing via WebSocket\n- Cell styling, merged cells, comments\n- Column/row operations with undo/redo\n- Import/export: CSV, JSON, XLSX\n- Named version snapshots with restore\n\n## Document Editor\n\n- Built on TipTap with Yjs CRDT for conflict-free editing\n- Headings, lists, blockquotes, code blocks, tables\n- Real-time collaboration with presence indicators\n- Named version snapshots\n\n## Diagram Tool\n\n- Flowcharts, org charts, network diagrams\n- Shapes, connectors, text labels\n- Real-time sync and versioning\n- Export to image formats\n\n## miniPaint\n\n- Layer-based image editor\n- Filters: blur, sharpen, brightness, contrast\n- Drawing tools, crop, resize, rotate\n- Export: PNG, JPG, BMP, WebP\n\n## Collaboration & Permissions\n\n- **Viewer**: Read-only access\n- **Commenter**: Can add comments\n- **Editor**: Full editing access\n- **Admin**: Manage permissions and settings\n\nAll permissions are enforced server-side via Sandstorm's capability system.`,
 
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': `# Getting Started with MerMail\n\nMerMail is a native email client for Sandstorm, built with Go and HTMX.\n\n## Installation\n\n- Install MerMail from the Melusina App Bazaar\n- Create a new grain — each grain is an independent mailbox\n\n## Receiving Email\n\nEmail arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. No external mail server configuration needed.\n\n## Composing Messages\n\n- Rich compose form with To, CC, BCC fields\n- Reply, Reply All, and Forward support\n- Draft auto-save — resume editing anytime\n- File attachments with inline preview\n\n## Organizing Mail\n\n- Create custom folders\n- Star important messages\n- Move messages between folders\n- Bulk delete and archive\n- Full-text search across all messages\n\n## Sharing Access\n\nUse Sandstorm's sharing system to grant access:\n\n- **Viewer**: Read-only mailbox access\n- **Editor**: Can compose and manage messages\n- **Admin**: Full control including settings\n\n## Technical Architecture\n\n- **Backend**: Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend**: Server-side HTML + HTMX + WebSocket\n- **Storage**: SQLite with automatic migrations\n- **Updates**: Real-time WebSocket push for new mail`,
 
@@ -1397,65 +1396,6 @@ function DetailPage({ app, host, onClose }) {
         </div>
       </div>
 
-      {/* pBay Hosting Plans */}
-      <div style={{
-        padding: 28, background: T.surface, borderRadius: T.radius,
-        border: `1px solid ${T.border}`, marginBottom: 20,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }}>
-        <SectionHeader color={T.purple}>pBay Hosted Plans</SectionHeader>
-        <p style={{ fontSize: 13, color: T.textSec, marginBottom: 20, lineHeight: 1.7 }}>
-          Prefer managed hosting? Use pBay — plans are denominated in SOL on the Solana blockchain.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-          {platformFees.plans.map((plan) => (
-            <div key={plan.tier} style={{
-              padding: 20, borderRadius: T.radius,
-              border: `1px solid ${plan.tier === 'Professional' ? T.cyan + '44' : T.border}`,
-              background: plan.tier === 'Professional' ? T.cyan + '08' : "transparent",
-              position: "relative",
-            }}>
-              {plan.tier === 'Professional' && (
-                <div style={{
-                  position: "absolute", top: -1, right: 16, padding: "2px 10px",
-                  background: T.cyan, color: T.bg, fontSize: 9, fontWeight: 700,
-                  fontFamily: "'Orbitron', sans-serif", letterSpacing: ".08em",
-                  borderRadius: "0 0 4px 4px",
-                }}>POPULAR</div>
-              )}
-              <div style={{ fontSize: 12, fontWeight: 700, color: T.text, fontFamily: "'Orbitron', sans-serif", marginBottom: 8 }}>
-                {plan.tier}
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 12 }}>
-                <span style={{ fontSize: 24, fontWeight: 900, color: T.cyan, fontFamily: "'Orbitron', sans-serif" }}>
-                  {plan.sol}
-                </span>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>SOL/mo</span>
-              </div>
-              <div style={{ fontSize: 11, color: T.textSec, lineHeight: 1.8 }}>
-                <div>{plan.storage} storage</div>
-                <div>{typeof plan.grains === 'number' ? plan.grains + ' grains' : plan.grains + ' grains'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p style={{ fontSize: 11, color: T.textDim, marginTop: 16, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>
-          {platformFees.paymentNote}
-        </p>
-      </div>
-
-      {/* Per-Grain Model */}
-      <div style={{
-        padding: 24, background: T.surface, borderRadius: T.radius,
-        border: `1px solid ${T.border}`, marginBottom: 20,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }}>
-        <SectionHeader color={T.yellow}>Per-Grain & Share NFTs</SectionHeader>
-        <p style={{ fontSize: 13, color: T.textSec, lineHeight: 1.8 }}>
-          {platformFees.grainNote}
-        </p>
-      </div>
-
       {/* Third-Party API Fees */}
       {appFees.length > 0 && (
         <div style={{
@@ -1481,30 +1421,6 @@ function DetailPage({ app, host, onClose }) {
           </div>
         </div>
       )}
-
-      {/* Storage & IPFS */}
-      <div className="fee-grid-2">
-        <div style={{
-          padding: 24, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.border}`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader>Storage</SectionHeader>
-          <p style={{ fontSize: 12, color: T.textSec, lineHeight: 1.8 }}>
-            {platformFees.storageNote}
-          </p>
-        </div>
-        <div style={{
-          padding: 24, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.magenta}22`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader color={T.magenta}>IPFS Forever Snapshots</SectionHeader>
-          <p style={{ fontSize: 12, color: T.textSec, lineHeight: 1.8 }}>
-            {platformFees.ipfsNote}
-          </p>
-        </div>
-      </div>
     </div>
   );
 

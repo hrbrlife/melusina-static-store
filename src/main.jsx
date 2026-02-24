@@ -489,7 +489,7 @@ function CardSlideshow({ app, shots }) {
         {/* slide 0: app icon */}
         <div className="card-slideshow-slide">
           <div className="card-slideshow-icon">
-            <AppIcon app={app} size={72} />
+            <AppIcon app={app} size={110} />
           </div>
         </div>
         {/* slides 1+: screenshots */}
@@ -1797,7 +1797,7 @@ function DetailPage({ app, host, onClose }) {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 20px 80px" }}>
         {/* hero */}
         <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 28, flexWrap: "wrap" }}>
-          <AppIcon app={app} size={80} />
+          <AppIcon app={app} size={120} />
           <div style={{ flex: 1, minWidth: 200 }}>
             <h1 style={{
               fontSize: 28, fontWeight: 800, margin: 0,

@@ -195,8 +195,8 @@ body::after{
   animation:pop .2s ease-out;
 }
 
-.detail-grid{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
-@media(max-width:720px){.detail-grid{grid-template-columns:1fr}}
+.detail-grid{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr}}
 @media(max-width:480px){html{font-size:14px}}
 
 .neon-text{
@@ -235,6 +235,20 @@ body::after{
 .md-body code{background:${T.cyan}11;color:${T.cyan};padding:2px 6px;border-radius:2px;font-size:0.9em;font-family:'JetBrains Mono',monospace}
 .md-body a{color:${T.cyan};border-bottom:1px solid ${T.cyan}33}
 .md-body strong{color:${T.text};font-weight:600}
+.md-body h5{font-size:12px;font-weight:700;color:${T.yellow};margin:16px 0 6px;font-family:'Orbitron',sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.md-body hr{border:none;height:1px;background:linear-gradient(90deg,transparent,${T.cyan}44,${T.purple}44,transparent);margin:28px 0}
+.md-body img{max-width:100%;border-radius:8px;border:1px solid ${T.border};margin:8px 0;display:block}
+.md-table-wrap{overflow-x:auto;margin:16px 0;border-radius:8px;border:1px solid ${T.border}}
+.md-table{width:100%;border-collapse:collapse;font-size:12px;font-family:'JetBrains Mono',monospace}
+.md-table th{padding:10px 14px;text-align:left;font-weight:700;color:${T.cyan};background:${T.cyan}08;border-bottom:1px solid ${T.cyan}22;font-size:11px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.md-table td{padding:9px 14px;color:${T.textSec};border-bottom:1px solid ${T.border};line-height:1.6}
+.md-table tr:last-child td{border-bottom:none}
+.md-table tr:hover td{background:${T.cyan}06}
+.md-bq{border-left:3px solid ${T.cyan}44;padding:12px 20px;margin:16px 0;background:${T.cyan}06;border-radius:0 8px 8px 0}
+.md-bq p{margin:0 0 4px;font-style:italic;color:${T.textSec}}
+.md-body ol{margin:0 0 16px 0;padding-left:24px;list-style:decimal}
+.md-body ol li{font-size:13px;line-height:1.8;color:${T.textSec};margin-bottom:4px}
+.md-body ol li::marker{color:${T.cyan}}
 
 .review-card{padding:20px;background:${T.surface};border:1px solid ${T.border};border-radius:${T.radius}px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:border-color .2s}
 .review-card:hover{border-color:${T.cyan}33}
@@ -645,7 +659,10 @@ function SimpleMarkdown({ text }) {
     let rest = str, k = 0;
     while (rest.length > 0) {
       let m;
-      if ((m = rest.match(/^\*\*(.+?)\*\*/))) {
+      if ((m = rest.match(/^!\[([^\]]*)\]\(([^)]+)\)/))) {
+        parts.push(<img key={k++} src={m[2]} alt={m[1]} style={{ maxWidth: '100%', borderRadius: 6, margin: '4px 0' }} />);
+        rest = rest.slice(m[0].length);
+      } else if ((m = rest.match(/^\*\*(.+?)\*\*/))) {
         parts.push(<strong key={k++}>{m[1]}</strong>);
         rest = rest.slice(m[0].length);
       } else if ((m = rest.match(/^`(.+?)`/))) {
@@ -655,7 +672,7 @@ function SimpleMarkdown({ text }) {
         parts.push(<a key={k++} href={m[2]} target="_blank" rel="noreferrer">{m[1]}</a>);
         rest = rest.slice(m[0].length);
       } else {
-        const nx = rest.slice(1).search(/\*\*|`|\[/);
+        const nx = rest.slice(1).search(/!\[|\*\*|`|\[/);
         if (nx >= 0) { parts.push(rest.slice(0, nx + 1)); rest = rest.slice(nx + 1); }
         else { parts.push(rest); rest = ''; }
       }
@@ -667,9 +684,51 @@ function SimpleMarkdown({ text }) {
   let i = 0, k = 0;
   while (i < lines.length) {
     const ln = lines[i];
-    if (ln.startsWith('### ')) { els.push(<h4 key={k++}>{parseInline(ln.slice(4))}</h4>); i++; }
+    /* headings */
+    if (ln.startsWith('#### ')) { els.push(<h5 key={k++}>{parseInline(ln.slice(5))}</h5>); i++; }
+    else if (ln.startsWith('### ')) { els.push(<h4 key={k++}>{parseInline(ln.slice(4))}</h4>); i++; }
     else if (ln.startsWith('## ')) { els.push(<h3 key={k++}>{parseInline(ln.slice(3))}</h3>); i++; }
     else if (ln.startsWith('# ')) { els.push(<h2 key={k++}>{parseInline(ln.slice(2))}</h2>); i++; }
+    /* horizontal rule */
+    else if (ln.trim().match(/^-{3,}$/) || ln.trim().match(/^\*{3,}$/)) { els.push(<hr key={k++} />); i++; }
+    /* table */
+    else if (ln.includes('|') && ln.trim().startsWith('|')) {
+      const rows = [];
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
+        rows.push(lines[i]); i++;
+      }
+      const parseRow = (r) => r.split('|').slice(1, -1).map(c => c.trim());
+      const header = parseRow(rows[0]);
+      const isSep = (r) => parseRow(r).every(c => /^[:\-]+$/.test(c));
+      const alignments = rows.length > 1 && isSep(rows[1])
+        ? parseRow(rows[1]).map(c => c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left')
+        : header.map(() => 'left');
+      const dataStart = rows.length > 1 && isSep(rows[1]) ? 2 : 1;
+      const dataRows = rows.slice(dataStart).map(parseRow);
+      els.push(
+        <div key={k++} className="md-table-wrap">
+          <table className="md-table">
+            <thead><tr>{header.map((h, j) => <th key={j} style={{ textAlign: alignments[j] }}>{parseInline(h)}</th>)}</tr></thead>
+            <tbody>{dataRows.map((row, ri) => (
+              <tr key={ri}>{row.map((cell, ci) => <td key={ci} style={{ textAlign: alignments[ci] || 'left' }}>{parseInline(cell)}</td>)}</tr>
+            ))}</tbody>
+          </table>
+        </div>
+      );
+    }
+    /* blockquote */
+    else if (ln.startsWith('> ')) {
+      const bqLines = [];
+      while (i < lines.length && lines[i].startsWith('> ')) { bqLines.push(lines[i].slice(2)); i++; }
+      els.push(<blockquote key={k++} className="md-bq">{bqLines.map((bl, j) => <p key={j}>{parseInline(bl)}</p>)}</blockquote>);
+    }
+    /* ordered list */
+    else if (ln.match(/^\d+\.\s/)) {
+      const items = [];
+      while (i < lines.length && lines[i].match(/^\d+\.\s/)) { items.push(lines[i].replace(/^\d+\.\s/, '')); i++; }
+      els.push(<ol key={k++}>{items.map((it, j) => <li key={j}>{parseInline(it)}</li>)}</ol>);
+    }
+    /* unordered list */
     else if (ln.match(/^[-*] /)) {
       const items = [];
       while (i < lines.length && lines[i].match(/^[-*] /)) { items.push(lines[i].replace(/^[-*] /, '')); i++; }
@@ -1435,7 +1494,7 @@ function DetailPage({ app, host, onClose }) {
         boxShadow: "0 4px 30px rgba(17,14,36,0.5), inset 0 -1px 0 rgba(192,132,252,0.08)",
       }}>
         <div style={{
-          maxWidth: 960, margin: "0 auto", padding: "12px 20px",
+          maxWidth: 1200, margin: "0 auto", padding: "12px 20px",
           display: "flex", alignItems: "center", gap: 14,
         }}>
           <button onClick={onClose} {...renderBtnStyle(T.cyan)}>← BACK</button>
@@ -1447,7 +1506,7 @@ function DetailPage({ app, host, onClose }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px 80px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 20px 80px" }}>
         {/* hero */}
         <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 28, flexWrap: "wrap" }}>
           <AppIcon app={app} size={80} />
@@ -1647,7 +1706,7 @@ function App() {
         boxShadow: "0 4px 30px rgba(17,14,36,0.5), inset 0 -1px 0 rgba(192,132,252,0.08)",
       }}>
         <div style={{
-          maxWidth: 1200, margin: "0 auto", padding: "12px 16px",
+          maxWidth: 1440, margin: "0 auto", padding: "12px 24px",
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
         }}>
           {/* Logo */}
@@ -1706,7 +1765,7 @@ function App() {
       </header>
 
       {/* categories */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "18px 16px 0" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "18px 24px 0" }}>
         <div className="cat-scroll" style={{
           display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6,
           WebkitOverflowScrolling: "touch",
@@ -1734,7 +1793,7 @@ function App() {
       </div>
 
       {/* grid */}
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px 80px" }}>
+      <main style={{ maxWidth: 1440, margin: "0 auto", padding: "20px 24px 80px" }}>
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
         }}>

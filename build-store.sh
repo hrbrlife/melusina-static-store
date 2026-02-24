@@ -8,9 +8,10 @@
 # in dist-publish/ that can be force-pushed to the publish branch.
 #
 # Usage:
-#   ./build-store.sh              # full build (submodule init + npm + vite + aggregate)
+#   ./build-store.sh              # full build (refresh submodules + npm + vite + aggregate)
 #   ./build-store.sh --aggregate  # skip vite build, just re-aggregate metadata
 #   ./build-store.sh --dry-run    # validate metadata only, don't write anything
+#   ./build-store.sh --no-refresh # build without fetching latest submodule commits
 #
 set -euo pipefail
 
@@ -39,14 +40,17 @@ UPDATE_TOOL="$SANDSTORM_SRC/tmp/sandstorm/update-tool"
 # --- Parse flags --------------------------------------------------------------
 AGGREGATE_ONLY=false
 DRY_RUN=false
+NO_REFRESH=false
 for arg in "$@"; do
   case "$arg" in
-    --aggregate) AGGREGATE_ONLY=true ;;
-    --dry-run)   DRY_RUN=true ;;
+    --aggregate)  AGGREGATE_ONLY=true ;;
+    --dry-run)    DRY_RUN=true ;;
+    --no-refresh) NO_REFRESH=true ;;
     -h|--help)
-      echo "Usage: $0 [--aggregate] [--dry-run]"
-      echo "  --aggregate  Skip Vite build, just re-aggregate submodule metadata"
-      echo "  --dry-run    Validate all metadata without writing any output"
+      echo "Usage: $0 [--aggregate] [--dry-run] [--no-refresh]"
+      echo "  --aggregate   Skip Vite build, just re-aggregate submodule metadata"
+      echo "  --dry-run     Validate all metadata without writing any output"
+      echo "  --no-refresh  Skip fetching latest submodule commits (use current state)"
       exit 0 ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
@@ -64,9 +68,54 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
 
-# --- Step 0: Init submodules -------------------------------------------------
-info "Initializing submodules..."
-git submodule update --init 2>/dev/null || true
+# --- Step 0: Refresh submodules -----------------------------------------------
+if $NO_REFRESH; then
+  info "Skipping submodule refresh (--no-refresh)"
+  # Still init any missing submodules (cheap if already present)
+  git submodule update --init 2>/dev/null || true
+else
+  info "Refreshing submodules to latest publish branches..."
+  UPDATED_SUBS=0
+  FAILED_SUBS=0
+
+  while IFS= read -r sm_path; do
+    [[ -z "$sm_path" ]] && continue
+    sm_name="$(basename "$sm_path")"
+    sm_branch="$(git config -f .gitmodules "submodule.${sm_path}.branch" 2>/dev/null || echo "publish")"
+
+    # Init if not yet cloned
+    if [[ ! -d "$sm_path/.git" && ! -f "$sm_path/.git" ]]; then
+      info "  Cloning $sm_name..."
+      git submodule update --init --depth 1 "$sm_path" 2>&1 | tail -2
+    fi
+
+    # Fetch latest from tracked branch and checkout
+    old_sha="$(git -C "$sm_path" rev-parse --short HEAD 2>/dev/null || echo "none")"
+    if git -C "$sm_path" fetch --depth 1 origin "$sm_branch" 2>/dev/null; then
+      new_sha="$(git -C "$sm_path" rev-parse --short FETCH_HEAD 2>/dev/null)"
+      if [[ "$old_sha" != "$new_sha" ]]; then
+        git -C "$sm_path" checkout FETCH_HEAD 2>/dev/null
+        ok "$sm_name: $old_sha → $new_sha"
+        ((UPDATED_SUBS++)) || true
+      else
+        ok "$sm_name: up to date ($old_sha)"
+      fi
+    else
+      warn "$sm_name: fetch failed (offline?), using cached $old_sha"
+      ((FAILED_SUBS++)) || true
+    fi
+  done < <(git config --file .gitmodules --get-regexp 'submodule\..*\.path' | awk '{print $2}')
+
+  # Stage updated submodule pointers so rebuild doesn't reset them
+  git add packages/ 2>/dev/null || true
+
+  if [[ $UPDATED_SUBS -gt 0 ]]; then
+    info "Updated $UPDATED_SUBS submodule(s)"
+  fi
+  if [[ $FAILED_SUBS -gt 0 ]]; then
+    warn "$FAILED_SUBS submodule(s) failed to fetch"
+  fi
+fi
 
 # --- Step 1: Validate and collect metadata ------------------------------------
 info "Scanning $PACKAGES_DIR/ for app bundles..."
@@ -500,12 +549,8 @@ echo ""
 TOTAL_SIZE="$(du -sh "$OUTPUT_DIR" | cut -f1)"
 info "Total size: $TOTAL_SIZE"
 echo ""
-info "To deploy, push $OUTPUT_DIR/ contents to the publish branch:"
+info "To deploy, run:"
 echo ""
-echo "  git checkout publish"
-echo "  rm -rf apps assets images packages verifier screenshots update index.html .nojekyll"
-echo "  cp -r $OUTPUT_DIR/* $OUTPUT_DIR/.nojekyll ."
-echo "  git add -A && git commit -m 'Store build $(date +%Y-%m-%d)'"
-echo "  git push origin publish --force"
-echo "  git checkout main"
+echo "  make deploy    # deploy dist-publish/ → publish branch"
+echo "  make publish   # refresh + build + commit + deploy  (all-in-one)"
 echo ""

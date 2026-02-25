@@ -601,6 +601,24 @@ function AppCard({ app, onSelect, host }) {
         height: "100%", overflow: "hidden",
       }}
     >
+      {/* ON SALE triangle badge */}
+      {getAppPrice(app.appId).onSale && (
+        <div style={{
+          position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none',
+          width: 0, height: 0,
+          borderStyle: 'solid',
+          borderWidth: '0 72px 72px 0',
+          borderColor: `transparent #f5a623 transparent transparent`,
+          filter: 'drop-shadow(-2px 2px 4px rgba(0,0,0,0.3))',
+        }}>
+          <span style={{
+            position: 'absolute', top: 12, right: -66, fontSize: 9, fontWeight: 800,
+            color: '#1a1a2e', fontFamily: "'Orbitron', sans-serif",
+            letterSpacing: '.06em', transform: 'rotate(45deg)',
+            whiteSpace: 'nowrap', textShadow: '0 1px 0 rgba(255,255,255,0.3)',
+          }}>ON SALE</span>
+        </div>
+      )}
       {/* scan line on hover */}
       {hov && (
         <div style={{
@@ -650,6 +668,25 @@ function AppCard({ app, onSelect, host }) {
               ))}
             </div>
           )}
+          {/* Price display */}
+          {(() => {
+            const pr = getAppPrice(app.appId);
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <span style={{
+                  fontSize: 18, fontWeight: 800, color: pr.price === 'FREE' ? T.green : T.cyan,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textShadow: `0 0 8px ${pr.price === 'FREE' ? T.greenGlow : T.accentGlow}`,
+                }}>{pr.price}</span>
+                {pr.onSale && pr.originalPrice && (
+                  <span style={{
+                    fontSize: 12, color: T.textDim, textDecoration: 'line-through',
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>{pr.originalPrice}</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{
@@ -1110,6 +1147,28 @@ const APP_FEES = {
   ],
 };
 
+/* ─── App Prices ───────────────────────────────────────────────────────────── */
+const APP_PRICES = {
+  // Bureau (office suite)
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { price: 'FREE' },
+  // BLOOM Identity (KYC)
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { price: '0.5 SOL', originalPrice: '2.0 SOL', onSale: true },
+  // BotMother (Telegram)
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': { price: '0.1 SOL', originalPrice: '0.5 SOL', onSale: true },
+  // Instasys Mail
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': { price: '0.1 SOL' },
+  // MiniGit
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { price: 'FREE' },
+  // Shell Tester
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { price: 'FREE' },
+  // AI Lagoon
+  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': { price: '0.5 SOL', originalPrice: '2.0 SOL', onSale: true },
+};
+
+function getAppPrice(appId) {
+  return APP_PRICES[appId] || { price: 'FREE' };
+}
+
 function getAppFAQ(app) {
   const specific = (APP_FAQ[app.appId] || []).map((item, i) => i === 0 ? { ...item, featured: true } : item);
   const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl).map((item, i) => i === 0 ? { ...item, featured: true } : item);
@@ -1193,8 +1252,7 @@ function DetailPage({ app, host, onClose }) {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'fees', label: 'Fees' },
-    { id: 'indev', label: `In Development (${featureWishes.length + bugReports.length + versions.length})` },
+    { id: 'indev', label: `App Development (${featureWishes.length + bugReports.length + versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
   ];
@@ -1218,6 +1276,78 @@ function DetailPage({ app, host, onClose }) {
   const OverviewTab = () => (
     <>
       <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
+
+      {/* ── Pricing Module ── */}
+      <div style={{ maxWidth: 780, marginBottom: 28 }}>
+        {/* App Price */}
+        <div style={{
+          padding: 28, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.green}33`, marginBottom: 20,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <SectionHeader color={T.green}>App Price</SectionHeader>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            {(() => {
+              const pr = getAppPrice(app.appId);
+              return (
+                <>
+                  <span style={{
+                    fontSize: 36, fontWeight: 900, color: T.green,
+                    fontFamily: "'Orbitron', sans-serif",
+                    textShadow: `0 0 15px ${T.greenGlow}`,
+                  }}>{pr.price}</span>
+                  {pr.onSale && pr.originalPrice && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{
+                        fontSize: 18, color: T.textDim, textDecoration: 'line-through',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>{pr.originalPrice}</span>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px',
+                        background: '#f5a623', color: '#1a1a2e',
+                        fontSize: 10, fontWeight: 800, borderRadius: 3,
+                        fontFamily: "'Orbitron', sans-serif",
+                        letterSpacing: '.06em',
+                        boxShadow: '0 2px 8px rgba(245,166,35,0.4)',
+                      }}>ON SALE</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+            <span style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
+              {platformFees.selfHosted.description}
+            </span>
+          </div>
+        </div>
+
+        {/* Third-Party API Fees */}
+        {appFees.length > 0 && (
+          <div style={{
+            padding: 24, background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.peach}33`, marginBottom: 20,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <SectionHeader color={T.peach}>Third-Party Services</SectionHeader>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {appFees.map((fee, i) => (
+                <div key={i} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                  gap: 16, padding: "12px 16px",
+                  border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{fee.service}</div>
+                    <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{fee.note}</div>
+                  </div>
+                  <Badge neon={fee.cost === 'Free' ? T.green : T.peach}>{fee.cost}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="detail-grid">
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {app.description && (
@@ -1365,7 +1495,7 @@ function DetailPage({ app, host, onClose }) {
     </>
   );
 
-  /* ---- IN DEVELOPMENT TAB (suggestions + bugs, each with voting & comments) ---- */
+  /* ---- APP DEVELOPMENT TAB (suggestions + bugs, each with voting & comments) ---- */
   const VoteButton = ({ dir, active, count, onClick }) => (
     <button onClick={onClick} style={{
       background: active ? (dir === 1 ? T.green + '18' : T.magenta + '18') : 'transparent',
@@ -2098,56 +2228,6 @@ function DetailPage({ app, host, onClose }) {
     );
   };
 
-  /* ---- FEES TAB ---- */
-  const FeesTab = () => (
-    <div style={{ maxWidth: 780 }}>
-      {/* App Price */}
-      <div style={{
-        padding: 28, background: T.surface, borderRadius: T.radius,
-        border: `1px solid ${T.green}33`, marginBottom: 20,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }}>
-        <SectionHeader color={T.green}>App Price</SectionHeader>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <span style={{
-            fontSize: 36, fontWeight: 900, color: T.green,
-            fontFamily: "'Orbitron', sans-serif",
-            textShadow: `0 0 15px ${T.greenGlow}`,
-          }}>FREE</span>
-          <span style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
-            {platformFees.selfHosted.description}
-          </span>
-        </div>
-      </div>
-
-      {/* Third-Party API Fees */}
-      {appFees.length > 0 && (
-        <div style={{
-          padding: 24, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.peach}33`, marginBottom: 20,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader color={T.peach}>Third-Party Services</SectionHeader>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {appFees.map((fee, i) => (
-              <div key={i} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                gap: 16, padding: "12px 16px",
-                border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
-              }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{fee.service}</div>
-                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{fee.note}</div>
-                </div>
-                <Badge neon={fee.cost === 'Free' ? T.green : T.peach}>{fee.cost}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div style={{ minHeight: "100dvh", animation: "fadeIn .15s ease-out" }}>
       {/* top bar */}
@@ -2336,7 +2416,6 @@ function DetailPage({ app, host, onClose }) {
         {/* tab content */}
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
-          {tab === 'fees' && <FeesTab />}
           {tab === 'indev' && <InDevTab />}
           {tab === 'faq' && <FAQTab />}
           {tab === 'reviews' && <ReviewsTab />}

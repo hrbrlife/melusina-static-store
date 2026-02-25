@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import data from "./apps.json";
 
 /* Self-hosted fonts — no CDN */
@@ -34,6 +34,13 @@ const fmtDate = (v) => {
   if (!v) return "—";
   const ts = typeof v === "number" ? v : Date.parse(v);
   return Number.isNaN(ts) ? String(v) : format(ts, "MMM d, yyyy");
+};
+
+const timeAgo = (v) => {
+  if (!v) return null;
+  const ts = typeof v === "number" ? v : Date.parse(v);
+  if (Number.isNaN(ts)) return null;
+  try { return formatDistanceToNow(ts, { addSuffix: true }); } catch { return null; }
 };
 
 const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
@@ -575,10 +582,11 @@ function CardSlideshow({ app, shots }) {
 
 /* ─── App Card ─────────────────────────────────────────────────────────────── */
 
-function AppCard({ app, onSelect, host }) {
+function AppCard({ app, onSelect, host, onVersionClick }) {
   const [hov, setHov] = useState(false);
   const url = installUrl(host, app);
   const shots = (app.screenshots || []).slice(0, 5);
+  const updatedAgo = timeAgo(app.createdAt);
 
   return (
     <div role="button" tabIndex={0}
@@ -653,6 +661,23 @@ function AppCard({ app, onSelect, host }) {
             transition: "color .3s, text-shadow .3s",
             letterSpacing: ".02em",
           }}>{app.name}</h3>
+          {/* Version + updated ago */}
+          <div
+            role="button" tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); onVersionClick && onVersionClick(app.appId); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onVersionClick && onVersionClick(app.appId); } }}
+            style={{
+              fontSize: 11, color: T.textDim, marginTop: 3,
+              fontFamily: "'JetBrains Mono', monospace",
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'color .2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.cyan; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = T.textDim; }}
+          >
+            <span>v{app.version || app.versionNumber || '—'}</span>
+            {updatedAgo && <span style={{ opacity: 0.7 }}>· updated {updatedAgo}</span>}
+          </div>
           <p style={{
             fontSize: 14, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
             display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
@@ -1213,7 +1238,7 @@ function getAvgRating(reviews) {
 
 /* ─── Detail Page ──────────────────────────────────────────────────────────── */
 
-function DetailPage({ app, host, onClose }) {
+function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
   const url = installUrl(host, app);
   const reviews = useMemo(() => getAppReviews(app), [app]);
   const avgRating = useMemo(() => getAvgRating(reviews), [reviews]);
@@ -1230,7 +1255,7 @@ function DetailPage({ app, host, onClose }) {
     return s;
   }, [faq]);
 
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(initialTab || 'overview');
   const [openFaq, setOpenFaq] = useState(() => new Set(featuredFaqSet));
   const [userRevs, setUserRevs] = useState(() => getUserReviews(app.appId));
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -1243,7 +1268,7 @@ function DetailPage({ app, host, onClose }) {
   const [bugVotes, setBugVotes] = useState(() => getMyBugVotes());
   const [bugDraft, setBugDraft] = useState({ title: '', description: '', author: '' });
   const [showBugForm, setShowBugForm] = useState(false);
-  const [devSubTab, setDevSubTab] = useState('suggestions');
+  const [devSubTab, setDevSubTab] = useState(initialDevSubTab || 'suggestions');
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -1252,7 +1277,7 @@ function DetailPage({ app, host, onClose }) {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  useEffect(() => { setTab('overview'); setOpenFaq(new Set(featuredFaqSet)); setUserRevs(getUserReviews(app.appId)); setShowReviewForm(false); setReviewDraft({ author: '', rating: 5, title: '', text: '' }); setFeatureWishes(getFeatureWishes(app.appId)); setFwVotes(getMyFWVotes()); setFwDraft({ text: '', author: '' }); setShowFwForm(false); setBugReports(getBugReports(app.appId)); setBugVotes(getMyBugVotes()); setBugDraft({ title: '', description: '', author: '' }); setShowBugForm(false); setDevSubTab('suggestions'); }, [app.appId, featuredFaqSet]);
+  useEffect(() => { setTab(initialTab || 'overview'); setOpenFaq(new Set(featuredFaqSet)); setUserRevs(getUserReviews(app.appId)); setShowReviewForm(false); setReviewDraft({ author: '', rating: 5, title: '', text: '' }); setFeatureWishes(getFeatureWishes(app.appId)); setFwVotes(getMyFWVotes()); setFwDraft({ text: '', author: '' }); setShowFwForm(false); setBugReports(getBugReports(app.appId)); setBugVotes(getMyBugVotes()); setBugDraft({ title: '', description: '', author: '' }); setShowBugForm(false); setDevSubTab(initialDevSubTab || 'suggestions'); }, [app.appId, featuredFaqSet, initialTab, initialDevSubTab]);
 
   if (!app) return null;
 
@@ -1278,6 +1303,7 @@ function DetailPage({ app, host, onClose }) {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
     { id: 'indev', label: `App Development (${featureWishes.length + bugReports.length + versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
@@ -1382,151 +1408,147 @@ function DetailPage({ app, host, onClose }) {
 
       <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
 
-      <div className="detail-grid">
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {app.description && (
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {app.description && (
+          <div style={{
+            padding: 24, background: T.surface,
+            borderRadius: T.radius, border: `1px solid ${T.border}`,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <SectionHeader>About</SectionHeader>
+            {/* Version + updated prominently */}
             <div style={{
-              padding: 24, background: T.surface,
-              borderRadius: T.radius, border: `1px solid ${T.border}`,
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+              marginBottom: 16, padding: '10px 14px',
+              background: T.cyan + '08', border: `1px solid ${T.cyan}22`,
+              borderRadius: T.radiusSm,
             }}>
-              <SectionHeader>About</SectionHeader>
-              <SimpleMarkdown text={app.description} />
-            </div>
-          )}
-          {/* Quick stats */}
-          {reviews.length > 0 && (
-            <div style={{
-              padding: 20, background: T.surface,
-              borderRadius: T.radius, border: `1px solid ${T.border}`,
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif" }}>
-                  {avgRating.toFixed(1)}
+              <span style={{
+                fontSize: 13, fontWeight: 700, color: T.cyan,
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: `0 0 6px ${T.accentGlow}`,
+              }}>v{app.version || app.versionNumber || '\u2014'}</span>
+              {app.versionNumber && app.version && (
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+                  build {app.versionNumber}
                 </span>
-                <div>
-                  <StarRating rating={avgRating} size={16} />
-                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                    {reviews.length} review{reviews.length !== 1 ? 's' : ''}
-                  </div>
+              )}
+              {timeAgo(app.createdAt) && (
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+                  \u00b7 updated {timeAgo(app.createdAt)}
+                </span>
+              )}
+              {app.author?.name && (
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+                  \u00b7 by {app.author.name}
+                </span>
+              )}
+            </div>
+            <SimpleMarkdown text={app.description} />
+          </div>
+        )}
+        {/* Quick stats */}
+        {reviews.length > 0 && (
+          <div style={{
+            padding: 20, background: T.surface,
+            borderRadius: T.radius, border: `1px solid ${T.border}`,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif" }}>
+                {avgRating.toFixed(1)}
+              </span>
+              <div>
+                <StarRating rating={avgRating} size={16} />
+                <div style={{ fontSize: 11, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {reviews.length} review{reviews.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              <button onClick={() => setTab('reviews')} {...renderBtnStyle(T.yellow)}>
-                Read Reviews →
-              </button>
             </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* License / Pricing Card */}
-          <div style={{
-            background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
-            overflow: "hidden",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <div style={{
-              padding: "14px 20px", borderBottom: `1px solid ${T.borderLight}`,
-              display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <SectionHeader color={app.isOpenSource ? T.green : T.magenta}>License & Pricing</SectionHeader>
-            </div>
-            <div style={{ padding: 20 }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10, marginBottom: 14,
-              }}>
-                <span style={{
-                  fontSize: 20, width: 36, height: 36, borderRadius: 3,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: app.isOpenSource ? T.green + '15' : T.magenta + '15',
-                  border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
-                }}>{app.isOpenSource ? '🔓' : '🔐'}</span>
-                <div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 700, color: app.isOpenSource ? T.green : T.magenta,
-                    fontFamily: "'Orbitron', sans-serif",
-                    textShadow: `0 0 6px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
-                  }}>{app.isOpenSource ? 'Open Source' : 'HLSL License'}</div>
-                  <div style={{ fontSize: 11, color: T.textDim, marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
-                    Self-hosted · No subscription
-                  </div>
-                </div>
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif", marginBottom: 8 }}>
-                FREE
-              </div>
-              <div style={{ fontSize: 12, lineHeight: 1.7, color: T.textSec, marginBottom: 14 }}>
-                {app.isOpenSource
-                  ? 'This app is free and open source. You can use, modify, and redistribute it under the terms of its license.'
-                  : 'Free to install and use on your own Sandstorm server. Source code is available for auditing. Automatically converts to AGPLv3 after 3 years.'}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: T.textSec }}>
-                {[
-                  '✓ Self-hosted on your server',
-                  '✓ No usage fees or limits',
-                  '✓ Full data ownership',
-                  app.isOpenSource ? '✓ Fork and modify freely' : '✓ Source-available for audit',
-                  app.isOpenSource ? '✓ Community contributions welcome' : '✓ Converts to AGPLv3 after 3y',
-                ].map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ color: app.isOpenSource ? T.green : T.magenta, fontFamily: "'JetBrains Mono', monospace" }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <button onClick={() => setTab('reviews')} {...renderBtnStyle(T.yellow)}>
+              Read Reviews \u2192
+            </button>
           </div>
-
-          {/* Details Card */}
-          <div style={{
-            background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.border}`, overflow: "hidden",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <div style={{ padding: "14px 20px", borderBottom: `1px solid ${T.border}` }}>
-              <SectionHeader>Details</SectionHeader>
-            </div>
-            {rows.map(([label, val], i) => (
-              <div key={label} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                gap: 12, padding: "12px 20px",
-                borderBottom: i < rows.length - 1 ? `1px solid ${T.borderLight}` : "none",
-                fontSize: 12,
-              }}>
-                <span style={{
-                  color: T.textDim, flexShrink: 0,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 10, letterSpacing: ".08em",
-                }}>{label}</span>
-                <span style={{ textAlign: "right", wordBreak: "break-word", color: T.textSec }}>{val}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* App ID Card */}
-          <div style={{
-            padding: "14px 20px", background: T.surface,
-            borderRadius: T.radiusSm, border: `1px solid ${T.border}`,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <span style={{
-              display: "block", fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".12em", color: T.textDim, marginBottom: 8,
-              fontFamily: "'Orbitron', sans-serif",
-            }}>APP_ID</span>
-            <code style={{
-              fontSize: 10, color: T.cyan + "77", wordBreak: "break-all", lineHeight: 1.7,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}>
-              {app.appId}
-            </code>
-          </div>
-        </div>
+        )}
       </div>
     </>
+  );
+
+  /* ---- LICENSE TAB ---- */
+  const LicenseTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      <div style={{
+        padding: 28, background: T.surface, borderRadius: T.radius,
+        border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
+        marginBottom: 20,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+          <span style={{
+            fontSize: 24, width: 44, height: 44, borderRadius: 3,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: app.isOpenSource ? T.green + '15' : T.magenta + '15',
+            border: `1px solid ${app.isOpenSource ? T.green + '33' : T.magenta + '33'}`,
+          }}>{app.isOpenSource ? '\ud83d\udd13' : '\ud83d\udd10'}</span>
+          <div>
+            <div style={{
+              fontSize: 20, fontWeight: 800,
+              color: app.isOpenSource ? T.green : T.magenta,
+              fontFamily: "'Orbitron', sans-serif",
+              textShadow: `0 0 8px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
+            }}>{app.isOpenSource ? 'Open Source License' : 'HLSL License'}</div>
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+              Self-hosted \u00b7 No subscription \u00b7 Full data ownership
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: 14, lineHeight: 1.8, color: T.textSec, marginBottom: 18 }}>
+          {app.isOpenSource
+            ? 'This app is free and open source. You can use, modify, and redistribute it under the terms of its license.'
+            : 'HLSL (Harbor Life Software License) is a source-available license. Free to install and use on your own server. Source code is available for auditing. Automatically converts to AGPLv3 after 3 years from the release date.'}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: T.textSec }}>
+          {[
+            '\u2713 Self-hosted on your server',
+            '\u2713 No usage fees or limits',
+            '\u2713 Full data ownership',
+            app.isOpenSource ? '\u2713 Fork and modify freely' : '\u2713 Source-available for audit',
+            app.isOpenSource ? '\u2713 Community contributions welcome' : '\u2713 Converts to AGPLv3 after 3 years',
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: app.isOpenSource ? T.green : T.magenta, fontFamily: "'JetBrains Mono', monospace" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Author & technical details */}
+      <div style={{
+        padding: 24, background: T.surface, borderRadius: T.radius,
+        border: `1px solid ${T.border}`,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <SectionHeader>Technical Details</SectionHeader>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {rows.map(([label, val], i) => (
+            <div key={label} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+              gap: 12, padding: "10px 0",
+              borderBottom: i < rows.length - 1 ? `1px solid ${T.borderLight}` : "none",
+              fontSize: 13,
+            }}>
+              <span style={{
+                color: T.textDim, flexShrink: 0,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: ".08em",
+              }}>{label}</span>
+              <span style={{ textAlign: "right", wordBreak: "break-word", color: T.textSec }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 
   /* ---- APP DEVELOPMENT TAB (suggestions + bugs, each with voting & comments) ---- */
@@ -2430,11 +2452,47 @@ function DetailPage({ app, host, onClose }) {
           )}
         </div>
 
+        {/* price + license row */}
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: 'center', marginBottom: 16 }}>
+          {(() => {
+            const pr = getAppPrice(app.appId);
+            const isFree = pr.price === 'FREE';
+            const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
+            const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
+            const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
+            const usd = solToUsd(pr.price);
+            return (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em', textTransform: 'uppercase' }}>Price</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: priceColor, fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 10px ${priceGlow}` }}>{pr.price}</span>
+                {usd && <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
+                {pr.onSale && pr.originalPrice && (
+                  <span style={{ fontSize: 12, color: T.textDim, textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{pr.originalPrice}</span>
+                )}
+              </div>
+            );
+          })()}
+          <span style={{ width: 1, height: 18, background: T.border }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em', textTransform: 'uppercase' }}>License</span>
+            <button onClick={() => setTab('license')} style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              fontSize: 14, fontWeight: 700,
+              color: app.isOpenSource ? T.green : T.magenta,
+              fontFamily: "'Orbitron', sans-serif",
+              textShadow: `0 0 6px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
+              textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'currentcolor',
+              transition: 'opacity .2s',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >{app.isOpenSource ? 'Open Source' : 'HLSL'}</button>
+          </div>
+        </div>
+
         {/* tags */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
-          {app.isOpenSource && <Badge neon={T.green}>Open Source</Badge>}
-          {!app.isOpenSource && <Badge neon={T.magenta}>HLSL</Badge>}
         </div>
 
         {/* tab navigation */}
@@ -2450,6 +2508,7 @@ function DetailPage({ app, host, onClose }) {
         {/* tab content */}
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
+          {tab === 'license' && <LicenseTab />}
           {tab === 'indev' && <InDevTab />}
           {tab === 'faq' && <FAQTab />}
           {tab === 'reviews' && <ReviewsTab />}
@@ -2814,8 +2873,14 @@ function App() {
   }, [apps, query, category]);
 
   const selectedApp = useMemo(() => apps.find((a) => a.appId === selectedId), [apps, selectedId]);
-  const onSelect = useCallback((id) => setSelectedId(id), []);
-  const onClose = useCallback(() => setSelectedId(null), []);
+  const [detailInitTab, setDetailInitTab] = useState(null);
+  const [detailInitSubTab, setDetailInitSubTab] = useState(null);
+  const onSelect = useCallback((id, initTab, initSubTab) => {
+    setDetailInitTab(initTab || null);
+    setDetailInitSubTab(initSubTab || null);
+    setSelectedId(id);
+  }, []);
+  const onClose = useCallback(() => { setSelectedId(null); setDetailInitTab(null); setDetailInitSubTab(null); }, []);
 
   if (showIdeasPage) {
     return (
@@ -2836,7 +2901,7 @@ function App() {
     return (
       <>
         <style>{CSS}</style>
-        <DetailPage app={selectedApp} host={host} onClose={onClose} />
+        <DetailPage app={selectedApp} host={host} onClose={onClose} initialTab={detailInitTab} initialDevSubTab={detailInitSubTab} />
       </>
     );
   }
@@ -2979,7 +3044,7 @@ function App() {
           }}>
             {filtered.map((app, i) => (
               <div key={app.appId} style={{ animationDelay: `${i * 60}ms` }}>
-                <AppCard app={app} onSelect={onSelect} host={host} />
+                <AppCard app={app} onSelect={onSelect} host={host} onVersionClick={(id) => onSelect(id, 'indev', 'versions')} />
               </div>
             ))}
           </div>

@@ -738,8 +738,8 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
             {(app.categories || []).slice(0, 2).map((c) => <Badge key={c}>{c}</Badge>)}
             {(() => {
               const sc = getAppSidecars(app.appId);
-              if (sc.sidecars.length > 0) return <Badge neon={T.magenta}>⚡ Sidecar</Badge>;
-              if (sc.grapple.length > 0) return <Badge neon={T.yellow}>🔗 Grapple</Badge>;
+              if (sc.sidecars.length > 0) return <Badge neon={T.magenta}>🏍️ Sidecar</Badge>;
+              if (sc.grapple.length > 0) return <Badge neon={T.yellow}>🪝 Grapple</Badge>;
               return null;
             })()}
           </div>
@@ -1428,25 +1428,37 @@ function getAppPrice(appId) {
   return APP_PRICES[appId] || { price: 'FREE' };
 }
 
-/* ─── Sidecars & Grapple Enhancements ──────────────────────────────────────── */
+/* ─── Sidecars & Grapple Connections ───────────────────────────────────────── */
 const APP_SIDECARS = {
-  // Bureau — no sidecars
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { sidecars: [], grapple: [] },
-  // BLOOM Identity — no sidecars
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { sidecars: [], grapple: [] },
-  // BotMother — optional Grapple enhancement: AI Lagoon for AI processing
+  // Bureau
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': {
+    sidecars: [],
+    grapple: [
+      { direction: 'incoming', capability: 'Document.View', apps: ['AI Lagoon', 'BotMother'], purpose: 'Let other Pearls read document content', type: 'enhancement' },
+      { direction: 'incoming', capability: 'Spreadsheet.View', apps: ['AI Lagoon', 'BotMother'], purpose: 'Let other Pearls read spreadsheet data', type: 'enhancement' },
+      { direction: 'incoming', capability: 'Document.Edit', apps: ['AI Lagoon'], purpose: 'Let an AI Pearl write into a document', type: 'enhancement' },
+    ],
+  },
+  // BLOOM Identity
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': {
+    sidecars: [],
+    grapple: [
+      { direction: 'outgoing', capability: 'Identity.Submit', apps: ['Station Pearl'], purpose: 'Send completed verification to a Station Pearl', type: 'dependency' },
+      { direction: 'incoming', capability: 'Identity.Review', apps: ['Station Pearl'], purpose: 'Receive verification results from Identity Pearls', type: 'dependency' },
+    ],
+  },
+  // BotMother
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
     sidecars: [],
     grapple: [
-      {
-        appId: 'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0',
-        name: 'AI Lagoon',
-        required: false,
-        description: 'Grapple a BotMother Pearl to an AI Lagoon Pearl to grant it read access to your AI models. Enables AI-powered message processing, auto-replies, and intelligent routing for your Telegram bots — each Pearl controls exactly what the other can see.',
-      },
+      { direction: 'outgoing', capability: 'AiModel.Query', apps: ['AI Lagoon'], purpose: 'Send messages to an AI model for processing and auto-replies', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Spreadsheet.Append', apps: ['Bureau'], purpose: 'Log bot events or metrics to a Bureau spreadsheet', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Mail.Send', apps: ['MerMail'], purpose: 'Pipe bot notifications into an email Pearl', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Git.Push', apps: ['MiniGit'], purpose: 'Log events or message archives to a Git repository', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'IpNetwork.Connect', apps: ['— (Internet)'], purpose: 'Reach Telegram webhook servers', type: 'dependency' },
     ],
   },
-  // MerMail — required sidecar: email server
+  // MerMail
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
     sidecars: [
       {
@@ -1459,13 +1471,29 @@ const APP_SIDECARS = {
         ],
       },
     ],
-    grapple: [],
+    grapple: [
+      { direction: 'incoming', capability: 'Mail.Send', apps: ['BotMother'], purpose: 'Receive notifications from other Pearls as emails', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Document.Attach', apps: ['Bureau'], purpose: 'Share email attachments to Bureau document Pearls', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'IpNetwork.Connect', apps: ['— (Internet)'], purpose: 'Reach external SMTP relay for outbound mail', type: 'dependency' },
+    ],
   },
-  // MiniGit — no sidecars
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { sidecars: [], grapple: [] },
-  // Shell Tester — no sidecars
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { sidecars: [], grapple: [] },
-  // AI Lagoon — required sidecar: LLM proxy
+  // MiniGit
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': {
+    sidecars: [],
+    grapple: [
+      { direction: 'incoming', capability: 'Git.Push', apps: ['BotMother', 'Shell Tester'], purpose: 'Accept pushes from other Pearls', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'AiModel.Query', apps: ['AI Lagoon'], purpose: 'Feed code into AI Lagoon for analysis', type: 'enhancement' },
+    ],
+  },
+  // Shell Tester
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': {
+    sidecars: [],
+    grapple: [
+      { direction: 'outgoing', capability: 'Extension.Test', apps: ['Any app Pearl'], purpose: 'Test Grapple connections between extensions and app Pearls', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Git.Push', apps: ['MiniGit'], purpose: 'Push test results to a Git repository', type: 'enhancement' },
+    ],
+  },
+  // AI Lagoon
   'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
     sidecars: [
       {
@@ -1484,7 +1512,12 @@ const APP_SIDECARS = {
         ],
       },
     ],
-    grapple: [],
+    grapple: [
+      { direction: 'incoming', capability: 'AiModel.Query', apps: ['BotMother', 'MiniGit'], purpose: 'Accept AI processing requests from other Pearls', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Document.View', apps: ['Bureau'], purpose: 'Read document Pearls for context in AI conversations', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Spreadsheet.View', apps: ['Bureau'], purpose: 'Read spreadsheet data for analysis', type: 'enhancement' },
+      { direction: 'outgoing', capability: 'Git.Clone', apps: ['MiniGit'], purpose: 'Read code repositories for analysis', type: 'enhancement' },
+    ],
   },
 };
 
@@ -1589,7 +1622,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
     { id: 'audits', label: '🔍 Audits' },
-    { id: 'sidecars', label: '🔗 Sidecars / Grapple' },
+    { id: 'sidecars', label: '🪝 Grapple & Sidecars' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
 
@@ -1735,14 +1768,29 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
     </>
   );
 
-  /* ---- SIDECARS / GRAPPLE TAB ---- */
+  /* ---- GRAPPLE & SIDECARS TAB ---- */
   const appSidecars = getAppSidecars(app.appId);
   const hasSidecars = appSidecars.sidecars.length > 0;
   const hasGrapple = appSidecars.grapple.length > 0;
 
+  const grappleTableStyle = {
+    width: '100%', borderCollapse: 'separate', borderSpacing: 0,
+    fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+  };
+  const gThStyle = {
+    padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700,
+    letterSpacing: '.1em', textTransform: 'uppercase',
+    borderBottom: `2px solid ${T.cyan}44`, color: T.textDim,
+    fontFamily: "'JetBrains Mono', monospace",
+  };
+  const gTdStyle = {
+    padding: '10px 14px', borderBottom: `1px solid ${T.border}`,
+    color: T.textSec, fontSize: 12, lineHeight: 1.6, verticalAlign: 'top',
+  };
+
   const SidecarsTab = () => (
-    <div style={{ maxWidth: 780 }}>
-      {/* Info box explaining sidecars */}
+    <div style={{ maxWidth: 820 }}>
+      {/* Info box */}
       <div style={{
         padding: 22, background: T.cyan + '08', borderRadius: T.radius,
         border: `1px solid ${T.cyan}33`, marginBottom: 24,
@@ -1753,29 +1801,28 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
             fontSize: 24, width: 44, height: 44, borderRadius: 3, flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
             background: T.cyan + '15', border: `1px solid ${T.cyan}33`,
-          }}>🔗</span>
+          }}>{'\U0001FA9D'}</span>
           <div>
             <div style={{
               fontSize: 16, fontWeight: 800, color: T.cyan, marginBottom: 6,
               fontFamily: "'Orbitron', sans-serif",
               textShadow: `0 0 8px ${T.accentGlow}`,
-            }}>What are Sidecars &amp; Grapple?</div>
+            }}>Grapple &amp; Sidecars</div>
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
-              <strong style={{ color: T.text }}>Sidecars</strong> are major server-level services that run
-              one-per-server on your Melusina instance — things like an email relay or an AI model proxy.
-              They’re available only through Sandstorm, managed by the platform, and shared across
-              all Pearls that need them. Individual apps don’t install or control sidecars — the
-              server admin provisions them once.
+              <strong style={{ color: T.text }}>Grapple</strong> is the <em>only</em> way a Pearl can access
+              another Pearl — or the wider internet. Each connection is a scoped Cap{"'"}n Proto capability:
+              one Pearl offers a capability, the other accepts it, and the link is forged only
+              when the user Grapples the two together. Nothing connects silently, and every
+              connection has a named direction, purpose, and authority level.
             </div>
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginTop: 8 }}>
-              <strong style={{ color: T.text }}>Grapple Enhancements</strong> are optional Pearl-to-Pearl connections.
-              Grapple is how one Pearl gets access to another Pearl for a specific resource
-              with a specific authority. For example, an AI model Pearl can be given <em>read</em> access
-              to a collection of document Pearls, while an editor Pearl gets <em>edit</em> access to
-              one report document and <em>view</em> access to others — each connection scoped
-              individually. Nothing connects unless you Grapple it explicitly.
+              <strong style={{ color: T.text }}>Sidecars</strong> are major server-level services that run
+              one-per-server on your Melusina instance — things like an email relay or an AI model proxy.
+              They{"'"}re available only through Sandstorm, managed by the platform, and shared across
+              all Pearls that need them. Individual apps don{"'"}t install or control sidecars — the
+              server admin provisions them once.
             </div>
-            <a href="https://melusina-os.org/docs/sidecars" target="_blank" rel="noreferrer"
+            <a href="https://melusina-os.org/docs/grapple" target="_blank" rel="noreferrer"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
                 fontSize: 12, color: T.cyan, textDecoration: "none",
@@ -1784,15 +1831,89 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
               }}
               onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
               onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
-            >Learn more on Melusina-Os.org →</a>
+            >Learn more on Melusina-Os.org {'\u2192'}</a>
           </div>
         </div>
       </div>
 
-      {/* Sidecars section */}
-      {hasSidecars && (
-        <div style={{ marginBottom: 28 }}>
-          <SectionHeader color={T.magenta}>Required Sidecars</SectionHeader>
+      {/* ─── Grapple Connections (ABOVE sidecars) ─── */}
+      <div style={{ marginBottom: 28 }}>
+        <SectionHeader color={T.yellow}>{'\U0001FA9D'} Grapple Connections</SectionHeader>
+        {hasGrapple ? (
+          <div style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.yellow}33`, overflow: 'hidden',
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <table style={grappleTableStyle}>
+              <thead>
+                <tr>
+                  <th style={gThStyle}>Direction</th>
+                  <th style={gThStyle}>Cap{"'"}n Proto Capability</th>
+                  <th style={gThStyle}>App(s)</th>
+                  <th style={gThStyle}>Purpose</th>
+                  <th style={gThStyle}>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appSidecars.grapple.map((g, i) => (
+                  <tr key={i} style={{
+                    background: i % 2 === 0 ? 'transparent' : T.bg + '44',
+                  }}>
+                    <td style={gTdStyle}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontSize: 11, fontWeight: 700,
+                        color: g.direction === 'incoming' ? T.green : T.cyan,
+                      }}>
+                        {g.direction === 'incoming' ? '\u2B07\uFE0F' : '\u2B06\uFE0F'}
+                        {g.direction === 'incoming' ? ' IN' : ' OUT'}
+                      </span>
+                    </td>
+                    <td style={gTdStyle}>
+                      <code style={{
+                        padding: '3px 8px', borderRadius: 3, fontSize: 11,
+                        background: T.cyan + '15', color: T.cyan,
+                        border: `1px solid ${T.cyan}33`,
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>{g.capability}</code>
+                    </td>
+                    <td style={{ ...gTdStyle, color: T.text, fontWeight: 600, fontSize: 12 }}>
+                      {g.apps.join(', ')}
+                    </td>
+                    <td style={gTdStyle}>{g.purpose}</td>
+                    <td style={gTdStyle}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
+                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        background: g.type === 'dependency' ? T.magenta + '22' : T.yellow + '22',
+                        color: g.type === 'dependency' ? T.magenta : T.yellow,
+                        border: `1px solid ${g.type === 'dependency' ? T.magenta + '44' : T.yellow + '44'}`,
+                      }}>{g.type === 'dependency' ? 'DEP' : 'ENHANCE'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{
+            padding: 28, textAlign: 'center', background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.border}`,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.7 }}>
+              No Grapple connections — this app runs without Pearl-to-Pearl or internet access.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Sidecars (BELOW grapple) ─── */}
+      <div style={{ marginBottom: 28 }}>
+        <SectionHeader color={T.magenta}>{'\U0001F3CD\uFE0F'} Sidecars</SectionHeader>
+        {hasSidecars ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {appSidecars.sidecars.map((sc, i) => (
               <div key={i} style={{
@@ -1822,7 +1943,6 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
                 <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginBottom: 14 }}>
                   {sc.description}
                 </div>
-                {/* Options (e.g. for AI Lagoon LLM backends) */}
                 {sc.options && sc.options.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{
@@ -1849,7 +1969,6 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
                     </div>
                   </div>
                 )}
-                {/* Links */}
                 {sc.links && sc.links.length > 0 && (
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     {sc.links.map((lnk, j) => (
@@ -1860,78 +1979,29 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
                       }}
                         onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
                         onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
-                      >{lnk.label} →</a>
+                      >{lnk.label} {'\u2192'}</a>
                     ))}
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Grapple Enhancements section */}
-      {hasGrapple && (
-        <div style={{ marginBottom: 28 }}>
-          <SectionHeader color={T.yellow}>Grapple Enhancements</SectionHeader>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {appSidecars.grapple.map((g, i) => (
-              <div key={i} style={{
-                padding: 22, background: T.surface, borderRadius: T.radius,
-                border: `1px solid ${g.required ? T.magenta + '44' : T.yellow + '44'}`,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
-                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".06em",
-                    background: g.required ? T.magenta + '22' : T.yellow + '22',
-                    color: g.required ? T.magenta : T.yellow,
-                    border: `1px solid ${g.required ? T.magenta + '44' : T.yellow + '44'}`,
-                  }}>{g.required ? 'REQUIRED' : 'OPTIONAL'}</span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 600, padding: "3px 8px", borderRadius: 3,
-                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
-                    background: T.green + '15', color: T.green + 'cc', border: `1px solid ${T.green}33`,
-                    textTransform: 'uppercase',
-                  }}>GRAPPLE</span>
-                </div>
-                <div style={{
-                  fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 8,
-                  fontFamily: "'Orbitron', sans-serif",
-                }}>{g.name}</div>
-                <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
-                  {g.description}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* No sidecars state */}
-      {!hasSidecars && !hasGrapple && (
-        <div style={{
-          padding: 40, textAlign: "center", background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.border}`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+        ) : (
           <div style={{
-            fontSize: 16, fontWeight: 800, color: T.green, marginBottom: 8,
-            fontFamily: "'Orbitron', sans-serif",
-            textShadow: `0 0 8px ${T.greenGlow}`,
-          }}>Fully Self-Contained</div>
-          <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, maxWidth: 420, margin: "0 auto" }}>
-            This app runs entirely inside its own Pearl. No server-level sidecars required,
-            no Grapple connections needed. Install and go.
+            padding: 28, textAlign: 'center', background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.border}`,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.7 }}>
+              No server-level sidecars required — this app runs entirely within its Pearl.
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 
-  /* ---- LICENSE TAB ---- */
+    /* ---- LICENSE TAB ---- */
   const LicenseTab = () => (
     <div style={{ maxWidth: 780 }}>
       <div style={{
@@ -3109,8 +3179,8 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         {/* tags */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
-          {appSidecars.sidecars.map((sc, i) => <Badge key={`sc-${i}`} neon={T.magenta}>⚡ {sc.name}</Badge>)}
-          {appSidecars.grapple.map((g, i) => <Badge key={`grapple-${i}`} neon={T.yellow}>🔗 {g.name}</Badge>)}
+          {appSidecars.sidecars.map((sc, i) => <Badge key={`sc-${i}`} neon={T.magenta}>🏍️ {sc.name}</Badge>)}
+          {hasGrapple && <Badge neon={T.yellow}>🪝 {appSidecars.grapple.length} Grapple</Badge>}
         </div>
 
         {/* tab navigation */}

@@ -605,17 +605,23 @@ function AppCard({ app, onSelect, host }) {
       {getAppPrice(app.appId).onSale && (
         <div style={{
           position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none',
-          width: 0, height: 0,
-          borderStyle: 'solid',
-          borderWidth: '0 72px 72px 0',
-          borderColor: `transparent #f5a623 transparent transparent`,
-          filter: 'drop-shadow(-2px 2px 4px rgba(0,0,0,0.3))',
+          width: 80, height: 80, overflow: 'hidden',
         }}>
+          <div style={{
+            position: 'absolute', top: 0, right: 0,
+            width: 0, height: 0,
+            borderStyle: 'solid',
+            borderWidth: '0 80px 80px 0',
+            borderColor: 'transparent #f5a623 transparent transparent',
+            filter: 'drop-shadow(-2px 2px 4px rgba(0,0,0,0.3))',
+          }} />
           <span style={{
-            position: 'absolute', top: 12, right: -66, fontSize: 9, fontWeight: 800,
+            position: 'absolute', top: 16, right: 2, width: 56,
+            fontSize: 8, fontWeight: 800,
             color: '#1a1a2e', fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: '.06em', transform: 'rotate(45deg)',
-            whiteSpace: 'nowrap', textShadow: '0 1px 0 rgba(255,255,255,0.3)',
+            letterSpacing: '.05em', transform: 'rotate(45deg)', transformOrigin: 'center center',
+            whiteSpace: 'nowrap', textAlign: 'center',
+            textShadow: '0 1px 0 rgba(255,255,255,0.3)',
           }}>ON SALE</span>
         </div>
       )}
@@ -671,18 +677,28 @@ function AppCard({ app, onSelect, host }) {
           {/* Price display */}
           {(() => {
             const pr = getAppPrice(app.appId);
+            const isFree = pr.price === 'FREE';
+            const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
+            const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
+            const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
+            const usd = solToUsd(pr.price);
+            const origUsd = solToUsd(pr.originalPrice || '');
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                 <span style={{
-                  fontSize: 18, fontWeight: 800, color: pr.price === 'FREE' ? T.green : T.cyan,
+                  fontSize: 18, fontWeight: 800, color: priceColor,
                   fontFamily: "'Orbitron', sans-serif",
-                  textShadow: `0 0 8px ${pr.price === 'FREE' ? T.greenGlow : T.accentGlow}`,
+                  textShadow: `0 0 8px ${priceGlow}`,
                 }}>{pr.price}</span>
+                {usd && <span style={{ fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
                 {pr.onSale && pr.originalPrice && (
-                  <span style={{
-                    fontSize: 12, color: T.textDim, textDecoration: 'line-through',
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}>{pr.originalPrice}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{
+                      fontSize: 12, color: T.textDim, textDecoration: 'line-through',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>{pr.originalPrice}</span>
+                    {origUsd && <span style={{ fontSize: 9, color: T.textDim + '99', textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{origUsd}</span>}
+                  </span>
                 )}
               </div>
             );
@@ -1169,6 +1185,16 @@ function getAppPrice(appId) {
   return APP_PRICES[appId] || { price: 'FREE' };
 }
 
+/* approximate SOL → USD (rough estimate; update as needed) */
+const SOL_USD_RATE = 145;
+function solToUsd(solStr) {
+  const m = solStr.match(/([\d.]+)\s*SOL/);
+  if (!m) return null;
+  const usd = parseFloat(m[1]) * SOL_USD_RATE;
+  if (usd === 0) return null;
+  return `≈ $${usd < 1 ? usd.toFixed(2) : usd.toFixed(0)} USD`;
+}
+
 function getAppFAQ(app) {
   const specific = (APP_FAQ[app.appId] || []).map((item, i) => i === 0 ? { ...item, featured: true } : item);
   const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl).map((item, i) => i === 0 ? { ...item, featured: true } : item);
@@ -1275,8 +1301,6 @@ function DetailPage({ app, host, onClose }) {
   /* ---- OVERVIEW TAB ---- */
   const OverviewTab = () => (
     <>
-      <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
-
       {/* ── Pricing Module ── */}
       <div style={{ maxWidth: 780, marginBottom: 28 }}>
         {/* App Price */}
@@ -1289,19 +1313,27 @@ function DetailPage({ app, host, onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             {(() => {
               const pr = getAppPrice(app.appId);
+              const isFree = pr.price === 'FREE';
+              const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
+              const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
+              const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
+              const usd = solToUsd(pr.price);
+              const origUsd = solToUsd(pr.originalPrice || '');
               return (
                 <>
                   <span style={{
-                    fontSize: 36, fontWeight: 900, color: T.green,
+                    fontSize: 36, fontWeight: 900, color: priceColor,
                     fontFamily: "'Orbitron', sans-serif",
-                    textShadow: `0 0 15px ${T.greenGlow}`,
+                    textShadow: `0 0 15px ${priceGlow}`,
                   }}>{pr.price}</span>
+                  {usd && <span style={{ fontSize: 14, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
                   {pr.onSale && pr.originalPrice && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{
                         fontSize: 18, color: T.textDim, textDecoration: 'line-through',
                         fontFamily: "'JetBrains Mono', monospace",
                       }}>{pr.originalPrice}</span>
+                      {origUsd && <span style={{ fontSize: 12, color: T.textDim + '99', textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{origUsd}</span>}
                       <span style={{
                         display: 'inline-block', padding: '3px 10px',
                         background: '#f5a623', color: '#1a1a2e',
@@ -1347,6 +1379,8 @@ function DetailPage({ app, host, onClose }) {
           </div>
         )}
       </div>
+
+      <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
 
       <div className="detail-grid">
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

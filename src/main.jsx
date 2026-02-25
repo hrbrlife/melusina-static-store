@@ -739,7 +739,7 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
             {(() => {
               const sc = getAppSidecars(app.appId);
               if (sc.sidecars.length > 0) return <Badge neon={T.magenta}>⚡ Sidecar</Badge>;
-              if (sc.deps.length > 0) return <Badge neon={T.yellow}>🔗 Dep</Badge>;
+              if (sc.grapple.length > 0) return <Badge neon={T.yellow}>🔗 Grapple</Badge>;
               return null;
             })()}
           </div>
@@ -1428,21 +1428,21 @@ function getAppPrice(appId) {
   return APP_PRICES[appId] || { price: 'FREE' };
 }
 
-/* ─── Sidecars & Dependencies ──────────────────────────────────────────────── */
+/* ─── Sidecars & Grapple Enhancements ──────────────────────────────────────── */
 const APP_SIDECARS = {
   // Bureau — no sidecars
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { sidecars: [], deps: [] },
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { sidecars: [], grapple: [] },
   // BLOOM Identity — no sidecars
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { sidecars: [], deps: [] },
-  // BotMother — optional dep on AI Lagoon for AI processing
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { sidecars: [], grapple: [] },
+  // BotMother — optional Grapple enhancement: AI Lagoon for AI processing
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
     sidecars: [],
-    deps: [
+    grapple: [
       {
         appId: 'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0',
         name: 'AI Lagoon',
         required: false,
-        description: 'Connect BotMother to AI Lagoon via Grapple to add AI-powered message processing, auto-replies, and intelligent routing to your Telegram bots.',
+        description: 'Grapple a BotMother Pearl to an AI Lagoon Pearl to grant it read access to your AI models. Enables AI-powered message processing, auto-replies, and intelligent routing for your Telegram bots — each Pearl controls exactly what the other can see.',
       },
     ],
   },
@@ -1453,18 +1453,18 @@ const APP_SIDECARS = {
         name: 'Email Server (SMTP)',
         required: true,
         type: 'service',
-        description: 'MerMail needs an SMTP-capable email server sidecar to send and receive mail. Melusina routes inbound mail via its built-in SMTP gateway; outbound delivery requires configuring an SMTP relay (e.g. Postmark, your own Postfix, or any SMTP provider).',
+        description: 'MerMail requires the Melusina SMTP sidecar — a server-level mail service available only through Sandstorm. It handles inbound delivery via the platform\'s built-in SMTP gateway and outbound relay through a configured SMTP provider (e.g. Postmark, your own Postfix, or any standard relay).',
         links: [
           { label: 'Melusina SMTP docs', url: 'https://melusina-os.org/docs/smtp' },
         ],
       },
     ],
-    deps: [],
+    grapple: [],
   },
   // MiniGit — no sidecars
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { sidecars: [], deps: [] },
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { sidecars: [], grapple: [] },
   // Shell Tester — no sidecars
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { sidecars: [], deps: [] },
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { sidecars: [], grapple: [] },
   // AI Lagoon — required sidecar: LLM proxy
   'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
     sidecars: [
@@ -1472,7 +1472,7 @@ const APP_SIDECARS = {
         name: 'LLM Provider Proxy',
         required: true,
         type: 'ai-backend',
-        description: 'AI Lagoon requires a connection to at least one LLM backend. Run a local Ollama instance for fully offline AI, or configure a proxy to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing.',
+        description: 'AI Lagoon requires the LLM proxy sidecar — a server-level service available only through Sandstorm. Run a local Ollama instance for fully offline AI, or configure the proxy to route requests to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing at the server level.',
         options: [
           { name: 'Ollama (local)', description: 'Run models locally — fully offline, no API keys needed', url: 'https://ollama.com' },
           { name: 'OpenAI', description: 'GPT-4o, GPT-4, GPT-3.5 via API key', url: 'https://platform.openai.com' },
@@ -1484,12 +1484,12 @@ const APP_SIDECARS = {
         ],
       },
     ],
-    deps: [],
+    grapple: [],
   },
 };
 
 function getAppSidecars(appId) {
-  return APP_SIDECARS[appId] || { sidecars: [], deps: [] };
+  return APP_SIDECARS[appId] || { sidecars: [], grapple: [] };
 }
 
 /* approximate SOL → USD (rough estimate; update as needed) */
@@ -1589,7 +1589,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
     { id: 'audits', label: '🔍 Audits' },
-    { id: 'sidecars', label: '🔗 Sidecars / Deps' },
+    { id: 'sidecars', label: '🔗 Sidecars / Grapple' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
 
@@ -1735,10 +1735,10 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
     </>
   );
 
-  /* ---- SIDECARS / DEPS TAB ---- */
+  /* ---- SIDECARS / GRAPPLE TAB ---- */
   const appSidecars = getAppSidecars(app.appId);
   const hasSidecars = appSidecars.sidecars.length > 0;
-  const hasDeps = appSidecars.deps.length > 0;
+  const hasGrapple = appSidecars.grapple.length > 0;
 
   const SidecarsTab = () => (
     <div style={{ maxWidth: 780 }}>
@@ -1759,16 +1759,21 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
               fontSize: 16, fontWeight: 800, color: T.cyan, marginBottom: 6,
               fontFamily: "'Orbitron', sans-serif",
               textShadow: `0 0 8px ${T.accentGlow}`,
-            }}>What are Sidecars &amp; Dependencies?</div>
+            }}>What are Sidecars &amp; Grapple?</div>
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
-              <strong style={{ color: T.text }}>Sidecars</strong> are companion services that run alongside an app on your
-              Melusina server — things like email servers, AI backends, or database engines.
-              They're managed by the platform, isolated in their own containers, and never
-              share data unless you explicitly connect them via <strong style={{ color: T.text }}>Grapple</strong>.
+              <strong style={{ color: T.text }}>Sidecars</strong> are major server-level services that run
+              one-per-server on your Melusina instance — things like an email relay or an AI model proxy.
+              They’re available only through Sandstorm, managed by the platform, and shared across
+              all Pearls that need them. Individual apps don’t install or control sidecars — the
+              server admin provisions them once.
             </div>
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginTop: 8 }}>
-              <strong style={{ color: T.text }}>Dependencies</strong> are optional connections to other Melusina apps.
-              When linked via Grapple, apps can share capabilities without sharing data.
+              <strong style={{ color: T.text }}>Grapple Enhancements</strong> are optional Pearl-to-Pearl connections.
+              Grapple is how one Pearl gets access to another Pearl for a specific resource
+              with a specific authority. For example, an AI model Pearl can be given <em>read</em> access
+              to a collection of document Pearls, while an editor Pearl gets <em>edit</em> access to
+              one report document and <em>view</em> access to others — each connection scoped
+              individually. Nothing connects unless you Grapple it explicitly.
             </div>
             <a href="https://melusina-os.org/docs/sidecars" target="_blank" rel="noreferrer"
               style={{
@@ -1865,38 +1870,38 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         </div>
       )}
 
-      {/* Dependencies section */}
-      {hasDeps && (
+      {/* Grapple Enhancements section */}
+      {hasGrapple && (
         <div style={{ marginBottom: 28 }}>
-          <SectionHeader color={T.yellow}>App Dependencies</SectionHeader>
+          <SectionHeader color={T.yellow}>Grapple Enhancements</SectionHeader>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {appSidecars.deps.map((dep, i) => (
+            {appSidecars.grapple.map((g, i) => (
               <div key={i} style={{
                 padding: 22, background: T.surface, borderRadius: T.radius,
-                border: `1px solid ${dep.required ? T.magenta + '44' : T.yellow + '44'}`,
+                border: `1px solid ${g.required ? T.magenta + '44' : T.yellow + '44'}`,
                 backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
                     fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".06em",
-                    background: dep.required ? T.magenta + '22' : T.yellow + '22',
-                    color: dep.required ? T.magenta : T.yellow,
-                    border: `1px solid ${dep.required ? T.magenta + '44' : T.yellow + '44'}`,
-                  }}>{dep.required ? 'REQUIRED' : 'OPTIONAL'}</span>
+                    background: g.required ? T.magenta + '22' : T.yellow + '22',
+                    color: g.required ? T.magenta : T.yellow,
+                    border: `1px solid ${g.required ? T.magenta + '44' : T.yellow + '44'}`,
+                  }}>{g.required ? 'REQUIRED' : 'OPTIONAL'}</span>
                   <span style={{
                     fontSize: 9, fontWeight: 600, padding: "3px 8px", borderRadius: 3,
                     fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
                     background: T.green + '15', color: T.green + 'cc', border: `1px solid ${T.green}33`,
                     textTransform: 'uppercase',
-                  }}>APP DEP</span>
+                  }}>GRAPPLE</span>
                 </div>
                 <div style={{
                   fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 8,
                   fontFamily: "'Orbitron', sans-serif",
-                }}>{dep.name}</div>
+                }}>{g.name}</div>
                 <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
-                  {dep.description}
+                  {g.description}
                 </div>
               </div>
             ))}
@@ -1905,7 +1910,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
       )}
 
       {/* No sidecars state */}
-      {!hasSidecars && !hasDeps && (
+      {!hasSidecars && !hasGrapple && (
         <div style={{
           padding: 40, textAlign: "center", background: T.surface, borderRadius: T.radius,
           border: `1px solid ${T.border}`,
@@ -1916,10 +1921,10 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
             fontSize: 16, fontWeight: 800, color: T.green, marginBottom: 8,
             fontFamily: "'Orbitron', sans-serif",
             textShadow: `0 0 8px ${T.greenGlow}`,
-          }}>No External Dependencies</div>
+          }}>Fully Self-Contained</div>
           <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, maxWidth: 420, margin: "0 auto" }}>
-            This app runs entirely self-contained inside its Pearl. No sidecars, no external
-            services, no API keys needed. Install and go.
+            This app runs entirely inside its own Pearl. No server-level sidecars required,
+            no Grapple connections needed. Install and go.
           </div>
         </div>
       )}
@@ -3105,7 +3110,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
           {appSidecars.sidecars.map((sc, i) => <Badge key={`sc-${i}`} neon={T.magenta}>⚡ {sc.name}</Badge>)}
-          {appSidecars.deps.map((dep, i) => <Badge key={`dep-${i}`} neon={T.yellow}>🔗 {dep.name}</Badge>)}
+          {appSidecars.grapple.map((g, i) => <Badge key={`grapple-${i}`} neon={T.yellow}>🔗 {g.name}</Badge>)}
         </div>
 
         {/* tab navigation */}

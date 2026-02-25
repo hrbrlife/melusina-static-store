@@ -4042,6 +4042,34 @@ function App() {
 
   useEffect(() => { if (host) localStorage.setItem("sandstormHost", host); }, [host]);
 
+  /* ─── ?host= URL parameter: auto-register server on open ─── */
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const hostParam = params.get('host');
+      if (!hostParam) return;
+      const h = sanitizeHost(hostParam);
+      if (!h) return;
+
+      // Check if it matches a known pbay server
+      const domain = h.replace(/^https?:\/\//i, '').toLowerCase();
+      const pbayMatch = PBAY_SERVERS.find((s) => domain === s.domain || domain.endsWith('.' + s.domain));
+      if (pbayMatch) {
+        setPbayServer(pbayMatch);
+      } else {
+        addPrivateServer(h);
+      }
+
+      // Also set the legacy host state
+      setHost(h);
+
+      // Clean the URL without reloading
+      const url = new URL(window.location);
+      url.searchParams.delete('host');
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch { /* in-app browsers may restrict URL APIs — fail silently */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const onInstall = useCallback((app) => { setInstallModalApp(app); }, []);
 
   const categories = useMemo(() => {

@@ -122,7 +122,7 @@ function JurisdictionModal({ onSelect, onClose }) {
       backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
     }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: 560, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto',
+        width: 560, maxWidth: '92vw', maxHeight: '82dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         background: 'linear-gradient(160deg, rgba(22,16,48,0.98), rgba(14,10,32,0.98))',
         border: `1px solid ${T.cyan}33`,
         borderRadius: T.radius,
@@ -286,7 +286,7 @@ function InstallModal({ app, onClose }) {
       backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
     }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: 520, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto',
+        width: 520, maxWidth: '92vw', maxHeight: '82dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         background: 'linear-gradient(160deg, rgba(22,16,48,0.98), rgba(14,10,32,0.98))',
         border: `1px solid ${T.cyan}33`,
         borderRadius: T.radius,
@@ -907,6 +907,7 @@ body::after{
 .review-card:hover{border-color:${T.cyan}33}
 
 @media(max-width:480px){.detail-tab{padding:12px 16px;font-size:10px;letter-spacing:.06em}}
+@media(max-width:768px){.mobile-sticky-install{display:flex!important}}
 `;
 
 /* ─── small components ─────────────────────────────────────────────────────── */
@@ -1191,7 +1192,7 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
               onClick={(e) => { e.stopPropagation(); onInstall(app); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "7px 18px",
+                padding: "10px 18px", minHeight: 44,
                 background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
                 border: `1px solid ${T.cyan}66`,
                 color: T.cyan,
@@ -1484,26 +1485,26 @@ const APP_USP = {
 
 /* legacy — docs removed, replaced with GitHub links */
 const APP_DOCS = {
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': `# Getting Started with CoinFace\n\nCoinFace is a self-hosted KYC identity verification platform for Sandstorm.\n\n## Installation\n\n- Connect your Sandstorm server using the **CONNECT** button in the app bazaar header\n- Click **INSTALL** to deploy CoinFace to your server\n- Create a new CoinFace grain from your Sandstorm dashboard\n\n## Admin Dashboard\n\nThe admin dashboard shows all active and completed verification cases. From here you can:\n\n- Create shareable verification links for respondents\n- Monitor verification status in real-time\n- Review completed cases with uploaded documents and facial captures\n- Approve or reject verification submissions\n\n## Verification Flow\n\nRespondents receive a link and complete these steps:\n\n- Accept Terms & Conditions\n- Upload a government-issued ID document\n- Complete live facial verification capture\n- Enter OTP confirmation code\n- Submit for admin review\n\n## Supported Document Types\n\n- Passport\n- Driver's License\n- National ID Card\n- Residence Permit\n\n## Privacy & Security\n\nAll data stays on your Sandstorm server. No documents or biometric data are sent to external APIs. The entire verification pipeline runs locally within your grain sandbox.`,
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': `# Getting Started with CoinFace\n\nCoinFace is a self-hosted KYC identity verification platform for Melusina.\n\n## Installation\n\n- Connect your Melusina server using the **CONNECT** button in the app bazaar header\n- Click **INSTALL** to deploy CoinFace to your server\n- Create a new CoinFace Pearl from your Melusina dashboard\n\n## Admin Dashboard\n\nThe admin dashboard shows all active and completed verification cases. From here you can:\n\n- Create shareable verification links for respondents\n- Monitor verification status in real-time\n- Review completed cases with uploaded documents and facial captures\n- Approve or reject verification submissions\n\n## Verification Flow\n\nRespondents receive a link and complete these steps:\n\n- Accept Terms & Conditions\n- Upload a government-issued ID document\n- Complete live facial verification capture\n- Enter OTP confirmation code\n- Submit for admin review\n\n## Supported Document Types\n\n- Passport\n- Driver's License\n- National ID Card\n- Residence Permit\n\n## Privacy & Security\n\nAll data stays on your Melusina server. No documents or biometric data are sent to external APIs. The entire verification pipeline runs locally within your Pearl sandbox.`,
 
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': `# Getting Started with BotMother\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Sandstorm.\n\n## Installation\n\n- Install BotMother from the Melusina App Bazaar\n- Create a new BotMother grain on your Sandstorm server\n\n## Setting Up Your Bot\n\n- Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n- Copy the bot token\n- Paste it into BotMother's configuration page\n- Your bot is now connected and routing messages through Sandstorm\n\n## Message Routing\n\nBotMother lets you define routing rules for incoming messages:\n\n- Route by command (e.g. /help, /start)\n- Route by keyword matching\n- Route by user group or chat ID\n- Set up auto-responses for common queries\n\n## Chatrooms\n\nCreate managed chatrooms that your bot moderates:\n\n- Set welcome messages\n- Configure moderation rules\n- Track message history within Sandstorm\n\n## Security\n\nAll message data stays on your Sandstorm server. Bot tokens are stored securely in the grain sandbox.`,
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': `# Getting Started with BotMother\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina.\n\n## Installation\n\n- Install BotMother from the Melusina App Bazaar\n- Create a new BotMother Pearl on your Melusina server\n\n## Setting Up Your Bot\n\n- Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n- Copy the bot token\n- Paste it into BotMother's configuration page\n- Your bot is now connected and routing messages through Melusina\n\n## Message Routing\n\nBotMother lets you define routing rules for incoming messages:\n\n- Route by command (e.g. /help, /start)\n- Route by keyword matching\n- Route by user group or chat ID\n- Set up auto-responses for common queries\n\n## Chatrooms\n\nCreate managed chatrooms that your bot moderates:\n\n- Set welcome messages\n- Configure moderation rules\n- Track message history within Melusina\n\n## Security\n\nAll message data stays on your Melusina server. Bot tokens are stored securely in the Pearl sandbox.`,
 
 
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': `# Getting Started with MerMail\n\nMerMail is a native email client for Sandstorm, built with Go and HTMX.\n\n## Installation\n\n- Install MerMail from the Melusina App Bazaar\n- Create a new grain — each grain is an independent mailbox\n\n## Receiving Email\n\nEmail arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. No external mail server configuration needed.\n\n## Composing Messages\n\n- Rich compose form with To, CC, BCC fields\n- Reply, Reply All, and Forward support\n- Draft auto-save — resume editing anytime\n- File attachments with inline preview\n\n## Organizing Mail\n\n- Create custom folders\n- Star important messages\n- Move messages between folders\n- Bulk delete and archive\n- Full-text search across all messages\n\n## Sharing Access\n\nUse Sandstorm's sharing system to grant access:\n\n- **Viewer**: Read-only mailbox access\n- **Editor**: Can compose and manage messages\n- **Admin**: Full control including settings\n\n## Technical Architecture\n\n- **Backend**: Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend**: Server-side HTML + HTMX + WebSocket\n- **Storage**: SQLite with automatic migrations\n- **Updates**: Real-time WebSocket push for new mail`,
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': `# Getting Started with MerMail\n\nMerMail is a native email client for Melusina, built with Go and HTMX.\n\n## Installation\n\n- Install MerMail from the Melusina App Bazaar\n- Create a new Pearl — each Pearl is an independent mailbox\n\n## Receiving Email\n\nEmail arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. No external mail server configuration needed.\n\n## Composing Messages\n\n- Rich compose form with To, CC, BCC fields\n- Reply, Reply All, and Forward support\n- Draft auto-save — resume editing anytime\n- File attachments with inline preview\n\n## Organizing Mail\n\n- Create custom folders\n- Star important messages\n- Move messages between folders\n- Bulk delete and archive\n- Full-text search across all messages\n\n## Sharing Access\n\nUse Melusina's sharing system to grant access:\n\n- **Viewer**: Read-only mailbox access\n- **Editor**: Can compose and manage messages\n- **Admin**: Full control including settings\n\n## Technical Architecture\n\n- **Backend**: Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend**: Server-side HTML + HTMX + WebSocket\n- **Storage**: SQLite with automatic migrations\n- **Updates**: Real-time WebSocket push for new mail`,
 
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': `# Getting Started with MiniGit\n\nMiniGit provides lightweight Git hosting with a web interface on Sandstorm.\n\n## Installation\n\n- Install MiniGit from the Melusina App Bazaar\n- Create a new grain — each grain is a Git repository\n\n## Cloning & Pushing\n\nUse the Sandstorm API URL provided in your grain to clone and push:\n\n- \`git clone <grain-url>\`\n- \`git push origin main\`\n\nAuthentication is handled automatically by Sandstorm.\n\n## Web Interface\n\nBrowse your repository through the built-in GitWeb interface:\n\n- File tree navigation\n- Commit history and diffs\n- Search file contents\n- Branch and tag listing\n\n## Publishing Static Sites\n\nPush to the special **public** branch to publish static content at a Pearl URL:\n\n- \`git checkout -b public\`\n- Add your HTML/CSS/JS files\n- \`git push origin public\`\n\nYour site is now accessible via Sandstorm's Pearl URL system.\n\n## Permissions\n\n- Grant read or read/write access via Sandstorm sharing\n- Each grain is fully isolated from others`,
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': `# Getting Started with MiniGit\n\nMiniGit provides lightweight Git hosting with a web interface on Melusina.\n\n## Installation\n\n- Install MiniGit from the Melusina App Bazaar\n- Create a new Pearl — each Pearl is a Git repository\n\n## Cloning & Pushing\n\nUse the Melusina API URL provided in your Pearl to clone and push:\n\n- \`git clone <pearl-url>\`\n- \`git push origin main\`\n\nAuthentication is handled automatically by Melusina.\n\n## Web Interface\n\nBrowse your repository through the built-in GitWeb interface:\n\n- File tree navigation\n- Commit history and diffs\n- Search file contents\n- Branch and tag listing\n\n## Publishing Static Sites\n\nPush to the special **public** branch to publish static content at a Pearl URL:\n\n- \`git checkout -b public\`\n- Add your HTML/CSS/JS files\n- \`git push origin public\`\n\nYour site is now accessible via Melusina's Pearl URL system.\n\n## Permissions\n\n- Grant read or read/write access via Melusina sharing\n- Each Pearl is fully isolated from others`,
 
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': `# Getting Started with Shell Tester\n\nShell Tester is a Melusina Shell Extension testing tool for Sandstorm.\n\n## Installation\n\n- Install Shell Tester from the Melusina App Bazaar\n- Create a new grain to begin testing\n\n## What It Does\n\nShell Tester provides an interactive environment for testing Melusina Shell Extensions. You can:\n\n- Load and test shell extension packages\n- Verify extension APIs and hooks\n- Debug extension behavior in a sandboxed environment\n- Validate extension manifest files\n\n## Running Tests\n\n- Upload your extension package\n- Shell Tester automatically detects test suites\n- View test results with pass/fail indicators\n- Inspect logs and error output\n\n## For Extension Developers\n\n- Use Shell Tester during development to validate your extensions\n- Test against different Melusina Shell versions\n- Verify permissions and capability requirements`
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': `# Getting Started with Shell Tester\n\nShell Tester is a Melusina Shell Extension testing tool for Melusina.\n\n## Installation\n\n- Install Shell Tester from the Melusina App Bazaar\n- Create a new Pearl to begin testing\n\n## What It Does\n\nShell Tester provides an interactive environment for testing Melusina Shell Extensions. You can:\n\n- Load and test shell extension packages\n- Verify extension APIs and hooks\n- Debug extension behavior in a sandboxed environment\n- Validate extension manifest files\n\n## Running Tests\n\n- Upload your extension package\n- Shell Tester automatically detects test suites\n- View test results with pass/fail indicators\n- Inspect logs and error output\n\n## For Extension Developers\n\n- Use Shell Tester during development to validate your extensions\n- Test against different Melusina Shell versions\n- Verify permissions and capability requirements`
 };
 
 const APP_FAQ = {
   _common: [
-    { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Sandstorm server URL. Then click the **INSTALL** button on the app detail page. The app will be deployed to your server automatically.' },
-    { q: 'Is my data private?', a: 'Yes. All data stays on your Sandstorm server. There is no telemetry, analytics, or external data transmission. Each app grain is sandboxed and isolated.' },
-    { q: 'How do I share access with others?', a: "Use Sandstorm's built-in sharing system. Click the sharing icon in your grain's top bar and generate a sharing link with the appropriate permission level (Viewer, Editor, or Admin)." },
-    { q: 'How do I update to the latest version?', a: 'Updates appear automatically in your Sandstorm admin panel. You can also revisit the App Bazaar and re-install to get the latest version.' },
-    { q: 'How do I backup my data?', a: "Use Sandstorm's built-in grain backup feature. Go to your grain's top-bar menu and select 'Download Backup'. This creates a portable .zip of your grain that can be restored on any Sandstorm server." },
-    { q: 'Can I run multiple instances?', a: 'Yes. Each Sandstorm grain is an independent instance with its own data. You can create as many grains as you need.' },
+    { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Melusina server URL. Then click the **INSTALL** button on the app detail page. The app will be deployed to your server automatically.' },
+    { q: 'Is my data private?', a: 'Yes. All data stays on your Melusina server. There is no telemetry, analytics, or external data transmission. Each app Pearl is sandboxed and isolated.' },
+    { q: 'How do I share access with others?', a: "Use Melusina's built-in sharing system. Click the sharing icon in your Pearl's top bar and generate a sharing link with the appropriate permission level (Viewer, Editor, or Admin)." },
+    { q: 'How do I update to the latest version?', a: 'Updates appear automatically in your Melusina admin panel. You can also revisit the App Bazaar and re-install to get the latest version.' },
+    { q: 'How do I backup my data?', a: "Use Melusina's built-in Pearl backup feature. Go to your Pearl's top-bar menu and select 'Download Backup'. This creates a portable .zip of your Pearl that can be restored on any Melusina server." },
+    { q: 'Can I run multiple instances?', a: 'Yes. Each Melusina Pearl is an independent instance with its own data. You can create as many Pearls as you need.' },
   ],
   _openSource: [
     { q: 'Can I contribute to the source code?', a: 'Absolutely. Check the SOURCE link on the app page to find the GitHub repository. Pull requests and issues are welcome.' },
@@ -1516,21 +1517,21 @@ const APP_FAQ = {
   ],
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
     { q: 'What document types does CoinFace support?', a: 'CoinFace supports passports, driver\'s licenses, national ID cards, and residence permits. The document detection system automatically identifies the document type.' },
-    { q: 'Does facial verification use external AI?', a: 'No. All AI processing runs locally within your Sandstorm grain. No images or biometric data leave your server.' },
+    { q: 'Does facial verification use external AI?', a: 'No. All AI processing runs locally within your Melusina Pearl. No images or biometric data leave your server.' },
     { q: 'Can respondents complete verification on mobile?', a: 'Yes. The verification flow is fully responsive and optimized for mobile browsers. Camera access for facial capture works on iOS and Android.' },
   ],
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
     { q: 'Can multiple users edit a spreadsheet simultaneously?', a: 'Yes. Bureau uses WebSocket for real-time multi-user editing with presence indicators showing who else is viewing or editing.' },
     { q: 'What file formats can I import/export?', a: 'Spreadsheets support CSV, JSON, and XLSX. Documents export to HTML. Images export to PNG, JPG, BMP, and WebP.' },
-    { q: 'How do snapshots work?', a: 'All grain types support named version snapshots. Save a snapshot with a name, browse your snapshot history, compare changes, and restore any previous version.' },
+    { q: 'How do snapshots work?', a: 'All Pearl types support named version snapshots. Save a snapshot with a name, browse your snapshot history, compare changes, and restore any previous version.' },
   ],
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    { q: 'How does email delivery work?', a: 'Email arrives via Sandstorm\'s built-in SMTP gateway. Each grain has its own email address. No external mail server configuration is needed.' },
-    { q: 'Can I use a custom domain for email?', a: 'Email addressing is managed by your Sandstorm server configuration. Contact your Sandstorm admin to set up custom domain routing.' },
+    { q: 'How does email delivery work?', a: 'Email arrives via Melusina\'s built-in SMTP gateway. Each Pearl has its own email address. No external mail server configuration is needed.' },
+    { q: 'Can I use a custom domain for email?', a: 'Email addressing is managed by your Melusina server configuration. Contact your Melusina admin to set up custom domain routing.' },
   ],
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
-    { q: 'How do I publish a static website?', a: 'Push your HTML/CSS/JS files to a branch named **public** in your MiniGit grain. Sandstorm will serve the contents at a Pearl URL.' },
-    { q: 'What Git operations are supported?', a: 'All standard Git operations: clone, push, pull, branch, tag. Authentication is handled by Sandstorm\'s capability system.' },
+    { q: 'How do I publish a static website?', a: 'Push your HTML/CSS/JS files to a branch named **public** in your MiniGit Pearl. Melusina will serve the contents at a Pearl URL.' },
+    { q: 'What Git operations are supported?', a: 'All standard Git operations: clone, push, pull, branch, tag. Authentication is handled by Melusina\'s capability system.' },
   ],
 };
 
@@ -1543,7 +1544,7 @@ const APP_REVIEWS = {
   ],
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
     { author: 'bot_developer', rating: 4, date: '2026-01-20', title: 'Nice Telegram integration', text: 'Easy to connect my Telegram bot. Message routing rules are flexible. Chatroom management is a nice bonus.' },
-    { author: 'community_mgr', rating: 5, date: '2026-01-05', title: 'Exactly what I needed', text: 'Managing our community bot through Sandstorm gives us full control. No more relying on third-party bot hosting services.' },
+    { author: 'community_mgr', rating: 5, date: '2026-01-05', title: 'Exactly what I needed', text: 'Managing our community bot through Melusina gives us full control. No more relying on third-party bot hosting services.' },
     { author: 'privacy_max', rating: 4, date: '2025-12-18', title: 'Self-hosted bot hosting', text: 'All messages stay on our server. Great for organizations that need to keep communications private. Routing is intuitive.' },
   ],
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
@@ -1551,7 +1552,7 @@ const APP_REVIEWS = {
     { author: 'designer_jay', rating: 4, date: '2026-01-22', title: 'miniPaint is a nice surprise', text: 'Didn\'t expect a full image editor bundled in. Layers, filters, and export work well. The diagram tool is great for quick flowcharts too.' },
     { author: 'data_analyst_k', rating: 5, date: '2026-01-10', title: 'Powerful spreadsheet', text: 'XLSX import/export, formula support, and real-time collab. Running it on our own server means no data leaks. The best self-hosted spreadsheet I\'ve used.' },
     { author: 'team_lead_r', rating: 4, date: '2025-12-30', title: 'Solid document editor', text: 'TipTap-based editor is responsive and handles formatting well. CRDT sync means no conflicts even with 5+ people editing simultaneously.' },
-    { author: 'privacy_advocate', rating: 5, date: '2025-12-15', title: 'Finally, a private office suite', text: 'No Google, no Microsoft, no data mining. Bureau on Sandstorm gives our NGO everything we need without compromising our principles.' },
+    { author: 'privacy_advocate', rating: 5, date: '2025-12-15', title: 'Finally, a private office suite', text: 'No Google, no Microsoft, no data mining. Bureau on Melusina gives our NGO everything we need without compromising our principles.' },
   ],
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
     { author: 'sysadmin_elena', rating: 4, date: '2026-01-18', title: 'Clean email client', text: 'Love that it uses native Cap\'n Proto instead of the HTTP bridge. Fast and lightweight. HTMX frontend is snappy. SQLite storage keeps things simple.' },
@@ -1561,7 +1562,7 @@ const APP_REVIEWS = {
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
     { author: 'indie_dev', rating: 5, date: '2026-01-25', title: 'Perfect for small projects', text: 'Host my personal repos without GitHub. The GitWeb interface is clean and the public branch feature for static sites is genius.' },
     { author: 'homelab_user', rating: 4, date: '2026-01-08', title: 'Lightweight and reliable', text: 'Running MiniGit for my homelab documentation repos. Dead simple, does exactly what it says. Push, pull, browse. No bloat.' },
-    { author: 'educator_prof', rating: 5, date: '2025-12-28', title: 'Great for teaching', text: 'I give each student a MiniGit grain for their assignments. Sandstorm sharing makes access management trivial. The web viewer lets me review code without cloning.' },
+    { author: 'educator_prof', rating: 5, date: '2025-12-28', title: 'Great for teaching', text: 'I give each student a MiniGit Pearl for their assignments. Melusina sharing makes access management trivial. The web viewer lets me review code without cloning.' },
   ],
   'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
     { author: 'ext_developer', rating: 4, date: '2026-01-12', title: 'Essential for extension dev', text: 'If you\'re building Melusina Shell extensions, this is indispensable. Catches issues before deployment. Sandbox testing is well-implemented.' },
@@ -1582,7 +1583,7 @@ const APP_VERSIONS = {
   ],
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
     { version: '3.1.0', date: '2026-02-01', changes: ['miniPaint layer compositing improvements', 'Diagram auto-layout algorithm', 'XLSX formula support expanded'] },
-    { version: '3.0.0', date: '2025-12-15', changes: ['Added miniPaint image editor', 'Diagram tool with real-time sync', 'Named version snapshots for all grain types'] },
+    { version: '3.0.0', date: '2025-12-15', changes: ['Added miniPaint image editor', 'Diagram tool with real-time sync', 'Named version snapshots for all Pearl types'] },
     { version: '2.0.0', date: '2025-09-20', changes: ['Document editor powered by TipTap + Yjs CRDT', 'Real-time presence indicators', 'Comments system'] },
     { version: '1.0.0', date: '2025-06-01', changes: ['Initial release', 'Spreadsheet with WebSocket collaboration', 'CSV and JSON import/export'] },
   ],
@@ -1594,7 +1595,7 @@ const APP_VERSIONS = {
   ],
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
     { version: '1.1.0', date: '2026-01-25', changes: ['Public branch static site publishing', 'Improved diff viewer', 'Search file contents'] },
-    { version: '1.0.0', date: '2025-08-01', changes: ['Initial release', 'Git hosting with GitWeb interface', 'Clone, push, pull support', 'Sandstorm capability-based auth'] },
+    { version: '1.0.0', date: '2025-08-01', changes: ['Initial release', 'Git hosting with GitWeb interface', 'Clone, push, pull support', 'Melusina capability-based auth'] },
   ],
   'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
     { version: '1.1.0', date: '2026-01-12', changes: ['Extension manifest validator', 'Multi-version shell testing', 'Improved log output formatting'] },
@@ -1617,10 +1618,10 @@ const APP_AUDITS = {
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': {
     ai: [
       { version: '3.1.0', date: '2026-02-01', results: {
-        security: { rating: 'Pass', note: 'Sandboxed grain isolation, no outbound network access' },
+        security: { rating: 'Pass', note: 'Sandboxed Pearl isolation, no outbound network access' },
         privacy: { rating: 'Pass', note: 'All data stays on-server, no telemetry' },
-        dataSafety: { rating: 'Pass', note: 'SQLite + per-grain encryption at rest' },
-        dataPortability: { rating: 'Pass', note: 'CSV, JSON, XLSX export for all grain types' },
+        dataSafety: { rating: 'Pass', note: 'SQLite + per-Pearl encryption at rest' },
+        dataPortability: { rating: 'Pass', note: 'CSV, JSON, XLSX export for all Pearl types' },
         codeQuality: { rating: 'Pass', note: 'Modular TypeScript codebase with unit tests' },
         accessibility: { rating: 'Partial', note: 'Keyboard navigation; screen reader support in progress' },
       }, links: {
@@ -1629,7 +1630,7 @@ const APP_AUDITS = {
         gemini: 'https://g.co/gemini/share/bureau-audit-3.1',
       }},
       { version: '3.0.0', date: '2025-12-15', results: {
-        security: { rating: 'Pass', note: 'Grain sandbox, CSP headers enforced' },
+        security: { rating: 'Pass', note: 'Pearl sandbox, CSP headers enforced' },
         privacy: { rating: 'Pass', note: 'Zero external APIs' },
         dataSafety: { rating: 'Pass', note: 'SQLite WAL mode with auto-backup' },
         dataPortability: { rating: 'Pass', note: 'Export to CSV and JSON' },
@@ -1648,7 +1649,7 @@ const APP_AUDITS = {
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': {
     ai: [
       { version: '1.2.0', date: '2026-01-28', results: {
-        security: { rating: 'Pass', note: 'KYC data never leaves grain. Facial capture processed locally' },
+        security: { rating: 'Pass', note: 'KYC data never leaves Pearl. Facial capture processed locally' },
         privacy: { rating: 'Pass', note: 'Zero third-party API calls. No biometric data transmitted externally' },
         dataSafety: { rating: 'Pass', note: 'Per-case isolated storage. Document encryption at rest' },
         dataPortability: { rating: 'Pass', note: 'Case export includes all documents and audit trail' },
@@ -1665,8 +1666,8 @@ const APP_AUDITS = {
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
     ai: [
       { version: '2.0.0', date: '2026-01-20', results: {
-        security: { rating: 'Pass', note: 'Bot tokens stored in grain-local encrypted vault' },
-        privacy: { rating: 'Pass', note: 'All conversations stay on-server. Telegram API token scoped to grain' },
+        security: { rating: 'Pass', note: 'Bot tokens stored in Pearl-local encrypted vault' },
+        privacy: { rating: 'Pass', note: 'All conversations stay on-server. Telegram API token scoped to Pearl' },
         dataSafety: { rating: 'Pass', note: 'Message history in SQLite with WAL journaling' },
         dataPortability: { rating: 'Pass', note: 'Full chat export as JSON' },
         codeQuality: { rating: 'Pass', note: 'Clean webhook handler architecture' },
@@ -1684,7 +1685,7 @@ const APP_AUDITS = {
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
     ai: [
       { version: '1.3.0', date: '2026-01-18', results: {
-        security: { rating: 'Pass', note: 'Cap\'n Proto RPC with Sandstorm powerbox auth' },
+        security: { rating: 'Pass', note: 'Cap\'n Proto RPC with Melusina powerbox auth' },
         privacy: { rating: 'Pass', note: 'Mail stored locally. Optional Postmark for outbound only' },
         dataSafety: { rating: 'Pass', note: 'SQLite backend with full-text search index' },
         dataPortability: { rating: 'Pass', note: 'EML export for all messages' },
@@ -1700,7 +1701,7 @@ const APP_AUDITS = {
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': {
     ai: [
       { version: '1.1.0', date: '2026-01-25', results: {
-        security: { rating: 'Pass', note: 'Git operations sandboxed in grain. Auth via Sandstorm capabilities' },
+        security: { rating: 'Pass', note: 'Git operations sandboxed in Pearl. Auth via Melusina capabilities' },
         privacy: { rating: 'Pass', note: 'No external network calls. All repos stored locally' },
         dataSafety: { rating: 'Pass', note: 'Standard git bare repo format on disk' },
         dataPortability: { rating: 'Pass', note: 'Standard git clone — full portability' },
@@ -1717,9 +1718,9 @@ const APP_AUDITS = {
   'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': {
     ai: [
       { version: '1.1.0', date: '2026-01-12', results: {
-        security: { rating: 'Pass', note: 'Extensions run in isolated grain sandbox' },
+        security: { rating: 'Pass', note: 'Extensions run in isolated Pearl sandbox' },
         privacy: { rating: 'Pass', note: 'No external data transmission' },
-        dataSafety: { rating: 'Pass', note: 'Test results and logs stored in grain' },
+        dataSafety: { rating: 'Pass', note: 'Test results and logs stored in Pearl' },
         dataPortability: { rating: 'Pass', note: 'Test logs exportable; extension packages are portable SPK files' },
         codeQuality: { rating: 'Pass', note: 'Simple, focused utility with clear test runner architecture' },
         accessibility: { rating: 'Pass', note: 'Terminal-style output; fully keyboard-driven' },
@@ -1728,7 +1729,7 @@ const APP_AUDITS = {
       }},
     ],
     human: [
-      { version: '1.0.0', date: '2025-10-15', auditor: 'Harbor Life Security Team', summary: 'Reviewed sandboxing of extension loading. Confirmed grain isolation prevents escape. Approved.', reportUrl: '#' },
+      { version: '1.0.0', date: '2025-10-15', auditor: 'Harbor Life Security Team', summary: 'Reviewed sandboxing of extension loading. Confirmed Pearl isolation prevents escape. Approved.', reportUrl: '#' },
     ],
   },
   // AI Lagoon
@@ -1737,7 +1738,7 @@ const APP_AUDITS = {
       { version: '1.0.0', date: '2025-12-01', results: {
         security: { rating: 'Pass', note: 'AI context fully isolated per Pearl. Grapple connections require explicit grant' },
         privacy: { rating: 'Pass', note: 'Prompts and responses never leave your server' },
-        dataSafety: { rating: 'Pass', note: 'Conversation history in grain-local SQLite' },
+        dataSafety: { rating: 'Pass', note: 'Conversation history in Pearl-local SQLite' },
         dataPortability: { rating: 'Pass', note: 'Conversation export as JSON/Markdown' },
         codeQuality: { rating: 'Pass', note: 'Clean model-agnostic architecture' },
         accessibility: { rating: 'Partial', note: 'Chat UI keyboard-navigable; settings panel needs improvement' },
@@ -1816,14 +1817,14 @@ Full license text: https://www.gnu.org/licenses/agpl-3.0.en.html`;
 
 const APP_FEES = {
   _platform: {
-    selfHosted: { price: 'FREE', description: 'Run on your own Sandstorm server with no ongoing fees' },
+    selfHosted: { price: 'FREE', description: 'Run on your own Melusina server with no ongoing fees' },
     plans: [
-      { tier: 'Starter', sol: '0.1', storage: '1 GB', grains: 5 },
-      { tier: 'Standard', sol: '0.5', storage: '10 GB', grains: 25 },
-      { tier: 'Professional', sol: '2.0', storage: '50 GB', grains: 100 },
-      { tier: 'Enterprise', sol: '10.0', storage: '500 GB', grains: '\u221e' },
+      { tier: 'Starter', sol: '0.1', storage: '1 GB', pearls: 5 },
+      { tier: 'Standard', sol: '0.5', storage: '10 GB', pearls: 25 },
+      { tier: 'Professional', sol: '2.0', storage: '50 GB', pearls: 100 },
+      { tier: 'Enterprise', sol: '10.0', storage: '500 GB', pearls: '\u221e' },
     ],
-    grainNote: 'Each app instance is a grain. Share NFTs (~0.005 SOL tx fee) enable per-user access within your plan quota.',
+    pearlNote: 'Each app instance is a Pearl. Share NFTs (~0.005 SOL tx fee) enable per-user access within your plan quota.',
     storageNote: 'Storage is included in your pBay plan tier. Self-hosted deployments have unlimited storage.',
     ipfsNote: 'Publish permanent IPFS snapshots via Arweave for ~0.01\u20130.5 AR per snapshot depending on data size. Your data becomes permanently available on the decentralized web.',
     paymentNote: 'All payments are in SOL on the Solana blockchain via Phantom, Solflare, or Backpack wallets.',
@@ -1835,7 +1836,7 @@ const APP_FEES = {
     { service: 'Postmark Email API', cost: 'Optional', note: 'For enhanced outbound email delivery. Free tier: 100 emails/mo' },
   ],
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    { service: 'No third-party APIs required', cost: '\u2014', note: 'All verification runs locally within your grain' },
+    { service: 'No third-party APIs required', cost: '\u2014', note: 'All verification runs locally within your Pearl' },
   ],
 };
 
@@ -1898,7 +1899,7 @@ const APP_SIDECARS = {
         name: 'Email Server (SMTP)',
         required: true,
         type: 'service',
-        description: 'MerMail requires the Melusina SMTP sidecar — a server-level mail service available only through Sandstorm. It handles inbound delivery via the platform\'s built-in SMTP gateway and outbound relay through a configured SMTP provider (e.g. Postmark, your own Postfix, or any standard relay).',
+        description: 'MerMail requires the Melusina SMTP sidecar — a server-level mail service available only through Melusina. It handles inbound delivery via the platform\'s built-in SMTP gateway and outbound relay through a configured SMTP provider (e.g. Postmark, your own Postfix, or any standard relay).',
         links: [
           { label: 'Melusina SMTP docs', url: 'https://melusina-os.org/docs/smtp' },
         ],
@@ -1933,7 +1934,7 @@ const APP_SIDECARS = {
         name: 'LLM Provider Proxy',
         required: true,
         type: 'ai-backend',
-        description: 'AI Lagoon requires the LLM proxy sidecar — a server-level service available only through Sandstorm. Run a local Ollama instance for fully offline AI, or configure the proxy to route requests to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing at the server level.',
+        description: 'AI Lagoon requires the LLM proxy sidecar — a server-level service available only through Melusina. Run a local Ollama instance for fully offline AI, or configure the proxy to route requests to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing at the server level.',
         options: [
           { name: 'Ollama (local)', description: 'Run models locally — fully offline, no API keys needed', url: 'https://ollama.com' },
           { name: 'OpenAI', description: 'GPT-4o, GPT-4, GPT-3.5 via API key', url: 'https://platform.openai.com' },
@@ -2119,6 +2120,11 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                       }}>ON SALE</span>
                     </div>
                   )}
+                  {!isFree && !isZeroSol && (
+                    <span style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5, fontStyle: 'italic', fontFamily: "'JetBrains Mono', monospace", marginTop: 4, display: 'block' }}>
+                      SOL prices are approximate. Actual cost may vary with market rate.
+                    </span>
+                  )}
                 </>
               );
             })()}
@@ -2250,7 +2256,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginTop: 8 }}>
               <strong style={{ color: T.text }}>Sidecars</strong> are major server-level services that run
               one-per-server on your Melusina instance — things like an email relay or an AI model proxy.
-              They{"'"}re available only through Sandstorm, managed by the platform, and shared across
+              They{"'"}re available only through Melusina, managed by the platform, and shared across
               all Pearls that need them. Individual apps don{"'"}t install or control sidecars — the
               server admin provisions them once.
             </div>
@@ -3425,7 +3431,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 20px 80px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 20px 120px" }}>
         {/* hero */}
         <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 28, flexWrap: "wrap" }}>
           <AppIcon app={app} size={160} />
@@ -3473,7 +3479,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           <button onClick={() => onInstall(app)} style={{
               display: "inline-flex", alignItems: "center", gap: 10,
-              padding: "14px 36px",
+              padding: "14px 36px", minHeight: 48,
               background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
               border: `1px solid ${T.cyan}66`,
               color: T.cyan,
@@ -3625,6 +3631,37 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
           {tab === 'audits' && <AuditsTab />}
           {tab === 'sidecars' && <SidecarsTab />}
           {tab === 'license' && <LicenseTab />}
+        </div>
+      </div>
+
+      {/* sticky mobile install bar */}
+      <div className="mobile-sticky-install" style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300,
+        background: "linear-gradient(135deg, rgba(17,14,36,0.96), rgba(30,20,58,0.94))",
+        backdropFilter: "blur(20px) saturate(1.4)", WebkitBackdropFilter: "blur(20px) saturate(1.4)",
+        borderTop: `1px solid ${T.purple}30`,
+        boxShadow: `0 -4px 30px rgba(17,14,36,0.6)`,
+        padding: "12px 20px",
+        display: "none",
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, fontFamily: "'Orbitron', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{app.name}</div>
+            <div style={{ fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
+              {(() => { const p = APP_PRICES[app.appId]; return p ? p.price : "FREE"; })()}
+            </div>
+          </div>
+          <button onClick={() => onInstall(app)} style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "12px 28px", minHeight: 48,
+            background: `linear-gradient(135deg, ${T.cyan}33, ${T.magenta}22)`,
+            border: `1px solid ${T.cyan}66`, color: T.cyan,
+            fontFamily: "'Orbitron', sans-serif", fontWeight: 700, fontSize: 13,
+            letterSpacing: ".1em", textTransform: "uppercase",
+            borderRadius: 3, cursor: "pointer",
+            textShadow: `0 0 10px ${T.accentGlow}`,
+            boxShadow: `0 0 20px ${T.accentGlow}`,
+          }}>↓ INSTALL</button>
         </div>
       </div>
     </div>
@@ -4076,9 +4113,10 @@ function App() {
               filter: `drop-shadow(0 0 8px ${T.cyan}88) drop-shadow(0 0 20px ${T.accentGlow})`,
               animation: "flicker 4s ease-in-out infinite",
             }} />
-            <span style={{
+            <h1 style={{
               fontSize: 16, fontWeight: 800, letterSpacing: ".05em",
               fontFamily: "'Orbitron', sans-serif",
+              margin: 0, lineHeight: 1,
             }}>
               <span className="neon-text" style={{ animation: "flicker 4s ease-in-out infinite" }}>
                 MELUSINA
@@ -4090,7 +4128,7 @@ function App() {
               }}>
                 APP BAZAAR
               </span>
-            </span>
+            </h1>
           </div>
 
           {/* Search */}

@@ -1181,12 +1181,9 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
         }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
             {(app.categories || []).slice(0, 2).map((c) => <Badge key={c}>{c}</Badge>)}
-            {(() => {
-              const sc = getAppSidecars(app.appId);
-              if (sc.sidecars.length > 0) return <Badge neon={T.magenta}>🏍️ Sidecar</Badge>;
-              if (sc.grapple.length > 0) return <Badge neon={T.yellow}>🪝 Grapple</Badge>;
-              return null;
-            })()}
+            {getConnectivityBadges(app.appId).map((b, i) => (
+              <Badge key={`conn-${i}`} neon={b.color === 'yellow' ? T.yellow : T.magenta}>{b.icon} {b.short}</Badge>
+            ))}
           </div>
           <button
               onClick={(e) => { e.stopPropagation(); onInstall(app); }}
@@ -1959,6 +1956,37 @@ function getAppSidecars(appId) {
   return APP_SIDECARS[appId] || { sidecars: [], grapple: [] };
 }
 
+function getConnectivityBadges(appId) {
+  const sc = getAppSidecars(appId);
+  const badges = [];
+  if (sc.grapple.length > 0) {
+    const hasDep = sc.grapple.some(g => g.type === 'dependency');
+    const hasInternet = sc.grapple.some(g => g.capability === 'IpNetwork.Connect');
+    badges.push({
+      icon: '\u{1FA9D}',
+      short: hasDep ? 'Needs Grapple' : 'Uses Grapple',
+      label: hasDep ? 'Requires Grapple' : 'Enhances with Grapple',
+      tip: hasDep
+        ? (hasInternet ? 'Connects to internet and other Pearls via Grapple' : 'Depends on connections to other Pearls via Grapple')
+        : 'Can connect to other Pearls via Grapple for extra features',
+      color: 'yellow',
+    });
+  }
+  if (sc.sidecars.length > 0) {
+    const hasRequired = sc.sidecars.some(s => s.required);
+    badges.push({
+      icon: '\uD83C\uDFCD\uFE0F',
+      short: hasRequired ? 'Needs Sidecar' : 'Uses Sidecar',
+      label: hasRequired ? 'Requires Sidecar' : 'Uses Sidecar',
+      tip: hasRequired
+        ? 'Needs server-level sidecar services to function'
+        : 'Uses sidecar for extended functionality',
+      color: 'magenta',
+    });
+  }
+  return badges;
+}
+
 /* approximate SOL → USD (rough estimate; update as needed) */
 const SOL_USD_RATE = 145;
 function solToUsd(solStr) {
@@ -2227,7 +2255,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   };
 
   const SidecarsTab = () => (
-    <div style={{ maxWidth: 820 }}>
+    <div style={{ maxWidth: 780 }}>
       {/* Info box */}
       <div style={{
         padding: 22, background: T.cyan + '08', borderRadius: T.radius,
@@ -2352,78 +2380,97 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       <div style={{ marginBottom: 28 }}>
         <SectionHeader color={T.magenta}>{'🏍\uFE0F'} Sidecars</SectionHeader>
         {hasSidecars ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {appSidecars.sidecars.map((sc, i) => (
-              <div key={i} style={{
-                padding: 22, background: T.surface, borderRadius: T.radius,
-                border: `1px solid ${sc.required ? T.magenta + '44' : T.border}`,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
-                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".06em",
-                    background: sc.required ? T.magenta + '22' : T.yellow + '22',
-                    color: sc.required ? T.magenta : T.yellow,
-                    border: `1px solid ${sc.required ? T.magenta + '44' : T.yellow + '44'}`,
-                  }}>{sc.required ? 'REQUIRED' : 'OPTIONAL'}</span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 600, padding: "3px 8px", borderRadius: 3,
-                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
-                    background: T.cyan + '15', color: T.cyan + 'cc', border: `1px solid ${T.cyan}33`,
-                    textTransform: 'uppercase',
-                  }}>{sc.type}</span>
-                </div>
-                <div style={{
-                  fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 8,
-                  fontFamily: "'Orbitron', sans-serif",
-                }}>{sc.name}</div>
-                <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginBottom: 14 }}>
-                  {sc.description}
-                </div>
-                {sc.options && sc.options.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{
-                      fontSize: 11, fontWeight: 700, color: T.textDim, marginBottom: 8,
-                      fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
-                    }}>SUPPORTED BACKENDS</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-                      {sc.options.map((opt, j) => (
-                        <a key={j} href={opt.url} target="_blank" rel="noreferrer" style={{
-                          padding: 14, background: T.bg + 'cc', borderRadius: T.radiusSm,
-                          border: `1px solid ${T.border}`, textDecoration: "none",
-                          transition: "all .2s",
-                        }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = "none"; }}
-                        >
-                          <div style={{
-                            fontSize: 13, fontWeight: 700, color: T.cyan, marginBottom: 4,
-                            fontFamily: "'Orbitron', sans-serif",
-                          }}>{opt.name}</div>
-                          <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{opt.description}</div>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {sc.links && sc.links.length > 0 && (
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    {sc.links.map((lnk, j) => (
-                      <a key={j} href={lnk.url} target="_blank" rel="noreferrer" style={{
-                        fontSize: 12, color: T.cyan, textDecoration: "none",
-                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-                        transition: "all .2s",
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
-                      >{lnk.label} {'\u2192'}</a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+          <>
+          <div style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.magenta}33`, overflow: 'hidden',
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          }}>
+            <table style={grappleTableStyle}>
+              <thead>
+                <tr>
+                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Required</th>
+                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Sidecar Name</th>
+                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Service Type</th>
+                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appSidecars.sidecars.map((sc, i) => (
+                  <tr key={i} style={{
+                    background: i % 2 === 0 ? 'transparent' : T.bg + '44',
+                  }}>
+                    <td style={gTdStyle}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
+                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        background: sc.required ? T.magenta + '22' : T.yellow + '22',
+                        color: sc.required ? T.magenta : T.yellow,
+                        border: `1px solid ${sc.required ? T.magenta + '44' : T.yellow + '44'}`,
+                      }}>{sc.required ? 'REQUIRED' : 'OPTIONAL'}</span>
+                    </td>
+                    <td style={{ ...gTdStyle, color: T.text, fontWeight: 600, fontSize: 12 }}>
+                      {sc.name}
+                    </td>
+                    <td style={gTdStyle}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 3,
+                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.08em',
+                        background: T.cyan + '15', color: T.cyan + 'cc', border: `1px solid ${T.cyan}33`,
+                        textTransform: 'uppercase',
+                      }}>{sc.type}</span>
+                    </td>
+                    <td style={gTdStyle}>
+                      {sc.description}
+                      {sc.links && sc.links.length > 0 && (
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+                          {sc.links.map((lnk, j) => (
+                            <a key={j} href={lnk.url} target="_blank" rel="noreferrer" style={{
+                              fontSize: 11, color: T.cyan, textDecoration: 'none',
+                              fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                              transition: 'all .2s',
+                            }}
+                              onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.textShadow = 'none'; }}
+                            >{lnk.label} {'\u2192'}</a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          {/* Supported backends (below table) */}
+          {appSidecars.sidecars.filter(sc => sc.options && sc.options.length > 0).map((sc, i) => (
+            <div key={`opts-${i}`} style={{ marginTop: 16 }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: T.textDim, marginBottom: 8,
+                fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.08em',
+              }}>SUPPORTED BACKENDS — {sc.name.toUpperCase()}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                {sc.options.map((opt, j) => (
+                  <a key={j} href={opt.url} target="_blank" rel="noreferrer" style={{
+                    padding: 14, background: T.bg + 'cc', borderRadius: T.radiusSm,
+                    border: `1px solid ${T.border}`, textDecoration: 'none',
+                    transition: 'all .2s',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{
+                      fontSize: 13, fontWeight: 700, color: T.cyan, marginBottom: 4,
+                      fontFamily: "'Orbitron', sans-serif",
+                    }}>{opt.name}</div>
+                    <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{opt.description}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+          </>
         ) : (
           <div style={{
             padding: 28, textAlign: 'center', background: T.surface, borderRadius: T.radius,
@@ -2535,7 +2582,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
     const ratingGlow = (r) => r === 'Pass' ? T.greenGlow : r === 'Partial' ? T.yellow + '44' : T.magentaGlow;
 
     return (
-      <div style={{ maxWidth: 860 }}>
+      <div style={{ maxWidth: 780 }}>
         {/* AI Audits */}
         <div style={{
           padding: 28, background: T.surface, borderRadius: T.radius,
@@ -3606,11 +3653,33 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         </div>
 
         {/* tags */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
-          {appSidecars.sidecars.map((sc, i) => <Badge key={`sc-${i}`} neon={T.magenta}>🏍️ {sc.name}</Badge>)}
-          {hasGrapple && <Badge neon={T.yellow}>🪝 {appSidecars.grapple.length} Grapple</Badge>}
         </div>
+        {/* connectivity badges */}
+        {getConnectivityBadges(app.appId).length > 0 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+            {getConnectivityBadges(app.appId).map((b, i) => (
+              <div key={`conn-${i}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                padding: '8px 14px', borderRadius: 3,
+                background: (b.color === 'yellow' ? T.yellow : T.magenta) + '08',
+                border: `1px solid ${(b.color === 'yellow' ? T.yellow : T.magenta)}33`,
+              }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{b.icon}</span>
+                <div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: b.color === 'yellow' ? T.yellow : T.magenta,
+                    fontFamily: "'Orbitron', sans-serif",
+                    letterSpacing: '.04em',
+                  }}>{b.label}</div>
+                  <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.4, marginTop: 2 }}>{b.tip}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* tab navigation */}
         <div className="detail-tabs">

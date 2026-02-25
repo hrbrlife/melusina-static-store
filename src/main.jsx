@@ -63,6 +63,523 @@ const installUrl = (host, app) => {
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 
+/* ─── pbay.app jurisdiction servers ──────────────────────────────────────────────── */
+
+const PBAY_SERVERS = [
+  { code: 'LU', flag: '🇱🇺', name: 'Luxembourg', domain: 'lu.pbay.app', region: 'Europe' },
+  { code: 'CH', flag: '🇨🇭', name: 'Switzerland', domain: 'ch.pbay.app', region: 'Europe' },
+  { code: 'DE', flag: '🇩🇪', name: 'Germany', domain: 'de.pbay.app', region: 'Europe' },
+  { code: 'FR', flag: '🇫🇷', name: 'France', domain: 'fr.pbay.app', region: 'Europe' },
+  { code: 'NL', flag: '🇳🇱', name: 'Netherlands', domain: 'nl.pbay.app', region: 'Europe' },
+  { code: 'FI', flag: '🇫🇮', name: 'Finland', domain: 'fi.pbay.app', region: 'Europe' },
+  { code: 'IS', flag: '🇮🇸', name: 'Iceland', domain: 'is.pbay.app', region: 'Europe' },
+  { code: 'US', flag: '🇺🇸', name: 'United States', domain: 'us.pbay.app', region: 'Americas' },
+  { code: 'CA', flag: '🇨🇦', name: 'Canada', domain: 'ca.pbay.app', region: 'Americas' },
+  { code: 'SG', flag: '🇸🇬', name: 'Singapore', domain: 'sg.pbay.app', region: 'Asia-Pacific' },
+  { code: 'JP', flag: '🇯🇵', name: 'Japan', domain: 'jp.pbay.app', region: 'Asia-Pacific' },
+];
+
+/* pbay / private server localStorage helpers */
+const PBAY_KEY = 'melusina_pbay_server';
+const PRIV_KEY = 'melusina_private_servers';
+
+const getPbayServer = () => {
+  try { return JSON.parse(localStorage.getItem(PBAY_KEY)); } catch { return null; }
+};
+const setPbayServer = (srv) => { localStorage.setItem(PBAY_KEY, JSON.stringify(srv)); };
+
+const getPrivateServers = () => {
+  try { return JSON.parse(localStorage.getItem(PRIV_KEY) || '[]'); } catch { return []; }
+};
+const addPrivateServer = (url) => {
+  const list = getPrivateServers().filter((s) => s !== url);
+  list.unshift(url);
+  localStorage.setItem(PRIV_KEY, JSON.stringify(list.slice(0, 20)));
+};
+const removePrivateServer = (url) => {
+  const list = getPrivateServers().filter((s) => s !== url);
+  localStorage.setItem(PRIV_KEY, JSON.stringify(list));
+};
+
+/* ─── Jurisdiction Picker Modal ────────────────────────────────────────────────── */
+
+function JurisdictionModal({ onSelect, onClose }) {
+  const regions = useMemo(() => {
+    const map = {};
+    PBAY_SERVERS.forEach((s) => {
+      if (!map[s.region]) map[s.region] = [];
+      map[s.region].push(s);
+    });
+    return Object.entries(map);
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(8,6,20,0.85)',
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: 560, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto',
+        background: 'linear-gradient(160deg, rgba(22,16,48,0.98), rgba(14,10,32,0.98))',
+        border: `1px solid ${T.cyan}33`,
+        borderRadius: T.radius,
+        boxShadow: `0 0 60px ${T.accentGlow}, 0 30px 80px rgba(0,0,0,.5)`,
+        padding: 0,
+        animation: 'pop .2s ease-out',
+      }}>
+        {/* header */}
+        <div style={{
+          padding: '28px 32px 20px', borderBottom: `1px solid ${T.purple}22`,
+          background: `linear-gradient(135deg, ${T.cyan}08, ${T.magenta}06)`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{
+                fontSize: 18, fontWeight: 800, color: T.cyan,
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: `0 0 12px ${T.accentGlow}`,
+                marginBottom: 4,
+              }}>Pick Your Jurisdiction</div>
+              <div style={{
+                fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '.04em',
+              }}>Professionally hosted by the team behind melusina-os.org</div>
+            </div>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: T.textDim, fontSize: 22,
+              cursor: 'pointer', padding: 4, lineHeight: 1,
+            }}>×</button>
+          </div>
+        </div>
+
+        {/* explanation */}
+        <div style={{
+          padding: '20px 32px', borderBottom: `1px solid ${T.purple}15`,
+          background: T.yellow + '06',
+        }}>
+          <div style={{
+            fontSize: 12, color: T.textSec, lineHeight: 1.8,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            <strong style={{ color: T.yellow }}>Each pbay.app server is legally, physically, and operationally
+            isolated to a single jurisdiction.</strong> Your data, compute, and legal agreements stay
+            within the borders of the jurisdiction you choose. No cross-border replication, no
+            shared infrastructure between regions.
+          </div>
+          <div style={{
+            fontSize: 11, color: T.textDim, lineHeight: 1.7, marginTop: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            This is for SaaS pbay hosting only. You can export and move your Pearls to a private
+            Melusina installation at any time — no lock-in.
+          </div>
+        </div>
+
+        {/* server grid by region */}
+        <div style={{ padding: '24px 32px 32px' }}>
+          {regions.map(([region, servers]) => (
+            <div key={region} style={{ marginBottom: 20 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '.12em', textTransform: 'uppercase',
+              }}>{region}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                {servers.map((srv) => (
+                  <button key={srv.code} onClick={() => onSelect(srv)} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '14px 18px', background: T.surface,
+                    border: `1px solid ${T.cyan}22`,
+                    borderRadius: T.radiusSm, cursor: 'pointer',
+                    transition: 'all .2s', textAlign: 'left',
+                  }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = T.cyan + '66';
+                      e.currentTarget.style.boxShadow = `0 0 18px ${T.accentGlow}`;
+                      e.currentTarget.style.background = T.cyan + '11';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = T.cyan + '22';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.background = T.surface;
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{srv.flag}</span>
+                    <div>
+                      <div style={{
+                        fontSize: 13, fontWeight: 700, color: T.text,
+                        fontFamily: "'Orbitron', sans-serif",
+                      }}>{srv.flag} {srv.code} — {srv.domain}</div>
+                      <div style={{
+                        fontSize: 11, color: T.cyan, fontFamily: "'JetBrains Mono', monospace",
+                      }}>{srv.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Install Destination Modal ────────────────────────────────────────────────── */
+
+function InstallModal({ app, onClose }) {
+  const [section, setSection] = useState('pbay');
+  const [showJurisdiction, setShowJurisdiction] = useState(false);
+  const [pbayServer, setPbayServerState] = useState(() => getPbayServer());
+  const [privateServers, setPrivateServers] = useState(() => getPrivateServers());
+  const [newPrivate, setNewPrivate] = useState('');
+  const [addingPrivate, setAddingPrivate] = useState(false);
+
+  const doInstall = useCallback((host) => {
+    const h = sanitizeHost(host);
+    if (!h || !app.packageId) return;
+    const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
+    window.open(`${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`, '_blank');
+    onClose();
+  }, [app, onClose]);
+
+  const selectPbay = useCallback((srv) => {
+    setPbayServer(srv);
+    setPbayServerState(srv);
+    setShowJurisdiction(false);
+    doInstall(`https://${srv.domain}`);
+  }, [doInstall]);
+
+  const addAndInstallPrivate = useCallback(() => {
+    const h = sanitizeHost(newPrivate);
+    if (!h) return;
+    addPrivateServer(h);
+    setPrivateServers(getPrivateServers());
+    setNewPrivate('');
+    setAddingPrivate(false);
+    doInstall(h);
+  }, [newPrivate, doInstall]);
+
+  if (showJurisdiction) {
+    return <JurisdictionModal onSelect={selectPbay} onClose={() => setShowJurisdiction(false)} />;
+  }
+
+  const sectionTabStyle = (active) => ({
+    flex: 1, padding: '14px 12px', border: 'none',
+    background: active ? T.cyan + '15' : 'transparent',
+    color: active ? T.cyan : T.textDim,
+    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    fontFamily: "'Orbitron', sans-serif",
+    letterSpacing: '.06em', textTransform: 'uppercase',
+    borderBottom: active ? `2px solid ${T.cyan}` : `2px solid transparent`,
+    transition: 'all .2s',
+  });
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9998,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(8,6,20,0.85)',
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: 520, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto',
+        background: 'linear-gradient(160deg, rgba(22,16,48,0.98), rgba(14,10,32,0.98))',
+        border: `1px solid ${T.cyan}33`,
+        borderRadius: T.radius,
+        boxShadow: `0 0 60px ${T.accentGlow}, 0 30px 80px rgba(0,0,0,.5)`,
+        animation: 'pop .2s ease-out',
+      }}>
+        {/* header */}
+        <div style={{
+          padding: '24px 28px 18px',
+          borderBottom: `1px solid ${T.purple}22`,
+          background: `linear-gradient(135deg, ${T.cyan}08, ${T.magenta}06)`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{
+                fontSize: 16, fontWeight: 800, color: T.cyan,
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: `0 0 10px ${T.accentGlow}`,
+                marginBottom: 3,
+              }}>Install {app.name}</div>
+              <div style={{
+                fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
+              }}>Choose your deployment destination</div>
+            </div>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: T.textDim, fontSize: 22,
+              cursor: 'pointer', padding: 4, lineHeight: 1,
+            }}>×</button>
+          </div>
+        </div>
+
+        {/* section tabs */}
+        <div style={{ display: 'flex', borderBottom: `1px solid ${T.purple}22` }}>
+          <button style={sectionTabStyle(section === 'pbay')} onClick={() => setSection('pbay')}>
+            🌐 pbay.app
+          </button>
+          <button style={sectionTabStyle(section === 'private')} onClick={() => setSection('private')}>
+            🖥️ Private Servers
+          </button>
+        </div>
+
+        {/* ─── pbay.app section ─── */}
+        {section === 'pbay' && (
+          <div style={{ padding: '24px 28px 28px' }}>
+            {pbayServer ? (
+              <>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '.1em', textTransform: 'uppercase',
+                }}>YOUR PBAY SERVER</div>
+                <button onClick={() => doInstall(`https://${pbayServer.domain}`)} style={{
+                  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                  padding: '18px 22px', background: T.cyan + '11',
+                  border: `1px solid ${T.cyan}44`,
+                  borderRadius: T.radiusSm, cursor: 'pointer',
+                  transition: 'all .2s', textAlign: 'left',
+                  marginBottom: 16,
+                }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = T.cyan + '88';
+                    e.currentTarget.style.boxShadow = `0 0 25px ${T.accentGlow}`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = T.cyan + '44';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <span style={{ fontSize: 28 }}>{pbayServer.flag}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 800, color: T.text,
+                      fontFamily: "'Orbitron', sans-serif",
+                    }}>{pbayServer.flag} {pbayServer.code} — {pbayServer.domain}</div>
+                    <div style={{
+                      fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
+                    }}>{pbayServer.name}</div>
+                  </div>
+                  <span style={{
+                    padding: '8px 20px', borderRadius: 3,
+                    background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
+                    border: `1px solid ${T.cyan}55`,
+                    color: T.cyan, fontSize: 11, fontWeight: 700,
+                    fontFamily: "'Orbitron', sans-serif",
+                    letterSpacing: '.08em',
+                    textShadow: `0 0 8px ${T.accentGlow}`,
+                  }}>↓ INSTALL</span>
+                </button>
+                <button onClick={() => setShowJurisdiction(true)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: T.cyan, fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 600, padding: 0, transition: 'all .2s',
+                }}
+                  onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.textShadow = 'none'; }}
+                >Change jurisdiction →</button>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  padding: 24, background: T.yellow + '08', borderRadius: T.radiusSm,
+                  border: `1px solid ${T.yellow}33`, marginBottom: 20,
+                }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 700, color: T.yellow, marginBottom: 8,
+                    fontFamily: "'Orbitron', sans-serif",
+                  }}>Jurisdiction-Isolated Hosting</div>
+                  <div style={{
+                    fontSize: 12, color: T.textSec, lineHeight: 1.8,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>
+                    Each pbay.app server is <strong style={{ color: T.text }}>legally, physically, and
+                    operationally isolated</strong> to a single jurisdiction. Your data, compute, and legal
+                    agreements stay entirely within the borders of the country you choose.
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: T.textDim, lineHeight: 1.7, marginTop: 10,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>
+                    This is for SaaS pbay hosting only. You can export and move your Pearls
+                    to a private Melusina installation at any time — no lock-in.
+                  </div>
+                </div>
+                <button onClick={() => setShowJurisdiction(true)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  width: '100%', padding: '16px 20px',
+                  background: `linear-gradient(135deg, ${T.cyan}18, ${T.magenta}12)`,
+                  border: `1px solid ${T.cyan}55`,
+                  borderRadius: T.radiusSm, cursor: 'pointer',
+                  color: T.cyan, fontSize: 13, fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif",
+                  letterSpacing: '.08em', textTransform: 'uppercase',
+                  textShadow: `0 0 8px ${T.accentGlow}`,
+                  boxShadow: `0 0 15px ${T.accentGlow}`,
+                  transition: 'all .2s',
+                }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 30px ${T.accentGlow}`;
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`;
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >🌐 Choose Jurisdiction</button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ─── Private Servers section ─── */}
+        {section === 'private' && (
+          <div style={{ padding: '24px 28px 28px' }}>
+            {privateServers.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '.1em', textTransform: 'uppercase',
+                }}>RECENT SERVERS</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {privateServers.map((srv) => (
+                    <div key={srv} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '12px 16px', background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: T.radiusSm,
+                      transition: 'all .2s',
+                    }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = T.cyan + '44';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = T.border;
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 14, color: T.green, flexShrink: 0,
+                      }}>🖥️</span>
+                      <span style={{
+                        flex: 1, fontSize: 12, color: T.text,
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{srv}</span>
+                      <button onClick={() => doInstall(srv)} style={{
+                        padding: '6px 16px', borderRadius: 3,
+                        background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}15)`,
+                        border: `1px solid ${T.cyan}44`,
+                        color: T.cyan, fontSize: 10, fontWeight: 700,
+                        fontFamily: "'Orbitron', sans-serif",
+                        letterSpacing: '.06em', cursor: 'pointer',
+                        textShadow: `0 0 6px ${T.accentGlow}`,
+                        transition: 'all .2s',
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+                      >INSTALL</button>
+                      <button onClick={() => { removePrivateServer(srv); setPrivateServers(getPrivateServers()); }} style={{
+                        background: 'none', border: 'none', color: T.textDim, fontSize: 14,
+                        cursor: 'pointer', padding: '2px 6px', lineHeight: 1,
+                        transition: 'color .2s',
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = T.magenta; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = T.textDim; }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {addingPrivate ? (
+              <div style={{
+                padding: 18, background: T.surface, borderRadius: T.radiusSm,
+                border: `1px solid ${T.cyan}33`,
+              }}>
+                <label style={{
+                  display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '.1em', color: T.cyan, marginBottom: 8,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textShadow: `0 0 6px ${T.accentGlow}`,
+                }}>Server Address</label>
+                <input type="url" placeholder="https://sandstorm.example.com" value={newPrivate}
+                  onChange={(e) => setNewPrivate(e.target.value)} autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && addAndInstallPrivate()}
+                  style={{
+                    width: '100%', padding: '12px 14px',
+                    background: 'rgba(192,132,252,0.06)',
+                    border: `1px solid ${T.purple}33`,
+                    borderRadius: T.radiusSm, color: T.text,
+                    fontSize: 13, outline: 'none',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    transition: 'border-color .2s, box-shadow .2s',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = T.cyan + '88';
+                    e.target.style.boxShadow = `0 0 15px ${T.accentGlow}`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = T.purple + '33';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                  <button onClick={addAndInstallPrivate} style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 3,
+                    background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}15)`,
+                    border: `1px solid ${T.cyan}55`,
+                    color: T.cyan, fontSize: 11, fontWeight: 700,
+                    fontFamily: "'Orbitron', sans-serif",
+                    letterSpacing: '.06em', cursor: 'pointer',
+                    textShadow: `0 0 8px ${T.accentGlow}`,
+                    transition: 'all .2s',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+                  >↓ CONNECT & INSTALL</button>
+                  <button onClick={() => { setAddingPrivate(false); setNewPrivate(''); }} style={{
+                    padding: '10px 16px', borderRadius: 3,
+                    background: 'transparent',
+                    border: `1px solid ${T.border}`,
+                    color: T.textDim, fontSize: 11, fontWeight: 600,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    cursor: 'pointer', transition: 'all .2s',
+                  }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setAddingPrivate(true)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '14px 20px',
+                background: T.surface, border: `1px dashed ${T.cyan}33`,
+                borderRadius: T.radiusSm, cursor: 'pointer',
+                color: T.cyan, fontSize: 12, fontWeight: 600,
+                fontFamily: "'JetBrains Mono', monospace",
+                transition: 'all .2s',
+              }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = T.cyan + '66';
+                  e.currentTarget.style.background = T.cyan + '08';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = T.cyan + '33';
+                  e.currentTarget.style.background = T.surface;
+                }}
+              >+ Add Private Server</button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── user reviews (localStorage until backend) ────────────────────────────── */
 
 const UR_KEY = 'melusina_user_reviews';
@@ -582,9 +1099,8 @@ function CardSlideshow({ app, shots }) {
 
 /* ─── App Card ─────────────────────────────────────────────────────────────── */
 
-function AppCard({ app, onSelect, host, onVersionClick }) {
+function AppCard({ app, onSelect, onInstall, onVersionClick }) {
   const [hov, setHov] = useState(false);
-  const url = installUrl(host, app);
   const shots = (app.screenshots || []).slice(0, 5);
   const updatedAgo = timeAgo(app.createdAt);
 
@@ -743,9 +1259,8 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
               return null;
             })()}
           </div>
-          {url ? (
-            <a href={url} target="_blank" rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
+          <button
+              onClick={(e) => { e.stopPropagation(); onInstall(app); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 padding: "7px 18px",
@@ -756,7 +1271,7 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
                 fontWeight: 700, fontSize: 11, letterSpacing: ".1em",
                 textTransform: "uppercase",
                 borderRadius: T.radiusSm, whiteSpace: "nowrap",
-                textDecoration: "none",
+                cursor: "pointer",
                 textShadow: `0 0 8px ${T.accentGlow}`,
                 boxShadow: `0 0 12px ${T.accentGlow}`,
                 transition: "all .2s",
@@ -771,17 +1286,7 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
                 e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`;
                 e.currentTarget.style.transform = "none";
               }}
-            >INSTALL</a>
-          ) : (
-            <span style={{
-              fontSize: 11, color: T.cyan + "88",
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 500, letterSpacing: ".05em",
-              textShadow: `0 0 5px ${T.cyan}22`,
-            }}>
-              v{app.version || app.versionNumber || "—"}
-            </span>
-          )}
+            >INSTALL</button>
         </div>
       </div>
     </div>
@@ -1553,8 +2058,7 @@ function getAvgRating(reviews) {
 
 /* ─── Detail Page ──────────────────────────────────────────────────────────── */
 
-function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
-  const url = installUrl(host, app);
+function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTab }) {
   const reviews = useMemo(() => getAppReviews(app), [app]);
   const avgRating = useMemo(() => getAvgRating(reviews), [reviews]);
   const faq = useMemo(() => getAppFAQ(app), [app]);
@@ -3039,8 +3543,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
 
         {/* actions */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-          {url ? (
-            <a href={url} target="_blank" rel="noreferrer" style={{
+          <button onClick={() => onInstall(app)} style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 36px",
               background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
@@ -3049,7 +3552,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
               fontFamily: "'Orbitron', sans-serif",
               fontWeight: 700, fontSize: 13, letterSpacing: ".1em",
               textTransform: "uppercase",
-              borderRadius: 3, textDecoration: "none",
+              borderRadius: 3, cursor: "pointer",
               textShadow: `0 0 10px ${T.accentGlow}`,
               boxShadow: `0 0 20px ${T.accentGlow}, inset 0 0 20px ${T.cyan}08`,
               transition: "all .2s ease",
@@ -3064,15 +3567,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
                 e.currentTarget.style.boxShadow = `0 0 20px ${T.accentGlow}, inset 0 0 20px ${T.cyan}08`;
                 e.currentTarget.style.transform = "none";
               }}
-            ><span style={{ fontSize: 16 }}>↓</span> INSTALL</a>
-          ) : (
-            <div style={{
-              padding: "14px 28px", background: T.surface,
-              borderRadius: 3, fontSize: 13, fontWeight: 500,
-              border: `1px solid ${T.border}`, color: T.textDim,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}>Connect server to install</div>
-          )}
+            ><span style={{ fontSize: 16 }}>↓</span> INSTALL</button>
           {app.webLink && (
             <a href={app.webLink} target="_blank" rel="noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 6,
@@ -3538,6 +4033,7 @@ function App() {
   const [appIdeas, setAppIdeas] = useState(() => getAppIdeas());
   const [aiVotes, setAiVotes] = useState(() => getMyAIVotes());
   const [host, setHost] = useState(localStorage.getItem("sandstormHost") || "");
+  const [installModalApp, setInstallModalApp] = useState(null);
 
   useEffect(() => {
     const src = Array.isArray(data) ? data : data.apps || [];
@@ -3545,6 +4041,8 @@ function App() {
   }, []);
 
   useEffect(() => { if (host) localStorage.setItem("sandstormHost", host); }, [host]);
+
+  const onInstall = useCallback((app) => { setInstallModalApp(app); }, []);
 
   const categories = useMemo(() => {
     const s = new Set();
@@ -3591,7 +4089,8 @@ function App() {
     return (
       <>
         <style>{CSS}</style>
-        <DetailPage app={selectedApp} host={host} onClose={onClose} initialTab={detailInitTab} initialDevSubTab={detailInitSubTab} />
+        <DetailPage app={selectedApp} host={host} onClose={onClose} onInstall={onInstall} initialTab={detailInitTab} initialDevSubTab={detailInitSubTab} />
+        {installModalApp && <InstallModal app={installModalApp} onClose={() => setInstallModalApp(null)} />}
       </>
     );
   }
@@ -3734,7 +4233,7 @@ function App() {
           }}>
             {filtered.map((app, i) => (
               <div key={app.appId} style={{ animationDelay: `${i * 60}ms` }}>
-                <AppCard app={app} onSelect={onSelect} host={host} onVersionClick={(id) => onSelect(id, 'indev', 'versions')} />
+                <AppCard app={app} onSelect={onSelect} onInstall={onInstall} onVersionClick={(id) => onSelect(id, 'indev', 'versions')} />
               </div>
             ))}
           </div>
@@ -3766,6 +4265,7 @@ function App() {
         pointerEvents: "none",
         boxShadow: `0 0 20px ${T.magenta}22, 0 0 40px ${T.purple}11`,
       }} />
+      {installModalApp && <InstallModal app={installModalApp} onClose={() => setInstallModalApp(null)} />}
     </>
   );
 }

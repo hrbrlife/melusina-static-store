@@ -127,7 +127,7 @@
       "webLink": "https://hrbr.life",
       "codeLink": "",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1708790400,
+      "createdAt": 1708790400000,
       "screenshots": [
         {
           "url": "screenshot_docs.png",
@@ -200,13 +200,13 @@
       "versionNumber": 3,
       "shortDescription": "Lightweight Git hosting with web viewer",
       "categories": [
-        "developerTools"
+        "Developer Tools"
       ],
       "isOpenSource": true,
       "webLink": "https://github.com/hrbrlife/MiniGit",
       "codeLink": "https://github.com/hrbrlife/MiniGit",
       "upstreamAuthor": "alexeikarp",
-      "createdAt": 1739318400,
+      "createdAt": 1739318400000,
       "author": {
         "name": "Alexei Karpov",
         "githubUsername": "hrbrlife",

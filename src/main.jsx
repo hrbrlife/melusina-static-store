@@ -736,6 +736,12 @@ function AppCard({ app, onSelect, host, onVersionClick }) {
         }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
             {(app.categories || []).slice(0, 2).map((c) => <Badge key={c}>{c}</Badge>)}
+            {(() => {
+              const sc = getAppSidecars(app.appId);
+              if (sc.sidecars.length > 0) return <Badge neon={T.magenta}>⚡ Sidecar</Badge>;
+              if (sc.deps.length > 0) return <Badge neon={T.yellow}>🔗 Dep</Badge>;
+              return null;
+            })()}
           </div>
           {url ? (
             <a href={url} target="_blank" rel="noreferrer"
@@ -998,7 +1004,7 @@ const APP_GITHUB = {
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': 'https://github.com/hrbrlife/BLOOM_FINAL',
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': 'https://github.com/hrbrlife/melusina_botmother',
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': 'https://github.com/hrbrlife/CHEESESPREAD',
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': 'https://github.com/hrbrlife/INSTASYS_MAIL',
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': 'https://github.com/hrbrlife/MerMail',
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': 'https://github.com/hrbrlife/MiniGit',
   'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': 'https://github.com/hrbrlife/shell_tester',
   'aczotnllhjznrs73v1uixwqz7hqf99evf3qqhdkyrpvh2jya72yh': 'https://github.com/hrbrlife/AI_Lagoon',
@@ -1241,7 +1247,7 @@ const APP_AUDITS = {
       { version: '1.1.0', date: '2025-11-05', auditor: 'Harbor Life Security Team', summary: 'Code review of webhook handling and token storage. All secure. Recommended additional rate limiting — implemented in v2.0.', reportUrl: '#' },
     ],
   },
-  // Instasys Mail
+  // MerMail
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
     ai: [
       { version: '1.3.0', date: '2026-01-18', results: {
@@ -1252,7 +1258,7 @@ const APP_AUDITS = {
         codeQuality: { rating: 'Pass', note: 'HTMX frontend, clean Cap\'n Proto integration' },
         accessibility: { rating: 'Partial', note: 'Core actions keyboard-accessible; compose modal needs ARIA' },
       }, links: {
-        claude: 'https://claude.ai/share/instasysmail-audit-1.3',
+        claude: 'https://claude.ai/share/mermail-audit-1.3',
       }},
     ],
     human: [],
@@ -1408,7 +1414,7 @@ const APP_PRICES = {
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { price: '0.5 SOL', originalPrice: '2.0 SOL', onSale: true },
   // BotMother (Telegram)
   'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': { price: '0.1 SOL', originalPrice: '0.5 SOL', onSale: true },
-  // Instasys Mail
+  // MerMail
   'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': { price: '0.1 SOL' },
   // MiniGit
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { price: 'FREE' },
@@ -1420,6 +1426,70 @@ const APP_PRICES = {
 
 function getAppPrice(appId) {
   return APP_PRICES[appId] || { price: 'FREE' };
+}
+
+/* ─── Sidecars & Dependencies ──────────────────────────────────────────────── */
+const APP_SIDECARS = {
+  // Bureau — no sidecars
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { sidecars: [], deps: [] },
+  // BLOOM Identity — no sidecars
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { sidecars: [], deps: [] },
+  // BotMother — optional dep on AI Lagoon for AI processing
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
+    sidecars: [],
+    deps: [
+      {
+        appId: 'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0',
+        name: 'AI Lagoon',
+        required: false,
+        description: 'Connect BotMother to AI Lagoon via Grapple to add AI-powered message processing, auto-replies, and intelligent routing to your Telegram bots.',
+      },
+    ],
+  },
+  // MerMail — required sidecar: email server
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
+    sidecars: [
+      {
+        name: 'Email Server (SMTP)',
+        required: true,
+        type: 'service',
+        description: 'MerMail needs an SMTP-capable email server sidecar to send and receive mail. Melusina routes inbound mail via its built-in SMTP gateway; outbound delivery requires configuring an SMTP relay (e.g. Postmark, your own Postfix, or any SMTP provider).',
+        links: [
+          { label: 'Melusina SMTP docs', url: 'https://melusina-os.org/docs/smtp' },
+        ],
+      },
+    ],
+    deps: [],
+  },
+  // MiniGit — no sidecars
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { sidecars: [], deps: [] },
+  // Shell Tester — no sidecars
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { sidecars: [], deps: [] },
+  // AI Lagoon — required sidecar: LLM proxy
+  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
+    sidecars: [
+      {
+        name: 'LLM Provider Proxy',
+        required: true,
+        type: 'ai-backend',
+        description: 'AI Lagoon requires a connection to at least one LLM backend. Run a local Ollama instance for fully offline AI, or configure a proxy to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing.',
+        options: [
+          { name: 'Ollama (local)', description: 'Run models locally — fully offline, no API keys needed', url: 'https://ollama.com' },
+          { name: 'OpenAI', description: 'GPT-4o, GPT-4, GPT-3.5 via API key', url: 'https://platform.openai.com' },
+          { name: 'OpenRouter', description: 'Unified gateway to 100+ models', url: 'https://openrouter.ai' },
+          { name: 'Anthropic', description: 'Claude models via API key', url: 'https://console.anthropic.com' },
+        ],
+        links: [
+          { label: 'Melusina AI sidecar docs', url: 'https://melusina-os.org/docs/ai-sidecar' },
+        ],
+      },
+    ],
+    deps: [],
+  },
+};
+
+function getAppSidecars(appId) {
+  return APP_SIDECARS[appId] || { sidecars: [], deps: [] };
 }
 
 /* approximate SOL → USD (rough estimate; update as needed) */
@@ -1519,6 +1589,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
     { id: 'audits', label: '🔍 Audits' },
+    { id: 'sidecars', label: '🔗 Sidecars / Deps' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
 
@@ -1662,6 +1733,197 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         )}
       </div>
     </>
+  );
+
+  /* ---- SIDECARS / DEPS TAB ---- */
+  const appSidecars = getAppSidecars(app.appId);
+  const hasSidecars = appSidecars.sidecars.length > 0;
+  const hasDeps = appSidecars.deps.length > 0;
+
+  const SidecarsTab = () => (
+    <div style={{ maxWidth: 780 }}>
+      {/* Info box explaining sidecars */}
+      <div style={{
+        padding: 22, background: T.cyan + '08', borderRadius: T.radius,
+        border: `1px solid ${T.cyan}33`, marginBottom: 24,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <span style={{
+            fontSize: 24, width: 44, height: 44, borderRadius: 3, flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: T.cyan + '15', border: `1px solid ${T.cyan}33`,
+          }}>🔗</span>
+          <div>
+            <div style={{
+              fontSize: 16, fontWeight: 800, color: T.cyan, marginBottom: 6,
+              fontFamily: "'Orbitron', sans-serif",
+              textShadow: `0 0 8px ${T.accentGlow}`,
+            }}>What are Sidecars &amp; Dependencies?</div>
+            <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
+              <strong style={{ color: T.text }}>Sidecars</strong> are companion services that run alongside an app on your
+              Melusina server — things like email servers, AI backends, or database engines.
+              They're managed by the platform, isolated in their own containers, and never
+              share data unless you explicitly connect them via <strong style={{ color: T.text }}>Grapple</strong>.
+            </div>
+            <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginTop: 8 }}>
+              <strong style={{ color: T.text }}>Dependencies</strong> are optional connections to other Melusina apps.
+              When linked via Grapple, apps can share capabilities without sharing data.
+            </div>
+            <a href="https://melusina-os.org/docs/sidecars" target="_blank" rel="noreferrer"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
+                fontSize: 12, color: T.cyan, textDecoration: "none",
+                fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                transition: "all .2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
+            >Learn more on Melusina-Os.org →</a>
+          </div>
+        </div>
+      </div>
+
+      {/* Sidecars section */}
+      {hasSidecars && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader color={T.magenta}>Required Sidecars</SectionHeader>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {appSidecars.sidecars.map((sc, i) => (
+              <div key={i} style={{
+                padding: 22, background: T.surface, borderRadius: T.radius,
+                border: `1px solid ${sc.required ? T.magenta + '44' : T.border}`,
+                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
+                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".06em",
+                    background: sc.required ? T.magenta + '22' : T.yellow + '22',
+                    color: sc.required ? T.magenta : T.yellow,
+                    border: `1px solid ${sc.required ? T.magenta + '44' : T.yellow + '44'}`,
+                  }}>{sc.required ? 'REQUIRED' : 'OPTIONAL'}</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 600, padding: "3px 8px", borderRadius: 3,
+                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
+                    background: T.cyan + '15', color: T.cyan + 'cc', border: `1px solid ${T.cyan}33`,
+                    textTransform: 'uppercase',
+                  }}>{sc.type}</span>
+                </div>
+                <div style={{
+                  fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 8,
+                  fontFamily: "'Orbitron', sans-serif",
+                }}>{sc.name}</div>
+                <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginBottom: 14 }}>
+                  {sc.description}
+                </div>
+                {/* Options (e.g. for AI Lagoon LLM backends) */}
+                {sc.options && sc.options.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, color: T.textDim, marginBottom: 8,
+                      fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
+                    }}>SUPPORTED BACKENDS</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                      {sc.options.map((opt, j) => (
+                        <a key={j} href={opt.url} target="_blank" rel="noreferrer" style={{
+                          padding: 14, background: T.bg + 'cc', borderRadius: T.radiusSm,
+                          border: `1px solid ${T.border}`, textDecoration: "none",
+                          transition: "all .2s",
+                        }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = "none"; }}
+                        >
+                          <div style={{
+                            fontSize: 13, fontWeight: 700, color: T.cyan, marginBottom: 4,
+                            fontFamily: "'Orbitron', sans-serif",
+                          }}>{opt.name}</div>
+                          <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{opt.description}</div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Links */}
+                {sc.links && sc.links.length > 0 && (
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {sc.links.map((lnk, j) => (
+                      <a key={j} href={lnk.url} target="_blank" rel="noreferrer" style={{
+                        fontSize: 12, color: T.cyan, textDecoration: "none",
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                        transition: "all .2s",
+                      }}
+                        onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
+                      >{lnk.label} →</a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Dependencies section */}
+      {hasDeps && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader color={T.yellow}>App Dependencies</SectionHeader>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {appSidecars.deps.map((dep, i) => (
+              <div key={i} style={{
+                padding: 22, background: T.surface, borderRadius: T.radius,
+                border: `1px solid ${dep.required ? T.magenta + '44' : T.yellow + '44'}`,
+                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
+                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".06em",
+                    background: dep.required ? T.magenta + '22' : T.yellow + '22',
+                    color: dep.required ? T.magenta : T.yellow,
+                    border: `1px solid ${dep.required ? T.magenta + '44' : T.yellow + '44'}`,
+                  }}>{dep.required ? 'REQUIRED' : 'OPTIONAL'}</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 600, padding: "3px 8px", borderRadius: 3,
+                    fontFamily: "'JetBrains Mono', monospace", letterSpacing: ".08em",
+                    background: T.green + '15', color: T.green + 'cc', border: `1px solid ${T.green}33`,
+                    textTransform: 'uppercase',
+                  }}>APP DEP</span>
+                </div>
+                <div style={{
+                  fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 8,
+                  fontFamily: "'Orbitron', sans-serif",
+                }}>{dep.name}</div>
+                <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
+                  {dep.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No sidecars state */}
+      {!hasSidecars && !hasDeps && (
+        <div style={{
+          padding: 40, textAlign: "center", background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.border}`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+          <div style={{
+            fontSize: 16, fontWeight: 800, color: T.green, marginBottom: 8,
+            fontFamily: "'Orbitron', sans-serif",
+            textShadow: `0 0 8px ${T.greenGlow}`,
+          }}>No External Dependencies</div>
+          <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, maxWidth: 420, margin: "0 auto" }}>
+            This app runs entirely self-contained inside its Pearl. No sidecars, no external
+            services, no API keys needed. Install and go.
+          </div>
+        </div>
+      )}
+    </div>
   );
 
   /* ---- LICENSE TAB ---- */
@@ -2842,6 +3104,8 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         {/* tags */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           {(app.categories || []).map((c) => <Badge key={c}>{c}</Badge>)}
+          {appSidecars.sidecars.map((sc, i) => <Badge key={`sc-${i}`} neon={T.magenta}>⚡ {sc.name}</Badge>)}
+          {appSidecars.deps.map((dep, i) => <Badge key={`dep-${i}`} neon={T.yellow}>🔗 {dep.name}</Badge>)}
         </div>
 
         {/* tab navigation */}
@@ -2861,6 +3125,7 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
           {tab === 'faq' && <FAQTab />}
           {tab === 'reviews' && <ReviewsTab />}
           {tab === 'audits' && <AuditsTab />}
+          {tab === 'sidecars' && <SidecarsTab />}
           {tab === 'license' && <LicenseTab />}
         </div>
       </div>

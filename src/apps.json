@@ -163,7 +163,7 @@
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
-      "name": "Instasys Mail",
+      "name": "MerMail",
       "version": "0.4.0",
       "versionNumber": 4,
       "packageId": "652bd5d3145924b63aa7dc49ec5a43e2",
@@ -172,9 +172,9 @@
         "Productivity"
       ],
       "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/INSTASYS_MAIL",
-      "codeLink": "https://github.com/hrbrlife/INSTASYS_MAIL",
-      "upstreamAuthor": "Instasys Mail",
+      "webLink": "https://github.com/hrbrlife/MerMail",
+      "codeLink": "https://github.com/hrbrlife/MerMail",
+      "upstreamAuthor": "MerMail",
       "createdAt": 1770847158527,
       "author": {
         "name": "alexeikarp",
@@ -183,7 +183,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "Instasys Mail is a native email client for [Melusina](https://sandstorm.io), built with Go and HTMX. It connects directly to Sandstorm's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\nEach mailbox lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, message store, and permissions. No mailbox Pearl can see another unless you explicitly connect them via **Grapple**.\n\n## Features\n\n- **Per-Pearl Isolation** \u2014 Each grain is an independent mailbox with separate storage and access controls\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Sandstorm sharing with viewer, editor, and admin roles\n- **Grapple Connections** \u2014 Link mailbox Pearls to other apps \u2014 pipe notifications into BotMother, share attachments to Bureau documents\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## How It Works\n\nEach Pearl is an independent mailbox. Email arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required. All data stays inside the Pearl container \u2014 no external dependencies, no cloud sync.\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Pearl sandbox",
+      "description": "MerMail is a native email client for [Melusina](https://sandstorm.io), built with Go and HTMX. It connects directly to Sandstorm's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\nEach mailbox lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, message store, and permissions. No mailbox Pearl can see another unless you explicitly connect them via **Grapple**.\n\n## Features\n\n- **Per-Pearl Isolation** \u2014 Each grain is an independent mailbox with separate storage and access controls\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Sandstorm sharing with viewer, editor, and admin roles\n- **Grapple Connections** \u2014 Link mailbox Pearls to other apps \u2014 pipe notifications into BotMother, share attachments to Bureau documents\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## How It Works\n\nEach Pearl is an independent mailbox. Email arrives via Sandstorm's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required. All data stays inside the Pearl container \u2014 no external dependencies, no cloud sync.\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",

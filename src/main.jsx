@@ -2098,60 +2098,6 @@ function DetailPage({ app, host, onClose }) {
     );
   };
 
-  /* ---- VERSIONS TAB ---- */
-  const VersionsTab = () => (
-    <div style={{ maxWidth: 780 }}>
-      <SectionHeader>Version History</SectionHeader>
-      {versions.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📋</div>
-          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-            Version history coming soon
-          </p>
-        </div>
-      ) : (
-        <div style={{ position: "relative", paddingLeft: 28, marginTop: 16 }}>
-          <div style={{ position: "absolute", left: 5, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, ${T.cyan}44, ${T.purple}22, transparent)` }} />
-          {versions.map((v, i) => (
-            <div key={i} style={{ position: "relative", marginBottom: 32, animation: `fadeUp .3s ease-out ${i * 0.08}s both` }}>
-              <div style={{
-                position: "absolute", left: -28, top: 4, width: 12, height: 12,
-                borderRadius: "50%", background: i === 0 ? T.cyan : T.bgAlt,
-                border: `2px solid ${i === 0 ? T.cyan : T.textDim + '44'}`,
-                boxShadow: i === 0 ? `0 0 10px ${T.cyan}66` : "none",
-              }} />
-              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
-                <span style={{
-                  fontSize: 16, fontWeight: 800,
-                  color: i === 0 ? T.cyan : T.text,
-                  fontFamily: "'Orbitron', sans-serif",
-                  textShadow: i === 0 ? `0 0 8px ${T.accentGlow}` : "none",
-                }}>v{v.version}</span>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v.date}</span>
-                {i === 0 && <Badge neon={T.cyan}>Latest</Badge>}
-              </div>
-              <div style={{
-                padding: "16px 20px", background: T.surface,
-                borderRadius: T.radius, border: `1px solid ${i === 0 ? T.cyan + '22' : T.border}`,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}>
-                {v.changes.map((c, j) => (
-                  <div key={j} style={{
-                    fontSize: 13, color: T.textSec, lineHeight: 1.8,
-                    paddingLeft: 16, position: "relative",
-                  }}>
-                    <span style={{ position: "absolute", left: 0, color: T.cyan, fontSize: 11, textShadow: `0 0 4px ${T.accentGlow}` }}>▸</span>
-                    {c}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   /* ---- FEES TAB ---- */
   const FeesTab = () => (
     <div style={{ maxWidth: 780 }}>

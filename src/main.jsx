@@ -1069,7 +1069,7 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
             filter: 'drop-shadow(-2px 2px 4px rgba(0,0,0,0.3))',
           }} />
           <span style={{
-            position: 'absolute', top: 16, right: 2, width: 56,
+            position: 'absolute', top: 12, right: -14, width: 70,
             fontSize: 8, fontWeight: 800,
             color: '#1a1a2e', fontFamily: "'Orbitron', sans-serif",
             letterSpacing: '.05em', transform: 'rotate(45deg)', transformOrigin: 'center center',
@@ -1960,29 +1960,25 @@ function getConnectivityBadges(appId) {
   const sc = getAppSidecars(appId);
   const badges = [];
   if (sc.grapple.length > 0) {
-    const hasDep = sc.grapple.some(g => g.type === 'dependency');
-    const hasInternet = sc.grapple.some(g => g.capability === 'IpNetwork.Connect');
     badges.push({
       icon: '\u{1FA9D}',
-      short: hasDep ? 'Needs Grapple' : 'Uses Grapple',
-      label: hasDep ? 'Requires Grapple' : 'Enhances with Grapple',
-      tip: hasDep
-        ? (hasInternet ? 'Connects to internet and other Pearls via Grapple' : 'Depends on connections to other Pearls via Grapple')
-        : 'Can connect to other Pearls via Grapple for extra features',
+      short: 'Enhanced by Grapple',
+      label: 'Enhanced by Grapple',
+      tip: 'Can connect to other Pearls via Grapple for extra features',
       color: 'yellow',
     });
   }
   if (sc.sidecars.length > 0) {
     const hasRequired = sc.sidecars.some(s => s.required);
-    badges.push({
-      icon: '\uD83C\uDFCD\uFE0F',
-      short: hasRequired ? 'Needs Sidecar' : 'Uses Sidecar',
-      label: hasRequired ? 'Requires Sidecar' : 'Uses Sidecar',
-      tip: hasRequired
-        ? 'Needs server-level sidecar services to function'
-        : 'Uses sidecar for extended functionality',
-      color: 'magenta',
-    });
+    if (hasRequired) {
+      badges.push({
+        icon: '\uD83C\uDFCD\uFE0F',
+        short: 'Needs Sidecar',
+        label: 'Needs Sidecar',
+        tip: 'Requires server-level sidecar services to function',
+        color: 'magenta',
+      });
+    }
   }
   return badges;
 }
@@ -4268,6 +4264,24 @@ function App() {
               }}>{c}</button>
             );
           })}
+        </div>
+      </div>
+
+      {/* alpha test banner */}
+      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 24px 0' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px',
+          background: `linear-gradient(135deg, ${T.green}08, ${T.cyan}06)`,
+          border: `1px solid ${T.green}33`, borderRadius: T.radius,
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>🧪</span>
+          <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
+            <strong style={{ color: T.green, fontFamily: "'Orbitron', sans-serif", fontSize: 11, letterSpacing: '.06em' }}>ALPHA TEST PHASE</strong>
+            <span style={{ margin: '0 8px', color: T.border }}>|</span>
+            All apps are <strong style={{ color: T.green }}>free of charge</strong> during the alpha.
+            Licenses obtained now are <strong style={{ color: T.cyan }}>free perpetually</strong> — hurry to test and keep!
+          </div>
         </div>
       </div>
 

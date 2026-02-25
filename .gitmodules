@@ -27,3 +27,6 @@
 	url = https://github.com/hrbrlife/Melusina.git
 	branch = pbay-app
 	fetchRecurseSubmodules = false
+[submodule "packages/hrbrlife/melusina-galactic-council"]
+	path = packages/hrbrlife/melusina-galactic-council
+	url = https://github.com/hrbrlife/melusina-galactic-council

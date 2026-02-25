@@ -38,8 +38,9 @@ const fmtDate = (v) => {
 
 const timeAgo = (v) => {
   if (!v) return null;
-  const ts = typeof v === "number" ? v : Date.parse(v);
+  let ts = typeof v === "number" ? v : Date.parse(v);
   if (Number.isNaN(ts)) return null;
+  if (typeof v === "number" && v < 1e12) ts = v * 1000;
   try { return formatDistanceToNow(ts, { addSuffix: true }); } catch { return null; }
 };
 
@@ -211,7 +212,7 @@ function JurisdictionModal({ onSelect, onClose }) {
                       <div style={{
                         fontSize: 13, fontWeight: 700, color: T.text,
                         fontFamily: "'Orbitron', sans-serif",
-                      }}>{srv.flag} {srv.code} — {srv.domain}</div>
+                      }}>{srv.code} — {srv.domain}</div>
                       <div style={{
                         fontSize: 11, color: T.cyan, fontFamily: "'JetBrains Mono', monospace",
                       }}>{srv.name}</div>
@@ -961,80 +962,7 @@ function AppIcon({ app, size = 48 }) {
   );
 }
 
-/* ─── Connect-server dropdown ──────────────────────────────────────────────── */
 
-function HostBar({ host, setHost }) {
-  const [open, setOpen] = useState(false);
-  const ok = !!host.trim();
-  return (
-    <div style={{ position: "relative" }}>
-      <button onClick={() => setOpen(!open)} style={{
-        display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
-        border: `1px solid ${ok ? T.green + "66" : T.cyan + "33"}`,
-        borderRadius: T.radiusSm, background: ok ? T.green + "11" : "rgba(192,132,252,0.07)",
-        cursor: "pointer", fontSize: 12, color: ok ? T.green : T.cyan,
-        fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-        letterSpacing: ".05em", textTransform: "uppercase",
-        transition: "all .3s ease",
-        textShadow: `0 0 8px ${ok ? T.greenGlow : T.accentGlow}`,
-        boxShadow: `0 0 10px ${ok ? T.greenGlow : T.accentGlow}`,
-      }}>
-        <span style={{
-          width: 6, height: 6, borderRadius: "50%",
-          background: ok ? T.green : T.cyan,
-          boxShadow: `0 0 6px ${ok ? T.green : T.cyan}`,
-        }} />
-        <span>{ok ? "LINKED" : "CONNECT"}</span>
-        <span style={{ fontSize: 8, opacity: .6 }}>▾</span>
-      </button>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-          <div style={{
-            position: "absolute", right: 0, top: "calc(100% + 8px)",
-            background: "rgba(22, 16, 48, 0.95)",
-            border: `1px solid ${T.purple}44`,
-            borderRadius: T.radius,
-            padding: 20, zIndex: 100, width: 320,
-            boxShadow: `0 0 30px ${T.magentaGlow}, 0 20px 60px rgba(0,0,0,.4)`,
-            backdropFilter: "blur(24px) saturate(1.3)", WebkitBackdropFilter: "blur(24px) saturate(1.3)",
-            animation: "pop .15s ease-out",
-          }}>
-            <label style={{
-              display: "block", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".12em", color: T.cyan, marginBottom: 10,
-              fontFamily: "'Orbitron', sans-serif",
-              textShadow: `0 0 6px ${T.accentGlow}`,
-            }}>SERVER ENDPOINT</label>
-            <input type="url" placeholder="https://sandstorm.example.com" value={host}
-              onChange={(e) => setHost(e.target.value)} autoFocus
-              style={{
-                width: "100%", padding: "12px 14px", background: "rgba(192,132,252,0.06)",
-                border: `1px solid ${T.purple}33`, borderRadius: T.radiusSm, color: T.text,
-                fontSize: 13, outline: "none", transition: "border-color .2s, box-shadow .2s",
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = T.cyan + "88";
-                e.target.style.boxShadow = `0 0 15px ${T.accentGlow}`;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = T.cyan + "33";
-                e.target.style.boxShadow = "none";
-              }}
-            />
-            <p style={{
-              fontSize: 11, color: T.textDim, marginTop: 10, lineHeight: 1.6,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}>
-              Enter your Sandstorm address to enable one-click installs.
-            </p>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 /* ─── Card Slideshow ────────────────────────────────────────────────────────── */
 
@@ -2058,7 +1986,7 @@ function getAvgRating(reviews) {
 
 /* ─── Detail Page ──────────────────────────────────────────────────────────── */
 
-function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTab }) {
+function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   const reviews = useMemo(() => getAppReviews(app), [app]);
   const avgRating = useMemo(() => getAvgRating(reviews), [reviews]);
   const faq = useMemo(() => getAppFAQ(app), [app]);
@@ -2256,12 +2184,12 @@ function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTa
               )}
               {timeAgo(app.createdAt) && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  \u00b7 updated {timeAgo(app.createdAt)}
+                  {'\u00b7'} updated {timeAgo(app.createdAt)}
                 </span>
               )}
               {app.author?.name && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  \u00b7 by {app.author.name}
+                  {'\u00b7'} by {app.author.name}
                 </span>
               )}
             </div>
@@ -2305,7 +2233,7 @@ function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTa
             fontSize: 24, width: 44, height: 44, borderRadius: 3, flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
             background: T.cyan + '15', border: `1px solid ${T.cyan}33`,
-          }}>{'\U0001FA9D'}</span>
+          }}>{'🪝'}</span>
           <div>
             <div style={{
               fontSize: 16, fontWeight: 800, color: T.cyan, marginBottom: 6,
@@ -2342,7 +2270,7 @@ function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTa
 
       {/* ─── Grapple Connections (ABOVE sidecars) ─── */}
       <div style={{ marginBottom: 28 }}>
-        <SectionHeader color={T.yellow}>{'\U0001FA9D'} Grapple Connections</SectionHeader>
+        <SectionHeader color={T.yellow}>{'🪝'} Grapple Connections</SectionHeader>
         {hasGrapple ? (
           <div style={{
             background: T.surface, borderRadius: T.radius,
@@ -2416,7 +2344,7 @@ function DetailPage({ app, host, onClose, onInstall, initialTab, initialDevSubTa
 
       {/* ─── Sidecars (BELOW grapple) ─── */}
       <div style={{ marginBottom: 28 }}>
-        <SectionHeader color={T.magenta}>{'\U0001F3CD\uFE0F'} Sidecars</SectionHeader>
+        <SectionHeader color={T.magenta}>{'🏍\uFE0F'} Sidecars</SectionHeader>
         {hasSidecars ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {appSidecars.sidecars.map((sc, i) => (
@@ -4032,7 +3960,7 @@ function App() {
   const [ideaDraft, setIdeaDraft] = useState({ title: '', description: '', author: '' });
   const [appIdeas, setAppIdeas] = useState(() => getAppIdeas());
   const [aiVotes, setAiVotes] = useState(() => getMyAIVotes());
-  const [host, setHost] = useState(localStorage.getItem("sandstormHost") || "");
+  const hostRef = React.useRef(localStorage.getItem("sandstormHost") || "");
   const [installModalApp, setInstallModalApp] = useState(null);
 
   useEffect(() => {
@@ -4040,7 +3968,7 @@ function App() {
     setApps(src.map((a) => ({ ...a, categories: a.categories || [] })));
   }, []);
 
-  useEffect(() => { if (host) localStorage.setItem("sandstormHost", host); }, [host]);
+
 
   /* ─── ?host= URL parameter: auto-register server on open ─── */
   useEffect(() => {
@@ -4060,8 +3988,9 @@ function App() {
         addPrivateServer(h);
       }
 
-      // Also set the legacy host state
-      setHost(h);
+      // Persist to legacy localStorage key
+      localStorage.setItem("sandstormHost", h);
+      hostRef.current = h;
 
       // Clean the URL without reloading
       const url = new URL(window.location);
@@ -4117,7 +4046,7 @@ function App() {
     return (
       <>
         <style>{CSS}</style>
-        <DetailPage app={selectedApp} host={host} onClose={onClose} onInstall={onInstall} initialTab={detailInitTab} initialDevSubTab={detailInitSubTab} />
+        <DetailPage app={selectedApp} onClose={onClose} onInstall={onInstall} initialTab={detailInitTab} initialDevSubTab={detailInitSubTab} />
         {installModalApp && <InstallModal app={installModalApp} onClose={() => setInstallModalApp(null)} />}
       </>
     );
@@ -4204,8 +4133,6 @@ function App() {
             onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.magentaGlow}`; e.currentTarget.style.borderColor = T.magenta + '55'; }}
             onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = T.magenta + '33'; }}
           >💡 APP IDEAS</button>
-
-          <HostBar host={host} setHost={setHost} />
         </div>
       </header>
 

@@ -360,7 +360,7 @@ function InstallModal({ app, onClose }) {
                     <div style={{
                       fontSize: 14, fontWeight: 800, color: T.text,
                       fontFamily: "'Orbitron', sans-serif",
-                    }}>{pbayServer.flag} {pbayServer.code} — {pbayServer.domain}</div>
+                    }}>{pbayServer.code} — {pbayServer.domain}</div>
                     <div style={{
                       fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
                     }}>{pbayServer.name}</div>

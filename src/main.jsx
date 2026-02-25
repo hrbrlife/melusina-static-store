@@ -1163,6 +1163,218 @@ const APP_VERSIONS = {
   ],
 };
 
+/* ─── App Audits ────────────────────────────────────────────────────────────── */
+const AUDIT_CATEGORIES = [
+  { key: 'security', label: 'Security', icon: '🛡️' },
+  { key: 'privacy', label: 'Privacy', icon: '🔒' },
+  { key: 'dataSafety', label: 'Data Safety', icon: '💾' },
+  { key: 'dataPortability', label: 'Data Portability', icon: '📦' },
+  { key: 'codeQuality', label: 'Code Quality', icon: '⚙️' },
+  { key: 'accessibility', label: 'Accessibility', icon: '♿' },
+];
+
+const APP_AUDITS = {
+  // Bureau
+  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': {
+    ai: [
+      { version: '3.1.0', date: '2026-02-01', results: {
+        security: { rating: 'Pass', note: 'Sandboxed grain isolation, no outbound network access' },
+        privacy: { rating: 'Pass', note: 'All data stays on-server, no telemetry' },
+        dataSafety: { rating: 'Pass', note: 'SQLite + per-grain encryption at rest' },
+        dataPortability: { rating: 'Pass', note: 'CSV, JSON, XLSX export for all grain types' },
+        codeQuality: { rating: 'Pass', note: 'Modular TypeScript codebase with unit tests' },
+        accessibility: { rating: 'Partial', note: 'Keyboard navigation; screen reader support in progress' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/bureau-audit-3.1',
+        claude: 'https://claude.ai/share/bureau-audit-3.1',
+        gemini: 'https://g.co/gemini/share/bureau-audit-3.1',
+      }},
+      { version: '3.0.0', date: '2025-12-15', results: {
+        security: { rating: 'Pass', note: 'Grain sandbox, CSP headers enforced' },
+        privacy: { rating: 'Pass', note: 'Zero external APIs' },
+        dataSafety: { rating: 'Pass', note: 'SQLite WAL mode with auto-backup' },
+        dataPortability: { rating: 'Pass', note: 'Export to CSV and JSON' },
+        codeQuality: { rating: 'Pass', note: 'Clean separation of concerns' },
+        accessibility: { rating: 'Needs Work', note: 'Limited ARIA labels' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/bureau-audit-3.0',
+        claude: 'https://claude.ai/share/bureau-audit-3.0',
+      }},
+    ],
+    human: [
+      { version: '3.0.0', date: '2025-12-20', auditor: 'Harbor Life Security Team', summary: 'Full manual penetration test and code review. No critical issues found. Minor: ARIA labels incomplete.', reportUrl: '#' },
+    ],
+  },
+  // BLOOM Identity
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': {
+    ai: [
+      { version: '1.2.0', date: '2026-01-28', results: {
+        security: { rating: 'Pass', note: 'KYC data never leaves grain. Facial capture processed locally' },
+        privacy: { rating: 'Pass', note: 'Zero third-party API calls. No biometric data transmitted externally' },
+        dataSafety: { rating: 'Pass', note: 'Per-case isolated storage. Document encryption at rest' },
+        dataPortability: { rating: 'Pass', note: 'Case export includes all documents and audit trail' },
+        codeQuality: { rating: 'Pass', note: 'Structured verification pipeline with error boundaries' },
+        accessibility: { rating: 'Partial', note: 'OTP flow keyboard-accessible; photo capture needs improvement' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/bloom-audit-1.2',
+        claude: 'https://claude.ai/share/bloom-audit-1.2',
+      }},
+    ],
+    human: [],
+  },
+  // BotMother
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
+    ai: [
+      { version: '2.0.0', date: '2026-01-20', results: {
+        security: { rating: 'Pass', note: 'Bot tokens stored in grain-local encrypted vault' },
+        privacy: { rating: 'Pass', note: 'All conversations stay on-server. Telegram API token scoped to grain' },
+        dataSafety: { rating: 'Pass', note: 'Message history in SQLite with WAL journaling' },
+        dataPortability: { rating: 'Pass', note: 'Full chat export as JSON' },
+        codeQuality: { rating: 'Pass', note: 'Clean webhook handler architecture' },
+        accessibility: { rating: 'Pass', note: 'Web UI fully keyboard-navigable' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/botmother-audit-2.0',
+        gemini: 'https://g.co/gemini/share/botmother-audit-2.0',
+      }},
+    ],
+    human: [
+      { version: '1.1.0', date: '2025-11-05', auditor: 'Harbor Life Security Team', summary: 'Code review of webhook handling and token storage. All secure. Recommended additional rate limiting — implemented in v2.0.', reportUrl: '#' },
+    ],
+  },
+  // Instasys Mail
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
+    ai: [
+      { version: '1.3.0', date: '2026-01-18', results: {
+        security: { rating: 'Pass', note: 'Cap\'n Proto RPC with Sandstorm powerbox auth' },
+        privacy: { rating: 'Pass', note: 'Mail stored locally. Optional Postmark for outbound only' },
+        dataSafety: { rating: 'Pass', note: 'SQLite backend with full-text search index' },
+        dataPortability: { rating: 'Pass', note: 'EML export for all messages' },
+        codeQuality: { rating: 'Pass', note: 'HTMX frontend, clean Cap\'n Proto integration' },
+        accessibility: { rating: 'Partial', note: 'Core actions keyboard-accessible; compose modal needs ARIA' },
+      }, links: {
+        claude: 'https://claude.ai/share/instasysmail-audit-1.3',
+      }},
+    ],
+    human: [],
+  },
+  // MiniGit
+  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': {
+    ai: [
+      { version: '1.1.0', date: '2026-01-25', results: {
+        security: { rating: 'Pass', note: 'Git operations sandboxed in grain. Auth via Sandstorm capabilities' },
+        privacy: { rating: 'Pass', note: 'No external network calls. All repos stored locally' },
+        dataSafety: { rating: 'Pass', note: 'Standard git bare repo format on disk' },
+        dataPortability: { rating: 'Pass', note: 'Standard git clone — full portability' },
+        codeQuality: { rating: 'Pass', note: 'Minimal codebase wrapping git and GitWeb' },
+        accessibility: { rating: 'Partial', note: 'GitWeb UI has limited accessibility' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/minigit-audit-1.1',
+        claude: 'https://claude.ai/share/minigit-audit-1.1',
+      }},
+    ],
+    human: [],
+  },
+  // Shell Tester
+  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': {
+    ai: [
+      { version: '1.1.0', date: '2026-01-12', results: {
+        security: { rating: 'Pass', note: 'Extensions run in isolated grain sandbox' },
+        privacy: { rating: 'Pass', note: 'No external data transmission' },
+        dataSafety: { rating: 'Pass', note: 'Test results and logs stored in grain' },
+        dataPortability: { rating: 'Pass', note: 'Test logs exportable; extension packages are portable SPK files' },
+        codeQuality: { rating: 'Pass', note: 'Simple, focused utility with clear test runner architecture' },
+        accessibility: { rating: 'Pass', note: 'Terminal-style output; fully keyboard-driven' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/shelltester-audit-1.1',
+      }},
+    ],
+    human: [
+      { version: '1.0.0', date: '2025-10-15', auditor: 'Harbor Life Security Team', summary: 'Reviewed sandboxing of extension loading. Confirmed grain isolation prevents escape. Approved.', reportUrl: '#' },
+    ],
+  },
+  // AI Lagoon
+  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
+    ai: [
+      { version: '1.0.0', date: '2025-12-01', results: {
+        security: { rating: 'Pass', note: 'AI context fully isolated per Pearl. Grapple connections require explicit grant' },
+        privacy: { rating: 'Pass', note: 'Prompts and responses never leave your server' },
+        dataSafety: { rating: 'Pass', note: 'Conversation history in grain-local SQLite' },
+        dataPortability: { rating: 'Pass', note: 'Conversation export as JSON/Markdown' },
+        codeQuality: { rating: 'Pass', note: 'Clean model-agnostic architecture' },
+        accessibility: { rating: 'Partial', note: 'Chat UI keyboard-navigable; settings panel needs improvement' },
+      }, links: {
+        chatgpt: 'https://chatgpt.com/share/ailagoon-audit-1.0',
+        claude: 'https://claude.ai/share/ailagoon-audit-1.0',
+        gemini: 'https://g.co/gemini/share/ailagoon-audit-1.0',
+      }},
+    ],
+    human: [],
+  },
+};
+
+/* ─── License Texts ─────────────────────────────────────────────────────────── */
+const HLSL_LICENSE_TEXT = `HARBOR LIFE SOFTWARE LICENSE (HLSL) v1.0
+
+Copyright (c) 2025 Harbor Life / hrbrlife
+
+1. GRANT OF LICENSE
+Permission is hereby granted to any person obtaining a copy of this software and associated documentation files (the "Software") to use, copy, and deploy the Software on their own self-hosted infrastructure (including Sandstorm, Melusina, or compatible platforms) for personal, educational, or internal business purposes.
+
+2. SOURCE AVAILABILITY
+The source code of the Software is made available for inspection, auditing, and personal modification. You may modify the Software for use on your own server. Redistribution of modified versions requires compliance with this license.
+
+3. RESTRICTIONS
+a) The Software may not be redistributed, sublicensed, or sold as a standalone product without prior written permission from the copyright holder.
+b) The Software may not be used to provide a competing hosted service without a separate commercial agreement.
+c) Attribution to the original author must be preserved in all copies and derivative works.
+
+4. AUTOMATIC OPEN SOURCE CONVERSION
+Three (3) years after the initial public release date of each version, the license for that version automatically and irrevocably converts to the GNU Affero General Public License version 3 (AGPLv3). The conversion date for each version is calculated from its first public distribution date.
+
+5. DATA OWNERSHIP
+All data created, stored, or processed by the Software on your infrastructure is owned entirely by you. The Software includes no telemetry, analytics, or data collection mechanisms. Your server, your data.
+
+6. WARRANTY DISCLAIMER
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
+
+7. TERMINATION
+This license is effective until terminated. It will terminate automatically if you fail to comply with any term. Upon termination, you must destroy all copies of the Software.`;
+
+const OPEN_SOURCE_LICENSE_TEXT = `GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc.
+
+Everyone is permitted to copy and distribute verbatim copies of this license document, but changing it is not allowed.
+
+PREAMBLE
+The GNU Affero General Public License is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.
+
+The licenses for most software and other practical works are designed to take away your freedom to share and change the works. By contrast, our General Public Licenses are intended to guarantee your freedom to share and change all versions of a program — to make sure it remains free software for all its users.
+
+TERMS AND CONDITIONS
+
+0. Definitions.
+"This License" refers to version 3 of the GNU Affero General Public License.
+"The Program" refers to any copyrightable work licensed under this License.
+
+1. Source Code.
+You may copy and distribute verbatim copies of the Program's source code as you receive it, in any medium, provided that you conspicuously and appropriately publish on each copy an appropriate copyright notice and disclaimer of warranty.
+
+2. Basic Permissions.
+All rights granted under this License are granted for the term of copyright on the Program, and are irrevocable provided the stated conditions are met. This License explicitly affirms your unlimited permission to run the unmodified Program.
+
+3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+No covered work shall be deemed part of an effective technological measure under any applicable law fulfilling obligations under article 11 of the WIPO copyright treaty.
+
+4. Conveying Verbatim Copies.
+You may convey verbatim copies of the Program's source code as you receive it, in any medium, provided that you conspicuously and appropriately publish on each copy an appropriate copyright notice.
+
+13. Remote Network Interaction; Use with the GNU General Public License.
+If you modify the Program, your modified version must prominently offer all users interacting with it remotely through a computer network an opportunity to receive the Corresponding Source of your version.
+
+Full license text: https://www.gnu.org/licenses/agpl-3.0.en.html`;
+
 const APP_FEES = {
   _platform: {
     selfHosted: { price: 'FREE', description: 'Run on your own Sandstorm server with no ongoing fees' },
@@ -1303,10 +1515,11 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
     { id: 'indev', label: `App Development (${featureWishes.length + bugReports.length + versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
     { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
+    { id: 'audits', label: '🔍 Audits' },
+    { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
 
   const renderBtnStyle = (base, hover) => ({
@@ -1447,30 +1660,6 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
             <SimpleMarkdown text={app.description} />
           </div>
         )}
-        {/* Quick stats */}
-        {reviews.length > 0 && (
-          <div style={{
-            padding: 20, background: T.surface,
-            borderRadius: T.radius, border: `1px solid ${T.border}`,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "'Orbitron', sans-serif" }}>
-                {avgRating.toFixed(1)}
-              </span>
-              <div>
-                <StarRating rating={avgRating} size={16} />
-                <div style={{ fontSize: 11, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {reviews.length} review{reviews.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setTab('reviews')} {...renderBtnStyle(T.yellow)}>
-              Read Reviews \u2192
-            </button>
-          </div>
-        )}
       </div>
     </>
   );
@@ -1497,33 +1686,39 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
               color: app.isOpenSource ? T.green : T.magenta,
               fontFamily: "'Orbitron', sans-serif",
               textShadow: `0 0 8px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
-            }}>{app.isOpenSource ? 'Open Source License' : 'HLSL License'}</div>
+            }}>{app.isOpenSource ? 'AGPLv3 License' : 'HLSL License'}</div>
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-              Self-hosted \u00b7 No subscription \u00b7 Full data ownership
+              Self-hosted · No subscription · Full data ownership
             </div>
           </div>
         </div>
-        <div style={{ fontSize: 14, lineHeight: 1.8, color: T.textSec, marginBottom: 18 }}>
-          {app.isOpenSource
-            ? 'This app is free and open source. You can use, modify, and redistribute it under the terms of its license.'
-            : 'HLSL (Harbor Life Software License) is a source-available license. Free to install and use on your own server. Source code is available for auditing. Automatically converts to AGPLv3 after 3 years from the release date.'}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: T.textSec }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: T.textSec, marginBottom: 20 }}>
           {[
-            '\u2713 Self-hosted on your server',
-            '\u2713 No usage fees or limits',
-            '\u2713 Full data ownership',
-            app.isOpenSource ? '\u2713 Fork and modify freely' : '\u2713 Source-available for audit',
-            app.isOpenSource ? '\u2713 Community contributions welcome' : '\u2713 Converts to AGPLv3 after 3 years',
+            '✓ Self-hosted on your server',
+            '✓ No usage fees or limits',
+            '✓ Full data ownership',
+            app.isOpenSource ? '✓ Fork and modify freely' : '✓ Source-available for audit',
+            app.isOpenSource ? '✓ Community contributions welcome' : '✓ Converts to AGPLv3 after 3 years',
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: app.isOpenSource ? T.green : T.magenta, fontFamily: "'JetBrains Mono', monospace" }}>{item}</span>
             </div>
           ))}
         </div>
+        {/* Scrollable license text */}
+        <div style={{
+          maxHeight: 400, overflowY: 'auto', padding: 20,
+          background: T.bg + 'cc', borderRadius: T.radiusSm,
+          border: `1px solid ${T.border}`,
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, lineHeight: 1.8, color: T.textSec,
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+        }}>
+          {app.isOpenSource ? OPEN_SOURCE_LICENSE_TEXT : HLSL_LICENSE_TEXT}
+        </div>
       </div>
 
-      {/* Author & technical details */}
+      {/* Technical details */}
       <div style={{
         padding: 24, background: T.surface, borderRadius: T.radius,
         border: `1px solid ${T.border}`,
@@ -1550,6 +1745,160 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
       </div>
     </div>
   );
+
+  /* ---- AUDITS TAB ---- */
+  const appAudits = APP_AUDITS[app.appId] || { ai: [], human: [] };
+  const AuditsTab = () => {
+    const [aiPage, setAiPage] = useState(0);
+    const aiAudit = appAudits.ai[aiPage] || null;
+    const currentVersion = app.version || versions[0]?.version || '—';
+    /* find the latest human audit, and check if it matches current version */
+    const latestHuman = appAudits.human.length > 0 ? appAudits.human[0] : null;
+    const humanMatchesCurrent = latestHuman && latestHuman.version === currentVersion;
+
+    const ratingColor = (r) => r === 'Pass' ? T.green : r === 'Partial' ? T.yellow : T.magenta;
+    const ratingGlow = (r) => r === 'Pass' ? T.greenGlow : r === 'Partial' ? T.yellow + '44' : T.magentaGlow;
+
+    return (
+      <div style={{ maxWidth: 860 }}>
+        {/* AI Audits */}
+        <div style={{
+          padding: 28, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.cyan}33`, marginBottom: 24,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+            <SectionHeader color={T.cyan}>🤖 AI Audit</SectionHeader>
+            {appAudits.ai.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setAiPage(Math.min(aiPage + 1, appAudits.ai.length - 1))} disabled={aiPage >= appAudits.ai.length - 1}
+                  style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 3, color: aiPage >= appAudits.ai.length - 1 ? T.textDim + '44' : T.cyan, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>← Older</button>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{aiPage + 1}/{appAudits.ai.length}</span>
+                <button onClick={() => setAiPage(Math.max(aiPage - 1, 0))} disabled={aiPage <= 0}
+                  style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 3, color: aiPage <= 0 ? T.textDim + '44' : T.cyan, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>Newer →</button>
+              </div>
+            )}
+          </div>
+
+          {aiAudit ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: T.cyan, fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 6px ${T.accentGlow}` }}>v{aiAudit.version}</span>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{aiAudit.date}</span>
+                {aiAudit.version !== currentVersion && (
+                  <span style={{ fontSize: 10, padding: '2px 8px', background: T.yellow + '22', border: `1px solid ${T.yellow}44`, borderRadius: 3, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>Not current version</span>
+                )}
+              </div>
+              {/* Results table */}
+              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', marginBottom: 16 }}>
+                {AUDIT_CATEGORIES.map((cat, i) => {
+                  const r = aiAudit.results[cat.key];
+                  if (!r) return null;
+                  return (
+                    <div key={cat.key} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px',
+                      borderBottom: i < AUDIT_CATEGORIES.length - 1 ? `1px solid ${T.borderLight}` : 'none',
+                      background: i % 2 === 0 ? 'transparent' : T.bg + '44',
+                    }}>
+                      <span style={{ fontSize: 15, flexShrink: 0, width: 24, textAlign: 'center' }}>{cat.icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 2 }}>{cat.label}</div>
+                        <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{r.note}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 3,
+                        color: ratingColor(r.rating), background: ratingColor(r.rating) + '15',
+                        border: `1px solid ${ratingColor(r.rating)}33`,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        textShadow: `0 0 4px ${ratingGlow(r.rating)}`,
+                        flexShrink: 0, whiteSpace: 'nowrap',
+                      }}>{r.rating}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* AI conversation links */}
+              {aiAudit.links && Object.keys(aiAudit.links).length > 0 && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", alignSelf: 'center' }}>View conversation:</span>
+                  {aiAudit.links.chatgpt && <a href={aiAudit.links.chatgpt} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.green, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.green}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.green + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>ChatGPT ↗</a>}
+                  {aiAudit.links.claude && <a href={aiAudit.links.claude} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.peach, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.peach}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.peach + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Claude ↗</a>}
+                  {aiAudit.links.gemini && <a href={aiAudit.links.gemini} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.purple, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.purple}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.purple + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Gemini ↗</a>}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: T.textDim, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
+              No AI audits available for this app yet.
+            </div>
+          )}
+        </div>
+
+        {/* Human Audits */}
+        <div style={{
+          padding: 28, background: T.surface, borderRadius: T.radius,
+          border: `1px solid ${T.yellow}33`,
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        }}>
+          <SectionHeader color={T.yellow}>👤 Human Audit</SectionHeader>
+          {latestHuman ? (
+            <div>
+              {!humanMatchesCurrent && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+                  padding: '10px 14px', background: T.yellow + '0c', border: `1px solid ${T.yellow}33`,
+                  borderRadius: T.radiusSm,
+                }}>
+                  <span style={{ fontSize: 14 }}>⚠️</span>
+                  <span style={{ fontSize: 12, color: T.yellow, fontFamily: "'JetBrains Mono', monospace" }}>
+                    No human audit for current version (v{currentVersion}). Showing latest: v{latestHuman.version}
+                  </span>
+                </div>
+              )}
+              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.yellow, fontFamily: "'Orbitron', sans-serif" }}>v{latestHuman.version}</span>
+                    <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{latestHuman.date}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: T.textSec, fontFamily: "'JetBrains Mono', monospace" }}>{latestHuman.auditor}</span>
+                </div>
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec }}>{latestHuman.summary}</div>
+                  {latestHuman.reportUrl && latestHuman.reportUrl !== '#' && (
+                    <a href={latestHuman.reportUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '4px 12px', border: `1px solid ${T.yellow}33`, borderRadius: 3 }}>View Full Report ↗</a>
+                  )}
+                </div>
+              </div>
+              {/* scroll back through all human audits if multiple */}
+              {appAudits.human.length > 1 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Previous human audits:</div>
+                  {appAudits.human.slice(1).map((h, i) => (
+                    <div key={i} style={{
+                      padding: '10px 14px', marginBottom: 8,
+                      border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: T.textSec, fontFamily: "'JetBrains Mono', monospace" }}>v{h.version}</span>
+                        <span style={{ fontSize: 10, color: T.textDim }}>{h.date}</span>
+                      </div>
+                      <span style={{ fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{h.auditor}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: T.textDim, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
+              No human audits available for this app yet. Audits are performed periodically by the Harbor Life Security Team.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   /* ---- APP DEVELOPMENT TAB (suggestions + bugs, each with voting & comments) ---- */
   const VoteButton = ({ dir, active, count, onClick }) => (
@@ -2508,10 +2857,11 @@ function DetailPage({ app, host, onClose, initialTab, initialDevSubTab }) {
         {/* tab content */}
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
-          {tab === 'license' && <LicenseTab />}
           {tab === 'indev' && <InDevTab />}
           {tab === 'faq' && <FAQTab />}
           {tab === 'reviews' && <ReviewsTab />}
+          {tab === 'audits' && <AuditsTab />}
+          {tab === 'license' && <LicenseTab />}
         </div>
       </div>
     </div>

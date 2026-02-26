@@ -25,9 +25,8 @@ IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
 MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
-RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1"
-MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
-RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1"
+RELEASES_TAG="packages-v1"
+RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 
@@ -425,7 +424,21 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
         spk_size=$(stat -c%s "$app_dir/app.spk")
         if [[ $spk_size -gt $MAX_SPK_SIZE ]]; then
-          warn "$app_dir/app.spk is $(( spk_size / 1024 / 1024 ))MB — using GitHub Releases URL"
+          warn "$app_dir/app.spk is $(( spk_size / 1024 / 1024 ))MB — uploading to GitHub Releases"
+          if ! $DRY_RUN && command -v gh &>/dev/null; then
+            # Ensure the release exists
+            if ! gh release view "$RELEASES_TAG" &>/dev/null; then
+              info "Creating GitHub release $RELEASES_TAG"
+              gh release create "$RELEASES_TAG" --title "Package Assets" --notes "Large SPK packages hosted via GitHub Releases" --latest=false
+            fi
+            # Upload (--clobber overwrites if already present)
+            info "Uploading $pkg_id ($(( spk_size / 1024 / 1024 ))MB) to release $RELEASES_TAG"
+            cp "$app_dir/app.spk" "/tmp/$pkg_id"
+            gh release upload "$RELEASES_TAG" "/tmp/$pkg_id" --clobber
+            rm -f "/tmp/$pkg_id"
+          elif ! command -v gh &>/dev/null; then
+            warn "gh CLI not found — cannot auto-upload. Manually upload $pkg_id to release $RELEASES_TAG"
+          fi
         else
           cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
         fi

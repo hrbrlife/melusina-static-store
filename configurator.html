@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melusina Publisher Trust Configurator</title>
+<script src="https://unpkg.com/@solana/web3.js@1.95.8/lib/index.iife.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --surface: #12121f;
+    --surface2: #1a1a2e;
+    --border: #2a2a3e;
+    --text: #e0e0e0;
+    --text2: #8888aa;
+    --gold: #d4a843;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #facc15;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 0;
+  }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header h1 span { color: var(--gold); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .network-badge {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 12px;
+    background: rgba(250, 204, 21, 0.15); color: var(--yellow);
+  }
+  .wallet-btn {
+    background: var(--gold); color: #000; border: none;
+    padding: 8px 18px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .wallet-btn:hover { opacity: 0.85; }
+  .wallet-btn.connected {
+    background: rgba(74, 222, 128, 0.15); color: var(--green);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+  }
+
+  /* Main */
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+
+  /* Section */
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+  }
+  .section-header:hover { background: rgba(255,255,255,0.02); }
+  .section-header h2 { font-size: 15px; font-weight: 600; }
+  .section-header .count {
+    font-size: 12px; color: var(--text2);
+    background: var(--surface2); padding: 2px 10px;
+    border-radius: 10px;
+  }
+  .section-body { padding: 16px 20px; }
+  .section-body.collapsed { display: none; }
+
+  /* Status indicators */
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-dot.green { background: var(--green); }
+  .status-dot.red { background: var(--red); }
+  .status-dot.yellow { background: var(--yellow); }
+  .status-dot.gray { background: #555; }
+  .status-dot.blue { background: var(--blue); }
+
+  /* Env card */
+  .env-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .env-card {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .env-card label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+  .env-card .value { font-size: 13px; word-break: break-all; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  /* Tier tabs */
+  .tier-tabs {
+    display: flex; gap: 0; margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tier-tab {
+    padding: 10px 20px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    color: var(--text2); transition: all 0.2s;
+  }
+  .tier-tab:hover { color: var(--text); }
+  .tier-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tier-tab.disabled { opacity: 0.35; cursor: not-allowed; }
+  .tier-tab .tier-badge {
+    font-size: 9px; padding: 1px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
+  }
+
+  /* Publisher card */
+  .publisher-card {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 20px; display: flex; align-items: flex-start; gap: 20px;
+  }
+  .publisher-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), #8b6914);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; color: #000; flex-shrink: 0;
+  }
+  .publisher-info { flex: 1; }
+  .publisher-info h3 { font-size: 16px; margin-bottom: 4px; }
+  .publisher-info .meta { font-size: 12px; color: var(--text2); margin-bottom: 12px; }
+  .publisher-fields {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .field { font-size: 12px; }
+  .field-label { color: var(--text2); }
+  .field-value { font-family: monospace; font-size: 11px; word-break: break-all; }
+
+  /* App table */
+  .app-table { width: 100%; border-collapse: collapse; }
+  .app-table th {
+    text-align: left; font-size: 11px; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .app-table td {
+    padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px; vertical-align: middle;
+  }
+  .app-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .app-name { font-weight: 600; }
+  .app-id { font-family: monospace; font-size: 10px; color: var(--text2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Pricing selector */
+  .pricing-select {
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: 4px; font-size: 12px;
+    cursor: pointer;
+  }
+  .price-input {
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: 4px; font-size: 12px;
+    width: 80px; text-align: right;
+  }
+  .price-input::placeholder { color: #555; }
+
+  /* Action buttons */
+  .btn {
+    padding: 5px 12px; border-radius: 4px; font-size: 11px;
+    font-weight: 600; cursor: pointer; border: none;
+    transition: all 0.15s;
+  }
+  .btn-approve { background: rgba(74,222,128,0.15); color: var(--green); }
+  .btn-approve:hover { background: rgba(74,222,128,0.25); }
+  .btn-approve:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-register { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .btn-register:hover { background: rgba(96,165,250,0.25); }
+  .btn-register:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-danger { background: rgba(248,113,113,0.15); color: var(--red); }
+  .btn-danger:hover { background: rgba(248,113,113,0.25); }
+  .btn-all {
+    background: var(--gold); color: #000; padding: 8px 20px;
+    font-size: 13px; border-radius: var(--radius);
+  }
+  .btn-all:hover { opacity: 0.85; }
+
+  /* Release rows */
+  .release-row { background: var(--surface2); border-radius: 6px; padding: 10px 14px; margin-bottom: 6px; }
+  .release-row .hash { font-family: monospace; font-size: 10px; color: var(--text2); }
+
+  /* Logs */
+  .log-panel {
+    background: #000; border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px;
+    max-height: 300px; overflow-y: auto;
+    font-family: 'SF Mono', monospace; font-size: 12px;
+  }
+  .log-entry { margin-bottom: 4px; line-height: 1.5; }
+  .log-entry.info { color: var(--text2); }
+  .log-entry.success { color: var(--green); }
+  .log-entry.error { color: var(--red); }
+  .log-entry.warn { color: var(--yellow); }
+  .log-entry .timestamp { color: #444; margin-right: 8px; }
+
+  /* Treasury */
+  .treasury-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;
+  }
+  .treasury-card {
+    background: var(--surface2); border-radius: var(--radius); padding: 16px; text-align: center;
+  }
+  .treasury-card .amount { font-size: 28px; font-weight: 700; color: var(--gold); margin: 8px 0 4px; }
+  .treasury-card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; }
+
+  /* Tooltip */
+  .tooltip { position: relative; cursor: help; }
+  .tooltip:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 4px 8px; border-radius: 4px;
+    font-size: 11px; white-space: nowrap; z-index: 10;
+  }
+
+  /* Loading */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--text2); font-size: 13px; }
+
+  /* Notification toast */
+  .toast {
+    position: fixed; top: 80px; right: 24px; z-index: 200;
+    padding: 12px 20px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    animation: slideIn 0.3s ease;
+    max-width: 400px;
+  }
+  .toast.success { background: rgba(74,222,128,0.9); color: #000; }
+  .toast.error { background: rgba(248,113,113,0.9); color: #000; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>Melusina</span> Publisher Trust Configurator</h1>
+  <div class="header-right">
+    <select id="networkSelect" class="pricing-select" style="font-size:12px">
+      <option value="devnet" selected>Devnet</option>
+      <option value="mainnet-beta">Mainnet</option>
+      <option value="custom">Custom RPC</option>
+    </select>
+    <span class="network-badge" id="networkBadge">DEVNET</span>
+    <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Environment -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Environment</h2>
+      <span id="envStatus" class="status"><span class="status-dot gray"></span> Loading...</span>
+    </div>
+    <div class="section-body" id="envBody">
+      <div class="env-grid">
+        <div class="env-card">
+          <label>Program ID (License Registry)</label>
+          <div class="value" id="envProgramId">EFjd6AhLRE1curgyK5V6A1nediM2BEyzXo9fwEqNbnop</div>
+        </div>
+        <div class="env-card">
+          <label>Network</label>
+          <div class="value" id="envNetwork">https://api.devnet.solana.com</div>
+        </div>
+        <div class="env-card">
+          <label>Apps Loaded</label>
+          <div class="value" id="envAppsCount"><span class="spinner"></span></div>
+        </div>
+        <div class="env-card">
+          <label>Connected Wallet</label>
+          <div class="value" id="envWallet">Not connected</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Publisher -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Publisher</h2>
+      <span id="publisherOnchain" class="status"><span class="status-dot gray"></span> Checking...</span>
+    </div>
+    <div class="section-body" id="publisherBody">
+      <div class="tier-tabs">
+        <div class="tier-tab active" data-tier="foundation" onclick="selectTier(this)">Foundation</div>
+        <div class="tier-tab disabled" data-tier="reseller" onclick="selectTier(this)">Reseller <span class="tier-badge" style="background:rgba(167,139,250,0.2);color:var(--purple)">Later</span></div>
+        <div class="tier-tab disabled" data-tier="license" onclick="selectTier(this)">License Owner <span class="tier-badge" style="background:rgba(167,139,250,0.2);color:var(--purple)">Later</span></div>
+      </div>
+      <div class="publisher-card">
+        <div class="publisher-avatar" id="publisherAvatar">A</div>
+        <div class="publisher-info">
+          <h3 id="publisherName">Loading...</h3>
+          <div class="meta" id="publisherMeta"></div>
+          <div class="publisher-fields" id="publisherFields"></div>
+          <div style="margin-top:14px; display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-approve" id="btnApprovePublisher" onclick="approvePublisher()" disabled>Approve Publisher</button>
+            <span id="publisherTxStatus" style="font-size:11px; color:var(--text2)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Apps -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Apps</h2>
+      <span id="appsCount" class="count">0 apps</span>
+    </div>
+    <div class="section-body" id="appsBody">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--text2);">Set pricing and register apps on-chain. All apps default to Free.</div>
+        <button class="btn btn-all" id="btnRegisterAll" onclick="registerAllApps()" disabled>Register All Apps</button>
+      </div>
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>App ID</th>
+            <th>Version</th>
+            <th>Pricing</th>
+            <th>Price (SOL)</th>
+            <th>On-Chain</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="appsTableBody">
+          <tr><td colspan="7" class="empty-state"><span class="spinner"></span> Loading apps.json...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Releases -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Releases</h2>
+      <span id="releasesCount" class="count">0 releases</span>
+    </div>
+    <div class="section-body" id="releasesBody">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--text2);">SPK hashes for each app release. Register on-chain for integrity verification.</div>
+        <button class="btn btn-all" id="btnRegisterAllReleases" onclick="registerAllReleases()" disabled>Register All Releases</button>
+      </div>
+      <div id="releasesList"></div>
+    </div>
+  </section>
+
+  <!-- Treasury -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Foundation Treasury</h2>
+      <span id="treasuryStatus" class="status"><span class="status-dot gray"></span> Checking...</span>
+    </div>
+    <div class="section-body" id="treasuryBody">
+      <div class="treasury-grid" id="treasuryGrid">
+        <div class="treasury-card">
+          <div class="label">Balance</div>
+          <div class="amount" id="treasuryBalance">—</div>
+          <div class="label">SOL</div>
+        </div>
+        <div class="treasury-card">
+          <div class="label">Fee Rate</div>
+          <div class="amount" id="treasuryFee">300</div>
+          <div class="label">BPS (3%) → update to 500 (5%)</div>
+        </div>
+        <div class="treasury-card">
+          <div class="label">Total Purchases</div>
+          <div class="amount" id="treasuryPurchases">—</div>
+          <div class="label">Apps sold</div>
+        </div>
+        <div class="treasury-card">
+          <div class="label">Total Revenue</div>
+          <div class="amount" id="treasuryRevenue">—</div>
+          <div class="label">SOL collected</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Log -->
+  <section>
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>Activity Log</h2>
+    </div>
+    <div class="section-body">
+      <div class="log-panel" id="logPanel"></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════════
+const PROGRAM_ID = new solanaWeb3.PublicKey('EFjd6AhLRE1curgyK5V6A1nediM2BEyzXo9fwEqNbnop');
+const NETWORKS = {
+  'devnet': 'https://api.devnet.solana.com',
+  'mainnet-beta': 'https://api.mainnet-beta.solana.com',
+};
+
+// Known SPK hashes (precomputed from packages/hrbrlife/*/app.spk)
+const SPK_HASHES = {
+  'AI_Lagoon':           '3b3e7c8dc0b71e7cc3adaea87473d5e787069aa5252fd72ecf91dc6723f3c8de',
+  'BLOOM_FINAL':         '6686a54a884ff5fbd1c632dcc8dfe41aa63cf692fe3645f735f5607b01d7691e',
+  'CHEESESPREAD':        'e7c520e187750cefd629dcc8c93f98bd6f1f63ca900e295449e9cdc18119e8eb',
+  'INSTASYS_MAIL':       '652bd5d3145924b63aa7dc49ec5a43e2049189d1b13d52f3fbb84a13bcb11785',
+  'MELUSINA_BOTMOTHER':  '3750fccb7475e93d16c7b68d48403516c68bfc64afe8cbb1688169da946dbcf0',
+  'MiniGit':             '5ad8504944c9805184c6ff8daf518fcc4ba3fa495a266e59fe9464392f491730',
+  'shell_tester':        '0c4af4844d6411e219f7f71c1aa4a5cdf4e6e2e471ebbfb4853bcd7851da3d5e',
+};
+
+// Map package folder names to app names from apps.json
+const PACKAGE_MAP = {
+  'AI_Lagoon': 'AI Lagoon',
+  'BLOOM_FINAL': 'BLOOM Identity',
+  'CHEESESPREAD': 'Bureau',
+  'INSTASYS_MAIL': 'MerMail',
+  'MELUSINA_BOTMOTHER': 'BotMother',
+  'MiniGit': 'MiniGit',
+  'shell_tester': 'Shell Tester',
+};
+
+// ════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════
+let connection = null;
+let wallet = null;
+let apps = [];
+let onChainStatus = {}; // appId → { listed, pda, data }
+
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+async function init() {
+  log('info', 'Initializing configurator...');
+  initNetwork();
+  await loadApps();
+  await checkOnChainState();
+  log('success', 'Environment loaded. ' + apps.length + ' apps found.');
+}
+
+function initNetwork() {
+  const net = document.getElementById('networkSelect').value;
+  const url = NETWORKS[net] || NETWORKS['devnet'];
+  connection = new solanaWeb3.Connection(url, 'confirmed');
+  document.getElementById('envNetwork').textContent = url;
+  document.getElementById('networkBadge').textContent = net.toUpperCase().replace('-BETA', '');
+  log('info', 'Connected to ' + url);
+}
+
+document.getElementById('networkSelect').addEventListener('change', async () => {
+  initNetwork();
+  await checkOnChainState();
+});
+
+// ════════════════════════════════════════════════════════════════
+// LOAD APPS
+// ════════════════════════════════════════════════════════════════
+async function loadApps() {
+  try {
+    // Try loading from src/apps.json (dev) or dist-publish/apps/index.json
+    let res;
+    for (const path of ['src/apps.json', 'dist-publish/apps/index.json']) {
+      try {
+        res = await fetch(path);
+        if (res.ok) break;
+      } catch (e) { /* try next */ }
+    }
+    if (!res || !res.ok) throw new Error('Could not load apps.json');
+
+    const data = await res.json();
+    apps = data.apps || [];
+
+    document.getElementById('envAppsCount').textContent = apps.length + ' apps';
+    document.getElementById('appsCount').textContent = apps.length + ' apps';
+
+    // Attach SPK hashes
+    apps.forEach(app => {
+      const pkgEntry = Object.entries(PACKAGE_MAP).find(([, name]) => name === app.name);
+      if (pkgEntry) {
+        app._packageFolder = pkgEntry[0];
+        app._spkHash = SPK_HASHES[pkgEntry[0]] || null;
+      }
+    });
+
+    renderAppsTable();
+    renderReleases();
+    renderPublisher();
+
+    document.getElementById('envStatus').innerHTML =
+      '<span class="status-dot green"></span> Loaded';
+
+    log('success', 'Loaded ' + apps.length + ' apps from apps.json');
+  } catch (err) {
+    document.getElementById('envAppsCount').textContent = 'Error';
+    document.getElementById('envStatus').innerHTML =
+      '<span class="status-dot red"></span> Error loading';
+    log('error', 'Failed to load apps: ' + err.message);
+    renderAppsFromHardcoded();
+  }
+}
+
+// Fallback: render from hardcoded data if fetch fails (running from file://)
+function renderAppsFromHardcoded() {
+  apps = [
+    { name: 'AI Lagoon', appId: 'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0', version: '1.0.0', versionNumber: 1, packageId: '79d177d692748ce2098ef5175d2ba82d', _packageFolder: 'AI_Lagoon', _spkHash: SPK_HASHES['AI_Lagoon'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+    { name: 'BLOOM Identity', appId: 'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h', version: '1.0.0', versionNumber: 3, packageId: '6686a54a884ff5fbd1c632dcc8dfe41a', _packageFolder: 'BLOOM_FINAL', _spkHash: SPK_HASHES['BLOOM_FINAL'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+    { name: 'BotMother', appId: 'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0', version: '1.0.0', versionNumber: 1, packageId: '3750fccb7475e93d16c7b68d48403516', _packageFolder: 'MELUSINA_BOTMOTHER', _spkHash: SPK_HASHES['MELUSINA_BOTMOTHER'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+    { name: 'Bureau', appId: 'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh', version: '2.0.15', versionNumber: 7, packageId: 'e7c520e187750cefd629dcc8c93f98bd', _packageFolder: 'CHEESESPREAD', _spkHash: SPK_HASHES['CHEESESPREAD'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+    { name: 'MerMail', appId: 'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h', version: '0.4.0', versionNumber: 4, packageId: '652bd5d3145924b63aa7dc49ec5a43e2', _packageFolder: 'INSTASYS_MAIL', _spkHash: SPK_HASHES['INSTASYS_MAIL'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+    { name: 'MiniGit', appId: 'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50', version: '0.2.0', versionNumber: 3, packageId: '5ad8504944c9805184c6ff8daf518fcc', _packageFolder: 'MiniGit', _spkHash: SPK_HASHES['MiniGit'], author: { name: 'Alexei Karpov', githubUsername: 'hrbrlife' } },
+    { name: 'Shell Tester', appId: 'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh', version: '0.1.4', versionNumber: 1, packageId: '0c4af4844d6411e219f7f71c1aa4a5cd', _packageFolder: 'shell_tester', _spkHash: SPK_HASHES['shell_tester'], author: { name: 'alexeikarp', githubUsername: 'hrbrlife' } },
+  ];
+  document.getElementById('envAppsCount').textContent = apps.length + ' apps (hardcoded)';
+  document.getElementById('appsCount').textContent = apps.length + ' apps';
+  renderAppsTable();
+  renderReleases();
+  renderPublisher();
+  log('warn', 'Using hardcoded app data (fetch failed — open via HTTP server for live data)');
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER PUBLISHER
+// ════════════════════════════════════════════════════════════════
+function renderPublisher() {
+  if (!apps.length) return;
+  const author = apps[0].author || {};
+  document.getElementById('publisherAvatar').textContent = (author.name || 'A')[0].toUpperCase();
+  document.getElementById('publisherName').textContent = author.name || 'Unknown';
+  document.getElementById('publisherMeta').textContent =
+    `GitHub: ${author.githubUsername || '—'}  •  ${apps.length} apps published`;
+
+  const fieldsEl = document.getElementById('publisherFields');
+  const signingKeys = apps.map(a => a.appId).filter(Boolean);
+  fieldsEl.innerHTML = `
+    <div class="field">
+      <div class="field-label">Signing Keys (SPK App IDs)</div>
+      <div class="field-value">${signingKeys.length} Ed25519 keys</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Wallet</div>
+      <div class="field-value" id="publisherWalletField">${wallet ? wallet.publicKey.toBase58() : 'Connect wallet →'}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Approval Level</div>
+      <div class="field-value" style="color:var(--gold)">Foundation</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Status</div>
+      <div class="field-value" id="publisherStatusField">Checking...</div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER APPS TABLE
+// ════════════════════════════════════════════════════════════════
+function renderAppsTable() {
+  const tbody = document.getElementById('appsTableBody');
+  if (!apps.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No apps found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = apps.map((app, i) => {
+    const shortId = app.appId ? (app.appId.slice(0, 16) + '…') : '—';
+    const status = onChainStatus[app.appId];
+    const statusHtml = status === undefined
+      ? '<span class="status"><span class="status-dot gray"></span> Unchecked</span>'
+      : status?.listed
+        ? '<span class="status"><span class="status-dot green"></span> Listed</span>'
+        : '<span class="status"><span class="status-dot yellow"></span> Not listed</span>';
+
+    return `<tr>
+      <td class="app-name">${app.name}</td>
+      <td><span class="app-id tooltip" data-tip="${app.appId}">${shortId}</span></td>
+      <td>${app.version || '—'} <span style="color:var(--text2);font-size:10px">(v${app.versionNumber || '?'})</span></td>
+      <td>
+        <select class="pricing-select" id="pricing_${i}" onchange="updatePriceVisibility(${i})">
+          <option value="Free" selected>Free</option>
+          <option value="PerServer">PerServer</option>
+          <option value="PerAccount">PerAccount</option>
+        </select>
+      </td>
+      <td><input class="price-input" id="price_${i}" type="number" step="0.01" min="0" value="0" placeholder="0.00" disabled></td>
+      <td>${statusHtml}</td>
+      <td>
+        <button class="btn btn-register" onclick="registerApp(${i})" ${!wallet ? 'disabled' : ''}>
+          ${status?.listed ? 'Update' : 'Register'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updatePriceVisibility(index) {
+  const pricing = document.getElementById('pricing_' + index).value;
+  const priceInput = document.getElementById('price_' + index);
+  priceInput.disabled = pricing === 'Free';
+  if (pricing === 'Free') priceInput.value = '0';
+}
+
+// ════════════════════════════════════════════════════════════════
+// RENDER RELEASES
+// ════════════════════════════════════════════════════════════════
+function renderReleases() {
+  const el = document.getElementById('releasesList');
+  const count = apps.filter(a => a._spkHash).length;
+  document.getElementById('releasesCount').textContent = count + ' releases';
+
+  if (!apps.length) {
+    el.innerHTML = '<div class="empty-state">No apps loaded</div>';
+    return;
+  }
+
+  el.innerHTML = apps.map((app, i) => {
+    const hash = app._spkHash || 'No SPK hash available';
+    const hasHash = !!app._spkHash;
+    return `<div class="release-row">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <strong>${app.name}</strong>
+          <span style="color:var(--text2); font-size:12px; margin-left:8px;">v${app.version || '?'} (build ${app.versionNumber || '?'})</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="status">
+            <span class="status-dot ${hasHash ? 'blue' : 'gray'}"></span>
+            ${hasHash ? 'Hash ready' : 'No hash'}
+          </span>
+          <button class="btn btn-register" onclick="registerRelease(${i})" ${!wallet || !hasHash ? 'disabled' : ''}>Register</button>
+        </div>
+      </div>
+      <div class="hash" style="margin-top:6px;">SHA-256: ${hash}</div>
+      <div class="hash">Package: ${app.packageId || '—'} • Folder: ${app._packageFolder || '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// ON-CHAIN CHECKS
+// ════════════════════════════════════════════════════════════════
+async function checkOnChainState() {
+  if (!connection) return;
+  log('info', 'Checking on-chain state...');
+
+  // Check AppStoreListing PDAs for each app
+  for (const app of apps) {
+    if (!app.appId) continue;
+    try {
+      const appIdBytes = appIdToBytes(app.appId);
+      const [pda] = solanaWeb3.PublicKey.findProgramAddressSync(
+        [Buffer.from('app_listing'), appIdBytes],
+        PROGRAM_ID
+      );
+      const acct = await connection.getAccountInfo(pda);
+      onChainStatus[app.appId] = { listed: !!acct, pda: pda.toBase58(), data: acct };
+      if (acct) {
+        log('success', `${app.name}: Listed on-chain (${pda.toBase58().slice(0,12)}…)`);
+      } else {
+        log('info', `${app.name}: Not listed (PDA: ${pda.toBase58().slice(0,12)}…)`);
+      }
+    } catch (err) {
+      onChainStatus[app.appId] = { listed: false, error: err.message };
+      log('warn', `${app.name}: Check failed — ${err.message}`);
+    }
+  }
+
+  // Check treasury
+  await checkTreasury();
+
+  // Update publisher status
+  checkPublisherStatus();
+
+  // Re-render with results
+  renderAppsTable();
+  renderReleases();
+}
+
+async function checkTreasury() {
+  try {
+    // Treasury PDA uses master_nft_mint — we'd need to know the master NFT mint.
+    // For now, show that the account needs to be queried with the right seed.
+    document.getElementById('treasuryStatus').innerHTML =
+      '<span class="status-dot yellow"></span> Requires Master NFT mint to derive PDA';
+    log('info', 'Treasury: PDA seed = ["treasury", master_nft_mint] — connect wallet to check');
+  } catch (err) {
+    document.getElementById('treasuryStatus').innerHTML =
+      '<span class="status-dot red"></span> Error';
+    log('error', 'Treasury check failed: ' + err.message);
+  }
+}
+
+function checkPublisherStatus() {
+  // Count how many apps are listed on-chain
+  const listed = Object.values(onChainStatus).filter(s => s.listed).length;
+  const total = apps.length;
+  const field = document.getElementById('publisherStatusField');
+  const badge = document.getElementById('publisherOnchain');
+
+  if (listed === 0) {
+    badge.innerHTML = '<span class="status-dot yellow"></span> Not registered';
+    if (field) field.innerHTML = '<span style="color:var(--yellow)">Not registered on-chain</span>';
+  } else if (listed < total) {
+    badge.innerHTML = '<span class="status-dot yellow"></span> Partial (' + listed + '/' + total + ')';
+    if (field) field.innerHTML = `<span style="color:var(--yellow)">${listed}/${total} apps listed</span>`;
+  } else {
+    badge.innerHTML = '<span class="status-dot green"></span> All apps listed';
+    if (field) field.innerHTML = '<span style="color:var(--green)">All ' + total + ' apps listed</span>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// WALLET
+// ════════════════════════════════════════════════════════════════
+async function connectWallet() {
+  try {
+    const provider = getWalletProvider();
+    if (!provider) {
+      toast('No Solana wallet found. Install Phantom or Solflare.', 'error');
+      log('error', 'No wallet provider detected');
+      return;
+    }
+
+    const resp = await provider.connect();
+    wallet = provider;
+    const pubkey = resp.publicKey.toBase58();
+
+    document.getElementById('walletBtn').textContent = pubkey.slice(0, 4) + '…' + pubkey.slice(-4);
+    document.getElementById('walletBtn').classList.add('connected');
+    document.getElementById('envWallet').textContent = pubkey;
+    document.getElementById('btnApprovePublisher').disabled = false;
+    document.getElementById('btnRegisterAll').disabled = false;
+    document.getElementById('btnRegisterAllReleases').disabled = false;
+
+    const walletField = document.getElementById('publisherWalletField');
+    if (walletField) walletField.textContent = pubkey;
+
+    log('success', 'Wallet connected: ' + pubkey);
+    toast('Wallet connected', 'success');
+
+    renderAppsTable();
+    renderReleases();
+  } catch (err) {
+    log('error', 'Wallet connection failed: ' + err.message);
+    toast('Failed to connect wallet', 'error');
+  }
+}
+
+function getWalletProvider() {
+  if (window.phantom?.solana?.isPhantom) return window.phantom.solana;
+  if (window.solflare?.isSolflare) return window.solflare;
+  if (window.solana?.isPhantom) return window.solana;
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════════
+// TRANSACTIONS (Builders — actual submission needs IDL/program)
+// ════════════════════════════════════════════════════════════════
+async function approvePublisher() {
+  if (!wallet) { toast('Connect wallet first', 'error'); return; }
+  const author = apps[0]?.author;
+  log('info', 'Building approve_publisher transaction...');
+  log('info', `  Name: ${author?.name || 'unknown'}`);
+  log('info', `  Wallet: ${wallet.publicKey.toBase58()}`);
+  log('info', `  Level: Foundation`);
+  log('warn', 'Transaction build requires Anchor IDL (not generated yet).');
+  log('info', 'Run: cd melusina_solana_dev-license && anchor build');
+  log('info', 'Then load the IDL into this configurator to submit txs.');
+  toast('IDL needed — see Activity Log for instructions', 'error');
+}
+
+async function registerApp(index) {
+  if (!wallet) { toast('Connect wallet first', 'error'); return; }
+  const app = apps[index];
+  const pricing = document.getElementById('pricing_' + index).value;
+  const price = parseFloat(document.getElementById('price_' + index).value) || 0;
+  const lamports = Math.round(price * solanaWeb3.LAMPORTS_PER_SOL);
+
+  log('info', `Building register_app transaction for ${app.name}...`);
+  log('info', `  App ID: ${app.appId}`);
+  log('info', `  Pricing: ${pricing}`);
+  log('info', `  Price: ${price} SOL (${lamports} lamports)`);
+
+  // Derive the AppStoreListing PDA
+  const appIdBytes = appIdToBytes(app.appId);
+  const [pda] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('app_listing'), appIdBytes],
+    PROGRAM_ID
+  );
+  log('info', `  PDA: ${pda.toBase58()}`);
+
+  if (onChainStatus[app.appId]?.listed) {
+    log('info', 'App already listed — would call update_listing');
+  } else {
+    log('info', 'App not listed — would call publish_listing');
+  }
+
+  log('warn', 'Transaction build requires Anchor IDL. See log for CLI instructions.');
+  showCliCommand('publish_listing', app, pricing, lamports);
+}
+
+async function registerAllApps() {
+  if (!wallet) { toast('Connect wallet first', 'error'); return; }
+  log('info', '=== Registering all ' + apps.length + ' apps ===');
+  for (let i = 0; i < apps.length; i++) {
+    await registerApp(i);
+  }
+  log('success', '=== All app registration commands generated ===');
+}
+
+async function registerRelease(index) {
+  if (!wallet) { toast('Connect wallet first', 'error'); return; }
+  const app = apps[index];
+  if (!app._spkHash) { toast('No SPK hash for ' + app.name, 'error'); return; }
+
+  log('info', `Building register_release for ${app.name} v${app.version}...`);
+  log('info', `  SPK Hash: ${app._spkHash}`);
+  log('info', `  Version: ${app.versionNumber}`);
+  log('warn', 'Transaction requires approve_release instruction (not yet in program).');
+  log('info', 'This will be available after Phase 1 deployment.');
+}
+
+async function registerAllReleases() {
+  if (!wallet) { toast('Connect wallet first', 'error'); return; }
+  log('info', '=== Registering all releases ===');
+  for (let i = 0; i < apps.length; i++) {
+    if (apps[i]._spkHash) await registerRelease(i);
+  }
+  log('success', '=== All release registration commands generated ===');
+}
+
+function showCliCommand(instruction, app, pricing, lamports) {
+  log('info', '');
+  log('info', '  CLI equivalent (when anchor CLI is ready):');
+  log('info', `  anchor call ${PROGRAM_ID.toBase58()} ${instruction} \\`);
+  log('info', `    --app-id ${app.appId} \\`);
+  log('info', `    --name "${app.name}" \\`);
+  log('info', `    --price ${lamports} \\`);
+  log('info', `    --wallet ${wallet?.publicKey.toBase58() || 'YOUR_WALLET'}`);
+  log('info', '');
+}
+
+// ════════════════════════════════════════════════════════════════
+// UTILITY
+// ════════════════════════════════════════════════════════════════
+
+// Convert base32 appId to 32-byte array for PDA seeds
+function appIdToBytes(appId) {
+  // Sandstorm appIds are base32 (Crockford variant, lowercase)
+  // We hash them to get a consistent 32-byte key for PDA derivation
+  const encoder = new TextEncoder();
+  return encoder.encode(appId).slice(0, 32);
+}
+
+function toggleSection(headerEl) {
+  const body = headerEl.nextElementSibling;
+  body.classList.toggle('collapsed');
+}
+
+function selectTier(tabEl) {
+  if (tabEl.classList.contains('disabled')) {
+    toast('Reseller and License Owner tiers available after Phase 1', 'error');
+    return;
+  }
+  document.querySelectorAll('.tier-tab').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+}
+
+function log(level, message) {
+  const panel = document.getElementById('logPanel');
+  const time = new Date().toISOString().split('T')[1].split('.')[0];
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + level;
+  entry.innerHTML = `<span class="timestamp">${time}</span>${escapeHtml(message)}`;
+  panel.appendChild(entry);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toast(msg, type) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Buffer polyfill for PDA derivation
+if (typeof Buffer === 'undefined') {
+  window.Buffer = {
+    from(str) {
+      return new TextEncoder().encode(str);
+    }
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════
+init();
+</script>
+
+</body>
+</html>

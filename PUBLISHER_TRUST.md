@@ -521,28 +521,91 @@ MLSNA TOKEN (SPL, Solana)
 Total supply:     100,000,000,000  (100B, fixed)
 Decimals:         9
 Mint authority:   Burned after TGE (no inflation, ever)
+Max sellable:     49% of supply (51% retained in locked buckets)
 ```
 
-**Three-tier on-chain sale (raises $25M):**
+**Phase 1 — Launch Sale (fixed price, $3M):**
 
 ```
-TIER      TOKENS    PRICE       DISCOUNT    RAISES     UNLOCK
-────────────────────────────────────────────────────────────────
-Tier 1    5B (5%)   $0.001      80% off     $5M        Immediate
-Tier 2    5B (5%)   $0.002      60% off     $10M       Immediate
-Tier 3    2B (2%)   $0.005      Listing     $10M       Immediate
-────────────────────────────────────────────────────────────────
-TOTAL:    12B (12%)                         $25M
-
-Listing price on OpenBook: $0.005 / MLSNA
+3B tokens @ $0.001 = $3M raised
+Buyers get tokens immediately. No vesting.
+SOL → Squads Treasury PDA (accessible Day 0 for ops).
 ```
 
-All sale tokens unlock immediately — no vesting for buyers. They took
-the risk, they get their tokens. Simple.
+First $3M funds the OpenBook MLSNA/SOL market seed (2B liquidity
+tokens) + immediate operating expenses.
 
-**First $5M SOL raised (Tier 1) releases immediately to issuer** to
-seed the OpenBook MLSNA/SOL market with the 2B liquidity tokens.
-This guarantees a live order book from the moment Tier 2 opens.
+**Phase 2 — Slow-Roll Market Sells (adaptive, target $17M more):**
+
+After Phase 1, there are NO MORE fixed-price tiers. The remaining
+fundraise tokens sell **on the open market at market price** via an
+on-chain TWAP (Time-Weighted Average Price) sell program:
+
+```
+TREASURY SELL PROGRAM (on-chain, automated):
+  Pool:      20B tokens allocated for market sells
+  Method:    Automated daily sell orders on OpenBook
+  Amount:    Configurable daily cap (e.g., 50M tokens/day)
+  Price:     ALWAYS at market — never above current bid
+  Target:    $20M total raised (including Phase 1 $3M)
+  Hard cap:  Can't sell past 49% of total supply combined
+  Kill switch: Squads multisig can pause/resume sells
+
+  Day 1-30:    50M/day cap (conservative, let price establish)
+  Day 31-90:   100M/day cap (ramp up as volume grows)
+  Day 91+:     200M/day cap (or less if target met)
+```
+
+**Why this works when price drops:**
+
+```
+If price rises to $0.005:
+  200M tokens/day × $0.005 = $1M/day → target hit fast, sell less
+
+If price falls to $0.0005:
+  200M tokens/day × $0.0005 = $100K/day → sells more days, still works
+
+If price craters to $0.0001:
+  200M tokens/day × $0.0001 = $20K/day → slow but still raising
+
+  At $0.0001 to raise remaining $17M = 170B tokens
+  BUT hard cap = 49% total = 49B max sellable
+  49B - 3B (Phase 1) - 2B (liquidity) = 44B available
+  44B × $0.0001 = $4.4M → worst case you raise $7.4M total
+  Still 2+ years of runway at lower burn rate
+```
+
+The contract adapts to reality. If the token moons, you sell fewer
+tokens for more SOL. If it tanks, you sell more but can't exceed 49%.
+It's a machine, not a fixed plan.
+
+**Phase 3 — Social Airdrop (parallel to Phase 2):**
+
+Runs alongside market sells. Drives awareness and adoption:
+
+```
+AIRDROP ALLOCATION: 5B tokens (5% of supply)
+
+Claim via on-chain Merkle tree (standard Solana airdrop pattern):
+  → Wallet signs a message proving social action
+  → Claim contract verifies Merkle proof
+  → Tokens sent to wallet
+
+Activities (verified via off-chain indexer, root published on-chain):
+  • Follow + RT launch announcement      → 500 MLSNA
+  • Join Discord + verify wallet          → 500 MLSNA
+  • Install Melusina server               → 10,000 MLSNA
+  • Create first Pearl on any app         → 2,000 MLSNA
+  • Refer a server install (unique code)  → 5,000 MLSNA per referral
+  • Active server (30 days online)        → 5,000 MLSNA
+  • Publisher: publish first app          → 50,000 MLSNA
+
+  Tiered — bigger rewards for actual platform usage,
+  smaller dust for social engagement.
+
+  Merkle root updated weekly (new batch of verified claims).
+  Unclaimed tokens after 1 year return to community emission.
+```
 
 **Full allocation:**
 
@@ -550,38 +613,45 @@ This guarantees a live order book from the moment Tier 2 opens.
 ┌──────────────────────┬────────┬────┬──────────────────────────────────┐
 │ Bucket               │ Tokens │  % │ Unlock                           │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
-│ On-chain sale        │   12B  │ 12 │ Immediate at purchase            │
-│ (3 tiers)            │        │    │                                  │
+│ Launch sale (fixed)  │    3B  │  3 │ Immediate at purchase            │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
-│ OpenBook liquidity   │    2B  │  2 │ Day 0, paired w/ SOL from Tier 1 │
+│ Market sells (TWAP)  │   20B  │ 20 │ Daily sells at market price      │
+│                      │        │    │ Squads can pause/resume          │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
-│ Foundation treasury  │   18B  │ 18 │ 3yr cliff, then daily over 5yr   │
+│ OpenBook liquidity   │    2B  │  2 │ Day 0, paired w/ SOL             │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Social airdrop       │    5B  │  5 │ Claimable via Merkle proofs      │
+│                      │        │    │ Unclaimed → community after 1yr  │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Foundation treasury  │   12B  │ 12 │ 3yr cliff, then daily over 5yr   │
 │ (token reserve)      │        │    │ Squads multisig (2-of-4)         │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
 │ Team / Founders      │   10B  │ 10 │ Max 10% of allocation per year   │
-│                      │        │    │ = 1B/yr sellable                 │
+│                      │        │    │ = 1B/yr sellable, on-chain       │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
 │ Ecosystem grants     │    8B  │  8 │ Multisig-gated, max 2B/yr cap    │
 ├──────────────────────┼────────┼────┼──────────────────────────────────┤
-│ Community emission   │   50B  │ 50 │ Daily linear over 10yr           │
-│                      │        │    │ (13.7M/day, trustless unlock)    │
+│ Community emission   │   40B  │ 40 │ Daily linear over 10yr           │
+│                      │        │    │ (10.96M/day, trustless unlock)   │
 └──────────────────────┴────────┴────┴──────────────────────────────────┘
+
+Retained (locked) = 12 + 10 + 8 + 40 = 70B (70%) — well over 51%
+Max sellable      = 3 + 20 + 2 + 5         = 30B (30%) — under 49% cap
 ```
 
 **SOL raised goes to Squads Treasury PDA — accessible from Day 0:**
 
 ```
-SOL from sale ($25M) → Squads Treasury PDA (2-of-4 multisig)
-                       Withdraw anytime for ops. No cliff.
-                       Every withdrawal visible on-chain.
+SOL from sales → Squads Treasury PDA (2-of-4 multisig)
+                 Withdraw anytime for ops. No cliff.
+                 Every withdrawal visible on-chain.
 
 MLSNA token reserves → Locked per schedule above.
                        Can't dump. Investors can verify on-chain.
 ```
 
-**Team sell rule:** Team holds 10B MLSNA. Can sell max 10% per year
-(1B tokens). Enforced by on-chain vesting contract with annual
-unlock caps — not trust, code.
+**Team sell rule:** Team holds 10B MLSNA. Max 10% per year (1B tokens).
+Enforced by on-chain vesting contract — not trust, code.
 
 **Burn mechanic:**
 
@@ -594,26 +664,27 @@ Effective burn: 5% of all MLSNA app purchase volume, forever.
 Over time: total supply shrinks from 100B toward ~55-60B.
 ```
 
-**Sale sequence:**
+**Sequence:**
 
 ```
-Week 1:   Deploy MLSNA token, sale contract, vesting contracts
-          Burn mint authority (immutable cap, verified on-chain)
-          Sale opens at Tier 1 ($0.001, 5B tokens, $5M cap)
+Week 1:   Deploy MLSNA token, sale contract, TWAP sell contract,
+          airdrop Merkle contract, team vesting contract
+          Burn mint authority (immutable 100B cap)
+          Launch sale opens: 3B tokens @ $0.001
 
-Tier 1    First $5M SOL raised → released to issuer immediately
-fills:    Issuer seeds OpenBook MLSNA/SOL market with 2B tokens
-          Live trading begins alongside ongoing sale
+Sale      $3M SOL → treasury. Issuer seeds OpenBook with 2B tokens.
+fills:    Live market trading begins.
 
-Tier 2    Price steps to $0.002, next 5B tokens, $10M cap
-opens:    Buyers can also buy from OpenBook if market price is lower
+Week 2+:  TWAP sell program activates (50M/day, ramps up)
+          Social airdrop opens (Merkle claims)
+          Community emission starts (10.96M/day)
 
-Tier 3    Price steps to $0.005 (listing price), final 2B tokens
-opens:    No discount — matches open market. Fills remaining $10M.
+Ongoing:  TWAP sells at market until $20M target or 49% cap
+          Airdrop batches update weekly
+          Platform revenue + burns kick in
 
-Sale      Community emission starts (13.7M/day)
-complete: Platform launches with MLSNA payment integration
-          Fee burns begin
+Target    TWAP pauses. Market absorbs community emission only.
+met:      Foundation treasury still locked for 3yr cliff.
 ```
 
 ---
@@ -953,15 +1024,16 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 
 ## 8. Migration Plan
 
-### Phase 0: MLSNA Token Launch (Week 1-2)
+### Phase 0: MLSNA Token Launch (Week 1-3)
 
 1. Deploy MLSNA SPL token (100B supply, 9 decimals)
-2. Deploy sale contract (3-tier bonding curve) + team vesting contract
+2. Deploy launch sale contract (3B @ $0.001) + TWAP sell contract + airdrop Merkle contract + team vesting
 3. Burn mint authority (immutable cap, verifiable on-chain)
-4. Open Tier 1 sale ($0.001, 5B tokens, $5M cap)
-5. First $5M SOL → issuer → seed OpenBook MLSNA/SOL market with 2B liquidity tokens
-6. Tier 2 auto-opens ($0.002), then Tier 3 ($0.005)
-7. Set up Switchboard/Pyth oracle feeds for SOL/USD and MLSNA/USD
+4. Open launch sale ($3M target)
+5. SOL → treasury. Seed OpenBook MLSNA/SOL market with 2B liquidity tokens
+6. Activate TWAP market sells (50M/day, ramping to 200M/day)
+7. Open social airdrop claims (Merkle proofs, weekly batch updates)
+8. Set up Switchboard/Pyth oracle feeds for SOL/USD and MLSNA/USD
 
 ### Phase 1: Foundation Approval + License Module (Week 3-4)
 

@@ -1,32 +1,69 @@
 # Melusina Publisher Trust Architecture
 
-## Design Spec — App Licensing, Payment & Security Enforcement
+## App Licensing, Payment & Security — Alpha Spec
 
-**Status:** Draft v2 (consolidated deep-dive rewrite)
+**Status:** Alpha v3 (stripped for launch)
 **Date:** 2026-02-26
-**Scope:** How app publishers are approved, how apps are licensed and paid for,
-and EXACTLY where in the Melusina codebase each check is enforced.
+**Scope:** Three-tier additive approval, PerServer + PerAccount licensing,
+and exactly where in the Melusina codebase each check is enforced.
 
 ---
 
 ## 1. Overview
 
-Melusina has a complete on-chain trust hierarchy for platform licensing:
+### 1.1 Trust Hierarchy
+
+Melusina's platform trust is already in place:
 
 ```
 Foundation (Master NFT)
-  └── Resellers (Print Editions, territory-bound)
+  └── Resellers (territory-bound Print Editions)
         └── Licenses (domain-bound, Squads multisig custody)
-              ├── Admin NFTs (recallable authority)
-              ├── Keyholder NFTs (threshold operations)
-              └── Share NFTs (per-Pearl access)
 ```
 
-**This document extends the hierarchy to APP PUBLISHERS** — adding:
-- Publisher approval (Foundation / Reseller / License owner)
-- App licensing (per-server / unbound / per-install / per-Pearl)
-- Payment (direct wallet → 95% publisher / 5% Foundation)
-- Enforcement at every gatekeeping point in the Melusina server
+This document extends it to **apps, publishers, and releases** using a
+three-tier ADDITIVE model:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  LAYER 1 — FOUNDATION                                       │
+│  Baseline catalog. Foundation-approved apps, publishers,     │
+│  and releases. Visible to every Melusina server.             │
+├──────────────────────────────────────────────────────────────┤
+│  LAYER 2 — RESELLER  (additive, on top of Foundation)        │
+│  Reseller adds their own approved apps, publishers, and      │
+│  releases for servers within their territory. Servers in     │
+│  that territory see Foundation catalog + Reseller catalog.   │
+├──────────────────────────────────────────────────────────────┤
+│  LAYER 3 — LICENSE OWNER  (additive, on top of both)         │
+│  Server admin adds enterprise-specific apps, publishers,     │
+│  and releases for their server only. That server sees        │
+│  Foundation + Reseller + Enterprise catalog.                 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Each layer can ONLY ADD — never remove or override what a higher layer
+has approved. Foundation sets the floor. Resellers extend for their
+territory. License owners extend for their server.
+
+### 1.2 Two Pricing Models
+
+| Model | Who Pays | Bound To | Check |
+|-------|----------|----------|-------|
+| **PerServer** | Server admin (Admin NFT holder) | Server domain | Admin wallet holds AppLicenseNft |
+| **PerAccount** | Individual user | User's wallet | User wallet holds AppLicenseNft |
+
+Plus **Free** — no license NFT, no checks.
+
+**PerServer rule:** Only the server admin can purchase an app for their
+server. The license NFT lands in the admin's wallet and is transferable
+(e.g., server handoff), but the server always checks that the current
+admin wallet holds it. A regular user cannot purchase a PerServer app
+and install it on a server they don't admin.
+
+**PerAccount rule:** Individual user purchases the license for themselves.
+Works on any server they log into. The server checks that the grain
+owner's wallet holds the license NFT.
 
 ---
 
@@ -39,7 +76,6 @@ Foundation (Master NFT)
 | **Binary updates** | Ed25519 via `update-tool`, pubkey compiled into client | ✅ Working |
 | **SPK packages** | Ed25519 via `spk pack`, App ID = public key (base-32) | ✅ Working |
 | **PGP author** | GPG detached sig of author statement | ✅ Working |
-| **Release hash on-chain** | `register_release(hash, version, sig)` in Anchor | ⚠️ Exists, unused |
 
 ### 2.2 Solana Infrastructure (Deployed on Devnet, Not Connected)
 
@@ -47,8 +83,7 @@ Foundation (Master NFT)
 |---------|----------|--------|
 | `AppStoreListing` PDA | lib.rs — `publish_listing` | ⚠️ Deployed, unused |
 | `AppPurchaseReceipt` PDA | lib.rs — `purchase_app_sol` | ⚠️ Deployed, unused |
-| `purchase_app_sol` (97/3 split) | lib.rs line ~3311 | ⚠️ Deployed, unused |
-| `purchase_app_token` (SPL) | lib.rs line ~3396 | ⚠️ Deployed, unused |
+| `purchase_app_sol` (97/3 split) | lib.rs line ~3311 | ⚠️ Needs 95/5 split |
 | `acquire_free_app` (0-cost) | lib.rs line ~3489 | ⚠️ Deployed, unused |
 | `FoundationTreasury` PDA | lib.rs — `withdraw_treasury_sol` | ⚠️ Deployed, unused |
 | `FOUNDATION_FEE_BPS = 300` | lib.rs line 70 | ⚠️ Needs update to 500 (5%) |
@@ -57,117 +92,347 @@ Foundation (Master NFT)
 
 | Module | File | What It Does |
 |--------|------|-------------|
-| **nft-license.js** | shell/imports/server/ | Server license NFT verification: provenance chain walk, domain binding, 1h recheck, 24h grace |
+| **nft-license.js** | shell/imports/server/ | Server license NFT: provenance walk, domain binding, 1h recheck, 24h grace |
 | **nft-shares.js** | shell/imports/server/ | On-chain grain sharing: `GrainRegistry`, `GrainShareEntry` PDAs |
-| **nft-access-control.js** | shell/imports/server/ | Share enforcement: challenge-response, wallet check, URL share verify |
-| **nft-admin.js** | shell/imports/server/ | Admin NFT verification: `InstallAdmin` PDAs, wallet check |
-| **hack-session.js** | shell/imports/server/ | HackSessionContext: `requestWalletSign`, `getWalletNfts`, `solanaRpc`, `requestOtp`, `createGrain` |
-| **solana-proxy.js** | shell/imports/server/ | Minimal Solana RPC proxy (Node 14-compat: `Connection`, `PublicKey`, `Keypair`, Metaplex stub) |
-| **grain-client.js** | shell/imports/client/ | postMessage bridge: wallet sign, solanaRpc, NFT queries |
-| **Wallet login** | accounts/solana/ | Full wallet auth: Phantom, Solflare, Backpack, MWA, deeplinks |
+| **nft-access-control.js** | shell/imports/server/ | Share enforcement: challenge-response, wallet check |
+| **nft-admin.js** | shell/imports/server/ | Admin NFT verification: `InstallAdmin` PDAs |
+| **hack-session.js** | shell/imports/server/ | `requestWalletSign`, `getWalletNfts`, `solanaRpc`, `requestOtp`, `createGrain` |
+| **solana-proxy.js** | shell/imports/server/ | Minimal Solana RPC proxy (Connection, PublicKey, Keypair, PDA derivation) |
+| **Wallet login** | accounts/solana/ | Phantom, Solflare, Backpack, MWA, deeplinks |
 
 ### 2.4 What Does NOT Exist Yet
 
 | Missing | Impact |
 |---------|--------|
-| **App license check** | No per-app licensing — any installed app runs freely |
-| **Payment flow in store** | Store is static PWA, no wallet connection, no purchase tx |
-| **Per-Pearl metering** | No charge on `newGrain()` |
-| **Red banner / degraded mode** | `nft-license.js` logs warning but shows nothing to user |
-| **`solanaRequireNft` enforcement** | Setting exists in admin, never read by any code |
-| **`ALLOW_DEGRADED_BOOT`** | Does not exist anywhere in codebase |
-| **SPK verification during build** | `build-store.sh` does not run `spk verify` |
+| **App license check** | Any installed app runs freely |
+| **Payment flow in store** | Store is static PWA, no wallet connection |
+| **License banner** | `nft-license.js` logs warning but shows nothing to user |
+| **Three-tier catalog** | Store shows one flat list, no approval layers |
+| **`nft-app-license.js`** | Module does not exist |
 
 ---
 
-## 3. Enforcement Map — Every Gatekeeping Point
+## 3. Three-Tier Additive Approval
 
-This section maps EXACTLY where in the codebase each license/payment check
-should be inserted, based on deep analysis of the actual code.
+### 3.1 How the Layers Stack
 
-### 3.1 The Five Enforcement Points
+Each authorization layer maintains its own on-chain registry. A server
+merges them by reading all three and taking the UNION:
+
+```
+Server's visible catalog = Foundation catalog
+                         ∪ Reseller catalog (if server has a reseller)
+                         ∪ License owner catalog (server-specific)
+```
+
+### 3.2 Foundation Layer (Global Baseline)
+
+**Who:** Foundation (Master NFT holder, Squads multisig)
+
+**What they approve:**
+- **Publishers** — `approve_publisher(level: Foundation, ...)`
+- **Apps** — `approve_app(level: Foundation, app_id, ...)`
+- **Releases** — `approve_release(level: Foundation, app_id, version, spk_hash)`
+
+**Scope:** Every Melusina server in existence sees Foundation-approved
+apps. This is the curated public catalog.
+
+**On-chain PDA seeds:**
+
+```
+PublisherApproval:  ["pub_approval",  "foundation", publisher_key]
+AppApproval:        ["app_approval",  "foundation", app_id]
+ReleaseApproval:    ["rel_approval",  "foundation", app_id, version_bytes]
+```
+
+### 3.3 Reseller Layer (Territory Extension)
+
+**Who:** Reseller NFT holder (territory-bound Print Edition)
+
+**What they approve:**
+- Publishers, apps, and releases FOR THEIR TERRITORY — same three
+  instruction types but scoped to `level: Reseller` + `reseller_nft_mint`.
+
+**Scope:** Servers whose License NFT traces provenance back to this
+Reseller see the Reseller's catalog ON TOP OF Foundation's.
+
+**On-chain PDA seeds:**
+
+```
+PublisherApproval:  ["pub_approval",  reseller_nft_mint, publisher_key]
+AppApproval:        ["app_approval",  reseller_nft_mint, app_id]
+ReleaseApproval:    ["rel_approval",  reseller_nft_mint, app_id, version_bytes]
+```
+
+**Use case:** A South American reseller partners with a local fintech
+publisher. They approve that publisher + their banking app + releases.
+All servers sold by that reseller get access. Foundation servers
+elsewhere don't see it.
+
+### 3.4 License Owner Layer (Enterprise Extension)
+
+**Who:** Server admin (License NFT holder / Admin NFT holder)
+
+**What they approve:**
+- Publishers, apps, and releases FOR THEIR SERVER ONLY — scoped to
+  `level: License` + `license_nft_mint`.
+
+**Scope:** Only this specific server sees these apps.
+
+**On-chain PDA seeds:**
+
+```
+PublisherApproval:  ["pub_approval",  license_nft_mint, publisher_key]
+AppApproval:        ["app_approval",  license_nft_mint, app_id]
+ReleaseApproval:    ["rel_approval",  license_nft_mint, app_id, version_bytes]
+```
+
+**Use case:** A company builds an internal HR app. They register as a
+publisher at the License level, approve their app and release, and it's
+only visible on their own server. No Foundation or Reseller involvement.
+
+### 3.5 Catalog Resolution (Server-Side)
+
+```javascript
+// nft-app-license.js — buildVisibleCatalog()
+
+async function buildVisibleCatalog() {
+  // Layer 1: Foundation-approved apps (always)
+  const foundationApps = await fetchApprovals("foundation");
+
+  // Layer 2: Reseller-approved apps (if server has a reseller)
+  const resellerMint = getServerResellerNft(); // from server license provenance
+  const resellerApps = resellerMint
+    ? await fetchApprovals(resellerMint)
+    : [];
+
+  // Layer 3: License-owner-approved apps (server-specific)
+  const licenseMint = getServerLicenseNft();
+  const enterpriseApps = licenseMint
+    ? await fetchApprovals(licenseMint)
+    : [];
+
+  // Union — each layer adds, never subtracts
+  return [...foundationApps, ...resellerApps, ...enterpriseApps];
+}
+```
+
+### 3.6 Who Can Approve What (Summary)
+
+| Action | Foundation | Reseller | License Owner |
+|--------|-----------|----------|---------------|
+| Approve publisher | ✅ Global | ✅ Territory | ✅ Server-only |
+| Approve app | ✅ Global | ✅ Territory | ✅ Server-only |
+| Approve release | ✅ Global | ✅ Territory | ✅ Server-only |
+| Revoke own approvals | ✅ | ✅ | ✅ |
+| Revoke lower-layer approvals | ❌ | ❌ | ❌ |
+| Set pricing | ❌ (publisher sets) | ❌ | ❌ |
+
+Foundation CAN revoke a publisher globally (suspends across all layers).
+But a Reseller cannot remove a Foundation-approved app from their
+territory — they can only ADD their own.
+
+### 3.7 Special Case: Foundation Publisher Suspension
+
+If the Foundation suspends a publisher, it takes effect everywhere —
+even if a Reseller or License owner also approved that publisher.
+Foundation suspension is the nuclear option:
+
+```
+check_publisher_status(publisher_key):
+  foundation_approval = fetch("pub_approval", "foundation", publisher_key)
+  if foundation_approval.status == Suspended:
+    return Suspended  // overrides everything
+
+  // Otherwise check the layer the server cares about
+  ...
+```
+
+---
+
+## 4. Pricing Models
+
+### 4.1 Three Options
+
+| Model | Description | License NFT Binding | Who Pays |
+|-------|-------------|--------------------|----|
+| **Free** | No charge. `acquire_free_app` for tracking. | None | Nobody |
+| **PerServer** | One license per server domain. | `bound_to_domain` + admin wallet | Server admin |
+| **PerAccount** | One license per user wallet. | `bound_to_wallet` (user) | Individual user |
+
+The publisher sets the pricing model and price when registering
+their app on-chain via `set_app_pricing`.
+
+### 4.2 PerServer — Admin-Only Purchase
+
+The critical rule: **only the server admin can purchase a PerServer app.**
+
+Why? If any user could buy a PerServer license, they could install apps
+on a server without the admin's knowledge or consent. The admin is
+responsible for what runs on their server.
+
+**Purchase flow:**
+
+```
+SERVER ADMIN in App Bazaar store
+  │
+  ├─ Connects wallet (must be Admin NFT holder for their server)
+  ├─ Selects app → sees "PerServer: 0.1 SOL"
+  ├─ Store verifies: does this wallet hold an Admin NFT
+  │   for the target server's License NFT?
+  │   (Same check as nft-admin.js: InstallAdmin PDA)
+  │
+  ├─ If not admin → "Only the server admin can purchase this app"
+  │
+  v
+TRANSACTION
+  ├─ purchase_app_sol { app_id, bound_to_domain: "myserver.example.com" }
+  ├─ Constraint: signer must hold InstallAdmin PDA for domain's License NFT
+  ├─ 95% SOL → publisher_wallet
+  ├─  5% SOL → foundation_treasury
+  ├─ Mint AppLicenseNft → admin's wallet
+  └─ AppLicenseNft.bound_to_domain = "myserver.example.com"
+
+SERVER-SIDE CHECK (nft-app-license.js)
+  ├─ Who is the current admin? → check InstallAdmin PDA → admin wallet
+  ├─ Does admin wallet hold AppLicenseNft for this app + this domain?
+  └─ ✅ Licensed  /  ❌ Unlicensed
+```
+
+**NFT is transferable.** If the admin hands the server to a new admin
+(transfers License NFT + Admin NFTs), they also transfer the
+AppLicenseNfts. The server's next license recheck picks up the new
+admin wallet and re-verifies.
+
+### 4.3 PerAccount — User Purchase
+
+Simpler. Individual user purchases for themselves:
+
+```
+USER in App Bazaar store
+  │
+  ├─ Connects wallet
+  ├─ Selects app → sees "PerAccount: 0.05 SOL"
+  │
+  v
+TRANSACTION
+  ├─ purchase_app_sol { app_id, bound_to_wallet: user_pubkey }
+  ├─ 95% SOL → publisher_wallet
+  ├─  5% SOL → foundation_treasury
+  ├─ Mint AppLicenseNft → user's wallet
+  └─ AppLicenseNft.bound_to_wallet = user_pubkey
+
+SERVER-SIDE CHECK (on newGrain / openGrain)
+  ├─ Who is the grain owner? → owner's wallet
+  ├─ Does owner wallet hold AppLicenseNft for this app?
+  └─ ✅ Licensed  /  ❌ Unlicensed
+```
+
+Works on any server the user logs into. The server just checks the
+user's wallet for the NFT. No domain binding.
+
+### 4.4 Free
+
+No license NFT needed. `acquire_free_app` creates a 0-cost receipt
+for analytics (how many servers/users picked up the app).
+
+---
+
+## 5. Payment Flow
+
+### 5.1 Fee Split
+
+```
+FOUNDATION_FEE_BPS = 500     // 5%
+BPS_DENOMINATOR    = 10_000
+
+For any payment of X lamports:
+  publisher_amount = X * 9500 / 10_000 = 95%
+  foundation_fee   = X *  500 / 10_000 =  5%
+
+  95% → publisher_wallet (from PublisherEntry)
+   5% → Foundation treasury PDA
+```
+
+### 5.2 Purchase Transaction (Single Atomic Tx)
+
+```
+TRANSACTION (Solana, single tx)
+  │
+  ├─ Instruction: purchase_app_sol {
+  │     app_id,
+  │     pricing_model: PerServer | PerAccount,
+  │     bound_to_domain: Option<String>,  // PerServer only
+  │   }
+  │
+  ├─ Constraints:
+  │     If PerServer → signer must hold InstallAdmin PDA for domain
+  │     If PerAccount → signer is the buyer (no constraint beyond that)
+  │
+  ├─ CPI 1: transfer 95% SOL → publisher_wallet
+  ├─ CPI 2: transfer  5% SOL → foundation_treasury
+  ├─ CPI 3: mint AppLicenseNft → buyer's wallet (Metaplex)
+  └─ CPI 4: create AppPurchaseReceipt PDA (audit trail)
+```
+
+### 5.3 Store Frontend Integration
+
+```
+Store (static_store) adds:
+  @solana/web3.js
+  @solana/wallet-adapter-react
+  @solana/wallet-adapter-react-ui
+  @solana/wallet-adapter-wallets
+  @coral-xyz/anchor
+
+Flow:
+  1. User clicks "Buy" on app card
+  2. Wallet adapter connects (Phantom, Solflare, etc.)
+  3. If PerServer:
+     a. Fetch user's Admin NFTs (getWalletNfts pattern)
+     b. Show list of servers user admins
+     c. User selects target server
+     d. Build purchase_app_sol tx with bound_to_domain
+  4. If PerAccount:
+     a. Build purchase_app_sol tx with bound_to_wallet
+  5. Wallet signs + sends
+  6. Confirm on-chain
+  7. Show "Licensed ✓" badge on the app card
+```
+
+---
+
+## 6. Enforcement Map
+
+Where in the Melusina codebase each check is enforced.
+
+### 6.1 The Four Enforcement Points
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  ENFORCEMENT POINT 1: APP INSTALL                              │
-│  When: User installs an app from the store                     │
-│  Where: installer.js → backend.c++ saveAs()                    │
-│  Gate: "Is this app licensed for this server?"                 │
-├─────────────────────────────────────────────────────────────────┤
-│  ENFORCEMENT POINT 2: NEW PEARL (newGrain)                     │
+│  POINT 1: NEW PEARL (newGrain)                                 │
 │  When: User creates a new Pearl from an installed app          │
-│  Where: grain-server.js newGrain() + hack-session.js createGrain│
-│  Gate: "Does user hold an App License NFT? If PerPearl, pay." │
+│  Where: grain-server.js:298 + hack-session.js:1585             │
+│  Gate: HARD BLOCK if paid app and no valid license             │
 ├─────────────────────────────────────────────────────────────────┤
-│  ENFORCEMENT POINT 3: OPEN PEARL (continueGrain)               │
+│  POINT 2: OPEN PEARL (continueGrain)                           │
 │  When: User opens an existing Pearl                            │
-│  Where: backend.js continueGrain() → startGrainInternal()      │
-│  Gate: "Is this app's license still valid? (cached check)"     │
+│  Where: backend.js:95                                          │
+│  Gate: SOFT — tag grain with license issue, never block        │
 ├─────────────────────────────────────────────────────────────────┤
-│  ENFORCEMENT POINT 4: UI SESSION (openUiSession)               │
+│  POINT 3: UI SESSION (openUiSession)                           │
 │  When: Browser loads grain iframe                              │
-│  Where: gateway-router.js openUiSession()                      │
-│  Gate: "Show red banner if license invalid / Solana offline"   │
+│  Where: gateway-router.js:360                                  │
+│  Gate: SOFT — show yellow banner if license issue              │
 ├─────────────────────────────────────────────────────────────────┤
-│  ENFORCEMENT POINT 5: PERIODIC REVALIDATION                    │
-│  When: Every 1 hour (like existing server license check)       │
-│  Where: New nft-app-license.js, modeled on nft-license.js      │
-│  Gate: "Re-verify all app licenses, update cached status"      │
+│  POINT 4: PERIODIC REVALIDATION                                │
+│  When: Every 1 hour (modeled on nft-license.js)                │
+│  Where: New nft-app-license.js                                 │
+│  Gate: SOFT — update cached license status for all apps        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Enforcement Point 1 — App Install
-
-**Current code path:**
-```
-ensureInstalled(packageId, url)     [install-server.js:80]
-  → startInstall(packageId, url)    [db.js:2818]
-  → AppInstaller.start()            [installer.js:261]
-      → readPackageFromStream()     [installer.js:127]
-          → backend.installPackage().stream  [backend.c++:486]
-          → stream.saveAs(packageId)         [backend.c++:416]
-              → spk unpack (subprocess)
-              → verifyImpl() in spk.c++      [spk.c++:1386]
-                  Ed25519 sig check ✅
-                  SHA-512 hash check ✅
-                  appid-replacements check ✅
-                  PGP author check ✅
-              → rename to /var/sandstorm/apps/<pkgId>/
-```
-
-**Gates to add (in `install-server.js` AFTER `readPackageFromStream` returns):**
-
-```javascript
-// install-server.js — inside ensureInstalled or the installer callback
-const appId = info.appId;
-const packageId = result.packageId;
-
-// 1. Check: Is this app's publisher registered on-chain?
-const publisherStatus = await checkPublisherOnChain(appId);
-if (publisherStatus === 'revoked' || publisherStatus === 'suspended') {
-  throw new Meteor.Error(403, "This app's publisher has been suspended.");
-}
-
-// 2. Check: Is this app's release hash registered on-chain?
-const spkHash = computeSha256(spkBytes);
-const releaseValid = await verifyReleaseOnChain(appId, spkHash);
-if (!releaseValid) {
-  // WARN, don't block (Phase 3 = warn, Phase 7 = block)
-  console.warn(`Release hash not verified on-chain for ${appId}`);
-  Packages.update(packageId, {$set: {unverifiedRelease: true}});
-}
-
-// 3. Check: Does this server have a license for this app?
-//    (PerServer pricing model requires domain-bound AppLicenseNft)
-const serverDomain = getServerDomain();
-const appLicense = await checkAppLicenseForDomain(appId, serverDomain);
-if (!appLicense && appPricingModel !== 'Free') {
-  // Store as "unlicensed" — will show red banner, not block install
-  Packages.update(packageId, {$set: {unlicensed: true, pricingModel: pricingModel}});
-}
-```
-
-### 3.3 Enforcement Point 2 — New Pearl (`newGrain`)
+### 6.2 Point 1 — New Pearl (`newGrain`) — HARD GATE
 
 **Current code path:**
 ```
@@ -180,897 +445,386 @@ Meteor.call("newGrain", packageId, command, title)   [grain-server.js:298]
   → globalBackend.startGrainInternal(...)             [line 349]
 ```
 
-**AND the cross-grain RPC path:**
-```
-HackSessionContext.createGrain(appId, actionIndex, title, ...)  [hack-session.js:1585]
-  → Rate limit (5/60s)
-  → Policy rule check
-  → User approval popup (2min timeout)
-  → grainId = Random.id(22)
-  → grains.insert({...})
-  → globalBackend.startGrainInternal(...)
-```
-
-**Gates to add (in BOTH `newGrain` and `createGrain`, AFTER quota but BEFORE insert):**
+**Gate to add (after quota check, before insert):**
 
 ```javascript
-// grain-server.js — newGrain method, after quota check (line ~316)
+// grain-server.js — newGrain(), after quota check (~line 316)
 const pkg = globalDb.collections.packages.findOne(packageId);
 const appId = pkg.appId;
+const licenseStatus = getAppLicenseStatus(appId, this.userId);
 
-// 1. Check: Is the app licensed for this server?
-const appLicenseStatus = getAppLicenseStatus(appId);  // cached, like server license
-if (appLicenseStatus === 'unlicensed') {
+if (licenseStatus === 'unlicensed') {
   throw new Meteor.Error(402, "Payment Required",
-    "This app requires a license. Purchase it from the App Bazaar.");
+    "This app requires a license. Purchase from the App Bazaar.");
 }
-if (appLicenseStatus === 'expired') {
+if (licenseStatus === 'expired') {
   throw new Meteor.Error(402, "License Expired",
-    "Your license for this app has expired. Renew it from the App Bazaar.");
+    "Your license for this app has expired.");
 }
+if (licenseStatus === 'revoked') {
+  throw new Meteor.Error(403, "App Revoked",
+    "This app has been revoked.");
+}
+// 'free', 'valid', 'unknown' → allow
+```
 
-// 2. If PerPearl pricing — charge for this Pearl
-const pricing = getAppPricing(appId);  // cached from on-chain AppEntry
-if (pricing.model === 'PerPearl' && pricing.perPearlLamports > 0) {
-  // Option A: Self-hosted — prompt user's wallet
-  //   → HackSessionContext.requestWalletSign() already exists!
-  //   → Build a charge_pearl transaction, send to user for signing
-  // Option B: pBay — deduct from prepaid balance
-  //   → pBay operator settles on-chain in batch
-  const charged = await chargePearl(appId, this.userId, grainId);
-  if (!charged) {
-    throw new Meteor.Error(402, "Payment Required", "Per-Pearl fee not paid.");
+**License check logic (depends on pricing model):**
+
+```javascript
+function getAppLicenseStatus(appId, userId) {
+  const pricing = getAppPricing(appId);       // cached from on-chain
+  if (!pricing || pricing.model === 'Free') return 'free';
+
+  if (pricing.model === 'PerServer') {
+    // Check: does the current admin wallet hold AppLicenseNft
+    // for this app + this server's domain?
+    const adminWallet = getCurrentAdminWallet();
+    return checkWalletHoldsAppLicense(adminWallet, appId, getServerDomain());
+  }
+
+  if (pricing.model === 'PerAccount') {
+    // Check: does THIS USER's wallet hold AppLicenseNft for this app?
+    const userWallet = getUserWallet(userId);
+    if (!userWallet) return 'unlicensed'; // user hasn't linked wallet
+    return checkWalletHoldsAppLicense(userWallet, appId, null);
   }
 }
 ```
 
-**Key insight: `requestWalletSign` already exists in HackSessionContext!**
-The infrastructure for prompting a user to sign a Solana transaction is
-ALREADY BUILT into hack-session.js (method @9). We just need to build
-the transaction (a `charge_pearl` instruction) and send it through that
-existing channel.
+Same gate added in `hack-session.js:createGrain()` (the cross-grain
+RPC path).
 
-### 3.4 Enforcement Point 3 — Open Pearl (`continueGrain`)
-
-**Current code path:**
-```
-globalBackend.continueGrain(grainId)                  [backend.js:95]
-  → grain = grains.findOne(grainId)
-  → pkg = packages.findOne(grain.packageId)
-  → startGrainInternal(packageId, grainId, ownerId, command, false, isDev)
-      → quota check (excessive = 2× limit)            [backend.js:132]
-      → backendCap.startGrain(...)                     [backend.js:163]
-          → bootGrain() in C++                         [backend.c++:62]
-```
-
-**Gate to add (in `continueGrain`, BEFORE `startGrainInternal`):**
+### 6.3 Point 2 — Open Pearl (`continueGrain`) — SOFT
 
 ```javascript
 // backend.js — continueGrain(), after pkg lookup (~line 110)
 const appId = grain.appId || pkg.appId;
-const licenseStatus = getAppLicenseStatus(appId);  // cached, fast
+const licenseStatus = getAppLicenseStatus(appId, grain.userId);
 
-// Don't block — but tag the grain so UI shows red banner
 if (licenseStatus !== 'valid' && licenseStatus !== 'free') {
   globalDb.collections.grains.update(grainId, {
     $set: { appLicenseIssue: licenseStatus }
-    // 'unlicensed' | 'expired' | 'unverified' | 'revoked' | 'unknown'
   });
 }
-// Always let the grain start — never hard-block existing Pearls.
-// The red banner in the UI is the enforcement signal.
+// Always start the grain — never hard-block existing Pearls.
 ```
 
-**Why not hard-block?** Existing Pearls may contain critical user data.
-Blocking them because Solana is unreachable would be devastating UX.
-Instead, we use a **soft enforcement model**: red banner + restricted
-new-Pearl creation.
-
-### 3.5 Enforcement Point 4 — UI Session (`openUiSession`)
-
-**Current code path:**
-```
-GatewayRouterImpl.openUiSession(sessionId, params)    [gateway-router.js:360]
-  → getUiViewAndUserInfo(grainId, ...)                 [gateway-router.js:204]
-      → grain exists? not trashed? not suspended?
-      → package exists?
-      → SandstormPermissions.mayOpenGrain()            [line 286]
-      → NFT access control check                       [line 292]
-      → globalBackend.useGrain() → continueGrain()
-```
-
-**Gate to add (in `openUiSession`, AFTER useGrain returns):**
+### 6.4 Point 3 — UI Session (`openUiSession`) — SOFT
 
 ```javascript
 // gateway-router.js — openUiSession, after grain is started (~line 410)
 const grain = globalDb.collections.grains.findOne(grainId);
 if (grain.appLicenseIssue) {
-  // Inject red banner metadata into the session
-  // The client-side shell reads this and shows:
-  //   "⚠️ Unable to verify app license — [reason]"
-  //   "This app may not be authorized to run on this server."
   session.licenseWarning = grain.appLicenseIssue;
 }
 ```
 
-**Client-side red banner** (similar pattern to the existing notification system):
+**Client-side banner (shell chrome, not inside grain iframe):**
 
 ```javascript
-// grain-client.js or grainview.js — when rendering grain iframe
+// grainview.js
 if (session.licenseWarning) {
   showTopBanner({
-    type: session.licenseWarning === 'unknown' ? 'warning' : 'error',
+    type: 'warning',
     message: LICENSE_MESSAGES[session.licenseWarning],
     persistent: true,
   });
 }
 
 const LICENSE_MESSAGES = {
-  unlicensed: "This app is not licensed for this server. Purchase a license from the App Bazaar.",
-  expired:    "Your license for this app has expired. Renew from the App Bazaar.",
+  unlicensed: "This app is not licensed. Purchase a license from the App Bazaar.",
+  expired:    "This app's license has expired. Renew from the App Bazaar.",
   revoked:    "This app has been revoked by the publisher or Foundation.",
-  unverified: "Unable to verify this app's authenticity. Solana may be unreachable.",
-  unknown:    "⚠️ Unable to verify app license — running in offline mode.",
+  unknown:    "Unable to verify app license — Solana may be unreachable.",
 };
 ```
 
-### 3.6 Enforcement Point 5 — Periodic Revalidation
+Banner renders in shell chrome. The grain cannot suppress it.
 
-**Model after existing `nft-license.js`:**
+### 6.5 Point 4 — Periodic Revalidation
 
-New module `nft-app-license.js`:
+New module `nft-app-license.js`, modeled on existing `nft-license.js`:
 
 ```javascript
-// shell/imports/server/nft-app-license.js
-const APP_LICENSE_CHECK_INTERVAL_MS = 3600000; // 1 hour
-const APP_LICENSE_GRACE_PERIOD_MS = 86400000 * 7; // 7 days
+const CHECK_INTERVAL  = 3600000;       // 1 hour
+const GRACE_PERIOD    = 86400000 * 7;  // 7 days
 
-// In-memory cache: appId → { status, lastChecked, licenseNft, domain }
-const appLicenseCache = new Map();
+const cache = new Map(); // appId → { status, lastChecked }
 
 async function checkAppLicense(appId) {
-  const cached = appLicenseCache.get(appId);
-  if (cached && Date.now() - cached.lastChecked < APP_LICENSE_CHECK_INTERVAL_MS) {
+  const cached = cache.get(appId);
+  if (cached && Date.now() - cached.lastChecked < CHECK_INTERVAL) {
     return cached.status;
   }
 
   try {
-    // 1. Query Solana for AppLicenseNft PDA: ["app_license", appId, serverDomain]
-    const serverDomain = getServerDomain();
-    const [licensePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("app_license"), Buffer.from(appId), Buffer.from(serverDomain)],
-      LICENSE_PROGRAM_ID
-    );
-    const licenseAccount = await connection.getAccountInfo(licensePda);
+    const pricing = await getAppPricingOnChain(appId);
+    if (!pricing || pricing.model === 'Free') return updateCache(appId, 'free');
 
-    if (!licenseAccount) {
-      // No on-chain license found — check if app is free
-      const appEntry = await getAppEntry(appId);
-      if (!appEntry || appEntry.pricingModel === 'Free') {
-        return updateCache(appId, 'free');
-      }
-      return updateCache(appId, 'unlicensed');
+    if (pricing.model === 'PerServer') {
+      const adminWallet = getCurrentAdminWallet();
+      const [pda] = derivePda(
+        ["app_license", appIdBytes, domainBytes],
+        PROGRAM_ID
+      );
+      const acct = await connection.getAccountInfo(pda);
+      if (!acct) return updateCache(appId, 'unlicensed');
+      const license = decode(acct.data);
+      if (license.owner !== adminWallet) return updateCache(appId, 'unlicensed');
+      if (license.validUntil && license.validUntil < now()) return updateCache(appId, 'expired');
+      return updateCache(appId, 'valid');
     }
 
-    // 2. Decode AppLicenseNft account
-    const license = program.coder.accounts.decode('AppLicenseNft', licenseAccount.data);
-
-    // 3. Check expiry
-    if (license.validUntil && license.validUntil < Date.now() / 1000) {
-      return updateCache(appId, 'expired');
-    }
-
-    // 4. Check publisher status (is the publisher still active?)
-    const publisher = await getPublisherEntry(license.publisherRef);
-    if (publisher.status !== 'Active') {
-      return updateCache(appId, 'revoked');
-    }
-
-    // 5. Check release hash (is this version still approved?)
-    const pkg = globalDb.collections.packages.findOne({appId});
-    if (pkg) {
-      const release = await getReleaseEntry(appId, pkg.appVersion);
-      if (release && release.status !== 'Approved') {
-        return updateCache(appId, 'revoked');
-      }
-    }
-
+    // PerAccount checked per-user at grain open, not in periodic sweep
     return updateCache(appId, 'valid');
 
   } catch (err) {
-    // Solana unreachable — use cached status with grace period
-    if (cached && Date.now() - cached.lastChecked < APP_LICENSE_GRACE_PERIOD_MS) {
-      return cached.status; // Keep last known status for 7 days
+    if (cached && Date.now() - cached.lastChecked < GRACE_PERIOD) {
+      return cached.status;
     }
     return updateCache(appId, 'unknown');
   }
 }
 
-// Periodic check — runs every hour for all installed apps
+// Run every hour for all installed apps
 Meteor.setInterval(() => {
-  const packages = globalDb.collections.packages.find({status: 'ready'}).fetch();
-  packages.forEach(pkg => checkAppLicense(pkg.appId));
-}, APP_LICENSE_CHECK_INTERVAL_MS);
+  Packages.find({ status: 'ready' }).forEach(pkg => checkAppLicense(pkg.appId));
+}, CHECK_INTERVAL);
 ```
 
-### 3.7 Summary: Hard Gate vs Soft Gate
+### 6.6 Summary: Hard vs Soft
 
-| Point | Action | Hard block? | Why |
-|-------|--------|-------------|-----|
-| **Install** | Warn on unverified release, record `unlicensed` flag | ❌ Soft | Don't prevent admin from installing for evaluation |
-| **New Pearl** | Block if unlicensed (paid app) or if PerPearl fee not paid | ✅ Hard | New Pearls = new commitment = right time to gate |
-| **Open Pearl** | Tag grain with license issue, never block | ❌ Soft | Existing data must remain accessible |
-| **UI Session** | Show red banner if any license issue | ❌ Soft | User sees warning, can still use grain |
-| **Periodic** | Update cached status, propagate to grain docs | ❌ Soft | Background maintenance |
+| Point | Action | Blocks? | Why |
+|-------|--------|---------|-----|
+| **New Pearl** | Check license by pricing model | ✅ Hard | New commitment = right time to gate |
+| **Open Pearl** | Tag grain, never block | ❌ Soft | Existing data must stay accessible |
+| **UI Session** | Show yellow banner | ❌ Soft | User sees warning, can still use |
+| **Periodic** | Update cache, propagate to grains | ❌ Soft | Background maintenance |
 
-**The philosophy:** Hard-block only at the point of NEW RESOURCE CREATION
-(new Pearl, new install of paid app). Never lock a user out of their
-existing data. Show prominent warnings everywhere else.
+**Philosophy:** Hard-block only at NEW RESOURCE CREATION. Never lock a
+user out of their existing data.
 
 ---
 
-## 4. Licensing Models
+## 7. On-Chain Account Structures
 
-### 4.1 What the Publisher Sets
-
-Each publisher sets pricing per-app via an on-chain `update_app_pricing` instruction.
-The pricing model is stored in the `AppEntry` PDA:
-
-```rust
-pub enum PricingModel {
-    Free,          // No charge. No license NFT needed.
-    PerServer,     // One license per server domain. Most common for business apps.
-    Unbound,       // One-time purchase, any server the buyer owns. Consumer-friendly.
-    PerInstall,    // Charged per installation (on pBay or any managed host).
-    PerPearl,      // Charged each time a new Pearl is spawned. Usage-based.
-    Tiered,        // Publisher-defined tiers (see AppPricingTier).
-}
-```
-
-### 4.2 How Each Model Is Enforced
-
-#### Free
-- No license NFT. No checks at any enforcement point.
-- `acquire_free_app` creates a 0-cost receipt for tracking.
-
-#### PerServer (Most Common)
-- The **server owner** (License NFT holder) purchases an App License NFT
-  bound to their server's domain.
-- **PDA seed:** `["app_license", app_id, server_domain]`
-- Checked at: install (soft), newGrain (hard), continueGrain (soft banner)
-- The server can always verify locally: "Do I have an AppLicenseNft for this app + my domain?"
-- **This is the minimum viable license** — every paid app needs at least this.
-
-```
-Server domain: mycompany.example.com
-App: MerMail (appId: wfy0c4...)
-
-AppLicenseNft PDA check:
-  → ["app_license", "wfy0c4...", "mycompany.example.com"]
-  → Account exists? → license.status == Active? → license.validUntil > now?
-  → ✅ Licensed
-```
-
-#### Unbound
-- The **purchaser's wallet** holds the NFT. No domain binding.
-- **PDA seed:** `["app_license", app_id, buyer_wallet]`
-- Server checks: does the server owner's wallet hold an Unbound license for this app?
-- More permissive — works across server migrations.
-
-#### PerInstall
-- For pBay / managed hosting. Each installation is a separate purchase.
-- **PDA seed:** `["app_license", app_id, install_id]`
-- `install_id` = SHA-256 of `(server_domain, package_id, timestamp)`
-- pBay operator executes the purchase on behalf of the user.
-
-#### PerPearl
-- Uses the same license as PerServer or Unbound for the install itself.
-- ADDITIONALLY charges `per_pearl_lamports` on each `newGrain()`.
-- The charge goes through `HackSessionContext.requestWalletSign()` (already built!)
-  or through pBay's prepaid balance.
-
-#### Tiered
-- Publisher defines custom tiers (e.g., "Basic: 5 Pearls, Pro: unlimited").
-- Each tier is a separate `AppPricingTier` PDA.
-- Server admin selects the tier at purchase time.
-
-### 4.3 On-Chain Account Structures
+### 7.1 Approval Accounts (Three-Tier)
 
 ```rust
 #[account]
-pub struct AppEntry {
-    pub app_id: [u8; 32],                 // Ed25519 public key
-    pub publisher_ref: Pubkey,             // PublisherEntry PDA
-    pub name: String,                      // Max 64 chars
+pub struct PublisherApproval {
+    pub level: ApprovalLevel,              // Foundation, Reseller, License
+    pub authority: Pubkey,                 // Master NFT / Reseller mint / License mint
+    pub publisher_key: [u8; 32],           // Ed25519 SPK signing key
+    pub publisher_wallet: Pubkey,          // Receives 95% of payments
 
-    // Pricing (set by publisher)
-    pub pricing_model: PricingModel,
-    pub price_lamports: u64,               // Base price (0 = free)
-    pub per_pearl_lamports: u64,           // Per-Pearl fee (0 if N/A)
-    pub accepted_payment_mint: Option<Pubkey>, // SPL token (None = SOL only)
-    pub is_premium: bool,                  // Encrypted SPK binary
-
-    // Release tracking
-    pub current_version: u32,
-    pub latest_release_hash: [u8; 32],     // SHA-256 of current SPK
-    pub release_count: u16,
-
-    // Stats
-    pub total_purchases: u64,
-    pub total_revenue_lamports: u64,
-    pub status: AppStatus,                 // Pending, Approved, Suspended, Revoked
+    pub name: String,                      // Max 64
+    pub gpg_fingerprint: String,           // 40 hex chars
+    pub status: ApprovalStatus,            // Active, Suspended
+    pub approved_at: i64,
     pub bump: u8,
 }
 
 #[account]
+pub struct AppApproval {
+    pub level: ApprovalLevel,
+    pub authority: Pubkey,
+    pub app_id: [u8; 32],                 // Ed25519 public key (from SPK)
+    pub publisher_ref: Pubkey,             // PublisherApproval PDA
+
+    pub name: String,
+    pub pricing_model: PricingModel,       // Free, PerServer, PerAccount
+    pub price_lamports: u64,
+
+    pub current_version: u32,
+    pub latest_release_hash: [u8; 32],     // SHA-256 of current SPK
+    pub status: ApprovalStatus,
+    pub bump: u8,
+}
+
+#[account]
+pub struct ReleaseApproval {
+    pub level: ApprovalLevel,
+    pub authority: Pubkey,
+    pub app_ref: Pubkey,                   // AppApproval PDA
+
+    pub version: u32,
+    pub spk_hash: [u8; 32],               // SHA-256 of SPK
+    pub signature: [u8; 64],              // Ed25519 sig of spk_hash by publisher
+    pub status: ReleaseStatus,             // Approved, Yanked
+    pub published_at: i64,
+    pub bump: u8,
+}
+
+pub enum ApprovalLevel {
+    Foundation,
+    Reseller,
+    License,
+}
+
+pub enum PricingModel {
+    Free,
+    PerServer,
+    PerAccount,
+}
+```
+
+### 7.2 License Account
+
+```rust
+#[account]
 pub struct AppLicenseNft {
     pub mint: Pubkey,                      // Metaplex NFT mint
-    pub app_ref: Pubkey,                   // AppEntry PDA
-    pub publisher_ref: Pubkey,             // PublisherEntry PDA
-    pub owner: Pubkey,                     // Current owner wallet
+    pub app_ref: Pubkey,                   // AppApproval PDA
+    pub owner: Pubkey,                     // Current holder's wallet
 
-    pub license_type: PricingModel,
-    pub bound_to_domain: Option<String>,   // Server domain (PerServer)
-    pub bound_to_install: Option<[u8;32]>, // Install ID (PerInstall)
+    pub license_type: PricingModel,        // PerServer or PerAccount
+    pub bound_to_domain: Option<String>,   // PerServer: server domain
+    pub bound_to_wallet: Option<Pubkey>,   // PerAccount: user wallet
 
     pub paid_lamports: u64,
     pub publisher_received: u64,           // 95%
     pub foundation_fee: u64,              // 5%
-    pub version_at_purchase: u32,
-    pub decryption_key_hash: Option<[u8;32]>, // Premium SPK unlock
     pub purchased_at: i64,
     pub valid_until: Option<i64>,          // None = perpetual
-    pub pearl_count: u64,                  // Pearls created under this license
-
-    pub bump: u8,
-}
-
-#[account]
-pub struct PearlChargeReceipt {
-    pub app_ref: Pubkey,
-    pub license_ref: Pubkey,               // AppLicenseNft PDA
-    pub pearl_id: [u8; 32],               // Server-generated Pearl ID
-    pub charged_lamports: u64,
-    pub publisher_received: u64,           // 95%
-    pub foundation_fee: u64,              // 5%
-    pub created_at: i64,
     pub bump: u8,
 }
 ```
 
----
-
-## 5. Payment Flow
-
-### 5.1 Fee Split
-
-```
-FOUNDATION_FEE_BPS = 500     // 5% of all app payments
-BPS_DENOMINATOR    = 10_000
-
-For any payment of X lamports:
-  publisher_amount = X - (X * 500 / 10_000) = X * 0.95
-  foundation_fee   = X * 500 / 10_000       = X * 0.05
-
-  95% → publisher_wallet (from PublisherEntry)
-   5% → Foundation treasury PDA
-```
-
-### 5.2 Store Purchase Flow (Browser → Wallet → Chain)
-
-```
-USER IN APP BAZAAR STORE (static_store)
-  │
-  ├─ Store frontend connects wallet (@solana/wallet-adapter)
-  ├─ Store reads AppEntry PDA → price, pricing_model
-  │
-  ├─ If PerServer:
-  │    → User selects which server (by License NFT / domain)
-  │    → Transaction includes domain binding
-  │
-  ├─ If Unbound:
-  │    → No binding, license scoped to wallet
-  │
-  v
-TRANSACTION (single atomic Solana tx)
-  │
-  ├─ Instruction: purchase_app_sol {
-  │     app_id, pricing_model, bound_to_domain
-  │   }
-  ├─ CPI 1: transfer 95% SOL → publisher_wallet
-  ├─ CPI 2: transfer  5% SOL → foundation_treasury
-  ├─ CPI 3: mint AppLicenseNft → buyer's wallet (via Metaplex)
-  ├─ CPI 4: create AppPurchaseReceipt PDA (audit trail)
-  │
-  v
-USER SEES NFT IN WALLET (Phantom, Solflare, etc.)
-  └─ Metaplex metadata: app name, publisher, license type, server binding
-```
-
-### 5.3 Per-Pearl Charge Flow (Server-Side)
-
-For apps with `PricingModel::PerPearl`, the charge happens when
-`newGrain()` is called:
-
-```
-USER CLICKS "NEW PEARL" (for a PerPearl-priced app)
-  │
-  v
-GRAIN-SERVER.JS: newGrain()
-  │
-  ├─ Check app license (PerServer/Unbound) → must exist
-  ├─ pricing.model === 'PerPearl'?
-  │
-  ├─ IF SELF-HOSTED:
-  │    │
-  │    ├─ Build charge_pearl transaction:
-  │    │   Instruction: charge_pearl { app_id, pearl_id }
-  │    │   Accounts: user_wallet (signer), publisher_wallet, treasury
-  │    │
-  │    ├─ Use HackSessionContext.requestWalletSign()  ← ALREADY EXISTS!
-  │    │   This prompts the user's connected wallet to sign the tx
-  │    │   (approval popup in the Melusina shell, exactly like existing
-  │    │    wallet-approval-client.js flow)
-  │    │
-  │    ├─ Wait for tx confirmation
-  │    └─ Pearl created ✅
-  │
-  ├─ IF PBAY (hosted):
-  │    │
-  │    ├─ Deduct from user's prepaid balance (off-chain ledger)
-  │    ├─ Pearl created immediately ✅
-  │    ├─ pBay operator batches on-chain settlement:
-  │    │   Instruction: batch_charge_pearls { app_id, pearl_ids[] }
-  │    └─ Settled on-chain periodically
-  │
-  v
-PEARL RUNNING, CHARGE RECORDED
-```
-
-### 5.4 Server-Side License Verification (How the Server Checks)
-
-The Melusina server verifies app licenses **using the same Solana infrastructure
-that already exists for server licenses**:
-
-```javascript
-// shell/imports/server/nft-app-license.js
-
-import { getConnection, derivePda } from './solana-proxy';
-
-async function verifyAppLicenseForDomain(appId, domain) {
-  const conn = getConnection();
-
-  // Derive the AppLicenseNft PDA for this app + domain
-  const [licensePda] = derivePda(
-    [Buffer.from("app_license"), appIdBytes, Buffer.from(domain)],
-    LICENSE_PROGRAM_ID
-  );
-
-  const account = await conn.getAccountInfo(licensePda);
-  if (!account) return { status: 'unlicensed' };
-
-  const license = decodeLicenseAccount(account.data);
-
-  // Check validity
-  if (license.validUntil && license.validUntil < now()) return { status: 'expired' };
-  if (license.status === 'Revoked') return { status: 'revoked' };
-
-  return { status: 'valid', license };
-}
-```
-
-This uses **the exact same `solana-proxy.js`** that already powers
-`nft-license.js`, `nft-shares.js`, and `nft-admin.js`. No new
-infrastructure needed — just a new module that queries a different PDA.
-
----
-
-## 6. Publisher Trust Model
-
-### 6.1 Who Can Publish?
-
-A publisher must be **approved by one of three authorities**:
-
-| Authority | On-Chain Representation | Approval Scope |
-|-----------|------------------------|----------------|
-| **Foundation** | Master NFT holder | Global |
-| **Reseller** | Reseller NFT PDA | Within territory |
-| **License Owner** | License NFT + Squads multisig | Server-local only |
-
-### 6.2 Publisher Account
+### 7.3 Anchor Instructions
 
 ```rust
-#[account]
-pub struct PublisherEntry {
-    pub publisher_nft_mint: Pubkey,
-    pub license_ref: Pubkey,
-    pub reseller_ref: Option<Pubkey>,
-    pub foundation_approved: bool,
-
-    pub name: String,                      // Max 64
-    pub signing_key: [u8; 32],            // Ed25519 SPK signing key
-    pub gpg_fingerprint: String,          // 40 hex chars
-    pub github_username: String,
-    pub publisher_wallet: Pubkey,          // 95% payments go here
-    pub publisher_token_account: Option<Pubkey>,
-
-    pub status: PublisherStatus,           // Active, Suspended, Revoked
-    pub approved_at: i64,
-    pub approved_by: Pubkey,
-    pub approval_level: ApprovalLevel,     // Foundation, Reseller, License
-
-    pub app_limit: u16,
-    pub apps_published: u16,
-    pub total_revenue_lamports: u64,
-    pub bump: u8,
-}
-```
-
-### 6.3 Approval & Revocation
-
-```rust
-// Foundation, Reseller, or License owner approves
-pub fn approve_publisher(ctx, name, signing_key, gpg_fp, github, wallet, app_limit) -> Result<()>
+// Three-tier approval (Foundation / Reseller / License owner)
+pub fn approve_publisher(ctx, level, name, signing_key, gpg_fp, wallet) -> Result<()>
 pub fn suspend_publisher(ctx) -> Result<()>
-pub fn reactivate_publisher(ctx) -> Result<()>
-pub fn revoke_publisher(ctx) -> Result<()>
+pub fn approve_app(ctx, level, app_id, name, pricing_model, price) -> Result<()>
+pub fn approve_release(ctx, level, app_id, version, spk_hash, signature) -> Result<()>
+pub fn yank_release(ctx) -> Result<()>
+
+// Pricing
+pub fn set_app_pricing(ctx, model, price_lamports) -> Result<()>
+
+// Purchase
+pub fn purchase_app_sol(ctx, app_id, pricing_model, bound_to_domain) -> Result<()>
+//   Constraint: if PerServer, signer must hold InstallAdmin for domain
+//   CPI: 95% → publisher, 5% → treasury, mint AppLicenseNft
+
+pub fn acquire_free_app(ctx, app_id) -> Result<()>
+//   0-cost, creates receipt for analytics only
+
+// Foundation admin
+pub fn update_foundation_fee(ctx, new_bps) -> Result<()>
+pub fn withdraw_treasury_sol(ctx, amount) -> Result<()>
 ```
 
 ---
 
-## 7. Release Hash Tracking
+## 8. Migration Plan
 
-### 7.1 Every Release on Chain
+### Phase 1: Foundation Approval + License Module (Week 1-2)
 
-```rust
-#[account]
-pub struct ReleaseEntry {
-    pub app_ref: Pubkey,
-    pub publisher_ref: Pubkey,
+1. Add `PublisherApproval`, `AppApproval`, `ReleaseApproval` accounts to Anchor program
+2. Add `approve_publisher`, `approve_app`, `approve_release` instructions
+3. Register hrbrlife as Foundation-approved publisher on-chain
+4. Register all current apps with their pricing (Free for alpha)
+5. Register current release hashes for each app
+6. Create `nft-app-license.js` — modeled on `nft-license.js`, ~100 lines
+7. Update `FOUNDATION_FEE_BPS` 300 → 500
 
-    pub version: u32,
-    pub spk_hash: [u8; 32],              // SHA-256 of SPK
-    pub metadata_hash: [u8; 32],          // SHA-256 of metadata.json
-    pub signature: [u8; 64],              // Ed25519 sig of spk_hash
-    pub gpg_fingerprint: String,
+### Phase 2: Server Enforcement + Store Wallet (Week 3-4)
 
-    pub published_at: i64,
-    pub published_by: Pubkey,
-    pub status: ReleaseStatus,            // Pending, Approved, Yanked, Revoked
-    pub bump: u8,
-}
-```
+1. Add license check in `newGrain()` — hard gate for paid apps
+2. Add license check in `createGrain()` — hard gate for paid apps
+3. Add soft tagging in `continueGrain()`
+4. Add yellow banner in `grainview.js`
+5. Add `@solana/wallet-adapter-*` to store frontend
+6. Implement purchase flow: connect → admin check → build tx → sign → confirm
+7. All checks in **warn mode** first (log, don't block) for 2 weeks
 
-### 7.2 Release Flow
+### Phase 3: Full Enforcement + Build Pipeline (Week 5-6)
 
-```
-make publish (in app repo)
-  ├─ sha256sum app.spk → spk_hash
-  ├─ melusina-solana.py register-release --app-id X --hash Y --version Z
-  └─ gpg --detach-sign metadata.json → metadata.json.asc
-
-build-store.sh
-  ├─ spk verify → confirms Ed25519 sig
-  ├─ Verify publisher on-chain → Active
-  ├─ Verify release hash on-chain → matches
-  └─ Assemble into dist-publish/
-```
+1. Switch `newGrain` from warn → hard block for unlicensed paid apps
+2. Add `spk verify` to `build-store.sh`
+3. Add on-chain publisher/release verification to build pipeline
+4. Admin panel shows installed app license status
+5. Set first paid app live (e.g., BLOOM Identity at 0.1 SOL)
+6. Mainnet deployment
 
 ---
 
-## 8. Red Banner & Degraded Mode
-
-### 8.1 What Issues Can Occur?
-
-| Issue | When | User Impact |
-|-------|------|-------------|
-| **Solana unreachable** | Network down, RPC node down | Cannot verify ANY license |
-| **App unlicensed** | Server has no AppLicenseNft for app | App may not be authorized |
-| **App license expired** | `valid_until` in the past | Was licensed, now expired |
-| **App/publisher revoked** | Foundation or reseller revoked | App is banned |
-| **Release hash mismatch** | SPK doesn't match on-chain hash | Possible tampering |
-
-### 8.2 Banner Behavior
-
-```
-┌───────────────────────────────────────────────────────┐
-│ 🔴 CRITICAL (red banner, blocks new Pearls):          │
-│   - App revoked                                       │
-│   - Publisher revoked                                 │
-│   - Release hash mismatch (possible tampering)        │
-│                                                       │
-│ 🟡 WARNING (yellow banner, allows usage):             │
-│   - App unlicensed (paid app, no license found)       │
-│   - App license expired                               │
-│   - Solana unreachable (within 7-day grace period)    │
-│                                                       │
-│ 🟠 OFFLINE (orange banner, allows usage):             │
-│   - Solana unreachable for > 7 days                   │
-│   - "Unable to verify app authenticity"               │
-│   - Shows last-known status                           │
-│                                                       │
-│ ✅ VALID (no banner):                                 │
-│   - App licensed, release verified, publisher active  │
-│   - OR app is Free (no license needed)                │
-└───────────────────────────────────────────────────────┘
-```
-
-### 8.3 Implementation
-
-The banner is shown in the grain's UI session frame, injected by the shell:
-
-```javascript
-// shell/imports/client/grain/grainview.js — onRendered or session open
-Template.grainView.onCreated(function() {
-  this.autorun(() => {
-    const grain = Grains.findOne(this.data.grainId);
-    if (grain && grain.appLicenseIssue) {
-      // Show banner above the grain iframe, inside the shell chrome
-      // This is NOT inside the grain's sandbox — the grain cannot dismiss it
-      this.licenseWarning = grain.appLicenseIssue;
-    }
-  });
-});
-```
-
-The banner renders in shell chrome (not the grain iframe), so the app
-cannot suppress or modify it. Same pattern as the existing "demo mode"
-and "share" notification bars.
-
----
-
-## 9. Trust Badges in Store & Server
-
-### 9.1 Store Frontend
-
-```jsx
-const TRUST_LEVELS = {
-  foundation: { icon: '🏛️', label: 'Foundation Verified', color: '#FFD700' },
-  reseller:   { icon: '🤝', label: 'Reseller Verified',   color: '#C0C0C0' },
-  license:    { icon: '🔒', label: 'Server Verified',     color: '#4A90D9' },
-  unverified: { icon: '⚠️', label: 'Unverified',          color: '#FFA500' },
-};
-```
-
-### 9.2 Server Admin Panel
-
-The server admin panel (Melusina shell) should show:
-
-```
-INSTALLED APPS                        LICENSE STATUS
-  ✅ Bureau (Free)                    Free — no license required
-  ✅ MerMail (0.1 SOL)               Licensed for mycompany.example.com
-  🟡 BLOOM Identity (0.5 SOL)        Unlicensed — purchase from App Bazaar
-  ✅ BotMother (0.1 SOL)             Licensed (unbound)
-  🔴 Shell Tester (Free)             Publisher revoked
-```
-
----
-
-## 10. Deploy Tooling Impact
-
-### 10.1 Store Frontend (`package.json`)
-
-New dependencies for wallet connection:
-```json
-{
-  "@solana/web3.js": "^1.95",
-  "@solana/wallet-adapter-react": "^0.15",
-  "@solana/wallet-adapter-react-ui": "^0.9",
-  "@solana/wallet-adapter-wallets": "^0.19",
-  "@coral-xyz/anchor": "^0.30",
-  "@metaplex-foundation/mpl-token-metadata": "^3.0"
-}
-```
-
-### 10.2 `build-store.sh`
-
-Add after metadata aggregation:
-```bash
-# Verify publisher + release on-chain (Phase 4+)
-if command -v melusina-solana.py &>/dev/null; then
-  for app in "${ALL_APPS[@]}"; do
-    app_id=$(jq -r '.appId' "$app/metadata.json")
-    spk_hash=$(sha256sum "$app/app.spk" | cut -d' ' -f1)
-    melusina-solana.py verify-publisher --app-id "$app_id" || warn "Publisher unverified: $app"
-    melusina-solana.py verify-release --app-id "$app_id" --hash "$spk_hash" || warn "Release unverified: $app"
-    melusina-solana.py get-app-pricing --app-id "$app_id" >> "$DIST_DIR/apps/${app_id}.pricing.json"
-  done
-fi
-```
-
-### 10.3 App Repo `Makefile`
-
-```makefile
-publish: pack
-	melusina-solana.py register-release \
-	  --app-id $(APP_ID) --hash $$(sha256sum app.spk | cut -d' ' -f1) --version $(VERSION)
-	melusina-solana.py update-pricing \
-	  --app-id $(APP_ID) --model per-server --price 0.1 --per-pearl 0
-```
-
-### 10.4 Melusina Server
-
-New module:
-```
-shell/imports/server/nft-app-license.js    — App license verification (modeled on nft-license.js)
-```
-
-Modify existing:
-```
-grain-server.js       — Add license check + PerPearl charge in newGrain()
-hack-session.js       — Add license check + PerPearl charge in createGrain()
-backend.js            — Add license status tagging in continueGrain()
-gateway-router.js     — Inject banner metadata in openUiSession()
-grainview.js          — Render license warning banner in shell chrome
-```
-
-### 10.5 Anchor Program
-
-Modify `FOUNDATION_FEE_BPS: u16 = 300` → `500` (3% → 5%)
-
-New instructions:
-```rust
-pub fn update_app_pricing(ctx, model, price, per_pearl, mint) -> Result<()>
-pub fn charge_pearl(ctx, app_id, pearl_id) -> Result<()>
-pub fn batch_charge_pearls(ctx, app_id, pearl_ids: Vec<[u8;32]>) -> Result<()>
-```
-
-Modify existing:
-```rust
-pub fn purchase_app_sol(...)  // Add: mint AppLicenseNft, domain binding, 95/5 split
-pub fn purchase_app_token(...)  // Same
-```
-
----
-
-## 11. Migration Plan
-
-### Phase 1: App License Module (Week 1-2)
-1. Create `nft-app-license.js` — modeled on `nft-license.js`
-2. Define `AppLicenseNft` account in Anchor program
-3. Add `update_app_pricing` instruction
-4. Register existing publisher (hrbrlife) on-chain
-5. Register all 7 apps on-chain with current pricing
-6. Set all current apps to Free (no disruption)
-
-### Phase 2: Server-Side Enforcement (Week 3-4)
-1. Add license check in `newGrain()` → hard gate for paid apps
-2. Add license check in `createGrain()` → hard gate for paid apps
-3. Add license status tagging in `continueGrain()` → soft
-4. Add red banner rendering in `grainview.js`
-5. Admin panel: show installed app license status
-6. All checks in **warn mode only** (no blocking yet)
-
-### Phase 3: Payment Integration (Week 5-6)
-1. Update `FOUNDATION_FEE_BPS` 300 → 500
-2. Modify `purchase_app_sol` to mint `AppLicenseNft` via Metaplex CPI
-3. Add `@solana/wallet-adapter-*` to store frontend
-4. Implement purchase flow: wallet connect → build tx → sign → confirm
-5. Store shows "Licensed ✓" badge for apps buyer owns
-
-### Phase 4: Build Pipeline (Week 7-8)
-1. Add `spk verify` to `build-store.sh`
-2. Add on-chain publisher/release verification
-3. Add pricing data fetch from chain
-4. `make publish` in app repos calls `register-release`
-5. Comprehensive GPG verification during build
-
-### Phase 5: Per-Pearl Metering (Week 9-10)
-1. Add `charge_pearl` instruction to Anchor program
-2. Hook `newGrain()` — build tx, use `requestWalletSign()` (already exists)
-3. Add `batch_charge_pearls` for pBay operators
-4. Publisher revenue dashboard (wallet-gated)
-
-### Phase 6: Client Enforcement (Week 11-12)
-1. Switch newGrain/createGrain from warn → hard block for unlicensed paid apps
-2. Red banner active for all license issues
-3. Block install of revoked apps
-4. TrustMaster Layer 5: app provenance + license
-
-### Phase 7: Full Lockdown (Week 13+)
-1. Require on-chain release hash for store build
-2. Require publisher registration before listing
-3. No-grace-period blocking for unlicensed paid apps
-4. Mainnet deployment
-
----
-
-## 12. Security Properties
+## 9. Security Properties
 
 ### What This Achieves
 
 | Property | Mechanism |
 |----------|-----------|
 | **Publisher identity** | Ed25519 + GPG signing key on-chain |
-| **Publisher authorization** | NFT-gated by Foundation/Reseller/License |
-| **Publisher revocation** | Instant on-chain → propagates in ≤1h |
-| **App approval** | Human review + on-chain registration |
-| **Release integrity** | SHA-256 hash on-chain, verified at install + hourly |
-| **Release authenticity** | Ed25519 sig by registered publisher |
-| **Payment atomicity** | SOL split + NFT mint in single Solana transaction |
+| **Three-tier approval** | Foundation → Reseller → License, additive only |
+| **Foundation override** | Foundation can suspend a publisher globally |
+| **App authenticity** | SHA-256 hash on-chain, verified at build + hourly |
+| **Payment atomicity** | SOL split + NFT mint in single Solana tx |
 | **Publisher payout** | Automatic, instant, non-custodial — 95% direct |
-| **License portability** | Metaplex NFT in wallet — transferable |
-| **Per-Pearl billing** | `requestWalletSign()` exists for interactive signing |
-| **Offline resilience** | 7-day grace cache, soft banners, never hard-lock data |
-| **Tamper detection** | SPK hash verified against on-chain at install + hourly |
+| **Admin-only PerServer** | On-chain constraint: signer must hold InstallAdmin |
+| **License portability** | Metaplex NFT — transferable on server handoff |
+| **Offline resilience** | 7-day grace cache, banner, never hard-lock data |
 
 ### What This Does NOT Protect Against
 
 | Threat | Mitigation |
 |--------|-----------|
-| **Compromised publisher key** | appid-replacements.capnp + revoke + re-register |
+| **Compromised publisher key** | Foundation revokes, re-register with new key |
 | **Compromised Foundation wallet** | Squads multisig (2-of-4 threshold) |
-| **Malicious code in approved app** | Human review only (not cryptographic) |
-| **Store CDN compromise** | Client-side hash verification |
+| **Malicious code in approved app** | Human review only (not automated) |
 | **Solana downtime** | 7-day cached verification grace period |
-| **Pearl metering evasion (self-hosted)** | Owner's server, their choice |
-| **Pearl metering evasion (pBay)** | pBay operator controls runtime |
+| **Self-hosted license evasion** | Owner's server, their choice — banner only |
 
 ---
 
-## 13. Complete Trust Chain
+## 10. Complete Trust Chain
 
 ```
 MELUSINA FOUNDATION
-  │ Master NFT: CnnETK...
-  │ Squads v4 multisig (2-of-4 keyholders)
+  │ Master NFT, Squads multisig
   │
-  ├──▶ PLATFORM RELEASES
-  │     Ed25519 signed (update-tool)
-  │     Hash on-chain (register_release)
+  ├──▶ FOUNDATION APPROVALS (Layer 1 — global)
+  │     Publishers ──▶ Apps ──▶ Releases (hash + sig)
   │
-  ├──▶ RESELLER NFTs (territory-bound)
-  │     │
-  │     └──▶ LICENSE NFTs (domain-bound, Squads custody)
+  ├──▶ RESELLER APPROVALS (Layer 2 — territory, additive)
+  │     Publishers ──▶ Apps ──▶ Releases
+  │     (only visible to servers from this reseller)
   │
-  └──▶ PUBLISHER NFTs (approved by Foundation/Reseller/License)
-        signing_key + publisher_wallet on-chain
-        │
-        └──▶ APP ENTRIES (each app on-chain)
-              PricingModel + price_lamports + per_pearl_lamports
-              │
-              ├──▶ RELEASE ENTRIES (every version hash)
-              │     SHA-256 + Ed25519 sig + status
-              │
-              └──▶ PURCHASE
-                    │
-                    ├─ Store: wallet → purchase_app_sol
-                    │   95% → publisher, 5% → treasury
-                    │   AppLicenseNft → buyer wallet
-                    │
-                    ├─ Server enforcement:
-                    │   nft-app-license.js checks PDA (1h cycle, 7d grace)
-                    │   newGrain → hard block (unlicensed paid apps)
-                    │   continueGrain → soft (banner)
-                    │   openUiSession → red/yellow/orange banner
-                    │
-                    └─ Per-Pearl: charge_pearl via requestWalletSign
-                        Each newGrain → 95/5 split
-                        PearlChargeReceipt on-chain
+  └──▶ LICENSE OWNER APPROVALS (Layer 3 — server, additive)
+        Publishers ──▶ Apps ──▶ Releases
+        (only visible to this specific server)
+
+PURCHASING:
+  PerServer:  Admin wallet → purchase_app_sol(domain) → 95/5 → AppLicenseNft
+              Constraint: must hold InstallAdmin for that domain
+  PerAccount: User wallet  → purchase_app_sol(wallet) → 95/5 → AppLicenseNft
+  Free:       Anyone       → acquire_free_app          → receipt only
+
+ENFORCEMENT (server-side):
+  newGrain    → hard block if paid + unlicensed
+  openGrain   → soft tag + yellow banner
+  periodic    → 1h recheck, 7d grace, update cache
 ```
 
 ---
 
-## 14. Existing Code Cross-Reference
+## 11. Existing Code Cross-Reference
 
 Every enforcement point maps to real code that exists today:
 
 | What | File | Lines | Today | After |
 |------|------|-------|-------|-------|
-| **New Pearl (UI)** | grain-server.js | 298-355 | Login + quota | + license + PerPearl charge |
-| **New Pearl (RPC)** | hack-session.js | 1585-1889 | Policy + rate limit | + license + PerPearl charge |
+| **New Pearl (UI)** | grain-server.js | 298-355 | Login + quota | + license check |
+| **New Pearl (RPC)** | hack-session.js | 1585-1889 | Policy + rate limit | + license check |
 | **Open Pearl** | backend.js | 95-126 | Quota | + license status tag |
-| **Start grain (JS)** | backend.js | 134-163 | Excessive quota | Unchanged |
-| **Start grain (C++)** | backend.c++ | 266-274 | ID validation | Unchanged |
-| **Boot grain (C++)** | backend.c++ | 62-219 | Fork supervisor | Unchanged |
 | **UI session** | gateway-router.js | 360-468 | Perms + NFT share | + banner inject |
-| **App install** | installer.js | 127-163 | Stream + unpack | + license/release check |
-| **SPK verify** | spk.c++ | 1386-1576 | Ed25519 + SHA-512 | Unchanged (already solid) |
 | **Server license** | nft-license.js | 175-270 | License NFT, 1h cycle | Model for nft-app-license.js |
-| **Wallet sign** | hack-session.js | method @9 | requestWalletSign | Used for charge_pearl tx |
-| **Wallet NFTs** | hack-session.js | method @10 | getWalletNfts | Used to check AppLicenseNft |
+| **Wallet sign** | hack-session.js | method @9 | requestWalletSign | Available if needed |
+| **Wallet NFTs** | hack-session.js | method @10 | getWalletNfts | Check AppLicenseNft ownership |
 | **Solana RPC** | solana-proxy.js | all | Connection, PDA derivation | Used by nft-app-license.js |
-| **Admin NFT** | nft-admin.js | 84+ | InstallAdmin PDA check | Pattern for AppLicenseNft |
-| **Grain shares** | nft-shares.js | all | GrainShareEntry PDA | Pattern for PearlChargeReceipt |
-| **Wallet approval UI** | wallet-approval-client.js | all | 2-phase approval | Used for PerPearl tx signing |
+| **Admin NFT** | nft-admin.js | 84+ | InstallAdmin PDA check | PerServer: verify admin is buyer |
+| **SPK verify** | spk.c++ | 1386-1576 | Ed25519 + SHA-512 | Unchanged (already solid) |
+| **Wallet approval UI** | wallet-approval-client.js | all | 2-phase approval | Available if needed |

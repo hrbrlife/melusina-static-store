@@ -86,10 +86,10 @@ owner's wallet holds the license NFT.
 |---------|----------|--------|
 | `AppStoreListing` PDA | lib.rs — `publish_listing` | ⚠️ Deployed, unused |
 | `AppPurchaseReceipt` PDA | lib.rs — `purchase_app_sol` | ⚠️ Deployed, unused |
-| `purchase_app_sol` (97/3 split) | lib.rs line ~3311 | ⚠️ Needs 95/5 split |
+| `purchase_app_sol` (97/3 split) | lib.rs line ~3311 | ⚠️ Needs 70/30 split |
 | `acquire_free_app` (0-cost) | lib.rs line ~3489 | ⚠️ Deployed, unused |
 | `FoundationTreasury` PDA | lib.rs — `withdraw_treasury_sol` | ⚠️ Deployed, unused |
-| `FOUNDATION_FEE_BPS = 300` | lib.rs line 70 | ⚠️ Needs update to 500 (5%) |
+| `FOUNDATION_FEE_BPS = 300` | lib.rs line 70 | ⚠️ Needs update to 3000 (30%) |
 
 ### 2.3 Melusina Server Solana Integration (Working)
 
@@ -291,8 +291,8 @@ SERVER ADMIN in App Bazaar store
 TRANSACTION
   ├─ purchase_app_sol { app_id, bound_to_domain: "myserver.example.com" }
   ├─ Constraint: signer must hold InstallAdmin PDA for domain's License NFT
-  ├─ 95% SOL → publisher_wallet
-  ├─  5% SOL → foundation_treasury
+  ├─ 70% SOL → publisher_wallet
+  ├─ 30% SOL → foundation_treasury
   ├─ Mint AppLicenseNft → admin's wallet
   └─ AppLicenseNft.bound_to_domain = "myserver.example.com"
 
@@ -320,8 +320,8 @@ USER in App Bazaar store
   v
 TRANSACTION
   ├─ purchase_app_sol { app_id, bound_to_wallet: user_pubkey }
-  ├─ 95% SOL → publisher_wallet
-  ├─  5% SOL → foundation_treasury
+  ├─ 70% SOL → publisher_wallet
+  ├─ 30% SOL → foundation_treasury
   ├─ Mint AppLicenseNft → user's wallet
   └─ AppLicenseNft.bound_to_wallet = user_pubkey
 
@@ -357,8 +357,8 @@ utility/discount token.
 │  (platform operator)          │  (separate governance)     │
 │                               │                            │
 │  • Approves publishers        │  • Mints/burns MLSNA       │
-│  • Collects 5% fee (SOL)     │  • Controls token supply   │
-│  • Collects 2.5% fee (MLSNA) │  • Sets token policy       │
+│  • Collects 30% fee (SOL)    │  • Controls token supply   │
+│  • Collects 10% fee (MLSNA)  │  • Sets token policy       │
 │  • Manages trust hierarchy    │  • Manages liquidity       │
 │  • No MLSNA governance role   │  • No platform approval    │
 │                               │    power                   │
@@ -369,11 +369,11 @@ utility/discount token.
 
 | Benefit | SOL Payment | MLSNA Payment |
 |---------|-------------|---------------|
-| **Buyer price** | Full USD price | **15% discount** |
-| **Publisher fee** | 5% to Foundation | **2.5% to Foundation** |
-| **Publisher receives** | 95% | **97.5%** |
-| **Publisher incentive** | Baseline | Prefer MLSNA buyers |
-| **Buyer incentive** | None | 15% cheaper |
+| **Buyer price** | Full USD price | **10% discount** |
+| **Publisher fee** | 30% to Foundation | **10% to Foundation** |
+| **Publisher receives** | 70% | **80%** |
+| **Publisher incentive** | Baseline | +10% more revenue |
+| **Buyer incentive** | None | 10% cheaper |
 
 MLSNA creates a flywheel: buyers want it for the discount, publishers
 want it for lower fees, demand drives token value, which attracts
@@ -394,14 +394,14 @@ AT PURCHASE TIME (oracle resolves):
 
   PAY IN SOL:
     $10.00 / $145  =  0.06897 SOL  (full price)
-    Publisher gets: 95%  = 0.06552 SOL
-    Foundation fee: 5%   = 0.00345 SOL
+    Publisher gets: 70%  = 0.04828 SOL
+    Foundation fee: 30%  = 0.02069 SOL
 
   PAY IN MLSNA:
-    $10.00 × 0.85  =  $8.50 (15% discount)
-    $8.50  / $0.50 =  17 MLSNA
-    Publisher gets: 97.5% = 16.575 MLSNA
-    Foundation fee: 2.5%  = 0.425  MLSNA
+    $10.00 × 0.90  =  $9.00 (10% discount)
+    $9.00  / $0.50 =  18 MLSNA
+    Publisher gets: 80%  = ~14.4 MLSNA
+    Foundation fee: 10%  = ~1.8  MLSNA
 ```
 
 **Oracle:** Switchboard or Pyth on Solana. The Anchor program reads
@@ -421,15 +421,15 @@ require!(sol_usd_price.timestamp > clock.unix_timestamp - 60, PriceFeedStale);
 ```
                           SOL PAYMENT        MLSNA PAYMENT
                           ───────────        ─────────────
-Buyer pays:               full USD price     85% of USD price (15% off)
-Publisher receives:       95%                97.5%
-Foundation fee:           5%  (500 BPS)      2.5% (250 BPS)
+Buyer pays:               full USD price     90% of USD price (10% off)
+Publisher receives:       70%                80%
+Foundation fee:           30% (3000 BPS)     10% (1000 BPS)
 ```
 
 ```rust
-const FOUNDATION_FEE_SOL_BPS: u16   = 500;  // 5%
-const FOUNDATION_FEE_MLSNA_BPS: u16 = 250;  // 2.5%
-const MLSNA_DISCOUNT_BPS: u16       = 1500; // 15% buyer discount
+const FOUNDATION_FEE_SOL_BPS: u16   = 3000; // 30%
+const FOUNDATION_FEE_MLSNA_BPS: u16 = 1000; // 10%
+const MLSNA_DISCOUNT_BPS: u16       = 1000; // 10% buyer discount
 const BPS_DENOMINATOR: u16          = 10_000;
 ```
 
@@ -452,8 +452,8 @@ TRANSACTION (Solana, single tx)
   │     If PerServer → signer must hold InstallAdmin PDA for domain
   │     If PerAccount → signer is the buyer
   │
-  ├─ CPI 1: transfer 95% SOL → publisher_wallet
-  ├─ CPI 2: transfer  5% SOL → foundation_treasury
+  ├─ CPI 1: transfer 70% SOL → publisher_wallet
+  ├─ CPI 2: transfer 30% SOL → foundation_treasury
   ├─ CPI 3: mint AppLicenseNft → buyer's wallet (Metaplex)
   └─ CPI 4: create AppPurchaseReceipt PDA (paid_currency: SOL)
 ```
@@ -476,8 +476,8 @@ TRANSACTION (Solana, single tx)
   │     Same admin check as SOL path
   │     Buyer must hold sufficient MLSNA in token account
   │
-  ├─ CPI 1: SPL transfer 97.5% MLSNA → publisher_token_account
-  ├─ CPI 2: SPL transfer  2.5% MLSNA → foundation_token_account
+  ├─ CPI 1: SPL transfer 80% MLSNA → publisher_token_account
+  ├─ CPI 2: SPL transfer 10% MLSNA → foundation_token_account
   ├─ CPI 3: mint AppLicenseNft → buyer's wallet (Metaplex)
   └─ CPI 4: create AppPurchaseReceipt PDA (paid_currency: MLSNA)
 ```
@@ -499,10 +499,10 @@ Store (static_store) adds:
 
 Flow:
   1. User clicks "Buy" on app card
-  2. Store shows price:  "$10.00  ·  0.069 SOL  ·  17 MLSNA (15% off)"
+  2. Store shows price:  "$10.00  ·  0.069 SOL  ·  18 MLSNA (10% off)"
      (SOL and MLSNA amounts computed from live oracle feeds)
   3. Wallet adapter connects (Phantom, Solflare, etc.)
-  4. User picks payment method: [Pay SOL] or [Pay MLSNA — 15% off]
+  4. User picks payment method: [Pay SOL] or [Pay MLSNA — 10% off]
   5. If PerServer:
      a. Fetch user's Admin NFTs
      b. User selects target server
@@ -730,7 +730,7 @@ pub struct PublisherApproval {
     pub level: ApprovalLevel,              // Foundation, Reseller, License
     pub authority: Pubkey,                 // Master NFT / Reseller mint / License mint
     pub publisher_key: [u8; 32],           // Ed25519 SPK signing key
-    pub publisher_wallet: Pubkey,          // Receives 95% SOL / 97.5% MLSNA
+    pub publisher_wallet: Pubkey,          // Receives 70% SOL / 80% MLSNA
     pub publisher_token_account: Option<Pubkey>, // MLSNA ATA for token payments
 
     pub name: String,                      // Max 64
@@ -804,8 +804,8 @@ pub struct AppLicenseNft {
     pub paid_currency: PaymentCurrency,    // Sol or Mlsna
     pub paid_amount: u64,                  // lamports or MLSNA base units
     pub paid_usd_cents: u64,              // USD value at time of purchase
-    pub publisher_received: u64,           // 95% (SOL) or 97.5% (MLSNA)
-    pub foundation_fee: u64,              // 5% (SOL) or 2.5% (MLSNA)
+    pub publisher_received: u64,           // 70% (SOL) or 80% (MLSNA)
+    pub foundation_fee: u64,              // 30% (SOL) or 10% (MLSNA)
     pub purchased_at: i64,
     pub valid_until: Option<i64>,          // None = perpetual
     pub bump: u8,
@@ -829,13 +829,13 @@ pub fn set_app_pricing(ctx, model, price_usd_cents) -> Result<()>
 pub fn purchase_app_sol(ctx, app_id, pricing_model, bound_to_domain) -> Result<()>
 //   Oracle reads SOL/USD feed → compute lamports from price_usd_cents
 //   Constraint: if PerServer, signer must hold InstallAdmin for domain
-//   CPI: 95% → publisher, 5% → treasury, mint AppLicenseNft
+//   CPI: 70% → publisher, 30% → treasury, mint AppLicenseNft
 
-// Purchase — MLSNA path (15% discount, 2.5% fee)
+// Purchase — MLSNA path (10% discount, 10% fee)
 pub fn purchase_app_mlsna(ctx, app_id, pricing_model, bound_to_domain) -> Result<()>
 //   Oracle reads MLSNA/USD feed → compute tokens from discounted price
-//   Apply MLSNA_DISCOUNT_BPS (15% off USD price)
-//   CPI: 97.5% MLSNA → publisher_token_account, 2.5% → foundation_token_account
+//   Apply MLSNA_DISCOUNT_BPS (10% off USD price)
+//   CPI: 80% MLSNA → publisher_token_account, 10% → foundation_token_account
 //   Mint same AppLicenseNft (identical to SOL purchase)
 
 pub fn acquire_free_app(ctx, app_id) -> Result<()>
@@ -859,7 +859,7 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 4. Register all current apps with their pricing (Free for alpha)
 5. Register current release hashes for each app
 6. Create `nft-app-license.js` — modeled on `nft-license.js`, ~100 lines
-7. Update `FOUNDATION_FEE_BPS` 300 → 500 (SOL), add 250 (MLSNA)
+7. Update `FOUNDATION_FEE_BPS` 300 → 3000 (SOL), add 1000 (MLSNA)
 8. Set up Switchboard/Pyth oracle feeds for SOL/USD and MLSNA/USD
 9. Add `purchase_app_mlsna` instruction alongside `purchase_app_sol`
 10. Deploy MLSNA SPL token mint (separate entity controls mint authority)
@@ -871,8 +871,8 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 3. Add soft tagging in `continueGrain()`
 4. Add yellow banner in `grainview.js`
 5. Add `@solana/wallet-adapter-*` + `@solana/spl-token` to store frontend
-6. Implement dual purchase flow: SOL or MLSNA (15% off)
-7. Store shows both prices from live oracle: `$10 · 0.069 SOL · 17 MLSNA`
+6. Implement dual purchase flow: SOL or MLSNA (10% off)
+7. Store shows both prices from live oracle: `$10 · 0.069 SOL · 18 MLSNA`
 8. All checks in **warn mode** first (log, don't block) for 2 weeks
 
 ### Phase 3: Full Enforcement + Build Pipeline (Week 5-6)
@@ -897,9 +897,9 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 | **Foundation override** | Foundation can suspend a publisher globally |
 | **App authenticity** | SHA-256 hash + Ed25519 sig on-chain, verified at build + hourly |
 | **Payment atomicity** | SOL or MLSNA split + NFT mint in single Solana tx |
-| **Publisher payout** | Automatic, instant, non-custodial — 95% SOL / 97.5% MLSNA |
-| **MLSNA buyer discount** | 15% off USD price when paying MLSNA |
-| **MLSNA publisher discount** | 2.5% fee vs 5% — publishers prefer MLSNA buyers |
+| **Publisher payout** | Automatic, instant, non-custodial — 70% SOL / 80% MLSNA |
+| **MLSNA buyer discount** | 10% off USD price when paying MLSNA |
+| **MLSNA publisher incentive** | 10% fee vs 30% — publishers strongly prefer MLSNA buyers |
 | **Oracle pricing** | USD-denominated, Switchboard/Pyth at purchase time |
 | **Token separation** | MLSNA controlled outside Foundation — no conflict of interest |
 | **Admin-only PerServer** | On-chain constraint: signer must hold InstallAdmin |
@@ -938,12 +938,12 @@ MELUSINA FOUNDATION
 
 MLSNA TOKEN (separate entity, outside Foundation)
   └── SPL token on Solana, oracle-priced via Switchboard/Pyth
-      15% buyer discount, 50% lower publisher fees
+      10% buyer discount, 20% more to publisher (80% vs 70%)
 
 PRICING:
   Publisher sets USD price → oracle resolves at purchase time:
-    SOL path:   full USD price → SOL amount → 95/5 split
-    MLSNA path: 85% USD price → MLSNA amount → 97.5/2.5 split
+    SOL path:   full USD price → SOL amount → 70/30 split
+    MLSNA path: 90% USD price → MLSNA amount → 80/10 split
 
 PURCHASING:
   PerServer:  Admin wallet → purchase_app_sol|mlsna(domain) → AppLicenseNft

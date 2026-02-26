@@ -514,6 +514,108 @@ Flow:
   9. Show "Licensed ✓" badge on the app card
 ```
 
+### 5.7 Tokenomics
+
+```
+MLSNA TOKEN (SPL, Solana)
+Total supply:     100,000,000,000  (100B, fixed)
+Decimals:         9
+Mint authority:   Burned after TGE (no inflation, ever)
+```
+
+**Three-tier on-chain sale (raises $25M):**
+
+```
+TIER      TOKENS    PRICE       DISCOUNT    RAISES     UNLOCK
+────────────────────────────────────────────────────────────────
+Tier 1    5B (5%)   $0.001      80% off     $5M        Immediate
+Tier 2    5B (5%)   $0.002      60% off     $10M       Immediate
+Tier 3    2B (2%)   $0.005      Listing     $10M       Immediate
+────────────────────────────────────────────────────────────────
+TOTAL:    12B (12%)                         $25M
+
+Listing price on OpenBook: $0.005 / MLSNA
+```
+
+All sale tokens unlock immediately — no vesting for buyers. They took
+the risk, they get their tokens. Simple.
+
+**First $5M SOL raised (Tier 1) releases immediately to issuer** to
+seed the OpenBook MLSNA/SOL market with the 2B liquidity tokens.
+This guarantees a live order book from the moment Tier 2 opens.
+
+**Full allocation:**
+
+```
+┌──────────────────────┬────────┬────┬──────────────────────────────────┐
+│ Bucket               │ Tokens │  % │ Unlock                           │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ On-chain sale        │   12B  │ 12 │ Immediate at purchase            │
+│ (3 tiers)            │        │    │                                  │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ OpenBook liquidity   │    2B  │  2 │ Day 0, paired w/ SOL from Tier 1 │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Foundation treasury  │   18B  │ 18 │ 3yr cliff, then daily over 5yr   │
+│ (token reserve)      │        │    │ Squads multisig (2-of-4)         │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Team / Founders      │   10B  │ 10 │ Max 10% of allocation per year   │
+│                      │        │    │ = 1B/yr sellable                 │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Ecosystem grants     │    8B  │  8 │ Multisig-gated, max 2B/yr cap    │
+├──────────────────────┼────────┼────┼──────────────────────────────────┤
+│ Community emission   │   50B  │ 50 │ Daily linear over 10yr           │
+│                      │        │    │ (13.7M/day, trustless unlock)    │
+└──────────────────────┴────────┴────┴──────────────────────────────────┘
+```
+
+**SOL raised goes to Squads Treasury PDA — accessible from Day 0:**
+
+```
+SOL from sale ($25M) → Squads Treasury PDA (2-of-4 multisig)
+                       Withdraw anytime for ops. No cliff.
+                       Every withdrawal visible on-chain.
+
+MLSNA token reserves → Locked per schedule above.
+                       Can't dump. Investors can verify on-chain.
+```
+
+**Team sell rule:** Team holds 10B MLSNA. Can sell max 10% per year
+(1B tokens). Enforced by on-chain vesting contract with annual
+unlock caps — not trust, code.
+
+**Burn mechanic:**
+
+```
+Foundation collects 10% MLSNA fee on every app purchase.
+  50% of that → burned (permanently removed from supply)
+  50% of that → Foundation treasury
+
+Effective burn: 5% of all MLSNA app purchase volume, forever.
+Over time: total supply shrinks from 100B toward ~55-60B.
+```
+
+**Sale sequence:**
+
+```
+Week 1:   Deploy MLSNA token, sale contract, vesting contracts
+          Burn mint authority (immutable cap, verified on-chain)
+          Sale opens at Tier 1 ($0.001, 5B tokens, $5M cap)
+
+Tier 1    First $5M SOL raised → released to issuer immediately
+fills:    Issuer seeds OpenBook MLSNA/SOL market with 2B tokens
+          Live trading begins alongside ongoing sale
+
+Tier 2    Price steps to $0.002, next 5B tokens, $10M cap
+opens:    Buyers can also buy from OpenBook if market price is lower
+
+Tier 3    Price steps to $0.005 (listing price), final 2B tokens
+opens:    No discount — matches open market. Fills remaining $10M.
+
+Sale      Community emission starts (13.7M/day)
+complete: Platform launches with MLSNA payment integration
+          Fee burns begin
+```
+
 ---
 
 ## 6. Enforcement Map
@@ -851,7 +953,17 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 
 ## 8. Migration Plan
 
-### Phase 1: Foundation Approval + License Module (Week 1-2)
+### Phase 0: MLSNA Token Launch (Week 1-2)
+
+1. Deploy MLSNA SPL token (100B supply, 9 decimals)
+2. Deploy sale contract (3-tier bonding curve) + team vesting contract
+3. Burn mint authority (immutable cap, verifiable on-chain)
+4. Open Tier 1 sale ($0.001, 5B tokens, $5M cap)
+5. First $5M SOL → issuer → seed OpenBook MLSNA/SOL market with 2B liquidity tokens
+6. Tier 2 auto-opens ($0.002), then Tier 3 ($0.005)
+7. Set up Switchboard/Pyth oracle feeds for SOL/USD and MLSNA/USD
+
+### Phase 1: Foundation Approval + License Module (Week 3-4)
 
 1. Add `PublisherApproval`, `AppApproval`, `ReleaseApproval` accounts to Anchor program
 2. Add `approve_publisher`, `approve_app`, `approve_release` instructions
@@ -860,11 +972,9 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 5. Register current release hashes for each app
 6. Create `nft-app-license.js` — modeled on `nft-license.js`, ~100 lines
 7. Update `FOUNDATION_FEE_BPS` 300 → 3000 (SOL), add 1000 (MLSNA)
-8. Set up Switchboard/Pyth oracle feeds for SOL/USD and MLSNA/USD
-9. Add `purchase_app_mlsna` instruction alongside `purchase_app_sol`
-10. Deploy MLSNA SPL token mint (separate entity controls mint authority)
+8. Add `purchase_app_mlsna` instruction alongside `purchase_app_sol`
 
-### Phase 2: Server Enforcement + Store Wallet (Week 3-4)
+### Phase 2: Server Enforcement + Store Wallet (Week 5-6)
 
 1. Add license check in `newGrain()` — hard gate for paid apps
 2. Add license check in `createGrain()` — hard gate for paid apps
@@ -875,7 +985,7 @@ pub fn withdraw_treasury_mlsna(ctx, amount) -> Result<()>
 7. Store shows both prices from live oracle: `$10 · 0.069 SOL · 18 MLSNA`
 8. All checks in **warn mode** first (log, don't block) for 2 weeks
 
-### Phase 3: Full Enforcement + Build Pipeline (Week 5-6)
+### Phase 3: Full Enforcement + Build Pipeline (Week 7-8)
 
 1. Switch `newGrain` from warn → hard block for unlicensed paid apps
 2. Add `spk verify` to `build-store.sh`

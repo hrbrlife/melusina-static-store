@@ -75,7 +75,6 @@ owner's wallet holds the license NFT.
 |-------|-----------|--------|
 | **Binary updates** | Ed25519 via `update-tool`, pubkey compiled into client | ✅ Working |
 | **SPK packages** | Ed25519 via `spk pack`, App ID = public key (base-32) | ✅ Working |
-| **PGP author** | GPG detached sig of author statement | ✅ Working |
 
 ### 2.2 Solana Infrastructure (Deployed on Devnet, Not Connected)
 
@@ -140,7 +139,7 @@ apps. This is the curated public catalog.
 **On-chain PDA seeds:**
 
 ```
-PublisherApproval:  ["pub_approval",  "foundation", publisher_key]
+PublisherApproval:  ["pub_approval",  "foundation", publisher_signing_key]
 AppApproval:        ["app_approval",  "foundation", app_id]
 ReleaseApproval:    ["rel_approval",  "foundation", app_id, version_bytes]
 ```
@@ -619,7 +618,6 @@ pub struct PublisherApproval {
     pub publisher_wallet: Pubkey,          // Receives 95% of payments
 
     pub name: String,                      // Max 64
-    pub gpg_fingerprint: String,           // 40 hex chars
     pub status: ApprovalStatus,            // Active, Suspended
     pub approved_at: i64,
     pub bump: u8,
@@ -650,7 +648,7 @@ pub struct ReleaseApproval {
 
     pub version: u32,
     pub spk_hash: [u8; 32],               // SHA-256 of SPK
-    pub signature: [u8; 64],              // Ed25519 sig of spk_hash by publisher
+    pub signature: [u8; 64],              // Ed25519 sig of spk_hash by publisher_key
     pub status: ReleaseStatus,             // Approved, Yanked
     pub published_at: i64,
     pub bump: u8,
@@ -695,10 +693,10 @@ pub struct AppLicenseNft {
 
 ```rust
 // Three-tier approval (Foundation / Reseller / License owner)
-pub fn approve_publisher(ctx, level, name, signing_key, gpg_fp, wallet) -> Result<()>
+pub fn approve_publisher(ctx, level, name, signing_key, wallet) -> Result<()>
 pub fn suspend_publisher(ctx) -> Result<()>
 pub fn approve_app(ctx, level, app_id, name, pricing_model, price) -> Result<()>
-pub fn approve_release(ctx, level, app_id, version, spk_hash, signature) -> Result<()>
+pub fn approve_release(ctx, level, app_id, version, spk_hash, ed25519_signature) -> Result<()>
 pub fn yank_release(ctx) -> Result<()>
 
 // Pricing
@@ -758,10 +756,10 @@ pub fn withdraw_treasury_sol(ctx, amount) -> Result<()>
 
 | Property | Mechanism |
 |----------|-----------|
-| **Publisher identity** | Ed25519 + GPG signing key on-chain |
+| **Publisher identity** | Ed25519 signing key + Solana wallet on-chain |
 | **Three-tier approval** | Foundation → Reseller → License, additive only |
 | **Foundation override** | Foundation can suspend a publisher globally |
-| **App authenticity** | SHA-256 hash on-chain, verified at build + hourly |
+| **App authenticity** | SHA-256 hash + Ed25519 sig on-chain, verified at build + hourly |
 | **Payment atomicity** | SOL split + NFT mint in single Solana tx |
 | **Publisher payout** | Automatic, instant, non-custodial — 95% direct |
 | **Admin-only PerServer** | On-chain constraint: signer must hold InstallAdmin |

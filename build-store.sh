@@ -33,6 +33,10 @@ BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 # Sandstorm binary update hosting
 SANDSTORM_SRC="../sandstorm"
 UPDATE_OUT="$OUTPUT_DIR/update"
+
+# deploy-ui binary releases
+DEPLOY_UI_SRC="../Melusina/deployer/deploy-ui"
+RELEASES_OUT="$OUTPUT_DIR/releases"
 UPDATE_KEYRING="$SANDSTORM_SRC/keys/melusina-update-keyring"
 UPDATE_TOOL="$SANDSTORM_SRC/tmp/sandstorm/update-tool"
 
@@ -548,7 +552,39 @@ else
   warn "Skipping binary update packaging"
 fi
 
-# --- Step 7: Summary ---------------------------------------------------------
+# --- Step 7: deploy-ui binary releases ---------------------------------------
+info "Building deploy-ui release binaries..."
+
+if [[ -f "$DEPLOY_UI_SRC/Makefile" ]]; then
+  DEPLOY_UI_VERSION="$(git -C "$DEPLOY_UI_SRC/../.." describe --tags --always 2>/dev/null || echo dev)"
+  info "Version: $DEPLOY_UI_VERSION"
+
+  # Cross-compile via the deploy-ui Makefile
+  make -C "$DEPLOY_UI_SRC" release VERSION="$DEPLOY_UI_VERSION" RELEASE_DIR="$(pwd)/$RELEASES_OUT" 2>&1 | tail -10
+
+  if [[ -d "$RELEASES_OUT/$DEPLOY_UI_VERSION" ]]; then
+    # Write the latest pointer
+    echo -n "$DEPLOY_UI_VERSION" > "$RELEASES_OUT/latest"
+
+    # Write a manifest for programmatic access
+    cat > "$RELEASES_OUT/manifest.json" <<DEPLOY_MANIFEST_EOF
+{
+  "version": "$DEPLOY_UI_VERSION",
+  "platforms": ["linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"],
+  "base_url": "$BASE_URL/releases/$DEPLOY_UI_VERSION",
+  "checksums": "$BASE_URL/releases/$DEPLOY_UI_VERSION/checksums.sha256",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+DEPLOY_MANIFEST_EOF
+    ok "deploy-ui $DEPLOY_UI_VERSION: $(ls "$RELEASES_OUT/$DEPLOY_UI_VERSION/" | grep -v checksums | wc -l) binaries"
+  else
+    warn "deploy-ui release build produced no output"
+  fi
+else
+  warn "deploy-ui Makefile not found at $DEPLOY_UI_SRC — skipping release build"
+fi
+
+# --- Step 8: Summary ---------------------------------------------------------
 echo ""
 ok "Build complete!"
 echo ""

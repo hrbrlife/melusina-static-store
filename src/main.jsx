@@ -1202,30 +1202,7 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
         height: "100%", overflow: "hidden",
       }}
     >
-      {/* ON SALE triangle badge */}
-      {getAppPrice(app.appId).onSale && (
-        <div style={{
-          position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none',
-          width: 80, height: 80, overflow: 'hidden',
-        }}>
-          <div style={{
-            position: 'absolute', top: 0, right: 0,
-            width: 0, height: 0,
-            borderStyle: 'solid',
-            borderWidth: '0 80px 80px 0',
-            borderColor: 'transparent #f5a623 transparent transparent',
-            filter: 'drop-shadow(-2px 2px 4px rgba(0,0,0,0.3))',
-          }} />
-          <span style={{
-            position: 'absolute', top: 12, right: -14, width: 70,
-            fontSize: 8, fontWeight: 800,
-            color: '#1a1a2e', fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: '.05em', transform: 'rotate(45deg)', transformOrigin: 'center center',
-            whiteSpace: 'nowrap', textAlign: 'center',
-            textShadow: '0 1px 0 rgba(255,255,255,0.3)',
-          }}>ON SALE</span>
-        </div>
-      )}
+
       {/* scan line on hover */}
       {hov && (
         <div style={{
@@ -1990,17 +1967,17 @@ const APP_PRICES = {
   // Bureau (office suite)
   'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { price: 'FREE' },
   // BLOOM Identity (KYC)
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { price: '0.5 SOL', originalPrice: '2.0 SOL', onSale: true },
+  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { price: 'FREE' },
   // BotMother (Telegram)
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': { price: '0.1 SOL', originalPrice: '0.5 SOL', onSale: true },
+  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': { price: 'FREE' },
   // MerMail
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': { price: '0.1 SOL' },
+  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': { price: 'FREE' },
   // MiniGit
   'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { price: 'FREE' },
   // Shell Tester
   'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { price: 'FREE' },
   // AI Lagoon
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': { price: '0.5 SOL', originalPrice: '2.0 SOL', onSale: true },
+  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': { price: 'FREE' },
 };
 
 function getAppPrice(appId) {

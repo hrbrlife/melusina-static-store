@@ -194,29 +194,42 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "5ad8504944c9805184c6ff8daf518fcc",
       "name": "MiniGit",
       "version": "0.2.0",
-      "versionNumber": 3,
-      "shortDescription": "Lightweight Git hosting with web viewer",
+      "versionNumber": 1,
+      "packageId": "c89ae3962990f7a87123fc3dff171805",
+      "shortDescription": "Lightweight Git hosting",
+      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl.\n\nEach pearl is a standalone Git repository with a built-in web interface\npowered by [Gogs](https://gogs.io). Clone, push, browse commits, diffs,\nand manage branches \u2014 all from your browser.\n\n**Features**\n\n- Create a repository pearl in one click\n- Push and pull over HTTPS (clone URL provided automatically)\n- Browse files, commits, and diffs in the Gogs web UI\n- Share read-only or read/write access via standard Melusina sharing\n- SQLite-backed \u2014 zero external dependencies\n- Fully offline-capable, no CDN or external calls\n\n**Architecture**\n\nMiniGit uses a native Cap'n Proto UiView implementation (no HTTP bridge).\nA thin Go wrapper translates Melusina WebSession RPCs directly to\nGogs HTTP requests, giving fast, clean integration with the platform.",
       "categories": [
         "Developer Tools"
       ],
       "isOpenSource": true,
       "webLink": "https://github.com/hrbrlife/MiniGit",
       "codeLink": "https://github.com/hrbrlife/MiniGit",
-      "upstreamAuthor": "alexeikarp",
-      "createdAt": 1739318400000,
+      "upstreamAuthor": "Gogs Authors + alexeikarp",
+      "createdAt": 1772577065000,
       "author": {
-        "name": "Alexei Karpov",
+        "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
-      "screenshots": [],
-      "imageId": "b2b0c895c5207f874740c0a9778cc30e.svg",
-      "description": "# MiniGit\n\n**Lightweight Git hosting in a Pearl.**\n\nMiniGit provides a simple wrapper around git-http-backend and GitWeb, giving you an extremely lightweight way to host a web-browsable Git repository on Melusina.\n\nEach repository lives in its own **Pearl** \u2014 a sealed, per-document container with its own storage, permissions, and access controls. No repository Pearl can see another unless you explicitly connect them via **Grapple**.\n\n---\n\n## \ud83d\udd27 How It Works\n\nCreate a new Pearl to get a Git repository. Clone and push through your standard Git client using the Sandstorm API URL. Authentication is handled automatically by the platform.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each repository is a sealed container with separate storage and permissions\n- **Git Clone & Push** \u2014 Standard Git operations via `git clone <pearl-url>` and `git push`\n- **Web Viewer** \u2014 Browse files, commits, diffs, and branches through the built-in GitWeb interface\n- **Public Publishing** \u2014 Push to a special `public` branch to publish static content at a public Pearl URL\n- **Grapple Connections** \u2014 Link Git Pearls to other apps \u2014 trigger builds, update documentation, or feed code into AI Lagoon for analysis\n- **Search** \u2014 Full-text search across file contents\n- **Branch & Tag Support** \u2014 Browse branches and tags through the web interface\n- **Lightweight** \u2014 Minimal resource footprint, runs entirely inside the Pearl sandbox\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | Browse repository contents and history |\n| \u270f\ufe0f **Editor** | Clone and push to the repository |\n| \ud83d\udc51 **Admin** | Manage access, configure public branch publishing |\n\n> Open source under a permissive license. Inspect the code, modify it, contribute back."
+      "screenshots": [
+        {
+          "url": "screenshots/01-repository-browser.png",
+          "caption": "Repository Browser"
+        },
+        {
+          "url": "screenshots/02-clone-and-file-tree.png",
+          "caption": "Clone And File Tree"
+        },
+        {
+          "url": "screenshots/03-commit-history.png",
+          "caption": "Commit History"
+        }
+      ],
+      "imageId": "99f9f5838231f5469e28f3f762d4ea21.png"
     },
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",

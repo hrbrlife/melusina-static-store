@@ -505,9 +505,42 @@ if [[ -d "$SANDSTORM_SRC" ]]; then
     TARBALL_SIZE="$(du -h "$SANDSTORM_TARBALL" | cut -f1)"
     info "Found sandstorm build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
 
-    # Copy tarball to update/
-    cp "$SANDSTORM_TARBALL" "$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz"
-    ok "Copied tarball to $UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz"
+    # Copy tarball to update/ — split into parts if over 90 MB (GitHub 100 MB limit)
+    PART_THRESHOLD=$((90 * 1024 * 1024))  # 90 MB
+    TARBALL_BYTES=$(stat -c%s "$SANDSTORM_TARBALL")
+    DEST_TARBALL="$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz"
+
+    if [[ $TARBALL_BYTES -gt $PART_THRESHOLD ]]; then
+      info "Tarball is ${TARBALL_SIZE} (>${PART_THRESHOLD} bytes) — splitting into parts"
+      split -b ${PART_THRESHOLD} -d -a 2 "$SANDSTORM_TARBALL" "${DEST_TARBALL}.part"
+
+      # Build parts.json manifest
+      PARTS_JSON='['
+      FIRST=true
+      for part_file in "${DEST_TARBALL}".part*; do
+        part_name="$(basename "$part_file")"
+        part_sha="$(sha256sum "$part_file" | cut -d' ' -f1)"
+        part_size="$(stat -c%s "$part_file")"
+        $FIRST || PARTS_JSON+=','
+        PARTS_JSON+="{\"file\":\"${part_name}\",\"sha256\":\"${part_sha}\",\"size\":${part_size}}"
+        FIRST=false
+      done
+      PARTS_JSON+=']'
+
+      ORIG_SHA="$(sha256sum "$SANDSTORM_TARBALL" | cut -d' ' -f1)"
+      cat > "${DEST_TARBALL}.parts.json" <<PARTS_EOF
+{
+  "originalFile": "sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz",
+  "originalSha256": "${ORIG_SHA}",
+  "originalSize": ${TARBALL_BYTES},
+  "parts": ${PARTS_JSON}
+}
+PARTS_EOF
+      ok "Split into $(ls "${DEST_TARBALL}".part* | wc -l) parts + parts.json"
+    else
+      cp "$SANDSTORM_TARBALL" "$DEST_TARBALL"
+      ok "Copied tarball to $DEST_TARBALL"
+    fi
 
     # Sign the tarball if keyring and update-tool exist
     if [[ -f "$UPDATE_KEYRING" && -x "$UPDATE_TOOL" ]]; then

@@ -111,7 +111,9 @@ deploy:
 	@echo "=== Commit main ==="
 	git add -A
 	git diff --cached --quiet || git commit -m "Store build $$(date +%Y-%m-%d)" --quiet
-	git push $(REMOTE) $(MAIN_BRANCH) || true
+	@# Pull --rebase to integrate any remote changes before pushing
+	git pull --rebase $(REMOTE) $(MAIN_BRANCH) 2>/dev/null || true
+	git push $(REMOTE) $(MAIN_BRANCH) || { echo "⚠ main push failed — continuing to deploy publish branch"; }
 
 	@# --- Deploy: orphan commit directly to publish ---
 	@echo "=== Deploy to publish ==="

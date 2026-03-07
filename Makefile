@@ -77,6 +77,12 @@ deploy:
 		for f in update/*; do \
 			bn=$$(basename "$$f"); \
 			[ -e "$$STMP/update/$$bn" ] && continue; \
+			case "$$bn" in *.tar.xz) \
+				if ls "$$STMP/update/$${bn}".part* >/dev/null 2>&1; then \
+					echo "    Skipping $$bn (pre-split parts exist)"; \
+					continue; \
+				fi ;; \
+			esac; \
 			cp -a "$$f" "$$STMP/update/$$bn"; \
 		done; \
 	fi

@@ -577,6 +577,22 @@ PARTS_EOF
 }
 MANIFEST_EOF
     ok "Wrote $UPDATE_OUT/manifest.json"
+
+    # Upload full tarball to GitHub Releases (too large for GitHub Pages).
+    # The native C++ updater downloads from this URL.
+    SANDSTORM_RELEASES_TAG="v0"
+    if command -v gh &>/dev/null; then
+      if ! gh release view "$SANDSTORM_RELEASES_TAG" &>/dev/null; then
+        info "Creating GitHub release $SANDSTORM_RELEASES_TAG"
+        gh release create "$SANDSTORM_RELEASES_TAG" --title "Sandstorm Builds" \
+          --notes "Sandstorm binary update tarballs" --latest=false
+      fi
+      info "Uploading sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz to release $SANDSTORM_RELEASES_TAG"
+      gh release upload "$SANDSTORM_RELEASES_TAG" "$SANDSTORM_TARBALL" --clobber
+      ok "Uploaded to GitHub Releases ($SANDSTORM_RELEASES_TAG)"
+    else
+      warn "gh CLI not found — manually upload $SANDSTORM_TARBALL to release $SANDSTORM_RELEASES_TAG"
+    fi
   else
     warn "No sandstorm tarball found in $SANDSTORM_SRC/"
   fi

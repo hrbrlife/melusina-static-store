@@ -72,9 +72,13 @@ deploy:
 	trap 'rm -rf "$$STMP"' EXIT
 	cp -a $(OUTPUT_DIR)/. "$$STMP/"
 	@if [ -d update ]; then \
-		echo "  Copying update/"; \
+		echo "  Merging update/ (repo root → staging, without overwriting build output)"; \
 		mkdir -p "$$STMP/update"; \
-		cp -a update/. "$$STMP/update/"; \
+		for f in update/*; do \
+			bn=$$(basename "$$f"); \
+			[ -e "$$STMP/update/$$bn" ] && continue; \
+			cp -a "$$f" "$$STMP/update/$$bn"; \
+		done; \
 	fi
 	touch "$$STMP/.nojekyll"
 

@@ -101,6 +101,8 @@
       "codeLink": "https://github.com/hrbrlife/melusina_botmother",
       "upstreamAuthor": "BotMother",
       "createdAt": 1770857129000,
+      "description": "# BotMother\n\n**Your Telegram bot. Your server. Your routing rules.**\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, message history, and permissions. No bot Pearl can see another unless you explicitly connect them via **Grapple**.\n\n---\n\n## \ud83e\udd16 How It Works\n\nCreate a new Pearl to configure a Telegram bot. Register your bot token from BotFather, define routing rules, and BotMother handles the rest. Messages flow through your server \u2014 never through a third party.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each bot runs in its own sealed container with separate storage, config, and message logs\n- **Message Routing** \u2014 Define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 Manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 Link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Instasys Mail, or log events to MiniGit\n- **Webhook Integration** \u2014 Receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 All messages stay on your server. No third-party bot hosting. No message logging by others\n- **Offline Queuing** \u2014 Messages received while offline are queued and processed when the bot reconnects\n\n---\n\n## \ud83d\udd27 Setup\n\n1. Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | See bot status and message logs |\n| \u270f\ufe0f **Editor** | Configure routing rules, manage chatrooms |\n| \ud83d\udc51 **Admin** | Manage bot tokens, permissions, and Grapple connections |\n\n> Every message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install and use on your own server. No subscription, no per-message fees, no limits.",
+      "screenshots": [],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -108,9 +110,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "97a202b2edd1138111f555dd1122cbf0.png",
-      "description": "# BotMother\n\n**Your Telegram bot. Your server. Your routing rules.**\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, message history, and permissions. No bot Pearl can see another unless you explicitly connect them via **Grapple**.\n\n---\n\n## \ud83e\udd16 How It Works\n\nCreate a new Pearl to configure a Telegram bot. Register your bot token from BotFather, define routing rules, and BotMother handles the rest. Messages flow through your server \u2014 never through a third party.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each bot runs in its own sealed container with separate storage, config, and message logs\n- **Message Routing** \u2014 Define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 Manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 Link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Instasys Mail, or log events to MiniGit\n- **Webhook Integration** \u2014 Receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 All messages stay on your server. No third-party bot hosting. No message logging by others\n- **Offline Queuing** \u2014 Messages received while offline are queued and processed when the bot reconnects\n\n---\n\n## \ud83d\udd27 Setup\n\n1. Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | See bot status and message logs |\n| \u270f\ufe0f **Editor** | Configure routing rules, manage chatrooms |\n| \ud83d\udc51 **Admin** | Manage bot tokens, permissions, and Grapple connections |\n\n> Every message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install and use on your own server. No subscription, no per-message fees, no limits.",
-      "screenshots": []
+      "imageId": "97a202b2edd1138111f555dd1122cbf0.png"
     },
     {
       "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
@@ -130,24 +130,24 @@
       "createdAt": 1708790400000,
       "screenshots": [
         {
-          "url": "screenshot_docs.png",
-          "caption": ""
+          "url": "screenshots/screenshot_docs.png",
+          "caption": "Document editor with rich text formatting"
         },
         {
-          "url": "screenshot_docs2.png",
-          "caption": ""
+          "url": "screenshots/screenshot_docs2.png",
+          "caption": "Document collaboration and editing"
         },
         {
-          "url": "screenshot_graphs.png",
-          "caption": ""
+          "url": "screenshots/screenshot_graphs.png",
+          "caption": "Diagram editor with graph tools"
         },
         {
-          "url": "screenshot_image.png",
-          "caption": ""
+          "url": "screenshots/screenshot_image.png",
+          "caption": "miniPaint image editor"
         },
         {
-          "url": "screenshot_sheets.png",
-          "caption": ""
+          "url": "screenshots/screenshot_sheets.png",
+          "caption": "Spreadsheet with formulas and charts"
         }
       ],
       "author": {
@@ -246,6 +246,8 @@
       "codeLink": "https://github.com/hrbrlife/shell_tester",
       "upstreamAuthor": "Shell Tester",
       "createdAt": 1771075908000,
+      "description": "# Shell Tester\n\n**Test Melusina Shell Extensions in a sandboxed Pearl.**\n\nShell Tester is a developer tool for testing Melusina Shell Extensions. Each test session runs in its own **Pearl** \u2014 a sealed, per-document container with its own sandbox. Test your extensions in complete isolation without affecting your production environment.\n\n---\n\n## \ud83d\udd27 How It Works\n\nCreate a new Pearl to start a test session. Upload your shell extension package and Shell Tester automatically detects test suites, validates manifest files, and provides an interactive debugging environment.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each test session runs in its own sealed container \u2014 separate process, separate storage, separate permissions\n- **Extension Loading** \u2014 Upload `.spk` extension packages for automated testing\n- **Manifest Validation** \u2014 Verify extension manifest files against the Melusina Shell Extension spec\n- **API Testing** \u2014 Exercise extension hooks and APIs in a controlled environment\n- **Debug Console** \u2014 Interactive shell for inspecting extension state, logs, and behavior\n- **Grapple Testing** \u2014 Test how your extension connects to other Pearls via the Grapple protocol\n- **Snapshot Support** \u2014 Save test state and restore for reproducible debugging\n\n---\n\n## \ud83c\udfaf Use Cases\n\n- Validate shell extension packages before publishing\n- Debug extension API interactions in isolation\n- Test Grapple connections between extensions and app Pearls\n- Verify permission models and role-based access\n- Reproduce and fix bugs in a clean environment\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | View test results and logs |\n| \u270f\ufe0f **Editor** | Run tests, upload extensions, use debug console |\n| \ud83d\udc51 **Admin** | Configure test environment, manage extensions |\n\n> Each test session is fully isolated. A misbehaving extension cannot escape its Pearl sandbox.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free and open to all developers.** Install and use on your own server.",
+      "screenshots": [],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -253,9 +255,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "d1ba2752fc9a9b6df28d64805c889a3c.svg",
-      "description": "# Shell Tester\n\n**Test Melusina Shell Extensions in a sandboxed Pearl.**\n\nShell Tester is a developer tool for testing Melusina Shell Extensions. Each test session runs in its own **Pearl** \u2014 a sealed, per-document container with its own sandbox. Test your extensions in complete isolation without affecting your production environment.\n\n---\n\n## \ud83d\udd27 How It Works\n\nCreate a new Pearl to start a test session. Upload your shell extension package and Shell Tester automatically detects test suites, validates manifest files, and provides an interactive debugging environment.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each test session runs in its own sealed container \u2014 separate process, separate storage, separate permissions\n- **Extension Loading** \u2014 Upload `.spk` extension packages for automated testing\n- **Manifest Validation** \u2014 Verify extension manifest files against the Melusina Shell Extension spec\n- **API Testing** \u2014 Exercise extension hooks and APIs in a controlled environment\n- **Debug Console** \u2014 Interactive shell for inspecting extension state, logs, and behavior\n- **Grapple Testing** \u2014 Test how your extension connects to other Pearls via the Grapple protocol\n- **Snapshot Support** \u2014 Save test state and restore for reproducible debugging\n\n---\n\n## \ud83c\udfaf Use Cases\n\n- Validate shell extension packages before publishing\n- Debug extension API interactions in isolation\n- Test Grapple connections between extensions and app Pearls\n- Verify permission models and role-based access\n- Reproduce and fix bugs in a clean environment\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | View test results and logs |\n| \u270f\ufe0f **Editor** | Run tests, upload extensions, use debug console |\n| \ud83d\udc51 **Admin** | Configure test environment, manage extensions |\n\n> Each test session is fully isolated. A misbehaving extension cannot escape its Pearl sandbox.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free and open to all developers.** Install and use on your own server.",
-      "screenshots": []
+      "imageId": "d1ba2752fc9a9b6df28d64805c889a3c.svg"
     }
   ]
 }

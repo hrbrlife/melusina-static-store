@@ -44,6 +44,12 @@ const timeAgo = (v) => {
   try { return formatDistanceToNow(ts, { addSuffix: true }); } catch { return null; }
 };
 
+const latestVersionDate = (appId) => {
+  const versions = APP_VERSIONS[appId];
+  if (!versions || !versions.length) return null;
+  return Date.parse(versions[0].date);
+};
+
 const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
 
 const screenshotUrl = (appId, shot) => {
@@ -1179,7 +1185,7 @@ function CardSlideshow({ app, shots }) {
 function AppCard({ app, onSelect, onInstall, onVersionClick }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
-  const updatedAgo = timeAgo(app.createdAt);
+  const updatedAgo = timeAgo(latestVersionDate(app.appId) || app.createdAt);
 
   return (
     <div role="button" tabIndex={0}
@@ -1693,6 +1699,9 @@ const APP_REVIEWS = {
 };
 
 const APP_VERSIONS = {
+  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': [
+    { version: '1.0.0', date: '2026-02-16', changes: ['Initial release', 'AI model playground with multi-provider support', 'Collaborative prompt engineering workspace', 'Real-time streaming responses'] },
+  ],
   'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
     { version: '1.2.0', date: '2026-01-28', changes: ['Added residence permit support', 'Improved facial detection accuracy', 'Added case export for compliance'] },
     { version: '1.1.0', date: '2025-11-15', changes: ['OTP verification flow', 'Multi-language support for verification pages', 'Admin notes on cases'] },
@@ -2337,9 +2346,9 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                   build {app.versionNumber}
                 </span>
               )}
-              {timeAgo(app.createdAt) && (
+              {timeAgo(latestVersionDate(app.appId) || app.createdAt) && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {'\u00b7'} updated {timeAgo(app.createdAt)}
+                  {'\u00b7'} updated {timeAgo(latestVersionDate(app.appId) || app.createdAt)}
                 </span>
               )}
               {app.author?.name && (

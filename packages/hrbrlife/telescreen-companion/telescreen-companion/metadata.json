@@ -1,0 +1,25 @@
+{
+  "appId": "7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h",
+  "name": "Telescreen Configuration",
+  "version": "0.2.0",
+  "versionNumber": 2,
+  "packageId": "efdc6463ca5266cf145fdb53a29a4cdd",
+  "shortDescription": "Configure the Telescreen sidecar (pr_ninja) without SSH",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina_botmother",
+  "codeLink": "https://github.com/hrbrlife/melusina_botmother",
+  "upstreamAuthor": "Telescreen",
+  "createdAt": 1776299124637,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

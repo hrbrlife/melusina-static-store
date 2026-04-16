@@ -5,7 +5,7 @@
       "name": "AI Lagoon",
       "version": "1.0.0",
       "versionNumber": 1,
-      "packageId": "79d177d692748ce2098ef5175d2ba82d",
+      "packageId": "6b758859d588b1ffcef919a201fc34c6",
       "shortDescription": "AI collaboration and exploration platform",
       "categories": [
         "Productivity"
@@ -31,7 +31,7 @@
       "name": "BLOOM Identity",
       "version": "1.0.0",
       "versionNumber": 3,
-      "packageId": "6686a54a884ff5fbd1c632dcc8dfe41a",
+      "packageId": "788658dd501c1ec6b14ecef99f0a9437",
       "shortDescription": "KYC Identity Verification",
       "categories": [
         "Productivity"
@@ -88,9 +88,9 @@
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
-      "version": "1.0.0",
-      "versionNumber": 1,
-      "packageId": "3750fccb7475e93d16c7b68d48403516",
+      "version": "1.0.7",
+      "versionNumber": 8,
+      "packageId": "d5ce572811391fcdd835192a0956d7f9",
       "shortDescription": "Telegram bot manager with message routing and chatrooms",
       "categories": [
         "Productivity",
@@ -117,7 +117,7 @@
       "name": "Bureau",
       "version": "2.0.15",
       "versionNumber": 7,
-      "packageId": "e7c520e187750cefd629dcc8c93f98bd",
+      "packageId": "936e72214f4958d27729391ac2588d77",
       "shortDescription": "Sovereign Office Suite \u2014 Spreadsheet, Document, Diagram, miniPaint",
       "categories": [
         "Productivity",
@@ -158,15 +158,93 @@
         "picture": ""
       },
       "imageId": "b0ff2f4ee4dfde88210abe6cde7e43f4.svg",
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/e7c520e187750cefd629dcc8c93f98bd",
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/936e72214f4958d27729391ac2588d77",
       "description": "# Bureau\n\n**Your office suite. Your server. Your rules.**\n\nBureau is a self-hosted office suite \u2014 four isolated workspaces that replace Google Docs, Sheets, Diagrams, and Photoshop for teams that refuse to hand their work to someone else's cloud.\n\nEvery spreadsheet, every document, every diagram, every image lives in its own sealed **Pearl** \u2014 a per-document container with its own storage, database, and permissions. No Pearl can see another unless you explicitly connect them via **Grapple**. That's not a setting \u2014 that's the architecture.\n\n---\n\n## \ud83c\udd9a Why Bureau\n\n| | Google / Microsoft | Bureau on Sandstorm |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you Grapple it explicitly |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## \ud83d\udcca Spreadsheet\n\n**The spreadsheet your accountant can actually trust.**\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside.\n\n| Capability | Details |\n|---|---|\n| \ud83e\udd1d Collaboration | Simultaneous multi-user editing, live presence indicators |\n| \ud83c\udfa8 Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| \ud83d\udd22 Formulas | A1 references, formula bar, cross-cell calculations |\n| \ud83d\udcd1 Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| \ud83e\udde9 Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| \ud83d\udcac Comments | Per-cell threads with author attribution |\n| \ud83d\udce5 Import | XLSX (preserves styles), CSV, JSON |\n| \ud83d\udce4 Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| \ud83d\udcf8 Snapshots | Named versions \u2014 save, browse, compare, restore |\n| \ud83d\udcf1 Mobile | Responsive layout, touch support, collapsible toolbar |\n| \ud83c\udf13 Themes | Light and Dark with keyboard toggle |\n\n---\n\n## \ud83d\udcdd Document\n\n**Write together without conflicts \u2014 mathematically guaranteed.**\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| \ud83e\udd1d Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| \ud83c\udfa8 Formatting | Bold, italic, underline, strikethrough |\n| \ud83d\udcd0 Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| \ud83d\udcca Tables | Insert and edit tables inline |\n| \ud83d\udcc2 Sections | Organize long documents into named sections |\n| \ud83d\udcf8 Snapshots | Named versions with one-click restore |\n| \ud83d\udce4 Export | HTML |\n\n---\n\n## \ud83d\udcd0 Diagram\n\n**Flowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.**\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your grain. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| \u2699\ufe0f Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| \ud83d\udcca Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| \ud83e\udde9 Shape library | Complete draw.io stencil collection |\n| \ud83e\udd1d Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| \ud83d\udce4 Export | XML, PNG, SVG, PDF |\n| \ud83d\udcf8 Snapshots | Named versions with restore |\n| \ud83d\udce1 Offline | All draw.io assets bundled \u2014 no internet needed |\n\n---\n\n## \ud83c\udfa8 miniPaint\n\n**Quick image editing without uploading your photos to someone else's server.**\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| \ud83d\uddbc\ufe0f Layers | Create, reorder, merge, manage |\n| \u270f\ufe0f Drawing | Pencil, brush, line, circle, rectangle, text |\n| \ud83d\udd27 Filters | Blur, sharpen, brightness, contrast, adjustments |\n| \ud83d\udcd0 Transform | Crop, resize, rotate |\n| \ud83d\udce4 Export | PNG, JPG, BMP, WebP |\n| \ud83d\udcf8 Snapshots | Save state before destructive operations |\n\n---\n\n## \ud83d\udd10 Security & Permissions\n\nAll Bureau Pearls enforce permissions **server-side** \u2014 not client-side hints. The server rejects unauthorized requests no matter what the client sends.\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | Read-only access \u2014 can browse but not modify |\n| \ud83d\udcac **Commenter** | Can add comments and annotations |\n| \u270f\ufe0f **Editor** | Full editing access to all content |\n| \ud83d\udc51 **Admin** | Manage permissions, settings, and configuration |\n\n> Every font, icon, library, and stylesheet is bundled. Bureau works with zero internet. No CDNs. No tracking. Nothing phones home. Ever.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install it on your server and use it. No subscription, no usage fees, no limits, no catch."
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "name": "ccash",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "fd4509c58c0a44759ca92d859bc28cb6",
+      "shortDescription": "MSB/PSP/VASP operator console",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "upstreamAuthor": "ccash",
+      "createdAt": 1776299120375,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "**ccash** is a mobile-first operator console for an MSB / PSP / VASP back office.\n\nA polished UI for managing wallets, contacts, and money movement. Contacts are identity only \u2014 no stored payment instruments \u2014 and every transaction passes through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log.\n\nKYC, sanctions screening, and AML workflows are handled by sibling grains \u2014 ccash assumes every counterparty already has KYC done elsewhere.\n\nBuilt in Go + HTMX as a Sandstorm grain. Beige on soft brown. Fraunces headings, Inter body, Inter Tight tabular numerals.",
+      "screenshots": [],
+      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg"
+    },
+    {
+      "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+      "name": "CyberTeller",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "567fc5eeef2ddd868894bcbfb6c978af",
+      "shortDescription": "Multi-chain crypto payment processor",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/cyberteller",
+      "codeLink": "https://github.com/hrbrlife/cyberteller",
+      "upstreamAuthor": "CyberTeller",
+      "createdAt": 1776299124093,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "# CyberTeller\n\nCrypto invoicing and payment processor.\n\n## Features\n\n- **Invoice API** \u2013 create invoices via REST (`POST /api/invoices`) with amount, currency, description, and customer details\n- **Unique payment addresses** \u2013 each invoice gets a fresh HD-wallet derived address per chain (no address reuse)\n- **4 supported blockchains** \u2013 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2013 ETH, TRX, SOL, TON native coins + USDT / USDC on every supported chain\n- **Payment page** \u2013 customer-facing page with QR codes and copy-address buttons, auto-refreshes via HTMX every 15 s\n- **Payment status tracking** \u2013 `paid` / `underpaid` / `overpaid` / `expired`\n- **Webhook endpoint** \u2013 `POST /api/payment/notify` for blockchain monitoring integrations\n- **Admin panel** \u2013 dashboard, invoice detail view, live YAML config editor\n- **YAML config** \u2013 editable at runtime via admin UI (chains, tokens, expiry, tolerance thresholds, wallet seed)\n\n## Stack\n\n| Layer | Technology |\n|-------|-----------|\n| Backend | Go 1.24, `net/http` + chi router |\n| Frontend | HTMX, vanilla JS |\n| Database | SQLite (CGO-free via modernc.org/sqlite) |\n| HD wallet | BIP-39/BIP-32 (secp256k1) \u00b7 SLIP-0010 (ed25519) |\n| QR codes | github.com/skip2/go-qrcode |\n\n## Quick Start\n\n```bash\n# 1. Clone and install dependencies\ngit clone https://github.com/hrbrlife/cyberteller\ncd cyberteller\ngo mod download\n\n# 2. Edit config.yaml \u2013 set your wallet mnemonic and admin password hash\n#    Generate a bcrypt hash:  htpasswd -bnBC 10 \"\" yourpassword | tr -d ':\\n'\n\n# 3. Run\ngo run .\n# Server starts on http://0.0.0.0:8080\n```\n\nEnvironment variables (all optional):\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `CONFIG_PATH` | `config.yaml` | Path to config file |\n| `DB_PATH` | `cyberteller.db` | Path to SQLite database |\n| `BASE_URL` | `http://localhost:8080` | Public URL used in payment links |\n\n## API\n\n### Create Invoice\n\n```http\nPOST /api/invoices\nContent-Type: application/json\n\n{\n  \"amount\": \"99.99\",\n  \"currency\": \"USD\",\n  \"description\": \"Order #42\",\n  \"customer_name\": \"Alice\",\n  \"customer_email\": \"alice@example.com\"\n}\n```\n\nResponse `201 Created`:\n```json\n{\n  \"id\": \"...\",\n  \"payment_link\": \"http://localhost:8080/pay/abc12345\",\n  \"expires_at\": \"2026-01-01T12:00:00Z\",\n  \"status\": \"pending\"\n}\n```\n\n### Payment Webhook\n\nCalled by your blockchain monitoring service when a payment is detected:\n\n```http\nPOST /api/payment/notify\nContent-Type: application/x-www-form-urlencoded\n\ninvoice_id=...&chain=ethereum&token=USDT&address=0x...&tx_hash=0x...&amount=99.99\n```\n\n## Admin Panel\n\nNavigate to `http://localhost:8080/admin` (HTTP Basic Auth).\n\nDefault credentials: `admin` / `changeme` \u2014 **change before production** by updating `password_hash` in `config.yaml`.\n\n## Security Notes\n\n- Replace the default wallet mnemonic in `config.yaml` with your own before using with real funds\n- The mnemonic in `config.yaml` is used to derive all payment addresses \u2014 back it up securely\n- Change the admin password hash before deploying\n- The payment notification endpoint (`/api/payment/notify`) should be firewall-restricted to your blockchain monitoring service in production\n\n![Payment page screenshot](https://github.com/user-attachments/assets/29088b6d-ac48-401a-b899-14c326fe18d0)",
+      "screenshots": [],
+      "imageId": "35b8618bac3c6d8159b1a58957f6091c.svg"
+    },
+    {
+      "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+      "name": "fineract Setup",
+      "version": "0.2.0",
+      "versionNumber": 2,
+      "packageId": "b98fd88687c563149b391010169dbbe7",
+      "shortDescription": "Bootstrap wizard for fineract-sidecar",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://ccash.services",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "upstreamAuthor": "ccash",
+      "createdAt": 1776299121003,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "**fineract Setup** is the Sandstorm companion wizard for `fineract-sidecar`.\n\nIt provisions the attached Apache Fineract backend, walks the operator\nthrough the bootstrap workflow, and exports a signed trust bundle shared by\nboth security gates:\n\n- Gate 1: the Go HTTPS sidecar\n- Gate 2: the Java `SolanaSignatureAuthenticationFilter` inside Fineract\n\nThe wizard packages the cold-start work that has to happen before ccash can\ntalk to a hardened Fineract install: tenant setup, offices, currencies, chart\nof accounts, savings products, signer registration, governance policy, and\ntrust-bundle export.",
+      "screenshots": [],
+      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg"
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.0",
       "versionNumber": 4,
-      "packageId": "652bd5d3145924b63aa7dc49ec5a43e2",
+      "packageId": "78a31c45d114d4cd935b65c2847a62bb",
       "shortDescription": "Email system with mail server control",
       "categories": [
         "Productivity"
@@ -197,7 +275,7 @@
       "name": "MiniGit",
       "version": "0.2.0",
       "versionNumber": 1,
-      "packageId": "c89ae3962990f7a87123fc3dff171805",
+      "packageId": "ed76c9af75aaaf48f8c842e10dfa6a54",
       "shortDescription": "Lightweight Git hosting",
       "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl.\n\nEach pearl is a standalone Git repository with a built-in web interface\npowered by [Gogs](https://gogs.io). Clone, push, browse commits, diffs,\nand manage branches \u2014 all from your browser.\n\n**Features**\n\n- Create a repository pearl in one click\n- Push and pull over HTTPS (clone URL provided automatically)\n- Browse files, commits, and diffs in the Gogs web UI\n- Share read-only or read/write access via standard Melusina sharing\n- SQLite-backed \u2014 zero external dependencies\n- Fully offline-capable, no CDN or external calls\n\n**Architecture**\n\nMiniGit uses a native Cap'n Proto UiView implementation (no HTTP bridge).\nA thin Go wrapper translates Melusina WebSession RPCs directly to\nGogs HTTP requests, giving fast, clean integration with the platform.",
       "categories": [
@@ -232,6 +310,32 @@
       "imageId": "7499db1cea602288bf73a75611790e88.svg"
     },
     {
+      "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
+      "name": "Process Station",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "637df1a6b8de0ab49d8242a659393b05",
+      "shortDescription": "Configurable Process & Workflow Engine",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://processstation.app",
+      "codeLink": "https://github.com/hrbrlife/BLOOM_FINAL",
+      "upstreamAuthor": "Process Station",
+      "createdAt": 1776299122686,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "AITX Procedures (Bloom) is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+      "screenshots": [],
+      "imageId": "056f54c555ae1abb30d0ee131567f7d4.svg"
+    },
+    {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
       "name": "Shell Tester",
       "version": "0.1.4",
@@ -256,6 +360,32 @@
         "picture": ""
       },
       "imageId": "128ee23044197d3b482321a31646969f.svg"
+    },
+    {
+      "appId": "7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h",
+      "name": "Telescreen Configuration",
+      "version": "0.2.0",
+      "versionNumber": 2,
+      "packageId": "efdc6463ca5266cf145fdb53a29a4cdd",
+      "shortDescription": "Configure the Telescreen sidecar (pr_ninja) without SSH",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/melusina_botmother",
+      "codeLink": "https://github.com/hrbrlife/melusina_botmother",
+      "upstreamAuthor": "Telescreen",
+      "createdAt": 1776299124637,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "# Telescreen Configuration\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**telescreen sidecar** (pr_ninja). It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, LLM tunables, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Powerbox.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.",
+      "screenshots": [],
+      "imageId": "872ceec7633a1197d66bcdaca4f08a01.svg"
     }
   ]
 }

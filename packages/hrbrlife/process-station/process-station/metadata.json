@@ -1,0 +1,25 @@
+{
+  "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
+  "name": "Process Station",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "637df1a6b8de0ab49d8242a659393b05",
+  "shortDescription": "Configurable Process & Workflow Engine",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://processstation.app",
+  "codeLink": "https://github.com/hrbrlife/BLOOM_FINAL",
+  "upstreamAuthor": "Process Station",
+  "createdAt": 1776299122686,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

@@ -1,0 +1,25 @@
+{
+  "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+  "name": "CyberTeller",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "567fc5eeef2ddd868894bcbfb6c978af",
+  "shortDescription": "Multi-chain crypto payment processor",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/cyberteller",
+  "codeLink": "https://github.com/hrbrlife/cyberteller",
+  "upstreamAuthor": "CyberTeller",
+  "createdAt": 1776299124093,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

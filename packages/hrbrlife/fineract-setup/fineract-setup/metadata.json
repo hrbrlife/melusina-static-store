@@ -1,0 +1,25 @@
+{
+  "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+  "name": "fineract Setup",
+  "version": "0.2.0",
+  "versionNumber": 2,
+  "packageId": "b98fd88687c563149b391010169dbbe7",
+  "shortDescription": "Bootstrap wizard for fineract-sidecar",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://ccash.services",
+  "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+  "upstreamAuthor": "ccash",
+  "createdAt": 1776299121003,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

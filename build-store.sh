@@ -633,6 +633,15 @@ else
   warn "deploy-ui Makefile not found at $DEPLOY_UI_SRC — skipping release build"
 fi
 
+# --- Step 7b: Link packages into dist-melusina for app auto-updates ----------
+# Sandstorm's updateAppIndex() fetches {appIndexUrl}/packages/{packageId} to
+# download SPK updates. The dist-melusina/ directory is the live app bazaar;
+# ensure SPK symlinks exist so auto-update downloads succeed.
+if [[ -f "$SCRIPT_DIR/link-packages.sh" ]]; then
+    info "Linking SPK packages into dist-melusina/packages/..."
+    bash "$SCRIPT_DIR/link-packages.sh" 2>&1 | sed 's/^/  /'
+fi
+
 # --- Step 8: Summary ---------------------------------------------------------
 echo ""
 ok "Build complete!"

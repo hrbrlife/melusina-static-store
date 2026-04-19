@@ -163,19 +163,21 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "packageId": "1908a6a5fb6f9dc753b760db5eed4b38",
       "name": "ccash",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "fd4509c58c0a44759ca92d859bc28cb6",
-      "shortDescription": "MSB/PSP/VASP operator console",
+      "version": "0.2.0",
+      "versionNumber": 2,
+      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
+      "description": "ccash is a polished mobile-first operator console for an MSB / PSP / VASP back office. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
-        "Productivity"
+        "Productivity",
+        "Office"
       ],
-      "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
-      "upstreamAuthor": "ccash",
-      "createdAt": 1776299120375,
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1744848000000,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -183,9 +185,34 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "**ccash** is a mobile-first operator console for an MSB / PSP / VASP back office.\n\nA polished UI for managing wallets, contacts, and money movement. Contacts are identity only \u2014 no stored payment instruments \u2014 and every transaction passes through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log.\n\nKYC, sanctions screening, and AML workflows are handled by sibling grains \u2014 ccash assumes every counterparty already has KYC done elsewhere.\n\nBuilt in Go + HTMX as a Sandstorm grain. Beige on soft brown. Fraunces headings, Inter body, Inter Tight tabular numerals.",
       "screenshots": [],
-      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg"
+      "imageId": "63e6a7526166dc3835e2be8f34dd295d.svg"
+    },
+    {
+      "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
+      "name": "ClientSpace",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "6fe7b17b384d7e2ee4a762257782f988",
+      "shortDescription": "Client Portal \u2014 sturdyref-based grain container",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/clientspace",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776613609000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "d4265159ab5f1a28daa3d7027e65ea6c.svg",
+      "description": "",
+      "screenshots": []
     },
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
@@ -212,6 +239,32 @@
       "description": "# CyberTeller\n\nCrypto invoicing and payment processor.\n\n## Features\n\n- **Invoice API** \u2013 create invoices via REST (`POST /api/invoices`) with amount, currency, description, and customer details\n- **Unique payment addresses** \u2013 each invoice gets a fresh HD-wallet derived address per chain (no address reuse)\n- **4 supported blockchains** \u2013 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2013 ETH, TRX, SOL, TON native coins + USDT / USDC on every supported chain\n- **Payment page** \u2013 customer-facing page with QR codes and copy-address buttons, auto-refreshes via HTMX every 15 s\n- **Payment status tracking** \u2013 `paid` / `underpaid` / `overpaid` / `expired`\n- **Webhook endpoint** \u2013 `POST /api/payment/notify` for blockchain monitoring integrations\n- **Admin panel** \u2013 dashboard, invoice detail view, live YAML config editor\n- **YAML config** \u2013 editable at runtime via admin UI (chains, tokens, expiry, tolerance thresholds, wallet seed)\n\n## Stack\n\n| Layer | Technology |\n|-------|-----------|\n| Backend | Go 1.24, `net/http` + chi router |\n| Frontend | HTMX, vanilla JS |\n| Database | SQLite (CGO-free via modernc.org/sqlite) |\n| HD wallet | BIP-39/BIP-32 (secp256k1) \u00b7 SLIP-0010 (ed25519) |\n| QR codes | github.com/skip2/go-qrcode |\n\n## Quick Start\n\n```bash\n# 1. Clone and install dependencies\ngit clone https://github.com/hrbrlife/cyberteller\ncd cyberteller\ngo mod download\n\n# 2. Edit config.yaml \u2013 set your wallet mnemonic and admin password hash\n#    Generate a bcrypt hash:  htpasswd -bnBC 10 \"\" yourpassword | tr -d ':\\n'\n\n# 3. Run\ngo run .\n# Server starts on http://0.0.0.0:8080\n```\n\nEnvironment variables (all optional):\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `CONFIG_PATH` | `config.yaml` | Path to config file |\n| `DB_PATH` | `cyberteller.db` | Path to SQLite database |\n| `BASE_URL` | `http://localhost:8080` | Public URL used in payment links |\n\n## API\n\n### Create Invoice\n\n```http\nPOST /api/invoices\nContent-Type: application/json\n\n{\n  \"amount\": \"99.99\",\n  \"currency\": \"USD\",\n  \"description\": \"Order #42\",\n  \"customer_name\": \"Alice\",\n  \"customer_email\": \"alice@example.com\"\n}\n```\n\nResponse `201 Created`:\n```json\n{\n  \"id\": \"...\",\n  \"payment_link\": \"http://localhost:8080/pay/abc12345\",\n  \"expires_at\": \"2026-01-01T12:00:00Z\",\n  \"status\": \"pending\"\n}\n```\n\n### Payment Webhook\n\nCalled by your blockchain monitoring service when a payment is detected:\n\n```http\nPOST /api/payment/notify\nContent-Type: application/x-www-form-urlencoded\n\ninvoice_id=...&chain=ethereum&token=USDT&address=0x...&tx_hash=0x...&amount=99.99\n```\n\n## Admin Panel\n\nNavigate to `http://localhost:8080/admin` (HTTP Basic Auth).\n\nDefault credentials: `admin` / `changeme` \u2014 **change before production** by updating `password_hash` in `config.yaml`.\n\n## Security Notes\n\n- Replace the default wallet mnemonic in `config.yaml` with your own before using with real funds\n- The mnemonic in `config.yaml` is used to derive all payment addresses \u2014 back it up securely\n- Change the admin password hash before deploying\n- The payment notification endpoint (`/api/payment/notify`) should be firewall-restricted to your blockchain monitoring service in production\n\n![Payment page screenshot](https://github.com/user-attachments/assets/29088b6d-ac48-401a-b899-14c326fe18d0)",
       "screenshots": [],
       "imageId": "35b8618bac3c6d8159b1a58957f6091c.svg"
+    },
+    {
+      "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
+      "name": "DueProcess",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "c5a99a1c6111c1f9a2f01214dba13cb6",
+      "shortDescription": "Configurable Process & Workflow Engine",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776612839000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
+      "description": "",
+      "screenshots": []
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
@@ -310,32 +363,6 @@
       "imageId": "7499db1cea602288bf73a75611790e88.svg"
     },
     {
-      "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
-      "name": "Process Station",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "637df1a6b8de0ab49d8242a659393b05",
-      "shortDescription": "Configurable Process & Workflow Engine",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://processstation.app",
-      "codeLink": "https://github.com/hrbrlife/BLOOM_FINAL",
-      "upstreamAuthor": "Process Station",
-      "createdAt": 1776299122686,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "description": "AITX Procedures (Bloom) is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
-      "screenshots": [],
-      "imageId": "056f54c555ae1abb30d0ee131567f7d4.svg"
-    },
-    {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
       "name": "Shell Tester",
       "version": "0.1.4",
@@ -360,6 +387,33 @@
         "picture": ""
       },
       "imageId": "128ee23044197d3b482321a31646969f.svg"
+    },
+    {
+      "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
+      "name": "TeleScreen",
+      "version": "0.1.0",
+      "versionNumber": 2,
+      "packageId": "fc67d80af58f52400c900f42f830b56e",
+      "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
+      "categories": [
+        "Productivity",
+        "Developer Tools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/pr_ninja",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776300000000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "b951f2165d328f2ed171dc86c690d9ea.svg",
+      "description": "TeleScreen is the Sandstorm-side screening sidecar for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nThe sidecar is intentionally packaged and run through `spk dev` / `spk pack`; Docker and direct system service deployment are not part of the polished MVP path.",
+      "screenshots": []
     },
     {
       "appId": "7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h",

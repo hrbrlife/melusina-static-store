@@ -293,6 +293,58 @@
       "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg"
     },
     {
+      "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+      "name": "InstaCo.app",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "50d37581ec11582193a7af905d784d10",
+      "shortDescription": "Your Montana series-LLC, in one app",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776618664000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "63e6a7526166dc3835e2be8f34dd295d.svg",
+      "description": "",
+      "screenshots": []
+    },
+    {
+      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+      "name": "Melusina OpenClaw",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "e4f295d82865640d1ca5155bc27f60ae",
+      "shortDescription": "Personal AI assistant for Melusina",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776622427000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "051a657f789ff9c3bef20e3cf0c1bea5.svg",
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "screenshots": []
+    },
+    {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.0",

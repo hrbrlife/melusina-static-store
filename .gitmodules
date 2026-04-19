@@ -46,3 +46,11 @@
 	path = packages/hrbrlife/ccash
 	url = https://github.com/hrbrlife/ccash_go_htmx.git
 	branch = publish
+[submodule "packages/hrbrlife/openclaw-main"]
+	path = packages/hrbrlife/openclaw-main
+	url = https://github.com/hrbrlife/openclaw-melusina.git
+	branch = publish
+[submodule "packages/hrbrlife/instaco-app"]
+	path = packages/hrbrlife/instaco-app
+	url = https://github.com/hrbrlife/melusina-instaco-app.git
+	branch = publish

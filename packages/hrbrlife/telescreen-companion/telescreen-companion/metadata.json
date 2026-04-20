@@ -1,6 +1,7 @@
 {
   "appId": "7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h",
   "name": "Telescreen Configuration",
+  "tier": "admin",
   "version": "0.2.0",
   "versionNumber": 4,
   "packageId": "8b3a17bcbde0794c5a6dd9df0e93246b",

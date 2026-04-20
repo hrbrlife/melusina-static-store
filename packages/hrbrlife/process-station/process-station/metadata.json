@@ -1,6 +1,7 @@
 {
   "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
   "name": "Process Station",
+  "tier": "admin",
   "version": "0.1.0",
   "versionNumber": 1,
   "packageId": "637df1a6b8de0ab49d8242a659393b05",

@@ -281,6 +281,19 @@ spk_path = os.path.join(os.path.dirname('$meta_file'), 'app.spk')
 if os.path.isfile(spk_path) and os.path.getsize(spk_path) > $MAX_SPK_SIZE:
     m['packageUrl'] = '$RELEASES_BASE/' + m.get('packageId', '')
 
+# appHash: SHA-256 of the app.spk binary. Used by the on-chain
+# LocalAppApproval PDA (license-registry program) to bind this exact
+# build to a Foundation-approved app identity. Sandstorm's install
+# gate cross-references this hash against the approval registry via
+# the melusina-verify sidecar before permitting install/launch.
+if os.path.isfile(spk_path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(spk_path, 'rb') as spkf:
+        for chunk in iter(lambda: spkf.read(1 << 20), b''):
+            h.update(chunk)
+    m['appHash'] = h.hexdigest()
+
 m.setdefault('description', '')
 if not m['description']:
     desc_md = os.path.join(os.path.dirname('$meta_file'), 'description.md')
@@ -463,11 +476,50 @@ done
 
 info "Copied $ICON_COUNT icons, $SPK_COUNT SPK packages"
 
-# --- Step 5: Write apps/index.json -------------------------------------------
-info "Writing $APPS_OUT/index.json..."
+# --- Step 5: Write index matrix (per-domain × per-audience) ------------------
+#
+# Output layout:
+#   dist-publish/
+#     apps/index.json                            ← legacy, kept for back-compat
+#                                                   (all non-infrastructure apps)
+#     shared/{regular,admin,visitor}/apps/index.json
+#                                                ← default Melusina store; any
+#                                                   install that doesn't match
+#                                                   a domain falls back here.
+#     {domain}/{regular,admin,visitor}/apps/index.json
+#                                                ← per-domain overlay; Sandstorm
+#                                                   instances tagged for that
+#                                                   domain fetch this tree.
+#     packages/ + images/ + screenshots/         ← single content-addressed tree;
+#                                                   the split above is index-only,
+#                                                   there is no storage
+#                                                   duplication.
+#
+# Audience semantics:
+#   tier: "admin"          → appears in .../admin/apps/index.json only
+#   tier: "regular"        → appears in .../regular/apps/index.json only
+#   tier: "visitor"        → appears in .../visitor/apps/index.json only
+#   tier: "infrastructure" → never appears in ANY index (deployer-direct only)
+#   tier unset             → defaults to "regular" (matches app-tier-server.js)
+#
+# Domain inclusion:
+#   An app with domains=["*"] or no domains field is included in `shared/`
+#   and in every specific {domain}/ tree.
+#   An app with domains=["pbay","cca-sh"] is included ONLY in those trees
+#   (not in shared/).
+#   `cca-sh` is the first per-domain overlay (see deployer/config/deployment.cca-sh.env).
+info "Writing $APPS_OUT/index.json (legacy single index + per-domain matrix)..."
+
+DOMAINS=(shared pbay dev-pbay melusina-os sails-to cca-sh)
+AUDIENCES=(regular admin visitor)
 
 python3 -c "
-import json
+import json, os, time
+
+OUTPUT_DIR = '$OUTPUT_DIR'
+APPS_OUT = '$APPS_OUT'
+DOMAINS = ['shared', 'pbay', 'dev-pbay', 'melusina-os', 'sails-to', 'cca-sh']
+AUDIENCES = ['regular', 'admin', 'visitor']
 
 apps = []
 with open('$APP_JSON_FILE') as f:
@@ -478,10 +530,60 @@ with open('$APP_JSON_FILE') as f:
 
 apps.sort(key=lambda a: a.get('name', '').lower())
 
-with open('$APPS_OUT/index.json', 'w') as f:
-    json.dump({'apps': apps}, f, indent=2)
+def normalize_tier(a):
+    t = a.get('tier')
+    if not isinstance(t, str) or not t.strip():
+        return 'regular'
+    t = t.strip().lower()
+    if t in ('admin', 'regular', 'visitor', 'infrastructure'):
+        return t
+    return 'regular'
 
-print(f'  Wrote {len(apps)} apps to $APPS_OUT/index.json')
+def app_domains(a):
+    doms = a.get('domains')
+    if not isinstance(doms, list) or not doms:
+        return ['*']
+    return [str(d).strip().lower() for d in doms if isinstance(d, (str,))]
+
+def applies_to_domain(a, dom):
+    doms = app_domains(a)
+    if dom == 'shared':
+        return '*' in doms
+    return dom in doms or '*' in doms
+
+def emit(path, apps_out, domain, audience):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump({
+            'schemaVersion': 2,
+            'generatedAt': int(time.time()),
+            'domain': domain,
+            'audience': audience,
+            'apps': apps_out,
+        }, f, indent=2)
+
+# 1) Legacy: dist-publish/apps/index.json = all non-infrastructure apps
+legacy = [a for a in apps if normalize_tier(a) != 'infrastructure']
+with open(os.path.join(APPS_OUT, 'index.json'), 'w') as f:
+    json.dump({'apps': legacy}, f, indent=2)
+print(f'  Wrote legacy index: {len(legacy)} apps → apps/index.json')
+
+# 2) Per-domain × per-audience matrix
+total_emitted = 0
+for dom in DOMAINS:
+    for aud in AUDIENCES:
+        tier_matches = lambda a, aud=aud: normalize_tier(a) == aud
+        subset = [a for a in apps if tier_matches(a) and applies_to_domain(a, dom)]
+        out_path = os.path.join(OUTPUT_DIR, dom, aud, 'apps', 'index.json')
+        emit(out_path, subset, dom, aud)
+        total_emitted += len(subset)
+        print(f'  {dom}/{aud}/apps/index.json: {len(subset)} apps')
+
+infra = [a for a in apps if normalize_tier(a) == 'infrastructure']
+if infra:
+    print(f'  (infrastructure-tier apps excluded from all indexes: {len(infra)})')
+
+print(f'  Total index entries emitted: {total_emitted}')
 "
 
 # --- Step 6: Package Sandstorm binary update ---------------------------------

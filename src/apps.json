@@ -267,32 +267,6 @@
       "screenshots": []
     },
     {
-      "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-      "name": "fineract Setup",
-      "version": "0.2.0",
-      "versionNumber": 2,
-      "packageId": "b98fd88687c563149b391010169dbbe7",
-      "shortDescription": "Bootstrap wizard for fineract-sidecar",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://ccash.services",
-      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
-      "upstreamAuthor": "ccash",
-      "createdAt": 1776299121003,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "description": "**fineract Setup** is the Sandstorm companion wizard for `fineract-sidecar`.\n\nIt provisions the attached Apache Fineract backend, walks the operator\nthrough the bootstrap workflow, and exports a signed trust bundle shared by\nboth security gates:\n\n- Gate 1: the Go HTTPS sidecar\n- Gate 2: the Java `SolanaSignatureAuthenticationFilter` inside Fineract\n\nThe wizard packages the cold-start work that has to happen before ccash can\ntalk to a hardened Fineract install: tenant setup, offices, currencies, chart\nof accounts, savings products, signer registration, governance policy, and\ntrust-bundle export.",
-      "screenshots": [],
-      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg"
-    },
-    {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "name": "InstaCo.app",
       "version": "0.1.0",
@@ -413,85 +387,6 @@
         }
       ],
       "imageId": "7499db1cea602288bf73a75611790e88.svg"
-    },
-    {
-      "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
-      "name": "Shell Tester",
-      "version": "0.1.4",
-      "versionNumber": 1,
-      "packageId": "0c4af4844d6411e219f7f71c1aa4a5cd",
-      "shortDescription": "Melusina Shell Extension Tester",
-      "categories": [
-        "Developer Tools"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/shell_tester",
-      "codeLink": "https://github.com/hrbrlife/shell_tester",
-      "upstreamAuthor": "Shell Tester",
-      "createdAt": 1771075908000,
-      "description": "# Shell Tester\n\n**Test Melusina Shell Extensions in a sandboxed Pearl.**\n\nShell Tester is a developer tool for testing Melusina Shell Extensions. Each test session runs in its own **Pearl** \u2014 a sealed, per-document container with its own sandbox. Test your extensions in complete isolation without affecting your production environment.\n\n---\n\n## \ud83d\udd27 How It Works\n\nCreate a new Pearl to start a test session. Upload your shell extension package and Shell Tester automatically detects test suites, validates manifest files, and provides an interactive debugging environment.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each test session runs in its own sealed container \u2014 separate process, separate storage, separate permissions\n- **Extension Loading** \u2014 Upload `.spk` extension packages for automated testing\n- **Manifest Validation** \u2014 Verify extension manifest files against the Melusina Shell Extension spec\n- **API Testing** \u2014 Exercise extension hooks and APIs in a controlled environment\n- **Debug Console** \u2014 Interactive shell for inspecting extension state, logs, and behavior\n- **Grapple Testing** \u2014 Test how your extension connects to other Pearls via the Grapple protocol\n- **Snapshot Support** \u2014 Save test state and restore for reproducible debugging\n\n---\n\n## \ud83c\udfaf Use Cases\n\n- Validate shell extension packages before publishing\n- Debug extension API interactions in isolation\n- Test Grapple connections between extensions and app Pearls\n- Verify permission models and role-based access\n- Reproduce and fix bugs in a clean environment\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | View test results and logs |\n| \u270f\ufe0f **Editor** | Run tests, upload extensions, use debug console |\n| \ud83d\udc51 **Admin** | Configure test environment, manage extensions |\n\n> Each test session is fully isolated. A misbehaving extension cannot escape its Pearl sandbox.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free and open to all developers.** Install and use on your own server.",
-      "screenshots": [],
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "imageId": "128ee23044197d3b482321a31646969f.svg"
-    },
-    {
-      "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
-      "name": "TeleScreen",
-      "version": "0.1.0",
-      "versionNumber": 2,
-      "packageId": "fc67d80af58f52400c900f42f830b56e",
-      "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
-      "categories": [
-        "Productivity",
-        "Developer Tools"
-      ],
-      "isOpenSource": true,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/pr_ninja",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776300000000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "imageId": "b951f2165d328f2ed171dc86c690d9ea.svg",
-      "description": "TeleScreen is the Sandstorm-side screening sidecar for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nThe sidecar is intentionally packaged and run through `spk dev` / `spk pack`; Docker and direct system service deployment are not part of the polished MVP path.",
-      "screenshots": []
-    },
-    {
-      "appId": "7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h",
-      "name": "Telescreen Configuration",
-      "version": "0.2.0",
-      "versionNumber": 2,
-      "packageId": "efdc6463ca5266cf145fdb53a29a4cdd",
-      "shortDescription": "Configure the Telescreen sidecar (pr_ninja) without SSH",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/melusina_botmother",
-      "codeLink": "https://github.com/hrbrlife/melusina_botmother",
-      "upstreamAuthor": "Telescreen",
-      "createdAt": 1776299124637,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "description": "# Telescreen Configuration\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**telescreen sidecar** (pr_ninja). It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, LLM tunables, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Powerbox.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.",
-      "screenshots": [],
-      "imageId": "872ceec7633a1197d66bcdaca4f08a01.svg"
     }
   ]
 }

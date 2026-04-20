@@ -18,10 +18,6 @@
 	path = packages/hrbrlife/MELUSINA_BOTMOTHER
 	url = https://github.com/hrbrlife/MELUSINA_BOTMOTHER.git
 	branch = publish
-[submodule "packages/hrbrlife/shell_tester"]
-	path = packages/hrbrlife/shell_tester
-	url = https://github.com/hrbrlife/shell_tester.git
-	branch = publish
 [submodule "packages/hrbrlife/Melusina"]
 	path = packages/hrbrlife/Melusina
 	url = https://github.com/hrbrlife/Melusina.git
@@ -30,10 +26,6 @@
 [submodule "packages/hrbrlife/melusina-galactic-council"]
 	path = packages/hrbrlife/melusina-galactic-council
 	url = https://github.com/hrbrlife/melusina-galactic-council        branch = main
-[submodule "packages/hrbrlife/pr_ninja"]
-	path = packages/hrbrlife/pr_ninja
-	url = https://github.com/hrbrlife/pr_ninja.git
-	branch = publish
 [submodule "packages/hrbrlife/AITX-Procedures"]
 	path = packages/hrbrlife/AITX-Procedures
 	url = https://github.com/hrbrlife/AITX-Procedures.git

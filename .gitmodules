@@ -1,7 +1,3 @@
-[submodule "packages/hrbrlife/BLOOM_FINAL"]
-	path = packages/hrbrlife/BLOOM_FINAL
-	url = https://github.com/hrbrlife/BLOOM_FINAL.git
-	branch = publish
 [submodule "packages/hrbrlife/INSTASYS_MAIL"]
 	path = packages/hrbrlife/INSTASYS_MAIL
 	url = https://github.com/hrbrlife/INSTASYS_MAIL.git
@@ -53,4 +49,8 @@
 [submodule "packages/hrbrlife/melusina-bureau-paint-app"]
 	path = packages/hrbrlife/melusina-bureau-paint-app
 	url = https://github.com/hrbrlife/melusina-bureau-paint-app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-namedcoin-app"]
+	path = packages/hrbrlife/melusina-namedcoin-app
+	url = https://github.com/hrbrlife/melusina-namedcoin-app.git
 	branch = publish

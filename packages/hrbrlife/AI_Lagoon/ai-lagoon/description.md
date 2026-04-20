@@ -1,38 +1,40 @@
-# AI Lagoon
+# AiLagoon
 
-**Your AI workspace. Your server. Your conversations.**
+The AI model hub pearl for Melusina. Register multiple LLM providers,
+manage per-model connections, and expose AI capabilities to other
+pearls via Grapple — all behind a single Sandstorm HTTP-out permission
+to the ai-lagoon sidecar.
 
-AI Lagoon is a self-hosted AI collaboration and exploration platform for Melusina. Each conversation lives in its own **Pearl** — a sealed, per-document container with its own database, permissions, and sharing rules. No conversation can see another unless you explicitly connect them via **Grapple**.
+## Providers
 
----
+- **Ollama** — local or remote Ollama server, any model it can host
+- **ChatGPT** — OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)
+- **OpenRouter** — 100+ models from Anthropic, Google, Meta, Mistral,
+  DeepSeek, and more through a single proxy
 
-## 🧠 How It Works
+## Grapple capabilities published by this pearl
 
-Create a new Pearl to start a conversation. Each Pearl is an isolated AI session — your prompts, responses, and context stay inside that container. Share a Pearl with collaborators to let them participate in the same conversation thread without exposing your other sessions.
+Other pearls can request AI from AiLagoon via Grapple:
 
-### Key Features
+- `ai-text` — generic text / chat completion
+- `ai-vision` — image understanding and OCR
+- `ai-generic` — consumer picks a model in the Grapple UI at grant time
+- Direct per-model — scoped to one provider + model, useful when a
+  consumer wants a specific capability class (e.g. reasoning)
 
-- **Per-Pearl Isolation** — Every AI conversation runs in its own sealed container with separate storage and permissions
-- **Multi-Model Support** — Connect to local LLMs (Ollama), OpenAI-compatible endpoints, or other AI providers
-- **Collaboration** — Share a Pearl to let others join a conversation with role-based access
-- **Grapple Connections** — Link AI Pearls to other app Pearls to provide context — feed documents, spreadsheets, or code into your AI session
-- **Privacy-First** — All prompts and responses stay on your server. No third-party telemetry. No data harvesting
-- **Offline Capable** — Works air-gapped with local models — no internet required
+## How HTTP-out works
 
----
+All providers route through `https://ailagoon.sidecar.host`; the
+sidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per
+provider. At grain startup AiLagoon asks Sandstorm for a single
+HTTP-out permission to that host — the shell renders the
+address-selector popup (not the grain picker), and the operator grants
+or denies the host once. Connections persist across pearl restarts via
+`SandstormApi.save()` / `restore()`.
 
-## 🔐 Security Model
+## Playground
 
-| Role | Capabilities |
-|---|---|
-| 👁️ **Viewer** | Read conversation history |
-| ✏️ **Editor** | Send prompts and interact with the AI |
-| 👑 **Admin** | Configure model endpoints, manage access |
-
-> Each Pearl enforces permissions server-side. The server rejects unauthorized requests regardless of what the client sends. Your AI conversations are as private as your Sandstorm server.
-
----
-
-## 💰 Pricing
-
-**Free.** Install and use on your own server. No subscription, no usage limits, no telemetry.
+A built-in chat playground lets you test any connected model without
+leaving the pearl — useful for validating credentials, checking
+capabilities, or prototyping prompts before calling them from another
+pearl via Grapple.

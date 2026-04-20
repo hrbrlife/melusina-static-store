@@ -1,5 +1,47 @@
 # AiLagoon Changelog
 
+## v0.7.0 (2026-04-20)
+
+- **Harmonise the stack on `melusina-http-component` + SQLite.** All
+  Melusina grains are converging on ccash's encrypted-SQLite persistence
+  stack (`grain-crypto-journal/sqlitestore`, pure-Go `modernc.org/sqlite`,
+  AES-256-GCM at rest, idempotent migrations). AiLagoon is the first
+  consumer of the new shared `melusina-http-component` module, which
+  owns the Cap'n Proto `PowerboxDescriptor` builder, the 4-variant
+  sidecar selector, and the Powerbox sturdyref lifecycle (Claim / Save
+  / Restore / Release) for every grain going forward. Single source of
+  truth replaces the three byte-identical copies that previously shipped
+  across ai-lagoon, cyberteller, and the Melusina lab grains.
+- **Sturdyref destruction on connection delete.** Deleting a connection
+  now calls `SandstormApi.drop(token)` before removing the local row.
+  Every prior Melusina grain leaked these persistent references — the
+  shell kept the capability alive after the grain believed the
+  connection was gone. This is a silent fix but a real capability-leak
+  plug.
+- **No more `/var/connections.json` and no more `/var/httpout_*`.**
+  Connection records and Powerbox tokens both live in the grain's
+  encrypted SQLite database at `/var/ailagoon.db`. There is no
+  migration path from the old JSON/file-token shape — fresh install
+  on every upgrade. Pre-existing grains will present an empty
+  connections list and a clean slate.
+- Removed the `pkg/httpout/` in-grain copy and the `*.PowerboxToken`
+  field on `connections.Connection`; both shifted into the shared module.
+- `connections.Store` keeps the same public API (`Add` / `Get` / `List`
+  / `Update` / `Delete`) but is now a thin facade over the shared SQLite
+  repo; every caller in AiLagoon compiles unchanged.
+- **Fail-closed authorization on every mutating handler via
+  `melusina-grain-auth`.** Every POST endpoint (`connections/add`,
+  `/update`, `/delete`, `/toggle`, `/reconnect`, `claim`, `api/chat`,
+  `api/vision`, `routing/save`, `engine-config/save`, `ollama/pull`)
+  and every sensitive GET (`connections`, `audit/*`) now enters through
+  `requireAuth(ctx, action, perm)` → `grainauth.Require`. The grain
+  refuses to start if it cannot construct the authz client; per-request
+  denial surfaces as a Sandstorm 403 with a JSON reason. No session-
+  cached "isAdmin" shortcut — each request re-checks. A new AST-scan
+  gate, `fail_closed_test.go`, fails CI if any future handler is added
+  without `requireAuth` or an explicit public allowlist entry, so this
+  invariant cannot regress silently.
+
 ## v0.6.1 (2026-04-20)
 
 - **Fix stale descriptor injection on /connections.** The v0.6.0

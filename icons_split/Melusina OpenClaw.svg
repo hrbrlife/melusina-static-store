@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     viewBox="0 0 512 512"
+     width="128" height="128">
+  <rect x="0" y="0" width="512" height="512" fill="#D4A6F5" />
+  <!-- Open claw: three radiating curves meeting at center -->
+  <g fill="none" stroke="#6E35A5" stroke-width="24" stroke-linecap="round">
+    <path d="M 128 160 Q 208 112 256 160" />
+    <path d="M 128 256 Q 208 208 256 256" />
+    <path d="M 128 352 Q 208 400 256 352" />
+    <path d="M 384 160 Q 304 112 256 160" />
+    <path d="M 384 256 Q 304 208 256 256" />
+    <path d="M 384 352 Q 304 400 256 352" />
+  </g>
+  <!-- Central node -->
+  <circle cx="256" cy="256" r="28" fill="#6E35A5" />
+</svg>

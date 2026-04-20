@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     viewBox="0 0 512 512"
+     width="128" height="128">
+  <rect x="0" y="0" width="512" height="512" fill="#F5C8A6" />
+  <!-- Monitor frame -->
+  <rect x="112" y="128" width="288" height="208" rx="16" fill="#FFFFFF" stroke="#A56135" stroke-width="14" />
+  <!-- Wrench overlay -->
+  <g transform="translate(256 232)">
+    <g fill="#A56135" transform="rotate(-30)">
+      <!-- Wrench body -->
+      <rect x="-14" y="-80" width="28" height="160" rx="8" />
+      <!-- Wrench jaw (open end) -->
+      <path d="M -34 -80 L 34 -80 L 34 -56 L 14 -56 L 14 -36 L -14 -36 L -14 -56 L -34 -56 Z" />
+      <!-- Wrench handle ring -->
+      <circle cx="0" cy="76" r="18" fill="#F5C8A6" stroke="#A56135" stroke-width="8" />
+    </g>
+  </g>
+  <!-- Base stand -->
+  <rect x="216" y="336" width="80" height="16" fill="#A56135" />
+  <rect x="176" y="352" width="160" height="16" rx="6" fill="#A56135" />
+</svg>

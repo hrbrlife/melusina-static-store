@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     viewBox="0 0 512 512"
+     width="128" height="128">
+  <rect x="0" y="0" width="512" height="512" fill="#C8D0D8" />
+  <!-- Three connected nodes -->
+  <g fill="none" stroke="#556170" stroke-width="14">
+    <line x1="160" y1="160" x2="352" y2="256" />
+    <line x1="160" y1="160" x2="160" y2="352" />
+    <line x1="352" y1="256" x2="160" y2="352" />
+  </g>
+  <g fill="#FFFFFF" stroke="#556170" stroke-width="14">
+    <circle cx="160" cy="160" r="48" />
+    <circle cx="352" cy="256" r="48" />
+    <circle cx="160" cy="352" r="48" />
+  </g>
+</svg>

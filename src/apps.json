@@ -1,20 +1,21 @@
 {
   "apps": [
     {
-      "appId": "aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0",
-      "name": "AI Lagoon",
-      "version": "1.0.0",
-      "versionNumber": 1,
-      "packageId": "6b758859d588b1ffcef919a201fc34c6",
-      "shortDescription": "AI collaboration and exploration platform",
+      "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+      "packageId": "7fca89de8da7dd37d3256169acdf73e5",
+      "name": "AiLagoon",
+      "version": "0.6.1",
+      "versionNumber": 10,
+      "shortDescription": "AI model hub \u2014 Ollama, ChatGPT, OpenRouter, with shareable Grapple capabilities",
+      "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities \u2014 ai-text, ai-vision, ai-generic, and direct per-model access \u2014 to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Sandstorm HTTP-out permission, not per-grain capability hops. Built-in playground for testing models without leaving the pearl.",
       "categories": [
         "Productivity"
       ],
       "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/AI_Lagoon",
-      "codeLink": "https://github.com/hrbrlife/AI_Lagoon",
-      "upstreamAuthor": "AI Lagoon",
-      "createdAt": 1771200000000,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ai-lagoon",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1739491200000,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -22,8 +23,21 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "# AI Lagoon\n\n**Your AI workspace. Your server. Your conversations.**\n\nAI Lagoon is a self-hosted AI collaboration and exploration platform for Melusina. Each conversation lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, permissions, and sharing rules. No conversation can see another unless you explicitly connect them via **Grapple**.\n\n---\n\n## \ud83e\udde0 How It Works\n\nCreate a new Pearl to start a conversation. Each Pearl is an isolated AI session \u2014 your prompts, responses, and context stay inside that container. Share a Pearl with collaborators to let them participate in the same conversation thread without exposing your other sessions.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Every AI conversation runs in its own sealed container with separate storage and permissions\n- **Multi-Model Support** \u2014 Connect to local LLMs (Ollama), OpenAI-compatible endpoints, or other AI providers\n- **Collaboration** \u2014 Share a Pearl to let others join a conversation with role-based access\n- **Grapple Connections** \u2014 Link AI Pearls to other app Pearls to provide context \u2014 feed documents, spreadsheets, or code into your AI session\n- **Privacy-First** \u2014 All prompts and responses stay on your server. No third-party telemetry. No data harvesting\n- **Offline Capable** \u2014 Works air-gapped with local models \u2014 no internet required\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | Read conversation history |\n| \u270f\ufe0f **Editor** | Send prompts and interact with the AI |\n| \ud83d\udc51 **Admin** | Configure model endpoints, manage access |\n\n> Each Pearl enforces permissions server-side. The server rejects unauthorized requests regardless of what the client sends. Your AI conversations are as private as your Sandstorm server.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install and use on your own server. No subscription, no usage limits, no telemetry.",
-      "screenshots": [],
+      "screenshots": [
+        {
+          "url": "screenshots/01-dashboard.png",
+          "caption": "Dashboard with connected AI models and capability routing"
+        },
+        {
+          "url": "screenshots/02-connections.png",
+          "caption": "Managing Ollama, OpenAI, and OpenRouter model connections"
+        },
+        {
+          "url": "screenshots/03-playground.png",
+          "caption": "Built-in chat playground for testing models"
+        }
+      ],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "b1b659cd750fceeccafa60cc786da5c4.svg"
     },
     {

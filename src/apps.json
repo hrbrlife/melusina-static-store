@@ -350,6 +350,38 @@
       "imageId": "72caefb848fe857b3135d554dc3acd43.svg"
     },
     {
+      "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
+      "name": "MerMail",
+      "version": "0.4.4",
+      "versionNumber": 1,
+      "packageId": "d6e376903a8fc05c20db9e6f51d15032",
+      "shortDescription": "Sovereign email client for Melusina with Pearl-based mail server control",
+      "categories": [
+        "Productivity",
+        "Communications"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/INSTASYS_MAIL",
+      "upstreamAuthor": "MerMail",
+      "createdAt": 1776659947000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
+      "screenshots": [
+        {
+          "url": "screenshots/01-inbox.png",
+          "caption": "inbox"
+        }
+      ],
+      "imageId": "72caefb848fe857b3135d554dc3acd43.svg"
+    },
+    {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
       "name": "MiniGit",
       "version": "0.2.0",

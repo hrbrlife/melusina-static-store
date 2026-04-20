@@ -6,10 +6,6 @@
 	path = packages/hrbrlife/INSTASYS_MAIL
 	url = https://github.com/hrbrlife/INSTASYS_MAIL.git
 	branch = publish
-[submodule "packages/hrbrlife/CHEESESPREAD"]
-	path = packages/hrbrlife/CHEESESPREAD
-	url = https://github.com/hrbrlife/CHEESESPREAD.git
-	branch = publish
 [submodule "packages/hrbrlife/MiniGit"]
 	path = packages/hrbrlife/MiniGit
 	url = https://github.com/hrbrlife/MiniGit.git
@@ -45,4 +41,16 @@
 [submodule "packages/hrbrlife/instaco-app"]
 	path = packages/hrbrlife/instaco-app
 	url = https://github.com/hrbrlife/melusina-instaco-app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-doc-app"]
+	path = packages/hrbrlife/melusina-bureau-doc-app
+	url = https://github.com/hrbrlife/melusina-bureau-doc-app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-diagram-app"]
+	path = packages/hrbrlife/melusina-bureau-diagram-app
+	url = https://github.com/hrbrlife/melusina-bureau-diagram-app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-paint-app"]
+	path = packages/hrbrlife/melusina-bureau-paint-app
+	url = https://github.com/hrbrlife/melusina-bureau-paint-app.git
 	branch = publish

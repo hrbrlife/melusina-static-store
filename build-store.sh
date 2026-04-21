@@ -662,8 +662,10 @@ echo ""
 ok "Build complete!"
 echo ""
 info "Output in $OUTPUT_DIR/:"
-find "$OUTPUT_DIR" -type f | sort | head -30
-TOTAL_FILES="$(find "$OUTPUT_DIR" -type f | wc -l)"
+# `head -30` would SIGPIPE sort/find under pipefail; materialize, then slice.
+ALL_FILES="$(find "$OUTPUT_DIR" -type f | sort)"
+echo "$ALL_FILES" | awk 'NR<=30'
+TOTAL_FILES="$(echo "$ALL_FILES" | wc -l)"
 if [[ "$TOTAL_FILES" -gt 30 ]]; then
   echo "  ... and $((TOTAL_FILES - 30)) more files"
 fi

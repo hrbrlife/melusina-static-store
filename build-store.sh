@@ -18,6 +18,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Set explicit TMPDIR for reproducibility — /tmp full was a silent failure mode
+export TMPDIR="${TMPDIR:-$SCRIPT_DIR/.build-tmp}"
+mkdir -p "$TMPDIR"
+
 # --- Configuration -----------------------------------------------------------
 PACKAGES_DIR="packages"
 OUTPUT_DIR="dist-publish"
@@ -181,9 +185,20 @@ for f in ['name']:
     ((errors++)) || true
   fi
 
-  # Check SPK exists
+  # Check SPK exists — HARD fail (no metadata-only entries in ship catalog)
   if [[ ! -f "$app_dir/app.spk" ]]; then
-    warn "$app_dir: no app.spk found (metadata-only entry)"
+    fail "$app_dir: no app.spk found"
+    ((errors++)) || true
+  fi
+
+  # Verify metadata signature — HARD fail on bad/missing sig (trust kernel)
+  local asc_file="$meta_file.asc"
+  if [[ ! -f "$asc_file" ]]; then
+    fail "$app_dir: missing metadata.json.asc (unsigned metadata cannot ship)"
+    ((errors++)) || true
+  elif ! gpg --verify "$asc_file" "$meta_file" 2>&1 | grep -q "Good signature"; then
+    fail "$app_dir: metadata.json.asc signature is BAD or unverifiable"
+    ((errors++)) || true
   fi
 
   return $errors
@@ -331,7 +346,8 @@ if $DRY_RUN; then
 fi
 
 if [[ "$VALID" -eq 0 ]]; then
-  warn "No valid apps found in $PACKAGES_DIR/. Building with empty catalog."
+  fail "No valid apps found in $PACKAGES_DIR/. Refusing to build empty catalog."
+  exit 1
 fi
 
 # --- Step 2: Build Vite frontend (unless --aggregate) -------------------------
@@ -358,8 +374,8 @@ print(f'  Wrote {len(apps)} apps to src/apps.json')
 "
 
   info "Running Vite build..."
-  npm install --silent 2>/dev/null
-  npx vite build 2>&1 | grep -v "^$"
+  npm install --silent
+  npx vite build
   echo ""
 fi
 
@@ -367,7 +383,7 @@ fi
 info "Assembling $OUTPUT_DIR/..."
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures"
 
 # Copy Vite build output
 if [[ -d "dist" ]]; then
@@ -441,7 +457,8 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
             gh release upload "$RELEASES_TAG" "/tmp/$pkg_id" --clobber
             rm -f "/tmp/$pkg_id"
           elif ! command -v gh &>/dev/null; then
-            warn "gh CLI not found — cannot auto-upload. Manually upload $pkg_id to release $RELEASES_TAG"
+            fail "gh CLI not found — cannot upload $(( spk_size / 1024 / 1024 ))MB SPK to GitHub Releases. Install gh or shrink SPK under ${MAX_SPK_SIZE} bytes."
+            exit 1
           fi
         else
           cp "$app_dir/app.spk" "$PACKAGES_OUT/$pkg_id"
@@ -457,6 +474,13 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
           [[ -f "$shot" ]] && cp "$shot" "$OUTPUT_DIR/screenshots/$app_id/"
         done
       fi
+
+      # Copy metadata.json + metadata.json.asc into signatures/<appId>/ for
+      # independent metadata-trust verification. Validated + verified above.
+      app_id_sig="$(python3 -c "import json; print(json.load(open('$meta_file'))['appId'])")"
+      mkdir -p "$OUTPUT_DIR/signatures/$app_id_sig"
+      cp "$meta_file" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json"
+      cp "$meta_file.asc" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json.asc"
     done
   done
 done

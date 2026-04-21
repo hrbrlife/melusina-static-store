@@ -2,7 +2,7 @@
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "CyberTeller",
   "version": "0.1.0",
-  "versionNumber": 2,
+  "versionNumber": 1,
   "packageId": "2c2ccccf802fa420d3b712b8d1272b91",
   "shortDescription": "Multi-chain crypto payment processor",
   "categories": [
@@ -21,5 +21,6 @@
     "picture": ""
   },
   "description": "",
-  "screenshots": []
+  "screenshots": [],
+  "license": "Proprietary - AiTX.pro Limited"
 }

@@ -32,8 +32,11 @@ const sanitizeHost = (h) => {
 
 const fmtDate = (v) => {
   if (!v) return "—";
-  const ts = typeof v === "number" ? v : Date.parse(v);
-  return Number.isNaN(ts) ? String(v) : format(ts, "MMM d, yyyy");
+  let ts = typeof v === "number" ? v : Date.parse(v);
+  if (Number.isNaN(ts)) return String(v);
+  // Second-precision timestamps (10 digits) need to be converted to ms.
+  if (typeof v === "number" && v < 1e12) ts = v * 1000;
+  return format(ts, "MMM d, yyyy");
 };
 
 const timeAgo = (v) => {
@@ -410,7 +413,14 @@ function InstallModal({ app, onClose }) {
 
   const doInstall = useCallback((host) => {
     const h = sanitizeHost(host);
-    if (!h || !app.packageId) return;
+    if (!h) {
+      window.alert("Enter a Melusina server URL before installing.");
+      return;
+    }
+    if (!app.packageId) {
+      window.alert(`Cannot install "${app.name || 'this app'}": package is missing from the catalog.`);
+      return;
+    }
     const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
     window.open(`${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`, '_blank');
     onClose();
@@ -735,133 +745,28 @@ function InstallModal({ app, onClose }) {
   );
 }
 
-/* ─── user reviews (localStorage until backend) ────────────────────────────── */
-
-const UR_KEY = 'melusina_user_reviews';
-const getUserReviews = (appId) => { try { const all = JSON.parse(localStorage.getItem(UR_KEY) || '{}'); return all[appId] || []; } catch { return []; } };
-const addUserReview = (appId, review) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(UR_KEY) || '{}');
-    if (!all[appId]) all[appId] = [];
-    all[appId].push({ ...review, date: new Date().toISOString().slice(0, 10) });
-    localStorage.setItem(UR_KEY, JSON.stringify(all));
-    return all[appId];
-  } catch { return []; }
-};
-
-/* ─── per-app feature wishlist (submit + vote, localStorage) ───────────────── */
-
-const FW_KEY = 'melusina_feature_wishes';
-const FW_VOTES_KEY = 'melusina_fw_votes';
-const getFeatureWishes = (appId) => { try { const all = JSON.parse(localStorage.getItem(FW_KEY) || '{}'); return (all[appId] || []).sort((a, b) => b.score - a.score); } catch { return []; } };
-const addFeatureWish = (appId, text, author) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(FW_KEY) || '{}');
-    if (!all[appId]) all[appId] = [];
-    all[appId].push({ id: Date.now(), text, author: author || 'anon', score: 1, date: new Date().toISOString().slice(0, 10) });
-    localStorage.setItem(FW_KEY, JSON.stringify(all));
-    // auto-upvote own submission
-    const votes = JSON.parse(localStorage.getItem(FW_VOTES_KEY) || '{}');
-    votes[`${appId}_${all[appId][all[appId].length - 1].id}`] = 1;
-    localStorage.setItem(FW_VOTES_KEY, JSON.stringify(votes));
-    return all[appId];
-  } catch { return []; }
-};
-const voteFeatureWish = (appId, wishId, dir) => {
-  try {
-    const votes = JSON.parse(localStorage.getItem(FW_VOTES_KEY) || '{}');
-    const key = `${appId}_${wishId}`;
-    const prev = votes[key] || 0;
-    const next = prev === dir ? 0 : dir;
-    votes[key] = next;
-    localStorage.setItem(FW_VOTES_KEY, JSON.stringify(votes));
-    const all = JSON.parse(localStorage.getItem(FW_KEY) || '{}');
-    const wish = (all[appId] || []).find(w => w.id === wishId);
-    if (wish) { wish.score += (next - prev); localStorage.setItem(FW_KEY, JSON.stringify(all)); }
-    return { wishes: (all[appId] || []).sort((a, b) => b.score - a.score), votes };
-  } catch { return { wishes: [], votes: {} }; }
-};
-const getMyFWVotes = () => { try { return JSON.parse(localStorage.getItem(FW_VOTES_KEY) || '{}'); } catch { return {}; } };
-
-/* ─── comments on feature wishes & bugs (localStorage) ────────────────────── */
-
-const CMT_KEY = 'melusina_comments';
-const getComments = (parentKey) => { try { const all = JSON.parse(localStorage.getItem(CMT_KEY) || '{}'); return all[parentKey] || []; } catch { return []; } };
-const addComment = (parentKey, text, author) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(CMT_KEY) || '{}');
-    if (!all[parentKey]) all[parentKey] = [];
-    all[parentKey].push({ id: Date.now(), text, author: author || 'anon', date: new Date().toISOString().slice(0, 10) });
-    localStorage.setItem(CMT_KEY, JSON.stringify(all));
-    return all[parentKey];
-  } catch { return []; }
-};
-
-/* ─── per-app bug reports (submit + vote, localStorage) ────────────────────── */
-
-const BUG_KEY = 'melusina_bug_reports';
-const BUG_VOTES_KEY = 'melusina_bug_votes';
-const getBugReports = (appId) => { try { const all = JSON.parse(localStorage.getItem(BUG_KEY) || '{}'); return (all[appId] || []).sort((a, b) => b.score - a.score); } catch { return []; } };
-const addBugReport = (appId, title, description, author) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(BUG_KEY) || '{}');
-    if (!all[appId]) all[appId] = [];
-    const bug = { id: Date.now(), title, description, author: author || 'anon', score: 1, date: new Date().toISOString().slice(0, 10) };
-    all[appId].push(bug);
-    localStorage.setItem(BUG_KEY, JSON.stringify(all));
-    const votes = JSON.parse(localStorage.getItem(BUG_VOTES_KEY) || '{}');
-    votes[`${appId}_${bug.id}`] = 1;
-    localStorage.setItem(BUG_VOTES_KEY, JSON.stringify(votes));
-    return all[appId];
-  } catch { return []; }
-};
-const voteBugReport = (appId, bugId, dir) => {
-  try {
-    const votes = JSON.parse(localStorage.getItem(BUG_VOTES_KEY) || '{}');
-    const key = `${appId}_${bugId}`;
-    const prev = votes[key] || 0;
-    const next = prev === dir ? 0 : dir;
-    votes[key] = next;
-    localStorage.setItem(BUG_VOTES_KEY, JSON.stringify(votes));
-    const all = JSON.parse(localStorage.getItem(BUG_KEY) || '{}');
-    const bug = (all[appId] || []).find(b => b.id === bugId);
-    if (bug) { bug.score += (next - prev); localStorage.setItem(BUG_KEY, JSON.stringify(all)); }
-    return { bugs: (all[appId] || []).sort((a, b) => b.score - a.score), votes };
-  } catch { return { bugs: [], votes: {} }; }
-};
-const getMyBugVotes = () => { try { return JSON.parse(localStorage.getItem(BUG_VOTES_KEY) || '{}'); } catch { return {}; } };
-
-/* ─── global app ideas (submit + vote, localStorage) ───────────────────────── */
-
-const AI_KEY = 'melusina_app_ideas';
-const AI_VOTES_KEY = 'melusina_ai_votes';
-const getAppIdeas = () => { try { return JSON.parse(localStorage.getItem(AI_KEY) || '[]').sort((a, b) => b.score - a.score); } catch { return []; } };
-const addAppIdea = (title, description, author) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(AI_KEY) || '[]');
-    const idea = { id: Date.now(), title, description, author: author || 'anon', score: 1, date: new Date().toISOString().slice(0, 10) };
-    all.push(idea);
-    localStorage.setItem(AI_KEY, JSON.stringify(all));
-    const votes = JSON.parse(localStorage.getItem(AI_VOTES_KEY) || '{}');
-    votes[idea.id] = 1;
-    localStorage.setItem(AI_VOTES_KEY, JSON.stringify(votes));
-    return all;
-  } catch { return []; }
-};
-const voteAppIdea = (ideaId, dir) => {
-  try {
-    const votes = JSON.parse(localStorage.getItem(AI_VOTES_KEY) || '{}');
-    const prev = votes[ideaId] || 0;
-    const next = prev === dir ? 0 : dir;
-    votes[ideaId] = next;
-    localStorage.setItem(AI_VOTES_KEY, JSON.stringify(votes));
-    const all = JSON.parse(localStorage.getItem(AI_KEY) || '[]');
-    const idea = all.find(i => i.id === ideaId);
-    if (idea) { idea.score += (next - prev); localStorage.setItem(AI_KEY, JSON.stringify(all)); }
-    return { ideas: all.sort((a, b) => b.score - a.score), votes };
-  } catch { return { ideas: [], votes: {} }; }
-};
-const getMyAIVotes = () => { try { return JSON.parse(localStorage.getItem(AI_VOTES_KEY) || '{}'); } catch { return {}; } };
+/* Community surfaces (reviews / feature wishes / bug reports / app ideas / comments)
+ * were removed: they were localStorage-only, so they looked like public marketplace
+ * submissions but never left the device. A polished bazaar doesn't ship fictional
+ * community signals. These stubs return empty data so legacy call-sites don't crash;
+ * the tabs and Ideas page that consumed them have been removed.
+ */
+const getUserReviews   = () => [];
+const addUserReview    = () => [];
+const getFeatureWishes = () => [];
+const addFeatureWish   = () => [];
+const voteFeatureWish  = () => ({ wishes: [], votes: {} });
+const getMyFWVotes     = () => ({});
+const getComments      = () => [];
+const addComment       = () => [];
+const getBugReports    = () => [];
+const addBugReport     = () => [];
+const voteBugReport    = () => ({ bugs: [], votes: {} });
+const getMyBugVotes    = () => ({});
+const getAppIdeas      = () => [];
+const addAppIdea       = () => [];
+const voteAppIdea      = () => ({ ideas: [], votes: {} });
+const getMyAIVotes     = () => ({});
 
 /* ─── palm beach sunset tokens ────────────────────────────────────────────── */
 
@@ -1254,13 +1159,15 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
             <span>v{app.version || app.versionNumber || '—'}</span>
             {updatedAgo && <span style={{ opacity: 0.7 }}>· updated {updatedAgo}</span>}
           </div>
-          <p style={{
-            fontSize: 14, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
-            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}>
-            <SimpleMarkdown text={app.shortDescription || app.summary || ""} />
-          </p>
+          {(app.shortDescription || app.summary) && (
+            <p style={{
+              fontSize: 14, color: T.textSec, margin: "6px 0 0", lineHeight: 1.5,
+              display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}>
+              <SimpleMarkdown text={app.shortDescription || app.summary} />
+            </p>
+          )}
           {/* USP selling points */}
           {(APP_USP[app.appId] || []).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
@@ -1562,68 +1469,13 @@ function StarRating({ rating, size = 14 }) {
 
 /* ─── App Extended Content ─────────────────────────────────────────────────── */
 
-const APP_GITHUB = {
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': 'https://github.com/hrbrlife/BLOOM_FINAL',
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': 'https://github.com/hrbrlife/melusina_botmother',
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': 'https://github.com/hrbrlife/CHEESESPREAD',
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': 'https://github.com/hrbrlife/MerMail',
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': 'https://github.com/hrbrlife/MiniGit',
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': 'https://github.com/hrbrlife/shell_tester',
-  'aczotnllhjznrs73v1uixwqz7hqf99evf3qqhdkyrpvh2jya72yh': 'https://github.com/hrbrlife/AI_Lagoon',
-};
+const APP_GITHUB = {};
 
 /* ─── USP selling points per app (green checks) ───────────────────────────── */
-const APP_USP = {
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
-    'Spreadsheets, Documents, Diagrams and Images — your office workflow on Melusina',
-    'Per-document encryption, isolation and sharing',
-    'Snapshots: view or restore important milestones in your documents',
-  ],
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    'KYC identity verification running entirely on your server',
-    'Per-case isolation — each verification is a sealed Pearl',
-    'Document upload, facial capture, and OTP — all local, zero third-party APIs',
-  ],
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
-    'Connect any Telegram bot and manage it from Melusina',
-    'Message routing, chatrooms, and auto-responses — all in one Pearl',
-    'Full conversation history stays on your server, never shared externally',
-  ],
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    'Full email client — compose, reply, forward, archive, search',
-    'Each mailbox is an isolated Pearl with its own storage and permissions',
-    'Real-time WebSocket push — no refresh needed for new mail',
-  ],
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
-    'Lightweight Git hosting with web viewer inside a Pearl',
-    'Clone, push, pull — standard Git operations with automatic auth',
-    'Publish static sites by pushing to the public branch',
-  ],
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
-    'Test Melusina shell extensions in a sandboxed environment',
-    'Extension manifest validator and multi-version testing',
-    'Automated test suite detection and log formatting',
-  ],
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': [
-    'Self-hosted AI workspace — your prompts never leave your server',
-    'Each AI conversation is an isolated Pearl with its own context',
-    'Connect AI Pearls to other app data via Grapple for rich context',
-  ],
-};
+const APP_USP = {};
 
 /* legacy — docs removed, replaced with GitHub links */
-const APP_DOCS = {
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': `# Getting Started with CoinFace\n\nCoinFace is a self-hosted KYC identity verification platform for Melusina.\n\n## Installation\n\n- Connect your Melusina server using the **CONNECT** button in the app bazaar header\n- Click **INSTALL** to deploy CoinFace to your server\n- Create a new CoinFace Pearl from your Melusina dashboard\n\n## Admin Dashboard\n\nThe admin dashboard shows all active and completed verification cases. From here you can:\n\n- Create shareable verification links for respondents\n- Monitor verification status in real-time\n- Review completed cases with uploaded documents and facial captures\n- Approve or reject verification submissions\n\n## Verification Flow\n\nRespondents receive a link and complete these steps:\n\n- Accept Terms & Conditions\n- Upload a government-issued ID document\n- Complete live facial verification capture\n- Enter OTP confirmation code\n- Submit for admin review\n\n## Supported Document Types\n\n- Passport\n- Driver's License\n- National ID Card\n- Residence Permit\n\n## Privacy & Security\n\nAll data stays on your Melusina server. No documents or biometric data are sent to external APIs. The entire verification pipeline runs locally within your Pearl sandbox.`,
-
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': `# Getting Started with BotMother\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina.\n\n## Installation\n\n- Install BotMother from the Melusina App Bazaar\n- Create a new BotMother Pearl on your Melusina server\n\n## Setting Up Your Bot\n\n- Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n- Copy the bot token\n- Paste it into BotMother's configuration page\n- Your bot is now connected and routing messages through Melusina\n\n## Message Routing\n\nBotMother lets you define routing rules for incoming messages:\n\n- Route by command (e.g. /help, /start)\n- Route by keyword matching\n- Route by user group or chat ID\n- Set up auto-responses for common queries\n\n## Chatrooms\n\nCreate managed chatrooms that your bot moderates:\n\n- Set welcome messages\n- Configure moderation rules\n- Track message history within Melusina\n\n## Security\n\nAll message data stays on your Melusina server. Bot tokens are stored securely in the Pearl sandbox.`,
-
-
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': `# Getting Started with MerMail\n\nMerMail is a native email client for Melusina, built with Go and HTMX.\n\n## Installation\n\n- Install MerMail from the Melusina App Bazaar\n- Create a new Pearl — each Pearl is an independent mailbox\n\n## Receiving Email\n\nEmail arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. No external mail server configuration needed.\n\n## Composing Messages\n\n- Rich compose form with To, CC, BCC fields\n- Reply, Reply All, and Forward support\n- Draft auto-save — resume editing anytime\n- File attachments with inline preview\n\n## Organizing Mail\n\n- Create custom folders\n- Star important messages\n- Move messages between folders\n- Bulk delete and archive\n- Full-text search across all messages\n\n## Sharing Access\n\nUse Melusina's sharing system to grant access:\n\n- **Viewer**: Read-only mailbox access\n- **Editor**: Can compose and manage messages\n- **Admin**: Full control including settings\n\n## Technical Architecture\n\n- **Backend**: Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend**: Server-side HTML + HTMX + WebSocket\n- **Storage**: SQLite with automatic migrations\n- **Updates**: Real-time WebSocket push for new mail`,
-
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': `# Getting Started with MiniGit\n\nMiniGit provides lightweight Git hosting with a web interface on Melusina.\n\n## Installation\n\n- Install MiniGit from the Melusina App Bazaar\n- Create a new Pearl — each Pearl is a Git repository\n\n## Cloning & Pushing\n\nUse the Melusina API URL provided in your Pearl to clone and push:\n\n- \`git clone <pearl-url>\`\n- \`git push origin main\`\n\nAuthentication is handled automatically by Melusina.\n\n## Web Interface\n\nBrowse your repository through the built-in GitWeb interface:\n\n- File tree navigation\n- Commit history and diffs\n- Search file contents\n- Branch and tag listing\n\n## Publishing Static Sites\n\nPush to the special **public** branch to publish static content at a Pearl URL:\n\n- \`git checkout -b public\`\n- Add your HTML/CSS/JS files\n- \`git push origin public\`\n\nYour site is now accessible via Melusina's Pearl URL system.\n\n## Permissions\n\n- Grant read or read/write access via Melusina sharing\n- Each Pearl is fully isolated from others`,
-
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': `# Getting Started with Shell Tester\n\nShell Tester is a Melusina Shell Extension testing tool for Melusina.\n\n## Installation\n\n- Install Shell Tester from the Melusina App Bazaar\n- Create a new Pearl to begin testing\n\n## What It Does\n\nShell Tester provides an interactive environment for testing Melusina Shell Extensions. You can:\n\n- Load and test shell extension packages\n- Verify extension APIs and hooks\n- Debug extension behavior in a sandboxed environment\n- Validate extension manifest files\n\n## Running Tests\n\n- Upload your extension package\n- Shell Tester automatically detects test suites\n- View test results with pass/fail indicators\n- Inspect logs and error output\n\n## For Extension Developers\n\n- Use Shell Tester during development to validate your extensions\n- Test against different Melusina Shell versions\n- Verify permissions and capability requirements`
-};
+const APP_DOCS = {};
 
 const APP_FAQ = {
   _common: [
@@ -1643,96 +1495,11 @@ const APP_FAQ = {
     { q: 'Will this become open source?', a: 'Yes. Under the HLSL license, all code automatically converts to AGPLv3 after 3 years from the release date. You can view and audit the source code at any time.' },
     { q: 'Can I modify the source code?', a: 'You have full access to the source code for auditing. Modifications for personal use on your own server are permitted. Redistribution requires the HLSL terms.' },
   ],
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    { q: 'What document types does CoinFace support?', a: 'CoinFace supports passports, driver\'s licenses, national ID cards, and residence permits. The document detection system automatically identifies the document type.' },
-    { q: 'Does facial verification use external AI?', a: 'No. All AI processing runs locally within your Melusina Pearl. No images or biometric data leave your server.' },
-    { q: 'Can respondents complete verification on mobile?', a: 'Yes. The verification flow is fully responsive and optimized for mobile browsers. Camera access for facial capture works on iOS and Android.' },
-  ],
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
-    { q: 'Can multiple users edit a spreadsheet simultaneously?', a: 'Yes. Bureau uses WebSocket for real-time multi-user editing with presence indicators showing who else is viewing or editing.' },
-    { q: 'What file formats can I import/export?', a: 'Spreadsheets support CSV, JSON, and XLSX. Documents export to HTML. Images export to PNG, JPG, BMP, and WebP.' },
-    { q: 'How do snapshots work?', a: 'All Pearl types support named version snapshots. Save a snapshot with a name, browse your snapshot history, compare changes, and restore any previous version.' },
-  ],
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    { q: 'How does email delivery work?', a: 'Email arrives via Melusina\'s built-in SMTP gateway. Each Pearl has its own email address. No external mail server configuration is needed.' },
-    { q: 'Can I use a custom domain for email?', a: 'Email addressing is managed by your Melusina server configuration. Contact your Melusina admin to set up custom domain routing.' },
-  ],
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
-    { q: 'How do I publish a static website?', a: 'Push your HTML/CSS/JS files to a branch named **public** in your MiniGit Pearl. Melusina will serve the contents at a Pearl URL.' },
-    { q: 'What Git operations are supported?', a: 'All standard Git operations: clone, push, pull, branch, tag. Authentication is handled by Melusina\'s capability system.' },
-  ],
 };
 
-const APP_REVIEWS = {
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    { author: 'ComplianceOps', rating: 5, date: '2026-01-28', title: 'Self-hosted KYC done right', text: 'We needed KYC that didn\'t send documents to third-party APIs. CoinFace runs entirely on our server. The admin review flow and facial verification are well-designed.' },
-    { author: 'devops_sarah', rating: 4, date: '2026-01-15', title: 'Solid implementation', text: 'Clean setup, document verification and OTP work great. Would love webhook notifications when verifications complete. Looking forward to updates.' },
-    { author: 'fintech_piotr', rating: 5, date: '2025-12-20', title: 'Perfect for our POC', text: 'Running this for our fintech proof-of-concept. Shareable verification links are ideal for customer onboarding. Privacy-first KYC is a huge differentiator.' },
-    { author: 'sandstorm_user42', rating: 4, date: '2025-12-08', title: 'Great concept', text: 'Love the idea of self-hosted identity verification. The 8-step flow is comprehensive. UI could use dark mode but functionality is excellent.' },
-  ],
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
-    { author: 'bot_developer', rating: 4, date: '2026-01-20', title: 'Nice Telegram integration', text: 'Easy to connect my Telegram bot. Message routing rules are flexible. Chatroom management is a nice bonus.' },
-    { author: 'community_mgr', rating: 5, date: '2026-01-05', title: 'Exactly what I needed', text: 'Managing our community bot through Melusina gives us full control. No more relying on third-party bot hosting services.' },
-    { author: 'privacy_max', rating: 4, date: '2025-12-18', title: 'Self-hosted bot hosting', text: 'All messages stay on our server. Great for organizations that need to keep communications private. Routing is intuitive.' },
-  ],
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
-    { author: 'office_admin', rating: 5, date: '2026-02-01', title: 'Incredible office suite', text: 'Bureau replaces Google Docs for our team. Real-time collaboration on spreadsheets works flawlessly. The snapshot feature is a lifesaver for version management.' },
-    { author: 'designer_jay', rating: 4, date: '2026-01-22', title: 'miniPaint is a nice surprise', text: 'Didn\'t expect a full image editor bundled in. Layers, filters, and export work well. The diagram tool is great for quick flowcharts too.' },
-    { author: 'data_analyst_k', rating: 5, date: '2026-01-10', title: 'Powerful spreadsheet', text: 'XLSX import/export, formula support, and real-time collab. Running it on our own server means no data leaks. The best self-hosted spreadsheet I\'ve used.' },
-    { author: 'team_lead_r', rating: 4, date: '2025-12-30', title: 'Solid document editor', text: 'TipTap-based editor is responsive and handles formatting well. CRDT sync means no conflicts even with 5+ people editing simultaneously.' },
-    { author: 'privacy_advocate', rating: 5, date: '2025-12-15', title: 'Finally, a private office suite', text: 'No Google, no Microsoft, no data mining. Bureau on Melusina gives our NGO everything we need without compromising our principles.' },
-  ],
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    { author: 'sysadmin_elena', rating: 4, date: '2026-01-18', title: 'Clean email client', text: 'Love that it uses native Cap\'n Proto instead of the HTTP bridge. Fast and lightweight. HTMX frontend is snappy. SQLite storage keeps things simple.' },
-    { author: 'privacy_first', rating: 5, date: '2026-01-02', title: 'Email on my terms', text: 'Finally an email client that runs on MY server. No scanning, no ads, no tracking. Sandstorm\'s SMTP gateway makes setup painless.' },
-    { author: 'developer_mike', rating: 4, date: '2025-12-22', title: 'Well-architected', text: 'The Go + HTMX stack is refreshingly simple. WebSocket for real-time updates is smooth. Would love to see CalDAV integration in the future.' },
-  ],
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
-    { author: 'indie_dev', rating: 5, date: '2026-01-25', title: 'Perfect for small projects', text: 'Host my personal repos without GitHub. The GitWeb interface is clean and the public branch feature for static sites is genius.' },
-    { author: 'homelab_user', rating: 4, date: '2026-01-08', title: 'Lightweight and reliable', text: 'Running MiniGit for my homelab documentation repos. Dead simple, does exactly what it says. Push, pull, browse. No bloat.' },
-    { author: 'educator_prof', rating: 5, date: '2025-12-28', title: 'Great for teaching', text: 'I give each student a MiniGit Pearl for their assignments. Melusina sharing makes access management trivial. The web viewer lets me review code without cloning.' },
-  ],
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
-    { author: 'ext_developer', rating: 4, date: '2026-01-12', title: 'Essential for extension dev', text: 'If you\'re building Melusina Shell extensions, this is indispensable. Catches issues before deployment. Sandbox testing is well-implemented.' },
-    { author: 'melusina_fan', rating: 5, date: '2025-12-25', title: 'Makes extension dev easy', text: 'Upload, test, iterate. Shell Tester makes the feedback loop tight. Log inspection is particularly useful for debugging.' },
-  ],
-};
+const APP_REVIEWS = {};
 
-const APP_VERSIONS = {
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': [
-    { version: '1.0.0', date: '2026-02-16', changes: ['Initial release', 'AI model playground with multi-provider support', 'Collaborative prompt engineering workspace', 'Real-time streaming responses'] },
-  ],
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    { version: '1.2.0', date: '2026-01-28', changes: ['Added residence permit support', 'Improved facial detection accuracy', 'Added case export for compliance'] },
-    { version: '1.1.0', date: '2025-11-15', changes: ['OTP verification flow', 'Multi-language support for verification pages', 'Admin notes on cases'] },
-    { version: '1.0.0', date: '2025-09-01', changes: ['Initial release', 'Passport and driver\'s license verification', 'Admin dashboard with real-time status', 'Shareable verification links'] },
-  ],
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
-    { version: '2.0.0', date: '2026-01-20', changes: ['Chatroom management overhaul', 'Inline keyboard support', 'Message scheduling'] },
-    { version: '1.1.0', date: '2025-10-10', changes: ['Auto-response rules engine', 'User group routing', 'Improved webhook reliability'] },
-    { version: '1.0.0', date: '2025-07-15', changes: ['Initial release', 'Telegram bot connection', 'Basic message routing', 'Chat history logging'] },
-  ],
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': [
-    { version: '3.1.0', date: '2026-02-01', changes: ['miniPaint layer compositing improvements', 'Diagram auto-layout algorithm', 'XLSX formula support expanded'] },
-    { version: '3.0.0', date: '2025-12-15', changes: ['Added miniPaint image editor', 'Diagram tool with real-time sync', 'Named version snapshots for all Pearl types'] },
-    { version: '2.0.0', date: '2025-09-20', changes: ['Document editor powered by TipTap + Yjs CRDT', 'Real-time presence indicators', 'Comments system'] },
-    { version: '1.0.0', date: '2025-06-01', changes: ['Initial release', 'Spreadsheet with WebSocket collaboration', 'CSV and JSON import/export'] },
-  ],
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    { version: '1.3.0', date: '2026-01-18', changes: ['Full-text search across all messages', 'Bulk operations (delete, archive, move)', 'Draft auto-save'] },
-    { version: '1.2.0', date: '2025-11-01', changes: ['Custom folder support', 'Star/flag messages', 'Improved attachment handling'] },
-    { version: '1.1.0', date: '2025-08-20', changes: ['Reply, Reply All, Forward support', 'CC/BCC fields', 'WebSocket push for new mail'] },
-    { version: '1.0.0', date: '2025-06-15', changes: ['Initial release', 'Native Cap\'n Proto RPC integration', 'HTMX frontend', 'SQLite storage backend'] },
-  ],
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': [
-    { version: '1.1.0', date: '2026-01-25', changes: ['Public branch static site publishing', 'Improved diff viewer', 'Search file contents'] },
-    { version: '1.0.0', date: '2025-08-01', changes: ['Initial release', 'Git hosting with GitWeb interface', 'Clone, push, pull support', 'Melusina capability-based auth'] },
-  ],
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': [
-    { version: '1.1.0', date: '2026-01-12', changes: ['Extension manifest validator', 'Multi-version shell testing', 'Improved log output formatting'] },
-    { version: '1.0.0', date: '2025-10-01', changes: ['Initial release', 'Shell extension package loader', 'Test suite auto-detection', 'Sandbox test environment'] },
-  ],
-};
+const APP_VERSIONS = {};
 
 /* ─── App Audits ────────────────────────────────────────────────────────────── */
 const AUDIT_CATEGORIES = [
@@ -1744,144 +1511,7 @@ const AUDIT_CATEGORIES = [
   { key: 'accessibility', label: 'Accessibility', icon: '♿' },
 ];
 
-const APP_AUDITS = {
-  // Bureau
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': {
-    ai: [
-      { version: '3.1.0', date: '2026-02-01', results: {
-        security: { rating: 'Pass', note: 'Sandboxed Pearl isolation, no outbound network access' },
-        privacy: { rating: 'Pass', note: 'All data stays on-server, no telemetry' },
-        dataSafety: { rating: 'Pass', note: 'SQLite + per-Pearl encryption at rest' },
-        dataPortability: { rating: 'Pass', note: 'CSV, JSON, XLSX export for all Pearl types' },
-        codeQuality: { rating: 'Pass', note: 'Modular TypeScript codebase with unit tests' },
-        accessibility: { rating: 'Partial', note: 'Keyboard navigation; screen reader support in progress' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/bureau-audit-3.1',
-        claude: 'https://claude.ai/share/bureau-audit-3.1',
-        gemini: 'https://g.co/gemini/share/bureau-audit-3.1',
-      }},
-      { version: '3.0.0', date: '2025-12-15', results: {
-        security: { rating: 'Pass', note: 'Pearl sandbox, CSP headers enforced' },
-        privacy: { rating: 'Pass', note: 'Zero external APIs' },
-        dataSafety: { rating: 'Pass', note: 'SQLite WAL mode with auto-backup' },
-        dataPortability: { rating: 'Pass', note: 'Export to CSV and JSON' },
-        codeQuality: { rating: 'Pass', note: 'Clean separation of concerns' },
-        accessibility: { rating: 'Needs Work', note: 'Limited ARIA labels' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/bureau-audit-3.0',
-        claude: 'https://claude.ai/share/bureau-audit-3.0',
-      }},
-    ],
-    human: [
-      { version: '3.0.0', date: '2025-12-20', auditor: 'Harbor Life Security Team', summary: 'Full manual penetration test and code review. No critical issues found. Minor: ARIA labels incomplete.', reportUrl: '#' },
-    ],
-  },
-  // BLOOM Identity
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': {
-    ai: [
-      { version: '1.2.0', date: '2026-01-28', results: {
-        security: { rating: 'Pass', note: 'KYC data never leaves Pearl. Facial capture processed locally' },
-        privacy: { rating: 'Pass', note: 'Zero third-party API calls. No biometric data transmitted externally' },
-        dataSafety: { rating: 'Pass', note: 'Per-case isolated storage. Document encryption at rest' },
-        dataPortability: { rating: 'Pass', note: 'Case export includes all documents and audit trail' },
-        codeQuality: { rating: 'Pass', note: 'Structured verification pipeline with error boundaries' },
-        accessibility: { rating: 'Partial', note: 'OTP flow keyboard-accessible; photo capture needs improvement' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/bloom-audit-1.2',
-        claude: 'https://claude.ai/share/bloom-audit-1.2',
-      }},
-    ],
-    human: [],
-  },
-  // BotMother
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
-    ai: [
-      { version: '2.0.0', date: '2026-01-20', results: {
-        security: { rating: 'Pass', note: 'Bot tokens stored in Pearl-local encrypted vault' },
-        privacy: { rating: 'Pass', note: 'All conversations stay on-server. Telegram API token scoped to Pearl' },
-        dataSafety: { rating: 'Pass', note: 'Message history in SQLite with WAL journaling' },
-        dataPortability: { rating: 'Pass', note: 'Full chat export as JSON' },
-        codeQuality: { rating: 'Pass', note: 'Clean webhook handler architecture' },
-        accessibility: { rating: 'Pass', note: 'Web UI fully keyboard-navigable' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/botmother-audit-2.0',
-        gemini: 'https://g.co/gemini/share/botmother-audit-2.0',
-      }},
-    ],
-    human: [
-      { version: '1.1.0', date: '2025-11-05', auditor: 'Harbor Life Security Team', summary: 'Code review of webhook handling and token storage. All secure. Recommended additional rate limiting — implemented in v2.0.', reportUrl: '#' },
-    ],
-  },
-  // MerMail
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
-    ai: [
-      { version: '1.3.0', date: '2026-01-18', results: {
-        security: { rating: 'Pass', note: 'Cap\'n Proto RPC with Melusina powerbox auth' },
-        privacy: { rating: 'Pass', note: 'Mail stored locally. Optional Postmark for outbound only' },
-        dataSafety: { rating: 'Pass', note: 'SQLite backend with full-text search index' },
-        dataPortability: { rating: 'Pass', note: 'EML export for all messages' },
-        codeQuality: { rating: 'Pass', note: 'HTMX frontend, clean Cap\'n Proto integration' },
-        accessibility: { rating: 'Partial', note: 'Core actions keyboard-accessible; compose modal needs ARIA' },
-      }, links: {
-        claude: 'https://claude.ai/share/mermail-audit-1.3',
-      }},
-    ],
-    human: [],
-  },
-  // MiniGit
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': {
-    ai: [
-      { version: '1.1.0', date: '2026-01-25', results: {
-        security: { rating: 'Pass', note: 'Git operations sandboxed in Pearl. Auth via Melusina capabilities' },
-        privacy: { rating: 'Pass', note: 'No external network calls. All repos stored locally' },
-        dataSafety: { rating: 'Pass', note: 'Standard git bare repo format on disk' },
-        dataPortability: { rating: 'Pass', note: 'Standard git clone — full portability' },
-        codeQuality: { rating: 'Pass', note: 'Minimal codebase wrapping git and GitWeb' },
-        accessibility: { rating: 'Partial', note: 'GitWeb UI has limited accessibility' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/minigit-audit-1.1',
-        claude: 'https://claude.ai/share/minigit-audit-1.1',
-      }},
-    ],
-    human: [],
-  },
-  // Shell Tester
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': {
-    ai: [
-      { version: '1.1.0', date: '2026-01-12', results: {
-        security: { rating: 'Pass', note: 'Extensions run in isolated Pearl sandbox' },
-        privacy: { rating: 'Pass', note: 'No external data transmission' },
-        dataSafety: { rating: 'Pass', note: 'Test results and logs stored in Pearl' },
-        dataPortability: { rating: 'Pass', note: 'Test logs exportable; extension packages are portable SPK files' },
-        codeQuality: { rating: 'Pass', note: 'Simple, focused utility with clear test runner architecture' },
-        accessibility: { rating: 'Pass', note: 'Terminal-style output; fully keyboard-driven' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/shelltester-audit-1.1',
-      }},
-    ],
-    human: [
-      { version: '1.0.0', date: '2025-10-15', auditor: 'Harbor Life Security Team', summary: 'Reviewed sandboxing of extension loading. Confirmed Pearl isolation prevents escape. Approved.', reportUrl: '#' },
-    ],
-  },
-  // AI Lagoon
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
-    ai: [
-      { version: '1.0.0', date: '2025-12-01', results: {
-        security: { rating: 'Pass', note: 'AI context fully isolated per Pearl. Grapple connections require explicit grant' },
-        privacy: { rating: 'Pass', note: 'Prompts and responses never leave your server' },
-        dataSafety: { rating: 'Pass', note: 'Conversation history in Pearl-local SQLite' },
-        dataPortability: { rating: 'Pass', note: 'Conversation export as JSON/Markdown' },
-        codeQuality: { rating: 'Pass', note: 'Clean model-agnostic architecture' },
-        accessibility: { rating: 'Partial', note: 'Chat UI keyboard-navigable; settings panel needs improvement' },
-      }, links: {
-        chatgpt: 'https://chatgpt.com/share/ailagoon-audit-1.0',
-        claude: 'https://claude.ai/share/ailagoon-audit-1.0',
-        gemini: 'https://g.co/gemini/share/ailagoon-audit-1.0',
-      }},
-    ],
-    human: [],
-  },
-};
+const APP_AUDITS = {};
 
 /* ─── License Texts ─────────────────────────────────────────────────────────── */
 const HLSL_LICENSE_TEXT = `HARBOR LIFE SOFTWARE LICENSE (HLSL) v1.0
@@ -1946,145 +1576,17 @@ If you modify the Program, your modified version must prominently offer all user
 
 Full license text: https://www.gnu.org/licenses/agpl-3.0.en.html`;
 
-const APP_FEES = {
-  _platform: {
-    selfHosted: { price: 'FREE', description: 'Run on your own Melusina server with no ongoing fees' },
-    plans: [
-      { tier: 'Starter', sol: '0.1', storage: '1 GB', pearls: 5 },
-      { tier: 'Standard', sol: '0.5', storage: '10 GB', pearls: 25 },
-      { tier: 'Professional', sol: '2.0', storage: '50 GB', pearls: 100 },
-      { tier: 'Enterprise', sol: '10.0', storage: '500 GB', pearls: '\u221e' },
-    ],
-    pearlNote: 'Each app instance is a Pearl. Share NFTs (~0.005 SOL tx fee) enable per-user access within your plan quota.',
-    storageNote: 'Storage is included in your pBay plan tier. Self-hosted deployments have unlimited storage.',
-    ipfsNote: 'Publish permanent IPFS snapshots via Arweave for ~0.01\u20130.5 AR per snapshot depending on data size. Your data becomes permanently available on the decentralized web.',
-    paymentNote: 'All payments are in SOL on the Solana blockchain via Phantom, Solflare, or Backpack wallets.',
-  },
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': [
-    { service: 'Telegram Bot API', cost: 'Free', note: 'Telegram provides the bot API at no cost' },
-  ],
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': [
-    { service: 'Postmark Email API', cost: 'Optional', note: 'For enhanced outbound email delivery. Free tier: 100 emails/mo' },
-  ],
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': [
-    { service: 'No third-party APIs required', cost: '\u2014', note: 'All verification runs locally within your Pearl' },
-  ],
-};
+const APP_FEES = { _platform: [] };
 
 /* ─── App Prices ───────────────────────────────────────────────────────────── */
-const APP_PRICES = {
-  // Bureau (office suite)
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': { price: 'FREE' },
-  // BLOOM Identity (KYC)
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': { price: 'FREE' },
-  // BotMother (Telegram)
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': { price: 'FREE' },
-  // MerMail
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': { price: 'FREE' },
-  // MiniGit
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': { price: 'FREE' },
-  // Shell Tester
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': { price: 'FREE' },
-  // AI Lagoon
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': { price: 'FREE' },
-};
+const APP_PRICES = {};
 
 function getAppPrice(appId) {
   return APP_PRICES[appId] || { price: 'FREE' };
 }
 
 /* ─── Sidecars & Grapple Connections ───────────────────────────────────────── */
-const APP_SIDECARS = {
-  // Bureau
-  'dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh': {
-    sidecars: [],
-    grapple: [
-      { direction: 'incoming', capability: 'Document.View', apps: ['AI Lagoon', 'BotMother'], purpose: 'Let other Pearls read document content', type: 'enhancement' },
-      { direction: 'incoming', capability: 'Spreadsheet.View', apps: ['AI Lagoon', 'BotMother'], purpose: 'Let other Pearls read spreadsheet data', type: 'enhancement' },
-      { direction: 'incoming', capability: 'Document.Edit', apps: ['AI Lagoon'], purpose: 'Let an AI Pearl write into a document', type: 'enhancement' },
-    ],
-  },
-  // BLOOM Identity
-  'qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h': {
-    sidecars: [],
-    grapple: [
-      { direction: 'outgoing', capability: 'Identity.Submit', apps: ['Station Pearl'], purpose: 'Send completed verification to a Station Pearl', type: 'dependency' },
-      { direction: 'incoming', capability: 'Identity.Review', apps: ['Station Pearl'], purpose: 'Receive verification results from Identity Pearls', type: 'dependency' },
-    ],
-  },
-  // BotMother
-  'xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0': {
-    sidecars: [],
-    grapple: [
-      { direction: 'outgoing', capability: 'AiModel.Query', apps: ['AI Lagoon'], purpose: 'Send messages to an AI model for processing and auto-replies', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Spreadsheet.Append', apps: ['Bureau'], purpose: 'Log bot events or metrics to a Bureau spreadsheet', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Mail.Send', apps: ['MerMail'], purpose: 'Pipe bot notifications into an email Pearl', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Git.Push', apps: ['MiniGit'], purpose: 'Log events or message archives to a Git repository', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'IpNetwork.Connect', apps: ['— (Internet)'], purpose: 'Reach Telegram webhook servers', type: 'dependency' },
-    ],
-  },
-  // MerMail
-  'wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h': {
-    sidecars: [
-      {
-        name: 'Email Server (SMTP)',
-        required: true,
-        type: 'service',
-        description: 'MerMail requires the Melusina SMTP sidecar — a server-level mail service available only through Melusina. It handles inbound delivery via the platform\'s built-in SMTP gateway and outbound relay through a configured SMTP provider (e.g. Postmark, your own Postfix, or any standard relay).',
-        links: [
-          { label: 'Melusina SMTP docs', url: 'https://melusina-os.org/docs/smtp' },
-        ],
-      },
-    ],
-    grapple: [
-      { direction: 'incoming', capability: 'Mail.Send', apps: ['BotMother'], purpose: 'Receive notifications from other Pearls as emails', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Document.Attach', apps: ['Bureau'], purpose: 'Share email attachments to Bureau document Pearls', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'IpNetwork.Connect', apps: ['— (Internet)'], purpose: 'Reach external SMTP relay for outbound mail', type: 'dependency' },
-    ],
-  },
-  // MiniGit
-  'pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50': {
-    sidecars: [],
-    grapple: [
-      { direction: 'incoming', capability: 'Git.Push', apps: ['BotMother', 'Shell Tester'], purpose: 'Accept pushes from other Pearls', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'AiModel.Query', apps: ['AI Lagoon'], purpose: 'Feed code into AI Lagoon for analysis', type: 'enhancement' },
-    ],
-  },
-  // Shell Tester
-  'nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh': {
-    sidecars: [],
-    grapple: [
-      { direction: 'outgoing', capability: 'Extension.Test', apps: ['Any app Pearl'], purpose: 'Test Grapple connections between extensions and app Pearls', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Git.Push', apps: ['MiniGit'], purpose: 'Push test results to a Git repository', type: 'enhancement' },
-    ],
-  },
-  // AI Lagoon
-  'aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0': {
-    sidecars: [
-      {
-        name: 'LLM Provider Proxy',
-        required: true,
-        type: 'ai-backend',
-        description: 'AI Lagoon requires the LLM proxy sidecar — a server-level service available only through Melusina. Run a local Ollama instance for fully offline AI, or configure the proxy to route requests to OpenAI, OpenRouter, or Anthropic APIs. The sidecar handles auth, rate-limiting, and model routing at the server level.',
-        options: [
-          { name: 'Ollama (local)', description: 'Run models locally — fully offline, no API keys needed', url: 'https://ollama.com' },
-          { name: 'OpenAI', description: 'GPT-4o, GPT-4, GPT-3.5 via API key', url: 'https://platform.openai.com' },
-          { name: 'OpenRouter', description: 'Unified gateway to 100+ models', url: 'https://openrouter.ai' },
-          { name: 'Anthropic', description: 'Claude models via API key', url: 'https://console.anthropic.com' },
-        ],
-        links: [
-          { label: 'Melusina AI sidecar docs', url: 'https://melusina-os.org/docs/ai-sidecar' },
-        ],
-      },
-    ],
-    grapple: [
-      { direction: 'incoming', capability: 'AiModel.Query', apps: ['BotMother', 'MiniGit'], purpose: 'Accept AI processing requests from other Pearls', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Document.View', apps: ['Bureau'], purpose: 'Read document Pearls for context in AI conversations', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Spreadsheet.View', apps: ['Bureau'], purpose: 'Read spreadsheet data for analysis', type: 'enhancement' },
-      { direction: 'outgoing', capability: 'Git.Clone', apps: ['MiniGit'], purpose: 'Read code repositories for analysis', type: 'enhancement' },
-    ],
-  },
-};
+const APP_SIDECARS = {};
 
 function getAppSidecars(appId) {
   return APP_SIDECARS[appId] || { sidecars: [], grapple: [] };
@@ -2209,9 +1711,8 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'indev', label: `App Development (${featureWishes.length + bugReports.length + versions.length})` },
+    { id: 'versions', label: `Versions (${versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
-    { id: 'reviews', label: `Reviews (${(reviews.length + userRevs.length)})` },
     { id: 'audits', label: '🔍 Audits' },
     { id: 'sidecars', label: '🪝 Grapple & Sidecars' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
@@ -2869,462 +2370,56 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
     >{dir === 1 ? '▲' : '▼'}{count !== undefined ? ` ${count}` : ''}</button>
   );
 
-  /* Comment thread component */
-  const CommentThread = ({ parentKey }) => {
-    const [comments, setComments] = useState(() => getComments(parentKey));
-    const [showForm, setShowForm] = useState(false);
-    const [draft, setDraft] = useState({ text: '', author: '' });
-    const submit = () => {
-      if (!draft.text.trim()) return;
-      const updated = addComment(parentKey, draft.text.trim(), draft.author.trim() || 'anon');
-      setComments(updated);
-      setDraft({ text: '', author: '' });
-      setShowForm(false);
-    };
-    return (
-      <div style={{ marginTop: 12, borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-            💬 {comments.length} comment{comments.length !== 1 ? 's' : ''}
-          </span>
-          {!showForm && (
-            <button onClick={() => setShowForm(true)} style={{
-              background: 'none', border: `1px solid ${T.border}`, borderRadius: 3,
-              color: T.cyan, fontSize: 11, padding: '3px 10px', cursor: 'pointer',
-              fontFamily: "'JetBrains Mono', monospace", transition: 'all .2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; }}
-            >Reply</button>
-          )}
-        </div>
-        {/* Existing comments */}
-        {comments.map((c) => (
-          <div key={c.id} style={{
-            padding: '8px 12px', marginBottom: 6, marginLeft: 8,
-            borderLeft: `2px solid ${T.cyan}22`, background: T.bgAlt,
-            borderRadius: '0 4px 4px 0',
-          }}>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: T.textSec }}>{c.text}</div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-              <span>{c.author}</span>
-              <span>{c.date}</span>
-            </div>
-          </div>
-        ))}
-        {/* Reply form */}
-        {showForm && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, marginLeft: 8 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input placeholder="Name (optional)" value={draft.author}
-                onChange={(e) => setDraft(d => ({ ...d, author: e.target.value }))}
-                style={{
-                  padding: '6px 10px', background: T.bgAlt, maxWidth: 150,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 12, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + '55'}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-              <input placeholder="Add a comment..." value={draft.text}
-                onChange={(e) => setDraft(d => ({ ...d, text: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
-                style={{
-                  flex: 1, padding: '6px 10px', background: T.bgAlt,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 12, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + '55'}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowForm(false)} style={{
-                padding: '4px 12px', background: 'transparent',
-                border: `1px solid ${T.border}`, borderRadius: 3,
-                color: T.textDim, fontSize: 11, cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>Cancel</button>
-              <button onClick={submit} style={{
-                padding: '4px 14px',
-                background: T.cyan + '11', border: `1px solid ${T.cyan}44`, borderRadius: 3,
-                color: T.cyan, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-                opacity: !draft.text.trim() ? 0.4 : 1,
-              }}>Post</button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const submitFeatureWish = () => {
-    if (!fwDraft.text.trim()) return;
-    const updated = addFeatureWish(app.appId, fwDraft.text.trim(), fwDraft.author.trim() || 'anon');
-    setFeatureWishes(getFeatureWishes(app.appId));
-    setFwVotes(getMyFWVotes());
-    setFwDraft({ text: '', author: '' });
-    setShowFwForm(false);
-  };
-
-  const handleFwVote = (wishId, dir) => {
-    const result = voteFeatureWish(app.appId, wishId, dir);
-    setFeatureWishes(result.wishes);
-    setFwVotes(result.votes);
-  };
-
-  const submitBugReport = () => {
-    if (!bugDraft.title.trim()) return;
-    addBugReport(app.appId, bugDraft.title.trim(), bugDraft.description.trim(), bugDraft.author.trim() || 'anon');
-    setBugReports(getBugReports(app.appId));
-    setBugVotes(getMyBugVotes());
-    setBugDraft({ title: '', description: '', author: '' });
-    setShowBugForm(false);
-  };
-
-  const handleBugVote = (bugId, dir) => {
-    const result = voteBugReport(app.appId, bugId, dir);
-    setBugReports(result.bugs);
-    setBugVotes(result.votes);
-  };
-
-  const InDevTab = () => (
+  /* ---- VERSIONS TAB ---- */
+  const VersionsTab = () => (
     <div style={{ maxWidth: 780 }}>
-      {/* Sub-tabs: Suggestions | Bugs | Version History */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: `1px solid ${T.border}` }}>
-        {[
-          { id: 'suggestions', label: `Suggestions (${featureWishes.length})`, icon: '💡' },
-          { id: 'bugs', label: `Bugs (${bugReports.length})`, icon: '🐛' },
-          { id: 'versions', label: `Versions (${versions.length})`, icon: '📋' },
-        ].map(st => (
-          <button key={st.id} onClick={() => setDevSubTab(st.id)} style={{
-            padding: '12px 20px', background: 'none', border: 'none',
-            borderBottom: `2px solid ${devSubTab === st.id ? T.cyan : 'transparent'}`,
-            color: devSubTab === st.id ? T.cyan : T.textDim,
-            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-            transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 6,
-            textShadow: devSubTab === st.id ? `0 0 6px ${T.accentGlow}` : 'none',
-          }}>{st.icon} {st.label}</button>
-        ))}
-      </div>
-
-      {/* SUGGESTIONS SUB-TAB */}
-      {devSubTab === 'suggestions' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <SectionHeader color={T.magenta}>Feature Requests</SectionHeader>
-              <p style={{ fontSize: 13, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                Submit and vote on features you want to see in {app.name}
-              </p>
-            </div>
-            {!showFwForm && (
-              <button onClick={() => setShowFwForm(true)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '10px 20px',
-                background: `linear-gradient(135deg, ${T.magenta}15, ${T.cyan}15)`,
-                border: `1px solid ${T.magenta}44`, borderRadius: 3, cursor: 'pointer',
-                color: T.magenta, fontSize: 12, fontWeight: 700,
-                fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-                textShadow: `0 0 6px ${T.magentaGlow}`, transition: 'all .2s',
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.magentaGlow}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-              >+ REQUEST FEATURE</button>
-            )}
-          </div>
-
-          {/* Submit form */}
-          {showFwForm && (
-            <div style={{
-              marginBottom: 20, padding: 20, background: T.surface,
-              borderRadius: T.radius, border: `1px solid ${T.magenta}33`,
-              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <input placeholder="Your name (optional)" value={fwDraft.author}
-                  onChange={(e) => setFwDraft(d => ({ ...d, author: e.target.value }))}
-                  style={{
-                    padding: '10px 14px', background: T.bgAlt, maxWidth: 220,
-                    border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                    fontSize: 13, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = T.magenta + '55'}
-                  onBlur={(e) => e.target.style.borderColor = T.border}
-                />
-                <textarea placeholder="Describe the feature you'd like to see..." value={fwDraft.text}
-                  onChange={(e) => setFwDraft(d => ({ ...d, text: e.target.value }))}
-                  rows={3}
-                  style={{
-                    width: '100%', padding: '12px 14px', background: T.bgAlt,
-                    border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                    fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.6,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = T.magenta + '55'}
-                  onBlur={(e) => e.target.style.borderColor = T.border}
-                />
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowFwForm(false)} style={{
-                    padding: '8px 16px', background: 'transparent',
-                    border: `1px solid ${T.border}`, borderRadius: 3,
-                    color: T.textDim, fontSize: 12, cursor: 'pointer',
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}>Cancel</button>
-                  <button onClick={submitFeatureWish} style={{
-                    padding: '8px 20px',
-                    background: `linear-gradient(135deg, ${T.magenta}22, ${T.cyan}22)`,
-                    border: `1px solid ${T.magenta}55`, borderRadius: 3,
-                    color: T.magenta, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-                    opacity: !fwDraft.text.trim() ? 0.4 : 1,
-                  }}>SUBMIT</button>
-                </div>
+      <SectionHeader>Version History</SectionHeader>
+      {versions.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📋</div>
+          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+            Version history coming soon
+          </p>
+        </div>
+      ) : (
+        <div style={{ position: "relative", paddingLeft: 28, marginTop: 16 }}>
+          <div style={{ position: "absolute", left: 5, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, ${T.cyan}44, ${T.purple}22, transparent)` }} />
+          {versions.map((v, i) => (
+            <div key={i} style={{ position: "relative", marginBottom: 32, animation: `fadeUp .3s ease-out ${i * 0.08}s both` }}>
+              <div style={{
+                position: "absolute", left: -28, top: 4, width: 12, height: 12,
+                borderRadius: "50%", background: i === 0 ? T.cyan : T.bgAlt,
+                border: `2px solid ${i === 0 ? T.cyan : T.textDim + '44'}`,
+                boxShadow: i === 0 ? `0 0 10px ${T.cyan}66` : "none",
+              }} />
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+                <span style={{
+                  fontSize: 16, fontWeight: 800,
+                  color: i === 0 ? T.cyan : T.text,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textShadow: i === 0 ? `0 0 8px ${T.accentGlow}` : "none",
+                }}>v{v.version}</span>
+                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v.date}</span>
+                {i === 0 && <Badge neon={T.cyan}>Latest</Badge>}
               </div>
-            </div>
-          )}
-
-          {/* Feature request list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {featureWishes.length === 0 && !showFwForm ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>💡</div>
-                <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-                  No feature requests yet. Be the first to suggest one!
-                </p>
-              </div>
-            ) : featureWishes.map((wish) => {
-              const voteKey = `${app.appId}_${wish.id}`;
-              const myVote = fwVotes[voteKey] || 0;
-              return (
-                <div key={wish.id} style={{
-                  padding: 16, background: T.surface,
-                  borderRadius: T.radius, border: `1px solid ${T.border}`,
-                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  animation: 'fadeUp .3s ease-out both',
-                }}>
-                  <div style={{ display: 'flex', gap: 14 }}>
-                    {/* Vote column */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 44 }}>
-                      <VoteButton dir={1} active={myVote === 1} onClick={() => handleFwVote(wish.id, 1)} />
-                      <span style={{
-                        fontSize: 16, fontWeight: 800, color: wish.score > 0 ? T.green : wish.score < 0 ? T.magenta : T.textDim,
-                        fontFamily: "'Orbitron', sans-serif",
-                        textShadow: wish.score > 0 ? `0 0 6px ${T.greenGlow}` : wish.score < 0 ? `0 0 6px ${T.magentaGlow}` : 'none',
-                      }}>{wish.score}</span>
-                      <VoteButton dir={-1} active={myVote === -1} onClick={() => handleFwVote(wish.id, -1)} />
-                    </div>
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 14, lineHeight: 1.7, color: T.text, margin: 0 }}>{wish.text}</p>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                        <span>{wish.author}</span>
-                        <span>{wish.date}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Comment thread */}
-                  <CommentThread parentKey={`fw_${app.appId}_${wish.id}`} />
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* VERSIONS SUB-TAB */}
-      {devSubTab === 'versions' && (
-        <>
-          <SectionHeader>Version History</SectionHeader>
-          {versions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📋</div>
-              <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-                Version history coming soon
-              </p>
-            </div>
-          ) : (
-            <div style={{ position: "relative", paddingLeft: 28, marginTop: 16 }}>
-              <div style={{ position: "absolute", left: 5, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, ${T.cyan}44, ${T.purple}22, transparent)` }} />
-              {versions.map((v, i) => (
-                <div key={i} style={{ position: "relative", marginBottom: 32, animation: `fadeUp .3s ease-out ${i * 0.08}s both` }}>
-                  <div style={{
-                    position: "absolute", left: -28, top: 4, width: 12, height: 12,
-                    borderRadius: "50%", background: i === 0 ? T.cyan : T.bgAlt,
-                    border: `2px solid ${i === 0 ? T.cyan : T.textDim + '44'}`,
-                    boxShadow: i === 0 ? `0 0 10px ${T.cyan}66` : "none",
-                  }} />
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
-                    <span style={{
-                      fontSize: 16, fontWeight: 800,
-                      color: i === 0 ? T.cyan : T.text,
-                      fontFamily: "'Orbitron', sans-serif",
-                      textShadow: i === 0 ? `0 0 8px ${T.accentGlow}` : "none",
-                    }}>v{v.version}</span>
-                    <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v.date}</span>
-                    {i === 0 && <Badge neon={T.cyan}>Latest</Badge>}
-                  </div>
-                  <div style={{
-                    padding: "16px 20px", background: T.surface,
-                    borderRadius: T.radius, border: `1px solid ${i === 0 ? T.cyan + '22' : T.border}`,
-                    backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              <div style={{
+                padding: "16px 20px", background: T.surface,
+                borderRadius: T.radius, border: `1px solid ${i === 0 ? T.cyan + '22' : T.border}`,
+                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              }}>
+                {v.changes.map((c, j) => (
+                  <div key={j} style={{
+                    fontSize: 13, color: T.textSec, lineHeight: 1.8,
+                    paddingLeft: 16, position: "relative",
                   }}>
-                    {v.changes.map((c, j) => (
-                      <div key={j} style={{
-                        fontSize: 13, color: T.textSec, lineHeight: 1.8,
-                        paddingLeft: 16, position: "relative",
-                      }}>
-                        <span style={{ position: "absolute", left: 0, color: T.cyan, fontSize: 11, textShadow: `0 0 4px ${T.accentGlow}` }}>▸</span>
-                        {c}
-                      </div>
-                    ))}
+                    <span style={{ position: "absolute", left: 0, color: T.cyan, fontSize: 11, textShadow: `0 0 4px ${T.accentGlow}` }}>▸</span>
+                    {c}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* BUGS SUB-TAB */}
-      {devSubTab === 'bugs' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <SectionHeader color={T.coral}>Bug Reports</SectionHeader>
-              <p style={{ fontSize: 13, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                Report and vote on bugs in {app.name}
-              </p>
-            </div>
-            {!showBugForm && (
-              <button onClick={() => setShowBugForm(true)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '10px 20px',
-                background: `linear-gradient(135deg, ${T.coral}15, ${T.yellow}15)`,
-                border: `1px solid ${T.coral}44`, borderRadius: 3, cursor: 'pointer',
-                color: T.coral, fontSize: 12, fontWeight: 700,
-                fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-                textShadow: `0 0 6px ${T.magentaGlow}`, transition: 'all .2s',
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.magentaGlow}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-              >🐛 REPORT BUG</button>
-            )}
-          </div>
-
-          {/* Bug submit form */}
-          {showBugForm && (
-            <div style={{
-              marginBottom: 20, padding: 20, background: T.surface,
-              borderRadius: T.radius, border: `1px solid ${T.coral}33`,
-              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <input placeholder="Bug title / summary" value={bugDraft.title}
-                    onChange={(e) => setBugDraft(d => ({ ...d, title: e.target.value }))}
-                    style={{
-                      flex: '2 1 200px', padding: '10px 14px', background: T.bgAlt,
-                      border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                      fontSize: 13, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = T.coral + '55'}
-                    onBlur={(e) => e.target.style.borderColor = T.border}
-                  />
-                  <input placeholder="Your name (optional)" value={bugDraft.author}
-                    onChange={(e) => setBugDraft(d => ({ ...d, author: e.target.value }))}
-                    style={{
-                      flex: '1 1 140px', padding: '10px 14px', background: T.bgAlt,
-                      border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                      fontSize: 13, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = T.coral + '55'}
-                    onBlur={(e) => e.target.style.borderColor = T.border}
-                  />
-                </div>
-                <textarea placeholder="Steps to reproduce, expected behavior, actual behavior..." value={bugDraft.description}
-                  onChange={(e) => setBugDraft(d => ({ ...d, description: e.target.value }))}
-                  rows={4}
-                  style={{
-                    width: '100%', padding: '12px 14px', background: T.bgAlt,
-                    border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                    fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.6,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = T.coral + '55'}
-                  onBlur={(e) => e.target.style.borderColor = T.border}
-                />
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowBugForm(false)} style={{
-                    padding: '8px 16px', background: 'transparent',
-                    border: `1px solid ${T.border}`, borderRadius: 3,
-                    color: T.textDim, fontSize: 12, cursor: 'pointer',
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}>Cancel</button>
-                  <button onClick={submitBugReport} style={{
-                    padding: '8px 20px',
-                    background: `linear-gradient(135deg, ${T.coral}22, ${T.yellow}22)`,
-                    border: `1px solid ${T.coral}55`, borderRadius: 3,
-                    color: T.coral, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-                    opacity: !bugDraft.title.trim() ? 0.4 : 1,
-                  }}>SUBMIT</button>
-                </div>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* Bug list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {bugReports.length === 0 && !showBugForm ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>🐛</div>
-                <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-                  No bug reports yet. That's a good sign!
-                </p>
-              </div>
-            ) : bugReports.map((bug) => {
-              const voteKey = `${app.appId}_${bug.id}`;
-              const myVote = bugVotes[voteKey] || 0;
-              return (
-                <div key={bug.id} style={{
-                  padding: 16, background: T.surface,
-                  borderRadius: T.radius, border: `1px solid ${T.border}`,
-                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  animation: 'fadeUp .3s ease-out both',
-                }}>
-                  <div style={{ display: 'flex', gap: 14 }}>
-                    {/* Vote column */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 44 }}>
-                      <VoteButton dir={1} active={myVote === 1} onClick={() => handleBugVote(bug.id, 1)} />
-                      <span style={{
-                        fontSize: 16, fontWeight: 800, color: bug.score > 0 ? T.green : bug.score < 0 ? T.magenta : T.textDim,
-                        fontFamily: "'Orbitron', sans-serif",
-                        textShadow: bug.score > 0 ? `0 0 6px ${T.greenGlow}` : bug.score < 0 ? `0 0 6px ${T.magentaGlow}` : 'none',
-                      }}>{bug.score}</span>
-                      <VoteButton dir={-1} active={myVote === -1} onClick={() => handleBugVote(bug.id, -1)} />
-                    </div>
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: '0 0 4px', fontFamily: "'Orbitron', sans-serif" }}>{bug.title}</h4>
-                      {bug.description && (
-                        <p style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec, margin: '0 0 8px' }}>{bug.description}</p>
-                      )}
-                      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                        <span>{bug.author}</span>
-                        <span>{bug.date}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Comment thread */}
-                  <CommentThread parentKey={`bug_${app.appId}_${bug.id}`} />
-                </div>
-              );
-            })}
-          </div>
-        </>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -3385,205 +2480,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       </div>
     </div>
   );
-
-  /* ---- REVIEWS TAB ---- */
-  const ReviewsTab = () => {
-    const allRevs = [...reviews, ...userRevs];
-    const allAvg = allRevs.length ? allRevs.reduce((s, r) => s + r.rating, 0) / allRevs.length : 0;
-    const submitReview = () => {
-      if (!reviewDraft.author.trim() || !reviewDraft.text.trim()) return;
-      const newRev = { ...reviewDraft, date: new Date().toISOString().slice(0, 10) };
-      addUserReview(app.appId, newRev);
-      setUserRevs(getUserReviews(app.appId));
-      setShowReviewForm(false);
-      setReviewDraft({ author: '', rating: 5, title: '', text: '' });
-    };
-    return (
-    <div style={{ maxWidth: 780 }}>
-      {/* Rating summary */}
-      {allRevs.length > 0 && (
-        <div style={{
-          display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap",
-          marginBottom: 28, padding: 24, background: T.surface,
-          borderRadius: T.radius, border: `1px solid ${T.border}`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{
-              fontSize: 48, fontWeight: 900, color: T.text,
-              fontFamily: "'Orbitron', sans-serif",
-              lineHeight: 1,
-              textShadow: `0 0 20px ${T.accentGlow}`,
-            }}>{allAvg.toFixed(1)}</div>
-            <StarRating rating={allAvg} size={18} />
-            <div style={{ fontSize: 11, color: T.textDim, marginTop: 6, fontFamily: "'JetBrains Mono', monospace" }}>
-              {allRevs.length} rating{allRevs.length !== 1 ? 's' : ''}
-            </div>
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            {[5,4,3,2,1].map(star => {
-              const count = allRevs.filter(r => r.rating === star).length;
-              const pct = allRevs.length ? (count / allRevs.length) * 100 : 0;
-              return (
-                <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: T.textDim, width: 14, textAlign: "right", fontFamily: "'JetBrains Mono', monospace" }}>{star}</span>
-                  <span style={{ fontSize: 11, color: T.yellow }}>★</span>
-                  <div style={{ flex: 1, height: 6, background: T.bgAlt, borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{
-                      width: `${pct}%`, height: "100%",
-                      background: `linear-gradient(90deg, ${T.cyan}, ${T.yellow})`,
-                      borderRadius: 3, transition: "width .3s",
-                      boxShadow: pct > 0 ? `0 0 6px ${T.cyan}44` : 'none',
-                    }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: T.textDim, width: 20, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Write a review button */}
-      {!showReviewForm && (
-        <button onClick={() => setShowReviewForm(true)} style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "12px 24px", marginBottom: 20,
-          background: `linear-gradient(135deg, ${T.cyan}15, ${T.magenta}15)`,
-          border: `1px solid ${T.cyan}44`, borderRadius: 3, cursor: "pointer",
-          color: T.cyan, fontSize: 12, fontWeight: 700,
-          fontFamily: "'Orbitron', sans-serif", letterSpacing: ".08em",
-          textShadow: `0 0 6px ${T.accentGlow}`,
-          transition: "all .2s",
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 20px ${T.accentGlow}`; e.currentTarget.style.borderColor = T.cyan + "77"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = T.cyan + "44"; }}
-        >✏ WRITE A REVIEW</button>
-      )}
-
-      {/* Review form */}
-      {showReviewForm && (
-        <div style={{
-          marginBottom: 24, padding: 24, background: T.surface,
-          borderRadius: T.radius, border: `1px solid ${T.cyan}33`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader color={T.cyan}>Write a Review</SectionHeader>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <input placeholder="Your name" value={reviewDraft.author}
-                onChange={(e) => setReviewDraft(d => ({ ...d, author: e.target.value }))}
-                style={{
-                  flex: "1 1 140px", padding: "10px 14px", background: T.bgAlt,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 13, outline: "none", fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + "55"}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-              <input placeholder="Review title (optional)" value={reviewDraft.title}
-                onChange={(e) => setReviewDraft(d => ({ ...d, title: e.target.value }))}
-                style={{
-                  flex: "2 1 200px", padding: "10px 14px", background: T.bgAlt,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 13, outline: "none", fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + "55"}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>Rating:</span>
-              {[1,2,3,4,5].map(s => (
-                <button key={s} onClick={() => setReviewDraft(d => ({ ...d, rating: s }))} style={{
-                  background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 2,
-                  color: s <= reviewDraft.rating ? T.yellow : T.textDim + "44",
-                  transition: "all .15s", transform: s <= reviewDraft.rating ? "scale(1.1)" : "none",
-                  textShadow: s <= reviewDraft.rating ? `0 0 8px ${T.yellow}66` : "none",
-                }}>★</button>
-              ))}
-              <span style={{ fontSize: 12, color: T.textDim, marginLeft: 4, fontFamily: "'JetBrains Mono', monospace" }}>{reviewDraft.rating}/5</span>
-            </div>
-            <textarea placeholder="Share your experience with this app..." value={reviewDraft.text}
-              onChange={(e) => setReviewDraft(d => ({ ...d, text: e.target.value }))}
-              rows={4}
-              style={{
-                width: "100%", padding: "12px 14px", background: T.bgAlt,
-                border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                fontSize: 13, outline: "none", resize: "vertical", lineHeight: 1.6,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-              onFocus={(e) => e.target.style.borderColor = T.cyan + "55"}
-              onBlur={(e) => e.target.style.borderColor = T.border}
-            />
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setShowReviewForm(false)} style={{
-                padding: "10px 20px", background: "transparent",
-                border: `1px solid ${T.border}`, borderRadius: 3,
-                color: T.textDim, fontSize: 12, cursor: "pointer",
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>Cancel</button>
-              <button onClick={submitReview} style={{
-                padding: "10px 24px",
-                background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
-                border: `1px solid ${T.cyan}55`, borderRadius: 3,
-                color: T.cyan, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                fontFamily: "'Orbitron', sans-serif", letterSpacing: ".06em",
-                textShadow: `0 0 6px ${T.accentGlow}`,
-                opacity: (!reviewDraft.author.trim() || !reviewDraft.text.trim()) ? 0.4 : 1,
-              }}
-                onMouseEnter={(e) => { if (reviewDraft.author.trim() && reviewDraft.text.trim()) e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
-              >SUBMIT REVIEW</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Individual reviews */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {allRevs.length === 0 && !showReviewForm ? (
-          <div style={{ textAlign: "center", padding: "60px 20px" }}>
-            <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>💬</div>
-            <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-              No reviews yet. Be the first!
-            </p>
-          </div>
-        ) : allRevs.map((review, i) => (
-          <div key={i} className="review-card" style={{ animation: `fadeUp .3s ease-out ${i * 0.05}s both` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 3,
-                  background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
-                  border: `1px solid ${T.cyan}33`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, fontWeight: 700, color: T.cyan,
-                  fontFamily: "'Orbitron', sans-serif",
-                  textShadow: `0 0 6px ${T.accentGlow}`,
-                }}>{review.author[0].toUpperCase()}</div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: T.text,
-                    fontFamily: "'JetBrains Mono', monospace" }}>{review.author}</div>
-                  <div style={{ fontSize: 10, color: T.textDim }}>{review.date}</div>
-                </div>
-              </div>
-              <StarRating rating={review.rating} size={12} />
-            </div>
-            {review.title && (
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 6 }}>
-                {review.title}
-              </div>
-            )}
-            <div style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec }}>
-              {review.text}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-    );
-  };
 
   return (
     <div style={{ minHeight: "100dvh", animation: "fadeIn .15s ease-out" }}>
@@ -3824,9 +2720,8 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         {/* tab content */}
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
-          {tab === 'indev' && <InDevTab />}
+          {tab === 'versions' && <VersionsTab />}
           {tab === 'faq' && <FAQTab />}
-          {tab === 'reviews' && <ReviewsTab />}
           {tab === 'audits' && <AuditsTab />}
           {tab === 'sidecars' && <SidecarsTab />}
           {tab === 'license' && <LicenseTab />}
@@ -3866,324 +2761,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
     </div>
   );
 }
-
-/* ─── App Ideas Page (full page, not modal) ────────────────────────────────── */
-
-function AppIdeasPage({ appIdeas, setAppIdeas, aiVotes, setAiVotes, showIdeaForm, setShowIdeaForm, ideaDraft, setIdeaDraft, onClose }) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
-
-  /* Comment thread (same pattern as DetailPage) */
-  const IdeaCommentThread = ({ parentKey }) => {
-    const [comments, setComments] = useState(() => getComments(parentKey));
-    const [showForm, setShowForm] = useState(false);
-    const [draft, setDraft] = useState({ text: '', author: '' });
-    const submit = () => {
-      if (!draft.text.trim()) return;
-      const updated = addComment(parentKey, draft.text.trim(), draft.author.trim() || 'anon');
-      setComments(updated);
-      setDraft({ text: '', author: '' });
-      setShowForm(false);
-    };
-    return (
-      <div style={{ marginTop: 12, borderTop: `1px solid ${T.border}`, paddingTop: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-            💬 {comments.length} comment{comments.length !== 1 ? 's' : ''}
-          </span>
-          {!showForm && (
-            <button onClick={() => setShowForm(true)} style={{
-              background: 'none', border: `1px solid ${T.border}`, borderRadius: 3,
-              color: T.cyan, fontSize: 11, padding: '3px 10px', cursor: 'pointer',
-              fontFamily: "'JetBrains Mono', monospace", transition: 'all .2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; }}
-            >Reply</button>
-          )}
-        </div>
-        {comments.map((c) => (
-          <div key={c.id} style={{
-            padding: '8px 12px', marginBottom: 6, marginLeft: 8,
-            borderLeft: `2px solid ${T.cyan}22`, background: T.bgAlt,
-            borderRadius: '0 4px 4px 0',
-          }}>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: T.textSec }}>{c.text}</div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-              <span>{c.author}</span>
-              <span>{c.date}</span>
-            </div>
-          </div>
-        ))}
-        {showForm && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, marginLeft: 8 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input placeholder="Name (optional)" value={draft.author}
-                onChange={(e) => setDraft(d => ({ ...d, author: e.target.value }))}
-                style={{
-                  padding: '6px 10px', background: T.bgAlt, maxWidth: 150,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 12, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + '55'}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-              <input placeholder="Add a comment..." value={draft.text}
-                onChange={(e) => setDraft(d => ({ ...d, text: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
-                style={{
-                  flex: 1, padding: '6px 10px', background: T.bgAlt,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 12, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.cyan + '55'}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowForm(false)} style={{
-                padding: '4px 12px', background: 'transparent',
-                border: `1px solid ${T.border}`, borderRadius: 3,
-                color: T.textDim, fontSize: 11, cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>Cancel</button>
-              <button onClick={submit} style={{
-                padding: '4px 14px',
-                background: T.cyan + '11', border: `1px solid ${T.cyan}44`, borderRadius: 3,
-                color: T.cyan, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-                opacity: !draft.text.trim() ? 0.4 : 1,
-              }}>Post</button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div style={{
-      maxWidth: 900, margin: "0 auto", padding: "0 24px 80px",
-      minHeight: "100vh",
-    }}>
-      {/* Back bar */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 100,
-        background: "linear-gradient(135deg, rgba(17,14,36,0.95), rgba(30,20,58,0.92))",
-        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        padding: "14px 0", marginBottom: 24,
-        borderBottom: `1px solid ${T.purple}20`,
-        display: "flex", alignItems: "center", gap: 16,
-      }}>
-        <button onClick={onClose} style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "8px 18px", borderRadius: 3,
-          background: `linear-gradient(135deg, ${T.cyan}12, ${T.purple}12)`,
-          border: `1px solid ${T.cyan}33`, color: T.cyan,
-          fontSize: 12, fontWeight: 700, cursor: "pointer",
-          fontFamily: "'Orbitron', sans-serif", letterSpacing: ".06em",
-          transition: "all .2s",
-          textShadow: `0 0 6px ${T.accentGlow}`,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-        >← BACK</button>
-        <span style={{
-          fontSize: 16, fontWeight: 800, fontFamily: "'Orbitron', sans-serif",
-          background: `linear-gradient(135deg, ${T.magenta}, ${T.cyan})`,
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}>App Ideas Board</span>
-      </div>
-
-      {/* Description */}
-      <p style={{
-        fontSize: 14, color: T.textDim, marginBottom: 24,
-        fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.7,
-        maxWidth: 600,
-      }}>
-        Suggest and vote on apps you want to see in the Melusina App Bazaar.
-        Each idea can be discussed in its comment thread.
-      </p>
-
-      {/* Submit new idea */}
-      <div style={{ marginBottom: 24 }}>
-        {!showIdeaForm ? (
-          <button onClick={() => setShowIdeaForm(true)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '12px 24px',
-            background: `linear-gradient(135deg, ${T.magenta}15, ${T.cyan}15)`,
-            border: `1px solid ${T.magenta}44`, borderRadius: 3, cursor: 'pointer',
-            color: T.magenta, fontSize: 12, fontWeight: 700,
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-            textShadow: `0 0 6px ${T.magentaGlow}`, transition: 'all .2s',
-          }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.magentaGlow}`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-          >+ SUGGEST AN APP</button>
-        ) : (
-          <div style={{
-            padding: 20, background: T.surface,
-            borderRadius: T.radius, border: `1px solid ${T.magenta}33`,
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input placeholder="App name / title" value={ideaDraft.title}
-                  onChange={(e) => setIdeaDraft(d => ({ ...d, title: e.target.value }))}
-                  style={{
-                    flex: '2 1 200px', padding: '10px 14px', background: T.bgAlt,
-                    border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                    fontSize: 13, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = T.magenta + '55'}
-                  onBlur={(e) => e.target.style.borderColor = T.border}
-                />
-                <input placeholder="Your name (optional)" value={ideaDraft.author}
-                  onChange={(e) => setIdeaDraft(d => ({ ...d, author: e.target.value }))}
-                  style={{
-                    flex: '1 1 140px', padding: '10px 14px', background: T.bgAlt,
-                    border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                    fontSize: 13, outline: 'none', fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = T.magenta + '55'}
-                  onBlur={(e) => e.target.style.borderColor = T.border}
-                />
-              </div>
-              <textarea placeholder="Describe the app idea — what should it do, who is it for?" value={ideaDraft.description}
-                onChange={(e) => setIdeaDraft(d => ({ ...d, description: e.target.value }))}
-                rows={4}
-                style={{
-                  width: '100%', padding: '12px 14px', background: T.bgAlt,
-                  border: `1px solid ${T.border}`, borderRadius: 3, color: T.text,
-                  fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.6,
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-                onFocus={(e) => e.target.style.borderColor = T.magenta + '55'}
-                onBlur={(e) => e.target.style.borderColor = T.border}
-              />
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setShowIdeaForm(false); setIdeaDraft({ title: '', description: '', author: '' }); }} style={{
-                  padding: '8px 16px', background: 'transparent',
-                  border: `1px solid ${T.border}`, borderRadius: 3,
-                  color: T.textDim, fontSize: 12, cursor: 'pointer',
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}>Cancel</button>
-                <button onClick={() => {
-                  if (!ideaDraft.title.trim()) return;
-                  addAppIdea(ideaDraft.title.trim(), ideaDraft.description.trim(), ideaDraft.author.trim() || 'anon');
-                  setAppIdeas(getAppIdeas());
-                  setAiVotes(getMyAIVotes());
-                  setIdeaDraft({ title: '', description: '', author: '' });
-                  setShowIdeaForm(false);
-                }} style={{
-                  padding: '8px 20px',
-                  background: `linear-gradient(135deg, ${T.magenta}22, ${T.cyan}22)`,
-                  border: `1px solid ${T.magenta}55`, borderRadius: 3,
-                  color: T.magenta, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: "'Orbitron', sans-serif", letterSpacing: '.06em',
-                  opacity: !ideaDraft.title.trim() ? 0.4 : 1,
-                }}>SUBMIT</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Ideas count */}
-      <div style={{
-        marginBottom: 16, fontSize: 11, color: T.textDim,
-        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em',
-      }}>
-        <span style={{ color: T.cyan + 'aa' }}>{appIdeas.length}</span> idea{appIdeas.length !== 1 ? 's' : ''}
-      </div>
-
-      {/* Ideas list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {appIdeas.length === 0 && !showIdeaForm ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ fontSize: 56, marginBottom: 16, opacity: 0.3 }}>🚀</div>
-            <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-              No app ideas yet. Be the first to suggest one!
-            </p>
-          </div>
-        ) : appIdeas.map((idea) => {
-          const myVote = aiVotes[idea.id] || 0;
-          return (
-            <div key={idea.id} style={{
-              padding: 18, background: T.surface,
-              borderRadius: T.radius, border: `1px solid ${T.border}`,
-              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-              animation: 'fadeUp .3s ease-out both',
-            }}>
-              <div style={{ display: 'flex', gap: 14 }}>
-                {/* Vote column */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 44 }}>
-                  <button onClick={() => {
-                    const result = voteAppIdea(idea.id, 1);
-                    setAppIdeas(result.ideas);
-                    setAiVotes(result.votes);
-                  }} style={{
-                    background: myVote === 1 ? T.green + '18' : 'transparent',
-                    border: `1px solid ${myVote === 1 ? T.green + '55' : T.border}`,
-                    color: myVote === 1 ? T.green : T.textDim,
-                    borderRadius: 3, padding: '4px 10px', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                    transition: 'all .2s', display: 'inline-flex', alignItems: 'center', gap: 4,
-                    textShadow: myVote === 1 ? `0 0 6px ${T.greenGlow}` : 'none',
-                  }}>▲</button>
-                  <span style={{
-                    fontSize: 16, fontWeight: 800,
-                    color: idea.score > 0 ? T.green : idea.score < 0 ? T.magenta : T.textDim,
-                    fontFamily: "'Orbitron', sans-serif",
-                    textShadow: idea.score > 0 ? `0 0 6px ${T.greenGlow}` : idea.score < 0 ? `0 0 6px ${T.magentaGlow}` : 'none',
-                  }}>{idea.score}</span>
-                  <button onClick={() => {
-                    const result = voteAppIdea(idea.id, -1);
-                    setAppIdeas(result.ideas);
-                    setAiVotes(result.votes);
-                  }} style={{
-                    background: myVote === -1 ? T.magenta + '18' : 'transparent',
-                    border: `1px solid ${myVote === -1 ? T.magenta + '55' : T.border}`,
-                    color: myVote === -1 ? T.magenta : T.textDim,
-                    borderRadius: 3, padding: '4px 10px', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                    transition: 'all .2s', display: 'inline-flex', alignItems: 'center', gap: 4,
-                    textShadow: myVote === -1 ? `0 0 6px ${T.magentaGlow}` : 'none',
-                  }}>▼</button>
-                </div>
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h4 style={{
-                    fontSize: 15, fontWeight: 700, color: T.text, margin: '0 0 6px',
-                    fontFamily: "'Orbitron', sans-serif",
-                  }}>{idea.title}</h4>
-                  {idea.description && (
-                    <p style={{ fontSize: 14, lineHeight: 1.7, color: T.textSec, margin: '0 0 8px' }}>{idea.description}</p>
-                  )}
-                  <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                    <span>{idea.author}</span>
-                    <span>{idea.date}</span>
-                  </div>
-                </div>
-              </div>
-              {/* Comment thread per idea */}
-              <IdeaCommentThread parentKey={`idea_${idea.id}`} />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* bottom sunset glow */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, height: 3,
-        background: `linear-gradient(90deg, transparent, ${T.peach}44, ${T.magenta}55, ${T.purple}44, ${T.cyan}33, transparent)`,
-        pointerEvents: "none",
-        boxShadow: `0 0 20px ${T.magenta}22, 0 0 40px ${T.purple}11`,
-      }} />
-    </div>
-  );
-}
-
 /* ─── Main App ─────────────────────────────────────────────────────────────── */
 
 function App() {
@@ -4191,11 +2768,6 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [showIdeasPage, setShowIdeasPage] = useState(false);
-  const [showIdeaForm, setShowIdeaForm] = useState(false);
-  const [ideaDraft, setIdeaDraft] = useState({ title: '', description: '', author: '' });
-  const [appIdeas, setAppIdeas] = useState(() => getAppIdeas());
-  const [aiVotes, setAiVotes] = useState(() => getMyAIVotes());
   const hostRef = React.useRef(localStorage.getItem("sandstormHost") || "");
   const [installModalApp, setInstallModalApp] = useState(null);
   const [showGetMelusina, setShowGetMelusina] = useState(false);
@@ -4263,22 +2835,6 @@ function App() {
     setSelectedId(id);
   }, []);
   const onClose = useCallback(() => { setSelectedId(null); setDetailInitTab(null); setDetailInitSubTab(null); }, []);
-
-  if (showIdeasPage) {
-    return (
-      <>
-        <style>{CSS}</style>
-        <AppIdeasPage
-          appIdeas={appIdeas} setAppIdeas={setAppIdeas}
-          aiVotes={aiVotes} setAiVotes={setAiVotes}
-          showIdeaForm={showIdeaForm} setShowIdeaForm={setShowIdeaForm}
-          ideaDraft={ideaDraft} setIdeaDraft={setIdeaDraft}
-          onClose={() => setShowIdeasPage(false)}
-        />
-      </>
-    );
-  }
-
   if (selectedApp) {
     return (
       <>
@@ -4372,20 +2928,6 @@ function App() {
               }}
             />
           </div>
-
-          <button onClick={() => setShowIdeasPage(true)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 3,
-            background: `linear-gradient(135deg, ${T.magenta}12, ${T.purple}12)`,
-            border: `1px solid ${T.magenta}33`,
-            color: T.magenta, fontSize: 10, fontWeight: 700,
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: '.08em',
-            cursor: 'pointer', transition: 'all .2s', whiteSpace: 'nowrap',
-            textShadow: `0 0 6px ${T.magentaGlow}`,
-          }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.magentaGlow}`; e.currentTarget.style.borderColor = T.magenta + '55'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = T.magenta + '33'; }}
-          >💡 APP IDEAS</button>
         </div>
       </header>
 
@@ -4459,7 +3001,7 @@ function App() {
           }}>
             {filtered.map((app, i) => (
               <div key={app.appId} style={{ animationDelay: `${i * 60}ms` }}>
-                <AppCard app={app} onSelect={onSelect} onInstall={onInstall} onVersionClick={(id) => onSelect(id, 'indev', 'versions')} />
+                <AppCard app={app} onSelect={onSelect} onInstall={onInstall} onVersionClick={(id) => onSelect(id, 'versions')} />
               </div>
             ))}
           </div>

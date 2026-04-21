@@ -17,11 +17,14 @@
 	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/melusina-galactic-council"]
 	path = packages/hrbrlife/melusina-galactic-council
-	url = https://github.com/hrbrlife/melusina-galactic-council        branch = main
+	url = https://github.com/hrbrlife/melusina-galactic-council.git
+	branch = main
+	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/AITX-Procedures"]
 	path = packages/hrbrlife/AITX-Procedures
 	url = https://github.com/hrbrlife/AITX-Procedures.git
 	branch = publish
+	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/client_collection"]
 	path = packages/hrbrlife/client_collection
 	url = https://github.com/hrbrlife/clientspace.git
@@ -30,6 +33,7 @@
 	path = packages/hrbrlife/ccash
 	url = https://github.com/hrbrlife/ccash_go_htmx.git
 	branch = publish
+	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/openclaw-main"]
 	path = packages/hrbrlife/openclaw-main
 	url = https://github.com/hrbrlife/openclaw-melusina.git
@@ -49,6 +53,10 @@
 [submodule "packages/hrbrlife/melusina-bureau-paint-app"]
 	path = packages/hrbrlife/melusina-bureau-paint-app
 	url = https://github.com/hrbrlife/melusina-bureau-paint-app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-sheets-app"]
+	path = packages/hrbrlife/melusina-bureau-sheets-app
+	url = https://github.com/hrbrlife/melusina-bureau-sheets-app.git
 	branch = publish
 [submodule "packages/hrbrlife/melusina-namedcoin-app"]
 	path = packages/hrbrlife/melusina-namedcoin-app

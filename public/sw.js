@@ -1,6 +1,9 @@
-const CACHE_NAME = 'melusina-market-v1';
+const CACHE_NAME = 'melusina-market-v2';
 const BASE = '/melusina-static-store/';
 
+/* Precache only the shell files needed to boot the app offline.
+ * Hashed bundle chunks (assets/*) are cached on-demand via the fetch handler.
+ */
 const PRECACHE_URLS = [
   BASE,
   BASE + 'index.html',
@@ -10,42 +13,69 @@ const PRECACHE_URLS = [
   BASE + 'manifest.json',
 ];
 
-// Install — precache shell
+/* Paths we must NEVER cache: SPKs (large, hash-addressed, change on re-publish),
+ * GitHub release assets, Sandstorm binary update bundles, and the live app
+ * catalog. A stale cache here would serve wrong/expired packages.
+ */
+const NO_CACHE_PREFIXES = [
+  BASE + 'packages/',
+  BASE + 'releases/',
+  BASE + 'update/',
+  BASE + 'apps/index.json',
+  BASE + 'signatures/',
+];
+
+/* Caching is only applied to these asset categories (hashed, safe to cache) */
+const CACHEABLE_PATTERNS = [
+  /\/assets\/.*\.(js|css|woff2?)$/i,
+  /\/images\/.*\.(svg|png|jpg|jpeg|gif|webp)$/i,
+  /\/icons\/.*\.(svg|png|ico)$/i,
+  /\/screenshots\/.*\.(png|jpg|jpeg|gif|webp)$/i,
+];
+
+function isNoCache(url) {
+  return NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p));
+}
+
+function isCacheable(url) {
+  return CACHEABLE_PATTERNS.some((re) => re.test(url.pathname));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate — clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Fetch — network-first with cache fallback
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-
-  // Skip non-GET
   if (request.method !== 'GET') return;
 
-  // For navigation requests, try network first
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Never intercept SPK downloads, release bundles, or the live catalog.
+  if (isNoCache(url)) return;
+
+  // Navigation: network-first, shell fallback.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
         .catch(() => caches.match(request).then((r) => r || caches.match(BASE + 'index.html')))
@@ -53,18 +83,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For assets: stale-while-revalidate
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request).then((response) => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      }).catch(() => cached);
+  // Assets: cache-first for hashed bundle files, network-only for everything else.
+  if (isCacheable(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
 
-      return cached || networkFetch;
-    })
-  );
+  // Default: network-only (no caching).
 });

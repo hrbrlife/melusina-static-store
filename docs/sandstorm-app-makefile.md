@@ -1,11 +1,37 @@
 # Sandstorm-app Makefile — universal discipline
 
-**Applies to every Sandstorm/Melusina app's own Makefile** (per-app repos
-like `melusina_bureau_notes_app`, `ccash_go_htmx`, etc.). Does **not**
-apply to the top-level static-store repo's Makefile, which plays a
-different role (aggregator + publisher of the bazaar).
+**Canonical implementation lives in a separate repo:**
+[`hrbrlife/melusina-spkmodule-component`](https://github.com/hrbrlife/melusina-spkmodule-component)
 
-See `sandstorm-app-makefile.template.mk` for the canonical implementation.
+Every Melusina-owned pearl pulls it in as a git submodule at `./spkmodule/`.
+Each app's own `Makefile` is a ~5-line thin header — three config vars and one
+`include`. One place to evolve; one place to fix.
+
+---
+
+## Install into a new or existing app repo
+
+```sh
+# from the app repo root, on the main branch
+git submodule add -b main https://github.com/hrbrlife/melusina-spkmodule-component.git spkmodule
+```
+
+Write the app's `Makefile`:
+
+```make
+# Per-app configuration — required
+APP_SLUG        := bureau-notes
+GPG_KEY         := 0F6D67C10A4B88123DFE8603CE589F15B50846E1
+
+# Optional
+APP_BUILD_STYLE := noop        # noop | go | npm | custom
+# PUBLISH_EXTRAS := changelog.md VERSION
+
+# Discipline
+include spkmodule/mk/core.mk
+```
+
+Commit the submodule pointer + the Makefile on `main` and `develop`. Done.
 
 ---
 
@@ -13,104 +39,110 @@ See `sandstorm-app-makefile.template.mk` for the canonical implementation.
 
 | Target | Does | Does **not** |
 |---|---|---|
-| `make build` | Compile source artefacts only | Touch `spk`, bind-mount, verify, publish |
-| `make dev` | Unmount → bind-mount → verify → `spk dev` | Build source, pack, verify SPK, publish |
-| `make pack` | Unmount → mount → verify mount → `spk pack` → `spk verify` → unmount | Build source, run dev, publish |
-| `make verify` | `spk verify` + `gpg --verify` + appId/packageId cross-check | Anything else |
-| `make publish` | `make pack` → commit the standard set to this repo's `publish` branch → `git push` | Build, publish to Sandstorm app-market, push anything else |
-| `make clean` | Unmount + delete `app.spk` | Touch source, touch publish branch |
-
-If a target's name doesn't describe the action, the target doesn't do
-that action. `make build` that silently packs is a lie. `make publish`
-that skips verify is worse than a lie.
+| `make build` | Compile source (backend from `APP_BUILD_STYLE`) | Touch `spk`, bind-mount, verify, publish |
+| `make dev` | Unmount → bind-mount → verify → `spk dev` | Build |
+| `make pack` | Unmount → mount → verify → `spk pack` → `spk verify` → unmount | Build |
+| `make verify` | `spk verify` + `gpg --verify` + appId/pkgId cross-check | Anything else |
+| `make publish` | `make pack` → commit standard set to this repo's `publish` branch → `git push` | Build; push to Sandstorm app-market |
+| `make clean` | Unmount + delete `app.spk` | Touch source |
 
 ## Invariant #2 — every `spk` invocation runs under a verified bind-mount
 
-`spk dev` and `spk pack` resolve package-def paths through `/opt/app`. A
-stale bind from a prior app is the #1 way to ship a wrong SPK that still
-verifies.
+`spk dev` and `spk pack` resolve pkgdef paths through `/opt/app`. A stale bind
+from a prior app is the #1 way to ship a wrong SPK that still verifies.
 
-Three-step discipline in this order, every time:
+Three-step discipline in this order, every time, enforced by `core.mk`:
 
-1. **Unmount first, unconditionally.** `if mountpoint -q /opt/app; then
-   sudo umount /opt/app; fi`
+1. **Unmount first, unconditionally.** `if mountpoint -q /opt/app; then sudo umount /opt/app; fi`
 2. **Mount this dir.** `sudo mkdir -p /opt/app && sudo mount --bind "$PWD" /opt/app`
-3. **Verify the mount.** Compare inodes of `$PWD/sandstorm-pkgdef.capnp`
-   and `/opt/app/sandstorm-pkgdef.capnp`. FATAL + exit if they differ.
-
-The verify step is non-negotiable. It is the only way to prove that the
-next `spk` invocation sees the tree we think it does.
+3. **Verify the mount.** Compare inodes of `$PWD/sandstorm-pkgdef.capnp` and `/opt/app/sandstorm-pkgdef.capnp`. FATAL + exit if they differ.
 
 ## Invariant #3 — `make publish` never pushes to the Sandstorm app-market
 
-`spk publish` is an external command (pushes to apps.sandstorm.io or an
-equivalent index). It is **banned from our Makefiles.** Our `make
-publish` is a pure git operation against this app's own `publish` branch.
-The static-store repo consumes these `publish` branches via submodule
-references; no external index is involved.
+`spk publish` is an external command (apps.sandstorm.io or equivalent). It is
+**banned from our Makefiles.** Our `make publish` is a pure git operation
+against this app's own `publish` branch, handled by
+`spkmodule/bin/publish-to-branch`.
 
-## Invariant #4 — the `publish` branch layout is standardised
+## Invariant #4 — publish-branch layout is standardised
 
 ```
-<slug>/app.spk              ← signed Sandstorm package
-<slug>/metadata.json        ← bazaar catalog entry
-<slug>/metadata.json.asc    ← GPG-detached signature over metadata.json
-<slug>/icon.png             ← square raster; .svg only if genuinely vector
-<slug>/description.md       ← long-form bazaar description
-<slug>/screenshots/*.png    ← optional
-README.md                   ← at repo root
+<APP_SLUG>/app.spk              ← signed Sandstorm package
+<APP_SLUG>/metadata.json        ← bazaar catalog entry
+<APP_SLUG>/metadata.json.asc    ← GPG detached signature
+<APP_SLUG>/icon.png             ← square raster; .svg only if genuinely vector
+<APP_SLUG>/description.md       ← long-form description
+<APP_SLUG>/screenshots/*        ← optional
+README.md                       ← at repo root
 ```
 
-Nothing else is permitted on `publish`. No source, no node_modules, no
-.venv, no build outputs other than `app.spk`. `main` and `develop` carry
-source; `publish` carries only what the bazaar reads.
+Nothing else. No source, no `node_modules`, no `.venv`, no build outputs other
+than `app.spk`.
 
 ## Invariant #5 — `make publish` is idempotent
 
-If the freshly packed `app.spk` has the same `packageId` as what
-`origin/publish/<slug>/metadata.json` already records, `make publish`
-skips the push. This prevents force-push churn when the same state is
-republished.
+If the freshly packed `packageId` matches what origin/publish already records,
+`make publish` skips the push. Prevents force-push churn.
 
-## Nuances
+---
 
-- **sudo-less environments** (CI, rootless Docker): the mount step fails
-  with a clear message. Caller must arrange that `/opt/app` is already
-  bound (e.g. `docker run --mount type=bind,src=$PWD,dst=/opt/app`). The
-  *verify* step still runs and catches misconfigurations.
-- **Parallel invocations:** every mount-touching target uses `flock` on
-  `/tmp/melusina-spk-mount.lock`. Two `make pack` calls serialise; they
-  don't race on `/opt/app`.
-- **Ctrl-C during `make dev`:** the dev target traps `INT TERM EXIT` and
-  unmounts before returning control.
-- **`make test` (per-app, not in template):** if an app has browser
-  tests, `make test` should: start `make dev` in the background, poll a
-  health endpoint, run playwright against `http://localhost:6080/<grain>`,
-  kill dev. Apps may opt-in with `publish: test pack` to make browser-test
-  success a hard prerequisite of publish. The template leaves this out
-  because it's app-specific.
+## Per-app customization (sanctioned)
+
+Three knobs, never touch the template:
+
+### 1. `APP_BUILD_STYLE`
+
+| Value | Uses | When |
+|---|---|---|
+| `noop` | `mk/build-noop.mk` | SPK contents are pre-built / static |
+| `go` | `mk/build-go.mk` | Grain binary compiled from Go |
+| `npm` | `mk/build-npm.mk` | Grain built via `npm ci && npm run build` |
+| `custom` | — | The app Makefile writes its own `build-source` target |
+
+Go/npm backends accept additional knobs — see the individual `.mk` files.
+
+### 2. Hooks — drop an executable script into `.spkmodule-hooks/`
+
+| Hook | When |
+|---|---|
+| `pre-pack` | Before `spk pack` in `make pack` |
+| `post-pack` | After `spk verify` in `make pack` |
+| `pre-publish` | Before pushing to `publish` |
+| `post-publish` | After successful push |
+
+Environment: `APP_SLUG`, `APP_DIR`, `SPK_OUT`.
+
+### 3. `PUBLISH_EXTRAS`
+
+Space-separated list of paths (relative to `APP_DIR`) to copy onto the publish
+branch alongside the standard artefacts. E.g. `PUBLISH_EXTRAS := changelog.md`.
+
+---
+
+## Upgrade flow
+
+When the discipline evolves, bump the submodule pointer in each app:
+
+```sh
+cd <app-repo>
+(cd spkmodule && git pull origin main)
+git add spkmodule
+git commit -m "Bump spkmodule to $(git -C spkmodule rev-parse --short HEAD)"
+git push origin main
+```
+
+Repeat per-repo; no template edits needed in individual apps.
 
 ## Order of operations for a release
 
 ```
 make build          # compile source
-make dev &          # start Sandstorm dev server (kept running)
-make test           # optional — browser/integration tests
+make dev &          # start Sandstorm dev server
+# … run browser / playwright tests against http://localhost:6080
 kill %1             # stop dev
-make pack           # produce the signed SPK + verify it
-make publish        # push artefacts to this app's publish branch
+make pack           # produce and verify signed SPK
+make publish        # push artefacts to origin/publish
 ```
 
-Each step is atomic. Each step's success is independently verifiable. No
-step hides side effects from another step.
-
-## Retrofit guide for existing apps
-
-If an existing app's Makefile pre-dates this doctrine:
-
-1. Copy `sandstorm-app-makefile.template.mk` → `Makefile` (backup the
-   existing as `Makefile.old` first).
-2. Fill the three `REPLACE_ME_*` vars at the top.
-3. Override `build-source` with the app's actual build step.
-4. Commit to `main` and `develop`.
-5. Do **not** commit to `publish` — that branch is artefact-only.
+Each step atomic, each step's success independently verifiable, no hidden side
+effects.

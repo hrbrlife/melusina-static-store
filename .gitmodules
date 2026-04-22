@@ -62,3 +62,19 @@
 	path = packages/hrbrlife/melusina-namedcoin-app
 	url = https://github.com/hrbrlife/melusina-namedcoin-app.git
 	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-notes-app"]
+	path = packages/hrbrlife/melusina-bureau-notes-app
+	url = https://github.com/hrbrlife/melusina_bureau_notes_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-cal-app"]
+	path = packages/hrbrlife/melusina-bureau-cal-app
+	url = https://github.com/hrbrlife/melusina_bureau_cal_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-acanboard-app"]
+	path = packages/hrbrlife/melusina-acanboard-app
+	url = https://github.com/hrbrlife/melusina_acanboard_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-consilium-app"]
+	path = packages/hrbrlife/melusina-consilium-app
+	url = https://github.com/hrbrlife/melusina_consilium_app.git
+	branch = publish

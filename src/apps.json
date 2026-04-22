@@ -1,6 +1,33 @@
 {
   "apps": [
     {
+      "appId": "7qw6n02zx9qvs2dyq4f8f610h00k1g1ngfz0cmpx2j6s0de8hmch",
+      "packageId": "6b3f4c3956441d55f66858bd6c06710a",
+      "name": "aCanBoard",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Kanban board pearl \u2014 tasks in columns, drag-and-drop, self-hosted.",
+      "description": "**aCanBoard** is a kanban board pearl for Melusina \u2014 capture tasks, drag between columns, attach context, and ship work without giving Trello or Jira your data.\n\nEach board lives inside its own Pearl with sealed storage; share by Pearl rather than by org.\n\n*This pearl is in active development. The app currently installs as a placeholder; the live board lands in v0.2.*\n",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "license": "",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_acanboard_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776833445218,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "9d51a1fb41d64960631fd411950a1dca.svg"
+    },
+    {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
       "packageId": "c48710e0090f1957bd00947e344d829b",
       "name": "AiLagoon",
@@ -69,6 +96,62 @@
       "screenshots": []
     },
     {
+      "appId": "arkc16dztvnp1akcf3wg4s3rpku8t2jf1kpgh0p7jftnc89sf2t0",
+      "packageId": "7e895b4100d716f84096c8f3bc595a5e",
+      "name": "BureauCal",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Calendar pearl \u2014 events, reminders, and shared calendars, self-hosted.",
+      "description": "**Bureau Cal** is the calendar pearl of the Bureau office suite \u2014 personal and shared calendars, event scheduling, reminders, all hosted on your own server.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other Bureau pearls (Docs, Sheets, Diagram, Paint, Notes).\n\n*This pearl is in active development. The app currently installs as a placeholder; the live calendar lands in v0.2.*\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_bureau_cal_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776833436797,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "53380c5a01317190b23b5af6a1452899.svg"
+    },
+    {
+      "appId": "rp6ych40ejng2jyrm07cp4qwg8ttncchjfhc2jw61x3z7xxhzp10",
+      "packageId": "0bbcbcc929e472fc4f4919375717f7a3",
+      "name": "BureauNotes",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Notebook pearl \u2014 Markdown notes, snippets, and quick captures, self-hosted.",
+      "description": "**Bureau Notes** is the notebook pearl of the Bureau office suite \u2014 quick Markdown captures, code snippets, and rolling daily notes hosted entirely on your own server.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other Bureau pearls (Docs, Sheets, Diagram, Paint, Calendar).\n\n*This pearl is in active development. The app currently installs as a placeholder; the live editor lands in v0.2.*\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_bureau_notes_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776833428396,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "e1eea7542528c8855253068f1cf9b1f2.svg"
+    },
+    {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
       "packageId": "e4a0eea3e550c584b25abb725c4314ab",
       "name": "ccash",
@@ -122,6 +205,34 @@
       "imageId": "d4265159ab5f1a28daa3d7027e65ea6c.svg",
       "description": "",
       "screenshots": []
+    },
+    {
+      "appId": "f61094ek6gk8udv3zqz0syfs6ky15hz9k65rqzexmme8dxhwmk0h",
+      "packageId": "ba59e62c41e6ebc267e4989a1ff61b9e",
+      "name": "Consilium",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Unified messaging hub pearl \u2014 bridge Telegram, WhatsApp, email and chat.",
+      "description": "**Consilium** is a unified messaging hub for Melusina \u2014 connect Telegram, WhatsApp, Signal, IMAP/SMTP mail, Teams, Zoom and Discord behind one self-hosted inbox. All messages flow through your own server; bridges run in isolated Pearl sandboxes.\n\n*This pearl is in active development. The app currently installs as a placeholder; bridge plumbing lands in v0.2.*\n",
+      "categories": [
+        "Productivity",
+        "Social"
+      ],
+      "isOpenSource": false,
+      "license": "",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_consilium_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776833453963,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "73aed28a4b513478d8565f275db14d24.svg"
     },
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",

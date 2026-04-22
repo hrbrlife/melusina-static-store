@@ -126,7 +126,7 @@
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
       "packageId": "e4a0eea3e550c584b25abb725c4314ab",
-      "name": "cca.sh",
+      "name": "cca.sh Admin",
       "version": "0.2.0",
       "versionNumber": 2,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
@@ -149,11 +149,94 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "63e6a7526166dc3835e2be8f34dd295d.svg"
+      "imageId": "851f4fb5507e350525b4e01676885b48.png"
+    },
+    {
+      "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
+      "packageId": "beef2a24e23b097a07e88fb7a87b0b97",
+      "name": "cca.sh Client",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "cca.sh client mode \u2014 access your organisation's financial services and tools.",
+      "description": "**cca.sh Client** is the client-facing mode of cca.sh \u2014 the polished MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books. All activity is signed with your Solana key and recorded in the organisation's encrypted audit log.\n\n## Why client mode\n\n- **Read + write scoped to your seat** \u2014 see only what your organisation grants\n- **Request-based workflow** \u2014 every debit routes through the Admin approval gate\n- **Solana-signed actions** \u2014 every action you take is non-repudiable\n- **No stored payment instruments** \u2014 contacts are identity-only, not cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (the back-office view)\n- **cca.sh Org Member** \u2014 team collaboration + shared resources\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub served by sandstorm-http-bridge; the live client UI lands in v0.2.\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_ccash_client_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776851479051,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "adb61e4f6d7ac77a8273d8b248499119.png"
+    },
+    {
+      "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
+      "packageId": "db77ecf42fdb5a208da78e5e453a97b4",
+      "name": "cca.sh Org Member",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "cca.sh collaborator mode \u2014 team collaboration and shared-resource access.",
+      "description": "**cca.sh Org Member** is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why member mode\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer\n- **Role-separated from Admin** \u2014 no sign authority; no accidental debits\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub served by sandstorm-http-bridge; the live member UI lands in v0.2.\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_ccash_org_member_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776851512660,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "3cc31aed7d96495acd320e996882e98b.png"
+    },
+    {
+      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+      "name": "Clawberg",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "fd77fab57330e1db781f74a303a560aa",
+      "shortDescription": "Personal AI assistant for Melusina",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776762910000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "license": "Copyright (c) OpenClaw contributors.\n\nThis package is distributed under a proprietary license. Refer to the\nproject repository at https://github.com/openclaw/openclaw for the\nauthoritative license text.\n",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "screenshots": []
     },
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
-      "name": "ClientSpace",
+      "name": "clientspace",
       "version": "0.1.0",
       "versionNumber": 1,
       "packageId": "c57e1954168936d0355982d0755c5473",
@@ -174,7 +257,7 @@
         "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "d4265159ab5f1a28daa3d7027e65ea6c.svg",
+      "imageId": "89811f494fdee85cead74a37f859dd48.png",
       "description": "",
       "screenshots": []
     },
@@ -416,7 +499,7 @@
     },
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
-      "name": "InstaCo.app",
+      "name": "instaco",
       "version": "0.1.0",
       "versionNumber": 1,
       "packageId": "50d37581ec11582193a7af905d784d10",
@@ -437,35 +520,8 @@
         "picture": ""
       },
       "license": "MIT",
-      "imageId": "754844e26542e0260ea3830535d015c1.svg",
+      "imageId": "8f5f4739eb8d9055fbaae40bb09c1d66.png",
       "description": "",
-      "screenshots": []
-    },
-    {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Melusina OpenClaw",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "fd77fab57330e1db781f74a303a560aa",
-      "shortDescription": "Personal AI assistant for Melusina",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776762910000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "license": "Copyright (c) OpenClaw contributors.\n\nThis package is distributed under a proprietary license. Refer to the\nproject repository at https://github.com/openclaw/openclaw for the\nauthoritative license text.\n",
-      "imageId": "051a657f789ff9c3bef20e3cf0c1bea5.svg",
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {

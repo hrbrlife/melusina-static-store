@@ -86,3 +86,11 @@
 	path = packages/hrbrlife/melusina-bureau-contacts-app
 	url = https://github.com/hrbrlife/melusina_bureau_contacts_app.git
 	branch = publish
+[submodule "packages/hrbrlife/melusina-ccash-client-app"]
+	path = packages/hrbrlife/melusina-ccash-client-app
+	url = https://github.com/hrbrlife/melusina_ccash_client_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-ccash-org-member-app"]
+	path = packages/hrbrlife/melusina-ccash-org-member-app
+	url = https://github.com/hrbrlife/melusina_ccash_org_member_app.git
+	branch = publish

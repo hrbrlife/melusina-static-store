@@ -114,10 +114,9 @@ test.describe('Static store — public surface', () => {
     const installBtn = page.getByRole('button', { name: /INSTALL/i }).last();
     await installBtn.scrollIntoViewIfNeeded();
     await installBtn.click({ force: true });
-    // Install modal lists pbay or Private servers.
-    const pbay = page.getByText(/pbay/i).first();
-    const priv = page.getByText(/Private/i).first();
-    await expect(pbay.or(priv)).toBeVisible({ timeout: 10000 });
+    // Install modal lists both pbay AND Private Servers as toggle tabs.
+    await expect(page.getByRole('button', { name: /pbay\.app/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Private Servers/i })).toBeVisible();
     await page.keyboard.press('Escape');
   });
 

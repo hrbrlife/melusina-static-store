@@ -70,11 +70,19 @@
 	path = packages/hrbrlife/melusina-bureau-cal-app
 	url = https://github.com/hrbrlife/melusina_bureau_cal_app.git
 	branch = publish
-[submodule "packages/hrbrlife/melusina-acanboard-app"]
-	path = packages/hrbrlife/melusina-acanboard-app
-	url = https://github.com/hrbrlife/melusina_acanboard_app.git
-	branch = publish
 [submodule "packages/hrbrlife/melusina-consilium-app"]
 	path = packages/hrbrlife/melusina-consilium-app
 	url = https://github.com/hrbrlife/melusina_consilium_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-canboard-app"]
+	path = packages/hrbrlife/melusina-canboard-app
+	url = https://github.com/hrbrlife/melusina_canboard_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-cratelink-app"]
+	path = packages/hrbrlife/melusina-cratelink-app
+	url = https://github.com/hrbrlife/melusina_cratelink_app.git
+	branch = publish
+[submodule "packages/hrbrlife/melusina-bureau-contacts-app"]
+	path = packages/hrbrlife/melusina-bureau-contacts-app
+	url = https://github.com/hrbrlife/melusina_bureau_contacts_app.git
 	branch = publish

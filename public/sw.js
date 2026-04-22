@@ -1,4 +1,4 @@
-const CACHE_NAME = 'melusina-market-v2';
+const CACHE_NAME = 'melusina-market-v3';
 const BASE = '/melusina-static-store/';
 
 /* Precache only the shell files needed to boot the app offline.

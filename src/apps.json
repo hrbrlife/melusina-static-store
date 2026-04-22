@@ -71,7 +71,7 @@
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
       "packageId": "4589264bc4fef9b13f36bbaae3fd5718",
-      "name": "BureauCal",
+      "name": "Cal Bureau",
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "Calendar pearl \u2014 events, reminders, and shared calendars, self-hosted.",
@@ -95,62 +95,6 @@
       },
       "screenshots": [],
       "imageId": "643b227e6ad6a193927ce8ca7095016a.png"
-    },
-    {
-      "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
-      "packageId": "f1970b4025ff0918d78664e04425ac91",
-      "name": "BureauContacts",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "shortDescription": "Contact book pearl \u2014 address book, business cards, vCard sync, self-hosted.",
-      "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why a self-hosted contact book\n\n- **Your contacts aren't a product** for anyone else's monetisation\n- **Per-list Pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add\n- **No leakage to address-book scrapers** \u2014 they cannot reach your Pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.\n",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836132448,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "screenshots": [],
-      "imageId": "c633e830a075b1e84238968321ed0fc1.png"
-    },
-    {
-      "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
-      "packageId": "fe7a66a1879fe5be440fb6acf062549a",
-      "name": "BureauNotes",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "shortDescription": "Notebook pearl \u2014 Markdown notes, snippets, and quick captures, self-hosted.",
-      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Markdown-first** with live preview, code highlighting, and embedded images\n- **Per-notebook isolation** \u2014 share by Pearl, not by user\n- **Search inside a notebook** \u2014 fast full-text without indexing your other Pearls\n- **Snapshots** \u2014 version every save; restore any point in seconds\n- **Export** \u2014 Markdown, PDF, HTML, plain text. No lock-in.\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.\n",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_bureau_notes_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776835959665,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "screenshots": [],
-      "imageId": "8f83955329bb084df12ec10161e6352e.png"
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
@@ -182,7 +126,7 @@
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
       "packageId": "e4a0eea3e550c584b25abb725c4314ab",
-      "name": "ccash",
+      "name": "cca.sh",
       "version": "0.2.0",
       "versionNumber": 2,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
@@ -263,6 +207,34 @@
       "imageId": "3eab074071e29a06602c88e8568f5541.png"
     },
     {
+      "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
+      "packageId": "f1970b4025ff0918d78664e04425ac91",
+      "name": "Contacts Bureau",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Contact book pearl \u2014 address book, business cards, vCard sync, self-hosted.",
+      "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why a self-hosted contact book\n\n- **Your contacts aren't a product** for anyone else's monetisation\n- **Per-list Pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add\n- **No leakage to address-book scrapers** \u2014 they cannot reach your Pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776836132448,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "c633e830a075b1e84238968321ed0fc1.png"
+    },
+    {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
       "packageId": "5f43bada0effd3084dc0d56994573b61",
       "name": "CrateLink",
@@ -319,7 +291,7 @@
     },
     {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
-      "name": "Diagram Bureau",
+      "name": "Diagrams Bureau",
       "version": "1.0.4",
       "versionNumber": 5,
       "packageId": "7dd466a436884aaa1b426789c247866d",
@@ -368,7 +340,7 @@
     },
     {
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
-      "name": "Doc Bureau",
+      "name": "Docs Bureau",
       "version": "1.0.4",
       "versionNumber": 5,
       "packageId": "44ec54074a7b8d9d69e292c02c143ae1",
@@ -438,7 +410,7 @@
         "picture": ""
       },
       "license": "",
-      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
+      "imageId": "76db8bc647165e14ce7b94c7b0849277.png",
       "description": "",
       "screenshots": []
     },
@@ -591,6 +563,34 @@
       "imageId": "6808801193391d9254773a067bc1b295.svg",
       "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-namedcoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
+    },
+    {
+      "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
+      "packageId": "fe7a66a1879fe5be440fb6acf062549a",
+      "name": "Notes Bureau",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Notebook pearl \u2014 Markdown notes, snippets, and quick captures, self-hosted.",
+      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Markdown-first** with live preview, code highlighting, and embedded images\n- **Per-notebook isolation** \u2014 share by Pearl, not by user\n- **Search inside a notebook** \u2014 fast full-text without indexing your other Pearls\n- **Snapshots** \u2014 version every save; restore any point in seconds\n- **Export** \u2014 Markdown, PDF, HTML, plain text. No lock-in.\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.\n",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_bureau_notes_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776835959665,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "keybaseUsername": "",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "imageId": "8f83955329bb084df12ec10161e6352e.png"
     },
     {
       "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",

@@ -1788,7 +1788,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               );
             })()}
             <span style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
-              {platformFees.selfHosted.description}
+              {platformFees?.selfHosted?.description}
             </span>
           </div>
         </div>

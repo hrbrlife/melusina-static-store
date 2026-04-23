@@ -1,18 +1,19 @@
 {
-  "appId": "aczotnllhjznrs73v1ui64jcjdrvd5yyijlxmdiud6ds30f6330f3iv0",
-  "name": "AI Lagoon",
-  "version": "1.0.0",
-  "versionNumber": 1,
-  "packageId": "6b758859d588b1ffcef919a201fc34c6",
-  "shortDescription": "AI collaboration and exploration platform",
+  "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+  "packageId": "6d7afdeebc024243925a56b2479f7612",
+  "name": "AiLagoon",
+  "version": "0.7.0",
+  "versionNumber": 11,
+  "shortDescription": "AI model hub \u2014 Ollama, ChatGPT, OpenRouter, with shareable Grapple capabilities",
+  "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities \u2014 ai-text, ai-vision, ai-generic, and direct per-model access \u2014 to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Sandstorm HTTP-out permission, not per-grain capability hops. Built-in playground for testing models without leaving the pearl.",
   "categories": [
     "Productivity"
   ],
   "isOpenSource": false,
-  "webLink": "https://github.com/hrbrlife/AI_Lagoon",
-  "codeLink": "https://github.com/hrbrlife/AI_Lagoon",
-  "upstreamAuthor": "AI Lagoon",
-  "createdAt": 1771200000000,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ai-lagoon",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1739491200000,
   "author": {
     "name": "alexeikarp",
     "githubUsername": "hrbrlife",
@@ -20,6 +21,19 @@
     "twitterUsername": "",
     "picture": ""
   },
-  "description": "",
-  "screenshots": []
+  "screenshots": [
+    {
+      "url": "screenshots/01-dashboard.png",
+      "caption": "Dashboard with connected AI models and capability routing"
+    },
+    {
+      "url": "screenshots/02-connections.png",
+      "caption": "Managing Ollama, OpenAI, and OpenRouter model connections"
+    },
+    {
+      "url": "screenshots/03-playground.png",
+      "caption": "Built-in chat playground for testing models"
+    }
+  ],
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
 }

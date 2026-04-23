@@ -49,6 +49,19 @@ Anchored in a two-iteration audit at 2026-04-22.
 - `melusina-license-component` — legal artifact mounted as `LICENSE/` submodule across several apps. Not code.
 - `go-sandstorm`, `go-util` — third-party zenhack forks; pinned, never standardized.
 
+### 1a. Post-KILL-LIST shipped components
+
+Extracted after the original 11 planned above. Both under `hrbrlife/`; each tagged v0.1.0 on 2026-04-22 and bumped to v0.1.1 on 2026-04-23.
+
+| # | Final repo name | Import path | Owns | Depends on |
+|---|---|---|---|---|
+| 12 | `melusina-static-publish` | `github.com/hrbrlife/melusina-static-publish` | Static-publishing primitives (HMAC tokens, key + session types, path-safety, canonical `/published/{keyID}/{subKey}/` layout) and stateful `service.Service` (expiry math, BurnAfterRead, pluggable Store, cleanup loop, ExpireHook). v0.1.1 fixes the keyID-omission write-path bug and adds `ResolveKeyID`. Capnp server subpackage deferred to v0.2.0. | — |
+| 13 | `melusina-notify-sandstorm` | `github.com/hrbrlife/melusina-notify-sandstorm` (Go) + npm `@hrbrlife/melusina-notify-sandstorm` (TS; not yet published) | Sandstorm activity-notification dispatch via `sandstorm-helper`. Canonical wire payload (`sessionId, path, caption, activityType, thread, recipients, bridgeSocket`). Factory auto-selects `NoopService` when the helper binary is absent. v0.1.1 propagates first-attempt errors to concurrent `EnsureIdentity` waiters and trims `Event` to only wire-serializable fields. | — |
+
+**Consumers (as of 2026-04-23):**
+- `melusina-static-publish`: **Service-tier consumer** — `melusina_botmother` (full `service.Service` delegation via journal adapter). **Primitives-only consumers** — `cyberteller` (uses HMAC + path helpers, does its own write via `FilePublisher`). Deferred: grain-instance template.
+- `melusina-notify-sandstorm`: `ccash_go_htmx` (policy + factory wired; real dispatch activates only when the helper binary is present).
+
 ---
 
 ## 2. Current state inventory

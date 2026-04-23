@@ -14,7 +14,6 @@ icons, screenshots, and the packaged SPK.
 ```
 <repo>/
 ├── README.md                      # Repo-level readme
-├── author.pgp.pub                 # Publisher's PGP public key
 ├── .gitignore
 └── <app-slug>/                    # e.g. bureau/, ai-lagoon/, botmother/
     ├── metadata.json              # ★ MASTER metadata file (single source of truth)
@@ -22,7 +21,7 @@ icons, screenshots, and the packaged SPK.
     ├── changelog.md               # Version history / release notes
     ├── icon.svg                   # App icon — MUST be designed SVG (not placeholder)
     ├── app.spk                    # Packaged Melusina app
-    ├── metadata.json.asc          # GPG detached signature of metadata.json
+    ├── RELEASE.json               # Melusina attest release manifest, when finalized
     └── screenshots/               # App screenshots
         ├── 01-<descriptive>.png
         ├── 02-<descriptive>.png
@@ -99,7 +98,6 @@ Valid categories (case-sensitive as displayed, matched case-insensitively):
 | `upstreamAuthor` | string | Original author / organization | `"Alexei Karpov"` |
 | `author.name` | string | Publisher username | `"alexeikarp"` |
 | `author.githubUsername` | string | GitHub handle | `"hrbrlife"` |
-| `author.keybaseUsername` | string | Keybase handle (or `""`) | `""` |
 | `author.twitterUsername` | string | Twitter/X handle (or `""`) | `""` |
 | `author.picture` | string | Avatar URL (or `""`) | `""` |
 
@@ -214,9 +212,9 @@ All metadata text, descriptions, changelogs, and in-app strings **must** use Mel
 | Grain | **Pearl** | (capitalized form) |
 | powerbox | **Grapple** | Inter-Pearl capability exchange |
 | Powerbox | **Grapple** | (capitalized form) |
-| sandstorm.io | **melusina-os.org** | Platform website |
+| Legacy upstream platform domain | **melusina-os.org** | Platform website |
 | Oasis | _(removed)_ | Not applicable to Melusina |
-| app-index.sandstorm.io | **App Bazaar** | App store reference |
+| Legacy upstream app-index domain | **App Bazaar** | App store reference |
 
 ### Checked locations
 
@@ -335,7 +333,7 @@ User-visible text must use **Melusina**, **Pearl**, **Grapple** exclusively.
 - [ ] Copies `screenshots/` directory
 - [ ] Ensures `metadata.json` is complete and valid
 - [ ] Generates `description.md` if needed (or validates it exists)
-- [ ] Generates `metadata.json.asc` (GPG signature)
+- [ ] Generates or preserves `RELEASE.json` after the Melusina attest release flow finalizes
 - [ ] Commits all files to the `publish` branch
 - [ ] Pushes `publish` branch to remote
 
@@ -380,15 +378,13 @@ grep -rn 'https\?://' <app-build-dir>/ --include='*.html' --include='*.js' --inc
 
 ---
 
-## 9. Publisher Signature & Keys
+## 9. Publisher Attestation
 
-- [ ] SPK is signed with the correct GPG key
-- [ ] Signing key identity matches `author` in store listing
-- [ ] `metadata.json.asc` is a valid detached signature of `metadata.json`
-- [ ] `author.pgp.pub` exists at repo root with the publisher's public key
 - [ ] `spk verify <file.spk>` passes
-- [ ] `pgpSignature` field in capnp references correct signature path
-- [ ] Key is not expired or expiring within 90 days
+- [ ] `RELEASE.json` exists for finalized releases
+- [ ] Release hash and app hash match the on-chain Melusina `ReleaseEntry`
+- [ ] Store listing is allowed by Melusina app approval state
+- [ ] Release authority is active and not revoked, retired, or superseded
 
 ---
 

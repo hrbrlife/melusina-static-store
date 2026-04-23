@@ -673,7 +673,7 @@ function InstallModal({ app, onClose }) {
                   fontFamily: "'Orbitron', sans-serif",
                   textShadow: `0 0 6px ${T.accentGlow}`,
                 }}>Server Address</label>
-                <input type="url" placeholder="https://sandstorm.example.com" value={newPrivate}
+                <input type="url" placeholder="https://example.melusina-os.org" value={newPrivate}
                   onChange={(e) => setNewPrivate(e.target.value)} autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && addAndInstallPrivate()}
                   style={{
@@ -1519,7 +1519,7 @@ const HLSL_LICENSE_TEXT = `HARBOR LIFE SOFTWARE LICENSE (HLSL) v1.0
 Copyright (c) 2025 Harbor Life / hrbrlife
 
 1. GRANT OF LICENSE
-Permission is hereby granted to any person obtaining a copy of this software and associated documentation files (the "Software") to use, copy, and deploy the Software on their own self-hosted infrastructure (including Sandstorm, Melusina, or compatible platforms) for personal, educational, or internal business purposes.
+Permission is hereby granted to any person obtaining a copy of this software and associated documentation files (the "Software") to use, copy, and deploy the Software on their own self-hosted infrastructure (including Melusina or compatible platforms) for personal, educational, or internal business purposes.
 
 2. SOURCE AVAILABILITY
 The source code of the Software is made available for inspection, auditing, and personal modification. You may modify the Software for use on your own server. Redistribution of modified versions requires compliance with this license.
@@ -2768,7 +2768,7 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const hostRef = React.useRef(localStorage.getItem("sandstormHost") || "");
+  const hostRef = React.useRef(localStorage.getItem("melusinaHost") || "");
   const [installModalApp, setInstallModalApp] = useState(null);
   const [showGetMelusina, setShowGetMelusina] = useState(false);
 
@@ -2797,8 +2797,7 @@ function App() {
         addPrivateServer(h);
       }
 
-      // Persist to legacy localStorage key
-      localStorage.setItem("sandstormHost", h);
+      localStorage.setItem("melusinaHost", h);
       hostRef.current = h;
 
       // Clean the URL without reloading
@@ -2956,24 +2955,6 @@ function App() {
               }}>{c}</button>
             );
           })}
-        </div>
-      </div>
-
-      {/* alpha test banner */}
-      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 24px 0' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px',
-          background: `linear-gradient(135deg, ${T.green}08, ${T.cyan}06)`,
-          border: `1px solid ${T.green}33`, borderRadius: T.radius,
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        }}>
-          <span style={{ fontSize: 22, flexShrink: 0 }}>🧪</span>
-          <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
-            <strong style={{ color: T.green, fontFamily: "'Orbitron', sans-serif", fontSize: 11, letterSpacing: '.06em' }}>ALPHA TEST PHASE</strong>
-            <span style={{ margin: '0 8px', color: T.border }}>|</span>
-            All apps are <strong style={{ color: T.green }}>free of charge</strong> during the alpha.
-            Licenses obtained now are <strong style={{ color: T.cyan }}>free perpetually</strong> — hurry to test and keep!
-          </div>
         </div>
       </div>
 

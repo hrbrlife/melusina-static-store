@@ -1,4 +1,4 @@
-# Sandstorm-app Makefile — universal discipline
+# Melusina SPK Makefile — universal discipline
 
 **Canonical implementation lives in a separate repo:**
 [`hrbrlife/melusina-spkmodule-component`](https://github.com/hrbrlife/melusina-spkmodule-component)
@@ -21,7 +21,6 @@ Write the app's `Makefile`:
 ```make
 # Per-app configuration — required
 APP_SLUG        := bureau-notes
-GPG_KEY         := 0F6D67C10A4B88123DFE8603CE589F15B50846E1
 
 # Optional
 APP_BUILD_STYLE := noop        # noop | go | npm | custom
@@ -42,8 +41,8 @@ Commit the submodule pointer + the Makefile on `main` and `develop`. Done.
 | `make build` | Compile source (backend from `APP_BUILD_STYLE`) | Touch `spk`, bind-mount, verify, publish |
 | `make dev` | Unmount → bind-mount → verify → `spk dev` | Build |
 | `make pack` | Unmount → mount → verify → `spk pack` → `spk verify` → unmount | Build |
-| `make verify` | `spk verify` + `gpg --verify` + appId/pkgId cross-check | Anything else |
-| `make publish` | `make pack` → commit standard set to this repo's `publish` branch → `git push` | Build; push to Sandstorm app-market |
+| `make verify` | `spk verify` + appId/pkgId cross-check | Anything else |
+| `make publish` | `make pack` → commit standard set to this repo's `publish` branch → `git push` | Build; push through a raw market endpoint |
 | `make clean` | Unmount + delete `app.spk` | Touch source |
 
 ## Invariant #2 — every `spk` invocation runs under a verified bind-mount
@@ -57,19 +56,18 @@ Three-step discipline in this order, every time, enforced by `core.mk`:
 2. **Mount this dir.** `sudo mkdir -p /opt/app && sudo mount --bind "$PWD" /opt/app`
 3. **Verify the mount.** Compare inodes of `$PWD/sandstorm-pkgdef.capnp` and `/opt/app/sandstorm-pkgdef.capnp`. FATAL + exit if they differ.
 
-## Invariant #3 — `make publish` never pushes to the Sandstorm app-market
+## Invariant #3 — `make publish` never pushes through a raw SPK market command
 
-`spk publish` is an external command (apps.sandstorm.io or equivalent). It is
-**banned from our Makefiles.** Our `make publish` is a pure git operation
+Raw SPK market submission is **banned from our Makefiles.** Our `make publish` is a pure git operation
 against this app's own `publish` branch, handled by
 `spkmodule/bin/publish-to-branch`.
 
 ## Invariant #4 — publish-branch layout is standardised
 
 ```
-<APP_SLUG>/app.spk              ← signed Sandstorm package
+<APP_SLUG>/app.spk              ← signed Melusina package
 <APP_SLUG>/metadata.json        ← bazaar catalog entry
-<APP_SLUG>/metadata.json.asc    ← GPG detached signature
+<APP_SLUG>/RELEASE.json         ← Melusina attest release manifest, when finalized
 <APP_SLUG>/icon.png             ← square raster; .svg only if genuinely vector
 <APP_SLUG>/description.md       ← long-form description
 <APP_SLUG>/screenshots/*        ← optional
@@ -137,7 +135,7 @@ Repeat per-repo; no template edits needed in individual apps.
 
 ```
 make build          # compile source
-make dev &          # start Sandstorm dev server
+make dev &          # start local dev server
 # … run browser / playwright tests against http://localhost:6080
 kill %1             # stop dev
 make pack           # produce and verify signed SPK

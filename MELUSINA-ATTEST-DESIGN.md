@@ -1,12 +1,35 @@
 # melusina-attest — Universal Attestation Architecture for Melusina
 
-> **Status:** design doc, three research iterations consolidated.
+> **Status:** design doc, three research iterations consolidated. Now
+> reconciled with a 4-agent audit of the actual ship state (see
+> §19, and `MELUSINA-ATTEST-KILL-LIST.md` §13.0–§13.5 for the honest
+> per-app/per-sidecar matrix).
 > **Greenfield.** No backwards-compatibility shims. One canonical wire
 > format per concern.
 >
 > **Date:** 2026-04-23
 > **Supersedes:** ad-hoc per-app attestation (BLOOM foundation-key pattern,
 > ccash advice-PDF signer, identity-gate V2 envelope).
+>
+> ## Reality check (audit 2026-04-23)
+>
+> This document describes the architecture. The current **implementation
+> state** is substantially narrower:
+>
+> - **Shipped:** melusina-attest Go reference (sign + verify + seal +
+>   open + derive); TS + Python verify-side MVP ports; testvectors
+>   generator; Solana program state + instructions (engineer B);
+>   spkmodule-component v0.3.0 pearl hooks; Sandstorm shell's
+>   pre-launch `grain-gate.js` + PGP deletion; static-store PGP
+>   deletion; 4-wallet Core App Team generated on devnet.
+> - **NOT shipped:** any app migrated (0/21); any sidecar migrated
+>   (0/6); `melusina-pearl-tool` CLI; deployer `register-release-squads`
+>   subcommand (still theatrical); `ReleaseEntry` / envelope verify
+>   in the shell; `StoreReleaseListing` + Solana RPC in the store;
+>   grain-auth v0.3.0 (still on bespoke v0.2.1 wire).
+>
+> The sections below describe the TARGET. For what's genuinely in
+> production see KILL-LIST §13.
 
 ---
 

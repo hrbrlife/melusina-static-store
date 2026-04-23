@@ -813,9 +813,102 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 
 ---
 
-## 13. Greenfield directive — implementation in ALL sidecars + ALL apps
+## 13. Greenfield directive — implementation state (HONEST AUDIT 2026-04-23)
 
-Per the user's directive: every sidecar and every app gets `melusina-attest` integrated greenfield.
+Per the user's directive: every sidecar and every app gets `melusina-attest` integrated greenfield. **The sections below reflect what is ACTUALLY done, not what the earlier design draft aspired to.**
+
+### 13.0 HONEST state-of-the-world snapshot
+
+| Layer | Target | Reality today |
+|---|---|---|
+| **Go reference package** (`melusina-attest`) | full sign + verify + seal + open + derive + message + pda | **SHIPPED** at `Melusina/shared/melusina-attest` with 4 green test packages + testvectors generator |
+| **TS port** (`@hrbrlife/melusina-attest`) | full | **v0.1.0 = verify-side MVP** (identity.Public + envelope.canonicalPayload + envelope.verify + base58). Signing + derivation + seal NOT ported. 4/4 vector tests pass. |
+| **Python port** (`melusina-attest-py`) | full | **v0.1.0 = verify-side MVP** — same scope as TS. 4/4 vector tests pass. |
+| **Solana program** (license-registry) | all new PDAs + instructions | State + instruction scaffolding committed by engineer B. `register_release_entry` exists; on-chain Ed25519 check is present. Client-side RPC submission NOT wired. |
+| **Deployer** (`melusina-solana.py`) | `register-release-squads`, `register-pearl-identity`, 7 more | `register-release` exists but is **theatrical** (stores an unverified fake signature). `squads-propose`/`squads-wait-for-execute` are **stubs** ("NOT IMPLEMENTED"). |
+| **melusina-pearl-tool** | binary that bridges `make publish` ↔ Squads proposal | **DOES NOT EXIST.** Hooks in spkmodule v0.3.0 reference it, but no source, no binary. |
+| **spkmodule-component** | v0.3.0 pearl hooks | **SHIPPED** locally at `_killlist_staging/melusina-spkmodule-component` (v0.3.0). Zero apps consume it. |
+| **Sandstorm shell** | PGP deleted + ReleaseEntry lookup + envelope verify | PGP **IS** deleted. `grain-gate.js` **SHIPPED** as pre-launch gate checking `LocalAppApproval`. `ReleaseEntry` check + envelope verify on sidecar responses NOT done. |
+| **Static-store** | content-addressed by appHash + StoreReleaseListing + ReleaseEntry validation | **PGP validation removed** from `build-store.sh`. No Solana RPC lookup. `apps/index.json` has no `releaseEntryPda` / `masterNftMint`. No React attestation UI. |
+| **grain-auth** (first consumer) | v0.3.0 on attest envelope | Still on v0.2.1 bespoke wire. Migration plan documented at `GRAIN-AUTH-V0.3-MIGRATION.md`, **not implemented.** |
+
+### 13.1 Sidecar coverage matrix (6 sidecars) — real state
+
+| Sidecar | Lang | Imports attest? | Has SidecarIdentity derivation? | Wire | Status |
+|---|---|---|---|---|---|
+| `melusina-grain-auth` | Go/TS/Py | no | no | bespoke v0.2.1 (magic+version+replay cross-checks) | shipped with its own wire, awaiting v0.3.0 attest migration |
+| `fineract-sidecar` | Go + Java | no | no | direct Solana Ed25519 verify on inbound; no response signing | pre-attest |
+| `mermail-sidecar` | Go | no | no | REST/JSON; **no auth on HTTP handlers** (per code comment, Bearer check was deleted) | pre-attest |
+| `pr_ninja` (TeleScreen) | Python | no | no | REST/JSON; no auth | pre-attest |
+| `aitx-screening` | ? | ? | ? | ? | **could not locate path** — possibly renamed, deleted, or in a submodule |
+| `melusina-sidecar-proxy` | Go | no | n/a | TLS SNI reverse proxy — no app-layer auth | infrastructure layer, not an attestation consumer |
+
+**0/6 sidecars integrated with melusina-attest.** The closest is `grain-auth` which has a solid v0.2.1 wire that defends response-replay; the migration to the universal envelope is the architectural goal but not scheduled yet.
+
+### 13.2 App coverage matrix (21 apps) — real state
+
+| App | Exists | spkmodule submodule | APP_PEARL_ENABLED | attest import | RELEASE.json baked |
+|---|---|---|---|---|---|
+| `ccash_go_htmx` | ✓ | empty dir (placeholder) | ✗ | ✗ | ✗ |
+| `cyberteller` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `ai-lagoon` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina_botmother` | ✓ | v0.2.1 pinned | ✗ | ✗ | ✗ |
+| `instaco.app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-namedcoin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-namedcoin-admin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `AITX Procedures` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `BLOOM_QUESTIONNAIRE` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `vintage-test-dec` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `sailsto_system` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `client_collection` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `openclaw-main` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `MiniGit` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina_teleport2` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-bureau-doc-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-bureau-sheets-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-bureau-paint-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-bureau-diagram-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-bureau-shell-component` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-mermail-station-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+
+**0/21 apps are pearl-mode migrated.** Only `melusina_botmother` has even begun the journey (spkmodule init pinned at v0.2.1); it still uses `GPG_KEY` and has no `APP_PEARL_ENABLED`. The remaining 20 apps are at NOT_STARTED.
+
+### 13.3 Lowest-friction first-consumer candidates
+
+Based on the audit:
+
+1. **ccash_go_htmx** — already has an empty `spkmodule/` placeholder dir and a Makefile structure ready for the pearl vars. Tier 1 highest-value (customer-facing PDFs). Recommended first migration.
+2. **cyberteller** — clean slate, small codebase, already has cross-license use-case (payment slips shared between licensees). Good second migration.
+3. **ai-lagoon** — similar profile to cyberteller. Good third.
+
+### 13.4 Test-wallet infrastructure (NEW, shipped 2026-04-23)
+
+4 Solana devnet keypairs generated at `/home/user/Desktop/Melusina/test-wallets/core-app-team/`:
+
+| Role | Pubkey |
+|---|---|
+| publisher | `ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P` |
+| reviewer-1 | `8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC` |
+| reviewer-2 | `7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV` |
+| witness | `133bmq4L4iPfcCeGzjYHLtUXFYMQniHb6ZNVBoEnXpWC` |
+
+Intended as members of a 2-of-4 Squads v4 multisig for driving test release ceremonies on devnet. `.gitignore`d. Config + README at `/home/user/Desktop/Melusina/test-wallets/core-app-team/`.
+
+### 13.5 Top-5 blockers to an end-to-end devnet ceremony
+
+The infrastructure below is what unblocks using the Core App Team wallets to sign a real `register_release_entry` for one app on devnet. This is the honest "what would it take" list, derived from the audit — not a commit log.
+
+1. **`melusina-pearl-tool` CLI** — the spkmodule hooks reference it; does not exist. Scope: a Go or Node binary that (a) canonicalizes `RELEASE.json`, (b) crafts the `register_release_entry` instruction payload, (c) submits a Squads `vault_transaction_create` proposal, (d) polls `vault_transaction_execute` status. Estimate 1-2 weeks.
+2. **Deployer `squads-propose` / `squads-wait-for-execute` stubs** — currently "NOT IMPLEMENTED" in `melusina-solana.py`. Scope: Python wrappers around `@sqds/sdk` or direct instruction building. 3-5 days.
+3. **`register_release_entry` client-side wrapper** — on-chain instruction exists, deployer has no subcommand that builds + signs + sends it. 2-3 days.
+4. **First consumer migrated** — pick `ccash_go_htmx`; run `make bootstrap-author`; validate the hooks work end-to-end. Flush out every "the design said X but reality is Y" bug.
+5. **Squads multisig for Core App Team** — create the 2-of-4 multisig PDA; write its address into `core-app-team-config.json`. Requires Squads CLI or a TS script using `@sqds/multisig`.
+
+Previous §13.x content (aspirational coverage matrix) — superseded by this audit.
+
+---
+
+### 13.6 PREVIOUS aspirational subsections (kept for historical reference)
 
 ### 13.1 Sidecar coverage matrix (6 sidecars)
 

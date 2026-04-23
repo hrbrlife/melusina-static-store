@@ -70,16 +70,18 @@ Extracted after the original 11 planned above. Both under `hrbrlife/`; each tagg
 
 | Component | Current path | Current module | Correct? | Action |
 |---|---|---|---|---|
-| grain-crypto-journal | `Melusina/shared/grain-crypto-journal/` | `github.com/hrbrlife/grain-crypto-journal` | ✓ | Promote to standalone repo (#3); tag v0.1.0 |
-| grainrestore | `/grainrestore/` | `github.com/melusina/grainrestore` | ✗ | Rename + fix bugs; new repo (#9); tag v0.1.0 |
-| grain-e2e-binding | `Melusina/shared/grain-e2e-binding/` | `github.com/melusina-os/grain-e2e-binding` | ✗ | Rename + standalone repo (#8); tag v0.1.0 |
-| melusina-solana-primitives | `Melusina/shared/melusina-solana-primitives/` | `github.com/melusina-os/melusina-solana-primitives` | ✗ | **PROMOTE** → `hrbrlife/melusina-solana-primitives-component` (#4); tag v0.1.0. Rationale: PDA seed lock prevents silent auth bypass. |
-| melusina-identity-gate | `Melusina/shared/melusina-identity-gate/` | `github.com/melusina-os/melusina-identity-gate` | ✗ | **PROMOTE** → `hrbrlife/melusina-identity-gate-component` (#5); tag v0.1.0. Rationale: four-app cross-app auth contract pinned here. |
-| melusina-grain-auth | `/melusina-grain-auth/` | `github.com/hrbrlife/melusina-grain-auth/go` | ✓ | Tag v0.1.0, publish Go+npm+PyPI (Go first, npm+PyPI irreversible so dry-run first) |
-| melusina-http-component | `/melusina-http-component/` | `github.com/hrbrlife/melusina-http-component/go` | ✓ | Drop sibling `replace`s; pin tagged deps; tag v0.1.0 |
-| melusina-e2e-component | `/melusina-e2e-component/` | PyPI `melusina-e2e` | ✓ | Tag v0.1.0 |
+| grain-crypto-journal | `Melusina/shared/grain-crypto-journal/` | `github.com/hrbrlife/grain-crypto-journal` | ✓ | **SHIPPED** — v0.1.0 + v0.1.1 tagged and pushed. 15+ consumers still use `v0.0.0 + local replace`; bumping each is consumer-by-consumer port work (see instaco.app / vintage-test-dec below), not a mass task. |
+| grainrestore | `/grainrestore/` → now `hrbrlife/melusina-grain-restore` | `github.com/hrbrlife/melusina-grain-restore` | ✓ | **SHIPPED** — v0.1.0 + v0.1.1 tagged. Consumers: ccash + 2 namedcoin apps. |
+| grain-e2e-binding | `Melusina/shared/grain-e2e-binding/` (monorepo copy) + standalone at `hrbrlife/grain-e2e-binding` | `github.com/hrbrlife/grain-e2e-binding` (standalone) | ✓ | **SHIPPED** — standalone v0.1.0 live. Monorepo copy still declares `melusina-os/` but is effectively legacy; `hrbrlife/` is canonical. 3 consumers (instaco.app, vintage-test-dec, store-rebuild duplicate) still pin `melusina-os/ v0.0.0 + replace` — consumer port jobs, not a tag op (API diverged: `UserContext.WalletChain`, `HasLegacyPIN`, `WalletPubkey`, `keybox.GetUserKey`, `RegisterWalletUser` all removed before v0.1.0). |
+| melusina-solana-primitives | `Melusina/shared/melusina-solana-primitives/` | `github.com/melusina-os/melusina-solana-primitives` | ✗ | **PENDING** → `hrbrlife/melusina-solana-primitives-component` (#4); tag v0.1.0. Rationale: PDA seed lock prevents silent auth bypass. **Part of the auth triangle — next up.** |
+| melusina-identity-gate | `Melusina/shared/melusina-identity-gate/` | `github.com/melusina-os/melusina-identity-gate` | ✗ | **PENDING** → `hrbrlife/melusina-identity-gate-component` (#5); tag v0.1.0. Rationale: four-app cross-app auth contract pinned here. **Part of the auth triangle — depends on solana-primitives.** |
+| melusina-grain-auth | `/melusina-grain-auth/` | `github.com/hrbrlife/melusina-grain-auth/go` | ✓ | **PENDING** — already correct namespace. Needs v0.1.0 tag + Go/npm/PyPI publish (Go first, npm+PyPI irreversible so dry-run first). **Closes the auth triangle.** |
+| melusina-http-component | `/melusina-http-component/` | `github.com/hrbrlife/melusina-http-component/go` | ✓ | **PENDING** — drop sibling `replace`s; pin tagged deps; tag v0.1.0. |
+| melusina-e2e-component | `/melusina-e2e-component/` | PyPI `melusina-e2e` | ✓ | **PENDING** — tag v0.1.0. |
 | melusina-spkmodule-component | (external; submodule-only) | n/a | ✓ | Already canonical; bump to v0.2.0 with `.manifest` hook schema (Task 1.4) |
-| capnp schemas (scattered) | `melusina_botmother/capnp/` (de-facto SoT, 20 files); `melusina_teleport2/capnp/` (duplicate 20); `melusina-grain-auth/capnp/` (1) | — | ✗ | **CREATE new** `hrbrlife/melusina-capnp` (#2); migrate 21 schemas; tag v0.1.0 |
+| capnp schemas | `hrbrlife/melusina-capnp` (canonical); empty `capnp/` dirs in botmother + teleport2 | `github.com/hrbrlife/melusina-capnp` | ✓ | **SHIPPED** — v0.1.4 live with 22 canonical schemas. Primary consumers (botmother, teleport2) fully migrated, in-tree `.capnp` files removed (dirs now contain only redirect READMEs). |
+| melusina-static-publish | `/melusina-static-publish/` | `github.com/hrbrlife/melusina-static-publish` | ✓ | **SHIPPED** — v0.1.1 tagged. Consumers: botmother (Service-tier), cyberteller (primitives-only). See §1a. |
+| melusina-notify-sandstorm | `/melusina-notify-sandstorm/` | `github.com/hrbrlife/melusina-notify-sandstorm` (Go) + npm `@hrbrlife/melusina-notify-sandstorm` (0.1.1 in package.json; not yet npm-published) | ✓ | **SHIPPED** — Go v0.1.1 tagged. Consumer: ccash. npm publish blocked on interactive auth; run `npm publish --access public` once logged in. See §1a. |
 | (new) melusina-bureau-shell-component | — | — | — | Extract from bureau app shared scaffold (#11); tag v0.1.0 |
 
 ### 2.2 Per-app roster

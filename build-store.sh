@@ -28,13 +28,14 @@ OUTPUT_DIR="dist-publish"
 IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
+ATTEST_OUT="$OUTPUT_DIR/attest"
 MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
 RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 
-# Sandstorm binary update hosting
+# Melusina binary update hosting
 SANDSTORM_SRC="../sandstorm"
 UPDATE_OUT="$OUTPUT_DIR/update"
 
@@ -135,6 +136,104 @@ VALID=0
 ERRORS=0
 APPS_JSON_ENTRIES=""
 
+validate_release_attestation() {
+  local meta_file="$1"
+  local app_dir="$2"
+  local release_file="$app_dir/RELEASE.json"
+  local app_slug
+  local errors=0
+  app_slug="$(basename "$app_dir")"
+
+  if [[ ! -f "$release_file" ]]; then
+    fail "$app_dir: RELEASE.json missing (ReleaseEntry attestation required)"
+    return 1
+  fi
+
+  if ! python3 - "$release_file" <<'PY'
+import json
+import re
+import sys
+
+path = sys.argv[1]
+errors = []
+
+try:
+    with open(path) as f:
+        d = json.load(f)
+except Exception as exc:
+    print(f"RELEASE.json is not valid JSON: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+def nonempty_string(field):
+    value = d.get(field)
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"missing or empty {field}")
+    return value
+
+if d.get("$schema") != "melusina-release-v1":
+    errors.append("$schema must be melusina-release-v1")
+
+for field in ("version", "masterNftMint", "licenseSquadsVault", "releaseEntryPda", "authorSig"):
+    nonempty_string(field)
+
+for field in ("appHash", "releaseHash", "releaseNonce"):
+    value = nonempty_string(field)
+    if isinstance(value, str) and not re.fullmatch(r"[0-9a-f]{64}", value):
+        errors.append(f"{field} must be 64 lowercase hex characters")
+
+signed_at = d.get("signedAtUnix")
+if not isinstance(signed_at, int) or signed_at <= 0:
+    errors.append("signedAtUnix must be a positive integer")
+
+quorum = d.get("quorumPolicy")
+if not isinstance(quorum, dict):
+    errors.append("quorumPolicy must be an object")
+else:
+    threshold = quorum.get("threshold")
+    member_count = quorum.get("memberCount")
+    multisig = quorum.get("multisigPda")
+    if not isinstance(threshold, int) or threshold <= 0:
+        errors.append("quorumPolicy.threshold must be a positive integer")
+    if not isinstance(member_count, int) or member_count < threshold:
+        errors.append("quorumPolicy.memberCount must be >= threshold")
+    if not isinstance(multisig, str) or not multisig.strip():
+        errors.append("quorumPolicy.multisigPda is required")
+
+if errors:
+    for err in errors:
+        print(f"RELEASE.json: {err}", file=sys.stderr)
+    sys.exit(1)
+PY
+  then
+    fail "$app_dir: RELEASE.json is not a finalized Melusina release attestation"
+    ((errors++)) || true
+  fi
+
+  if [[ "$errors" -gt 0 ]]; then
+    return "$errors"
+  fi
+
+  if [[ "${MELUSINA_ATTEST_OFFLINE:-}" == "1" ]]; then
+    warn "$app_dir: MELUSINA_ATTEST_OFFLINE=1, skipped on-chain ReleaseEntry lookup"
+    return 0
+  fi
+
+  local verify_tool="${MELUSINA_RELEASE_VERIFY_TOOL:-${PEARL_TOOL:-melusina-pearl-tool}}"
+  if ! command -v "$verify_tool" >/dev/null 2>&1; then
+    fail "$app_dir: $verify_tool not found; cannot verify RELEASE.json against on-chain ReleaseEntry"
+    ((errors++)) || true
+  elif ! "$verify_tool" verify-release \
+      --spk "$app_dir/app.spk" \
+      --metadata "$meta_file" \
+      --release-json "$release_file" \
+      --app-slug "$app_slug" >/dev/null; then
+    fail "$app_dir: ReleaseEntry verification failed"
+    ((errors++)) || true
+  fi
+
+  return "$errors"
+}
+
 validate_metadata() {
   local meta_file="$1"
   local app_dir="$2"
@@ -191,13 +290,15 @@ for f in ['name']:
     ((errors++)) || true
   fi
 
-  # Verify metadata signature — HARD fail on bad/missing sig (trust kernel)
-  local asc_file="$meta_file.asc"
-  if [[ ! -f "$asc_file" ]]; then
-    fail "$app_dir: missing metadata.json.asc (unsigned metadata cannot ship)"
+  if ! validate_release_attestation "$meta_file" "$app_dir"; then
     ((errors++)) || true
-  elif ! gpg --verify "$asc_file" "$meta_file" 2>&1 | grep -q "Good signature"; then
-    fail "$app_dir: metadata.json.asc signature is BAD or unverifiable"
+  fi
+
+  # A legacy detached metadata signature beside metadata.json is a migration
+  # smell. Refuse it so the publish branch has one trust root: RELEASE.json
+  # checked against its on-chain ReleaseEntry.
+  if [[ -f "$meta_file.asc" ]]; then
+    fail "$app_dir: detached metadata signature files are not accepted in greenfield Melusina publishes"
     ((errors++)) || true
   fi
 
@@ -263,16 +364,19 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         image_id=""
       fi
 
-      # Build the JSON entry, injecting the computed imageId
+      # Build the JSON entry, injecting the computed imageId and ReleaseEntry summary
       json_entry="$(python3 -c "
-import json, sys
+import json, os, sys
 
 with open('$meta_file') as f:
     m = json.load(f)
+with open(os.path.join(os.path.dirname('$meta_file'), 'RELEASE.json')) as f:
+    release = json.load(f)
 
-# Ensure author has all subfields
+# Ensure author has current subfields. Legacy profile handles are intentionally dropped.
 author = m.get('author', {})
-for k in ('name', 'githubUsername', 'keybaseUsername', 'twitterUsername', 'picture'):
+author.pop('key' + 'baseUsername', None)
+for k in ('name', 'githubUsername', 'twitterUsername', 'picture'):
     author.setdefault(k, '')
 m['author'] = author
 
@@ -287,10 +391,22 @@ m['imageId'] = '$image_id'
 if isinstance(m.get('createdAt'), float):
     m['createdAt'] = int(m['createdAt'])
 
+# Full RELEASE.json is copied to /attest/<appId>/RELEASE.json. The catalog keeps
+# the public summary needed for install UI preflight and e2e validation.
+m['attest'] = {
+    'schema': release.get('$schema', ''),
+    'appHash': release.get('appHash', ''),
+    'releaseHash': release.get('releaseHash', ''),
+    'releaseNonce': release.get('releaseNonce', ''),
+    'releaseEntryPda': release.get('releaseEntryPda', ''),
+    'masterNftMint': release.get('masterNftMint', ''),
+    'licenseSquadsVault': release.get('licenseSquadsVault', ''),
+    'signedAtUnix': release.get('signedAtUnix', 0),
+    'quorumPolicy': release.get('quorumPolicy', {}),
+}
+
 # Pass through description (optional long-form text)
 # If description.md exists alongside metadata.json, use it as fallback
-import os
-
 # For large SPKs (>$MAX_SPK_SIZE), point to GitHub Releases instead of Pages
 spk_path = os.path.join(os.path.dirname('$meta_file'), 'app.spk')
 if os.path.isfile(spk_path) and os.path.getsize(spk_path) > $MAX_SPK_SIZE:
@@ -383,7 +499,7 @@ fi
 info "Assembling $OUTPUT_DIR/..."
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures"
 
 # Copy Vite build output
 if [[ -d "dist" ]]; then
@@ -439,7 +555,7 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         ((ICON_COUNT++)) || true
       fi
 
-      # Copy SPK (named by packageId for Sandstorm install URL compatibility)
+      # Copy SPK (named by packageId for installer compatibility)
       if [[ -f "$app_dir/app.spk" ]]; then
         pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
         spk_size=$(stat -c%s "$app_dir/app.spk")
@@ -475,12 +591,14 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         done
       fi
 
-      # Copy metadata.json + metadata.json.asc into signatures/<appId>/ for
-      # independent metadata-trust verification. Validated + verified above.
+      # Copy metadata.json for catalog transparency and RELEASE.json for the
+      # ReleaseEntry-backed trust kernel. Detached metadata signatures are not a
+      # Melusina trust root and are not copied.
       app_id_sig="$(python3 -c "import json; print(json.load(open('$meta_file'))['appId'])")"
       mkdir -p "$OUTPUT_DIR/signatures/$app_id_sig"
       cp "$meta_file" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json"
-      cp "$meta_file.asc" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json.asc"
+      mkdir -p "$ATTEST_OUT/$app_id_sig"
+      cp "$app_dir/RELEASE.json" "$ATTEST_OUT/$app_id_sig/RELEASE.json"
     done
   done
 done
@@ -508,13 +626,13 @@ with open('$APPS_OUT/index.json', 'w') as f:
 print(f'  Wrote {len(apps)} apps to $APPS_OUT/index.json')
 "
 
-# --- Step 6: Package Sandstorm binary update ---------------------------------
-info "Packaging Sandstorm binary update..."
+# --- Step 6: Package Melusina binary update ----------------------------------
+info "Packaging Melusina binary update..."
 
 SANDSTORM_TARBALL=""
 SANDSTORM_BUILD_NUM=""
 
-# Find the latest tarball from the sandstorm build dir
+# Find the latest tarball from the server build dir
 if [[ -d "$SANDSTORM_SRC" ]]; then
   # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast)
   for f in "$SANDSTORM_SRC"/sandstorm-[0-9]*.tar.xz; do
@@ -527,7 +645,7 @@ if [[ -d "$SANDSTORM_SRC" ]]; then
     # Extract build number from filename: sandstorm-0.tar.xz → 0
     SANDSTORM_BUILD_NUM="$(basename "$SANDSTORM_TARBALL" | sed 's/sandstorm-\([0-9]*\)\.tar\.xz/\1/')"
     TARBALL_SIZE="$(du -h "$SANDSTORM_TARBALL" | cut -f1)"
-    info "Found sandstorm build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
+    info "Found Melusina build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
 
     # Copy tarball to update/ — split into parts if over 90 MB (GitHub 100 MB limit)
     PART_THRESHOLD=$((90 * 1024 * 1024))  # 90 MB
@@ -608,8 +726,8 @@ MANIFEST_EOF
     if command -v gh &>/dev/null; then
       if ! gh release view "$SANDSTORM_RELEASES_TAG" &>/dev/null; then
         info "Creating GitHub release $SANDSTORM_RELEASES_TAG"
-        gh release create "$SANDSTORM_RELEASES_TAG" --title "Sandstorm Builds" \
-          --notes "Sandstorm binary update tarballs" --latest=false
+        gh release create "$SANDSTORM_RELEASES_TAG" --title "Melusina Builds" \
+          --notes "Melusina binary update tarballs" --latest=false
       fi
       info "Uploading sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz to release $SANDSTORM_RELEASES_TAG"
       gh release upload "$SANDSTORM_RELEASES_TAG" "$SANDSTORM_TARBALL" --clobber
@@ -621,7 +739,7 @@ MANIFEST_EOF
     warn "No sandstorm tarball found in $SANDSTORM_SRC/"
   fi
 else
-  warn "Sandstorm source dir not found: $SANDSTORM_SRC"
+  warn "Melusina source dir not found: $SANDSTORM_SRC"
   warn "Skipping binary update packaging"
 fi
 

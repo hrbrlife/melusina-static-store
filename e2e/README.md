@@ -1,8 +1,8 @@
 # Melusina static-store e2e tests
 
 Playwright suite covering the public bazaar, the per-app integration
-contract (icon + SPK + signature all reachable), the mobile viewport,
-and (optionally) the Sandstorm admin app market.
+contract (icon + SPK + ReleaseEntry attestation all reachable), the mobile
+viewport, and (optionally) the Sandstorm admin app market.
 
 Modeled on the DueProcess (`AITX-Procedures/e2e/`) harness.
 
@@ -33,7 +33,7 @@ The `admin` project auto-skips if `ADMIN_BASE_URL` isn't reachable.
 | Spec                          | Project        | What it asserts |
 |-------------------------------|----------------|-----------------|
 | `static_store.spec.ts`        | store-public   | landing renders, 21 apps, search/category filters work, detail modal opens, install modal opens, service worker registers, no console errors, no community surfaces |
-| `all_apps.spec.ts`            | all-apps       | for every expected app: icon URL 200, SPK URL 200, signature URL 200; detail modal opens; version + categories match catalog |
+| `all_apps.spec.ts`            | all-apps       | for every expected app: icon URL 200, SPK URL 200, `/attest/<appId>/RELEASE.json` URL 200 and matching catalog ReleaseEntry summary; detail modal opens; version + categories match catalog |
 | `static_store_mobile.spec.ts` | store-mobile   | catalog renders on iPhone 14, search accessible, sticky install bar appears |
 | `admin_store.spec.ts`         | admin          | admin page reachable, Sandstorm shell present, install URL resolves |
 

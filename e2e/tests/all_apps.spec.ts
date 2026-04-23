@@ -4,7 +4,7 @@ import { EXPECTED_APPS } from '../fixtures/expected_apps';
 /* Per-app integration: for every app in the catalog, confirm
  *  - the card icon image returns 200 (not a 404 → letter fallback)
  *  - the SPK package URL returns 200
- *  - the metadata signature URL returns 200 (trust kernel)
+ *  - RELEASE.json returns 200 and matches the catalog ReleaseEntry summary
  *  - the detail modal opens, version + author show up
  */
 
@@ -32,7 +32,7 @@ test('Catalog matches expected app set', async () => {
 
 for (const app of EXPECTED_APPS) {
   test.describe(`App: ${app.name}`, () => {
-    test('icon, SPK, signature all return 200', async ({ request }) => {
+    test('icon, SPK, ReleaseEntry attestation all return 200', async ({ request }) => {
       const entry = catalog.find(a => a.name === app.name);
       expect(entry, `${app.name} not in catalog`).toBeDefined();
       // Icon
@@ -45,11 +45,28 @@ for (const app of EXPECTED_APPS) {
         expect(spkRes.status(),
           `SPK ${entry.packageId} must be 200`).toBe(200);
       }
-      // Signature
-      const sigRes = await request.head(
-        `${STORE_NORM}/signatures/${entry.appId}/metadata.json.asc`);
-      expect(sigRes.status(),
-        `signature for ${entry.appId} must be 200`).toBe(200);
+      // ReleaseEntry-backed attestation manifest
+      expect(entry.attest, `${entry.name} must include attest summary`).toBeDefined();
+      expect(entry.attest.schema).toBe('melusina-release-v1');
+      expect(entry.attest.appHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry.attest.releaseHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry.attest.releaseEntryPda).toBeTruthy();
+      expect(entry.attest.masterNftMint).toBeTruthy();
+      expect(entry.attest.licenseSquadsVault).toBeTruthy();
+      expect(entry.attest.signedAtUnix).toBeGreaterThan(0);
+
+      const releaseRes = await request.get(
+        `${STORE_NORM}/attest/${entry.appId}/RELEASE.json`);
+      expect(releaseRes.status(),
+        `RELEASE.json for ${entry.appId} must be 200`).toBe(200);
+      const release = await releaseRes.json();
+      expect(release.$schema).toBe('melusina-release-v1');
+      expect(release.appHash).toBe(entry.attest.appHash);
+      expect(release.releaseHash).toBe(entry.attest.releaseHash);
+      expect(release.releaseEntryPda).toBe(entry.attest.releaseEntryPda);
+      expect(release.masterNftMint).toBe(entry.attest.masterNftMint);
+      expect(release.licenseSquadsVault).toBe(entry.attest.licenseSquadsVault);
+      expect(release.signedAtUnix).toBe(entry.attest.signedAtUnix);
     });
 
     test('catalog entry has expected version + categories', async () => {

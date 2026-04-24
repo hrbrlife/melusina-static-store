@@ -117,8 +117,6 @@ const removePbayServer = (code) => {
   const list = getPbayServers().filter((s) => s.code !== code);
   localStorage.setItem(PBAY_KEY, JSON.stringify(list));
 };
-// legacy compat
-const getPbayServer = () => { const list = getPbayServers(); return list.length > 0 ? list[0] : null; };
 const setPbayServer = (srv) => { addPbayServer(srv); };
 
 const getPrivateServers = () => {
@@ -880,8 +878,6 @@ body::after{
   animation:pop .2s ease-out;
 }
 
-.detail-grid{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
-@media(max-width:900px){.detail-grid{grid-template-columns:1fr}}
 @media(max-width:480px){html{font-size:15px}}
 
 .neon-text{
@@ -902,12 +898,6 @@ body::after{
 }
 .detail-tab:hover{color:${T.textSec}}
 .detail-tab.active{color:${T.cyan};border-bottom-color:${T.cyan};text-shadow:0 0 8px ${T.accentGlow}}
-
-.doc-layout{display:flex;gap:24px;align-items:flex-start}
-.doc-sidebar{position:sticky;top:80px;min-width:180px;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
-@media(max-width:720px){.doc-layout{flex-direction:column}.doc-sidebar{position:static;flex-direction:row;overflow-x:auto;min-width:0;padding-bottom:4px}.doc-sidebar::-webkit-scrollbar{display:none}}
-.fee-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:600px){.fee-grid-2{grid-template-columns:1fr}}
 
 .md-body h2{font-size:22px;font-weight:800;color:${T.text};margin:28px 0 12px;font-family:'Orbitron',sans-serif;letter-spacing:.02em}
 .md-body h2:first-child{margin-top:0}

@@ -754,7 +754,6 @@ const T = {
   card: "rgba(28, 22, 58, 0.55)",
   cardHover: "rgba(42, 32, 78, 0.7)",
   border: "rgba(192, 132, 252, 0.1)",
-  borderHover: "rgba(0, 229, 255, 0.35)",
   borderLight: "rgba(192, 132, 252, 0.06)",
   cyan: "#00e5ff",
   magenta: "#ff7eb3",
@@ -935,9 +934,6 @@ body::after{
 .md-body ol{margin:0 0 16px 0;padding-left:24px;list-style:decimal}
 .md-body ol li{font-size:15px;line-height:1.8;color:${T.textSec};margin-bottom:4px}
 .md-body ol li::marker{color:${T.cyan}}
-
-.review-card{padding:20px;background:${T.surface};border:1px solid ${T.border};border-radius:${T.radius}px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:border-color .2s}
-.review-card:hover{border-color:${T.cyan}33}
 
 @media(max-width:480px){.detail-tab{padding:12px 16px;font-size:10px;letter-spacing:.06em}}
 @media(max-width:768px){.mobile-sticky-install{display:flex!important}}

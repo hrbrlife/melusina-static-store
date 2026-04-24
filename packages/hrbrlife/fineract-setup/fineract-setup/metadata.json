@@ -1,0 +1,26 @@
+{
+  "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+  "name": "fineract Setup",
+  "version": "0.2.0",
+  "versionNumber": 2,
+  "packageId": "b98fd88687c563149b391010169dbbe7",
+  "shortDescription": "Bootstrap wizard for fineract-sidecar",
+  "description": "**fineract Setup** is the Sandstorm companion wizard for `fineract-sidecar`. It provisions the attached Apache Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates: (1) the Go HTTPS sidecar and (2) the Java `SolanaSignatureAuthenticationFilter` inside Fineract. The wizard packages the cold-start work that has to happen before ccash can talk to a hardened Fineract install: tenant setup, offices, currencies, chart of accounts, savings products, signer registration, governance policy, and trust-bundle export.",
+  "categories": ["Productivity", "Office"],
+  "isOpenSource": false,
+  "webLink": "https://ccash.services",
+  "codeLink": "https://github.com/hrbrlife/ccash_go_htmx/tree/main/fineract-sidecar",
+  "upstreamAuthor": "ccash",
+  "createdAt": 1776299121003,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "license": "Proprietary — Internal development build",
+  "screenshots": [],
+  "tier": "admin",
+  "domains": ["*"]
+}

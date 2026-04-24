@@ -745,29 +745,6 @@ function InstallModal({ app, onClose }) {
   );
 }
 
-/* Community surfaces (reviews / feature wishes / bug reports / app ideas / comments)
- * were removed: they were localStorage-only, so they looked like public marketplace
- * submissions but never left the device. A polished bazaar doesn't ship fictional
- * community signals. These stubs return empty data so legacy call-sites don't crash;
- * the tabs and Ideas page that consumed them have been removed.
- */
-const getUserReviews   = () => [];
-const addUserReview    = () => [];
-const getFeatureWishes = () => [];
-const addFeatureWish   = () => [];
-const voteFeatureWish  = () => ({ wishes: [], votes: {} });
-const getMyFWVotes     = () => ({});
-const getComments      = () => [];
-const addComment       = () => [];
-const getBugReports    = () => [];
-const addBugReport     = () => [];
-const voteBugReport    = () => ({ bugs: [], votes: {} });
-const getMyBugVotes    = () => ({});
-const getAppIdeas      = () => [];
-const addAppIdea       = () => [];
-const voteAppIdea      = () => ({ ideas: [], votes: {} });
-const getMyAIVotes     = () => ({});
-
 /* ─── palm beach sunset tokens ────────────────────────────────────────────── */
 
 const T = {
@@ -1662,17 +1639,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
 
   const [tab, setTab] = useState(initialTab || 'overview');
   const [openFaq, setOpenFaq] = useState(() => new Set(featuredFaqSet));
-  const [userRevs, setUserRevs] = useState(() => getUserReviews(app.appId));
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewDraft, setReviewDraft] = useState({ author: '', rating: 5, title: '', text: '' });
-  const [featureWishes, setFeatureWishes] = useState(() => getFeatureWishes(app.appId));
-  const [fwVotes, setFwVotes] = useState(() => getMyFWVotes());
-  const [fwDraft, setFwDraft] = useState({ text: '', author: '' });
-  const [showFwForm, setShowFwForm] = useState(false);
-  const [bugReports, setBugReports] = useState(() => getBugReports(app.appId));
-  const [bugVotes, setBugVotes] = useState(() => getMyBugVotes());
-  const [bugDraft, setBugDraft] = useState({ title: '', description: '', author: '' });
-  const [showBugForm, setShowBugForm] = useState(false);
   const [devSubTab, setDevSubTab] = useState(initialDevSubTab || 'suggestions');
 
   useEffect(() => {
@@ -1682,7 +1648,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  useEffect(() => { setTab(initialTab || 'overview'); setOpenFaq(new Set(featuredFaqSet)); setUserRevs(getUserReviews(app.appId)); setShowReviewForm(false); setReviewDraft({ author: '', rating: 5, title: '', text: '' }); setFeatureWishes(getFeatureWishes(app.appId)); setFwVotes(getMyFWVotes()); setFwDraft({ text: '', author: '' }); setShowFwForm(false); setBugReports(getBugReports(app.appId)); setBugVotes(getMyBugVotes()); setBugDraft({ title: '', description: '', author: '' }); setShowBugForm(false); setDevSubTab(initialDevSubTab || 'suggestions'); }, [app.appId, featuredFaqSet, initialTab, initialDevSubTab]);
+  useEffect(() => { setTab(initialTab || 'overview'); setOpenFaq(new Set(featuredFaqSet)); setDevSubTab(initialDevSubTab || 'suggestions'); }, [app.appId, featuredFaqSet, initialTab, initialDevSubTab]);
 
   if (!app) return null;
 

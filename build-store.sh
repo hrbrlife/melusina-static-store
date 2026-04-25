@@ -697,8 +697,14 @@ info "Packaging Melusina binary update..."
 SANDSTORM_TARBALL=""
 SANDSTORM_BUILD_NUM=""
 
-# Find the latest tarball from the server build dir
-if [[ -d "$SANDSTORM_SRC" ]]; then
+# Documented opt-out: when the publisher knows there is no signed-tarball path
+# available (keyring not yet provisioned, dev-host without keys), set
+# MELUSINA_SKIP_BUNDLE_UPDATE=1 to skip the entire bundle-update block.
+# Catalog still ships; clients see no Sandstorm self-update this round.
+# Default remains fail-hard via the pre-flight check below.
+if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
+  warn "MELUSINA_SKIP_BUNDLE_UPDATE=1 — skipping Sandstorm bundle-update block; catalog only this round"
+elif [[ -d "$SANDSTORM_SRC" ]]; then
   # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast)
   for f in "$SANDSTORM_SRC"/sandstorm-[0-9]*.tar.xz; do
     [[ "$f" == *-fast.tar.xz ]] && continue

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fix Python-style Unicode escapes and other text issues in main.jsx"""
 
-with open('src/main.jsx', 'r', encoding='utf-8') as f:
+with open('src/main.jsx', encoding='utf-8') as f:
     content = f.read()
 
 # Count occurrences before

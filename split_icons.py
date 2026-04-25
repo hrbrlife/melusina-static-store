@@ -7,7 +7,6 @@ and export each cluster as a separate cropped square SVG icon.
 import xml.etree.ElementTree as ET
 import re
 import os
-import sys
 from collections import defaultdict
 
 def parse_path_bbox(d_attr):
@@ -235,13 +234,13 @@ def main():
                              key=lambda x: (int(x[1]['bbox'][1] / 200), x[1]['bbox'][0]))
     
     # Print info about each cluster
-    for i, (root_id, info) in enumerate(sorted_clusters):
+    for i, (_root_id, info) in enumerate(sorted_clusters):
         bbox = info['bbox']
         print(f"  Icon {i+1}: bbox=({bbox[0]:.0f}, {bbox[1]:.0f}, {bbox[2]:.0f}, {bbox[3]:.0f}), "
               f"size={info['width']:.0f}x{info['height']:.0f}, paths={len(info['members'])}")
-    
+
     # Export each cluster as a separate SVG
-    for i, (root_id, info) in enumerate(sorted_clusters):
+    for i, (_root_id, info) in enumerate(sorted_clusters):
         bbox = info['bbox']
         
         # Add padding

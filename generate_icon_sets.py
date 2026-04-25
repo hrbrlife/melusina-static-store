@@ -13,7 +13,6 @@ import os
 import shutil
 import subprocess
 import json
-from PIL import Image
 
 ICONS_DIR = os.path.join(os.path.dirname(__file__), "icons_split")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "app_icons")
@@ -63,8 +62,8 @@ def render_png(svg_path, png_path, size):
         "inkscape", svg_path,
         "--export-type=png",
         f"--export-filename={png_path}",
-        f"-w", str(size),
-        f"-h", str(size),
+        "-w", str(size),
+        "-h", str(size),
     ], capture_output=True, check=True)
 
 def create_favicon_ico(app_dir):
@@ -120,19 +119,19 @@ def create_html_head_snippet(app_name, app_dir):
     """Create an html-head.html snippet with all the <link> and <meta> tags."""
     lines = [
         f'<!-- {app_name} Icon Tags -->',
-        f'<link rel="icon" type="image/x-icon" href="favicon.ico">',
-        f'<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">',
-        f'<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">',
-        f'<link rel="icon" type="image/svg+xml" href="icon.svg">',
-        f'<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">',
-        f'<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">',
-        f'<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">',
-        f'<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">',
-        f'<link rel="apple-touch-icon" sizes="76x76" href="apple-touch-icon-76x76.png">',
-        f'<meta name="msapplication-TileImage" content="mstile-150x150.png">',
-        f'<meta name="msapplication-TileColor" content="#A6E6F5">',
-        f'<meta name="theme-color" content="#A6E6F5">',
-        f'<link rel="manifest" href="manifest.json">',
+        '<link rel="icon" type="image/x-icon" href="favicon.ico">',
+        '<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">',
+        '<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">',
+        '<link rel="icon" type="image/svg+xml" href="icon.svg">',
+        '<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">',
+        '<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">',
+        '<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">',
+        '<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">',
+        '<link rel="apple-touch-icon" sizes="76x76" href="apple-touch-icon-76x76.png">',
+        '<meta name="msapplication-TileImage" content="mstile-150x150.png">',
+        '<meta name="msapplication-TileColor" content="#A6E6F5">',
+        '<meta name="theme-color" content="#A6E6F5">',
+        '<link rel="manifest" href="manifest.json">',
     ]
     with open(os.path.join(app_dir, "html-head.html"), "w") as f:
         f.write("\n".join(lines) + "\n")
@@ -149,7 +148,7 @@ def process_app(app_name):
 
     # 1. Copy SVG as icon.svg (Sandstorm format)
     shutil.copy2(svg_src, os.path.join(app_dir, "icon.svg"))
-    print(f"  [SVG] icon.svg")
+    print("  [SVG] icon.svg")
 
     # 2. Generate all PNG sizes
     sizes = unique_sizes()
@@ -164,19 +163,19 @@ def process_app(app_name):
         os.path.join(app_dir, "apple-touch-icon-180x180.png"),
         os.path.join(app_dir, "apple-touch-icon.png"),
     )
-    print(f"  [PNG] apple-touch-icon.png (180x180 copy)")
+    print("  [PNG] apple-touch-icon.png (180x180 copy)")
 
     # 4. Create favicon.ico (multi-resolution: 16, 32, 48)
     create_favicon_ico(app_dir)
-    print(f"  [ICO] favicon.ico")
+    print("  [ICO] favicon.ico")
 
     # 5. Create manifest.json
     create_manifest_json(app_name, app_dir)
-    print(f"  [JSON] manifest.json")
+    print("  [JSON] manifest.json")
 
     # 6. Create HTML head snippet
     create_html_head_snippet(app_name, app_dir)
-    print(f"  [HTML] html-head.html")
+    print("  [HTML] html-head.html")
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -191,30 +190,30 @@ def main():
     print(f"\n{'='*50}")
     print(f"DONE — {len(APPS)} app icon sets generated in: {OUTPUT_DIR}")
     print(f"{'='*50}")
-    print(f"\nEach folder contains:")
-    print(f"  icon.svg              — Sandstorm / universal SVG icon")
-    print(f"  favicon.ico           — Multi-res favicon (16+32+48)")
-    print(f"  favicon-16x16.png     — Favicon small")
-    print(f"  favicon-32x32.png     — Favicon standard")
-    print(f"  icon-48x48.png        — Android / web")
-    print(f"  icon-72x72.png        — Android")
-    print(f"  icon-96x96.png        — Android")
-    print(f"  icon-128x128.png      — Android / Chrome Web Store")
-    print(f"  icon-144x144.png      — Android")
-    print(f"  icon-192x192.png      — Android PWA (required)")
-    print(f"  icon-256x256.png      — High quality")
-    print(f"  icon-384x384.png      — Android PWA")
-    print(f"  icon-512x512.png      — Android PWA (required, maskable)")
-    print(f"  icon-1024x1024.png    — App Store / high-res")
-    print(f"  apple-touch-icon.png  — iOS default (180x180)")
-    print(f"  apple-touch-icon-76x76.png   — iPad")
-    print(f"  apple-touch-icon-120x120.png — iPhone retina")
-    print(f"  apple-touch-icon-152x152.png — iPad retina")
-    print(f"  apple-touch-icon-167x167.png — iPad Pro")
-    print(f"  apple-touch-icon-180x180.png — iPhone 6+")
-    print(f"  mstile-150x150.png    — Microsoft tile")
-    print(f"  manifest.json         — PWA web app manifest")
-    print(f"  html-head.html        — Copy-paste HTML <link>/<meta> tags")
+    print("\nEach folder contains:")
+    print("  icon.svg              — Sandstorm / universal SVG icon")
+    print("  favicon.ico           — Multi-res favicon (16+32+48)")
+    print("  favicon-16x16.png     — Favicon small")
+    print("  favicon-32x32.png     — Favicon standard")
+    print("  icon-48x48.png        — Android / web")
+    print("  icon-72x72.png        — Android")
+    print("  icon-96x96.png        — Android")
+    print("  icon-128x128.png      — Android / Chrome Web Store")
+    print("  icon-144x144.png      — Android")
+    print("  icon-192x192.png      — Android PWA (required)")
+    print("  icon-256x256.png      — High quality")
+    print("  icon-384x384.png      — Android PWA")
+    print("  icon-512x512.png      — Android PWA (required, maskable)")
+    print("  icon-1024x1024.png    — App Store / high-res")
+    print("  apple-touch-icon.png  — iOS default (180x180)")
+    print("  apple-touch-icon-76x76.png   — iPad")
+    print("  apple-touch-icon-120x120.png — iPhone retina")
+    print("  apple-touch-icon-152x152.png — iPad retina")
+    print("  apple-touch-icon-167x167.png — iPad Pro")
+    print("  apple-touch-icon-180x180.png — iPhone 6+")
+    print("  mstile-150x150.png    — Microsoft tile")
+    print("  manifest.json         — PWA web app manifest")
+    print("  html-head.html        — Copy-paste HTML <link>/<meta> tags")
 
 if __name__ == "__main__":
     main()

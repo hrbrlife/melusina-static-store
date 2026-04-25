@@ -38,7 +38,7 @@ for icon_num, app_name in NAME_MAP.items():
         continue
     
     # Read SVG content
-    with open(old_svg, 'r') as f:
+    with open(old_svg) as f:
         content = f.read()
     
     # Extract the viewBox to know the coordinate space

@@ -173,3 +173,103 @@ contents.
 
 This file is the snapshot — re-run the scanner after any of the above
 to refresh.
+
+---
+
+## Submodule registration scope (post-`.asc` sweep, 2026-04-25)
+
+> Per Riker idx 207, scoping which of the 4 unregistered paths
+> (AI_Lagoon, cyberteller, fineract-setup, vintage-test-dec) need
+> upstream remotes minted for v1.1 catalog completeness.
+>
+> **Bottom line:** **0 of 4 are immediately registrable.** Three are
+> blocked on upstream-side `publish` branch work; one has no standalone
+> repo and should stay as a plain tree.
+
+### AI_Lagoon  (catalog dir → upstream `hrbrlife/ai-lagoon.git`)
+
+- Upstream repo exists; both `main` and `publish` branches present.
+- **Blocker:** upstream `publish` branch is STALE relative to catalog.
+  - Upstream publish: `v0.7.0 pkg=6d7afdeebc02`, missing `RELEASE.json`.
+  - Catalog tree: `v0.7.0 pkg=c48710e0090f`, has `RELEASE.json` (post-Janeway attest).
+- Registering the submodule against the current upstream/publish would
+  REGRESS the catalog (older `.spk` hash + lose the `RELEASE.json`
+  required by `build-store.sh:182` validation).
+- **Action needed (ai-lagoon maintainer):** push the current catalog-
+  tree state up to `hrbrlife/ai-lagoon` `publish` branch (the c48710…
+  `.spk` + `RELEASE.json`), then static_store can `git submodule add
+  -b publish https://github.com/hrbrlife/ai-lagoon.git
+  packages/hrbrlife/AI_Lagoon`.
+
+### cyberteller  (catalog dir → upstream `hrbrlife/cyberteller.git`)
+
+- Upstream repo exists; branches: `main`, `feat/admin-auth-harmonize`,
+  `copilot/*`. **No `publish` branch on origin.**
+- Catalog tree contains the publish-shaped artifact (`cyberteller/
+  metadata.json`, `RELEASE.json`, `app.spk`, etc.).
+- **Action needed (cyberteller agent / maintainer):** create
+  `hrbrlife/cyberteller@publish` containing the slug-shaped
+  `cyberteller/<files>` payload from the current catalog tree, push.
+  The cyberteller agent is in this room and currently shipping ~20+
+  commits/day on `feat/admin-auth-harmonize`; coordinating the
+  `publish` branch creation with them is the unblocker.
+- Once `publish` exists upstream: `git submodule add -b publish
+  https://github.com/hrbrlife/cyberteller.git
+  packages/hrbrlife/cyberteller`.
+
+### fineract-setup  (catalog dir → no upstream repo)
+
+- Source code lives INSIDE `ccash_go_htmx/fineract-sidecar/` per the
+  metadata's `codeLink` field. No standalone `hrbrlife/fineract-setup`
+  repository exists (`git ls-remote` returns 404).
+- The catalog tree carries the full publish payload (built locally
+  from the fineract-sidecar source, packaged into a separate `.spk`
+  with its own `appId 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h`).
+- **Recommendation: keep as plain-tree-in-catalog.** No upstream
+  source-of-truth to point at. Spinning up a standalone `hrbrlife/
+  fineract-setup` repo would split the source from `ccash_go_htmx/
+  fineract-sidecar` (which is itself the live engine), creating drift.
+  The fineract-sidecar agent (in this room) is the source-of-truth
+  owner; let them ship updates by re-packaging into the catalog
+  directly via the fineract-setup build pipeline.
+
+### vintage-test-dec  (catalog dir → upstream `hrbrlife/vintage-test-dec.git`)
+
+- Upstream repo exists; branches: `main`, `codex/*`, `copilot/*`.
+  **No `publish` branch on origin.** `main` carries source only
+  (Makefile, .gitignore, .sandstorm/), no publish-shaped artifact tree.
+- Catalog tree carries `vintage/metadata.json + RELEASE.json + app.spk`.
+- **Action needed (vintage-test-dec maintainer):** create
+  `hrbrlife/vintage-test-dec@publish` containing the slug-shaped
+  `vintage/<files>` payload, push. Then `git submodule add -b publish
+  https://github.com/hrbrlife/vintage-test-dec.git
+  packages/hrbrlife/vintage-test-dec`.
+
+### v1.1 readiness summary
+
+| Path                     | Upstream repo                                          | publish branch | Registrable now | Blocker                                                                |
+| ------------------------ | ------------------------------------------------------ | -------------- | --------------- | ---------------------------------------------------------------------- |
+| `AI_Lagoon`              | `hrbrlife/ai-lagoon.git`                               | exists, STALE  | no              | upstream publish must catch up to catalog (newer .spk + RELEASE.json)  |
+| `cyberteller`            | `hrbrlife/cyberteller.git`                             | absent         | no              | cyberteller agent needs to create publish branch                       |
+| `fineract-setup`         | none (source in ccash_go_htmx/fineract-sidecar)        | n/a            | no              | no standalone repo; recommend stay-as-plain-tree                       |
+| `vintage-test-dec`       | `hrbrlife/vintage-test-dec.git`                        | absent         | no              | vintage maintainer needs to create publish branch                      |
+
+### Recommended next moves
+
+1. **Riker route to ai-lagoon agent** (or whoever owns hrbrlife/ai-lagoon
+   publish): push the current catalog state to the upstream `publish`
+   branch. Then static_store registers AI_Lagoon as submodule. ~10 min
+   per side.
+2. **Coordinate with cyberteller agent in this room** on publishing a
+   `publish` branch for cyberteller. Their lane is busy with
+   `feat/admin-auth-harmonize` work; the publish-branch creation is a
+   small one-off (extract `cyberteller/<slug-files>` from the catalog
+   tree, push to a fresh `publish` branch on `hrbrlife/cyberteller`).
+3. **vintage-test-dec maintainer** (no agent in room): same action
+   shape as cyberteller. May need to be done by hand.
+4. **fineract-setup**: leave as-is. Plain-tree-in-catalog is the right
+   shape because no upstream source-of-truth exists. Document in
+   `README.md` that this app's source lives in `ccash_go_htmx/
+   fineract-sidecar` and the publish artifact is hand-curated into the
+   catalog. Submodule registration is NOT applicable.
+

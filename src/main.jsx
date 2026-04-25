@@ -2386,7 +2386,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         {faq.map((item, i) => {
           const isOpen = openFaq.has(i);
           return (
-            <div key={i} className="faq-item" style={{
+            <div key={i} style={{
               border: `1px solid ${isOpen ? T.cyan + '33' : T.border}`,
               borderRadius: T.radius, overflow: "hidden", transition: "border-color .2s",
             }}>

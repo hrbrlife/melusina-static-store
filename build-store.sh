@@ -463,6 +463,7 @@ m['attest'] = {
     'masterNftMint': release.get('masterNftMint', ''),
     'licenseSquadsVault': release.get('licenseSquadsVault', ''),
     'signedAtUnix': release.get('signedAtUnix', 0),
+    'authorSig': release.get('authorSig', ''),
     'quorumPolicy': release.get('quorumPolicy', {}),
 }
 

@@ -7,7 +7,7 @@
       "version": "0.7.0",
       "versionNumber": 10,
       "shortDescription": "AI model hub \u2014 Ollama, ChatGPT, OpenRouter, with shareable Grapple capabilities",
-      "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities \u2014 ai-text, ai-vision, ai-generic, and direct per-model access \u2014 to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Melusina HTTP-out permission, not per-Pearl capability hops. Built-in playground for testing models without leaving the pearl.",
+      "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities \u2014 ai-text, ai-vision, ai-generic, and direct per-model access \u2014 to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Sandstorm HTTP-out permission, not per-grain capability hops. Built-in playground for testing models without leaving the pearl.",
       "categories": [
         "Productivity"
       ],
@@ -37,7 +37,23 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "0f5678081ffee8f98c258aad41b73b70.svg"
+      "imageId": "0f5678081ffee8f98c258aad41b73b70.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "e57f18fdaa4c734013652c17062f6695c3eb69df8ed3c07248e904cf666c265d",
+        "releaseHash": "c48710e0090f1957bd00947e344d829ba9db471613bf2ec23507e2f2bafdbf6d",
+        "releaseNonce": "f58e16e682865570b634be0d9e2378e6f697797753216186568fe8e5e813a495",
+        "releaseEntryPda": "test-release-entry-eaeb05fe09bd5e39d9625b99ef988326",
+        "masterNftMint": "test-master-nft-4e6d331b91b6678efaa5ba3aef054653",
+        "licenseSquadsVault": "test-license-vault-c488c5afdd08bc1756fe6388bfc9dcb0",
+        "signedAtUnix": 1739491200,
+        "authorSig": "test-author-sig-e8bb32d9550ed4ff431c895fd04a50fe8617be47dd8268e678869e6e8e74b06a",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-1a61c387ffc42123fd7111615a53e563"
+        }
+      }
     },
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
@@ -63,6 +79,22 @@
       },
       "license": "",
       "imageId": "4fee9934bbd5715653c18803672ca187.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "9c912949c6a0a8b4b765d81ab276677ec263a95cc325fc30a9b18b0e73ed4ee8",
+        "releaseHash": "cf10fbc04a2680c5028dc7ccfbcc97e41916de89669705a8234cc73a4290b24e",
+        "releaseNonce": "d0748a717b52dd87897dcdc795b064633036f45169777465829cd338e72fd5f4",
+        "releaseEntryPda": "test-release-entry-a9ec3ba47ef9a8438c7bf37f06a153d8",
+        "masterNftMint": "test-master-nft-32f5dd490ee0db0c74727bdd32d49eb2",
+        "licenseSquadsVault": "test-license-vault-baf56d1b4c9b0a6c28658238293611ed",
+        "signedAtUnix": 1770857129,
+        "authorSig": "test-author-sig-0a8d56d3d5024a508ee8d3691311cd38446a0115e6518b6711e68c5a15fdfc26",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-72f4cffb82d27dad27ad0ec5d86f2f40"
+        }
+      },
       "description": "# BotMother\n\n**Your Telegram bot. Your server. Your routing rules.**\n\nBotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own **Pearl** \u2014 a sealed, per-document container with its own database, message history, and permissions. No bot Pearl can see another unless you explicitly connect them via **Grapple**.\n\n---\n\n## \ud83e\udd16 How It Works\n\nCreate a new Pearl to configure a Telegram bot. Register your bot token from BotFather, define routing rules, and BotMother handles the rest. Messages flow through your server \u2014 never through a third party.\n\n### Key Features\n\n- **Per-Pearl Isolation** \u2014 Each bot runs in its own sealed container with separate storage, config, and message logs\n- **Message Routing** \u2014 Define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 Manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 Link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Instasys Mail, or log events to MiniGit\n- **Webhook Integration** \u2014 Receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 All messages stay on your server. No third-party bot hosting. No message logging by others\n- **Offline Queuing** \u2014 Messages received while offline are queued and processed when the bot reconnects\n\n---\n\n## \ud83d\udd27 Setup\n\n1. Create a bot via [BotFather](https://t.me/BotFather) on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n---\n\n## \ud83d\udd10 Security Model\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | See bot status and message logs |\n| \u270f\ufe0f **Editor** | Configure routing rules, manage chatrooms |\n| \ud83d\udc51 **Admin** | Manage bot tokens, permissions, and Grapple connections |\n\n> Every message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install and use on your own server. No subscription, no per-message fees, no limits.",
       "screenshots": []
     },
@@ -91,7 +123,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "643b227e6ad6a193927ce8ca7095016a.png"
+      "imageId": "643b227e6ad6a193927ce8ca7095016a.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "01f32fc49f8b7d1b8db23ca6241571009acec4acab36dc7bde7e64d58366adc9",
+        "releaseHash": "4589264bc4fef9b13f36bbaae3fd5718dc66a6183dda92f3bd0a1d1ebc7cbe44",
+        "releaseNonce": "7566efd934859791d90a3b49586380737bb71250f44c3dfc345de3051c16b4a3",
+        "releaseEntryPda": "test-release-entry-17d9384f4a04c9850990e064e9824849",
+        "masterNftMint": "test-master-nft-e2809d17510ac472c28d63b89864e683",
+        "licenseSquadsVault": "test-license-vault-09c220dcfd6e97187da74b18b09fa39a",
+        "signedAtUnix": 1776835993,
+        "authorSig": "test-author-sig-26713d8ffc82edddf36e5d29d9f6a0a2aee99eea92669cbb7bd5d1275722225a",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-82c27888e8a8ebd9be485e2d1fe42102"
+        }
+      }
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
@@ -117,21 +165,37 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "7e86226cccefca5af433f5c1598379ab.png"
+      "imageId": "7e86226cccefca5af433f5c1598379ab.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "07e5ddd67b01b97a83a6cdcd9779e03ad47c6abdbccc660a7a33652349f6221d",
+        "releaseHash": "e468c876b7aa4ccbd2a2774a966f44c5325c7c0cc7476d0faa1c180621ffb2ad",
+        "releaseNonce": "48aab1630c05dd41a2a04bfa29e27f94971af7a8a62053d02a499cea98f013b4",
+        "releaseEntryPda": "test-release-entry-485a005f986bd847669ea06ec5a263ec",
+        "masterNftMint": "test-master-nft-77ff93fc0a975ccbe89a119c80a99e31",
+        "licenseSquadsVault": "test-license-vault-5bb87b929a459242bdf590f528f4982e",
+        "signedAtUnix": 1776836028,
+        "authorSig": "test-author-sig-ea37a0395142f4259bc06c231520b06398f1c00291e5a7d8d55e87d2c469c073",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-65bd4366bcccf2c6be51be24dceff356"
+        }
+      }
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
       "packageId": "e4a0eea3e550c584b25abb725c4314ab",
       "name": "cca.sh Admin",
       "version": "0.2.0",
-      "versionNumber": 2,
+      "versionNumber": 1,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
-      "description": "ccash is a polished mobile-first operator console for an MSB / PSP / VASP back office. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling Pearls. Built in Go + HTMX as a Melusina Pearl.",
+      "description": "ccash is a polished mobile-first operator console for an MSB / PSP / VASP back office. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
         "Productivity",
         "Office"
       ],
-      "isOpenSource": false,
+      "isOpenSource": true,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
       "upstreamAuthor": "Alexei Karpov",
@@ -143,8 +207,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "851f4fb5507e350525b4e01676885b48.png"
+      "imageId": "851f4fb5507e350525b4e01676885b48.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "71cc7819b88adb1f98bc1f3d3f57d40500fe13e1e1e46077f6b753f9e5c926c1",
+        "releaseHash": "ec806e725dc5298ee82676205b021616bc527ccce920455b50757038860b0dfd",
+        "releaseNonce": "5c94a3e4eff6221f8e5a11d31560badf1e2d14ade4a2da511df828b58e174e52",
+        "releaseEntryPda": "test-release-entry-2f9a89c154b21156e435ed2a142f0059",
+        "masterNftMint": "test-master-nft-319a09766e6240e515914c93a1dacd93",
+        "licenseSquadsVault": "test-license-vault-39898028ae4ecd147322048662ad044a",
+        "signedAtUnix": 1744848000,
+        "authorSig": "test-author-sig-faa35e1b48b5e4eea4f7601deb728512e3493adb7b76544413eeb101b7d4959a",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-b6806aab192b9df1068e938e992412ab"
+        }
+      }
     },
     {
       "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
@@ -153,7 +232,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "cca.sh client mode \u2014 access your organisation's financial services and tools.",
-      "description": "**cca.sh Client** is the client-facing mode of cca.sh \u2014 the polished MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books. All activity is signed with your Solana key and recorded in the organisation's encrypted audit log.\n\n## Why client mode\n\n- **Read + write scoped to your seat** \u2014 see only what your organisation grants\n- **Request-based workflow** \u2014 every debit routes through the Admin approval gate\n- **Solana-signed actions** \u2014 every action you take is non-repudiable\n- **No stored payment instruments** \u2014 contacts are identity-only, not cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (the back-office view)\n- **cca.sh Org Member** \u2014 team collaboration + shared resources\n\n## Status\n\n*Pre-release.* The Pearl installs today as a Coming Soon stub served by the HTTP bridge; the live client UI lands in v0.2.\n",
+      "description": "**cca.sh Client** is the client-facing mode of cca.sh \u2014 the polished MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books. All activity is signed with your Solana key and recorded in the organisation's encrypted audit log.\n\n## Why client mode\n\n- **Read + write scoped to your seat** \u2014 see only what your organisation grants\n- **Request-based workflow** \u2014 every debit routes through the Admin approval gate\n- **Solana-signed actions** \u2014 every action you take is non-repudiable\n- **No stored payment instruments** \u2014 contacts are identity-only, not cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (the back-office view)\n- **cca.sh Org Member** \u2014 team collaboration + shared resources\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub served by sandstorm-http-bridge; the live client UI lands in v0.2.\n",
       "categories": [
         "Productivity",
         "Office"
@@ -171,7 +250,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "adb61e4f6d7ac77a8273d8b248499119.png"
+      "imageId": "adb61e4f6d7ac77a8273d8b248499119.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "14b0a010931f6fff9229483c2def93bcc1b4b5a60d764a14148101261958ba10",
+        "releaseHash": "beef2a24e23b097a07e88fb7a87b0b97273c01ccb8e74bb35d97c6d80c426164",
+        "releaseNonce": "c340a9e43e34c755a79fa09fb79fd35e3af2a5dc1357b7a90cc7abc0780d5044",
+        "releaseEntryPda": "test-release-entry-53fdd7449fca4925f4903d6497b26b16",
+        "masterNftMint": "test-master-nft-1eba9d77cdf14d7a99e7341133e2eb11",
+        "licenseSquadsVault": "test-license-vault-fe7cebb51f45c2a098a3dc6d2535374b",
+        "signedAtUnix": 1776851479,
+        "authorSig": "test-author-sig-5847fbce172b6adf6e780fbfb5097ac4653858455b0edaccf9a4696bfa6ea7cb",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-e1249df231738f52d307046e407ce8a6"
+        }
+      }
     },
     {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
@@ -180,7 +275,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "cca.sh collaborator mode \u2014 team collaboration and shared-resource access.",
-      "description": "**cca.sh Org Member** is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why member mode\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer\n- **Role-separated from Admin** \u2014 no sign authority; no accidental debits\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The Pearl installs today as a Coming Soon stub served by the HTTP bridge; the live member UI lands in v0.2.\n",
+      "description": "**cca.sh Org Member** is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why member mode\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer\n- **Role-separated from Admin** \u2014 no sign authority; no accidental debits\n\n## Sibling apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub served by sandstorm-http-bridge; the live member UI lands in v0.2.\n",
       "categories": [
         "Productivity",
         "Office"
@@ -198,33 +293,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "3cc31aed7d96495acd320e996882e98b.png"
-    },
-    {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Clawberg",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "fd77fab57330e1db781f74a303a560aa",
-      "shortDescription": "Personal AI assistant for Melusina",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776762910000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "license": "Copyright (c) OpenClaw contributors.\n\nThis package is distributed under a proprietary license. Refer to the\nproject repository at https://github.com/openclaw/openclaw for the\nauthoritative license text.\n",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "description": "# OpenClaw\n\nA personal AI assistant Pearl for Melusina.\n\nOpenClaw is one **Melusina Pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the Pearl's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon Pearl, and discovers\n  tools from any other Melusina Pearl you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new Pearl access to an **AiLagoon** Pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina Pearls you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina Pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon Pearl. OpenClaw never holds API keys directly.\n- **Per-Pearl permission scoping** \u2014 each connected Pearl decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a Pearl's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two Pearl types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo Pearl registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
-      "screenshots": []
+      "imageId": "3cc31aed7d96495acd320e996882e98b.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "bc5381f0c4a0894dd81c34ac43fa14d7c0830f166ab33b78606fd049bfdc3416",
+        "releaseHash": "db77ecf42fdb5a208da78e5e453a97b428a223e0331aa0aa4bebcf96413ce83b",
+        "releaseNonce": "5c4336eb8ca758870bda91c8636b423a4adc2b75304b176ddcf24c5414dbdafa",
+        "releaseEntryPda": "test-release-entry-216bd639a7f980eb08a2e8ad22f028a5",
+        "masterNftMint": "test-master-nft-678d0b7f7c9c4618d764cef0e5d1b0ac",
+        "licenseSquadsVault": "test-license-vault-67459b3e1e4ad67a5617bc6833c3e0ba",
+        "signedAtUnix": 1776851512,
+        "authorSig": "test-author-sig-588409fd0fdb24b2f205d17c6bb9e97c61b41f7d6174e3414072803d985f0983",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-858951cf32d5727b661ffa0213fdf370"
+        }
+      }
     },
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
@@ -249,6 +334,22 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "89811f494fdee85cead74a37f859dd48.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "7140d658685ebc37a2c264741fd17d8af4c6f709378c7ebc69204d5ed5dfb3e4",
+        "releaseHash": "c57e1954168936d0355982d0755c547366f3c7010b5b69df6eb3739dfe2931f9",
+        "releaseNonce": "228e1ae6d28f60d08725908ea0a70eb0e1d79be3c197b3f3a484d7ccaf22a083",
+        "releaseEntryPda": "test-release-entry-6ef51987824de5675eb64a406a4bfed9",
+        "masterNftMint": "test-master-nft-cc23e6f8e13bd7033169588551f83908",
+        "licenseSquadsVault": "test-license-vault-c3f5c9a9d7ae3fbc404ee8e616567744",
+        "signedAtUnix": 1776613609,
+        "authorSig": "test-author-sig-2b8be3811b983e943bd1c8d5648a6e9b42f39f116d01f9e598fb0da60bf78541",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-a283d09fd919712e6fbf955e2e6169af"
+        }
+      },
       "description": "",
       "screenshots": []
     },
@@ -277,7 +378,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "3eab074071e29a06602c88e8568f5541.png"
+      "imageId": "3eab074071e29a06602c88e8568f5541.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "2ec40a782803635d883baf98d9393e426b9a1eb25765d0812fb45779522972ae",
+        "releaseHash": "b22b8eb8a0bd2332c77b556f6fcd3b48079ed9c2868d76664f9e05e8f6ae2e11",
+        "releaseNonce": "272c0c0856a47c52c6736b0eaaf78b3a5267714ea7801ec4461621a95f60e3de",
+        "releaseEntryPda": "test-release-entry-4233c54ae1ece0e7ac040c71d0d115f5",
+        "masterNftMint": "test-master-nft-fcf1790a571773d84cbba338855e6fc0",
+        "licenseSquadsVault": "test-license-vault-9a6a30dea59e7b36f8536c55a8e9602d",
+        "signedAtUnix": 1776836058,
+        "authorSig": "test-author-sig-0ea020dea0e5a948da4b3aca717ebcdd285251088280a7207202231be76d3c58",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-440fde33b91e472b809798e2396b08fc"
+        }
+      }
     },
     {
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
@@ -304,7 +421,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "c633e830a075b1e84238968321ed0fc1.png"
+      "imageId": "c633e830a075b1e84238968321ed0fc1.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "afe998e918cb6fb4c7639201eede33a8a94648ec849994e598866c6ed64c54ae",
+        "releaseHash": "f1970b4025ff0918d78664e04425ac910f416698881af24e327c786e52537833",
+        "releaseNonce": "e15717ceb6e0ba99420ae088d33509443d34b81b667bed51bee5f67d55844982",
+        "releaseEntryPda": "test-release-entry-02461b8d4bc9897ae959771575c2c804",
+        "masterNftMint": "test-master-nft-b6e38fcfd87562a1afc6432c2803b39c",
+        "licenseSquadsVault": "test-license-vault-fd2b1a897943bbf314a4b1cb5cbb9476",
+        "signedAtUnix": 1776836132,
+        "authorSig": "test-author-sig-7a09147269001ca875721adbb792b2004b1ec27572d79f890bc6e9ef81c803bb",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-00cc556dce543201ea43b84d504be081"
+        }
+      }
     },
     {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
@@ -331,7 +464,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "36cc23ee551c6a8538a57ee8de247424.png"
+      "imageId": "36cc23ee551c6a8538a57ee8de247424.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "3e6d7ea3de276c31cedafb7464ea35af6a18049307695492304ec5698fe21f68",
+        "releaseHash": "5f43bada0effd3084dc0d56994573b61c93c8b9d03d8b4e85954046a8e6f9140",
+        "releaseNonce": "c44f8fcac4d92ef8ad9a8656003a0a4f708658a68b1348621de10e5d0d08b882",
+        "releaseEntryPda": "test-release-entry-f9fe5287801ff150c11f550003ff4093",
+        "masterNftMint": "test-master-nft-49754ba606dd54f1d10c76a507f3bf27",
+        "licenseSquadsVault": "test-license-vault-1d80e2719efa90df77e3304efd8144fa",
+        "signedAtUnix": 1776836094,
+        "authorSig": "test-author-sig-41a99aa2579b2b6afb13ec73b762691b8b6b9a769f7cdb295c804f2afdbec1b4",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-70aedcd497df580b75988c0095c0c9aa"
+        }
+      }
     },
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
@@ -357,7 +506,23 @@
       "description": "# CyberTeller\n\nCrypto invoicing and payment processor.\n\n## Features\n\n- **Invoice API** \u2013 create invoices via REST (`POST /api/invoices`) with amount, currency, description, and customer details\n- **Unique payment addresses** \u2013 each invoice gets a fresh HD-wallet derived address per chain (no address reuse)\n- **4 supported blockchains** \u2013 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2013 ETH, TRX, SOL, TON native coins + USDT / USDC on every supported chain\n- **Payment page** \u2013 customer-facing page with QR codes and copy-address buttons, auto-refreshes via HTMX every 15 s\n- **Payment status tracking** \u2013 `paid` / `underpaid` / `overpaid` / `expired`\n- **Webhook endpoint** \u2013 `POST /api/payment/notify` for blockchain monitoring integrations\n- **Admin panel** \u2013 dashboard, invoice detail view, live YAML config editor\n- **YAML config** \u2013 editable at runtime via admin UI (chains, tokens, expiry, tolerance thresholds, wallet seed)\n\n## Stack\n\n| Layer | Technology |\n|-------|-----------|\n| Backend | Go 1.24, `net/http` + chi router |\n| Frontend | HTMX, vanilla JS |\n| Database | SQLite (CGO-free via modernc.org/sqlite) |\n| HD wallet | BIP-39/BIP-32 (secp256k1) \u00b7 SLIP-0010 (ed25519) |\n| QR codes | github.com/skip2/go-qrcode |\n\n## Quick Start\n\n```bash\n# 1. Clone and install dependencies\ngit clone https://github.com/hrbrlife/cyberteller\ncd cyberteller\ngo mod download\n\n# 2. Edit config.yaml \u2013 set your wallet mnemonic and admin password hash\n#    Generate a bcrypt hash:  htpasswd -bnBC 10 \"\" yourpassword | tr -d ':\\n'\n\n# 3. Run\ngo run .\n# Server starts on http://0.0.0.0:8080\n```\n\nEnvironment variables (all optional):\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `CONFIG_PATH` | `config.yaml` | Path to config file |\n| `DB_PATH` | `cyberteller.db` | Path to SQLite database |\n| `BASE_URL` | `http://localhost:8080` | Public URL used in payment links |\n\n## API\n\n### Create Invoice\n\n```http\nPOST /api/invoices\nContent-Type: application/json\n\n{\n  \"amount\": \"99.99\",\n  \"currency\": \"USD\",\n  \"description\": \"Order #42\",\n  \"customer_name\": \"Alice\",\n  \"customer_email\": \"alice@example.com\"\n}\n```\n\nResponse `201 Created`:\n```json\n{\n  \"id\": \"...\",\n  \"payment_link\": \"http://localhost:8080/pay/abc12345\",\n  \"expires_at\": \"2026-01-01T12:00:00Z\",\n  \"status\": \"pending\"\n}\n```\n\n### Payment Webhook\n\nCalled by your blockchain monitoring service when a payment is detected:\n\n```http\nPOST /api/payment/notify\nContent-Type: application/x-www-form-urlencoded\n\ninvoice_id=...&chain=ethereum&token=USDT&address=0x...&tx_hash=0x...&amount=99.99\n```\n\n## Admin Panel\n\nNavigate to `http://localhost:8080/admin` (HTTP Basic Auth).\n\nDefault credentials: `admin` / `changeme` \u2014 **change before production** by updating `password_hash` in `config.yaml`.\n\n## Security Notes\n\n- Replace the default wallet mnemonic in `config.yaml` with your own before using with real funds\n- The mnemonic in `config.yaml` is used to derive all payment addresses \u2014 back it up securely\n- Change the admin password hash before deploying\n- The payment notification endpoint (`/api/payment/notify`) should be firewall-restricted to your blockchain monitoring service in production\n\n![Payment page screenshot](https://github.com/user-attachments/assets/29088b6d-ac48-401a-b899-14c326fe18d0)",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "imageId": "fbe7e07659382e0f52864912be2b136d.svg"
+      "imageId": "fbe7e07659382e0f52864912be2b136d.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "e7d60e55d8719645e1b194c1548b227f07feed91d3c0f37d2b7221b9c1c205df",
+        "releaseHash": "2c2ccccf802fa420d3b712b8d1272b918ae893e48ff619292446c58a90039754",
+        "releaseNonce": "975c011464f77528d354c6e373177d71d4d98585089229792c3284c845f65bd1",
+        "releaseEntryPda": "test-release-entry-80683d99c6e295c6c7fe14c9170aacaf",
+        "masterNftMint": "test-master-nft-0896033412cfbb99e35c607a1e01ec3d",
+        "licenseSquadsVault": "test-license-vault-a90320c43c540e7042327f0a378868e5",
+        "signedAtUnix": 1776299124,
+        "authorSig": "test-author-sig-fffc03737bf40dae37838745fabd3cb72a5f710e77824ad947cfdd0fca4b8b86",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-91c4bc6fdc3f0c1d6a812fb54bcff7d8"
+        }
+      }
     },
     {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
@@ -405,6 +570,22 @@
       },
       "license": "",
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "ea1b1159464e405c2e1789dcb85ddf42b0236b25c4cfe3e9d614a0b5fd02b8c2",
+        "releaseHash": "7dd466a436884aaa1b426789c247866d930f8540c76fb158d292028029adbe2c",
+        "releaseNonce": "5a1169ad64e4e61c136bc49cd015daa091e10e21cc5b0bfc0e6dfcab46540260",
+        "releaseEntryPda": "test-release-entry-af458f33b5aff2d781ff898e13f70edb",
+        "masterNftMint": "test-master-nft-616912792a37099a0ce4dadcdb79c684",
+        "licenseSquadsVault": "test-license-vault-da3eb830992e5b470418ab70d4e1cd4e",
+        "signedAtUnix": 1776663241,
+        "authorSig": "test-author-sig-a540c038b071a2dcbafbe7302083e2b7c29d447e34af42168f22806ca4220698",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-ede32be7472c8e4a4ced92fc3f622edb"
+        }
+      },
       "description": "# Diagram Bureau\n\n**Diagram Bureau** is a real-time collaborative diagramming tool for Melusina. Build flowcharts, mindmaps, process flows, and organisation charts with your team, all on your own server.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other three Bureau pearls (Docs, Sheets, Paint).\n\n---\n\n## About the Bureau suite\n\nFour Pearl types \u2014 Spreadsheet, Document, Diagram, miniPaint \u2014 replacing Google Docs, Sheets, and cloud image editors for teams that refuse to hand their work to someone else's infrastructure.\n\nLive collaboration. End-to-end encryption (coming soon).\n\nDon't share your entire office each time you need an external tool (that's if you even need one given that you're using Melusina and can run anything locally) \u2014 share document by document!\n\n---\n\n## Why Bureau\n\n| | Google / Microsoft | Bureau on Melusina |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you choose via Grapple |\n| \ud83e\udd16 **AI** | Your data trains their models | AI reads only what you grant, writes only what you approve |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## Four Pearls. Four Workspaces. Zero Overlap.\n\n### \ud83d\udcca Spreadsheet\n\nThe spreadsheet your accountant can actually trust.\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside Melusina.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Simultaneous multi-user editing, live presence indicators |\n| Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| Formulas | A1 references, formula bar, cross-cell calculations |\n| Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| Comments | Per-cell threads with author attribution |\n| Import | XLSX (preserves styles), CSV, JSON |\n| Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| AI Agent | Connect to AI Lagoon \u2014 AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation |\n| Snapshots | Named versions \u2014 save, browse, compare, restore |\n| Mobile | Responsive layout, touch support, collapsible toolbar |\n| Themes | Light and Dark with keyboard toggle |\n\n### \ud83d\udcdd Document\n\nWrite together without conflicts \u2014 mathematically guaranteed.\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| Formatting | Bold, italic, underline, strikethrough |\n| Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| Tables | Insert and edit tables inline |\n| Sections | Organize long documents into named sections |\n| Snapshots | Named versions with one-click restore |\n| Export | HTML |\n\n### \ud83d\udcd0 Diagram\n\nFlowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your Melusina Pearl. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| Shape library | Complete draw.io stencil collection |\n| Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| Export | XML, PNG, SVG, PDF |\n| Snapshots | Named versions with restore |\n| Offline | All draw.io assets bundled \u2014 no internet needed |\n\n### \ud83c\udfa8 miniPaint\n\nQuick image editing without uploading your photos to someone else's server.\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| Layers | Create, reorder, merge, manage |\n| Drawing | Pencil, brush, line, circle, rectangle, text |\n| Filters | Blur, sharpen, brightness, contrast, adjustments |\n| Transform | Crop, resize, rotate |\n| Export | PNG, JPG, BMP, WebP |\n| Snapshots | Named versions with restore |\n| Collaboration | Lock-based editing \u2014 one editor, live viewers |\n\n---\n\n## AI Agent Integration\n\nBureau is a first-class MCP (Model Context Protocol) host. Connect your AI \u2014 it works for you, not the other way around.\n\n### How It Works\n\n1. **Grant access via Grapple.** Click \"Connect via Grapple\" in the AI Assistant panel. Melusina's Grapple dialog appears \u2014 pick the AI Lagoon Pearl you want to connect. That's the only permission step.\n\n2. **AI reads your data through capability-scoped tools.** The AI can call `get_headers`, `get_rows`, and `get_cell` \u2014 nothing more. It can't access other Pearls, other data, or the filesystem. The scope is locked to exactly what you granted.\n\n3. **Human-in-the-loop for writes.** When the AI wants to modify your spreadsheet (`set_cell`, `add_row`, `add_column`), Bureau pauses and asks you: *\"The agent wants to write changes \u2014 Approve or Deny?\"* Every write requires your explicit confirmation.\n\n4. **Full audit trail.** Every tool call is logged with the tool name, parameters, result, duration, and which iteration of the AI's reasoning triggered it. You can inspect exactly what the AI did and why.\n\n5. **Persistent connection.** Once granted, the AI Lagoon connection survives Pearl restarts \u2014 no need to re-grant via Grapple each time. Disconnect anytime with one click.\n\n### What This Means\n\n| Traditional AI Integration | Bureau + AI Lagoon |\n|---|---|\n| AI accesses everything in your account | AI sees only the Pearl you connected \u2014 nothing else |\n| AI writes silently to your documents | Every write requires your approval |\n| AI vendor sees your data | AI runs on your server \u2014 data never leaves |\n| You can't see what the AI did | Full tool call audit trail in the panel |\n| Connection is permanent and invisible | You grant and revoke access explicitly via Grapple |\n\n### Technical Details\n\n- **Protocol:** MCP over native Cap'n Proto \u2014 no HTTP proxying, no JSON overhead, direct capability passing across Pearl boundaries\n- **Architecture:** Bureau acts as an MCP Host, exposing a `ContextProvider` capability. AI Lagoon acts as the `AIAgent`. Bureau passes its ContextProvider into each agent request \u2014 the AI calls back to read/write data through the same capability channel\n- **Security model:** Object-capability (OCAP). No ambient authority. The AI agent has exactly one capability \u2014 the ContextProvider you gave it. It cannot escalate, enumerate other Pearls, or access the network\n- **Templates:** Pre-built agent templates (Structured Data Agent, Document Drafter, Process Automation, General Assistant) guide the AI toward common tasks without custom prompting\n\n---\n\n## What Makes Bureau Different\n\n### \ud83e\uddf1 Every Pearl Is a Sealed Room\n\nA spreadsheet can't see a document. A diagram can't read an image. They're not permission-separated \u2014 they're physically isolated containers. A vulnerability in one Pearl cannot reach another. This is Melusina's core architecture, and Bureau inherits it completely.\n\n### \ud83d\udcf8 Snapshots Everywhere\n\nEvery Pearl type supports named version snapshots. Before a big edit, save a snapshot. Made a mistake last Tuesday? Restore it. Need to compare this quarter's numbers with last quarter's? Browse your history. One click to save. One click to restore.\n\n### \ud83d\udc65 Real-Time Collaboration\n\nSee who's connected. See their role. Watch edits appear as they happen. Presence indicators show names and avatars. Connection status tells you when you're online, reconnecting, or offline. When you reconnect, everything syncs automatically.\n\n### \ud83d\udd10 Four Roles. Server-Enforced.\n\nNot client-side hints \u2014 actual server-enforced permission boundaries.\n\n| Role | View | Comment | Edit | Admin |\n|---|:---:|:---:|:---:|:---:|\n| \ud83d\udc41\ufe0f Viewer | \u2713 | \u2014 | \u2014 | \u2014 |\n| \ud83d\udcac Commenter | \u2713 | \u2713 | \u2014 | \u2014 |\n| \u270f\ufe0f Editor | \u2713 | \u2713 | \u2713 | \u2014 |\n| \ud83d\udd11 Admin | \u2713 | \u2713 | \u2713 | \u2713 |\n\nViewers can't modify data. Period. Not \"the button is hidden\" \u2014 the server rejects the request. Import restrictions are role-gated: CSV import is admin-only, XLSX requires editor.\n\n### \ud83d\udd17 Grapple: Connect Only What You Choose\n\nNeed a diagram to reference a spreadsheet? Need an AI to analyze your data? Use Grapple \u2014 Melusina's capability system. You pick exactly which two Pearls connect and what capability they exchange. One link. Nothing else changes. Revoke anytime.\n\n### \u2708\ufe0f Fully Air-Gapped\n\nEvery font, every icon, every JavaScript library, every stylesheet \u2014 bundled inside the package. Bureau works on a Melusina instance with zero internet access. No CDNs. No external requests. Nothing phones home.\n\n---\n\n## Getting Started\n\n**Create a Pearl** \u2014 Click New, choose Bureau, pick your Pearl type. You're working in seconds.\n\n**Share it** \u2014 Hit Share, pick a role (Viewer, Commenter, Editor, Admin), send the link. Recipients join instantly with live collaboration.\n\n**Connect an AI** \u2014 Open the AI Assistant panel (\ud83e\udd16), click \"Connect via Grapple,\" choose your AI Lagoon Pearl. Ask questions about your data in natural language.\n\n**Save a Snapshot** \u2014 Tap the camera icon, name your version, save. Your history is always one click away.\n\n**Import your files** \u2014 Drag in XLSX, CSV, or JSON. Styles, column widths, and formatting come with it.\n\n**Export anything** \u2014 XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. Standard formats. No lock-in. Leave whenever you want.\n\n---\n\n## Capabilities\n\n| | Spreadsheet | Document | Diagram | miniPaint |\n|---|:---:|:---:|:---:|:---:|\n| Real-time multi-user editing | \u2713 | \u2713 | \u2014 | \u2014 |\n| Live viewer updates | \u2713 | \u2713 | \u2713 | \u2713 |\n| AI Agent (MCP) | \u2713 | \u2014 | \u2014 | \u2014 |\n| Named snapshots | \u2713 | \u2713 | \u2713 | \u2713 |\n| Role-based permissions | \u2713 | \u2713 | \u2713 | \u2713 |\n| XLSX import/export | \u2713 | \u2014 | \u2014 | \u2014 |\n| PDF export | \u2713 | \u2014 | \u2713 | \u2014 |\n| CSV export | \u2713 | \u2014 | \u2014 | \u2014 |\n| HTML export | \u2014 | \u2713 | \u2014 | \u2014 |\n| SVG export | \u2014 | \u2014 | \u2713 | \u2014 |\n| PNG/JPG export | \u2014 | \u2014 | \u2713 | \u2713 |\n| Formulas | \u2713 | \u2014 | \u2014 | \u2014 |\n| Rich text formatting | \u2713 | \u2713 | \u2014 | \u2014 |\n| Drawing tools | \u2014 | \u2014 | \u2713 | \u2713 |\n| Layers | \u2014 | \u2014 | \u2014 | \u2713 |\n| Multiple worksheets/sections | \u2713 | \u2713 | \u2014 | \u2014 |\n| Comments | \u2713 | \u2014 | \u2014 | \u2014 |\n| Light/Dark themes | \u2713 | \u2014 | \u2014 | \u2014 |\n| Mobile-responsive | \u2713 | \u2713 | \u2713 | \u2713 |\n| Works fully offline | \u2713 | \u2713 | \u2713 | \u2713 |\n\n---\n\n## Limitations\n\nBureau is honest about what it doesn't do yet.\n\n| Limitation | Explanation |\n|---|---|\n| AI Agent for Spreadsheet and Document | Diagram and miniPaint ContextProviders are planned. |\n| No simultaneous editing in Diagram/miniPaint | One editor at a time. Everyone else sees live updates. |\n| No cursor tracking in Spreadsheet | Cell values update live, but you don't see other users' cursors. |\n| No presentation/slideshow Pearl | Not yet. |\n| No cross-Pearl formulas | Each spreadsheet is independent. Use Grapple to link Pearls at the app level. |\n| No offline editing without server | Data lives server-side. You need a connection to your Melusina instance. |\n\n---\n\n## FAQ\n\n**How is this different from Google Sheets?**\nGoogle Sheets runs on Google's servers. Google can read your data, train AI on it, change terms, raise prices, or get subpoenaed. Bureau runs on your Melusina instance. Your hardware. Your jurisdiction. No one else can see it.\n\n**What about AI \u2014 doesn't it send my data to the cloud?**\nNo. AI Lagoon runs on your Melusina instance alongside Bureau. Your data travels from one Pearl to another on the same machine over a capability channel. Nothing leaves your server. The AI model itself runs locally or connects to a provider you choose and control.\n\n**Can I import my Excel files?**\nYes. XLSX import preserves styles, column widths, and formatting. You can also import CSV and JSON.\n\n**How many people can edit at once?**\nSpreadsheet and Document support unlimited simultaneous editors. Diagram and miniPaint use edit locking \u2014 one editor at a time, but all connected users see changes live.\n\n**What if I lose connection?**\nThe status indicator shows your connection state. When you reconnect, the client re-syncs automatically. Document Pearls use CRDT \u2014 even concurrent offline edits merge without conflicts.\n\n**Can I leave Melusina and take my data?**\nYes. Export everything in standard formats: XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. No lock-in. No exit fees.\n\n**Does it need internet after installation?**\nNo. Every asset is bundled. Bureau works on fully air-gapped Melusina instances.\n\n**Can one Pearl access another Pearl's data?**\nOnly if you explicitly connect them via Grapple. By default, every Pearl is completely isolated \u2014 not permission-separated, physically separated. When you do connect (e.g., Bureau \u2194 AI Lagoon), each side exchanges a single capability. The AI can read your spreadsheet headers and rows \u2014 it cannot browse your filesystem, access other Pearls, or escalate privileges.\n\n---\n\n*Bureau is part of the Melusina app library. Self-hosted. Sovereign. Open source.*"
     },
     {
@@ -453,6 +634,22 @@
       },
       "license": "",
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "6d77cc819b174a23c7d97a014241a98a3c3bea1b8a79c5fe31d418f23a160da9",
+        "releaseHash": "44ec54074a7b8d9d69e292c02c143ae1fe8857c318f9dbc52225c8622a7eb4bf",
+        "releaseNonce": "c6f29b9637d7f4a01365d79e68d0bbb643dfa5e772da030b62e1ada1679866cd",
+        "releaseEntryPda": "test-release-entry-02590a461dec2ab5a4c0d6ce5e158785",
+        "masterNftMint": "test-master-nft-8721ae3b72e5c62de85387275c55e7a6",
+        "licenseSquadsVault": "test-license-vault-5b285b6c3116aff241c26eb813da87e5",
+        "signedAtUnix": 1776663049,
+        "authorSig": "test-author-sig-4f082f6f3c858717822fb604c6dd6031ca07c07d2d6c009e8aeb680b50e97016",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-80cd3f9fd5a8a1d7521f1f3d943c523a"
+        }
+      },
       "description": "# Doc Bureau\n\n**Doc Bureau** is the collaborative document editor of the Melusina office suite. Real-time multi-user editing of rich text, hosted entirely on your server \u2014 a private alternative to Google Docs.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other three Bureau pearls (Sheets, Diagram, Paint).\n\n---\n\n## About the Bureau suite\n\nFour Pearl types \u2014 Spreadsheet, Document, Diagram, miniPaint \u2014 replacing Google Docs, Sheets, and cloud image editors for teams that refuse to hand their work to someone else's infrastructure.\n\nLive collaboration. End-to-end encryption (coming soon).\n\nDon't share your entire office each time you need an external tool (that's if you even need one given that you're using Melusina and can run anything locally) \u2014 share document by document!\n\n---\n\n## Why Bureau\n\n| | Google / Microsoft | Bureau on Melusina |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you choose via Grapple |\n| \ud83e\udd16 **AI** | Your data trains their models | AI reads only what you grant, writes only what you approve |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## Four Pearls. Four Workspaces. Zero Overlap.\n\n### \ud83d\udcca Spreadsheet\n\nThe spreadsheet your accountant can actually trust.\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside Melusina.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Simultaneous multi-user editing, live presence indicators |\n| Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| Formulas | A1 references, formula bar, cross-cell calculations |\n| Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| Comments | Per-cell threads with author attribution |\n| Import | XLSX (preserves styles), CSV, JSON |\n| Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| AI Agent | Connect to AI Lagoon \u2014 AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation |\n| Snapshots | Named versions \u2014 save, browse, compare, restore |\n| Mobile | Responsive layout, touch support, collapsible toolbar |\n| Themes | Light and Dark with keyboard toggle |\n\n### \ud83d\udcdd Document\n\nWrite together without conflicts \u2014 mathematically guaranteed.\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| Formatting | Bold, italic, underline, strikethrough |\n| Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| Tables | Insert and edit tables inline |\n| Sections | Organize long documents into named sections |\n| Snapshots | Named versions with one-click restore |\n| Export | HTML |\n\n### \ud83d\udcd0 Diagram\n\nFlowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your Melusina Pearl. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| Shape library | Complete draw.io stencil collection |\n| Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| Export | XML, PNG, SVG, PDF |\n| Snapshots | Named versions with restore |\n| Offline | All draw.io assets bundled \u2014 no internet needed |\n\n### \ud83c\udfa8 miniPaint\n\nQuick image editing without uploading your photos to someone else's server.\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| Layers | Create, reorder, merge, manage |\n| Drawing | Pencil, brush, line, circle, rectangle, text |\n| Filters | Blur, sharpen, brightness, contrast, adjustments |\n| Transform | Crop, resize, rotate |\n| Export | PNG, JPG, BMP, WebP |\n| Snapshots | Named versions with restore |\n| Collaboration | Lock-based editing \u2014 one editor, live viewers |\n\n---\n\n## AI Agent Integration\n\nBureau is a first-class MCP (Model Context Protocol) host. Connect your AI \u2014 it works for you, not the other way around.\n\n### How It Works\n\n1. **Grant access via Grapple.** Click \"Connect via Grapple\" in the AI Assistant panel. Melusina's Grapple dialog appears \u2014 pick the AI Lagoon Pearl you want to connect. That's the only permission step.\n\n2. **AI reads your data through capability-scoped tools.** The AI can call `get_headers`, `get_rows`, and `get_cell` \u2014 nothing more. It can't access other Pearls, other data, or the filesystem. The scope is locked to exactly what you granted.\n\n3. **Human-in-the-loop for writes.** When the AI wants to modify your spreadsheet (`set_cell`, `add_row`, `add_column`), Bureau pauses and asks you: *\"The agent wants to write changes \u2014 Approve or Deny?\"* Every write requires your explicit confirmation.\n\n4. **Full audit trail.** Every tool call is logged with the tool name, parameters, result, duration, and which iteration of the AI's reasoning triggered it. You can inspect exactly what the AI did and why.\n\n5. **Persistent connection.** Once granted, the AI Lagoon connection survives Pearl restarts \u2014 no need to re-grant via Grapple each time. Disconnect anytime with one click.\n\n### What This Means\n\n| Traditional AI Integration | Bureau + AI Lagoon |\n|---|---|\n| AI accesses everything in your account | AI sees only the Pearl you connected \u2014 nothing else |\n| AI writes silently to your documents | Every write requires your approval |\n| AI vendor sees your data | AI runs on your server \u2014 data never leaves |\n| You can't see what the AI did | Full tool call audit trail in the panel |\n| Connection is permanent and invisible | You grant and revoke access explicitly via Grapple |\n\n### Technical Details\n\n- **Protocol:** MCP over native Cap'n Proto \u2014 no HTTP proxying, no JSON overhead, direct capability passing across Pearl boundaries\n- **Architecture:** Bureau acts as an MCP Host, exposing a `ContextProvider` capability. AI Lagoon acts as the `AIAgent`. Bureau passes its ContextProvider into each agent request \u2014 the AI calls back to read/write data through the same capability channel\n- **Security model:** Object-capability (OCAP). No ambient authority. The AI agent has exactly one capability \u2014 the ContextProvider you gave it. It cannot escalate, enumerate other Pearls, or access the network\n- **Templates:** Pre-built agent templates (Structured Data Agent, Document Drafter, Process Automation, General Assistant) guide the AI toward common tasks without custom prompting\n\n---\n\n## What Makes Bureau Different\n\n### \ud83e\uddf1 Every Pearl Is a Sealed Room\n\nA spreadsheet can't see a document. A diagram can't read an image. They're not permission-separated \u2014 they're physically isolated containers. A vulnerability in one Pearl cannot reach another. This is Melusina's core architecture, and Bureau inherits it completely.\n\n### \ud83d\udcf8 Snapshots Everywhere\n\nEvery Pearl type supports named version snapshots. Before a big edit, save a snapshot. Made a mistake last Tuesday? Restore it. Need to compare this quarter's numbers with last quarter's? Browse your history. One click to save. One click to restore.\n\n### \ud83d\udc65 Real-Time Collaboration\n\nSee who's connected. See their role. Watch edits appear as they happen. Presence indicators show names and avatars. Connection status tells you when you're online, reconnecting, or offline. When you reconnect, everything syncs automatically.\n\n### \ud83d\udd10 Four Roles. Server-Enforced.\n\nNot client-side hints \u2014 actual server-enforced permission boundaries.\n\n| Role | View | Comment | Edit | Admin |\n|---|:---:|:---:|:---:|:---:|\n| \ud83d\udc41\ufe0f Viewer | \u2713 | \u2014 | \u2014 | \u2014 |\n| \ud83d\udcac Commenter | \u2713 | \u2713 | \u2014 | \u2014 |\n| \u270f\ufe0f Editor | \u2713 | \u2713 | \u2713 | \u2014 |\n| \ud83d\udd11 Admin | \u2713 | \u2713 | \u2713 | \u2713 |\n\nViewers can't modify data. Period. Not \"the button is hidden\" \u2014 the server rejects the request. Import restrictions are role-gated: CSV import is admin-only, XLSX requires editor.\n\n### \ud83d\udd17 Grapple: Connect Only What You Choose\n\nNeed a diagram to reference a spreadsheet? Need an AI to analyze your data? Use Grapple \u2014 Melusina's capability system. You pick exactly which two Pearls connect and what capability they exchange. One link. Nothing else changes. Revoke anytime.\n\n### \u2708\ufe0f Fully Air-Gapped\n\nEvery font, every icon, every JavaScript library, every stylesheet \u2014 bundled inside the package. Bureau works on a Melusina instance with zero internet access. No CDNs. No external requests. Nothing phones home.\n\n---\n\n## Getting Started\n\n**Create a Pearl** \u2014 Click New, choose Bureau, pick your Pearl type. You're working in seconds.\n\n**Share it** \u2014 Hit Share, pick a role (Viewer, Commenter, Editor, Admin), send the link. Recipients join instantly with live collaboration.\n\n**Connect an AI** \u2014 Open the AI Assistant panel (\ud83e\udd16), click \"Connect via Grapple,\" choose your AI Lagoon Pearl. Ask questions about your data in natural language.\n\n**Save a Snapshot** \u2014 Tap the camera icon, name your version, save. Your history is always one click away.\n\n**Import your files** \u2014 Drag in XLSX, CSV, or JSON. Styles, column widths, and formatting come with it.\n\n**Export anything** \u2014 XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. Standard formats. No lock-in. Leave whenever you want.\n\n---\n\n## Capabilities\n\n| | Spreadsheet | Document | Diagram | miniPaint |\n|---|:---:|:---:|:---:|:---:|\n| Real-time multi-user editing | \u2713 | \u2713 | \u2014 | \u2014 |\n| Live viewer updates | \u2713 | \u2713 | \u2713 | \u2713 |\n| AI Agent (MCP) | \u2713 | \u2014 | \u2014 | \u2014 |\n| Named snapshots | \u2713 | \u2713 | \u2713 | \u2713 |\n| Role-based permissions | \u2713 | \u2713 | \u2713 | \u2713 |\n| XLSX import/export | \u2713 | \u2014 | \u2014 | \u2014 |\n| PDF export | \u2713 | \u2014 | \u2713 | \u2014 |\n| CSV export | \u2713 | \u2014 | \u2014 | \u2014 |\n| HTML export | \u2014 | \u2713 | \u2014 | \u2014 |\n| SVG export | \u2014 | \u2014 | \u2713 | \u2014 |\n| PNG/JPG export | \u2014 | \u2014 | \u2713 | \u2713 |\n| Formulas | \u2713 | \u2014 | \u2014 | \u2014 |\n| Rich text formatting | \u2713 | \u2713 | \u2014 | \u2014 |\n| Drawing tools | \u2014 | \u2014 | \u2713 | \u2713 |\n| Layers | \u2014 | \u2014 | \u2014 | \u2713 |\n| Multiple worksheets/sections | \u2713 | \u2713 | \u2014 | \u2014 |\n| Comments | \u2713 | \u2014 | \u2014 | \u2014 |\n| Light/Dark themes | \u2713 | \u2014 | \u2014 | \u2014 |\n| Mobile-responsive | \u2713 | \u2713 | \u2713 | \u2713 |\n| Works fully offline | \u2713 | \u2713 | \u2713 | \u2713 |\n\n---\n\n## Limitations\n\nBureau is honest about what it doesn't do yet.\n\n| Limitation | Explanation |\n|---|---|\n| AI Agent for Spreadsheet and Document | Diagram and miniPaint ContextProviders are planned. |\n| No simultaneous editing in Diagram/miniPaint | One editor at a time. Everyone else sees live updates. |\n| No cursor tracking in Spreadsheet | Cell values update live, but you don't see other users' cursors. |\n| No presentation/slideshow Pearl | Not yet. |\n| No cross-Pearl formulas | Each spreadsheet is independent. Use Grapple to link Pearls at the app level. |\n| No offline editing without server | Data lives server-side. You need a connection to your Melusina instance. |\n\n---\n\n## FAQ\n\n**How is this different from Google Sheets?**\nGoogle Sheets runs on Google's servers. Google can read your data, train AI on it, change terms, raise prices, or get subpoenaed. Bureau runs on your Melusina instance. Your hardware. Your jurisdiction. No one else can see it.\n\n**What about AI \u2014 doesn't it send my data to the cloud?**\nNo. AI Lagoon runs on your Melusina instance alongside Bureau. Your data travels from one Pearl to another on the same machine over a capability channel. Nothing leaves your server. The AI model itself runs locally or connects to a provider you choose and control.\n\n**Can I import my Excel files?**\nYes. XLSX import preserves styles, column widths, and formatting. You can also import CSV and JSON.\n\n**How many people can edit at once?**\nSpreadsheet and Document support unlimited simultaneous editors. Diagram and miniPaint use edit locking \u2014 one editor at a time, but all connected users see changes live.\n\n**What if I lose connection?**\nThe status indicator shows your connection state. When you reconnect, the client re-syncs automatically. Document Pearls use CRDT \u2014 even concurrent offline edits merge without conflicts.\n\n**Can I leave Melusina and take my data?**\nYes. Export everything in standard formats: XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. No lock-in. No exit fees.\n\n**Does it need internet after installation?**\nNo. Every asset is bundled. Bureau works on fully air-gapped Melusina instances.\n\n**Can one Pearl access another Pearl's data?**\nOnly if you explicitly connect them via Grapple. By default, every Pearl is completely isolated \u2014 not permission-separated, physically separated. When you do connect (e.g., Bureau \u2194 AI Lagoon), each side exchanges a single capability. The AI can read your spreadsheet headers and rows \u2014 it cannot browse your filesystem, access other Pearls, or escalate privileges.\n\n---\n\n*Bureau is part of the Melusina app library. Self-hosted. Sovereign. Open source.*"
     },
     {
@@ -478,17 +675,33 @@
       },
       "license": "",
       "imageId": "76db8bc647165e14ce7b94c7b0849277.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "cb3c2356ff2208d445a00a873264a7f4b377291d0c331ecf502439911b3ac211",
+        "releaseHash": "4ef562d4181f6eaf78af5a64f620f8c925eb819b9228d51863c9f3a5f8821161",
+        "releaseNonce": "835e376bb3a9a5adbc8d60ca7984ac12bc258b1c4d3ec572918b2306aee61424",
+        "releaseEntryPda": "test-release-entry-380841a545a4aca07735ba598e82a2e7",
+        "masterNftMint": "test-master-nft-4ab80b1f0f2d4b8535317c16360e0f61",
+        "licenseSquadsVault": "test-license-vault-bce6b0a100aa402bec8716c8e812fc9f",
+        "signedAtUnix": 1776612839,
+        "authorSig": "test-author-sig-31c3897b3fb22f63f786fb79311068c1203eba1e5cc5df7bcc0ef1ca0857bb83",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-c13acb7afd8d19700a7d9153a2585f45"
+        }
+      },
       "description": "",
       "screenshots": []
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-      "packageId": "b98fd88687c563149b391010169dbbe7",
       "name": "fineract Setup",
       "version": "0.2.0",
       "versionNumber": 2,
+      "packageId": "b98fd88687c563149b391010169dbbe7",
       "shortDescription": "Bootstrap wizard for fineract-sidecar",
-      "description": "**fineract Setup** is the Sandstorm companion wizard for `fineract-sidecar`.\n\nIt provisions the attached Apache Fineract backend, walks the operator\nthrough the bootstrap workflow, and exports a signed trust bundle shared by\nboth security gates:\n\n- Gate 1: the Go HTTPS sidecar\n- Gate 2: the Java `SolanaSignatureAuthenticationFilter` inside Fineract\n\nThe wizard packages the cold-start work that has to happen before ccash can\ntalk to a hardened Fineract install: tenant setup, offices, currencies, chart\nof accounts, savings products, signer registration, governance policy, and\ntrust-bundle export.",
+      "description": "**fineract Setup** is the Sandstorm companion wizard for `fineract-sidecar`. It provisions the attached Apache Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates: (1) the Go HTTPS sidecar and (2) the Java `SolanaSignatureAuthenticationFilter` inside Fineract. The wizard packages the cold-start work that has to happen before ccash can talk to a hardened Fineract install: tenant setup, offices, currencies, chart of accounts, savings products, signer registration, governance policy, and trust-bundle export.",
       "categories": [
         "Productivity",
         "Office"
@@ -501,17 +714,32 @@
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
-      "screenshots": [],
       "license": "Proprietary \u2014 Internal development build",
-      "imageId": "396b738f2ae4731aef1a5745a4a08d3f.svg",
+      "screenshots": [],
       "tier": "admin",
       "domains": [
         "*"
-      ]
+      ],
+      "imageId": "396b738f2ae4731aef1a5745a4a08d3f.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "7328c7ca8bb36f01ff0043020e651c41a02b3ac2a51f0d76e478e53d5df38429",
+        "releaseHash": "b98fd88687c563149b391010169dbbe72d56308f16c5eba7df58cbe0fdfcf5d5",
+        "releaseNonce": "b0369e0605c03b65e774b963cd3d17392fcfc210b9c53d54e16bd9b93b88481d",
+        "releaseEntryPda": "test-release-entry-2c21db67150647c3d549c6b4b3793884",
+        "masterNftMint": "test-master-nft-dcd2aef44a0db0f0fb74086fd6889b8c",
+        "licenseSquadsVault": "test-license-vault-b226390b66ddc49332beb8940c5583a5",
+        "signedAtUnix": 1776299121,
+        "authorSig": "test-author-sig-6f8210b4bb2f05edbd46b9fd884113c2bb4d7c54995fbf76c0bd446e8a7feb88",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-5750f81547a3c8a52d648df509818f06"
+        }
+      }
     },
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
@@ -536,7 +764,64 @@
       },
       "license": "MIT",
       "imageId": "8f5f4739eb8d9055fbaae40bb09c1d66.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "47d5d5618feb3fed2f0aff98add734e1dfd8f1b35e3495007899859588ac1e53",
+        "releaseHash": "50d37581ec11582193a7af905d784d10c7287704e1e5136510ec6e3d4c8b4b76",
+        "releaseNonce": "67b0d4484c30f2e763fbd4466799cbc864a3bc522dab1060f4517de496802448",
+        "releaseEntryPda": "test-release-entry-6ce3a0e9b1e797ee7805778d37f307ff",
+        "masterNftMint": "test-master-nft-0dfe2e113af407d30061f56427d5fe66",
+        "licenseSquadsVault": "test-license-vault-b974ecdbbe97b3e638cc5d9b318e3770",
+        "signedAtUnix": 1776618664,
+        "authorSig": "test-author-sig-71812ce50ada351a421f317359801ab7a0478cf732b8c040df0d89ab81e1132c",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-177b652b448017bad072fb26c4e75561"
+        }
+      },
       "description": "",
+      "screenshots": []
+    },
+    {
+      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+      "name": "Melusina OpenClaw",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "931b6042e30fb7960d5fee5889340b2e",
+      "shortDescription": "Personal AI assistant for Melusina",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776987130000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "imageId": "051a657f789ff9c3bef20e3cf0c1bea5.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "60bdae7269a3dcb8790b3bc324f918ac63ec07cc4c131c04de91961730909caa",
+        "releaseHash": "931b6042e30fb7960d5fee5889340b2e979ec798a27700935e4e8e74a99a3c12",
+        "releaseNonce": "6487ebc21533f3acec3fa58b0ba5433ec88ffa47b72a1d9a26b6d6f56b6bf961",
+        "releaseEntryPda": "test-release-entry-9554b0b2df78f80578ad3b8055d0201d",
+        "masterNftMint": "test-master-nft-3f9acd20e254248e3d74f1fa7fc45f59",
+        "licenseSquadsVault": "test-license-vault-395b903f72538638482ac24b1d301cab",
+        "signedAtUnix": 1776987130,
+        "authorSig": "test-author-sig-66e2d3c81596064d70e0548625878a695fdb2ec9c05756af77b6815ec8b3bd50",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-8f607108e407594192ecd88675df1bcf"
+        }
+      },
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {
@@ -561,7 +846,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no HTTP bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",
@@ -569,7 +854,23 @@
         }
       ],
       "license": "",
-      "imageId": "4cc86bda386b13d2740cadf6f4f5047c.png"
+      "imageId": "4cc86bda386b13d2740cadf6f4f5047c.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "54d1a6f6e3cba116db760ae2a80f31be0df73b6e1932c4195b01cf2a0f7368cf",
+        "releaseHash": "a236d6e03235bb19dbf20d7c4675d27543796ce4a6f66431bc7feb7952825f19",
+        "releaseNonce": "cacd922075f287c37b9b62eb57aeda72a05d2aa378dbb0e28131e553e3eee67e",
+        "releaseEntryPda": "test-release-entry-bb661c5d5f06015058ce121147f93b45",
+        "masterNftMint": "test-master-nft-dd4bc5fee9f5d8870518a193358420ca",
+        "licenseSquadsVault": "test-license-vault-3bff0b8d4dd4fd5d72227f63e99ee30b",
+        "signedAtUnix": 1776659947,
+        "authorSig": "test-author-sig-211b0bdd97d63ab42edf02db68c21b7b0c8d4ac21f32a4bd78e4e10342565940",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-a69ebb570f51174911432160c9e8c6cf"
+        }
+      }
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
@@ -604,7 +905,23 @@
         }
       ],
       "license": "MIT",
-      "imageId": "7499db1cea602288bf73a75611790e88.svg"
+      "imageId": "7499db1cea602288bf73a75611790e88.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "3fc8e62378397491a1901838445430f73a3cdd43738db73b907dba1562e2336a",
+        "releaseHash": "c89ae3962990f7a87123fc3dff17180517d7ac4fef9a37c822b4195093cc733e",
+        "releaseNonce": "6d2d9133e636fdc44e17c3699fe37a8b07fe2965a11f90f23f87cc439ecf7cf0",
+        "releaseEntryPda": "test-release-entry-2eac8e0ca55d2851504594324377a952",
+        "masterNftMint": "test-master-nft-9ece5389d10976c6f648c990cd851583",
+        "licenseSquadsVault": "test-license-vault-ccce56b967c20c7c01fbfb5422e405ec",
+        "signedAtUnix": 1772577065,
+        "authorSig": "test-author-sig-e444ae5aeb47637e469faadabb4028b7ff06ce96cde539d9e579629275ff26c9",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-e11e7cf68374456e49253915adaadb5f"
+        }
+      }
     },
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
@@ -629,7 +946,23 @@
         "picture": ""
       },
       "imageId": "6808801193391d9254773a067bc1b295.svg",
-      "description": "**NamedCoin** is the KYC onboarding Pearl for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other Pearls.\n\nRaw ID images + questionnaire answers never leave the Pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin Pearl: melusina-namedcoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Melusina Pearl with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "064d415365bebef508fca5409b399487082865ce7922e36a89753a6e79e8e6d3",
+        "releaseHash": "dd0fc29c77a43894009958d54f75b856f96c41367086de991c07c633800c0004",
+        "releaseNonce": "0ca67521e84574c83d4a426c4ed50b584e537684dea1f8c0ceae81a821e6ffe3",
+        "releaseEntryPda": "test-release-entry-5f2e9c73990b0713961105a29a2e99d0",
+        "masterNftMint": "test-master-nft-c3b1068f3917ad44a680bf83530162ac",
+        "licenseSquadsVault": "test-license-vault-4d0defb1a412850dd38f7f60cd8f2669",
+        "signedAtUnix": 1776763008,
+        "authorSig": "test-author-sig-867c0a354166567a8a1b1a24080fb2445fda191d4c1fcdfdb4cc256fefefe038",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-3515db3f81365a4b6a7e77e9b4056731"
+        }
+      },
+      "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-namedcoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
     },
     {
@@ -639,7 +972,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "Notebook pearl \u2014 Markdown notes, snippets, and quick captures, self-hosted.",
-      "description": "Bureau Notes is the notebook Pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Markdown-first** with live preview, code highlighting, and embedded images\n- **Per-notebook isolation** \u2014 share by Pearl, not by user\n- **Search inside a notebook** \u2014 fast full-text without indexing your other Pearls\n- **Snapshots** \u2014 version every save; restore any point in seconds\n- **Export** \u2014 Markdown, PDF, HTML, plain text. No lock-in.\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The Pearl currently installs as a Coming Soon stub served by the HTTP bridge; the live editor lands in v0.2.\n",
+      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Markdown-first** with live preview, code highlighting, and embedded images\n- **Per-notebook isolation** \u2014 share by Pearl, not by user\n- **Search inside a notebook** \u2014 fast full-text without indexing your other Pearls\n- **Snapshots** \u2014 version every save; restore any point in seconds\n- **Export** \u2014 Markdown, PDF, HTML, plain text. No lock-in.\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.\n",
       "categories": [
         "Productivity",
         "Office"
@@ -657,7 +990,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "imageId": "8f83955329bb084df12ec10161e6352e.png"
+      "imageId": "8f83955329bb084df12ec10161e6352e.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "b6e6d83761de25808250e24306a5fb329a97bd2f64205973278a46d28e0c2f90",
+        "releaseHash": "fe7a66a1879fe5be440fb6acf062549a396e33534ef90d064c5e3c513d79f583",
+        "releaseNonce": "58b481f42c7bfca3c689bb035d649c53ff05bb723d03ec2dab07ff372832439a",
+        "releaseEntryPda": "test-release-entry-e9bea8c6a2a9e15cc5bfb5ea51d9fca9",
+        "masterNftMint": "test-master-nft-0511a6571af365614fd265a0f760fc15",
+        "licenseSquadsVault": "test-license-vault-348849ce3468554541a932e483367c52",
+        "signedAtUnix": 1776835959,
+        "authorSig": "test-author-sig-5ab61a5942fdffc859aa73f146c79e4c00248242d6c39197d39f7486134b3f8a",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-e1c0d457e84b5566ef0a76e54e76d2e6"
+        }
+      }
     },
     {
       "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
@@ -705,6 +1054,22 @@
       },
       "license": "",
       "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "5407e382137ecfce87284dc1daf446047f9409516153fc8f121ce011e8cd397e",
+        "releaseHash": "632f3e097db8eefcb2670252dad3bf2159d48fccec9439380cd75dfa6d4d010b",
+        "releaseNonce": "db083a705cebca6e600586b150c22aa8bde024160bb49ed48ed66b93ec629525",
+        "releaseEntryPda": "test-release-entry-5681171fd9885aabe985e2d5e6ae60e8",
+        "masterNftMint": "test-master-nft-0003a3e4f0539d15c773311a53d80896",
+        "licenseSquadsVault": "test-license-vault-bae07d2abcef6ab3ba93f1275e82b136",
+        "signedAtUnix": 1776663498,
+        "authorSig": "test-author-sig-94dfc7b72aa7f73f0fd7b4d5a810a8428c6dc6effb2fdd3fe2dc7f2a2dc8ab74",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-c90a2a6b9dbfe287e93f386de2432a05"
+        }
+      },
       "description": "# Paint Bureau\n\n**Paint Bureau** is a browser-based image editor for Melusina. Layered editing, filters, and export \u2014 a private alternative to online image editors that never uploads your art.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other three Bureau pearls (Docs, Sheets, Diagram).\n\n---\n\n## About the Bureau suite\n\nFour Pearl types \u2014 Spreadsheet, Document, Diagram, miniPaint \u2014 replacing Google Docs, Sheets, and cloud image editors for teams that refuse to hand their work to someone else's infrastructure.\n\nLive collaboration. End-to-end encryption (coming soon).\n\nDon't share your entire office each time you need an external tool (that's if you even need one given that you're using Melusina and can run anything locally) \u2014 share document by document!\n\n---\n\n## Why Bureau\n\n| | Google / Microsoft | Bureau on Melusina |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you choose via Grapple |\n| \ud83e\udd16 **AI** | Your data trains their models | AI reads only what you grant, writes only what you approve |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## Four Pearls. Four Workspaces. Zero Overlap.\n\n### \ud83d\udcca Spreadsheet\n\nThe spreadsheet your accountant can actually trust.\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside Melusina.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Simultaneous multi-user editing, live presence indicators |\n| Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| Formulas | A1 references, formula bar, cross-cell calculations |\n| Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| Comments | Per-cell threads with author attribution |\n| Import | XLSX (preserves styles), CSV, JSON |\n| Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| AI Agent | Connect to AI Lagoon \u2014 AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation |\n| Snapshots | Named versions \u2014 save, browse, compare, restore |\n| Mobile | Responsive layout, touch support, collapsible toolbar |\n| Themes | Light and Dark with keyboard toggle |\n\n### \ud83d\udcdd Document\n\nWrite together without conflicts \u2014 mathematically guaranteed.\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| Formatting | Bold, italic, underline, strikethrough |\n| Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| Tables | Insert and edit tables inline |\n| Sections | Organize long documents into named sections |\n| Snapshots | Named versions with one-click restore |\n| Export | HTML |\n\n### \ud83d\udcd0 Diagram\n\nFlowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your Melusina Pearl. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| Shape library | Complete draw.io stencil collection |\n| Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| Export | XML, PNG, SVG, PDF |\n| Snapshots | Named versions with restore |\n| Offline | All draw.io assets bundled \u2014 no internet needed |\n\n### \ud83c\udfa8 miniPaint\n\nQuick image editing without uploading your photos to someone else's server.\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| Layers | Create, reorder, merge, manage |\n| Drawing | Pencil, brush, line, circle, rectangle, text |\n| Filters | Blur, sharpen, brightness, contrast, adjustments |\n| Transform | Crop, resize, rotate |\n| Export | PNG, JPG, BMP, WebP |\n| Snapshots | Named versions with restore |\n| Collaboration | Lock-based editing \u2014 one editor, live viewers |\n\n---\n\n## AI Agent Integration\n\nBureau is a first-class MCP (Model Context Protocol) host. Connect your AI \u2014 it works for you, not the other way around.\n\n### How It Works\n\n1. **Grant access via Grapple.** Click \"Connect via Grapple\" in the AI Assistant panel. Melusina's Grapple dialog appears \u2014 pick the AI Lagoon Pearl you want to connect. That's the only permission step.\n\n2. **AI reads your data through capability-scoped tools.** The AI can call `get_headers`, `get_rows`, and `get_cell` \u2014 nothing more. It can't access other Pearls, other data, or the filesystem. The scope is locked to exactly what you granted.\n\n3. **Human-in-the-loop for writes.** When the AI wants to modify your spreadsheet (`set_cell`, `add_row`, `add_column`), Bureau pauses and asks you: *\"The agent wants to write changes \u2014 Approve or Deny?\"* Every write requires your explicit confirmation.\n\n4. **Full audit trail.** Every tool call is logged with the tool name, parameters, result, duration, and which iteration of the AI's reasoning triggered it. You can inspect exactly what the AI did and why.\n\n5. **Persistent connection.** Once granted, the AI Lagoon connection survives Pearl restarts \u2014 no need to re-grant via Grapple each time. Disconnect anytime with one click.\n\n### What This Means\n\n| Traditional AI Integration | Bureau + AI Lagoon |\n|---|---|\n| AI accesses everything in your account | AI sees only the Pearl you connected \u2014 nothing else |\n| AI writes silently to your documents | Every write requires your approval |\n| AI vendor sees your data | AI runs on your server \u2014 data never leaves |\n| You can't see what the AI did | Full tool call audit trail in the panel |\n| Connection is permanent and invisible | You grant and revoke access explicitly via Grapple |\n\n### Technical Details\n\n- **Protocol:** MCP over native Cap'n Proto \u2014 no HTTP proxying, no JSON overhead, direct capability passing across Pearl boundaries\n- **Architecture:** Bureau acts as an MCP Host, exposing a `ContextProvider` capability. AI Lagoon acts as the `AIAgent`. Bureau passes its ContextProvider into each agent request \u2014 the AI calls back to read/write data through the same capability channel\n- **Security model:** Object-capability (OCAP). No ambient authority. The AI agent has exactly one capability \u2014 the ContextProvider you gave it. It cannot escalate, enumerate other Pearls, or access the network\n- **Templates:** Pre-built agent templates (Structured Data Agent, Document Drafter, Process Automation, General Assistant) guide the AI toward common tasks without custom prompting\n\n---\n\n## What Makes Bureau Different\n\n### \ud83e\uddf1 Every Pearl Is a Sealed Room\n\nA spreadsheet can't see a document. A diagram can't read an image. They're not permission-separated \u2014 they're physically isolated containers. A vulnerability in one Pearl cannot reach another. This is Melusina's core architecture, and Bureau inherits it completely.\n\n### \ud83d\udcf8 Snapshots Everywhere\n\nEvery Pearl type supports named version snapshots. Before a big edit, save a snapshot. Made a mistake last Tuesday? Restore it. Need to compare this quarter's numbers with last quarter's? Browse your history. One click to save. One click to restore.\n\n### \ud83d\udc65 Real-Time Collaboration\n\nSee who's connected. See their role. Watch edits appear as they happen. Presence indicators show names and avatars. Connection status tells you when you're online, reconnecting, or offline. When you reconnect, everything syncs automatically.\n\n### \ud83d\udd10 Four Roles. Server-Enforced.\n\nNot client-side hints \u2014 actual server-enforced permission boundaries.\n\n| Role | View | Comment | Edit | Admin |\n|---|:---:|:---:|:---:|:---:|\n| \ud83d\udc41\ufe0f Viewer | \u2713 | \u2014 | \u2014 | \u2014 |\n| \ud83d\udcac Commenter | \u2713 | \u2713 | \u2014 | \u2014 |\n| \u270f\ufe0f Editor | \u2713 | \u2713 | \u2713 | \u2014 |\n| \ud83d\udd11 Admin | \u2713 | \u2713 | \u2713 | \u2713 |\n\nViewers can't modify data. Period. Not \"the button is hidden\" \u2014 the server rejects the request. Import restrictions are role-gated: CSV import is admin-only, XLSX requires editor.\n\n### \ud83d\udd17 Grapple: Connect Only What You Choose\n\nNeed a diagram to reference a spreadsheet? Need an AI to analyze your data? Use Grapple \u2014 Melusina's capability system. You pick exactly which two Pearls connect and what capability they exchange. One link. Nothing else changes. Revoke anytime.\n\n### \u2708\ufe0f Fully Air-Gapped\n\nEvery font, every icon, every JavaScript library, every stylesheet \u2014 bundled inside the package. Bureau works on a Melusina instance with zero internet access. No CDNs. No external requests. Nothing phones home.\n\n---\n\n## Getting Started\n\n**Create a Pearl** \u2014 Click New, choose Bureau, pick your Pearl type. You're working in seconds.\n\n**Share it** \u2014 Hit Share, pick a role (Viewer, Commenter, Editor, Admin), send the link. Recipients join instantly with live collaboration.\n\n**Connect an AI** \u2014 Open the AI Assistant panel (\ud83e\udd16), click \"Connect via Grapple,\" choose your AI Lagoon Pearl. Ask questions about your data in natural language.\n\n**Save a Snapshot** \u2014 Tap the camera icon, name your version, save. Your history is always one click away.\n\n**Import your files** \u2014 Drag in XLSX, CSV, or JSON. Styles, column widths, and formatting come with it.\n\n**Export anything** \u2014 XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. Standard formats. No lock-in. Leave whenever you want.\n\n---\n\n## Capabilities\n\n| | Spreadsheet | Document | Diagram | miniPaint |\n|---|:---:|:---:|:---:|:---:|\n| Real-time multi-user editing | \u2713 | \u2713 | \u2014 | \u2014 |\n| Live viewer updates | \u2713 | \u2713 | \u2713 | \u2713 |\n| AI Agent (MCP) | \u2713 | \u2014 | \u2014 | \u2014 |\n| Named snapshots | \u2713 | \u2713 | \u2713 | \u2713 |\n| Role-based permissions | \u2713 | \u2713 | \u2713 | \u2713 |\n| XLSX import/export | \u2713 | \u2014 | \u2014 | \u2014 |\n| PDF export | \u2713 | \u2014 | \u2713 | \u2014 |\n| CSV export | \u2713 | \u2014 | \u2014 | \u2014 |\n| HTML export | \u2014 | \u2713 | \u2014 | \u2014 |\n| SVG export | \u2014 | \u2014 | \u2713 | \u2014 |\n| PNG/JPG export | \u2014 | \u2014 | \u2713 | \u2713 |\n| Formulas | \u2713 | \u2014 | \u2014 | \u2014 |\n| Rich text formatting | \u2713 | \u2713 | \u2014 | \u2014 |\n| Drawing tools | \u2014 | \u2014 | \u2713 | \u2713 |\n| Layers | \u2014 | \u2014 | \u2014 | \u2713 |\n| Multiple worksheets/sections | \u2713 | \u2713 | \u2014 | \u2014 |\n| Comments | \u2713 | \u2014 | \u2014 | \u2014 |\n| Light/Dark themes | \u2713 | \u2014 | \u2014 | \u2014 |\n| Mobile-responsive | \u2713 | \u2713 | \u2713 | \u2713 |\n| Works fully offline | \u2713 | \u2713 | \u2713 | \u2713 |\n\n---\n\n## Limitations\n\nBureau is honest about what it doesn't do yet.\n\n| Limitation | Explanation |\n|---|---|\n| AI Agent for Spreadsheet and Document | Diagram and miniPaint ContextProviders are planned. |\n| No simultaneous editing in Diagram/miniPaint | One editor at a time. Everyone else sees live updates. |\n| No cursor tracking in Spreadsheet | Cell values update live, but you don't see other users' cursors. |\n| No presentation/slideshow Pearl | Not yet. |\n| No cross-Pearl formulas | Each spreadsheet is independent. Use Grapple to link Pearls at the app level. |\n| No offline editing without server | Data lives server-side. You need a connection to your Melusina instance. |\n\n---\n\n## FAQ\n\n**How is this different from Google Sheets?**\nGoogle Sheets runs on Google's servers. Google can read your data, train AI on it, change terms, raise prices, or get subpoenaed. Bureau runs on your Melusina instance. Your hardware. Your jurisdiction. No one else can see it.\n\n**What about AI \u2014 doesn't it send my data to the cloud?**\nNo. AI Lagoon runs on your Melusina instance alongside Bureau. Your data travels from one Pearl to another on the same machine over a capability channel. Nothing leaves your server. The AI model itself runs locally or connects to a provider you choose and control.\n\n**Can I import my Excel files?**\nYes. XLSX import preserves styles, column widths, and formatting. You can also import CSV and JSON.\n\n**How many people can edit at once?**\nSpreadsheet and Document support unlimited simultaneous editors. Diagram and miniPaint use edit locking \u2014 one editor at a time, but all connected users see changes live.\n\n**What if I lose connection?**\nThe status indicator shows your connection state. When you reconnect, the client re-syncs automatically. Document Pearls use CRDT \u2014 even concurrent offline edits merge without conflicts.\n\n**Can I leave Melusina and take my data?**\nYes. Export everything in standard formats: XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. No lock-in. No exit fees.\n\n**Does it need internet after installation?**\nNo. Every asset is bundled. Bureau works on fully air-gapped Melusina instances.\n\n**Can one Pearl access another Pearl's data?**\nOnly if you explicitly connect them via Grapple. By default, every Pearl is completely isolated \u2014 not permission-separated, physically separated. When you do connect (e.g., Bureau \u2194 AI Lagoon), each side exchanges a single capability. The AI can read your spreadsheet headers and rows \u2014 it cannot browse your filesystem, access other Pearls, or escalate privileges.\n\n---\n\n*Bureau is part of the Melusina app library. Self-hosted. Sovereign. Open source.*"
     },
     {
@@ -753,16 +1118,32 @@
       },
       "license": "",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "ed714c30f4698234a481c13007ba7ced42a3ba25f5bb37c7c8d189db61252c8a",
+        "releaseHash": "a28ac6bd8af79f664a78f4109ae363b1eb8e3609bd9779bcaa6e323bae96ad0a",
+        "releaseNonce": "34bca9beedc4da755e302aede14756e0875d59fbaa62eac79b9d07fbe85162b6",
+        "releaseEntryPda": "test-release-entry-22b33867763d5a34714d5d514eae16bf",
+        "masterNftMint": "test-master-nft-71edd830ef52e83d7db8817ecc617d6b",
+        "licenseSquadsVault": "test-license-vault-be758b456a73ce01b53f39502773dd96",
+        "signedAtUnix": 1776662583,
+        "authorSig": "test-author-sig-dd6ab995ce25a057487e82a1646b3fed7cd84746004dfa18c1c872290c393f44",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-d2cc768392289dcf1e2c1d02213252b7"
+        }
+      },
       "description": "# Sheets Bureau\n\n**Sheets Bureau** is the collaborative spreadsheet of the Melusina office suite. XLSX-compatible, formula-capable, multi-user real-time \u2014 entirely self-hosted.\n\nPart of the Bureau office suite \u2014 shares real-time sync and document-level sharing with the other three Bureau pearls (Docs, Diagram, Paint).\n\n---\n\n## About the Bureau suite\n\nFour Pearl types \u2014 Spreadsheet, Document, Diagram, miniPaint \u2014 replacing Google Docs, Sheets, and cloud image editors for teams that refuse to hand their work to someone else's infrastructure.\n\nLive collaboration. End-to-end encryption (coming soon).\n\nDon't share your entire office each time you need an external tool (that's if you even need one given that you're using Melusina and can run anything locally) \u2014 share document by document!\n\n---\n\n## Why Bureau\n\n| | Google / Microsoft | Bureau on Melusina |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you choose via Grapple |\n| \ud83e\udd16 **AI** | Your data trains their models | AI reads only what you grant, writes only what you approve |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## Four Pearls. Four Workspaces. Zero Overlap.\n\n### \ud83d\udcca Spreadsheet\n\nThe spreadsheet your accountant can actually trust.\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside Melusina.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Simultaneous multi-user editing, live presence indicators |\n| Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| Formulas | A1 references, formula bar, cross-cell calculations |\n| Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| Comments | Per-cell threads with author attribution |\n| Import | XLSX (preserves styles), CSV, JSON |\n| Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| AI Agent | Connect to AI Lagoon \u2014 AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation |\n| Snapshots | Named versions \u2014 save, browse, compare, restore |\n| Mobile | Responsive layout, touch support, collapsible toolbar |\n| Themes | Light and Dark with keyboard toggle |\n\n### \ud83d\udcdd Document\n\nWrite together without conflicts \u2014 mathematically guaranteed.\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| Formatting | Bold, italic, underline, strikethrough |\n| Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| Tables | Insert and edit tables inline |\n| Sections | Organize long documents into named sections |\n| Snapshots | Named versions with one-click restore |\n| Export | HTML |\n\n### \ud83d\udcd0 Diagram\n\nFlowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your Melusina Pearl. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| Shape library | Complete draw.io stencil collection |\n| Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| Export | XML, PNG, SVG, PDF |\n| Snapshots | Named versions with restore |\n| Offline | All draw.io assets bundled \u2014 no internet needed |\n\n### \ud83c\udfa8 miniPaint\n\nQuick image editing without uploading your photos to someone else's server.\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| Layers | Create, reorder, merge, manage |\n| Drawing | Pencil, brush, line, circle, rectangle, text |\n| Filters | Blur, sharpen, brightness, contrast, adjustments |\n| Transform | Crop, resize, rotate |\n| Export | PNG, JPG, BMP, WebP |\n| Snapshots | Named versions with restore |\n| Collaboration | Lock-based editing \u2014 one editor, live viewers |\n\n---\n\n## AI Agent Integration\n\nBureau is a first-class MCP (Model Context Protocol) host. Connect your AI \u2014 it works for you, not the other way around.\n\n### How It Works\n\n1. **Grant access via Grapple.** Click \"Connect via Grapple\" in the AI Assistant panel. Melusina's Grapple dialog appears \u2014 pick the AI Lagoon Pearl you want to connect. That's the only permission step.\n\n2. **AI reads your data through capability-scoped tools.** The AI can call `get_headers`, `get_rows`, and `get_cell` \u2014 nothing more. It can't access other Pearls, other data, or the filesystem. The scope is locked to exactly what you granted.\n\n3. **Human-in-the-loop for writes.** When the AI wants to modify your spreadsheet (`set_cell`, `add_row`, `add_column`), Bureau pauses and asks you: *\"The agent wants to write changes \u2014 Approve or Deny?\"* Every write requires your explicit confirmation.\n\n4. **Full audit trail.** Every tool call is logged with the tool name, parameters, result, duration, and which iteration of the AI's reasoning triggered it. You can inspect exactly what the AI did and why.\n\n5. **Persistent connection.** Once granted, the AI Lagoon connection survives Pearl restarts \u2014 no need to re-grant via Grapple each time. Disconnect anytime with one click.\n\n### What This Means\n\n| Traditional AI Integration | Bureau + AI Lagoon |\n|---|---|\n| AI accesses everything in your account | AI sees only the Pearl you connected \u2014 nothing else |\n| AI writes silently to your documents | Every write requires your approval |\n| AI vendor sees your data | AI runs on your server \u2014 data never leaves |\n| You can't see what the AI did | Full tool call audit trail in the panel |\n| Connection is permanent and invisible | You grant and revoke access explicitly via Grapple |\n\n### Technical Details\n\n- **Protocol:** MCP over native Cap'n Proto \u2014 no HTTP proxying, no JSON overhead, direct capability passing across Pearl boundaries\n- **Architecture:** Bureau acts as an MCP Host, exposing a `ContextProvider` capability. AI Lagoon acts as the `AIAgent`. Bureau passes its ContextProvider into each agent request \u2014 the AI calls back to read/write data through the same capability channel\n- **Security model:** Object-capability (OCAP). No ambient authority. The AI agent has exactly one capability \u2014 the ContextProvider you gave it. It cannot escalate, enumerate other Pearls, or access the network\n- **Templates:** Pre-built agent templates (Structured Data Agent, Document Drafter, Process Automation, General Assistant) guide the AI toward common tasks without custom prompting\n\n---\n\n## What Makes Bureau Different\n\n### \ud83e\uddf1 Every Pearl Is a Sealed Room\n\nA spreadsheet can't see a document. A diagram can't read an image. They're not permission-separated \u2014 they're physically isolated containers. A vulnerability in one Pearl cannot reach another. This is Melusina's core architecture, and Bureau inherits it completely.\n\n### \ud83d\udcf8 Snapshots Everywhere\n\nEvery Pearl type supports named version snapshots. Before a big edit, save a snapshot. Made a mistake last Tuesday? Restore it. Need to compare this quarter's numbers with last quarter's? Browse your history. One click to save. One click to restore.\n\n### \ud83d\udc65 Real-Time Collaboration\n\nSee who's connected. See their role. Watch edits appear as they happen. Presence indicators show names and avatars. Connection status tells you when you're online, reconnecting, or offline. When you reconnect, everything syncs automatically.\n\n### \ud83d\udd10 Four Roles. Server-Enforced.\n\nNot client-side hints \u2014 actual server-enforced permission boundaries.\n\n| Role | View | Comment | Edit | Admin |\n|---|:---:|:---:|:---:|:---:|\n| \ud83d\udc41\ufe0f Viewer | \u2713 | \u2014 | \u2014 | \u2014 |\n| \ud83d\udcac Commenter | \u2713 | \u2713 | \u2014 | \u2014 |\n| \u270f\ufe0f Editor | \u2713 | \u2713 | \u2713 | \u2014 |\n| \ud83d\udd11 Admin | \u2713 | \u2713 | \u2713 | \u2713 |\n\nViewers can't modify data. Period. Not \"the button is hidden\" \u2014 the server rejects the request. Import restrictions are role-gated: CSV import is admin-only, XLSX requires editor.\n\n### \ud83d\udd17 Grapple: Connect Only What You Choose\n\nNeed a diagram to reference a spreadsheet? Need an AI to analyze your data? Use Grapple \u2014 Melusina's capability system. You pick exactly which two Pearls connect and what capability they exchange. One link. Nothing else changes. Revoke anytime.\n\n### \u2708\ufe0f Fully Air-Gapped\n\nEvery font, every icon, every JavaScript library, every stylesheet \u2014 bundled inside the package. Bureau works on a Melusina instance with zero internet access. No CDNs. No external requests. Nothing phones home.\n\n---\n\n## Getting Started\n\n**Create a Pearl** \u2014 Click New, choose Bureau, pick your Pearl type. You're working in seconds.\n\n**Share it** \u2014 Hit Share, pick a role (Viewer, Commenter, Editor, Admin), send the link. Recipients join instantly with live collaboration.\n\n**Connect an AI** \u2014 Open the AI Assistant panel (\ud83e\udd16), click \"Connect via Grapple,\" choose your AI Lagoon Pearl. Ask questions about your data in natural language.\n\n**Save a Snapshot** \u2014 Tap the camera icon, name your version, save. Your history is always one click away.\n\n**Import your files** \u2014 Drag in XLSX, CSV, or JSON. Styles, column widths, and formatting come with it.\n\n**Export anything** \u2014 XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. Standard formats. No lock-in. Leave whenever you want.\n\n---\n\n## Capabilities\n\n| | Spreadsheet | Document | Diagram | miniPaint |\n|---|:---:|:---:|:---:|:---:|\n| Real-time multi-user editing | \u2713 | \u2713 | \u2014 | \u2014 |\n| Live viewer updates | \u2713 | \u2713 | \u2713 | \u2713 |\n| AI Agent (MCP) | \u2713 | \u2014 | \u2014 | \u2014 |\n| Named snapshots | \u2713 | \u2713 | \u2713 | \u2713 |\n| Role-based permissions | \u2713 | \u2713 | \u2713 | \u2713 |\n| XLSX import/export | \u2713 | \u2014 | \u2014 | \u2014 |\n| PDF export | \u2713 | \u2014 | \u2713 | \u2014 |\n| CSV export | \u2713 | \u2014 | \u2014 | \u2014 |\n| HTML export | \u2014 | \u2713 | \u2014 | \u2014 |\n| SVG export | \u2014 | \u2014 | \u2713 | \u2014 |\n| PNG/JPG export | \u2014 | \u2014 | \u2713 | \u2713 |\n| Formulas | \u2713 | \u2014 | \u2014 | \u2014 |\n| Rich text formatting | \u2713 | \u2713 | \u2014 | \u2014 |\n| Drawing tools | \u2014 | \u2014 | \u2713 | \u2713 |\n| Layers | \u2014 | \u2014 | \u2014 | \u2713 |\n| Multiple worksheets/sections | \u2713 | \u2713 | \u2014 | \u2014 |\n| Comments | \u2713 | \u2014 | \u2014 | \u2014 |\n| Light/Dark themes | \u2713 | \u2014 | \u2014 | \u2014 |\n| Mobile-responsive | \u2713 | \u2713 | \u2713 | \u2713 |\n| Works fully offline | \u2713 | \u2713 | \u2713 | \u2713 |\n\n---\n\n## Limitations\n\nBureau is honest about what it doesn't do yet.\n\n| Limitation | Explanation |\n|---|---|\n| AI Agent for Spreadsheet and Document | Diagram and miniPaint ContextProviders are planned. |\n| No simultaneous editing in Diagram/miniPaint | One editor at a time. Everyone else sees live updates. |\n| No cursor tracking in Spreadsheet | Cell values update live, but you don't see other users' cursors. |\n| No presentation/slideshow Pearl | Not yet. |\n| No cross-Pearl formulas | Each spreadsheet is independent. Use Grapple to link Pearls at the app level. |\n| No offline editing without server | Data lives server-side. You need a connection to your Melusina instance. |\n\n---\n\n## FAQ\n\n**How is this different from Google Sheets?**\nGoogle Sheets runs on Google's servers. Google can read your data, train AI on it, change terms, raise prices, or get subpoenaed. Bureau runs on your Melusina instance. Your hardware. Your jurisdiction. No one else can see it.\n\n**What about AI \u2014 doesn't it send my data to the cloud?**\nNo. AI Lagoon runs on your Melusina instance alongside Bureau. Your data travels from one Pearl to another on the same machine over a capability channel. Nothing leaves your server. The AI model itself runs locally or connects to a provider you choose and control.\n\n**Can I import my Excel files?**\nYes. XLSX import preserves styles, column widths, and formatting. You can also import CSV and JSON.\n\n**How many people can edit at once?**\nSpreadsheet and Document support unlimited simultaneous editors. Diagram and miniPaint use edit locking \u2014 one editor at a time, but all connected users see changes live.\n\n**What if I lose connection?**\nThe status indicator shows your connection state. When you reconnect, the client re-syncs automatically. Document Pearls use CRDT \u2014 even concurrent offline edits merge without conflicts.\n\n**Can I leave Melusina and take my data?**\nYes. Export everything in standard formats: XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML. No lock-in. No exit fees.\n\n**Does it need internet after installation?**\nNo. Every asset is bundled. Bureau works on fully air-gapped Melusina instances.\n\n**Can one Pearl access another Pearl's data?**\nOnly if you explicitly connect them via Grapple. By default, every Pearl is completely isolated \u2014 not permission-separated, physically separated. When you do connect (e.g., Bureau \u2194 AI Lagoon), each side exchanges a single capability. The AI can read your spreadsheet headers and rows \u2014 it cannot browse your filesystem, access other Pearls, or escalate privileges.\n\n---\n\n*Bureau is part of the Melusina app library. Self-hosted. Sovereign. Open source.*"
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
-      "packageId": "64df10ae5472e3004f08a4fa570d7af4",
       "name": "Vintage Remote Desktop",
       "version": "1.0.0",
       "versionNumber": 1,
+      "packageId": "64df10ae5472e3004f08a4fa570d7af4",
       "shortDescription": "A Linux desktop in your browser. Sandbox by default; click Save to make it persistent.",
-      "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser.\n\nGrains start in **sandbox mode** \u2014 every change is ephemeral and wiped when\nthe grain closes. Click **Save** to upgrade the grain to a persistent,\nSolana-backed workspace.\n\nIdeal for:\n\n- One-off tooling that you don't want polluting your main environment.\n- Demo environments that reset cleanly.\n- Remote-ops consoles where persistence should be an explicit choice, not a\n  default.",
+      "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Grains start in sandbox mode \u2014 every change is ephemeral and wiped on close. Click Save to upgrade the grain to a persistent, Solana-backed workspace. Ideal for one-off tooling, demo environments, and remote-ops consoles where persistence is a choice, not a default.",
       "categories": [
         "Productivity"
       ],
@@ -774,17 +1155,32 @@
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
-        "keybaseUsername": "",
         "twitterUsername": "",
         "picture": ""
       },
-      "screenshots": [],
       "license": "MIT",
-      "imageId": "0969e7fc37035b1add2c878e6e27f494.svg",
+      "screenshots": [],
       "tier": "regular",
       "domains": [
         "*"
-      ]
+      ],
+      "imageId": "0969e7fc37035b1add2c878e6e27f494.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "d183356cd1648e91d7a07a8a850d426b176e81b9839719c54cdfdd959a136fb2",
+        "releaseHash": "64df10ae5472e3004f08a4fa570d7af40b8cdaa05614645070479ba9de518209",
+        "releaseNonce": "5c9e761f62c014a1fa0329dd7077cdcaf9a3b846cbeefc93211e9bb97b951864",
+        "releaseEntryPda": "test-release-entry-6a4cf156dd25919ee9062f551d1735f9",
+        "masterNftMint": "test-master-nft-2f5fe40170824f0c527b130e9eb09a8b",
+        "licenseSquadsVault": "test-license-vault-c9b42f589ee657f7471ddea2c67ad7a5",
+        "signedAtUnix": 1776988800,
+        "authorSig": "test-author-sig-cb313184f26a433a457d33381a12bd5f82bfb56dd3bf927cab0e4206763c4038",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "test-multisig-5544918fa86ee6608012d1834c3fbf01"
+        }
+      }
     }
   ]
 }

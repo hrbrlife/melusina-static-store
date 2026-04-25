@@ -712,6 +712,15 @@ if [[ -d "$SANDSTORM_SRC" ]]; then
     TARBALL_SIZE="$(du -h "$SANDSTORM_TARBALL" | cut -f1)"
     info "Found Melusina build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
 
+    # Pre-flight: signing setup must be present before we copy a tarball into
+    # the update channel. Sandstorm clients refuse unsigned bundle updates,
+    # so a half-built dist-publish/update/ would ship a non-installable
+    # update silently. Fail hard now; let the publisher fix the keyring path.
+    [[ -x "$UPDATE_TOOL" ]] || \
+      { fail "update-tool not executable at $UPDATE_TOOL — required for signing the bundle update (clients reject unsigned updates)"; exit 1; }
+    [[ -f "$UPDATE_KEYRING" ]] || \
+      { fail "update keyring missing at $UPDATE_KEYRING — required for signing the bundle update (clients reject unsigned updates)"; exit 1; }
+
     # Copy tarball to update/ — split into parts if over 90 MB (GitHub 100 MB limit)
     PART_THRESHOLD=$((90 * 1024 * 1024))  # 90 MB
     TARBALL_BYTES=$(stat -c%s "$SANDSTORM_TARBALL")
@@ -749,16 +758,10 @@ PARTS_EOF
       ok "Copied tarball to $DEST_TARBALL"
     fi
 
-    # Sign the tarball if keyring and update-tool exist
-    if [[ -f "$UPDATE_KEYRING" && -x "$UPDATE_TOOL" ]]; then
-      "$UPDATE_TOOL" sign "$UPDATE_KEYRING" "$SANDSTORM_TARBALL" \
-        > "$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
-      ok "Signed update: sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
-    else
-      warn "Skipping update signature (keyring or update-tool not found)"
-      warn "  Keyring: $UPDATE_KEYRING (exists: $(test -f "$UPDATE_KEYRING" && echo yes || echo no))"
-      warn "  Tool:    $UPDATE_TOOL (exists: $(test -x "$UPDATE_TOOL" && echo yes || echo no))"
-    fi
+    # Sign the tarball. Pre-flight verified keyring + update-tool above.
+    "$UPDATE_TOOL" sign "$UPDATE_KEYRING" "$SANDSTORM_TARBALL" \
+      > "$UPDATE_OUT/sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
+    ok "Signed update: sandstorm-${SANDSTORM_BUILD_NUM}.tar.xz.update-sig"
 
     # Write channel files — all channels point to the same build for now
     for channel in dev stable; do

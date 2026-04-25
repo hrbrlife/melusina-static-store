@@ -7,10 +7,12 @@
 #      — abort if any appId disappears (set MELUSINA_PUBLISH_SHRINK_OK=1
 #      to override when shrinking is actually intended).
 #   2. manifest cross-check — compare each app in the Melusina deployer
-#      approval-manifest against the local .spk SHA-256; surface drift
-#      (warn unless MELUSINA_PUBLISH_REQUIRE_MANIFEST_MATCH=1, then fail).
+#      approval-manifest against the local .spk SHA-256. FAIL on drift by
+#      default (set MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 to downgrade
+#      to warn-only — only when reseat work is in flight and acknowledged).
 #   3. authoritative-host gate — warn if MELUSINA_PUBLISH_AUTHORITATIVE
-#      is unset (informational by default; doesn't block).
+#      is unset. Makefile target `deploy` also hard-gates on this var, so
+#      preflight here is informational; the Makefile is the abort point.
 #   4. pre-push announce — print the added/removed/changed app summary.
 #   5. exit code 0 on green, 1 on any abort condition.
 #
@@ -159,11 +161,12 @@ PY
   RC=$?
   set -e
   if [[ "$RC" -eq 2 ]]; then
-    if [[ "${MELUSINA_PUBLISH_REQUIRE_MANIFEST_MATCH:-}" == "1" ]]; then
-      fail "Manifest mismatch detected (gate strict — set by MELUSINA_PUBLISH_REQUIRE_MANIFEST_MATCH=1)"
-      ABORT=1
+    if [[ "${MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT:-}" == "1" ]]; then
+      warn "Manifest mismatch — proceeding under MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 opt-out"
     else
-      warn "Manifest mismatch — proceeding (set MELUSINA_PUBLISH_REQUIRE_MANIFEST_MATCH=1 to make this fatal)"
+      fail "Manifest mismatch — local .spk does not match deployer manifest's expected app_hash."
+      fail "Reseat on-chain via Worf, or rebuild the .spk to match. Override with MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 only if reseat is in flight."
+      ABORT=1
     fi
   else
     ok "All manifest .spk hashes match local"

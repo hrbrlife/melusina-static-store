@@ -4,6 +4,20 @@ Static app store and update host for Melusina. Hosted on GitHub Pages from the `
 
 **Live store**: https://hrbrlife.github.io/melusina-static-store/
 
+> **This checkout is a development mirror, not the canonical builder.**
+> Two `static_store` checkouts exist on this host with non-overlapping
+> app sets (this one has the bureau / cca.sh-Client / NamedCoin lane;
+> `Melusina/static_store/` has Telescreen Configuration / BLOOM / Shell
+> Tester). The live `gh-pages` catalog has 29 apps; this checkout has
+> 25; neither local checkout reproduces the live set on its own.
+> `make deploy` is therefore hard-gated on `MELUSINA_PUBLISH_AUTHORITATIVE=1`
+> and `scripts/preflight.sh` aborts on `.spk`-hash drift against the
+> Melusina deployer approval-manifest by default. See [`POSTMORTEM.md`](POSTMORTEM.md)
+> (gh-pages 2026-04-25 catalog-shrink regression) for context and
+> [`docs/M1_CCASH_CONFIG_PUBLISH_PATH.md`](docs/M1_CCASH_CONFIG_PUBLISH_PATH.md)
+> for the publication procedure when ccash kill-list task **A1** lands
+> the admin-grain v0.1.0.
+
 ---
 
 ## Publish the store
@@ -92,6 +106,9 @@ The build resolves a few external dependencies via env vars. Set what's relevant
 | `MELUSINA_RELEASE_VERIFY_TOOL` / `PEARL_TOOL` | `melusina-pearl-tool` (PATH) | Path to the `melusina-pearl-tool` binary used by `validate_release_attestation` to verify each `RELEASE.json` against its on-chain `ReleaseEntry`. Build fails hard if the tool is missing and verification is not skipped. |
 | `MELUSINA_ATTEST_OFFLINE` | unset | Set to `1` to skip the on-chain RPC lookup (still enforces the local `RELEASE.json` schema + finalization fields). Use on air-gapped publishers or when a public RPC is unavailable. |
 | `MELUSINA_SKIP_BUNDLE_UPDATE` | unset | Set to `1` to skip the entire Sandstorm bundle-update block (catalog ships, no `update/sandstorm-N.tar.xz.update-sig` produced). Required when the publisher does not have access to the bundle-update keyring (`$SANDSTORM_SRC/keys/melusina-update-keyring`); default is fail-hard so an unsigned bundle never ships. |
+| `MELUSINA_PUBLISH_AUTHORITATIVE` | unset | **Hard gate.** Required to be `1` for `make deploy` to proceed. Default-unset aborts deploy with a pointer to `docs/M1_CCASH_CONFIG_PUBLISH_PATH.md` and `POSTMORTEM.md` follow-up #1. Two `static_store` checkouts share the same upstream on this host with non-overlapping app sets; this flag is the explicit declaration that this checkout is the canonical publisher. |
+| `MELUSINA_PUBLISH_SHRINK_OK` | unset | `scripts/preflight.sh` Gate 1 (live-catalog diff) aborts when the local build would drop appIds present in live `gh-pages`. Set to `1` only when shrink is *intentional* (e.g. an app retirement coordinated in chat). |
+| `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT` | unset | `scripts/preflight.sh` Gate 2 (manifest cross-check) **fails by default** when local `.spk` SHA-256 diverges from the deployer manifest's expected `app_hash`. Set to `1` only when reseat work is in flight on Worf's side and acknowledged in chat — drift means the catalog would serve bytes that no longer match the on-chain `ReleaseEntry` and installs would fail signature verification. |
 
 ## Trust model
 

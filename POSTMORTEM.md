@@ -187,10 +187,27 @@ captured in `static_store/main` commit `a278e95` and remain valid.
 1. **Decide on the canonical publishing host.** Two static_store
    builds on this machine; until one is declared authoritative, every
    publish risks the same overwrite mode of failure.
-2. **Reseat the 3 drifted `.spk` hashes** (AiLagoon, CyberTeller,
-   DueProcess) on-chain via Worf, or replace the local `.spk` files
-   with bytes that hash to the manifest's expected values.
+2. **Reseat the drifted `.spk` hashes** on-chain via Worf, or replace
+   the local `.spk` files with bytes that hash to the manifest's
+   expected values. Audit pass 2026-04-25 (preflight Gate 2 against
+   `global-apps-2026-04-23.json`) shows **4 drifts**, not 3 as
+   originally listed: AiLagoon, CyberTeller, DueProcess, **plus
+   popaye / `cca.sh Admin`** (manifest expects `8d724f86…`, local
+   builds produce a different hash each session — re-run preflight
+   for current value). The popaye/ccash drift was missed in the
+   original 2026-04-25 13:50 deploy because the regression cut
+   surfaced the catalog-shrink first; both classes of drift coexist.
 3. **Add the 4 missing apps to local `packages/hrbrlife/`** (cca.sh
    Wholesale, cca.sh Domain Template, cca.sh Config, TeleScreen) so a
    future `make publish` from this host matches the live catalog.
-4. **Implement `make preflight`** per the procedure above.
+4. **Implement `make preflight`** per the procedure above. *(Done
+   2026-04-25: scripts/preflight.sh + Makefile target; Gate 2 is
+   fail-by-default after audit pass surfacing the 4-drift count;
+   opt-out via `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1` only when
+   reseat work is in flight on Worf's side and acknowledged in chat.)*
+5. **Hard-gate `make deploy` on `MELUSINA_PUBLISH_AUTHORITATIVE=1`**
+   (done 2026-04-25 alongside #4). Until follow-up #1 is decided, no
+   publish from this checkout proceeds without explicit operator
+   intent. Banner added to `README.md`; full procedure for the
+   admin-grain v0.1.0 publication path documented at
+   `docs/M1_CCASH_CONFIG_PUBLISH_PATH.md`.

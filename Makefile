@@ -68,6 +68,19 @@ preflight:
 
 # --- deploy: push existing dist-publish/ to publish branch --------------------
 deploy: preflight
+	@# Hard authoritative-builder gate (POSTMORTEM follow-up #1). This checkout
+	@# is one of two static_store mirrors on this host with non-overlapping app
+	@# sets; either could trigger the 2026-04-25 catalog-shrink regression on
+	@# an accidental publish. The canonical builder must declare itself.
+	@if [ "$$MELUSINA_PUBLISH_AUTHORITATIVE" != "1" ]; then \
+		echo ""; \
+		echo "✗ deploy aborted: MELUSINA_PUBLISH_AUTHORITATIVE is not set."; \
+		echo "  This static_store checkout is a development mirror by default."; \
+		echo "  See docs/M1_CCASH_CONFIG_PUBLISH_PATH.md and POSTMORTEM.md follow-up #1."; \
+		echo "  To deploy from this host, set MELUSINA_PUBLISH_AUTHORITATIVE=1 explicitly."; \
+		echo ""; \
+		exit 1; \
+	fi
 	@test -d "$(OUTPUT_DIR)" || { echo "No $(OUTPUT_DIR)/ — run 'make build' first"; exit 1; }
 	@test -d .git || { echo "Not a git repo"; exit 1; }
 	@test "$$(git branch --show-current)" = "$(MAIN_BRANCH)" \

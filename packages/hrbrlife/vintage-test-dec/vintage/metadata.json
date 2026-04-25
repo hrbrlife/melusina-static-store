@@ -5,8 +5,10 @@
   "versionNumber": 1,
   "packageId": "64df10ae5472e3004f08a4fa570d7af4",
   "shortDescription": "A Linux desktop in your browser. Sandbox by default; click Save to make it persistent.",
-  "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Grains start in sandbox mode — every change is ephemeral and wiped on close. Click Save to upgrade the grain to a persistent, Solana-backed workspace. Ideal for one-off tooling, demo environments, and remote-ops consoles where persistence is a choice, not a default.",
-  "categories": ["Productivity"],
+  "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped on close. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace. Ideal for one-off tooling, demo environments, and remote-ops consoles where persistence is a choice, not a default.",
+  "categories": [
+    "Productivity"
+  ],
   "isOpenSource": true,
   "webLink": "https://github.com/hrbrlife/vintage-test-dec",
   "codeLink": "https://github.com/hrbrlife/vintage-test-dec",
@@ -22,5 +24,7 @@
   "license": "MIT",
   "screenshots": [],
   "tier": "regular",
-  "domains": ["*"]
+  "domains": [
+    "*"
+  ]
 }

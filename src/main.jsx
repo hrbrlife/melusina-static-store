@@ -96,15 +96,7 @@ const PRIV_KEY = 'melusina_private_servers';
 const getPbayServers = () => {
   try {
     const raw = localStorage.getItem(PBAY_KEY);
-    if (!raw) {
-      // migrate legacy single-server key
-      const legacy = localStorage.getItem('melusina_pbay_server');
-      if (legacy) {
-        const srv = JSON.parse(legacy);
-        if (srv && srv.code) { localStorage.setItem(PBAY_KEY, JSON.stringify([srv])); localStorage.removeItem('melusina_pbay_server'); return [srv]; }
-      }
-      return [];
-    }
+    if (!raw) return [];
     return JSON.parse(raw) || [];
   } catch { return []; }
 };
@@ -130,6 +122,10 @@ const addPrivateServer = (url) => {
 const removePrivateServer = (url) => {
   const list = getPrivateServers().filter((s) => s !== url);
   localStorage.setItem(PRIV_KEY, JSON.stringify(list));
+};
+const isPbayHost = (host) => {
+  const domain = sanitizeHost(host).replace(/^https?:\/\//i, '').toLowerCase();
+  return PBAY_SERVERS.find((s) => domain === s.domain || domain.endsWith('.' + s.domain));
 };
 
 /* ─── Get Melusina Modal ───────────────────────────────────────────────────────── */
@@ -204,7 +200,7 @@ function GetMelusinaModal({ onClose }) {
               <li>Automatic updates and backups</li>
               <li>Export your Pearls anytime — no lock-in</li>
             </ul>
-            <a href="https://pbay.app" target="_blank" rel="noreferrer" style={{
+            <a href="https://pbay.app" target="_blank" rel="noopener noreferrer" style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: '14px 20px', marginTop: 18,
               background: `linear-gradient(135deg, ${T.cyan}18, ${T.magenta}12)`,
@@ -251,7 +247,7 @@ function GetMelusinaModal({ onClose }) {
               <li>No third-party dependencies</li>
               <li>Community and commercial support available</li>
             </ul>
-            <a href="https://melusina-os.org/install" target="_blank" rel="noreferrer" style={{
+            <a href="https://melusina-os.org/install" target="_blank" rel="noopener noreferrer" style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: '14px 20px', marginTop: 18,
               background: `linear-gradient(135deg, ${T.magenta}18, ${T.purple}12)`,
@@ -420,7 +416,8 @@ function InstallModal({ app, onClose }) {
       return;
     }
     const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
-    window.open(`${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`, '_blank');
+    const opened = window.open(`${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`, '_blank', 'noopener,noreferrer');
+    if (opened) opened.opener = null;
     onClose();
   }, [app, onClose]);
 
@@ -1324,7 +1321,7 @@ function SimpleMarkdown({ text }) {
         parts.push(<code key={k++}>{m[1]}</code>);
         rest = rest.slice(m[0].length);
       } else if ((m = rest.match(/^\[(.+?)\]\((.+?)\)/))) {
-        parts.push(<a key={k++} href={m[2]} target="_blank" rel="noreferrer">{m[1]}</a>);
+        parts.push(<a key={k++} href={m[2]} target="_blank" rel="noopener noreferrer">{m[1]}</a>);
         rest = rest.slice(m[0].length);
       } else {
         const nx = rest.slice(1).search(/!\[|\*\*|`|\[/);
@@ -1645,7 +1642,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       {app.author?.name || "—"}
       {app.author?.githubUsername && (
         <a href={`https://github.com/${app.author.githubUsername}`} target="_blank"
-          rel="noreferrer" style={{ marginLeft: 8, fontSize: 11 }}>
+          rel="noopener noreferrer" style={{ marginLeft: 8, fontSize: 11 }}>
           @{app.author.githubUsername}
         </a>
       )}
@@ -1868,7 +1865,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               all Pearls that need them. Individual apps don{"'"}t install or control sidecars — the
               server admin provisions them once.
             </div>
-            <a href="https://melusina-os.org/docs/grapple" target="_blank" rel="noreferrer"
+            <a href="https://melusina-os.org/docs/grapple" target="_blank" rel="noopener noreferrer"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
                 fontSize: 12, color: T.cyan, textDecoration: "none",
@@ -2006,7 +2003,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                       {sc.links && sc.links.length > 0 && (
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
                           {sc.links.map((lnk, j) => (
-                            <a key={j} href={lnk.url} target="_blank" rel="noreferrer" style={{
+                            <a key={j} href={lnk.url} target="_blank" rel="noopener noreferrer" style={{
                               fontSize: 11, color: T.cyan, textDecoration: 'none',
                               fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
                               transition: 'all .2s',
@@ -2032,7 +2029,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               }}>SUPPORTED BACKENDS — {sc.name.toUpperCase()}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
                 {sc.options.map((opt, j) => (
-                  <a key={j} href={opt.url} target="_blank" rel="noreferrer" style={{
+                  <a key={j} href={opt.url} target="_blank" rel="noopener noreferrer" style={{
                     padding: 14, background: T.bg + 'cc', borderRadius: T.radiusSm,
                     border: `1px solid ${T.border}`, textDecoration: 'none',
                     transition: 'all .2s',
@@ -2223,9 +2220,9 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               {aiAudit.links && Object.keys(aiAudit.links).length > 0 && (
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", alignSelf: 'center' }}>View conversation:</span>
-                  {aiAudit.links.chatgpt && <a href={aiAudit.links.chatgpt} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.green, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.green}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.green + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>ChatGPT ↗</a>}
-                  {aiAudit.links.claude && <a href={aiAudit.links.claude} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.peach, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.peach}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.peach + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Claude ↗</a>}
-                  {aiAudit.links.gemini && <a href={aiAudit.links.gemini} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: T.purple, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.purple}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.purple + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Gemini ↗</a>}
+                  {aiAudit.links.chatgpt && <a href={aiAudit.links.chatgpt} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.green, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.green}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.green + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>ChatGPT ↗</a>}
+                  {aiAudit.links.claude && <a href={aiAudit.links.claude} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.peach, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.peach}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.peach + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Claude ↗</a>}
+                  {aiAudit.links.gemini && <a href={aiAudit.links.gemini} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.purple, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.purple}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.purple + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Gemini ↗</a>}
                 </div>
               )}
             </>
@@ -2268,7 +2265,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                 <div style={{ padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec }}>{latestHuman.summary}</div>
                   {latestHuman.reportUrl && latestHuman.reportUrl !== '#' && (
-                    <a href={latestHuman.reportUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '4px 12px', border: `1px solid ${T.yellow}33`, borderRadius: 3 }}>View Full Report ↗</a>
+                    <a href={latestHuman.reportUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '4px 12px', border: `1px solid ${T.yellow}33`, borderRadius: 3 }}>View Full Report ↗</a>
                   )}
                 </div>
               </div>
@@ -2525,7 +2522,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               }}
             ><span style={{ fontSize: 16 }}>↓</span> INSTALL</button>
           {app.webLink && (
-            <a href={app.webLink} target="_blank" rel="noreferrer" style={{
+            <a href={app.webLink} target="_blank" rel="noopener noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "14px 24px", background: T.surface,
               border: `1px solid ${T.border}`, color: T.textSec,
@@ -2546,7 +2543,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             >WEBSITE ↗</a>
           )}
           {app.codeLink && (
-            <a href={app.codeLink} target="_blank" rel="noreferrer" style={{
+            <a href={app.codeLink} target="_blank" rel="noopener noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "14px 24px", background: T.surface,
               border: `1px solid ${T.border}`, color: T.textSec,
@@ -2567,7 +2564,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             >SOURCE ↗</a>
           )}
           {githubUrl && (
-            <a href={githubUrl + '#readme'} target="_blank" rel="noreferrer" style={{
+            <a href={githubUrl + '#readme'} target="_blank" rel="noopener noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "14px 24px", background: T.surface,
               border: `1px solid ${T.border}`, color: T.textSec,
@@ -2717,7 +2714,6 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const hostRef = React.useRef(localStorage.getItem("melusinaHost") || "");
   const [installModalApp, setInstallModalApp] = useState(null);
   const [showGetMelusina, setShowGetMelusina] = useState(false);
 
@@ -2728,7 +2724,7 @@ function App() {
 
 
 
-  /* ─── ?host= URL parameter: auto-register server on open ─── */
+  /* ─── ?host= URL parameter: register server on open ─── */
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -2737,17 +2733,14 @@ function App() {
       const h = sanitizeHost(hostParam);
       if (!h) return;
 
-      // Check if it matches a known pbay server
-      const domain = h.replace(/^https?:\/\//i, '').toLowerCase();
-      const pbayMatch = PBAY_SERVERS.find((s) => domain === s.domain || domain.endsWith('.' + s.domain));
+      const pbayMatch = isPbayHost(h);
       if (pbayMatch) {
         setPbayServer(pbayMatch);
       } else {
+        const ok = window.confirm(`Add private Melusina server ${h}?`);
+        if (!ok) return;
         addPrivateServer(h);
       }
-
-      localStorage.setItem("melusinaHost", h);
-      hostRef.current = h;
 
       // Clean the URL without reloading
       const url = new URL(window.location);

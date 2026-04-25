@@ -18,10 +18,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Set explicit TMPDIR for reproducibility — /tmp full was a silent failure mode
-export TMPDIR="${TMPDIR:-$SCRIPT_DIR/.build-tmp}"
-mkdir -p "$TMPDIR"
-
 # --- Configuration -----------------------------------------------------------
 PACKAGES_DIR="packages"
 OUTPUT_DIR="dist-publish"
@@ -64,6 +60,15 @@ for arg in "$@"; do
   esac
 done
 
+# Set explicit TMPDIR for reproducibility. Dry runs use the system temp area so
+# validation does not create repo-local artifacts.
+if $DRY_RUN; then
+  export TMPDIR="${TMPDIR:-/tmp}"
+else
+  export TMPDIR="${TMPDIR:-$SCRIPT_DIR/.build-tmp}"
+  mkdir -p "$TMPDIR"
+fi
+
 # --- Colors -------------------------------------------------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -77,7 +82,9 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
 
 # --- Step 0: Refresh submodules -----------------------------------------------
-if $NO_REFRESH; then
+if $DRY_RUN; then
+  info "Dry run: skipping submodule refresh and staging"
+elif $NO_REFRESH; then
   info "Skipping submodule refresh (--no-refresh)"
   # Still init any missing submodules (cheap if already present)
   git submodule update --init 2>/dev/null || true
@@ -129,12 +136,48 @@ fi
 info "Scanning $PACKAGES_DIR/ for app bundles..."
 
 REQUIRED_FIELDS=(appId name version versionNumber packageId shortDescription categories isOpenSource webLink codeLink upstreamAuthor createdAt)
-REQUIRED_AUTHOR_FIELDS=(name)
 
 TOTAL=0
 VALID=0
 ERRORS=0
 APPS_JSON_ENTRIES=""
+
+json_field() {
+  python3 - "$1" "$2" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+
+value = data.get(sys.argv[2], "")
+if isinstance(value, str):
+    print(value)
+PY
+}
+
+validate_catalog_ids() {
+  local meta_file="$1"
+  local app_dir="$2"
+  local errors=0
+  local app_id
+  local pkg_id
+
+  app_id="$(json_field "$meta_file" appId || true)"
+  pkg_id="$(json_field "$meta_file" packageId || true)"
+
+  if [[ ! "$app_id" =~ ^[a-z0-9]{52}$ ]]; then
+    fail "$app_dir: appId must be exactly 52 lowercase base32 characters"
+    ((errors++)) || true
+  fi
+
+  if [[ ! "$pkg_id" =~ ^[0-9a-f]{32}$ ]]; then
+    fail "$app_dir: packageId must be exactly 32 lowercase hex characters"
+    ((errors++)) || true
+  fi
+
+  return "$errors"
+}
 
 validate_release_attestation() {
   local meta_file="$1"
@@ -218,6 +261,11 @@ PY
     return 0
   fi
 
+  if $DRY_RUN; then
+    warn "$app_dir: dry run, skipped on-chain ReleaseEntry lookup"
+    return 0
+  fi
+
   local verify_tool="${MELUSINA_RELEASE_VERIFY_TOOL:-${PEARL_TOOL:-melusina-pearl-tool}}"
   if ! command -v "$verify_tool" >/dev/null 2>&1; then
     fail "$app_dir: $verify_tool not found; cannot verify RELEASE.json against on-chain ReleaseEntry"
@@ -275,6 +323,10 @@ for f in ['name']:
     ((errors++)) || true
   fi
 
+  if ! validate_catalog_ids "$meta_file" "$app_dir"; then
+    ((errors++)) || true
+  fi
+
   # Check icon exists
   local has_icon=false
   [[ -f "$app_dir/icon.svg" ]] && has_icon=true
@@ -310,8 +362,13 @@ for f in ['name']:
 #            ^^^^^^^^^ ^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^^^^
 #            pkg_dir   dev     repo/submod  app folder
 if [[ ! -d "$PACKAGES_DIR" ]]; then
-  warn "No $PACKAGES_DIR/ directory found. Creating it."
-  mkdir -p "$PACKAGES_DIR"
+  if $DRY_RUN; then
+    fail "No $PACKAGES_DIR/ directory found."
+    exit 1
+  else
+    warn "No $PACKAGES_DIR/ directory found. Creating it."
+    mkdir -p "$PACKAGES_DIR"
+  fi
 fi
 
 # Collect all app entries as JSON lines (one per line) in a temp file
@@ -365,12 +422,16 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       fi
 
       # Build the JSON entry, injecting the computed imageId and ReleaseEntry summary
-      json_entry="$(python3 -c "
-import json, os, sys
+      json_entry="$(python3 - "$meta_file" "$image_id" "$MAX_SPK_SIZE" "$RELEASES_BASE" <<'PY'
+import json
+import os
+import sys
 
-with open('$meta_file') as f:
+meta_file, image_id, max_spk_size, releases_base = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+
+with open(meta_file) as f:
     m = json.load(f)
-with open(os.path.join(os.path.dirname('$meta_file'), 'RELEASE.json')) as f:
+with open(os.path.join(os.path.dirname(meta_file), 'RELEASE.json')) as f:
     release = json.load(f)
 
 # Ensure author has current subfields. Legacy profile handles are intentionally dropped.
@@ -385,7 +446,7 @@ if not isinstance(m.get('categories'), list):
     m['categories'] = []
 
 # Set imageId from icon hash
-m['imageId'] = '$image_id'
+m['imageId'] = image_id
 
 # Ensure createdAt is an int
 if isinstance(m.get('createdAt'), float):
@@ -407,21 +468,21 @@ m['attest'] = {
 
 # Pass through description (optional long-form text)
 # If description.md exists alongside metadata.json, use it as fallback
-# For large SPKs (>$MAX_SPK_SIZE), point to GitHub Releases instead of Pages
-spk_path = os.path.join(os.path.dirname('$meta_file'), 'app.spk')
-if os.path.isfile(spk_path) and os.path.getsize(spk_path) > $MAX_SPK_SIZE:
-    m['packageUrl'] = '$RELEASES_BASE/' + m.get('packageId', '')
+# For large SPKs, point to GitHub Releases instead of Pages
+spk_path = os.path.join(os.path.dirname(meta_file), 'app.spk')
+if os.path.isfile(spk_path) and os.path.getsize(spk_path) > max_spk_size:
+    m['packageUrl'] = releases_base + '/' + m.get('packageId', '')
 
 m.setdefault('description', '')
 if not m['description']:
-    desc_md = os.path.join(os.path.dirname('$meta_file'), 'description.md')
+    desc_md = os.path.join(os.path.dirname(meta_file), 'description.md')
     if os.path.isfile(desc_md):
         m['description'] = open(desc_md).read().strip()
 
 # Screenshots: pass through from metadata, or auto-discover from screenshots/ dir
 # Supports both {url, caption} objects and plain filename strings
 if 'screenshots' not in m or not m['screenshots']:
-    ss_dir = os.path.join(os.path.dirname('$meta_file'), 'screenshots')
+    ss_dir = os.path.join(os.path.dirname(meta_file), 'screenshots')
     if os.path.isdir(ss_dir):
         shots = sorted([f for f in os.listdir(ss_dir) if f.lower().endswith(('.png','.jpg','.jpeg','.gif','.webp'))])
         m['screenshots'] = [{'url': 'screenshots/' + f, 'caption': ''} for f in shots]
@@ -438,7 +499,8 @@ else:
     m['screenshots'] = norm
 
 print(json.dumps(m, separators=(',', ':')))
-")"
+PY
+)"
 
       echo "$json_entry" >> "$APP_JSON_FILE"
       else
@@ -471,11 +533,12 @@ if ! $AGGREGATE_ONLY; then
   info "Generating src/apps.json from submodule metadata..."
 
   # Build the apps.json that Vite will bundle
-  python3 -c "
+  python3 - "$APP_JSON_FILE" <<'PY'
 import json
+import sys
 
 apps = []
-with open('$APP_JSON_FILE') as f:
+with open(sys.argv[1]) as f:
     for line in f:
         line = line.strip()
         if line:
@@ -487,7 +550,7 @@ with open('src/apps.json', 'w') as f:
     json.dump({'apps': apps}, f, indent=2)
 
 print(f'  Wrote {len(apps)} apps to src/apps.json')
-"
+PY
 
   info "Running Vite build..."
   npm install --silent
@@ -557,7 +620,7 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
 
       # Copy SPK (named by packageId for installer compatibility)
       if [[ -f "$app_dir/app.spk" ]]; then
-        pkg_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['packageId'])")"
+        pkg_id="$(json_field "$meta_file" packageId)"
         spk_size=$(stat -c%s "$app_dir/app.spk")
         if [[ $spk_size -gt $MAX_SPK_SIZE ]]; then
           warn "$app_dir/app.spk is $(( spk_size / 1024 / 1024 ))MB — uploading to GitHub Releases"
@@ -584,7 +647,7 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
 
       # Copy screenshots (named by appId directory)
       if [[ -d "$app_dir/screenshots" ]]; then
-        app_id="$(python3 -c "import json; print(json.load(open('$meta_file'))['appId'])")"
+        app_id="$(json_field "$meta_file" appId)"
         mkdir -p "$OUTPUT_DIR/screenshots/$app_id"
         for shot in "$app_dir"/screenshots/*.{png,jpg,jpeg,gif,webp}; do
           [[ -f "$shot" ]] && cp "$shot" "$OUTPUT_DIR/screenshots/$app_id/"
@@ -594,7 +657,7 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       # Copy metadata.json for catalog transparency and RELEASE.json for the
       # ReleaseEntry-backed trust kernel. Detached metadata signatures are not a
       # Melusina trust root and are not copied.
-      app_id_sig="$(python3 -c "import json; print(json.load(open('$meta_file'))['appId'])")"
+      app_id_sig="$(json_field "$meta_file" appId)"
       mkdir -p "$OUTPUT_DIR/signatures/$app_id_sig"
       cp "$meta_file" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json"
       mkdir -p "$ATTEST_OUT/$app_id_sig"
@@ -608,11 +671,12 @@ info "Copied $ICON_COUNT icons, $SPK_COUNT SPK packages"
 # --- Step 5: Write apps/index.json -------------------------------------------
 info "Writing $APPS_OUT/index.json..."
 
-python3 -c "
+python3 - "$APP_JSON_FILE" "$APPS_OUT/index.json" <<'PY'
 import json
+import sys
 
 apps = []
-with open('$APP_JSON_FILE') as f:
+with open(sys.argv[1]) as f:
     for line in f:
         line = line.strip()
         if line:
@@ -620,11 +684,11 @@ with open('$APP_JSON_FILE') as f:
 
 apps.sort(key=lambda a: a.get('name', '').lower())
 
-with open('$APPS_OUT/index.json', 'w') as f:
+with open(sys.argv[2], 'w') as f:
     json.dump({'apps': apps}, f, indent=2)
 
-print(f'  Wrote {len(apps)} apps to $APPS_OUT/index.json')
-"
+print(f'  Wrote {len(apps)} apps to {sys.argv[2]}')
+PY
 
 # --- Step 6: Package Melusina binary update ----------------------------------
 info "Packaging Melusina binary update..."

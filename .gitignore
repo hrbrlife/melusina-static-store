@@ -4,6 +4,7 @@ dist-publish/
 dist-melusina/
 .staging-tmp/
 .build-tmp/
+.claude/
 sandstorm-*.tar.xz
 *.log
 nohup.out

@@ -59,18 +59,9 @@ Done. The store picks up the new version automatically.
 
 ## App repos
 
-Each app is a git submodule under `packages/hrbrlife/`, tracking the `publish` branch:
+Each app is a git submodule under `packages/hrbrlife/`, tracking that repo's `publish` branch. Inspect `.gitmodules` for the live list of registered submodules; see [`PUBLISH_READINESS.md`](PUBLISH_READINESS.md) for the per-app status matrix (currently 25 apps published, plus a few unregistered plain-tree paths the catalog tracks directly).
 
-| App | Repo | Slug |
-|-----|------|------|
-| BLOOM Identity | [hrbrlife/BLOOM_FINAL](https://github.com/hrbrlife/BLOOM_FINAL) | `bloom-identity` |
-| Bureau (CheeseSpread) | [hrbrlife/CHEESESPREAD](https://github.com/hrbrlife/CHEESESPREAD) | `bureau` |
-| Instasys Mail | [hrbrlife/INSTASYS_MAIL](https://github.com/hrbrlife/INSTASYS_MAIL) | `instasys-mail` |
-| BotMother | [hrbrlife/MELUSINA_BOTMOTHER](https://github.com/hrbrlife/MELUSINA_BOTMOTHER) | `botmother` |
-| MiniGit | [hrbrlife/MiniGit](https://github.com/hrbrlife/MiniGit) | `minigit` |
-| Shell Tester | [hrbrlife/shell_tester](https://github.com/hrbrlife/shell_tester) | `shell-tester` |
-
-Each app's `publish` branch contains: `{slug}/app.spk`, `{slug}/metadata.json`, `{slug}/RELEASE.json`, `{slug}/icon.svg`, and `README.md`. `RELEASE.json` is mandatory: the store validates it against the on-chain `ReleaseEntry` before publishing.
+Each app's `publish` branch contains the slug-shaped tree `{slug}/app.spk`, `{slug}/metadata.json`, `{slug}/RELEASE.json`, `{slug}/icon.svg` (or `.png`), `{slug}/description.md`, `{slug}/screenshots/`. `RELEASE.json` is mandatory and the only trust root: the store validates it against the on-chain Solana `ReleaseEntry` via `melusina-pearl-tool verify-release` before publishing. Legacy detached PGP signatures (`metadata.json.asc`) are explicitly rejected at `build-store.sh:352` — zero PGP surface anywhere in pack/publish post-Janeway 2026-04-23.
 
 ---
 
@@ -92,30 +83,45 @@ The file `update/sandstorm-0.tar.xz` is the Melusina server binary. It gets depl
 
 ---
 
+## Publish env vars
+
+The build resolves a few external dependencies via env vars. Set what's relevant for your host.
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `MELUSINA_RELEASE_VERIFY_TOOL` / `PEARL_TOOL` | `melusina-pearl-tool` (PATH) | Path to the `melusina-pearl-tool` binary used by `validate_release_attestation` to verify each `RELEASE.json` against its on-chain `ReleaseEntry`. Build fails hard if the tool is missing and verification is not skipped. |
+| `MELUSINA_ATTEST_OFFLINE` | unset | Set to `1` to skip the on-chain RPC lookup (still enforces the local `RELEASE.json` schema + finalization fields). Use on air-gapped publishers or when a public RPC is unavailable. |
+| `MELUSINA_SKIP_BUNDLE_UPDATE` | unset | Set to `1` to skip the entire Sandstorm bundle-update block (catalog ships, no `update/sandstorm-N.tar.xz.update-sig` produced). Required when the publisher does not have access to the bundle-update keyring (`$SANDSTORM_SRC/keys/melusina-update-keyring`); default is fail-hard so an unsigned bundle never ships. |
+
+## Trust model
+
+Every app in this catalog is gated by a Solana on-chain `ReleaseEntry` and a Squads-multisig signature. There are no PGP keys, no detached metadata signatures, no out-of-band approvals. End-user verification recipe is documented at [`verifier/index.html`](verifier/index.html) (deployed to `https://hrbrlife.github.io/melusina-static-store/verifier/`); the per-app published `attest` block in `apps.json` carries everything needed to re-check the chain independently of trusting this static site.
+
+---
+
 ## Repo structure
 
 ```
 static_store/
-├── Makefile              # make publish — does everything
-├── build-store.sh        # Validates RELEASE.json + ReleaseEntry, builds frontend, assembles dist-publish/
+├── Makefile               # make publish — refresh + build + commit + deploy
+├── build-store.sh         # Validates RELEASE.json against on-chain ReleaseEntry, builds frontend, assembles dist-publish/
+├── PUBLISH_QC.md          # Per-app publish QC checklist
+├── PUBLISH_READINESS.md   # Per-app current status matrix + submodule registration scope
 ├── src/
-│   ├── main.jsx          # Store frontend (React)
-│   └── apps.json         # Generated app index (do not edit — built by build-store.sh)
-├── packages/hrbrlife/    # App submodules (publish branches)
-│   ├── BLOOM_FINAL/
-│   ├── CHEESESPREAD/
-│   ├── INSTASYS_MAIL/
-│   ├── MELUSINA_BOTMOTHER/
-│   ├── MiniGit/
-│   └── shell_tester/
+│   ├── main.jsx           # Store frontend (React)
+│   └── apps.json          # Generated app index (do not edit — built by build-store.sh)
+├── packages/hrbrlife/     # App submodules (publish branches) + a few plain-tree paths
+│   └── ... (25 apps, see PUBLISH_READINESS.md)
 ├── update/
-│   └── sandstorm-0.tar.xz   # server binary (do not touch)
+│   └── sandstorm-0.tar.xz # server binary (do not touch — see "Publish env vars" below)
 ├── verifier/
-│   └── index.html        # SPK verification page
-└── dist-publish/         # Build output (deployed to publish branch)
-    ├── apps/             # Generated catalog index
-    ├── attest/           # Published RELEASE.json manifests by appId
-    └── packages/         # SPKs keyed by packageId
+│   └── index.html         # Independent-verifier doc page (Solana ReleaseEntry trust model + CLI recipe)
+└── dist-publish/          # Build output (deployed to publish branch)
+    ├── apps/              # Generated catalog index
+    ├── attest/            # Per-app RELEASE.json manifests by appId
+    ├── signatures/        # Per-app metadata.json copies for re-validation
+    ├── verifier/          # Static verifier page
+    └── packages/          # SPKs keyed by packageId
 ```
 
 ## Branches

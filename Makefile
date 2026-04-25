@@ -18,7 +18,7 @@ OUTPUT_DIR     := dist-publish
 MAX_FILE_SIZE  := $$((95 * 1024 * 1024))
 CHUNK_SIZE     := 90M
 
-.PHONY: publish build clean dev refresh deploy
+.PHONY: publish build clean dev refresh deploy preflight
 
 # --- refresh: pull latest submodule commits -----------------------------------
 refresh:
@@ -59,8 +59,15 @@ build:
 	@test -d "$(OUTPUT_DIR)" || { echo "Build failed — no $(OUTPUT_DIR)/"; exit 1; }
 	@echo "=== Build complete ==="
 
+# --- preflight: gate `make publish` against the 2026-04-25 regression mode ---
+# Runs scripts/preflight.sh (live-catalog diff + manifest cross-check + pre-push
+# announce). Exit 0 = safe to deploy. Exit 1 = abort. See POSTMORTEM.md.
+preflight:
+	@test -d "$(OUTPUT_DIR)" || { echo "No $(OUTPUT_DIR)/ — run 'make build' first"; exit 1; }
+	bash scripts/preflight.sh
+
 # --- deploy: push existing dist-publish/ to publish branch --------------------
-deploy:
+deploy: preflight
 	@test -d "$(OUTPUT_DIR)" || { echo "No $(OUTPUT_DIR)/ — run 'make build' first"; exit 1; }
 	@test -d .git || { echo "Not a git repo"; exit 1; }
 	@test "$$(git branch --show-current)" = "$(MAIN_BRANCH)" \
@@ -135,6 +142,17 @@ deploy:
 	GIT_DIR="$(CURDIR)/.git" git update-ref refs/heads/$(PUBLISH_BRANCH) "$$COMMIT"
 	rm -f "$$TINDEX"
 	unset GIT_INDEX_FILE
+	@# --- Tag the previous publish tip as publish-prev (cheap revert per POSTMORTEM follow-up #5) ---
+	@echo "=== Tag previous publish as publish-prev ==="
+	@PREV=$$(git rev-parse $(REMOTE)/$(PUBLISH_BRANCH) 2>/dev/null || echo ""); \
+	if [ -n "$$PREV" ]; then \
+		git tag -f publish-prev "$$PREV" >/dev/null 2>&1; \
+		git push -f $(REMOTE) refs/tags/publish-prev 2>/dev/null && \
+			echo "  publish-prev → $$PREV (cheap revert: git push -f $(REMOTE) publish-prev:$(PUBLISH_BRANCH))" || \
+			echo "  ⚠ publish-prev tag push failed (non-fatal; tag exists locally)"; \
+	else \
+		echo "  no previous $(REMOTE)/$(PUBLISH_BRANCH) — first publish, no rollback tag"; \
+	fi
 	git push $(REMOTE) $(PUBLISH_BRANCH) --force
 	rm -rf "$$STMP"
 	@echo "=== Done ==="

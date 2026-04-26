@@ -242,7 +242,7 @@
       "name": "cca.sh Config",
       "version": "0.0.1",
       "versionNumber": 1,
-      "shortDescription": "Admin grain for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
+      "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
         "Productivity",
         "Office"
@@ -377,7 +377,7 @@
       "name": "cca.sh Wholesale",
       "version": "0.2.0",
       "versionNumber": 2,
-      "shortDescription": "Institutional wholesale grain \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
+      "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
         "Office"

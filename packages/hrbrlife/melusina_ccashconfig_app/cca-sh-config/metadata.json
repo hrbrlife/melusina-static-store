@@ -4,7 +4,7 @@
   "name": "cca.sh Config",
   "version": "0.0.1",
   "versionNumber": 1,
-  "shortDescription": "Admin grain for cca.sh — controls procedure templates, hook allowlist, and per-install routing",
+  "shortDescription": "Admin Pearl for cca.sh — controls procedure templates, hook allowlist, and per-install routing",
   "categories": ["Productivity", "Office"],
   "isOpenSource": false,
   "webLink": "https://hrbr.life",

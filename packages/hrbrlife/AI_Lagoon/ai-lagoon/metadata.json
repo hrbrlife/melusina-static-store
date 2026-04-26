@@ -4,8 +4,8 @@
   "name": "AiLagoon",
   "version": "0.7.0",
   "versionNumber": 10,
-  "shortDescription": "AI model hub — Ollama, ChatGPT, OpenRouter, with shareable Grapple capabilities",
-  "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities — ai-text, ai-vision, ai-generic, and direct per-model access — to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Sandstorm HTTP-out permission, not per-grain capability hops. Built-in playground for testing models without leaving the pearl.",
+  "shortDescription": "AI model hub — aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
+  "description": "",
   "categories": [
     "Productivity"
   ],
@@ -19,7 +19,9 @@
     "githubUsername": "hrbrlife",
     "keybaseUsername": "",
     "twitterUsername": "",
-    "picture": ""
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
   },
   "screenshots": [
     {

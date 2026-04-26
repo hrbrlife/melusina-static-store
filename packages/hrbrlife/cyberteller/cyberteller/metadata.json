@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "versionNumber": 1,
   "packageId": "2c2ccccf802fa420d3b712b8d1272b91",
-  "shortDescription": "Multi-chain crypto payment processor",
+  "shortDescription": "Multi-chain crypto payment processor — invoicing + address generation + settlement.",
   "categories": [
     "Productivity"
   ],
@@ -18,7 +18,9 @@
     "githubUsername": "hrbrlife",
     "keybaseUsername": "",
     "twitterUsername": "",
-    "picture": ""
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
   },
   "description": "",
   "screenshots": [],

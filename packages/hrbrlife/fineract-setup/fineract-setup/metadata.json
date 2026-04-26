@@ -4,8 +4,8 @@
   "version": "0.2.0",
   "versionNumber": 2,
   "packageId": "b98fd88687c563149b391010169dbbe7",
-  "shortDescription": "Bootstrap wizard for fineract-sidecar",
-  "description": "**fineract Setup** is the Melusina companion wizard for `fineract-sidecar`. It provisions the attached Apache Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates: (1) the Go HTTPS sidecar and (2) the Java `SolanaSignatureAuthenticationFilter` inside Fineract. The wizard packages the cold-start work that has to happen before ccash can talk to a hardened Fineract install: tenant setup, offices, currencies, chart of accounts, savings products, signer registration, governance policy, and trust-bundle export.",
+  "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
+  "description": "",
   "categories": ["Productivity", "Office"],
   "isOpenSource": false,
   "webLink": "https://ccash.services",
@@ -17,7 +17,9 @@
     "githubUsername": "hrbrlife",
     "keybaseUsername": "",
     "twitterUsername": "",
-    "picture": ""
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
   },
   "license": "Proprietary — Internal development build",
   "screenshots": [],

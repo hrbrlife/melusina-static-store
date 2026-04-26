@@ -237,6 +237,96 @@
       }
     },
     {
+      "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
+      "packageId": "d0fd938fac00e99ed26bc6429a63c392",
+      "name": "cca.sh Config",
+      "version": "0.0.1",
+      "versionNumber": 1,
+      "shortDescription": "Admin grain for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_ccashconfig_app",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776988337309,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "d0fd938fac00e99ed26bc6429a63c392c2e6820c774e7cb1bd0a9b9200867f15",
+        "releaseHash": "4f6b06f564d3a023ce52e99849e3717ce0ea381de98e3d91aa29924a04dc4e0d",
+        "releaseNonce": "8c8973eaf4af3f66f826890a35bdab1baa73083ba7a5d61cdec5f70f0dd49cdb",
+        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "masterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "signedAtUnix": 1776988337,
+        "authorSig": "37978c0cf98db2492a51533820a9d02aa2bb05d6d7718a4bb8fc4456a3959edc",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
+        }
+      },
+      "description": "cca.sh Config is the admin Pearl for the cca.sh / popaye operator console. One install gets one Config Pearl; it owns the procedure-template registry, the hook allowlist, the cross-Pearl case index, and the routing policy that every cca.sh sibling Pearl claims via Grapple at boot. Operators never edit ccash code to change product behavior \u2014 they edit YAML templates served from this Pearl.\n\n## Why cca.sh Config\n\n- **Pinned procedure-template versions** \u2014 every YAML template the admin serves is hash-anchored to your Solana wallet at the moment a case starts. The case's evaluation against template-vN is tamper-evident, citable across Pearls via Grapple, and survives operator audits independent of who's running the install\n- **Hook allowlist as fail-closed boundary** \u2014 every typed event a procedure can fire is enumerated in a manifest the admin loads at boot; anything outside the allowlist is rejected at the Cap'n Proto boundary, not at a sidecar's discretion. No silent webhook spawn, no dynamic event routing\n- **One-install-one-license** \u2014 the admin Pearl is the per-license boundary; every cca.sh sibling Pearl in the install (popaye operator, client seat, org member) Grapple-claims this single offerable. Revocation, audit, and policy live in one place\n\n## Status\n\n*Pre-release v0.0.1.* Scaffold + welcome page. The Cap'n Proto AdminGate offerable lands at v0.1.0 alongside ccash kill-list M1; until then the procedure-runtime handshake from sibling Pearls is stubbed."
+    },
+    {
+      "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+      "packageId": "cbad3088eca43d64e12a5d10fcbaf84d",
+      "name": "cca.sh Domain Template",
+      "version": "0.2.0",
+      "versionNumber": 2,
+      "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1745366400000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "cbad3088eca43d64e12a5d10fcbaf84dbb6568fd20c5c9119606e4b7d4aab67e",
+        "releaseHash": "618b36a27dd27274bbf84cea2c55f82701147cfb203e115405b5f32f8cb76ddb",
+        "releaseNonce": "0ced70fb95ce7d8282e380b815658d153b238483f3510bfd70a79c214946574a",
+        "releaseEntryPda": "offline-release-entry-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "masterNftMint": "offline-master-nft-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "licenseSquadsVault": "offline-license-vault-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "signedAtUnix": 1745366400,
+        "authorSig": "5a3d2a8f12c6429449cc1d1b85840eba2133ce923748fb2d835f686b4e8e3635",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-hck466e5ath1p4k4z1hhmd75ujjhs6z4"
+        }
+      },
+      "description": "cca.sh Domain Template is the configuration authority for the cca.sh / popaye constellation. It owns the per-domain pack \u2014 workflow definitions, account profiles, portal layouts, datasets, hook recipes, intake questionnaires, static assets \u2014 that runtime Pearls hydrate at boot via Grapple. Runtime Pearls start virgin; everything customer-shaped lives here, edited as YAML.\n\n## Why cca.sh Domain Template\n\n- **Pinned domain-pack snapshots** \u2014 every release of a domain pack is hash-anchored to your Solana wallet; consuming Pearls can verify they're running the exact pack version you signed off on, not a silent server-side mutation. Compliance and auditors get cryptographic provenance, not a database query\n- **Per-domain Pearl isolation** \u2014 one Template Pearl can serve many domains (ccash, openclaw, telescreen\u2026) but each domain pack is sealed; cross-domain reads are physically impossible. A KYC misconfiguration in one domain cannot leak procedure logic into another\n- **Editable in-place, no codegen** \u2014 operators edit YAML in the admin UI; the Template Pearl writes the changes to its sealed storage and signs the new version. No backend rebuild, no CI redeploy, no version-bump dance \u2014 change shows up in consuming Pearls on next handshake\n\n## Capabilities exposed\n\n- **TemplateService** \u2014 full enumerate/read surface across all domains served\n- **DomainSelection** \u2014 scoped to one domain\n- **StationTemplateSelection** \u2014 scoped to a (domain, stationProfile) pair\n\nAll three are durable (AppPersistent) and offered over Grapple.\n\n## Status\n\n*Pre-release v0.2.0.* Domain-pack authoring loop is live for the popaye whitelabel; multi-domain validation lands once a second whitelabel is authored without engine-side edits."
+    },
+    {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
       "packageId": "db77ecf42fdb5a208da78e5e453a97b4",
       "name": "cca.sh Org Member",
@@ -280,6 +370,51 @@
           "multisigPda": "test-multisig-858951cf32d5727b661ffa0213fdf370"
         }
       }
+    },
+    {
+      "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
+      "packageId": "1d4cda823c5baa6db0579fc3d774993d",
+      "name": "cca.sh Wholesale",
+      "version": "0.2.0",
+      "versionNumber": 2,
+      "shortDescription": "Institutional wholesale grain \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_wholesale",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1745366400000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "1d4cda823c5baa6db0579fc3d774993d04dad3bd7914c9f040ab26105300e30c",
+        "releaseHash": "0e11f845d451c24b7583a48f74fdce76bd7adddbb3ef9a5160438bd80c09e0e3",
+        "releaseNonce": "ee5ab1634c40008e89f1c8d71497d79be5dc4616f7964be190b3f4aa27907b05",
+        "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "masterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "signedAtUnix": 1745366400,
+        "authorSig": "20df76e346a02695fa3c906650894886579ed4c421363f85e42bbe4247964429",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3gd0393f45qrn3evmx4uf4kczvea61wp"
+        }
+      },
+      "description": "cca.sh Wholesale is the institutional Pearl of the cca.sh constellation. It owns the four correspondent relationships \u2014 SWIFT, SEPA, crypto-custodian, crypto-exchange \u2014 at the Fineract / sidecar boundary, and grants per-sub-account capabilities to whitelabel-partner operator Pearls (the popaye / cca.sh-Admin family) over Grapple. End-clients never see this Pearl directly; their operator sees it as a Grapple-grant of \"settle this envelope to that correspondent at this rate\".\n\n## Why cca.sh Wholesale\n\n- **Pinned settlement envelopes** \u2014 every settlement request is signed at draft time, pinned to the operator's Solana wallet at approval time, and recorded as an immutable, citable artifact. Disputes between wholesale and a whitelabel partner are resolved against the signed envelope, not a database row that either side could mutate\n- **Per-correspondent Grapple capability scoping** \u2014 a whitelabel partner's operator Pearl claims a sub-account capability scoped to one correspondent + one rate sheet. They cannot see other partners' correspondents; they cannot escalate to the wholesale-admin role; they cannot enumerate the full correspondent topology. Capability surface is enforced at the Cap'n Proto boundary, not at a SaaS endpoint\n- **Operator-accountability through wallet signatures** \u2014 every wholesale-admin action (correspondent CRUD, rate-sheet edit, sub-account grant) is non-repudiable; the wholesale operator's Solana wallet signs the change. The audit log is provably theirs, not a vendor-database table they can claim was tampered with\n\n## Topology\n\n```\nG-ccash Wholesale (this Pearl) \u2500\u2500\u2500 grants sub-account caps \u2500\u2500\u25b6 G-organization (whitelabel partner)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   \u25bc\nfinreact-sidecar                                                  G-popaye (operator console)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   drafts sends\nFineract GL                                                       emits envelopes\n```\n\n## Status\n\n*Pre-release v0.2.0.* The institutional correspondent surface and sub-account grant flow are scaffolded; first end-to-end SWIFT settlement against the live finreact-sidecar lands in v0.3."
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
@@ -1185,6 +1320,51 @@
         }
       },
       "description": "Sheets Bureau is the spreadsheet pearl of the Melusina Bureau office suite. Formulas, real-time multi-user editing, XLSX import/export, and a full toolkit for collaborative spreadsheets \u2014 entirely on your server.\n\n## Why Sheets\n\n- **Pinned spreadsheet snapshots** \u2014 cryptographically anchor any spreadsheet snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready\n- **Grapple-scoped AI access** \u2014 connect to AI Lagoon; AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation; AI sees only the cells you grant\n- **XLSX export with full fidelity** \u2014 styles, column widths, formulas, formatting preserved; no lock-in\n\n## Features\n\n- **Real-time collaboration** \u2014 unlimited simultaneous editors; conflict-free CRDT sync; live presence indicators\n- **Formulas** \u2014 A1 references, formula bar, cross-cell calculations\n- **Formatting** \u2014 fonts, colors, bold, italic, borders, alignment, fill, text wrap\n- **Worksheets** \u2014 multiple tabs with rename, reorder, add, delete\n- **Structure** \u2014 merge cells, freeze rows/columns, hide columns, multi-level sort\n- **Comments** \u2014 per-cell threads with author attribution\n- **Import** \u2014 XLSX (preserves styles), CSV, JSON\n- **Per-spreadsheet Pearl** \u2014 each spreadsheet is a sealed container; share by Pearl, not org-wide\n- **Offline-capable** \u2014 all assets bundled\n\n## Suite integration\n\nSheets Bureau speaks Grapple to the suite \u2014 link a diagram to a budget sheet, reference a cost table in a doc, embed a sheet in a CanBoard card, attach to a calendar agenda.\n\n## Status\n\n*Shipped v1.0.7.* Spreadsheets with formulas, XLSX import/export, real-time multi-user editing, Solana-pinned snapshots."
+    },
+    {
+      "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
+      "packageId": "964677265bd9175dbdac63694954d957",
+      "name": "TeleScreen",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar \u2014 signed configuration, grant validation",
+      "categories": [
+        "Productivity",
+        "Developer Tools"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/pr_ninja",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776300000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "MIT",
+      "imageId": "a985809e5d71f4992bbe95df5d938661.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "964677265bd9175dbdac63694954d957ec0bc6d6faa9c8aa481ad0b7329f74e3",
+        "releaseHash": "7bbed1110557f48d35bbe1c4e8e5fd9eeca179f43d5a87ff528239b4d0cd003e",
+        "releaseNonce": "fb36b3a0e7a7f2faa59423ec710c07d463b6615aa5ac579bfbc09820b6e11813",
+        "releaseEntryPda": "offline-release-entry-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "masterNftMint": "offline-master-nft-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "licenseSquadsVault": "offline-license-vault-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "signedAtUnix": 1776300000,
+        "authorSig": "39ab9d7c210ed7bacb59270e9a108209856d1986b54b0ae44356cdcb1959b04e",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-w1wq63jy7jtuwhxmf0y36w8egmpyej0v"
+        }
+      },
+      "description": "TeleScreen is the screening Pearl of the Melusina ecosystem \u2014 sanctions lists, adverse-media checks, on-chain wallet risk, and PEP / AML compliance probes, all wrapped in a single Pearl with signed configuration, Grapple-scoped grants, and per-Pearl isolation. A complete install is three Pearls across two SPKs: a REST/JSON sidecar, an HTMX admin + member core Pearl (both in this SPK), plus the setup Pearl shipped as `telescreen-companion.spk` separately. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\n## Why TeleScreen\n\n- **Pinned screening-result snapshots** \u2014 every screening result (sanctions hit, adverse-media match, on-chain risk score) is pinned to the requesting Pearl's Solana wallet at the moment of issuance. Compliance teams later cite \"this counterparty was OFAC-clean as of date X per a wallet-rooted, tamper-evident attestation\" \u2014 not \"our SaaS vendor told us so once and we trust the dashboard\"\n- **Per-screening-config Pearl isolation** \u2014 each screening list (custom OFAC profile, internal blocklist, partner-specific PEP set) lives in its own sealed Pearl with signed configuration. A breach or misconfiguration in one list cannot leak into another; revoking access to one does not impact the others. Melusina-shipped permission isolation, not application-layer ACLs\n- **Grant-validated capability surface** \u2014 consuming Pearls (cca.sh, NamedCoin, Bureau apps doing client-onboarding) request screening via Grapple with scoped grants \u2014 \"ai-text\" / \"ai-vision\" / \"screening-sanctions\" / \"screening-adverse-media\". The grant is verified against the signed trust bundle at the Cap'n Proto boundary; bypass requires forging the bundle's cryptographic root, not sidecar credentials\n\n## Architecture\n\n- **REST/JSON sidecar** \u2014 sanctions + adverse-media + blockchain-risk APIs over signed gRPC\n- **HTMX admin + member core Pearl** \u2014 bundle authoring, list management, partner-trust editing\n- **Setup Pearl** (separate SPK: `telescreen-companion.spk`) \u2014 signs the trust bundle distributed to consumer Pearls\n\nDeployment is `spk dev` / `spk pack`. Docker / direct system service paths are out of scope for the polished MVP.\n\n## Status\n\n*Pre-release v0.1.1.* REST surface + sanctions screening live; adverse-media and on-chain wallet-risk integrations follow in v0.2."
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",

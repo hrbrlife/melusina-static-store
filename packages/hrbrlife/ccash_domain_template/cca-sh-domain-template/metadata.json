@@ -1,0 +1,25 @@
+{
+  "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+  "packageId": "cbad3088eca43d64e12a5d10fcbaf84d",
+  "name": "cca.sh Domain Template",
+  "version": "0.2.0",
+  "versionNumber": 2,
+  "shortDescription": "Domain configuration authority — workflow YAMLs, kanban vocabularies, hook manifests served per install",
+  "categories": ["Productivity", "Office"],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1745366400000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+}

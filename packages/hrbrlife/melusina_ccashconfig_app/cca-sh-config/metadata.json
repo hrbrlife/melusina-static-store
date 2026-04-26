@@ -1,0 +1,25 @@
+{
+  "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
+  "packageId": "d0fd938fac00e99ed26bc6429a63c392",
+  "name": "cca.sh Config",
+  "version": "0.0.1",
+  "versionNumber": 1,
+  "shortDescription": "Admin grain for cca.sh — controls procedure templates, hook allowlist, and per-install routing",
+  "categories": ["Productivity", "Office"],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_ccashconfig_app",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776988337309,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+}

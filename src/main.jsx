@@ -1111,35 +1111,6 @@ function AppCard({ app, onSelect, onInstall }) {
               <SimpleMarkdown text={app.shortDescription || app.summary} />
             </p>
           )}
-          {/* Price display */}
-          {(() => {
-            const pr = getAppPrice(app.appId);
-            const isFree = pr.price === 'FREE';
-            const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
-            const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
-            const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
-            const usd = solToUsd(pr.price);
-            const origUsd = solToUsd(pr.originalPrice || '');
-            return (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 18, fontWeight: 800, color: priceColor,
-                  fontFamily: "'Orbitron', sans-serif",
-                  textShadow: `0 0 8px ${priceGlow}`,
-                }}>{pr.price}</span>
-                {usd && <span style={{ fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
-                {pr.onSale && pr.originalPrice && (
-                  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
-                    <span style={{
-                      fontSize: 12, color: T.textDim, textDecoration: 'line-through',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}>{pr.originalPrice}</span>
-                    {origUsd && <span style={{ fontSize: 9, color: T.textDim + '99', textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{origUsd}</span>}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
         </div>
 
         <div style={{
@@ -1481,15 +1452,6 @@ If you modify the Program, your modified version must prominently offer all user
 
 Full license text: https://www.gnu.org/licenses/agpl-3.0.en.html`;
 
-const APP_FEES = { _platform: [] };
-
-/* ─── App Prices ───────────────────────────────────────────────────────────── */
-const APP_PRICES = {};
-
-function getAppPrice(appId) {
-  return APP_PRICES[appId] || { price: 'FREE' };
-}
-
 /* ─── Sidecars & Grapple Connections ───────────────────────────────────────── */
 //
 // As of capabilities-v1: every app ships a `capabilities` object on its
@@ -1579,16 +1541,6 @@ function getConnectivityBadges(appId) {
   return badges;
 }
 
-/* approximate SOL → USD (rough estimate; update as needed) */
-const SOL_USD_RATE = 145;
-function solToUsd(solStr) {
-  const m = solStr.match(/([\d.]+)\s*SOL/);
-  if (!m) return null;
-  const usd = parseFloat(m[1]) * SOL_USD_RATE;
-  if (usd === 0) return null;
-  return `≈ $${usd < 1 ? usd.toFixed(2) : usd.toFixed(0)} USD`;
-}
-
 function getAppFAQ(app) {
   const specific = (APP_FAQ[app.appId] || []).map((item, i) => i === 0 ? { ...item, featured: true } : item);
   const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl).map((item, i) => i === 0 ? { ...item, featured: true } : item);
@@ -1600,8 +1552,6 @@ function getAppFAQ(app) {
 
 function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   const faq = useMemo(() => getAppFAQ(app), [app]);
-  const appFees = APP_FEES[app.appId] || [];
-  const platformFees = APP_FEES._platform;
   const githubUrl = app.codeLink || '';
 
   const featuredFaqSet = useMemo(() => {
@@ -1669,90 +1619,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   /* ---- OVERVIEW TAB ---- */
   const OverviewTab = () => (
     <>
-      {/* ── Pricing Module ── */}
-      <div style={{ maxWidth: 780, marginBottom: 28 }}>
-        {/* App Price */}
-        <div style={{
-          padding: 28, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.green}33`, marginBottom: 20,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader color={T.green}>App Price</SectionHeader>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            {(() => {
-              const pr = getAppPrice(app.appId);
-              const isFree = pr.price === 'FREE';
-              const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
-              const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
-              const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
-              const usd = solToUsd(pr.price);
-              const origUsd = solToUsd(pr.originalPrice || '');
-              return (
-                <>
-                  <span style={{
-                    fontSize: 36, fontWeight: 900, color: priceColor,
-                    fontFamily: "'Orbitron', sans-serif",
-                    textShadow: `0 0 15px ${priceGlow}`,
-                  }}>{pr.price}</span>
-                  {usd && <span style={{ fontSize: 14, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
-                  {pr.onSale && pr.originalPrice && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{
-                        fontSize: 18, color: T.textDim, textDecoration: 'line-through',
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}>{pr.originalPrice}</span>
-                      {origUsd && <span style={{ fontSize: 12, color: T.textDim + '99', textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{origUsd}</span>}
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px',
-                        background: '#f5a623', color: '#1a1a2e',
-                        fontSize: 10, fontWeight: 800, borderRadius: 3,
-                        fontFamily: "'Orbitron', sans-serif",
-                        letterSpacing: '.06em',
-                        boxShadow: '0 2px 8px rgba(245,166,35,0.4)',
-                      }}>ON SALE</span>
-                    </div>
-                  )}
-                  {!isFree && !isZeroSol && (
-                    <span style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5, fontStyle: 'italic', fontFamily: "'JetBrains Mono', monospace", marginTop: 4, display: 'block' }}>
-                      SOL prices are approximate. Actual cost may vary with market rate.
-                    </span>
-                  )}
-                </>
-              );
-            })()}
-            <span style={{ fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
-              {platformFees?.selfHosted?.description}
-            </span>
-          </div>
-        </div>
-
-        {/* Third-Party API Fees */}
-        {appFees.length > 0 && (
-          <div style={{
-            padding: 24, background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.peach}33`, marginBottom: 20,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <SectionHeader color={T.peach}>Third-Party Services</SectionHeader>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {appFees.map((fee, i) => (
-                <div key={i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                  gap: 16, padding: "12px 16px",
-                  border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{fee.service}</div>
-                    <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{fee.note}</div>
-                  </div>
-                  <Badge neon={fee.cost === 'Free' ? T.green : T.peach}>{fee.cost}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ─── Capabilities Profile (single column, no inner tabs) ─── */}
       {(() => {
         const sc = getAppSidecars(app.appId);
@@ -2439,27 +2305,8 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
           )}
         </div>
 
-        {/* price + license row */}
+        {/* license row */}
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: 'center', marginBottom: 16 }}>
-          {(() => {
-            const pr = getAppPrice(app.appId);
-            const isFree = pr.price === 'FREE';
-            const isZeroSol = !isFree && pr.price.match(/^0(\.0*)?\s*SOL$/);
-            const priceColor = (isFree || isZeroSol) ? T.green : T.cyan;
-            const priceGlow = (isFree || isZeroSol) ? T.greenGlow : T.accentGlow;
-            const usd = solToUsd(pr.price);
-            return (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em', textTransform: 'uppercase' }}>Price</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: priceColor, fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 10px ${priceGlow}` }}>{pr.price}</span>
-                {usd && <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{usd}</span>}
-                {pr.onSale && pr.originalPrice && (
-                  <span style={{ fontSize: 12, color: T.textDim, textDecoration: 'line-through', fontFamily: "'JetBrains Mono', monospace" }}>{pr.originalPrice}</span>
-                )}
-              </div>
-            );
-          })()}
-          <span style={{ width: 1, height: 18, background: T.border }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em', textTransform: 'uppercase' }}>License</span>
             <button onClick={() => setTab('license')} style={{
@@ -2537,9 +2384,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, fontFamily: "'Orbitron', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{app.name}</div>
-            <div style={{ fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-              {(() => { const p = APP_PRICES[app.appId]; return p ? p.price : "FREE"; })()}
-            </div>
           </div>
           <button onClick={() => onInstall(app)} style={{
             display: "inline-flex", alignItems: "center", gap: 8,

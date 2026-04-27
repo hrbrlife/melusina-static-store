@@ -1,33 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "cyberteller",
   "appName": "CyberTeller",
+  "tier": "regular",
   "pearls": [
     {
       "pearlId": "cyberteller",
       "pearlName": "Wallet",
       "pearlType": "user-pearl",
       "purpose": "Personal Solana wallet Pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the Pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
-      "sidecars": [
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "required",
-          "label": "Grain Crypto Journal",
-          "purpose": "Wallet key material + transaction history persisted encrypted; envelope keyed to the user's master."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "required",
-          "label": "Grain Restore",
-          "purpose": "Portable wallet across machines without leaking the key."
-        },
-        {
-          "id": "IDENTITY_GATE",
-          "level": "required",
-          "label": "Identity Gate",
-          "purpose": "Every transaction signature is OTP-gated by the user's master keypair."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -75,6 +57,10 @@
           }
         ]
       },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -117,10 +103,8 @@
         "purpose": "",
         "endpoints": []
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "CyberTeller.Sign@1",
             "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
@@ -132,7 +116,7 @@
             "roleGate": "anyMember"
           }
         ],
-        "purpose": "Wallet capability for peer Pearls — Powerbox-claim only."
+        "http": []
       }
     }
   ]

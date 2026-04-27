@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "cca-sh-config",
   "appName": "cca.sh Config",
+  "tier": "admin",
   "companionApps": [
     "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
   ],
@@ -11,26 +12,7 @@
       "pearlName": "Configuration",
       "pearlType": "admin-pearl",
       "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Powerbox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Powerbox-claim only.",
-      "sidecars": [
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "required",
-          "label": "Grain Crypto Journal",
-          "purpose": "Policy state + admin journal persisted as encrypted SQLite."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "required",
-          "label": "Grain Restore",
-          "purpose": "Cross-machine move with sealed admin keys."
-        },
-        {
-          "id": "IDENTITY_GATE",
-          "level": "required",
-          "label": "Identity Gate",
-          "purpose": "Every policy mutation requires a Squads-multisig-rooted Ed25519 OTP."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -73,6 +55,23 @@
         "organizationOnly": [],
         "anyMember": []
       },
+      "authority": {
+        "requires": [
+          {
+            "bit": "appContractPair",
+            "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+          },
+          {
+            "bit": "contractWhitelistEdit",
+            "purpose": "TODO: review — needed to edit the contract whitelist used by ccash installs"
+          },
+          {
+            "bit": "installAdminEdit",
+            "purpose": "TODO: review — needed to push policy updates to operator installs"
+          }
+        ],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -109,10 +108,8 @@
         "purpose": "",
         "endpoints": []
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "ccash.AdminGate@1",
             "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
@@ -124,7 +121,7 @@
             "roleGate": "adminOnly"
           }
         ],
-        "purpose": "Powerbox-claim only; no public HTTP route."
+        "http": []
       }
     }
   ]

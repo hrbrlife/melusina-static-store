@@ -1,27 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "vintage",
   "appName": "Vintage Remote Desktop",
+  "tier": "regular",
   "pearls": [
     {
       "pearlId": "vintage",
       "pearlName": "Vintage Desktop",
       "pearlType": "user-pearl",
       "purpose": "Per-user vintage operating-system desktop Pearl — runs old-school environments inside a Pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the Pearl; outbound network is gated by the standard sidecars (none enabled by default — fully airgapped).",
-      "sidecars": [
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "stateless",
-          "label": "Grain Crypto Journal",
-          "purpose": "Vintage filesystem is its own format on disk; standard grain backup covers it."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "required",
-          "label": "Grain Restore",
-          "purpose": "Portable vintage desktop across machines."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [],
         "requests": []
@@ -40,6 +28,10 @@
             "purpose": "Standard interactive desktop session."
           }
         ]
+      },
+      "authority": {
+        "requires": [],
+        "grants": []
       },
       "blockchains": [
         {
@@ -68,17 +60,15 @@
         "purpose": "Airgapped by default; no outbound network from the vintage environment.",
         "endpoints": []
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "http",
-        "interfaces": [
+      "apis": {
+        "capnp": [],
+        "http": [
           {
             "name": "GET /",
             "purpose": "HTML/VNC desktop client",
             "roleGate": "anyMember"
           }
-        ],
-        "purpose": "Browser-based VNC-style desktop surface."
+        ]
       }
     }
   ]

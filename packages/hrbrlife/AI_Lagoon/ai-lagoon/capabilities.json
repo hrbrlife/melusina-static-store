@@ -1,39 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "ai-lagoon",
   "appName": "AiLagoon",
+  "tier": "regular",
   "pearls": [
     {
       "pearlId": "ai-lagoon",
       "pearlName": "AiLagoon",
       "pearlType": "user-pearl",
       "purpose": "AI model hub Pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The Pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
-      "sidecars": [
-        {
-          "id": "HTTP_COMPONENT",
-          "level": "required",
-          "label": "HTTP Component",
-          "purpose": "All provider traffic routes through this sidecar — one security boundary, one auditable egress point. Operators grant this once and revoke anytime."
-        },
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "required",
-          "label": "Grain Crypto Journal",
-          "purpose": "Provider credentials + transcripts persisted encrypted."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "required",
-          "label": "Grain Restore",
-          "purpose": "Portable hub state."
-        },
-        {
-          "id": "IDENTITY_GATE",
-          "level": "required",
-          "label": "Identity Gate",
-          "purpose": "Pinning a transcript / rotating a provider credential is gated by a wallet OTP."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -86,6 +62,10 @@
           }
         ]
       },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -117,10 +97,8 @@
           "(operator-configured Ollama host)"
         ]
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "AiLagoon.AiText@1",
             "purpose": "Generic text / chat completion — the consuming Pearl picks model class; this Pearl picks provider.",
@@ -137,7 +115,7 @@
             "roleGate": "anyMember"
           }
         ],
-        "purpose": "Inference surface for peer Pearls; all access is Grapple-scoped."
+        "http": []
       }
     }
   ]

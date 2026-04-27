@@ -1,27 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "cca-sh-domain-template",
   "appName": "cca.sh Domain Template",
+  "tier": "infrastructure",
   "pearls": [
     {
       "pearlId": "cca-sh-domain-template",
       "pearlName": "Domain Template",
-      "pearlType": "service",
+      "pearlType": "infrastructure-pearl",
       "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Powerbox-claim this Pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
-      "sidecars": [
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "stateless",
-          "label": "Grain Crypto Journal",
-          "purpose": "Templates are plain YAML on disk — no operator-private secrets to encrypt."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "stateless",
-          "label": "Grain Restore",
-          "purpose": "State is the YAML files on disk; restore = standard grain backup."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -57,6 +45,10 @@
           }
         ]
       },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -84,10 +76,8 @@
         "purpose": "",
         "endpoints": []
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "ccash.DomainTemplate@1",
             "purpose": "Read the canonical template — jurisdictions, station tree, default policies.",
@@ -99,7 +89,7 @@
             "roleGate": "anyMember"
           }
         ],
-        "purpose": "Template service for the ccash constellation."
+        "http": []
       }
     }
   ]

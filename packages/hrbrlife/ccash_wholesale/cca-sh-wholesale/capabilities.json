@@ -1,27 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "cca-sh-wholesale",
   "appName": "cca.sh Wholesale",
+  "tier": "admin",
   "pearls": [
     {
       "pearlId": "cca-sh-wholesale",
       "pearlName": "Wholesale Operator",
       "pearlType": "admin-pearl",
       "purpose": "Wholesale-tier operator console — manages a fleet of operator ccash installs (sub-accounts, correspondent ledger, revocation registry). Issues SubAccountCap capabilities to operator Pearls so they can settle through the wholesale ledger. Storage is plain JSON for the correspondent ledger (no operator-private secrets); identity is delegated to the wholesale Squads vault.",
-      "sidecars": [
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "stateless",
-          "label": "Grain Crypto Journal",
-          "purpose": "Correspondent ledger is plain JSON under DATA_DIR/correspondents.json — no per-user secrets."
-        },
-        {
-          "id": "GRAIN_RESTORE",
-          "level": "stateless",
-          "label": "Grain Restore",
-          "purpose": "Plain-file state; restore = standard grain backup."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -63,6 +51,10 @@
         "organizationOnly": [],
         "anyMember": []
       },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -99,10 +91,8 @@
         "purpose": "",
         "endpoints": []
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "ccash.WholesaleAdmin@1",
             "purpose": "Surface wholesale admin to a peer admin grain (manage operator allowlist, correspondent rules).",
@@ -114,7 +104,7 @@
             "roleGate": "anyMember"
           }
         ],
-        "purpose": "Wholesale admin + sub-account issuance."
+        "http": []
       }
     }
   ]

@@ -1648,7 +1648,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'faq', label: `FAQ (${faq.length})` },
-    { id: 'sidecars', label: '🪝 Grapple & Sidecars' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
 
@@ -1754,6 +1753,354 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         )}
       </div>
 
+      {/* ─── Capabilities Profile (single column, no inner tabs) ─── */}
+      {(() => {
+        const sc = getAppSidecars(app.appId);
+        const caps = sc.capabilities;
+        if (!caps || !Array.isArray(caps.pearls) || caps.pearls.length === 0) return null;
+
+        const A = app.attest || {};
+        const explorer = (addr) => `https://explorer.solana.com/address/${addr}?cluster=devnet`;
+
+        // Aggregate axes across all pearls.
+        const realSidecars = [];
+        const authorityBits = [];
+        let anyEncryption = false;
+        let anyHttpOut = false;
+        let anyApiCapnp = false;
+        let anyApiHttp = false;
+        let anyStaticPub = false;
+        const grappleRequests = [];
+        for (const p of caps.pearls) {
+          for (const s of (p.sidecars || []))    realSidecars.push(s);
+          for (const a of ((p.authority || {}).requires || [])) authorityBits.push(a);
+          if (p.encryption && p.encryption.supported) anyEncryption = true;
+          if (p.httpOut && p.httpOut.enabled)         anyHttpOut = true;
+          if (p.apis && (p.apis.capnp || []).length)  anyApiCapnp = true;
+          if (p.apis && (p.apis.http  || []).length)  anyApiHttp  = true;
+          if (p.staticPublishing && p.staticPublishing.enabled) anyStaticPub = true;
+          for (const r of ((p.grapple || {}).requests || [])) grappleRequests.push(r);
+        }
+
+        // Flatten capability surfaces to one row per offer/api.
+        const capRows = [];
+        const isMulti = caps.pearls.length > 1;
+        for (const p of caps.pearls) {
+          const tag = isMulti ? p.pearlName : null;
+          for (const c of ((p.apis || {}).capnp || [])) capRows.push({ kind: 'capnp', tag, ...c });
+          for (const h of ((p.apis || {}).http  || [])) capRows.push({ kind: 'http',  tag, ...h });
+          for (const o of ((p.grapple || {}).offers || [])) capRows.push({
+            kind: 'offer', tag, name: o.interface || o.name, purpose: o.purpose,
+            roleGate: 'anyMember',
+          });
+        }
+
+        const tierColors = {
+          admin:          { fg: T.magenta, label: 'Admin tier' },
+          regular:        { fg: T.cyan,    label: 'Regular tier' },
+          visitor:        { fg: T.green,   label: 'Visitor tier' },
+          infrastructure: { fg: T.yellow,  label: 'Infrastructure' },
+        };
+        const tier = tierColors[caps.tier] || tierColors.regular;
+
+        const roleColor = (role) => role === 'adminOnly' ? T.magenta
+          : role === 'organizationOnly' ? T.yellow
+          : role === 'anonymous' ? T.green
+          : T.cyan;
+        const roleLabel = (role) => role === 'adminOnly' ? 'admin'
+          : role === 'organizationOnly' ? 'org'
+          : role === 'anonymous' ? 'public'
+          : role === 'anyMember' ? 'member'
+          : '';
+
+        const Tile = ({ title, children }) => (
+          <div style={{
+            background: T.bg + 'cc', borderRadius: T.radiusSm,
+            border: `1px solid ${T.border}`, padding: 12, minHeight: 96,
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", marginBottom: 6 }}>{title}</div>
+            <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.5, flex: 1 }}>{children}</div>
+          </div>
+        );
+        const YesNo = ({ on, label }) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: on ? T.green : T.textDim, boxShadow: on ? `0 0 6px ${T.greenGlow}` : 'none' }} />
+            <span style={{ color: on ? T.text : T.textDim }}>{label}</span>
+          </div>
+        );
+
+        return (
+          <div style={{ marginBottom: 28 }}>
+            {/* hero row: tier + attestation chip */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 10, padding: '3px 10px', borderRadius: 3,
+                border: `1px solid ${tier.fg}66`, color: tier.fg,
+                fontFamily: "'JetBrains Mono', monospace",
+                textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700,
+              }}>{tier.label}</span>
+              {caps.pearls.map((p, i) => (
+                <span key={i} style={{
+                  fontSize: 10, padding: '3px 10px', borderRadius: 3,
+                  border: `1px solid ${T.border}`, color: T.textSec,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  textTransform: 'uppercase', letterSpacing: '.05em',
+                }}>{p.pearlType.replace('-pearl','')}: {p.pearlName}</span>
+              ))}
+              {A.releaseEntryPda && (
+                <a href={explorer(A.releaseEntryPda)} target="_blank" rel="noopener noreferrer" title={`Release seat ${A.releaseEntryPda}\nSigned ${A.signedAtUnix ? new Date(A.signedAtUnix*1000).toISOString().slice(0,19).replace('T',' ') + ' UTC' : '(no time)'}\nMaster NFT ${A.masterNftMint || ''}`} style={{
+                  fontSize: 10, padding: '3px 10px', borderRadius: 3,
+                  border: `1px solid ${T.green}66`, color: T.green, background: T.green + '11',
+                  fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none',
+                  letterSpacing: '.05em', display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.green, boxShadow: `0 0 6px ${T.greenGlow}` }} />
+                  on-chain · {A.releaseEntryPda.slice(0,4)}…{A.releaseEntryPda.slice(-4)}
+                </a>
+              )}
+              {caps.pearls[0].hostShell && (
+                <span style={{
+                  fontSize: 10, padding: '3px 10px', borderRadius: 3,
+                  border: `1px solid ${T.yellow}66`, color: T.yellow,
+                  fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.05em',
+                }}>hosted by {caps.pearls[0].hostShell.label}</span>
+              )}
+            </div>
+
+            {/* Security & Authority strip — 4 tiles */}
+            <SectionHeader color={T.cyan}>Security &amp; Authority</SectionHeader>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 22,
+            }}>
+              <Tile title="Sidecars">
+                {realSidecars.length === 0
+                  ? <span style={{ color: T.textDim }}>None — pearl runs without external host services.</span>
+                  : realSidecars.map((s, i) => (
+                      <div key={i} style={{ marginBottom: 4 }}>
+                        <code style={{ color: T.cyan, fontSize: 11 }}>{s.id}</code>
+                        {s.purpose && <div style={{ fontSize: 11, color: T.textDim }}>{s.purpose}</div>}
+                      </div>
+                    ))
+                }
+              </Tile>
+              <Tile title="Encryption">
+                {anyEncryption ? (
+                  <>
+                    <div style={{ color: T.green, fontWeight: 700 }}>✓ at rest</div>
+                    <div style={{ fontSize: 11, color: T.textDim, marginTop: 3 }}>
+                      {(caps.pearls.find(p => p.encryption && p.encryption.supported) || {}).encryption?.scheme || ''}
+                    </div>
+                  </>
+                ) : <span style={{ color: T.textDim }}>Not encrypted at rest — pearl holds no sensitive persistent state.</span>}
+              </Tile>
+              <Tile title="Authority required">
+                {authorityBits.length === 0
+                  ? <span style={{ color: T.textDim }}>None — no license-level permission bits required.</span>
+                  : (
+                    <>
+                      <div style={{ color: T.magenta, fontWeight: 700, marginBottom: 4 }}>{authorityBits.length} bit{authorityBits.length > 1 ? 's' : ''}</div>
+                      {authorityBits.slice(0, 3).map((a, i) => (
+                        <div key={i} style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec }}>{a.bit}</div>
+                      ))}
+                      {authorityBits.length > 3 && <div style={{ fontSize: 11, color: T.textDim }}>+ {authorityBits.length - 3} more</div>}
+                    </>
+                  )
+                }
+              </Tile>
+              <Tile title="Network reach">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                  <YesNo on={anyApiCapnp}  label="Cap'n Proto in" />
+                  <YesNo on={anyApiHttp}   label="HTTP in" />
+                  <YesNo on={anyHttpOut}   label="HTTP out" />
+                  <YesNo on={anyStaticPub} label="Static publish" />
+                </div>
+              </Tile>
+            </div>
+
+            {/* What it does — purpose paragraphs + flat capability list */}
+            <SectionHeader color={T.cyan}>What it does</SectionHeader>
+            {caps.pearls.map((p, i) => (
+              <div key={i} style={{
+                background: T.surface, borderRadius: T.radiusSm,
+                padding: 14, marginBottom: 10, border: `1px solid ${T.border}`,
+              }}>
+                {isMulti && (
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", marginBottom: 6 }}>
+                    {p.pearlName} · {p.pearlType}
+                  </div>
+                )}
+                <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.65 }}>{p.purpose}</div>
+              </div>
+            ))}
+
+            {capRows.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", margin: '14px 0 8px' }}>
+                  Capabilities ({capRows.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
+                  {capRows.map((c, i) => {
+                    const rc = roleColor(c.roleGate);
+                    return (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
+                        paddingLeft: 10, borderLeft: `2px solid ${rc}55`,
+                      }}>
+                        {c.tag && (
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 2, border: `1px solid ${T.border}`, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }}>{c.tag}</span>
+                        )}
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 2, border: `1px solid ${rc}66`, color: rc, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }}>{c.kind}</span>
+                        <code style={{ fontSize: 12, color: T.text, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{c.name}</code>
+                        {roleLabel(c.roleGate) && (
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 2, border: `1px solid ${rc}66`, color: rc, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }}>{roleLabel(c.roleGate)}</span>
+                        )}
+                        {c.purpose && <span style={{ fontSize: 12, color: T.textSec, lineHeight: 1.5, flexBasis: '100%', marginTop: 2 }}>{c.purpose}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Connects to — grapple requests + companion apps */}
+            {(grappleRequests.length > 0 || (caps.companionApps && caps.companionApps.length > 0)) && (
+              <>
+                <SectionHeader color={T.cyan}>Connects to</SectionHeader>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 22,
+                  fontSize: 12, color: T.textSec,
+                }}>
+                  {grappleRequests.map((r, i) => (
+                    <span key={`r-${i}`} title={r.purpose} style={{
+                      padding: '4px 10px', borderRadius: 3,
+                      border: `1px solid ${r.required ? T.magenta + '66' : T.border}`,
+                      color: r.required ? T.magenta : T.textSec,
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                    }}>{r.required ? '◆ ' : '◇ '}{r.interface || r.name}</span>
+                  ))}
+                  {(caps.companionApps || []).map((aid, i) => (
+                    <a key={`c-${i}`} href={`#/app/${aid}`} style={{
+                      padding: '4px 10px', borderRadius: 3, color: T.cyan, textDecoration: 'none',
+                      border: `1px solid ${T.cyan}33`, fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                    }}>{aid.slice(0,8)}…</a>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: T.textDim, marginTop: -16, marginBottom: 22 }}>
+                  ◆ blocking · ◇ optional
+                </div>
+              </>
+            )}
+
+            {/* Inside the pearl — single details, auditor-grade */}
+            <details style={{
+              background: T.surface, borderRadius: T.radiusSm,
+              border: `1px solid ${T.border}`, padding: '12px 16px', marginBottom: 22,
+            }}>
+              <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>Inside the pearl — auditor detail</summary>
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {caps.pearls.map((p, pi) => (
+                  <div key={pi}>
+                    {isMulti && <div style={{ fontSize: 11, fontWeight: 700, color: T.text, marginBottom: 6, fontFamily: "'JetBrains Mono', monospace" }}>{p.pearlName}</div>}
+
+                    {/* Roles per group */}
+                    {['adminOnly','organizationOnly','anyMember'].map(grp => {
+                      const items = ((p.roles || {})[grp]) || [];
+                      if (!items.length) return null;
+                      const c = roleColor(grp);
+                      return (
+                        <div key={grp} style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, color: c, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{roleLabel(grp)} role · {items.length}</div>
+                          <ul style={{ paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6, margin: 0 }}>
+                            {items.map((it, i) => <li key={i}><strong style={{ color: T.text }}>{it.name}</strong>{it.purpose ? ` — ${it.purpose}` : ''}</li>)}
+                          </ul>
+                        </div>
+                      );
+                    })}
+
+                    {/* Authority bits with full purpose strings */}
+                    {((p.authority || {}).requires || []).length > 0 && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: T.magenta, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Authority bits required</div>
+                        <ul style={{ paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6, margin: 0 }}>
+                          {p.authority.requires.map((a, i) => (
+                            <li key={i}><code style={{ color: T.magenta, fontSize: 11 }}>{a.bit}</code>{a.purpose ? ` — ${a.purpose}` : ''}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Blockchains — explorer-linked */}
+                    {Array.isArray(p.blockchains) && p.blockchains.length > 0 && p.blockchains.map((b, bi) => {
+                      const explorerBase = b.chain === 'solana' ? 'https://explorer.solana.com/address/' : null;
+                      const cluster = b.chain === 'solana' && b.cluster && b.cluster !== 'mainnet' ? `?cluster=${b.cluster}` : '';
+                      return (
+                        <div key={bi} style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11, color: T.cyan, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", marginBottom: 3 }}>{b.chain}{b.cluster ? ` · ${b.cluster}` : ''}</div>
+                          {b.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 4 }}>{b.purpose}</div>}
+                          {Array.isArray(b.programs) && (
+                            <ul style={{ paddingLeft: 18, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6, margin: 0 }}>
+                              {b.programs.map((pr, j) => {
+                                const trunc = `${pr.id.slice(0,8)}…${pr.id.slice(-4)}`;
+                                return (
+                                  <li key={j}>{pr.label}: {explorerBase
+                                    ? <a href={`${explorerBase}${pr.id}${cluster}`} target="_blank" rel="noopener noreferrer" title={pr.id} style={{ color: T.cyan, textDecoration: 'none', borderBottom: `1px dotted ${T.cyan}` }}>{trunc}</a>
+                                    : <code title={pr.id}>{trunc}</code>}{Array.isArray(pr.calls) && pr.calls.length ? ` (${pr.calls.join(', ')})` : ''}</li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* HTTP out endpoint patterns (full) */}
+                    {p.httpOut && p.httpOut.enabled && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: T.yellow, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>HTTP out</div>
+                        {p.httpOut.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.5, marginBottom: 4 }}>{p.httpOut.purpose}</div>}
+                        {Array.isArray(p.httpOut.endpoints) && p.httpOut.endpoints.length > 0 && (
+                          <ul style={{ paddingLeft: 18, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6, margin: 0 }}>
+                            {p.httpOut.endpoints.map((e, i) => <li key={i}>{e}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Encryption fields full list */}
+                    {p.encryption && p.encryption.supported && Array.isArray(p.encryption.fields) && p.encryption.fields.length > 0 && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: T.green, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Encrypted fields</div>
+                        <ul style={{ paddingLeft: 18, fontSize: 11, color: T.textSec, lineHeight: 1.6, margin: 0 }}>
+                          {p.encryption.fields.map((f, i) => <li key={i}>{f}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* On-chain attestation — auditor-grade detail */}
+                {A.releaseEntryPda && (
+                  <div>
+                    <div style={{ fontSize: 10, color: T.green, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>On-chain attestation</div>
+                    <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec, lineHeight: 1.8 }}>
+                      <div>seat: <a href={explorer(A.releaseEntryPda)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.releaseEntryPda}</a></div>
+                      {A.appHash && <div>appHash: <code style={{ color: T.textDim }}>{A.appHash}</code></div>}
+                      {A.releaseHash && <div>releaseHash: <code style={{ color: T.textDim }}>{A.releaseHash}</code></div>}
+                      {A.masterNftMint && <div>master NFT: <a href={explorer(A.masterNftMint)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.masterNftMint}</a></div>}
+                      {A.licenseSquadsVault && <div>Squads vault: <a href={explorer(A.licenseSquadsVault)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.licenseSquadsVault}</a></div>}
+                      {A.quorumPolicy && A.quorumPolicy.multisigPda && <div>multisig ({A.quorumPolicy.threshold || '?'}-of-{A.quorumPolicy.memberCount || '?'}): <a href={explorer(A.quorumPolicy.multisigPda)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.quorumPolicy.multisigPda}</a></div>}
+                      {A.signedAtUnix && <div>signed: {new Date(A.signedAtUnix*1000).toISOString().replace('T',' ').slice(0,19)} UTC</div>}
+                      {A.authorSig && <div style={{ wordBreak: 'break-all', color: T.textDim }}>sig: {A.authorSig}</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
+        );
+      })()}
+
       <ScreenshotGallery screenshots={app.screenshots} appId={app.appId} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -1797,502 +2144,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         )}
       </div>
     </>
-  );
-
-  /* ---- GRAPPLE & SIDECARS TAB ---- */
-  const appSidecars = getAppSidecars(app.appId);
-  const hasSidecars = appSidecars.sidecars.length > 0;
-  const hasGrapple = appSidecars.grapple.length > 0;
-
-  const grappleTableStyle = {
-    width: '100%', borderCollapse: 'separate', borderSpacing: 0,
-    fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
-  };
-  const gThStyle = {
-    padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700,
-    letterSpacing: '.1em', textTransform: 'uppercase',
-    borderBottom: `2px solid ${T.cyan}44`, color: T.textDim,
-    fontFamily: "'JetBrains Mono', monospace",
-  };
-  const gTdStyle = {
-    padding: '10px 14px', borderBottom: `1px solid ${T.border}`,
-    color: T.textSec, fontSize: 12, lineHeight: 1.6, verticalAlign: 'top',
-  };
-
-  const SidecarsTab = () => (
-    <div style={{ maxWidth: 780 }}>
-      {/* Info box */}
-      <div style={{
-        padding: 22, background: T.cyan + '08', borderRadius: T.radius,
-        border: `1px solid ${T.cyan}33`, marginBottom: 24,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <span style={{
-            fontSize: 24, width: 44, height: 44, borderRadius: 3, flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: T.cyan + '15', border: `1px solid ${T.cyan}33`,
-          }}>{'🪝'}</span>
-          <div>
-            <div style={{
-              fontSize: 16, fontWeight: 800, color: T.cyan, marginBottom: 6,
-              fontFamily: "'Orbitron', sans-serif",
-              textShadow: `0 0 8px ${T.accentGlow}`,
-            }}>Grapple &amp; Sidecars</div>
-            <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7 }}>
-              <strong style={{ color: T.text }}>Grapple</strong> is the <em>only</em> way a Pearl can access
-              another Pearl — or the wider internet. Each connection is a scoped Cap{"'"}n Proto capability:
-              one Pearl offers a capability, the other accepts it, and the link is forged only
-              when the user Grapples the two together. Nothing connects silently, and every
-              connection has a named direction, purpose, and authority level.
-            </div>
-            <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.7, marginTop: 8 }}>
-              <strong style={{ color: T.text }}>Sidecars</strong> are major server-level services that run
-              one-per-server on your Melusina instance — things like an email relay or an AI model proxy.
-              They{"'"}re available only through Melusina, managed by the platform, and shared across
-              all Pearls that need them. Individual apps don{"'"}t install or control sidecars — the
-              server admin provisions them once.
-            </div>
-            <a href="https://melusina-os.org/docs/grapple" target="_blank" rel="noopener noreferrer"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
-                fontSize: 12, color: T.cyan, textDecoration: "none",
-                fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-                transition: "all .2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.textShadow = "none"; }}
-            >Learn more on Melusina-Os.org {'\u2192'}</a>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Grapple Connections (ABOVE sidecars) ─── */}
-      <div style={{ marginBottom: 28 }}>
-        <SectionHeader color={T.yellow}>{'🪝'} Grapple Connections</SectionHeader>
-        {hasGrapple ? (
-          <div style={{
-            background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.yellow}33`, overflow: 'hidden',
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <table style={grappleTableStyle}>
-              <thead>
-                <tr>
-                  <th style={gThStyle}>Direction</th>
-                  <th style={gThStyle}>Cap{"'"}n Proto Capability</th>
-                  <th style={gThStyle}>App(s)</th>
-                  <th style={gThStyle}>Purpose</th>
-                  <th style={gThStyle}>Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appSidecars.grapple.map((g, i) => (
-                  <tr key={i} style={{
-                    background: i % 2 === 0 ? 'transparent' : T.bg + '44',
-                  }}>
-                    <td style={gTdStyle}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        fontSize: 11, fontWeight: 700,
-                        color: g.direction === 'incoming' ? T.green : T.cyan,
-                      }}>
-                        {g.direction === 'incoming' ? '\u2B07\uFE0F' : '\u2B06\uFE0F'}
-                        {g.direction === 'incoming' ? ' IN' : ' OUT'}
-                      </span>
-                    </td>
-                    <td style={gTdStyle}>
-                      <code style={{
-                        padding: '3px 8px', borderRadius: 3, fontSize: 11,
-                        background: T.cyan + '15', color: T.cyan,
-                        border: `1px solid ${T.cyan}33`,
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}>{g.capability}</code>
-                    </td>
-                    <td style={{ ...gTdStyle, color: T.text, fontWeight: 600, fontSize: 12 }}>
-                      {g.apps.join(', ')}
-                    </td>
-                    <td style={gTdStyle}>{g.purpose}</td>
-                    <td style={gTdStyle}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
-                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        background: g.type === 'dependency' ? T.magenta + '22' : T.yellow + '22',
-                        color: g.type === 'dependency' ? T.magenta : T.yellow,
-                        border: `1px solid ${g.type === 'dependency' ? T.magenta + '44' : T.yellow + '44'}`,
-                      }}>{g.type === 'dependency' ? 'DEP' : 'ENHANCE'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{
-            padding: 28, textAlign: 'center', background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.border}`,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.7 }}>
-              No Grapple connections — this app runs without Pearl-to-Pearl or internet access.
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Sidecars (BELOW grapple) ─── */}
-      <div style={{ marginBottom: 28 }}>
-        <SectionHeader color={T.magenta}>{'🏍\uFE0F'} Sidecars</SectionHeader>
-        {hasSidecars ? (
-          <>
-          <div style={{
-            background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.magenta}33`, overflow: 'hidden',
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <table style={grappleTableStyle}>
-              <thead>
-                <tr>
-                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Required</th>
-                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Sidecar Name</th>
-                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Service Type</th>
-                  <th style={{ ...gThStyle, borderBottomColor: T.magenta + '44' }}>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appSidecars.sidecars.map((sc, i) => (
-                  <tr key={i} style={{
-                    background: i % 2 === 0 ? 'transparent' : T.bg + '44',
-                  }}>
-                    <td style={gTdStyle}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 3,
-                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        background: sc.required ? T.magenta + '22' : T.yellow + '22',
-                        color: sc.required ? T.magenta : T.yellow,
-                        border: `1px solid ${sc.required ? T.magenta + '44' : T.yellow + '44'}`,
-                      }}>{sc.required ? 'REQUIRED' : 'OPTIONAL'}</span>
-                    </td>
-                    <td style={{ ...gTdStyle, color: T.text, fontWeight: 600, fontSize: 12 }}>
-                      {sc.name}
-                    </td>
-                    <td style={gTdStyle}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 3,
-                        fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.08em',
-                        background: T.cyan + '15', color: T.cyan + 'cc', border: `1px solid ${T.cyan}33`,
-                        textTransform: 'uppercase',
-                      }}>{sc.type}</span>
-                    </td>
-                    <td style={gTdStyle}>
-                      {sc.description}
-                      {sc.links && sc.links.length > 0 && (
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                          {sc.links.map((lnk, j) => (
-                            <a key={j} href={lnk.url} target="_blank" rel="noopener noreferrer" style={{
-                              fontSize: 11, color: T.cyan, textDecoration: 'none',
-                              fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-                              transition: 'all .2s',
-                            }}
-                              onMouseEnter={(e) => { e.currentTarget.style.textShadow = `0 0 8px ${T.accentGlow}`; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.textShadow = 'none'; }}
-                            >{lnk.label} {'\u2192'}</a>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Supported backends (below table) */}
-          {appSidecars.sidecars.filter(sc => sc.options && sc.options.length > 0).map((sc, i) => (
-            <div key={`opts-${i}`} style={{ marginTop: 16 }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: T.textDim, marginBottom: 8,
-                fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.08em',
-              }}>SUPPORTED BACKENDS — {sc.name.toUpperCase()}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                {sc.options.map((opt, j) => (
-                  <a key={j} href={opt.url} target="_blank" rel="noopener noreferrer" style={{
-                    padding: 14, background: T.bg + 'cc', borderRadius: T.radiusSm,
-                    border: `1px solid ${T.border}`, textDecoration: 'none',
-                    transition: 'all .2s',
-                  }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '55'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = 'none'; }}
-                  >
-                    <div style={{
-                      fontSize: 13, fontWeight: 700, color: T.cyan, marginBottom: 4,
-                      fontFamily: "'Orbitron', sans-serif",
-                    }}>{opt.name}</div>
-                    <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{opt.description}</div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-          </>
-        ) : (
-          <div style={{
-            padding: 28, textAlign: 'center', background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.border}`,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          }}>
-            <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.7 }}>
-              No server-level sidecars required — this app runs entirely within its Pearl.
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Per-Pearl Profile (encryption, roles, blockchains, static publishing, HTTP-out, incoming API) ─── */}
-      {appSidecars.capabilities && Array.isArray(appSidecars.capabilities.pearls) && appSidecars.capabilities.pearls.map((pearl, pi) => (
-        <div key={`pearl-${pi}`} style={{ marginBottom: 28 }}>
-          <SectionHeader color={T.cyan}>{'🔮'} Pearl Profile{appSidecars.capabilities.pearls.length > 1 ? ` — ${pearl.pearlName}` : ''}</SectionHeader>
-          {pearl.hostShell && (
-            <div style={{
-              marginBottom: 12, padding: '10px 14px',
-              background: T.surface, borderRadius: T.radiusSm,
-              border: `1px solid ${T.yellow}44`,
-              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              fontSize: 12, color: T.textSec, lineHeight: 1.5,
-            }}>
-              <span style={{ fontSize: 14 }}>{'🪺'}</span>
-              <span style={{ fontWeight: 700, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.05em', fontSize: 10 }}>Hosted by</span>
-              <strong style={{ color: T.text }}>{pearl.hostShell.label || pearl.hostShell.id}</strong>
-              {pearl.hostShell.appId && (
-                <a href={`#/app/${pearl.hostShell.appId}`} style={{ color: T.cyan, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>view host →</a>
-              )}
-              {pearl.hostShell.purpose && <span style={{ flexBasis: '100%', marginTop: 2, color: T.textDim }}>{pearl.hostShell.purpose}</span>}
-            </div>
-          )}
-          <div style={{
-            background: T.surface, borderRadius: T.radius,
-            border: `1px solid ${T.cyan}33`, padding: 18,
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16,
-          }}>
-            {appSidecars.capabilities.pearls.length > 1 && (
-              <div style={{ gridColumn: '1 / -1', fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
-                <strong style={{ color: T.text }}>{pearl.pearlName}</strong> &middot;{' '}
-                <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, textTransform: 'uppercase' }}>{pearl.pearlType}</span>
-                <div style={{ marginTop: 6, fontSize: 12 }}>{pearl.purpose}</div>
-              </div>
-            )}
-
-            {/* Encryption */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'🔐 Encryption'}</div>
-              {pearl.encryption && pearl.encryption.supported ? (
-                <>
-                  <div style={{ fontSize: 12, color: T.green, fontWeight: 700, marginBottom: 6 }}>Supported at rest</div>
-                  {pearl.encryption.scheme && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6 }}>{pearl.encryption.scheme}</div>}
-                  {Array.isArray(pearl.encryption.fields) && pearl.encryption.fields.length > 0 && (
-                    <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6 }}>
-                      {pearl.encryption.fields.map((f, i) => <li key={i}>{f}</li>)}
-                    </ul>
-                  )}
-                </>
-              ) : (
-                <div style={{ fontSize: 12, color: T.textDim }}>Not encrypted at rest — this pearl holds no sensitive persistent state.</div>
-              )}
-            </div>
-
-            {/* Roles */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'👤 Roles'}</div>
-              {(() => {
-                const r = pearl.roles || {};
-                const groups = [
-                  { key: 'adminOnly',        label: 'Admin only',        color: T.magenta },
-                  { key: 'organizationOnly', label: 'Organisation only', color: T.yellow },
-                  { key: 'anyMember',        label: 'Any member',        color: T.cyan },
-                ];
-                const total = groups.reduce((acc, g) => acc + ((r[g.key] || []).length), 0);
-                if (total === 0) return <div style={{ fontSize: 12, color: T.textDim }}>No role-gated functions — all surface actions are equally available.</div>;
-                return groups.map(g => {
-                  const items = r[g.key] || [];
-                  if (!items.length) return null;
-                  return (
-                    <div key={g.key} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, color: g.color, fontWeight: 700, marginBottom: 4 }}>{g.label} ({items.length})</div>
-                      <ul style={{ paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6, margin: 0 }}>
-                        {items.map((it, i) => <li key={i}><strong style={{ color: T.text }}>{it.name}</strong>{it.purpose ? ` — ${it.purpose}` : ''}</li>)}
-                      </ul>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-
-            {/* Blockchains */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'⛓️ Blockchains'}</div>
-              {Array.isArray(pearl.blockchains) && pearl.blockchains.length > 0 ? (
-                pearl.blockchains.map((b, i) => {
-                  const explorerBase = b.chain === 'solana'
-                    ? `https://explorer.solana.com/address/`
-                    : b.chain === 'ethereum'
-                      ? `https://etherscan.io/address/`
-                      : null;
-                  const clusterSuffix = b.chain === 'solana' && b.cluster && b.cluster !== 'mainnet'
-                    ? `?cluster=${b.cluster}`
-                    : '';
-                  return (
-                    <div key={i} style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.chain}{b.cluster ? ` · ${b.cluster}` : ''}</div>
-                      {b.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 2 }}>{b.purpose}</div>}
-                      {Array.isArray(b.programs) && b.programs.length > 0 && (
-                        <ul style={{ paddingLeft: 16, fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, marginTop: 4 }}>
-                          {b.programs.map((p, j) => {
-                            const truncated = `${p.id.slice(0,8)}…${p.id.slice(-4)}`;
-                            const idEl = explorerBase
-                              ? <a href={`${explorerBase}${p.id}${clusterSuffix}`} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan, textDecoration: 'none', borderBottom: `1px dotted ${T.cyan}` }} title={p.id}>{truncated}</a>
-                              : <code style={{ color: T.textSec }} title={p.id}>{truncated}</code>;
-                            return (
-                              <li key={j}>{p.label}: {idEl}{Array.isArray(p.calls) && p.calls.length ? ` (${p.calls.join(', ')})` : ''}</li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })
-              ) : <div style={{ fontSize: 12, color: T.textDim }}>No blockchain interactions.</div>}
-            </div>
-
-            {/* Static Publishing */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'📤 Static Publishing'}</div>
-              {pearl.staticPublishing && pearl.staticPublishing.enabled ? (
-                <>
-                  <div style={{ fontSize: 12, color: T.green, fontWeight: 700, marginBottom: 4 }}>Enabled</div>
-                  {pearl.staticPublishing.via && <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec }}>via {pearl.staticPublishing.via}</div>}
-                  {pearl.staticPublishing.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 4 }}>{pearl.staticPublishing.purpose}</div>}
-                </>
-              ) : <div style={{ fontSize: 12, color: T.textDim }}>This pearl publishes nothing to the open internet.</div>}
-            </div>
-
-            {/* HTTP Out */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'🌐 HTTP Out'}</div>
-              {pearl.httpOut && pearl.httpOut.enabled ? (
-                <>
-                  <div style={{ fontSize: 12, color: T.yellow, fontWeight: 700, marginBottom: 4 }}>Enabled</div>
-                  {pearl.httpOut.via && <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec }}>via {pearl.httpOut.via}</div>}
-                  {pearl.httpOut.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 4 }}>{pearl.httpOut.purpose}</div>}
-                  {Array.isArray(pearl.httpOut.endpoints) && pearl.httpOut.endpoints.length > 0 && (
-                    <ul style={{ marginTop: 6, paddingLeft: 16, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6 }}>
-                      {pearl.httpOut.endpoints.map((e, i) => <li key={i}>{e}</li>)}
-                    </ul>
-                  )}
-                </>
-              ) : <div style={{ fontSize: 12, color: T.textDim }}>This pearl makes no outbound HTTP calls.</div>}
-            </div>
-
-            {/* Incoming API */}
-            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'📥 Incoming API'}</div>
-              {pearl.incomingApi && pearl.incomingApi.enabled ? (
-                <>
-                  <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, marginBottom: 4 }}>{(pearl.incomingApi.kind || 'capnp').toUpperCase()}</div>
-                  {pearl.incomingApi.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 8 }}>{pearl.incomingApi.purpose}</div>}
-                  {Array.isArray(pearl.incomingApi.interfaces) && pearl.incomingApi.interfaces.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {pearl.incomingApi.interfaces.map((iface, i) => {
-                        const isObj = iface && typeof iface === 'object';
-                        const name = isObj ? iface.name : iface;
-                        const purpose = isObj ? iface.purpose : '';
-                        const role = isObj ? iface.roleGate : '';
-                        const roleColor = role === 'adminOnly' ? T.magenta
-                          : role === 'organizationOnly' ? T.yellow
-                          : role === 'anonymous' ? T.green
-                          : T.cyan;
-                        const roleLabel = role === 'adminOnly' ? 'admin'
-                          : role === 'organizationOnly' ? 'org'
-                          : role === 'anonymous' ? 'public'
-                          : role === 'anyMember' ? 'member'
-                          : '';
-                        return (
-                          <div key={i} style={{ paddingLeft: 8, borderLeft: `2px solid ${roleColor}55` }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                              <code style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.text, fontWeight: 600 }}>{name}</code>
-                              {roleLabel && (
-                                <span style={{
-                                  fontSize: 9, padding: '1px 6px', borderRadius: 3,
-                                  border: `1px solid ${roleColor}66`, color: roleColor,
-                                  fontFamily: "'JetBrains Mono', monospace",
-                                  textTransform: 'uppercase', letterSpacing: '.05em',
-                                }}>{roleLabel}</span>
-                              )}
-                            </div>
-                            {purpose && <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5, marginTop: 3 }}>{purpose}</div>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              ) : <div style={{ fontSize: 12, color: T.textDim }}>No incoming API surface.</div>}
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {/* ─── On-Chain Attestation (once per app) ─── */}
-      {app.attest && app.attest.releaseEntryPda && (() => {
-        const A = app.attest;
-        const explorer = (addr) => `https://explorer.solana.com/address/${addr}?cluster=devnet`;
-        const fmtTime = (unix) => {
-          if (!unix) return '';
-          const d = new Date(unix * 1000);
-          return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-        };
-        const Field = ({ label, value, href }) => value ? (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderBottom: `1px dashed ${T.border}` }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", minWidth: 130 }}>{label}</span>
-            {href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', borderBottom: `1px dotted ${T.cyan}`, wordBreak: 'break-all' }}>{value}</a>
-            ) : (
-              <code style={{ color: T.textSec, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", wordBreak: 'break-all' }}>{value}</code>
-            )}
-          </div>
-        ) : null;
-        return (
-          <div style={{ marginBottom: 28 }}>
-            <SectionHeader color={T.green}>{'🔗'} On-Chain Attestation</SectionHeader>
-            <div style={{
-              padding: 18, background: T.surface, borderRadius: T.radius,
-              border: `1px solid ${T.green}33`,
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            }}>
-              <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 12 }}>
-                This release is anchored on Solana devnet. The seat is signed by the Foundation Squads multisig vault and verifiable end-to-end via <code style={{ color: T.cyan, fontSize: 11 }}>melusina-pearl-tool verify-release</code>.
-              </div>
-              <Field label="Release seat" value={A.releaseEntryPda} href={explorer(A.releaseEntryPda)} />
-              <Field label="App hash" value={A.appHash} />
-              <Field label="Release hash" value={A.releaseHash} />
-              {A.masterNftMint && <Field label="Master NFT" value={A.masterNftMint} href={explorer(A.masterNftMint)} />}
-              {A.licenseSquadsVault && <Field label="Squads vault" value={A.licenseSquadsVault} href={explorer(A.licenseSquadsVault)} />}
-              {A.quorumPolicy && A.quorumPolicy.multisigPda && (
-                <Field label={`Squads multisig (${A.quorumPolicy.threshold || '?'}-of-${A.quorumPolicy.memberCount || '?'})`} value={A.quorumPolicy.multisigPda} href={explorer(A.quorumPolicy.multisigPda)} />
-              )}
-              <Field label="Signed at" value={fmtTime(A.signedAtUnix)} />
-              {A.authorSig && (
-                <details style={{ marginTop: 8 }}>
-                  <summary style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>Author signature (ed25519)</summary>
-                  <code style={{ display: 'block', marginTop: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: T.textSec, wordBreak: 'break-all', lineHeight: 1.6 }}>{A.authorSig}</code>
-                </details>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-    </div>
   );
 
     /* ---- LICENSE TAB ---- */
@@ -2669,7 +2520,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
           {tab === 'faq' && <FAQTab />}
-          {tab === 'sidecars' && <SidecarsTab />}
           {tab === 'license' && <LicenseTab />}
         </div>
       </div>

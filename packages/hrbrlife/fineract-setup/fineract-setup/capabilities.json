@@ -1,33 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "appSlug": "fineract-setup",
   "appName": "fineract Setup",
+  "tier": "infrastructure",
   "pearls": [
     {
       "pearlId": "fineract-setup",
       "pearlName": "fineract Setup",
-      "pearlType": "service",
+      "pearlType": "infrastructure-pearl",
       "purpose": "Setup + admin Pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
-      "sidecars": [
-        {
-          "id": "HTTP_COMPONENT",
-          "level": "required",
-          "label": "HTTP Component",
-          "purpose": "All Fineract API traffic flows through this sidecar — operator credentials are kept off the Pearl."
-        },
-        {
-          "id": "GRAIN_CRYPTO",
-          "level": "required",
-          "label": "Grain Crypto Journal",
-          "purpose": "Tenant credentials + chart-of-accounts persisted encrypted."
-        },
-        {
-          "id": "IDENTITY_GATE",
-          "level": "required",
-          "label": "Identity Gate",
-          "purpose": "Setup + credential rotation OTP-gated."
-        }
-      ],
+      "sidecars": [],
       "grapple": {
         "offers": [
           {
@@ -61,6 +43,10 @@
         "organizationOnly": [],
         "anyMember": []
       },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
       "blockchains": [
         {
           "chain": "solana",
@@ -90,17 +76,15 @@
           "(operator-configured Fineract base URL)"
         ]
       },
-      "incomingApi": {
-        "enabled": true,
-        "kind": "capnp",
-        "interfaces": [
+      "apis": {
+        "capnp": [
           {
             "name": "Fineract.Admin@1",
             "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions.",
             "roleGate": "adminOnly"
           }
         ],
-        "purpose": "Admin cap consumed by ccash + wholesale operator pearls."
+        "http": []
       }
     }
   ]

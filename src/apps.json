@@ -57,41 +57,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "ai-lagoon",
         "appName": "AiLagoon",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "ai-lagoon",
             "pearlName": "AiLagoon",
             "pearlType": "user-pearl",
             "purpose": "AI model hub Pearl \u2014 register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The Pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
-            "sidecars": [
-              {
-                "id": "HTTP_COMPONENT",
-                "level": "required",
-                "label": "HTTP Component",
-                "purpose": "All provider traffic routes through this sidecar \u2014 one security boundary, one auditable egress point. Operators grant this once and revoke anytime."
-              },
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Provider credentials + transcripts persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable hub state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Pinning a transcript / rotating a provider credential is gated by a wallet OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -144,6 +120,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -175,10 +155,8 @@
                 "(operator-configured Ollama host)"
               ]
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "AiLagoon.AiText@1",
                   "purpose": "Generic text / chat completion \u2014 the consuming Pearl picks model class; this Pearl picks provider.",
@@ -195,7 +173,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Inference surface for peer Pearls; all access is Grapple-scoped."
+              "http": []
             }
           }
         ]
@@ -244,29 +222,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "botmother",
         "appName": "BotMother",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "botmother",
             "pearlName": "BotMother Hub",
             "pearlType": "user-pearl",
             "purpose": "The hub Pearl \u2014 defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Persona definitions + chat history persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable across machines."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -308,6 +274,15 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -335,44 +310,23 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BotMother.Route@1",
                   "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Routing surface for downstream chatroom + telegram pearls."
+              "http": []
             }
           },
           {
             "pearlId": "telegram",
             "pearlName": "Telegram Bridge",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Telegram-webhook handler. Receives Telegram messages, delivers them to the BotMother hub via a Route capability, sends replies back through the Telegram Bot API. Only Pearl in the package allowed to talk to api.telegram.org directly.",
-            "sidecars": [
-              {
-                "id": "HTTP_COMPONENT",
-                "level": "required",
-                "label": "HTTP Component",
-                "purpose": "Sandboxed outbound HTTP \u2014 Telegram Bot API calls + webhook acks."
-              },
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Telegram bot token + per-chat session state encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable bridge state."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -402,7 +356,15 @@
               "organizationOnly": [],
               "anyMember": []
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -416,16 +378,14 @@
                 "https://api.telegram.org/bot{token}/*"
               ]
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "http",
-              "interfaces": [
+            "apis": {
+              "capnp": [],
+              "http": [
                 {
                   "name": "POST /telegram/webhook",
                   "roleGate": "anyMember"
                 }
-              ],
-              "purpose": "Webhook endpoint Telegram POSTs to."
+              ]
             }
           },
           {
@@ -433,20 +393,7 @@
             "pearlName": "Chatroom",
             "pearlType": "user-pearl",
             "purpose": "Internal chatroom Pearl \u2014 operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Chat history + uploaded files encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable chat history."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -481,7 +428,15 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -493,17 +448,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView."
+              "http": []
             }
           },
           {
@@ -511,20 +464,7 @@
             "pearlName": "Station",
             "pearlType": "admin-pearl",
             "purpose": "Admin Pearl \u2014 bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Station config encrypted."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Station policy changes are Squads-signed via OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -551,6 +491,15 @@
               ],
               "organizationOnly": [],
               "anyMember": []
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
             },
             "blockchains": [
               {
@@ -580,17 +529,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BotMother.Policy@1",
                   "purpose": "Issue per-constellation policy: allowed models, retention, content rules.",
                   "roleGate": "adminOnly"
                 }
               ],
-              "purpose": "Powerbox-claim policy gate."
+              "http": []
             }
           }
         ]
@@ -660,9 +607,10 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "bureau",
         "appName": "Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "bureau",
@@ -731,7 +679,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -743,17 +694,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "Bureau.Shell@1",
                   "purpose": "Lets a child bureau Pearl declare itself a tile in this shell and request inter-bureau Grapple wiring.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Mounting interface for child bureau Pearls."
+              "http": []
             }
           }
         ]
@@ -806,15 +755,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "bureau-cal",
         "appName": "Cal Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "bureau-cal",
             "pearlName": "Cal Bureau",
             "pearlType": "user-pearl",
             "purpose": "A calendar-and-scheduling Pearl in the Bureau family. Hosts events, recurring schedules, and shared calendar views. The Pearl runs entirely client-side (no outbound network); any sharing happens through Grapple \u2014 another Pearl claims a calendar capability and gets scoped read or write access.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -855,7 +811,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -867,10 +826,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauCalendar.Read@1",
                   "purpose": "Lets another Pearl read scoped events from one of this calendar's domains.",
@@ -882,13 +839,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Calendar data exposed to peer Pearls strictly through Grapple \u2014 no public HTTP API."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
+              "http": []
             }
           }
         ]
@@ -938,29 +889,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "canboard",
         "appName": "CanBoard",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "canboard",
             "pearlName": "Kanban Board",
             "pearlType": "user-pearl",
             "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from chatroom) without giving the source Pearl read access to other cards.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Boards + cards persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable board state."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -999,6 +938,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1026,10 +969,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "CanBoard.CardCreate@1",
                   "purpose": "Drop a card into a specific board's intake column from a peer Pearl.",
@@ -1041,7 +982,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Kanban surface for peer Pearls."
+              "http": []
             }
           }
         ]
@@ -1092,35 +1033,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "ccash-client",
         "appName": "cca.sh Client",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "ccash-client",
             "pearlName": "Client Portal",
             "pearlType": "user-pearl",
             "purpose": "End-customer-facing Pearl for a ccash operator's clientele. The client sees only their own OTC deals, balances, and tickets \u2014 never operator-private state. The client claims a ClientCap from the operator's ccash grain (issued during onboarding); the cap defines exactly which records the client can see.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Per-client view + draft messages persisted as encrypted SQLite; encryption keyed to the client's wallet so the operator can't bulk-decrypt."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Standard install-root DEK anchor for portable client backups."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Client signs in with a Solana wallet; high-tier actions (signing a deal, approving a transfer) require a fresh Ed25519 OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -1159,6 +1082,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1186,17 +1113,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView; no peer-claimable services."
+              "http": []
             }
           }
         ]
@@ -1246,9 +1171,10 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "cca-sh-config",
         "appName": "cca.sh Config",
+        "tier": "admin",
         "companionApps": [
           "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
         ],
@@ -1258,26 +1184,7 @@
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
             "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Powerbox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 Powerbox-claim only.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Policy state + admin journal persisted as encrypted SQLite."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Cross-machine move with sealed admin keys."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Every policy mutation requires a Squads-multisig-rooted Ed25519 OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -1320,6 +1227,23 @@
               "organizationOnly": [],
               "anyMember": []
             },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appContractPair",
+                  "purpose": "TODO: review \u2014 needed to bind wholesale apps to operator contracts"
+                },
+                {
+                  "bit": "contractWhitelistEdit",
+                  "purpose": "TODO: review \u2014 needed to edit the contract whitelist used by ccash installs"
+                },
+                {
+                  "bit": "installAdminEdit",
+                  "purpose": "TODO: review \u2014 needed to push policy updates to operator installs"
+                }
+              ],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1356,10 +1280,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "ccash.AdminGate@1",
                   "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
@@ -1371,7 +1293,7 @@
                   "roleGate": "adminOnly"
                 }
               ],
-              "purpose": "Powerbox-claim only; no public HTTP route."
+              "http": []
             }
           }
         ]
@@ -1422,29 +1344,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "cca-sh-domain-template",
         "appName": "cca.sh Domain Template",
+        "tier": "infrastructure",
         "pearls": [
           {
             "pearlId": "cca-sh-domain-template",
             "pearlName": "Domain Template",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Powerbox-claim this Pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "stateless",
-                "label": "Grain Crypto Journal",
-                "purpose": "Templates are plain YAML on disk \u2014 no operator-private secrets to encrypt."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "stateless",
-                "label": "Grain Restore",
-                "purpose": "State is the YAML files on disk; restore = standard grain backup."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -1480,6 +1390,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1507,10 +1421,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "ccash.DomainTemplate@1",
                   "purpose": "Read the canonical template \u2014 jurisdictions, station tree, default policies.",
@@ -1522,7 +1434,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Template service for the ccash constellation."
+              "http": []
             }
           }
         ]
@@ -1574,35 +1486,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "ccash-org-member",
         "appName": "cca.sh Org Member",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "ccash-org-member",
             "pearlName": "Organization Member",
             "pearlType": "user-pearl",
             "purpose": "Per-organization-member Pearl for an operator's internal team \u2014 a relationship manager, a settlement clerk, a compliance reviewer. Sees the org-scoped subset of ccash state the operator's Org policy permits. Org-member actions feed into the operator console's review queue.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Per-member workspace + drafts persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable backups."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Org members sign in with their wallet; high-impact actions need OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -1641,6 +1535,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1668,17 +1566,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView."
+              "http": []
             }
           }
         ]
@@ -1728,29 +1624,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "cca-sh-wholesale",
         "appName": "cca.sh Wholesale",
+        "tier": "admin",
         "pearls": [
           {
             "pearlId": "cca-sh-wholesale",
             "pearlName": "Wholesale Operator",
             "pearlType": "admin-pearl",
             "purpose": "Wholesale-tier operator console \u2014 manages a fleet of operator ccash installs (sub-accounts, correspondent ledger, revocation registry). Issues SubAccountCap capabilities to operator Pearls so they can settle through the wholesale ledger. Storage is plain JSON for the correspondent ledger (no operator-private secrets); identity is delegated to the wholesale Squads vault.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "stateless",
-                "label": "Grain Crypto Journal",
-                "purpose": "Correspondent ledger is plain JSON under DATA_DIR/correspondents.json \u2014 no per-user secrets."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "stateless",
-                "label": "Grain Restore",
-                "purpose": "Plain-file state; restore = standard grain backup."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -1792,6 +1676,10 @@
               "organizationOnly": [],
               "anyMember": []
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -1828,10 +1716,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "ccash.WholesaleAdmin@1",
                   "purpose": "Surface wholesale admin to a peer admin grain (manage operator allowlist, correspondent rules).",
@@ -1843,7 +1729,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Wholesale admin + sub-account issuance."
+              "http": []
             }
           }
         ]
@@ -1895,9 +1781,10 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "ccash",
         "appName": "ccash",
+        "tier": "regular",
         "companionApps": [
           "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"
         ],
@@ -1907,26 +1794,7 @@
             "pearlName": "Operator Console",
             "pearlType": "user-pearl",
             "purpose": "ccash (codename popaye) is a whitelabel MSB / PSP / VASP operator console. Each install runs under a domain-template and a wholesale constellation; an operator manages clients, OTC deals, support tickets, and signed transactions. The Pearl persists everything as encrypted SQLite at /var/grain.db.enc and exposes a raw Cap'n Proto WebSession (no http-bridge), so every cross-grain link is an explicit Grapple capability claim.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "All persistent state lives in an encrypted SQLite database (/var/grain.db.enc) with envelope-encrypted journal. Every write is anchored."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "The install-root DEK is anchored by melusina-grain-restore so backups + cross-machine moves work without leaking the database key to operators."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "High-tier operator approvals (admin promotions, wallet rotations, cross-license actions) require a Solana Ed25519 OTP proof. No bypass; CLAUDE.md \u00a710 forbids one."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -1999,6 +1867,23 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "installAdminEdit",
+                  "purpose": "TODO: review \u2014 needed to update operator-tier configuration on the install"
+                },
+                {
+                  "bit": "keyholderAdd",
+                  "purpose": "TODO: review \u2014 needed to rotate signing wallets via Squads multisig"
+                },
+                {
+                  "bit": "audit",
+                  "purpose": "TODO: review \u2014 needed to surface install-wide audit metadata to operators"
+                }
+              ],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -2036,10 +1921,8 @@
               "purpose": "ccash itself makes no outbound HTTP. The fineract-sidecar (separate Pearl) is the only HTTP egress path; ccash speaks to it via Grapple, never directly.",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
@@ -2061,7 +1944,7 @@
                   "roleGate": "organizationOnly"
                 }
               ],
-              "purpose": "Cap'n Proto surface for peer Pearls + grain-context API for AI assistants."
+              "http": []
             }
           }
         ]
@@ -2109,35 +1992,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "clientspace",
         "appName": "clientspace",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "clientspace",
             "pearlName": "Client Space",
             "pearlType": "user-pearl",
             "purpose": "Per-client shared workspace \u2014 a single Pearl that aggregates all the artefacts (cases, deals, documents, contacts, notes) related to one client. Receives capabilities from the operator's other Pearls (ccash, dueprocess, bureau-doc, etc.) and presents a unified client-centric view.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Client-scoped overlay state encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable workspace state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Identity-rooted views ensure the user only sees clients they're entitled to."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -2196,6 +2061,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -2223,17 +2092,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView; caps come in, no peer-claimable surface out."
+              "http": []
             }
           }
         ]
@@ -2286,35 +2153,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "consilium",
         "appName": "Consilium",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "consilium",
             "pearlName": "Consilium",
             "pearlType": "user-pearl",
             "purpose": "Decision-tracking Pearl \u2014 capture motions, votes, quorum rules, and signed resolutions. Each motion is anchored to the participants' wallets; resolutions are off-chain ed25519-signed records that downstream Pearls (ccash for governance, dueprocess for audit trail) can read via Grapple.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Motion text + vote audit trail encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Every vote is signed by the voter's wallet via OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -2363,6 +2212,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -2390,10 +2243,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "Consilium.ResolutionRead@1",
                   "purpose": "Read the final resolution + signed vote tally for a motion.",
@@ -2405,7 +2256,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Resolution surface for downstream governance."
+              "http": []
             }
           }
         ]
@@ -2456,15 +2307,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "bureau-contacts",
         "appName": "Contacts Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "bureau-contacts",
             "pearlName": "Contacts Bureau",
             "pearlType": "user-pearl",
             "purpose": "Contact-management Pearl in the Bureau family \u2014 people, organisations, relationships, free-text notes. Stays local to the Pearl; sharing fields with other Pearls (e.g. Mail, Calendar, Bureau Doc for mailmerge) is explicit per-record via Grapple.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the SPA, mediates auth + Grapple plumbing."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -2505,7 +2363,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -2517,10 +2378,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauContacts.Read@1",
                   "purpose": "Read scoped contact records by tag or list \u2014 for mailmerge, address lookup, etc.",
@@ -2532,13 +2391,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Contact data exposed to peer Pearls strictly through Grapple."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the SPA, mediates auth + Grapple plumbing."
+              "http": []
             }
           }
         ]
@@ -2589,35 +2442,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "cratelink",
         "appName": "CrateLink",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "cratelink",
             "pearlName": "CrateLink",
             "pearlType": "user-pearl",
             "purpose": "Per-user shipment tracker / supply-chain Pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. Pearl-to-Pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Shipment manifest + custody trail encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Custody handoffs require both parties' Ed25519 OTPs."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -2661,6 +2496,19 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "pearlRegister",
+                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
+                },
+                {
+                  "bit": "audit",
+                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
+                }
+              ],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -2688,10 +2536,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "CrateLink.Accept@1",
                   "purpose": "Counterparty Pearl claims this cap to accept custody of a specific shipment crate.",
@@ -2703,7 +2549,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Custody-handoff surface."
+              "http": []
             }
           }
         ]
@@ -2753,35 +2599,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "cyberteller",
         "appName": "CyberTeller",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "cyberteller",
             "pearlName": "Wallet",
             "pearlType": "user-pearl",
             "purpose": "Personal Solana wallet Pearl \u2014 sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the Pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Wallet key material + transaction history persisted encrypted; envelope keyed to the user's master."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable wallet across machines without leaking the key."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Every transaction signature is OTP-gated by the user's master keypair."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -2829,6 +2657,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -2871,10 +2703,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "CyberTeller.Sign@1",
                   "purpose": "Sign a presented payload with the user's wallet key \u2014 used by peer Pearls (ccash) when the user authorizes a transaction.",
@@ -2886,7 +2716,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Wallet capability for peer Pearls \u2014 Powerbox-claim only."
+              "http": []
             }
           }
         ]
@@ -2957,15 +2787,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "diagram-bureau",
         "appName": "Diagrams Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "diagram-bureau",
             "pearlName": "Diagrams Bureau",
             "pearlType": "user-pearl",
             "purpose": "Vector-diagram editor (flowcharts, network maps, org charts, mind maps). Drawio-based front end hosted by the Bureau Shell; diagrams are saved as Pearl-local files and embedded in other Bureau Pearls (Doc, Sheets, Notes) via Grapple.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor SPA + file I/O."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3002,7 +2839,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -3014,10 +2854,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauDiagram.Embed@1",
                   "purpose": "Embed a diagram into a peer Pearl (Doc, Notes, Sheets, etc.) \u2014 peer holds a capability to fetch the live SVG.",
@@ -3029,13 +2867,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Diagram surface for embedding into peer Bureau Pearls."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the editor SPA + file I/O."
+              "http": []
             }
           }
         ]
@@ -3107,15 +2939,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "doc-bureau",
         "appName": "Docs Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "doc-bureau",
             "pearlName": "Docs Bureau",
             "pearlType": "user-pearl",
             "purpose": "Rich-text document Pearl \u2014 long-form prose, tables, embedded diagrams. Local-first storage; each document is a Pearl-scoped file; Pearls can claim a Read or Embed capability via Grapple.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor + file I/O."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3165,7 +3004,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -3177,10 +3019,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauDoc.Read@1",
                   "purpose": "Read a specific document's text/markdown for downstream rendering.",
@@ -3192,13 +3032,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Document surface for peer Bureau Pearls."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the editor + file I/O."
+              "http": []
             }
           }
         ]
@@ -3247,35 +3081,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "dueprocess",
         "appName": "DueProcess",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "station",
             "pearlName": "Station",
             "pearlType": "admin-pearl",
             "purpose": "Top-level admin grain: configures procedures, station tree, and screening rules. The station Pearl is what an operations team uses to set up + maintain the AITX-style due-process pipeline. Issues capabilities to per-process and per-client grains.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Procedure definitions + audit trail persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable admin state across machines."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Procedure changes are Squads-signed via OTP gate."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -3324,6 +3140,10 @@
               "organizationOnly": [],
               "anyMember": []
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -3351,10 +3171,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "DueProcess.SpawnProcess@1",
                   "purpose": "Issue a per-process grain capability; one capability = one ongoing matter.",
@@ -3366,34 +3184,15 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Admin surface for procedure operators."
+              "http": []
             }
           },
           {
             "pearlId": "process",
             "pearlName": "Process",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Per-matter grain \u2014 one Pearl per ongoing case. Holds the case file, the workflow state, signed events. Receives capabilities from the Station and issues collaborative capabilities to clients + sidecars (screening).",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Case file persisted encrypted; envelope keyed to the matter's authority chain."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable case files."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Case-state transitions require OTP from the assigned reviewer."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -3446,6 +3245,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -3473,10 +3276,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "DueProcess.CaseView@1",
                   "purpose": "Scoped view of the case file for client + account grains.",
@@ -3488,34 +3289,15 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Per-matter case surface."
+              "http": []
             }
           },
           {
             "pearlId": "account",
             "pearlName": "Account",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Per-party (account) view onto the procedures system. Same binary as the process pearl but launched with GRAIN_TYPE=account; surfaces only the account holder's slice of every matter they're a party to.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Account-scoped state encrypted; envelope keyed to the account holder's wallet."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable account state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Account holder signs in with their wallet; sensitive views require OTP."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -3544,6 +3326,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -3571,17 +3357,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView."
+              "http": []
             }
           },
           {
@@ -3589,26 +3373,7 @@
             "pearlName": "Client Portal",
             "pearlType": "user-pearl",
             "purpose": "Front-of-house portal a client uses to interact with their open matters: upload documents, sign declarations, see status. Receives a CaseView + CaseAction cap from the process grain at engagement time.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Per-client drafts + uploads encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable client state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Client signs declarations via OTP \u2014 the signed payload is the legal record."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -3643,6 +3408,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -3670,32 +3439,23 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView."
+              "http": []
             }
           },
           {
             "pearlId": "screening-sidecar",
             "pearlName": "Screening Sidecar",
-            "pearlType": "sidecar",
+            "pearlType": "infrastructure-pearl",
             "purpose": "External-integration sidecar \u2014 runs the screening sweep against sanctions lists, PEPs, internal denylists. Process and station Pearls Grapple in to request a screen; the sidecar is the only Pearl in the package allowed to make outbound HTTP (to the configured screening provider).",
-            "sidecars": [
-              {
-                "id": "HTTP_COMPONENT",
-                "level": "required",
-                "label": "HTTP Component",
-                "purpose": "Sandbox-mediated outbound HTTP \u2014 calls to the screening provider's API are routed through this sidecar so the rest of the package has zero outbound permission."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -3716,7 +3476,10 @@
               "organizationOnly": [],
               "anyMember": []
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -3730,17 +3493,15 @@
                 "https://screening-provider.example/api/v1/screen"
               ]
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "DueProcess.Screening@1",
                   "purpose": "Run a name + party screen; returns hit list with provenance.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Internal-only screening cap consumed by station + process pearls."
+              "http": []
             }
           }
         ]
@@ -3797,35 +3558,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "fineract-setup",
         "appName": "fineract Setup",
+        "tier": "infrastructure",
         "pearls": [
           {
             "pearlId": "fineract-setup",
             "pearlName": "fineract Setup",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Setup + admin Pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
-            "sidecars": [
-              {
-                "id": "HTTP_COMPONENT",
-                "level": "required",
-                "label": "HTTP Component",
-                "purpose": "All Fineract API traffic flows through this sidecar \u2014 operator credentials are kept off the Pearl."
-              },
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Tenant credentials + chart-of-accounts persisted encrypted."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Setup + credential rotation OTP-gated."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -3859,6 +3602,10 @@
               "organizationOnly": [],
               "anyMember": []
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -3888,17 +3635,15 @@
                 "(operator-configured Fineract base URL)"
               ]
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "Fineract.Admin@1",
                   "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions.",
                   "roleGate": "adminOnly"
                 }
               ],
-              "purpose": "Admin cap consumed by ccash + wholesale operator pearls."
+              "http": []
             }
           }
         ]
@@ -3946,29 +3691,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "instaco-app",
         "appName": "instaco",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "instaco-app",
             "pearlName": "instaco",
             "pearlType": "user-pearl",
             "purpose": "Instant-collaboration Pearl \u2014 drop-in spaces with members, threaded discussions, decision capture. Designed as the lightweight surface that other Pearls (consilium, dueprocess) Grapple into when they need a quick collaborative review without spinning up a full procedure.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Spaces + threads encrypted at rest."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable state."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4008,6 +3741,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -4035,10 +3772,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "Instaco.SpaceCreate@1",
                   "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
@@ -4050,7 +3785,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Lightweight collab surface."
+              "http": []
             }
           }
         ]
@@ -4100,29 +3835,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "melusina-openclaw",
         "appName": "Melusina OpenClaw",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "assistant",
             "pearlName": "Assistant",
             "pearlType": "user-pearl",
             "purpose": "User-facing OpenClaw assistant Pearl \u2014 bundles a Node 22 runtime + assistant front-end + a Go bridge that mediates Cap'n Proto calls between the Node app and Melusina's grain APIs. The user runs conversations here; the bridge does the heavy lifting (capability routing, file IO, Powerbox claims).",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Conversation history + assistant memory persisted encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable assistant state."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -4170,6 +3893,19 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "releaseRegister",
+                  "purpose": "TODO: review \u2014 needed to register a new on-chain ReleaseEntry seat for an app"
+                },
+                {
+                  "bit": "releaseRevoke",
+                  "purpose": "TODO: review \u2014 needed to revoke a previously-registered release"
+                }
+              ],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -4197,23 +3933,21 @@
               "purpose": "All AI inference goes through AiLagoon Grapple \u2014 no direct HTTP from this Pearl.",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView; bridge is internal-only."
+              "http": []
             }
           },
           {
             "pearlId": "bridge",
             "pearlName": "Dev Bridge",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Developer-only grain that exposes the Go bridge in standalone mode (no Node front-end). Used during OpenClaw development for capnp wire debugging. Does NOT ship as a user-facing tile.",
             "sidecars": [],
             "grapple": {
@@ -4235,7 +3969,19 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [
+                {
+                  "bit": "releaseRegister",
+                  "purpose": "TODO: review \u2014 needed to register a new on-chain ReleaseEntry seat for an app"
+                },
+                {
+                  "bit": "releaseRevoke",
+                  "purpose": "TODO: review \u2014 needed to revoke a previously-registered release"
+                }
+              ],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -4247,17 +3993,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Dev-only capnp echo surface."
+              "http": []
             }
           }
         ]
@@ -4315,41 +4059,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "mermail",
         "appName": "MerMail",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "mermail",
             "pearlName": "MerMail",
             "pearlType": "user-pearl",
             "purpose": "Per-user email Pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the Pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
-            "sidecars": [
-              {
-                "id": "HTTP_COMPONENT",
-                "level": "required",
-                "label": "HTTP Component",
-                "purpose": "All inbound + outbound mail traffic routes through the Foundation-operated mail relay sidecar \u2014 Pearl never sees raw SMTP."
-              },
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Mailbox + thread state encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable mailbox across machines."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Sending mail / rotating mailbox keys is OTP-gated."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4389,6 +4109,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -4418,10 +4142,8 @@
                 "https://mailrelay.melusina.example/*"
               ]
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "MerMail.Read@1",
                   "purpose": "Scoped read of incoming mail by tag / sender for downstream Pearls (e.g. ticket auto-routing).",
@@ -4433,7 +4155,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Mail-routing surface for peer Pearls."
+              "http": []
             }
           }
         ]
@@ -4492,29 +4214,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "minigit",
         "appName": "MiniGit",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "minigit",
             "pearlName": "MiniGit",
             "pearlType": "user-pearl",
             "purpose": "In-Pearl Git server \u2014 host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "stateless",
-                "label": "Grain Crypto Journal",
-                "purpose": "Repos are plain on-disk Git trees \u2014 no operator-private secrets to envelope-encrypt."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable repos across machines."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4550,6 +4260,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -4577,10 +4291,8 @@
               "purpose": "No HTTP-out \u2014 pull/push goes through Grapple-scoped caps, not external Git URLs.",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "MiniGit.RepoRead@1",
                   "purpose": "Read-only access to a specific repo (clone + fetch).",
@@ -4592,7 +4304,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Git repo capability surface."
+              "http": []
             }
           }
         ]
@@ -4640,35 +4352,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "namedcoin",
         "appName": "NamedCoin",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "namedcoin",
             "pearlName": "NamedCoin",
             "pearlType": "user-pearl",
             "purpose": "Solana-rooted personal namespace \u2014 register human-readable names, bind them to wallets, sign transferable name capabilities. The Pearl issues NamedCoin caps that peer Pearls (ccash, AiLagoon, anywhere a 'who is this person?' question matters) can claim to resolve human-readable identity into wallet pubkey + KYC level.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Name registry + per-name secret state encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable name-portfolio state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Name registration + transfer is OTP-gated."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4707,6 +4401,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -4734,10 +4432,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "NamedCoin.Resolve@1",
                   "purpose": "Resolve a name to its current bound wallet + KYC tier.",
@@ -4749,7 +4445,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Name-resolution surface for the constellation."
+              "http": []
             }
           }
         ]
@@ -4802,15 +4498,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "bureau-notes",
         "appName": "Notes Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "bureau-notes",
             "pearlName": "Notes Bureau",
             "pearlType": "user-pearl",
             "purpose": "Lightweight note-taking Pearl \u2014 fast-capture markdown, daily-journal mode, hierarchical notebooks. Storage is per-Pearl; sharing notes with peer Pearls (Doc, Calendar) goes through Grapple per-note or per-tag.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the SPA + file I/O."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -4847,7 +4550,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -4859,10 +4565,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauNotes.Read@1",
                   "purpose": "Read scoped notes by tag/notebook for downstream embedding or search.",
@@ -4874,13 +4578,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Notes surface for peer Bureau Pearls."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the SPA + file I/O."
+              "http": []
             }
           }
         ]
@@ -4951,15 +4649,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "paint-bureau",
         "appName": "Paint Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "paint-bureau",
             "pearlName": "Paint Bureau",
             "pearlType": "user-pearl",
             "purpose": "Bitmap image editor (mini-Paint style \u2014 layers, brushes, selection, simple filters). Outputs PNG/JPEG; consumed by other Bureau Pearls (Doc, Notes) via Grapple's Embed capability.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor + file I/O."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -4996,7 +4701,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -5008,10 +4716,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauPaint.Embed@1",
                   "purpose": "Live-embed an image into a peer Pearl; updates reflect when the source changes.",
@@ -5023,13 +4729,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Image surface for peer Bureau Pearls."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the editor + file I/O."
+              "http": []
             }
           }
         ]
@@ -5101,15 +4801,22 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "sheets-bureau",
         "appName": "Sheets Bureau",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "sheets-bureau",
             "pearlName": "Sheets Bureau",
             "pearlType": "user-pearl",
             "purpose": "Spreadsheet Pearl in the Bureau family \u2014 Univer-based grid, formulas, charts, named ranges. Storage local; range-level Grapple offers let peer Pearls read live values from a named range without seeing the full sheet.",
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the spreadsheet SPA + file I/O."
+            },
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -5151,7 +4858,10 @@
                 }
               ]
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -5163,10 +4873,8 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "BureauSheets.RangeRead@1",
                   "purpose": "Read a single named range; returns values + formulas.",
@@ -5183,13 +4891,7 @@
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Spreadsheet surface for peer Bureau Pearls."
-            },
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the spreadsheet SPA + file I/O."
+              "http": []
             }
           }
         ]
@@ -5235,14 +4937,15 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "shell-tester",
         "appName": "Shell Tester",
+        "tier": "infrastructure",
         "pearls": [
           {
             "pearlId": "shell-tester",
             "pearlName": "Shell Tester",
-            "pearlType": "service",
+            "pearlType": "infrastructure-pearl",
             "purpose": "Developer / operator tool for inspecting the Melusina shell environment: simulate Powerbox claims, exercise Grapple wiring, dump grain context, run capnp wire diagnostics. Useful for debugging integrations between Pearls. Not intended for end users.",
             "sidecars": [],
             "grapple": {
@@ -5277,7 +4980,10 @@
               "organizationOnly": [],
               "anyMember": []
             },
-            "blockchains": [],
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "staticPublishing": {
               "enabled": false,
               "via": "",
@@ -5289,17 +4995,15 @@
               "purpose": "",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "ShellTester.Echo@1",
                   "purpose": "Round-trip echo for testing Grapple wiring.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Diagnostic surface; dev-only."
+              "http": []
             }
           }
         ]
@@ -5351,35 +5055,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "telescreen",
         "appName": "TeleScreen",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "telescreen",
             "pearlName": "TeleScreen",
             "pearlType": "user-pearl",
             "purpose": "Public-relations / publication-ready surface \u2014 push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The Pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "required",
-                "label": "Grain Crypto Journal",
-                "purpose": "Pre-publish drafts + per-publish audit trail encrypted."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable state."
-              },
-              {
-                "id": "IDENTITY_GATE",
-                "level": "required",
-                "label": "Identity Gate",
-                "purpose": "Each publish event is OTP-signed; the signed bundle hash is pinned."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": [
@@ -5436,6 +5122,10 @@
                 }
               ]
             },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
             "blockchains": [
               {
                 "chain": "solana",
@@ -5463,17 +5153,15 @@
               "purpose": "All egress goes through the static-publish sidecar; no direct HTTP out.",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "capnp",
-              "interfaces": [
+            "apis": {
+              "capnp": [
                 {
                   "name": "grain.MainView",
                   "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
-              "purpose": "Standard UiView; admin Powerbox claims for source caps."
+              "http": []
             }
           }
         ]
@@ -5528,29 +5216,17 @@
         }
       },
       "capabilities": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "appSlug": "vintage",
         "appName": "Vintage Remote Desktop",
+        "tier": "regular",
         "pearls": [
           {
             "pearlId": "vintage",
             "pearlName": "Vintage Desktop",
             "pearlType": "user-pearl",
             "purpose": "Per-user vintage operating-system desktop Pearl \u2014 runs old-school environments inside a Pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the Pearl; outbound network is gated by the standard sidecars (none enabled by default \u2014 fully airgapped).",
-            "sidecars": [
-              {
-                "id": "GRAIN_CRYPTO",
-                "level": "stateless",
-                "label": "Grain Crypto Journal",
-                "purpose": "Vintage filesystem is its own format on disk; standard grain backup covers it."
-              },
-              {
-                "id": "GRAIN_RESTORE",
-                "level": "required",
-                "label": "Grain Restore",
-                "purpose": "Portable vintage desktop across machines."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": []
@@ -5569,6 +5245,10 @@
                   "purpose": "Standard interactive desktop session."
                 }
               ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
             },
             "blockchains": [
               {
@@ -5597,17 +5277,15 @@
               "purpose": "Airgapped by default; no outbound network from the vintage environment.",
               "endpoints": []
             },
-            "incomingApi": {
-              "enabled": true,
-              "kind": "http",
-              "interfaces": [
+            "apis": {
+              "capnp": [],
+              "http": [
                 {
                   "name": "GET /",
                   "purpose": "HTML/VNC desktop client",
                   "roleGate": "anyMember"
                 }
-              ],
-              "purpose": "Browser-based VNC-style desktop surface."
+              ]
             }
           }
         ]

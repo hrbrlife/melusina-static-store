@@ -111,11 +111,26 @@ manifest_path = sys.argv[1]
 packages = sys.argv[2]
 manifest = json.load(open(manifest_path))
 mapps = manifest.get('apps', manifest) if isinstance(manifest, dict) else manifest
-drifts, missing = [], []
+drifts, missing, deferred, pending_reseat = [], [], [], []
 for m in mapps:
     name = m.get('app_name', '?')
     appid = m.get('app_id', '?')
     expected_hash = m.get('app_hash', '')
+    # Schema extensions (additive, optional):
+    #   deferred_in_catalog: true  → entry is intentionally absent from
+    #                                static_store/packages/ (e.g. catalog
+    #                                publish workstream not yet shipped).
+    #                                Skip the "missing local .spk" check;
+    #                                surface separately as info.
+    #   pending_reseat: true       → manifest hash represents the latest
+    #                                local rebuild but the on-chain
+    #                                GlobalAppApproval seat has not yet
+    #                                been re-pinned. Hash matches local;
+    #                                tracked separately so the operator
+    #                                knows on-chain enforcement will
+    #                                reject installs until reseat lands.
+    is_deferred = bool(m.get('deferred_in_catalog', False))
+    is_pending_reseat = bool(m.get('pending_reseat', False))
     # Find the corresponding .spk under packages/<repo>/<slug>/app.spk
     found_spk = None
     for repo in os.listdir(packages):
@@ -140,7 +155,10 @@ for m in mapps:
                 except Exception:
                     pass
     if not found_spk:
-        missing.append((name, appid[:24]))
+        if is_deferred:
+            deferred.append((name, appid[:24]))
+        else:
+            missing.append((name, appid[:24]))
         continue
     h = hashlib.sha256()
     with open(found_spk, 'rb') as f:
@@ -149,13 +167,26 @@ for m in mapps:
     actual_hash = h.hexdigest()
     if actual_hash != expected_hash:
         drifts.append((name, expected_hash[:12], actual_hash[:12]))
+    elif is_pending_reseat:
+        # Hash matches manifest; flag the on-chain reseat follow-up.
+        pending_reseat.append((name, appid[:24]))
 print(f"  manifest entries: {len(mapps)}")
 print(f"  missing local .spk: {len(missing)}")
 for name, aid in missing:
     print(f"    ? {name} ({aid}...) — no local .spk found in packages/")
+if deferred:
+    print(f"  deferred-in-catalog (informational): {len(deferred)}")
+    for name, aid in deferred:
+        print(f"    · {name} ({aid}...) — manifest entry intentionally absent from packages/ (deferred_in_catalog=true)")
 print(f"  hash drifts: {len(drifts)}")
 for name, ex, ac in drifts:
     print(f"    ! {name}: manifest={ex}... local={ac}...")
+if pending_reseat:
+    print(f"  pending on-chain reseat (informational): {len(pending_reseat)}")
+    for name, aid in pending_reseat:
+        print(f"    ⚠ {name} ({aid}...) — local SPK matches manifest hash, but on-chain GlobalAppApproval reseat is owed (pending_reseat=true). Installs will fail authorization until Squads ceremony reseats the seat.")
+# Genuine drifts and unflagged-missing are aborts; deferred and
+# pending_reseat are informational only.
 sys.exit(2 if drifts or missing else 0)
 PY
   RC=$?

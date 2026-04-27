@@ -33,10 +33,45 @@ That's it. One command. It does everything:
 3. Copies the Melusina server binary update (`update/sandstorm-0.tar.xz`, filename retained for updater compatibility) into the output
 4. Splits any files over 95MB into 90MB chunks (GitHub Pages limit)
 5. Commits and pushes `main`
-6. Deploys everything to the `publish` branch
-7. Switches back to `main`
+6. `make plan` — stages everything to `/tmp/melusina-publish-plan-<id>/` and writes a marker
+7. `make apply` — force-pushes the staged tree to the `publish` branch
 
 You must be on the `main` branch. Nothing else required.
+
+### Plan / Apply (split publish)
+
+For a deliberate, inspect-before-push workflow:
+
+```bash
+make plan             # refresh, build, preflight, stage; writes a marker
+ls /tmp/melusina-publish-plan-*/staging   # inspect what would ship
+make apply            # consumes the marker; force-pushes
+```
+
+`make apply` aborts if the static_store HEAD has moved since `make plan`, or
+if the staged tree's fingerprint changed (someone touched it). On success, the
+marker is removed — the next `make apply` requires a fresh `make plan`. The
+old `make deploy` is preserved as an alias for `plan` + `apply` (callers
+running `make build && make deploy` continue to work).
+
+### Rollback
+
+`make apply` tags the previous publish tip as `publish-prev` *before*
+force-pushing. If a deploy went sideways, restore live with one command:
+
+```bash
+git push -f origin publish-prev:publish
+```
+
+Then investigate locally without time pressure. The tag survives across
+deploys (it's force-overwritten each time `make apply` runs).
+
+### `make doctor` / `make publish-check`
+
+Single-pass health report — tools on PATH, submodule init state, deployer
+manifest reachability, env-var overrides, working-tree drift, optional
+preflight dry-run. Run before `make publish` to catch fixable problems
+up front. See `scripts/doctor.sh`.
 
 ---
 
@@ -109,6 +144,8 @@ The build resolves a few external dependencies via env vars. Set what's relevant
 | `MELUSINA_PUBLISH_AUTHORITATIVE` | unset | **Hard gate.** Required to be `1` for `make deploy` to proceed. Default-unset aborts deploy with a pointer to `docs/M1_CCASH_CONFIG_PUBLISH_PATH.md` and `POSTMORTEM.md` follow-up #1. Two `static_store` checkouts share the same upstream on this host with non-overlapping app sets; this flag is the explicit declaration that this checkout is the canonical publisher. |
 | `MELUSINA_PUBLISH_SHRINK_OK` | unset | `scripts/preflight.sh` Gate 1 (live-catalog diff) aborts when the local build would drop appIds present in live `gh-pages`. Set to `1` only when shrink is *intentional* (e.g. an app retirement coordinated in chat). |
 | `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT` | unset | `scripts/preflight.sh` Gate 2 (manifest cross-check) **fails by default** when local `.spk` SHA-256 diverges from the deployer manifest's expected `app_hash`. Set to `1` only when reseat work is in flight on Worf's side and acknowledged in chat — drift means the catalog would serve bytes that no longer match the on-chain `ReleaseEntry` and installs would fail signature verification. |
+| `MELUSINA_ATTEST_REJECT_STUBS` | unset (warn-only) | `build-store.sh` flags `RELEASE.json` files whose `releaseEntryPda` / `masterNftMint` / `licenseSquadsVault` / `quorumPolicy.multisigPda` start with `test-` or `offline-` (placeholder IDs that pass the schema check but reference no real on-chain seat). Default behavior is **warn-only** for backwards compatibility — currently every shipping app uses stubs. Set to `1` to make stubs a hard error (intended default once the Pearl ceremony goes live and the fleet has migrated). |
+| `MELUSINA_DEPLOYER_MANIFEST` | `/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json` | Path to the deployer's approval manifest. Read by `scripts/preflight.sh` Gate 2 and by spkmodule's non-Pearl `make publish` (`manifest-check` helper). Override per host. |
 
 ## Trust model
 

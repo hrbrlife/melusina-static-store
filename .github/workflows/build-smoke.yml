@@ -1,0 +1,84 @@
+name: build-smoke
+
+# Validate the catalog on every PR + push to main.
+#
+# What this DOES:
+#   - Checks out static_store + all submodules (apps' publish branches).
+#   - Runs build-store.sh in dry-run with MELUSINA_ATTEST_OFFLINE=1
+#     (skips on-chain RPC; still enforces RELEASE.json schema).
+#   - Reports the validated app count.
+#   - Fails the job if validation fails.
+#
+# What this DOES NOT DO:
+#   - Push, deploy, or force-push anything. Publishing is and remains a
+#     deliberate human action via `make plan && make apply` from the
+#     canonical builder host (MELUSINA_PUBLISH_AUTHORITATIVE=1).
+#
+# This is a smoke test, not a substitute for `bash scripts/preflight.sh`
+# (which also checks against the live gh-pages catalog and the deployer
+# approval-manifest — both off-host and not appropriate for CI).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo + submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq jq
+
+      - name: Install npm dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run build-store.sh dry-run (offline mode)
+        env:
+          MELUSINA_ATTEST_OFFLINE: '1'
+        run: |
+          set -euo pipefail
+          bash build-store.sh --dry-run 2>&1 | tee /tmp/build-store.log
+          # Pull out the validated count for the job summary.
+          COUNT=$(grep -oE 'Aggregated [0-9]+ apps' /tmp/build-store.log | head -1 | awk '{print $2}' || true)
+          if [[ -n "$COUNT" ]]; then
+            echo "validated_count=$COUNT" >> "$GITHUB_OUTPUT"
+            echo "Validated $COUNT apps."
+          else
+            echo "Could not parse validated app count from build-store.sh output." >&2
+          fi
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## build-smoke result"
+            echo ""
+            if [[ -f /tmp/build-store.log ]]; then
+              echo "Tail of build-store.sh output:"
+              echo ""
+              echo '```'
+              tail -30 /tmp/build-store.log
+              echo '```'
+            fi
+            echo ""
+            echo "_Dry-run only; no force-push happened. Publishing requires \`make plan && make apply\` from the canonical builder host._"
+          } >> "$GITHUB_STEP_SUMMARY"

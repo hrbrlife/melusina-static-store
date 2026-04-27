@@ -194,11 +194,13 @@ validate_release_attestation() {
 
   if ! python3 - "$release_file" <<'PY'
 import json
+import os
 import re
 import sys
 
 path = sys.argv[1]
 errors = []
+warnings = []
 
 try:
     with open(path) as f:
@@ -241,6 +243,55 @@ else:
         errors.append("quorumPolicy.memberCount must be >= threshold")
     if not isinstance(multisig, str) or not multisig.strip():
         errors.append("quorumPolicy.multisigPda is required")
+
+# Stub-attestation detection.
+#
+# Schema-shaped RELEASE.json entries that carry placeholder IDs of the form
+# `test-...` or `offline-...` are not real attestations — they pass the
+# schema check but the on-chain ReleaseEntry / Squads vault / master-NFT
+# mint they reference does not exist. Detect them up-front so the operator
+# isn't fooled into thinking these apps are properly attested.
+#
+# Today (2026-04-27) all 29 catalog apps carry stubs: 25 `test-*` (zero
+# real signature surface) and 4 `offline-*` (real authorSig hex but stub
+# PDAs). After Tier 4 (Pearl ceremony goes live, fleet migrates to real
+# ReleaseEntry-backed RELEASE.json), the default must flip to strict.
+#
+# Modes:
+#   MELUSINA_ATTEST_REJECT_STUBS=1  → strict: stubs are errors (block publish)
+#   unset / any other value         → warn-only (backwards compat)
+#
+# TODO(Tier 4 follow-up): once melusina-pearl-tool ships and the fleet has
+# migrated, flip the default to strict (treat unset as =1) and require
+# explicit MELUSINA_ATTEST_ALLOW_STUBS=1 to opt in to permissive mode.
+STUB_PREFIXES = ("test-", "offline-")
+STUB_FIELDS_NON_SIG = ("releaseEntryPda", "masterNftMint", "licenseSquadsVault")
+stub_hits = []
+for f in STUB_FIELDS_NON_SIG:
+    v = d.get(f, "")
+    if isinstance(v, str) and any(v.startswith(p) for p in STUB_PREFIXES):
+        prefix = next(p for p in STUB_PREFIXES if v.startswith(p))
+        stub_hits.append(f"{f} starts with `{prefix}` (placeholder, not a real PDA)")
+sig = d.get("authorSig", "")
+if isinstance(sig, str) and sig.startswith("test-"):
+    stub_hits.append("authorSig starts with `test-` (placeholder, not a real Ed25519 signature)")
+if isinstance(quorum, dict):
+    multi = quorum.get("multisigPda", "")
+    if isinstance(multi, str) and any(multi.startswith(p) for p in STUB_PREFIXES):
+        prefix = next(p for p in STUB_PREFIXES if multi.startswith(p))
+        stub_hits.append(f"quorumPolicy.multisigPda starts with `{prefix}` (placeholder, not a real Squads multisig PDA)")
+
+if stub_hits:
+    reject = os.environ.get("MELUSINA_ATTEST_REJECT_STUBS", "") == "1"
+    bucket = errors if reject else warnings
+    for hit in stub_hits:
+        bucket.append(f"stub attestation: {hit}")
+    if not reject:
+        # Surface a clear note about WHY this is permitted today.
+        warnings.append("(stubs allowed: MELUSINA_ATTEST_REJECT_STUBS!=1 — flip to strict after Tier 4 / Pearl ceremony goes live)")
+
+for w in warnings:
+    print(f"RELEASE.json: WARN: {w}", file=sys.stderr)
 
 if errors:
     for err in errors:

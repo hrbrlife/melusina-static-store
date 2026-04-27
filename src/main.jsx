@@ -1543,10 +1543,65 @@ function getAppPrice(appId) {
 }
 
 /* ─── Sidecars & Grapple Connections ───────────────────────────────────────── */
-const APP_SIDECARS = {};
+//
+// As of capabilities-v1: every app ships a `capabilities` object on its
+// apps.json entry — an 8-axis profile per pearl: sidecars, grapple,
+// encryption, roles, blockchains, staticPublishing, httpOut, incomingApi.
+// The legacy {sidecars, grapple} shape used by badges + the existing
+// SidecarsTab is derived by flattening the per-pearl profiles. New axes
+// (encryption, roles, etc.) render as additional sections in PearlProfileTab.
+const APP_SIDECARS = (() => {
+  const out = {};
+  const apps = (data && data.apps) || [];
+  for (const app of apps) {
+    const caps = app.capabilities;
+    if (!caps || !Array.isArray(caps.pearls)) continue;
+    const grapple = [];
+    const sidecars = [];
+    for (const pearl of caps.pearls) {
+      // Sidecars: collect required + stateless across pearls; dedupe by id+pearlId.
+      for (const s of (pearl.sidecars || [])) {
+        if (s.level === "none") continue;
+        sidecars.push({
+          required: s.level === "required",
+          name: s.label || s.id,
+          id: s.id,
+          purpose: s.purpose || "",
+          pearl: pearl.pearlName,
+        });
+      }
+      // Grapple: offers → outgoing(?), requests → incoming. The legacy UI
+      // labels "incoming" as down-arrow (consumed) and "outgoing" as up-arrow
+      // (offered). Map: offers = OUT (this app exposes), requests = IN (this
+      // app consumes from peers).
+      for (const g of ((pearl.grapple && pearl.grapple.offers) || [])) {
+        grapple.push({
+          direction: "outgoing",
+          capability: g.interface || g.name,
+          apps: ["(any peer)"],
+          purpose: g.purpose || "",
+          type: "enhance",
+          pearl: pearl.pearlName,
+        });
+      }
+      for (const g of ((pearl.grapple && pearl.grapple.requests) || [])) {
+        grapple.push({
+          direction: "incoming",
+          capability: g.interface || g.name,
+          apps: ["(peer Pearl)"],
+          purpose: g.purpose || "",
+          type: g.required ? "dependency" : "enhance",
+          pearl: pearl.pearlName,
+        });
+      }
+    }
+    out[app.appId] = { sidecars, grapple, capabilities: caps };
+  }
+  return out;
+})();
 
 function getAppSidecars(appId) {
-  return APP_SIDECARS[appId] || { sidecars: [], grapple: [] };
+  return APP_SIDECARS[appId] || { sidecars: [], grapple: [], capabilities: null };
 }
 
 function getConnectivityBadges(appId) {
@@ -2060,6 +2115,135 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
           </div>
         )}
       </div>
+
+      {/* ─── Per-Pearl Profile (encryption, roles, blockchains, static publishing, HTTP-out, incoming API) ─── */}
+      {appSidecars.capabilities && Array.isArray(appSidecars.capabilities.pearls) && appSidecars.capabilities.pearls.map((pearl, pi) => (
+        <div key={`pearl-${pi}`} style={{ marginBottom: 28 }}>
+          <SectionHeader color={T.cyan}>{'🔮'} Pearl Profile{appSidecars.capabilities.pearls.length > 1 ? ` — ${pearl.pearlName}` : ''}</SectionHeader>
+          <div style={{
+            background: T.surface, borderRadius: T.radius,
+            border: `1px solid ${T.cyan}33`, padding: 18,
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16,
+          }}>
+            {appSidecars.capabilities.pearls.length > 1 && (
+              <div style={{ gridColumn: '1 / -1', fontSize: 13, color: T.textSec, lineHeight: 1.6 }}>
+                <strong style={{ color: T.text }}>{pearl.pearlName}</strong> &middot;{' '}
+                <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, textTransform: 'uppercase' }}>{pearl.pearlType}</span>
+                <div style={{ marginTop: 6, fontSize: 12 }}>{pearl.purpose}</div>
+              </div>
+            )}
+
+            {/* Encryption */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'🔐 Encryption'}</div>
+              {pearl.encryption && pearl.encryption.supported ? (
+                <>
+                  <div style={{ fontSize: 12, color: T.green, fontWeight: 700, marginBottom: 6 }}>Supported at rest</div>
+                  {pearl.encryption.scheme && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6 }}>{pearl.encryption.scheme}</div>}
+                  {Array.isArray(pearl.encryption.fields) && pearl.encryption.fields.length > 0 && (
+                    <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6 }}>
+                      {pearl.encryption.fields.map((f, i) => <li key={i}>{f}</li>)}
+                    </ul>
+                  )}
+                </>
+              ) : (
+                <div style={{ fontSize: 12, color: T.textDim }}>Not encrypted at rest — this pearl holds no sensitive persistent state.</div>
+              )}
+            </div>
+
+            {/* Roles */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'👤 Roles'}</div>
+              {(() => {
+                const r = pearl.roles || {};
+                const groups = [
+                  { key: 'adminOnly',        label: 'Admin only',        color: T.magenta },
+                  { key: 'organizationOnly', label: 'Organisation only', color: T.yellow },
+                  { key: 'anyMember',        label: 'Any member',        color: T.cyan },
+                ];
+                const total = groups.reduce((acc, g) => acc + ((r[g.key] || []).length), 0);
+                if (total === 0) return <div style={{ fontSize: 12, color: T.textDim }}>No role-gated functions — all surface actions are equally available.</div>;
+                return groups.map(g => {
+                  const items = r[g.key] || [];
+                  if (!items.length) return null;
+                  return (
+                    <div key={g.key} style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, color: g.color, fontWeight: 700, marginBottom: 4 }}>{g.label} ({items.length})</div>
+                      <ul style={{ paddingLeft: 18, fontSize: 12, color: T.textSec, lineHeight: 1.6, margin: 0 }}>
+                        {items.map((it, i) => <li key={i}><strong style={{ color: T.text }}>{it.name}</strong>{it.purpose ? ` — ${it.purpose}` : ''}</li>)}
+                      </ul>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Blockchains */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'⛓️ Blockchains'}</div>
+              {Array.isArray(pearl.blockchains) && pearl.blockchains.length > 0 ? (
+                pearl.blockchains.map((b, i) => (
+                  <div key={i} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.chain}{b.cluster ? ` · ${b.cluster}` : ''}</div>
+                    {b.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 2 }}>{b.purpose}</div>}
+                    {Array.isArray(b.programs) && b.programs.length > 0 && (
+                      <ul style={{ paddingLeft: 16, fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, marginTop: 4 }}>
+                        {b.programs.map((p, j) => <li key={j}>{p.label}: <code style={{ color: T.textSec }}>{p.id.slice(0,8)}…{p.id.slice(-4)}</code>{Array.isArray(p.calls) && p.calls.length ? ` (${p.calls.join(', ')})` : ''}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))
+              ) : <div style={{ fontSize: 12, color: T.textDim }}>No blockchain interactions.</div>}
+            </div>
+
+            {/* Static Publishing */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'📤 Static Publishing'}</div>
+              {pearl.staticPublishing && pearl.staticPublishing.enabled ? (
+                <>
+                  <div style={{ fontSize: 12, color: T.green, fontWeight: 700, marginBottom: 4 }}>Enabled</div>
+                  {pearl.staticPublishing.via && <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec }}>via {pearl.staticPublishing.via}</div>}
+                  {pearl.staticPublishing.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 4 }}>{pearl.staticPublishing.purpose}</div>}
+                </>
+              ) : <div style={{ fontSize: 12, color: T.textDim }}>This pearl publishes nothing to the open internet.</div>}
+            </div>
+
+            {/* HTTP Out */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'🌐 HTTP Out'}</div>
+              {pearl.httpOut && pearl.httpOut.enabled ? (
+                <>
+                  <div style={{ fontSize: 12, color: T.yellow, fontWeight: 700, marginBottom: 4 }}>Enabled</div>
+                  {pearl.httpOut.via && <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textSec }}>via {pearl.httpOut.via}</div>}
+                  {pearl.httpOut.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 4 }}>{pearl.httpOut.purpose}</div>}
+                  {Array.isArray(pearl.httpOut.endpoints) && pearl.httpOut.endpoints.length > 0 && (
+                    <ul style={{ marginTop: 6, paddingLeft: 16, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6 }}>
+                      {pearl.httpOut.endpoints.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  )}
+                </>
+              ) : <div style={{ fontSize: 12, color: T.textDim }}>This pearl makes no outbound HTTP calls.</div>}
+            </div>
+
+            {/* Incoming API */}
+            <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'📥 Incoming API'}</div>
+              {pearl.incomingApi && pearl.incomingApi.enabled ? (
+                <>
+                  <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, marginBottom: 4 }}>{(pearl.incomingApi.kind || 'capnp').toUpperCase()}</div>
+                  {pearl.incomingApi.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 4 }}>{pearl.incomingApi.purpose}</div>}
+                  {Array.isArray(pearl.incomingApi.interfaces) && pearl.incomingApi.interfaces.length > 0 && (
+                    <ul style={{ paddingLeft: 16, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6 }}>
+                      {pearl.incomingApi.interfaces.map((iface, i) => <li key={i}>{iface}</li>)}
+                    </ul>
+                  )}
+                </>
+              ) : <div style={{ fontSize: 12, color: T.textDim }}>No incoming API surface.</div>}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 

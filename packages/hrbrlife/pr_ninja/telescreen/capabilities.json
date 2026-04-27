@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "appSlug": "telescreen",
+  "appName": "TeleScreen",
+  "pearls": [
+    {
+      "pearlId": "telescreen",
+      "pearlName": "TeleScreen",
+      "pearlType": "user-pearl",
+      "purpose": "Public-relations / publication-ready surface — push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The Pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
+      "sidecars": [
+        { "id": "GRAIN_CRYPTO",   "level": "required", "label": "Grain Crypto Journal", "purpose": "Pre-publish drafts + per-publish audit trail encrypted." },
+        { "id": "GRAIN_RESTORE",  "level": "required", "label": "Grain Restore",        "purpose": "Portable state." },
+        { "id": "IDENTITY_GATE",  "level": "required", "label": "Identity Gate",         "purpose": "Each publish event is OTP-signed; the signed bundle hash is pinned." },
+        { "id": "CAPNP",          "level": "required", "label": "Cap'n Proto WebSession","purpose": "Source-content caps are raw capnp." }
+      ],
+      "grapple": {
+        "offers": [],
+        "requests": [
+          { "name": "doc-read",      "interface": "BureauDoc.Read@1",      "purpose": "Pull doc content for the publish bundle.",       "required": false },
+          { "name": "image-export",  "interface": "BureauPaint.Export@1",  "purpose": "Pull image exports.",                            "required": false },
+          { "name": "diagram-export","interface": "BureauDiagram.Export@1","purpose": "Pull diagram SVG/PNG.",                          "required": false },
+          { "name": "range-read",    "interface": "BureauSheets.RangeRead@1","purpose": "Pull spreadsheet ranges as data tables.",     "required": false }
+        ]
+      },
+      "encryption": { "supported": true, "scheme": "AES-256-GCM via grain-crypto-journal envelope", "fields": ["Pre-publish drafts", "Per-publish audit trail (timestamps, source-cap evidence)"] },
+      "roles": {
+        "adminOnly": [
+          { "name": "Configure publish target", "purpose": "Owner-only: which static-publish endpoint, which signing wallet." },
+          { "name": "Push publish",             "purpose": "OTP-gated; the signed bundle hash is recorded on-chain via release-entry pattern." }
+        ],
+        "organizationOnly": [],
+        "anyMember": [ { "name": "Draft content", "purpose": "Compose pre-publish content." } ]
+      },
+      "blockchains": [
+        { "chain": "solana", "cluster": "devnet",
+          "programs": [{ "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "label": "license-registry", "calls": ["RegisterReleaseEntry"] }],
+          "purpose": "Each publish creates a signed audit record; appHash + content-bundle hash are anchored." }
+      ],
+      "staticPublishing": { "enabled": true, "via": "melusina-static-publish", "purpose": "Push the assembled, signed publish bundle to the operator-configured public CDN target. The static-publish sidecar handles the upload; this Pearl only assembles + signs." },
+      "httpOut":          { "enabled": false, "via": "none", "purpose": "All egress goes through the static-publish sidecar; no direct HTTP out.", "endpoints": [] },
+      "incomingApi":      { "enabled": true, "kind": "capnp", "interfaces": ["grain.MainView"], "purpose": "Standard UiView; admin Powerbox claims for source caps." }
+    }
+  ]
+}

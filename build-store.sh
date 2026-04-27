@@ -518,6 +518,19 @@ m['attest'] = {
     'quorumPolicy': release.get('quorumPolicy', {}),
 }
 
+# Capabilities — per-app structured profile (8 axes per pearl). Optional
+# during the rollout; once every app ships a capabilities.json the catalog
+# UI populates the Grapple & Sidecars / Encryption / Roles / Blockchains /
+# Static-Publishing / HTTP-Out / Incoming-API tabs from this object.
+caps_path = os.path.join(os.path.dirname(meta_file), 'capabilities.json')
+if os.path.isfile(caps_path):
+    try:
+        m['capabilities'] = json.load(open(caps_path))
+    except Exception:
+        m['capabilities'] = None
+else:
+    m['capabilities'] = None
+
 # Pass through description (optional long-form text)
 # If description.md exists alongside metadata.json, use it as fallback
 # For large SPKs, point to GitHub Releases instead of Pages

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "appSlug": "fineract-setup",
+  "appName": "fineract Setup",
+  "pearls": [
+    {
+      "pearlId": "fineract-setup",
+      "pearlName": "fineract Setup",
+      "pearlType": "service",
+      "purpose": "Setup + admin Pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
+      "sidecars": [
+        { "id": "HTTP_COMPONENT", "level": "required", "label": "HTTP Component",        "purpose": "All Fineract API traffic flows through this sidecar — operator credentials are kept off the Pearl." },
+        { "id": "GRAIN_CRYPTO",   "level": "required", "label": "Grain Crypto Journal",  "purpose": "Tenant credentials + chart-of-accounts persisted encrypted." },
+        { "id": "IDENTITY_GATE",  "level": "required", "label": "Identity Gate",          "purpose": "Setup + credential rotation OTP-gated." },
+        { "id": "CAPNP",          "level": "required", "label": "Cap'n Proto WebSession","purpose": "FineractAdmin cap is raw capnp." }
+      ],
+      "grapple": {
+        "offers": [
+          { "name": "fineract-admin",   "interface": "Fineract.Admin@1",     "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions." }
+        ],
+        "requests": []
+      },
+      "encryption": { "supported": true, "scheme": "AES-256-GCM via grain-crypto-journal envelope", "fields": ["Tenant credentials", "Chart-of-accounts", "Operator audit log"] },
+      "roles": {
+        "adminOnly": [ { "name": "Configure Fineract endpoint + creds", "purpose": "OTP-gated; rotates the tenant credentials in the sidecar." }, { "name": "Issue / revoke FineractAdmin caps", "purpose": "Decide which operator pearls have settlement authority." } ],
+        "organizationOnly": [],
+        "anyMember": []
+      },
+      "blockchains": [
+        { "chain": "solana", "cluster": "devnet",
+          "programs": [{ "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "label": "license-registry", "calls": ["RegisterReleaseEntry"] }],
+          "purpose": "Release attestation only." }
+      ],
+      "staticPublishing": { "enabled": false, "via": "", "purpose": "" },
+      "httpOut": { "enabled": true, "via": "sidecar:HTTP_COMPONENT", "purpose": "Fineract REST API for setup + per-settlement push.", "endpoints": ["(operator-configured Fineract base URL)"] },
+      "incomingApi": { "enabled": true, "kind": "capnp", "interfaces": ["Fineract.Admin@1"], "purpose": "Admin cap consumed by ccash + wholesale operator pearls." }
+    }
+  ]
+}

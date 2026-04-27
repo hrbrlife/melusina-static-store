@@ -141,6 +141,18 @@ PY
     fi
   fi
 
+  # Check 12: terminology — same gate for shortDescription in metadata.json.
+  # The shortDescription is what the catalog UI shows in tile views; brand drift
+  # there is more visible than in description.md prose.
+  if [[ "$slug_failed" -eq 0 ]]; then
+    short_text=$(python3 -c "import json; print(json.load(open('$meta')).get('shortDescription',''))" 2>/dev/null || echo "")
+    if printf '%s' "$short_text" | grep -E "$DEPRECATED_BRAND_REGEX" 2>/dev/null \
+         | grep -vE "$LITERAL_KEEP_REGEX" | head -1 | grep -q .; then
+      errors+=("shortDescription uses deprecated brand terms: $short_text")
+      slug_failed=1
+    fi
+  fi
+
   # Report
   if [[ "$slug_failed" -eq 1 ]]; then
     fail_count=$((fail_count + 1))

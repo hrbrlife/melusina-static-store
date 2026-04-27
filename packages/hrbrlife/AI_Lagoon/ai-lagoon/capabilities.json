@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "appSlug": "ai-lagoon",
+  "appName": "AiLagoon",
+  "pearls": [
+    {
+      "pearlId": "ai-lagoon",
+      "pearlName": "AiLagoon",
+      "pearlType": "user-pearl",
+      "purpose": "AI model hub Pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The Pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
+      "sidecars": [
+        { "id": "HTTP_COMPONENT", "level": "required", "label": "HTTP Component",  "purpose": "All provider traffic routes through this sidecar — one security boundary, one auditable egress point. Operators grant this once and revoke anytime." },
+        { "id": "GRAIN_CRYPTO",   "level": "required", "label": "Grain Crypto Journal", "purpose": "Provider credentials + transcripts persisted encrypted." },
+        { "id": "GRAIN_RESTORE",  "level": "required", "label": "Grain Restore",        "purpose": "Portable hub state." },
+        { "id": "IDENTITY_GATE",  "level": "required", "label": "Identity Gate",         "purpose": "Pinning a transcript / rotating a provider credential is gated by a wallet OTP." },
+        { "id": "CAPNP",          "level": "required", "label": "Cap'n Proto WebSession","purpose": "Grapple offers (ai-text, ai-vision, ai-generic) are raw capnp." }
+      ],
+      "grapple": {
+        "offers": [
+          { "name": "ai-text",     "interface": "AiLagoon.AiText@1",     "purpose": "Generic text / chat completion — the consuming Pearl picks model class; this Pearl picks provider." },
+          { "name": "ai-vision",   "interface": "AiLagoon.AiVision@1",   "purpose": "Image understanding + OCR. Same routing model as ai-text." },
+          { "name": "ai-generic",  "interface": "AiLagoon.AiGeneric@1",  "purpose": "Open-ended capability — the user picks the exact model in the Grapple UI at grant time." }
+        ],
+        "requests": []
+      },
+      "encryption": {
+        "supported": true,
+        "scheme": "AES-256-GCM via grain-crypto-journal envelope; transcripts wallet-anchored",
+        "fields": ["Provider API keys (OpenAI, OpenRouter, Ollama tokens)", "Inference transcripts", "Pinned-transcript signatures"]
+      },
+      "roles": {
+        "adminOnly": [
+          { "name": "Configure provider credentials", "purpose": "Owner-only: add / rotate / revoke provider credentials. OTP-gated." },
+          { "name": "Manage Grapple consumers",       "purpose": "Decide which peer Pearls may claim ai-text / ai-vision / ai-generic." }
+        ],
+        "organizationOnly": [],
+        "anyMember": [
+          { "name": "Run inference",         "purpose": "Anyone with a Grapple cap can request inference; routing is scoped to that cap." },
+          { "name": "Pin a transcript",      "purpose": "Wallet-OTP signs the transcript; anchored on-chain via release-entry pattern." }
+        ]
+      },
+      "blockchains": [
+        { "chain": "solana", "cluster": "devnet",
+          "programs": [{ "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "label": "license-registry", "calls": ["RegisterReleaseEntry"] }],
+          "purpose": "Release attestation. Pinned-transcript anchors are off-chain ed25519 over the canonical transcript hash, signed by the user's wallet." }
+      ],
+      "staticPublishing": { "enabled": false, "via": "", "purpose": "" },
+      "httpOut": { "enabled": true, "via": "sidecar:HTTP_COMPONENT", "purpose": "All AI provider API calls — never directly from the Pearl, only through the HTTP_COMPONENT sidecar.", "endpoints": ["https://api.openai.com/*", "https://openrouter.ai/api/*", "(operator-configured Ollama host)"] },
+      "incomingApi": { "enabled": true, "kind": "capnp", "interfaces": ["AiLagoon.AiText@1", "AiLagoon.AiVision@1", "AiLagoon.AiGeneric@1"], "purpose": "Inference surface for peer Pearls; all access is Grapple-scoped." }
+    }
+  ]
+}

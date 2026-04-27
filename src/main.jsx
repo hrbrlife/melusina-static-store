@@ -2120,6 +2120,23 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       {appSidecars.capabilities && Array.isArray(appSidecars.capabilities.pearls) && appSidecars.capabilities.pearls.map((pearl, pi) => (
         <div key={`pearl-${pi}`} style={{ marginBottom: 28 }}>
           <SectionHeader color={T.cyan}>{'🔮'} Pearl Profile{appSidecars.capabilities.pearls.length > 1 ? ` — ${pearl.pearlName}` : ''}</SectionHeader>
+          {pearl.hostShell && (
+            <div style={{
+              marginBottom: 12, padding: '10px 14px',
+              background: T.surface, borderRadius: T.radiusSm,
+              border: `1px solid ${T.yellow}44`,
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              fontSize: 12, color: T.textSec, lineHeight: 1.5,
+            }}>
+              <span style={{ fontSize: 14 }}>{'🪺'}</span>
+              <span style={{ fontWeight: 700, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', letterSpacing: '.05em', fontSize: 10 }}>Hosted by</span>
+              <strong style={{ color: T.text }}>{pearl.hostShell.label || pearl.hostShell.id}</strong>
+              {pearl.hostShell.appId && (
+                <a href={`#/app/${pearl.hostShell.appId}`} style={{ color: T.cyan, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>view host →</a>
+              )}
+              {pearl.hostShell.purpose && <span style={{ flexBasis: '100%', marginTop: 2, color: T.textDim }}>{pearl.hostShell.purpose}</span>}
+            </div>
+          )}
           <div style={{
             background: T.surface, borderRadius: T.radius,
             border: `1px solid ${T.cyan}33`, padding: 18,
@@ -2183,17 +2200,35 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             <div style={{ background: T.bg + 'cc', borderRadius: T.radiusSm, padding: 14, border: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.textDim, marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>{'⛓️ Blockchains'}</div>
               {Array.isArray(pearl.blockchains) && pearl.blockchains.length > 0 ? (
-                pearl.blockchains.map((b, i) => (
-                  <div key={i} style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.chain}{b.cluster ? ` · ${b.cluster}` : ''}</div>
-                    {b.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 2 }}>{b.purpose}</div>}
-                    {Array.isArray(b.programs) && b.programs.length > 0 && (
-                      <ul style={{ paddingLeft: 16, fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, marginTop: 4 }}>
-                        {b.programs.map((p, j) => <li key={j}>{p.label}: <code style={{ color: T.textSec }}>{p.id.slice(0,8)}…{p.id.slice(-4)}</code>{Array.isArray(p.calls) && p.calls.length ? ` (${p.calls.join(', ')})` : ''}</li>)}
-                      </ul>
-                    )}
-                  </div>
-                ))
+                pearl.blockchains.map((b, i) => {
+                  const explorerBase = b.chain === 'solana'
+                    ? `https://explorer.solana.com/address/`
+                    : b.chain === 'ethereum'
+                      ? `https://etherscan.io/address/`
+                      : null;
+                  const clusterSuffix = b.chain === 'solana' && b.cluster && b.cluster !== 'mainnet'
+                    ? `?cluster=${b.cluster}`
+                    : '';
+                  return (
+                    <div key={i} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{b.chain}{b.cluster ? ` · ${b.cluster}` : ''}</div>
+                      {b.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginTop: 2 }}>{b.purpose}</div>}
+                      {Array.isArray(b.programs) && b.programs.length > 0 && (
+                        <ul style={{ paddingLeft: 16, fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, marginTop: 4 }}>
+                          {b.programs.map((p, j) => {
+                            const truncated = `${p.id.slice(0,8)}…${p.id.slice(-4)}`;
+                            const idEl = explorerBase
+                              ? <a href={`${explorerBase}${p.id}${clusterSuffix}`} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan, textDecoration: 'none', borderBottom: `1px dotted ${T.cyan}` }} title={p.id}>{truncated}</a>
+                              : <code style={{ color: T.textSec }} title={p.id}>{truncated}</code>;
+                            return (
+                              <li key={j}>{p.label}: {idEl}{Array.isArray(p.calls) && p.calls.length ? ` (${p.calls.join(', ')})` : ''}</li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })
               ) : <div style={{ fontSize: 12, color: T.textDim }}>No blockchain interactions.</div>}
             </div>
 
@@ -2232,11 +2267,41 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               {pearl.incomingApi && pearl.incomingApi.enabled ? (
                 <>
                   <div style={{ fontSize: 12, color: T.cyan, fontWeight: 700, marginBottom: 4 }}>{(pearl.incomingApi.kind || 'capnp').toUpperCase()}</div>
-                  {pearl.incomingApi.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 4 }}>{pearl.incomingApi.purpose}</div>}
+                  {pearl.incomingApi.purpose && <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 8 }}>{pearl.incomingApi.purpose}</div>}
                   {Array.isArray(pearl.incomingApi.interfaces) && pearl.incomingApi.interfaces.length > 0 && (
-                    <ul style={{ paddingLeft: 16, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.textDim, lineHeight: 1.6 }}>
-                      {pearl.incomingApi.interfaces.map((iface, i) => <li key={i}>{iface}</li>)}
-                    </ul>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {pearl.incomingApi.interfaces.map((iface, i) => {
+                        const isObj = iface && typeof iface === 'object';
+                        const name = isObj ? iface.name : iface;
+                        const purpose = isObj ? iface.purpose : '';
+                        const role = isObj ? iface.roleGate : '';
+                        const roleColor = role === 'adminOnly' ? T.magenta
+                          : role === 'organizationOnly' ? T.yellow
+                          : role === 'anonymous' ? T.green
+                          : T.cyan;
+                        const roleLabel = role === 'adminOnly' ? 'admin'
+                          : role === 'organizationOnly' ? 'org'
+                          : role === 'anonymous' ? 'public'
+                          : role === 'anyMember' ? 'member'
+                          : '';
+                        return (
+                          <div key={i} style={{ paddingLeft: 8, borderLeft: `2px solid ${roleColor}55` }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                              <code style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: T.text, fontWeight: 600 }}>{name}</code>
+                              {roleLabel && (
+                                <span style={{
+                                  fontSize: 9, padding: '1px 6px', borderRadius: 3,
+                                  border: `1px solid ${roleColor}66`, color: roleColor,
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  textTransform: 'uppercase', letterSpacing: '.05em',
+                                }}>{roleLabel}</span>
+                              )}
+                            </div>
+                            {purpose && <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5, marginTop: 3 }}>{purpose}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </>
               ) : <div style={{ fontSize: 12, color: T.textDim }}>No incoming API surface.</div>}
@@ -2244,6 +2309,56 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
           </div>
         </div>
       ))}
+
+      {/* ─── On-Chain Attestation (once per app) ─── */}
+      {app.attest && app.attest.releaseEntryPda && (() => {
+        const A = app.attest;
+        const explorer = (addr) => `https://explorer.solana.com/address/${addr}?cluster=devnet`;
+        const fmtTime = (unix) => {
+          if (!unix) return '';
+          const d = new Date(unix * 1000);
+          return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+        };
+        const Field = ({ label, value, href }) => value ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '6px 0', borderBottom: `1px dashed ${T.border}` }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", minWidth: 130 }}>{label}</span>
+            {href ? (
+              <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', borderBottom: `1px dotted ${T.cyan}`, wordBreak: 'break-all' }}>{value}</a>
+            ) : (
+              <code style={{ color: T.textSec, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", wordBreak: 'break-all' }}>{value}</code>
+            )}
+          </div>
+        ) : null;
+        return (
+          <div style={{ marginBottom: 28 }}>
+            <SectionHeader color={T.green}>{'🔗'} On-Chain Attestation</SectionHeader>
+            <div style={{
+              padding: 18, background: T.surface, borderRadius: T.radius,
+              border: `1px solid ${T.green}33`,
+              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            }}>
+              <div style={{ fontSize: 12, color: T.textSec, lineHeight: 1.6, marginBottom: 12 }}>
+                This release is anchored on Solana devnet. The seat is signed by the Foundation Squads multisig vault and verifiable end-to-end via <code style={{ color: T.cyan, fontSize: 11 }}>melusina-pearl-tool verify-release</code>.
+              </div>
+              <Field label="Release seat" value={A.releaseEntryPda} href={explorer(A.releaseEntryPda)} />
+              <Field label="App hash" value={A.appHash} />
+              <Field label="Release hash" value={A.releaseHash} />
+              {A.masterNftMint && <Field label="Master NFT" value={A.masterNftMint} href={explorer(A.masterNftMint)} />}
+              {A.licenseSquadsVault && <Field label="Squads vault" value={A.licenseSquadsVault} href={explorer(A.licenseSquadsVault)} />}
+              {A.quorumPolicy && A.quorumPolicy.multisigPda && (
+                <Field label={`Squads multisig (${A.quorumPolicy.threshold || '?'}-of-${A.quorumPolicy.memberCount || '?'})`} value={A.quorumPolicy.multisigPda} href={explorer(A.quorumPolicy.multisigPda)} />
+              )}
+              <Field label="Signed at" value={fmtTime(A.signedAtUnix)} />
+              {A.authorSig && (
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.textDim, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>Author signature (ed25519)</summary>
+                  <code style={{ display: 'block', marginTop: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: T.textSec, wordBreak: 'break-all', lineHeight: 1.6 }}>{A.authorSig}</code>
+                </details>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 

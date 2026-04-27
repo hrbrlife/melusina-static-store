@@ -90,12 +90,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Pinning a transcript / rotating a provider credential is gated by a wallet OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Grapple offers (ai-text, ai-vision, ai-generic) are raw capnp."
               }
             ],
             "grapple": {
@@ -185,9 +179,21 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "AiLagoon.AiText@1",
-                "AiLagoon.AiVision@1",
-                "AiLagoon.AiGeneric@1"
+                {
+                  "name": "AiLagoon.AiText@1",
+                  "purpose": "Generic text / chat completion \u2014 the consuming Pearl picks model class; this Pearl picks provider.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "AiLagoon.AiVision@1",
+                  "purpose": "Image understanding + OCR. Same routing model as ai-text.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "AiLagoon.AiGeneric@1",
+                  "purpose": "Open-ended capability \u2014 the user picks the exact model in the Grapple UI at grant time.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Inference surface for peer Pearls; all access is Grapple-scoped."
             }
@@ -259,12 +265,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable across machines."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Hub admin surface."
               }
             ],
             "grapple": {
@@ -339,7 +339,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BotMother.Route@1"
+                {
+                  "name": "BotMother.Route@1",
+                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Routing surface for downstream chatroom + telegram pearls."
             }
@@ -416,7 +420,10 @@
               "enabled": true,
               "kind": "http",
               "interfaces": [
-                "POST /telegram/webhook"
+                {
+                  "name": "POST /telegram/webhook",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Webhook endpoint Telegram POSTs to."
             }
@@ -438,12 +445,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable chat history."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Standard capnp."
               }
             ],
             "grapple": {
@@ -496,7 +497,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView."
             }
@@ -518,12 +523,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Station policy changes are Squads-signed via OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Powerbox-claim only."
               }
             ],
             "grapple": {
@@ -585,7 +584,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BotMother.Policy@1"
+                {
+                  "name": "BotMother.Policy@1",
+                  "purpose": "Issue per-constellation policy: allowed models, retention, content rules.",
+                  "roleGate": "adminOnly"
+                }
               ],
               "purpose": "Powerbox-claim policy gate."
             }
@@ -666,14 +669,7 @@
             "pearlName": "Bureau Suite",
             "pearlType": "user-pearl",
             "purpose": "The umbrella Bureau Pearl \u2014 bundles Spreadsheet, Document, Diagram, mini-Paint, Notes, Calendar, and Contacts behind a single shell. Each child surface is loaded lazily; Grapple connections between them are wired by the shell so cross-bureau embeds work without re-prompting the user.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "This Pearl IS the bureau shell \u2014 it hosts the family of bureau apps and routes their inter-Grapple requests."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -751,7 +747,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "Bureau.Shell@1"
+                {
+                  "name": "Bureau.Shell@1",
+                  "purpose": "Lets a child bureau Pearl declare itself a tile in this shell and request inter-bureau Grapple wiring.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Mounting interface for child bureau Pearls."
             }
@@ -815,14 +815,7 @@
             "pearlName": "Cal Bureau",
             "pearlType": "user-pearl",
             "purpose": "A calendar-and-scheduling Pearl in the Bureau family. Hosts events, recurring schedules, and shared calendar views. The Pearl runs entirely client-side (no outbound network); any sharing happens through Grapple \u2014 another Pearl claims a calendar capability and gets scoped read or write access.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell (host pearl for bureau apps)",
-                "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -878,10 +871,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauCalendar.Read@1",
-                "BureauCalendar.Write@1"
+                {
+                  "name": "BureauCalendar.Read@1",
+                  "purpose": "Lets another Pearl read scoped events from one of this calendar's domains.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauCalendar.Write@1",
+                  "purpose": "Lets another Pearl create events in a specific calendar; writes are explicit per-event (no silent inserts).",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Calendar data exposed to peer Pearls strictly through Grapple \u2014 no public HTTP API."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
             }
           }
         ]
@@ -952,12 +959,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable board state."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Card-drop offers are raw capnp."
               }
             ],
             "grapple": {
@@ -1029,8 +1030,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "CanBoard.CardCreate@1",
-                "CanBoard.BoardRead@1"
+                {
+                  "name": "CanBoard.CardCreate@1",
+                  "purpose": "Drop a card into a specific board's intake column from a peer Pearl.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CanBoard.BoardRead@1",
+                  "purpose": "Read a specific board's state for embedding / dashboard use.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Kanban surface for peer Pearls."
             }
@@ -1110,12 +1119,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Client signs in with a Solana wallet; high-tier actions (signing a deal, approving a transfer) require a fresh Ed25519 OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Speaks raw capnp; ClientCap is consumed via Powerbox claim."
               }
             ],
             "grapple": {
@@ -1187,7 +1190,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView; no peer-claimable services."
             }
@@ -1269,12 +1276,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Every policy mutation requires a Squads-multisig-rooted Ed25519 OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Admin grain is in-process raw capnp UiView; no http-bridge."
               }
             ],
             "grapple": {
@@ -1359,8 +1360,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "ccash.AdminGate@1",
-                "ccash.PolicyAttest@1"
+                {
+                  "name": "ccash.AdminGate@1",
+                  "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
+                  "roleGate": "adminOnly"
+                },
+                {
+                  "name": "ccash.PolicyAttest@1",
+                  "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
+                  "roleGate": "adminOnly"
+                }
               ],
               "purpose": "Powerbox-claim only; no public HTTP route."
             }
@@ -1424,12 +1433,6 @@
             "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Powerbox-claim this Pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
             "sidecars": [
               {
-                "id": "BUREAU_SHELL",
-                "level": "none",
-                "label": "Bureau Shell",
-                "purpose": "Not a bureau Pearl."
-              },
-              {
                 "id": "GRAIN_CRYPTO",
                 "level": "stateless",
                 "label": "Grain Crypto Journal",
@@ -1440,12 +1443,6 @@
                 "level": "stateless",
                 "label": "Grain Restore",
                 "purpose": "State is the YAML files on disk; restore = standard grain backup."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "TemplateService is exposed via raw capnp; consumed by ccash grains over Powerbox."
               }
             ],
             "grapple": {
@@ -1514,8 +1511,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "ccash.DomainTemplate@1",
-                "ccash.StationTemplate@1"
+                {
+                  "name": "ccash.DomainTemplate@1",
+                  "purpose": "Read the canonical template \u2014 jurisdictions, station tree, default policies.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "ccash.StationTemplate@1",
+                  "purpose": "Pick a station template (per-jurisdiction) at workspace setup time.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Template service for the ccash constellation."
             }
@@ -1596,12 +1601,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Org members sign in with their wallet; high-impact actions need OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Speaks raw capnp."
               }
             ],
             "grapple": {
@@ -1673,7 +1672,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView."
             }
@@ -1746,12 +1749,6 @@
                 "level": "stateless",
                 "label": "Grain Restore",
                 "purpose": "Plain-file state; restore = standard grain backup."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Speaks raw capnp via vendored zenhack.net/go/sandstorm; offers CcashWholesaleAdmin + SubAccountCap interfaces."
               }
             ],
             "grapple": {
@@ -1835,8 +1832,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "ccash.WholesaleAdmin@1",
-                "ccash.SubAccountCap@1"
+                {
+                  "name": "ccash.WholesaleAdmin@1",
+                  "purpose": "Surface wholesale admin to a peer admin grain (manage operator allowlist, correspondent rules).",
+                  "roleGate": "adminOnly"
+                },
+                {
+                  "name": "ccash.SubAccountCap@1",
+                  "purpose": "Issue a scoped sub-account capability to an operator Pearl so it can settle through this wholesale install.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Wholesale admin + sub-account issuance."
             }
@@ -1920,12 +1925,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "High-tier operator approvals (admin promotions, wallet rotations, cross-license actions) require a Solana Ed25519 OTP proof. No bypass; CLAUDE.md \u00a710 forbids one."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "ccash speaks raw Cap'n Proto via UiView.NewSession; cross-grain wiring goes through Powerbox claims, never through HTTP routes."
               }
             ],
             "grapple": {
@@ -2041,10 +2040,26 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView (UiView + Restore + Drop)",
-                "graincontext.GrainContext (AI-facing)",
-                "ccash.AdminGate@1",
-                "ccash.ClientCap@1"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "graincontext.GrainContext",
+                  "purpose": "Read-only context API consumed by AI-assistant pearls (e.g. AiLagoon) to summarise or describe grain state without holding a write capability.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "ccash.AdminGate@1",
+                  "purpose": "Surface this operator console to a peer admin Pearl (e.g. cca.sh Config) so the admin can issue policy + template updates without seeing operator-private state.",
+                  "roleGate": "adminOnly"
+                },
+                {
+                  "name": "ccash.ClientCap@1",
+                  "purpose": "Hand a client-bound capability to a peer Pearl (cca.sh Client) so end customers can see only their own deals.",
+                  "roleGate": "organizationOnly"
+                }
               ],
               "purpose": "Cap'n Proto surface for peer Pearls + grain-context API for AI assistants."
             }
@@ -2121,12 +2136,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Identity-rooted views ensure the user only sees clients they're entitled to."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Speaks raw capnp; consumes a fan of caps from peer Pearls."
               }
             ],
             "grapple": {
@@ -2218,7 +2227,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView; caps come in, no peer-claimable surface out."
             }
@@ -2300,12 +2313,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Every vote is signed by the voter's wallet via OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Resolution-read caps are raw capnp."
               }
             ],
             "grapple": {
@@ -2387,8 +2394,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "Consilium.ResolutionRead@1",
-                "Consilium.MotionPick@1"
+                {
+                  "name": "Consilium.ResolutionRead@1",
+                  "purpose": "Read the final resolution + signed vote tally for a motion.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "Consilium.MotionPick@1",
+                  "purpose": "Interactive picker \u2014 peer Pearl raises UI; user picks which motion / resolution to attach.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Resolution surface for downstream governance."
             }
@@ -2450,14 +2465,7 @@
             "pearlName": "Contacts Bureau",
             "pearlType": "user-pearl",
             "purpose": "Contact-management Pearl in the Bureau family \u2014 people, organisations, relationships, free-text notes. Stays local to the Pearl; sharing fields with other Pearls (e.g. Mail, Calendar, Bureau Doc for mailmerge) is explicit per-record via Grapple.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the SPA, mediates auth + Grapple plumbing."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -2513,10 +2521,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauContacts.Read@1",
-                "BureauContacts.Pick@1"
+                {
+                  "name": "BureauContacts.Read@1",
+                  "purpose": "Read scoped contact records by tag or list \u2014 for mailmerge, address lookup, etc.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauContacts.Pick@1",
+                  "purpose": "Interactive contact picker \u2014 the consuming Pearl raises a UI; the user picks; the picked records flow back via the capability.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Contact data exposed to peer Pearls strictly through Grapple."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the SPA, mediates auth + Grapple plumbing."
             }
           }
         ]
@@ -2594,12 +2616,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Custody handoffs require both parties' Ed25519 OTPs."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Custody caps are raw capnp."
               }
             ],
             "grapple": {
@@ -2676,8 +2692,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "CrateLink.Accept@1",
-                "CrateLink.Read@1"
+                {
+                  "name": "CrateLink.Accept@1",
+                  "purpose": "Counterparty Pearl claims this cap to accept custody of a specific shipment crate.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CrateLink.Read@1",
+                  "purpose": "Read a shipment's history (only your participation slice).",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Custody-handoff surface."
             }
@@ -2756,12 +2780,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Every transaction signature is OTP-gated by the user's master keypair."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Wallet-cap is raw capnp; consumed by peer Pearls (ccash, dueprocess) over Powerbox."
               }
             ],
             "grapple": {
@@ -2857,8 +2875,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "CyberTeller.Sign@1",
-                "CyberTeller.Pubkey@1"
+                {
+                  "name": "CyberTeller.Sign@1",
+                  "purpose": "Sign a presented payload with the user's wallet key \u2014 used by peer Pearls (ccash) when the user authorizes a transaction.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CyberTeller.Pubkey@1",
+                  "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Wallet capability for peer Pearls \u2014 Powerbox-claim only."
             }
@@ -2940,14 +2966,7 @@
             "pearlName": "Diagrams Bureau",
             "pearlType": "user-pearl",
             "purpose": "Vector-diagram editor (flowcharts, network maps, org charts, mind maps). Drawio-based front end hosted by the Bureau Shell; diagrams are saved as Pearl-local files and embedded in other Bureau Pearls (Doc, Sheets, Notes) via Grapple.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the editor SPA + file I/O."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -2999,10 +3018,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauDiagram.Embed@1",
-                "BureauDiagram.Export@1"
+                {
+                  "name": "BureauDiagram.Embed@1",
+                  "purpose": "Embed a diagram into a peer Pearl (Doc, Notes, Sheets, etc.) \u2014 peer holds a capability to fetch the live SVG.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauDiagram.Export@1",
+                  "purpose": "Export the current diagram as SVG/PNG/PDF on demand for downstream consumers.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Diagram surface for embedding into peer Bureau Pearls."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor SPA + file I/O."
             }
           }
         ]
@@ -3083,14 +3116,7 @@
             "pearlName": "Docs Bureau",
             "pearlType": "user-pearl",
             "purpose": "Rich-text document Pearl \u2014 long-form prose, tables, embedded diagrams. Local-first storage; each document is a Pearl-scoped file; Pearls can claim a Read or Embed capability via Grapple.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the editor + file I/O."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -3155,10 +3181,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauDoc.Read@1",
-                "BureauDoc.AttachImage@1"
+                {
+                  "name": "BureauDoc.Read@1",
+                  "purpose": "Read a specific document's text/markdown for downstream rendering.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauDoc.AttachImage@1",
+                  "purpose": "Inverse: a Bureau Paint or Diagram Pearl can offer this capability so Doc embeds the image live.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Document surface for peer Bureau Pearls."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor + file I/O."
             }
           }
         ]
@@ -3234,12 +3274,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Procedure changes are Squads-signed via OTP gate."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Raw capnp UiView; admin-gate exported via Powerbox."
               }
             ],
             "grapple": {
@@ -3321,8 +3355,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "DueProcess.SpawnProcess@1",
-                "DueProcess.BindClient@1"
+                {
+                  "name": "DueProcess.SpawnProcess@1",
+                  "purpose": "Issue a per-process grain capability; one capability = one ongoing matter.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "DueProcess.BindClient@1",
+                  "purpose": "Bind a client portal Pearl to a specific case for collaborative review.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Admin surface for procedure operators."
             }
@@ -3350,12 +3392,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Case-state transitions require OTP from the assigned reviewer."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Raw capnp; consumed by Station (admin) + Client + Account pearls."
               }
             ],
             "grapple": {
@@ -3441,8 +3477,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "DueProcess.CaseView@1",
-                "DueProcess.CaseAction@1"
+                {
+                  "name": "DueProcess.CaseView@1",
+                  "purpose": "Scoped view of the case file for client + account grains.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "DueProcess.CaseAction@1",
+                  "purpose": "Submit case actions (add evidence, request screening, advance state).",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Per-matter case surface."
             }
@@ -3470,12 +3514,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Account holder signs in with their wallet; sensitive views require OTP."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Standard capnp UiView."
               }
             ],
             "grapple": {
@@ -3537,7 +3575,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView."
             }
@@ -3565,12 +3607,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Client signs declarations via OTP \u2014 the signed payload is the legal record."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Standard capnp."
               }
             ],
             "grapple": {
@@ -3638,7 +3674,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView."
             }
@@ -3694,7 +3734,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "DueProcess.Screening@1"
+                {
+                  "name": "DueProcess.Screening@1",
+                  "purpose": "Run a name + party screen; returns hit list with provenance.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Internal-only screening cap consumed by station + process pearls."
             }
@@ -3780,12 +3824,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Setup + credential rotation OTP-gated."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "FineractAdmin cap is raw capnp."
               }
             ],
             "grapple": {
@@ -3854,7 +3892,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "Fineract.Admin@1"
+                {
+                  "name": "Fineract.Admin@1",
+                  "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions.",
+                  "roleGate": "adminOnly"
+                }
               ],
               "purpose": "Admin cap consumed by ccash + wholesale operator pearls."
             }
@@ -3925,12 +3967,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable state."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Space-create caps are raw capnp."
               }
             ],
             "grapple": {
@@ -4003,8 +4039,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "Instaco.SpaceCreate@1",
-                "Instaco.SpaceRead@1"
+                {
+                  "name": "Instaco.SpaceCreate@1",
+                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "Instaco.SpaceRead@1",
+                  "purpose": "Read-only thread embeds for downstream Pearls.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Lightweight collab surface."
             }
@@ -4077,12 +4121,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable assistant state."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "The Go bridge speaks raw capnp to grain APIs; Node front-end talks to the bridge over an internal pipe."
               }
             ],
             "grapple": {
@@ -4163,7 +4201,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView; bridge is internal-only."
             }
@@ -4173,14 +4215,7 @@
             "pearlName": "Dev Bridge",
             "pearlType": "service",
             "purpose": "Developer-only grain that exposes the Go bridge in standalone mode (no Node front-end). Used during OpenClaw development for capnp wire debugging. Does NOT ship as a user-facing tile.",
-            "sidecars": [
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Bridge's only purpose is capnp echo / debug."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [],
               "requests": []
@@ -4216,7 +4251,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Dev-only capnp echo surface."
             }
@@ -4309,12 +4348,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Sending mail / rotating mailbox keys is OTP-gated."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Routing offers are raw capnp."
               }
             ],
             "grapple": {
@@ -4389,8 +4422,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "MerMail.Read@1",
-                "MerMail.Send@1"
+                {
+                  "name": "MerMail.Read@1",
+                  "purpose": "Scoped read of incoming mail by tag / sender for downstream Pearls (e.g. ticket auto-routing).",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "MerMail.Send@1",
+                  "purpose": "Send a mail from a peer Pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Mail-routing surface for peer Pearls."
             }
@@ -4472,12 +4513,6 @@
                 "level": "required",
                 "label": "Grain Restore",
                 "purpose": "Portable repos across machines."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Repo access caps are raw capnp."
               }
             ],
             "grapple": {
@@ -4546,8 +4581,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "MiniGit.RepoRead@1",
-                "MiniGit.RepoWrite@1"
+                {
+                  "name": "MiniGit.RepoRead@1",
+                  "purpose": "Read-only access to a specific repo (clone + fetch).",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "MiniGit.RepoWrite@1",
+                  "purpose": "Push access to a specific repo.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Git repo capability surface."
             }
@@ -4624,12 +4667,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Name registration + transfer is OTP-gated."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "NamedCoin caps are raw capnp."
               }
             ],
             "grapple": {
@@ -4701,8 +4738,16 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "NamedCoin.Resolve@1",
-                "NamedCoin.Attest@1"
+                {
+                  "name": "NamedCoin.Resolve@1",
+                  "purpose": "Resolve a name to its current bound wallet + KYC tier.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "NamedCoin.Attest@1",
+                  "purpose": "Issue a signed attestation 'name X = wallet Y at time T' for downstream cross-Pearl use.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Name-resolution surface for the constellation."
             }
@@ -4766,14 +4811,7 @@
             "pearlName": "Notes Bureau",
             "pearlType": "user-pearl",
             "purpose": "Lightweight note-taking Pearl \u2014 fast-capture markdown, daily-journal mode, hierarchical notebooks. Storage is per-Pearl; sharing notes with peer Pearls (Doc, Calendar) goes through Grapple per-note or per-tag.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the SPA + file I/O."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4825,10 +4863,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauNotes.Read@1",
-                "BureauNotes.Write@1"
+                {
+                  "name": "BureauNotes.Read@1",
+                  "purpose": "Read scoped notes by tag/notebook for downstream embedding or search.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauNotes.Write@1",
+                  "purpose": "Append a note from a peer Pearl (e.g. quick-capture from Calendar).",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Notes surface for peer Bureau Pearls."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the SPA + file I/O."
             }
           }
         ]
@@ -4908,14 +4960,7 @@
             "pearlName": "Paint Bureau",
             "pearlType": "user-pearl",
             "purpose": "Bitmap image editor (mini-Paint style \u2014 layers, brushes, selection, simple filters). Outputs PNG/JPEG; consumed by other Bureau Pearls (Doc, Notes) via Grapple's Embed capability.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the editor + file I/O."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -4967,10 +5012,24 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauPaint.Embed@1",
-                "BureauPaint.Export@1"
+                {
+                  "name": "BureauPaint.Embed@1",
+                  "purpose": "Live-embed an image into a peer Pearl; updates reflect when the source changes.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauPaint.Export@1",
+                  "purpose": "On-demand export of the current canvas as PNG/JPEG/WebP.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Image surface for peer Bureau Pearls."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the editor + file I/O."
             }
           }
         ]
@@ -5051,14 +5110,7 @@
             "pearlName": "Sheets Bureau",
             "pearlType": "user-pearl",
             "purpose": "Spreadsheet Pearl in the Bureau family \u2014 Univer-based grid, formulas, charts, named ranges. Storage local; range-level Grapple offers let peer Pearls read live values from a named range without seeing the full sheet.",
-            "sidecars": [
-              {
-                "id": "BUREAU_SHELL",
-                "level": "required",
-                "label": "Bureau Shell",
-                "purpose": "Hosts the spreadsheet SPA + file I/O."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -5115,11 +5167,29 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "BureauSheets.RangeRead@1",
-                "BureauSheets.RangeWrite@1",
-                "BureauSheets.ChartEmbed@1"
+                {
+                  "name": "BureauSheets.RangeRead@1",
+                  "purpose": "Read a single named range; returns values + formulas.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauSheets.RangeWrite@1",
+                  "purpose": "Write to a named range from a peer Pearl (e.g. report builder dropping rows in).",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "BureauSheets.ChartEmbed@1",
+                  "purpose": "Embed a live chart from a sheet into a peer Pearl.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Spreadsheet surface for peer Bureau Pearls."
+            },
+            "hostShell": {
+              "id": "BUREAU_SHELL",
+              "label": "Bureau Shell",
+              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+              "purpose": "Hosts the spreadsheet SPA + file I/O."
             }
           }
         ]
@@ -5174,14 +5244,7 @@
             "pearlName": "Shell Tester",
             "pearlType": "service",
             "purpose": "Developer / operator tool for inspecting the Melusina shell environment: simulate Powerbox claims, exercise Grapple wiring, dump grain context, run capnp wire diagnostics. Useful for debugging integrations between Pearls. Not intended for end users.",
-            "sidecars": [
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Diagnostic capnp client + introspection."
-              }
-            ],
+            "sidecars": [],
             "grapple": {
               "offers": [
                 {
@@ -5230,7 +5293,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "ShellTester.Echo@1"
+                {
+                  "name": "ShellTester.Echo@1",
+                  "purpose": "Round-trip echo for testing Grapple wiring.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Diagnostic surface; dev-only."
             }
@@ -5311,12 +5378,6 @@
                 "level": "required",
                 "label": "Identity Gate",
                 "purpose": "Each publish event is OTP-signed; the signed bundle hash is pinned."
-              },
-              {
-                "id": "CAPNP",
-                "level": "required",
-                "label": "Cap'n Proto WebSession",
-                "purpose": "Source-content caps are raw capnp."
               }
             ],
             "grapple": {
@@ -5406,7 +5467,11 @@
               "enabled": true,
               "kind": "capnp",
               "interfaces": [
-                "grain.MainView"
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Standard UiView; admin Powerbox claims for source caps."
             }
@@ -5536,7 +5601,11 @@
               "enabled": true,
               "kind": "http",
               "interfaces": [
-                "GET / (HTML/VNC desktop client)"
+                {
+                  "name": "GET /",
+                  "purpose": "HTML/VNC desktop client",
+                  "roleGate": "anyMember"
+                }
               ],
               "purpose": "Browser-based VNC-style desktop surface."
             }

@@ -9,46 +9,131 @@
       "pearlType": "user-pearl",
       "purpose": "Personal Solana wallet Pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the Pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
       "sidecars": [
-        { "id": "GRAIN_CRYPTO",   "level": "required", "label": "Grain Crypto Journal", "purpose": "Wallet key material + transaction history persisted encrypted; envelope keyed to the user's master." },
-        { "id": "GRAIN_RESTORE",  "level": "required", "label": "Grain Restore",        "purpose": "Portable wallet across machines without leaking the key." },
-        { "id": "IDENTITY_GATE",  "level": "required", "label": "Identity Gate",         "purpose": "Every transaction signature is OTP-gated by the user's master keypair." },
-        { "id": "CAPNP",          "level": "required", "label": "Cap'n Proto WebSession","purpose": "Wallet-cap is raw capnp; consumed by peer Pearls (ccash, dueprocess) over Powerbox." }
+        {
+          "id": "GRAIN_CRYPTO",
+          "level": "required",
+          "label": "Grain Crypto Journal",
+          "purpose": "Wallet key material + transaction history persisted encrypted; envelope keyed to the user's master."
+        },
+        {
+          "id": "GRAIN_RESTORE",
+          "level": "required",
+          "label": "Grain Restore",
+          "purpose": "Portable wallet across machines without leaking the key."
+        },
+        {
+          "id": "IDENTITY_GATE",
+          "level": "required",
+          "label": "Identity Gate",
+          "purpose": "Every transaction signature is OTP-gated by the user's master keypair."
+        }
       ],
       "grapple": {
         "offers": [
-          { "name": "wallet-sign",      "interface": "CyberTeller.Sign@1",       "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction." },
-          { "name": "wallet-pubkey",    "interface": "CyberTeller.Pubkey@1",     "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification." }
+          {
+            "name": "wallet-sign",
+            "interface": "CyberTeller.Sign@1",
+            "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction."
+          },
+          {
+            "name": "wallet-pubkey",
+            "interface": "CyberTeller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification."
+          }
         ],
         "requests": []
       },
       "encryption": {
         "supported": true,
         "scheme": "AES-256-GCM via grain-crypto-journal envelope; master-key-anchored",
-        "fields": ["Wallet private key", "Transaction history", "Pinned signatures + payload hashes"]
+        "fields": [
+          "Wallet private key",
+          "Transaction history",
+          "Pinned signatures + payload hashes"
+        ]
       },
       "roles": {
         "adminOnly": [
-          { "name": "Rotate wallet key",            "purpose": "Master-OTP-gated key rotation; old key archived in audit log." },
-          { "name": "Manage Grapple consumers",     "purpose": "Which peer Pearls may claim wallet-sign / wallet-pubkey." }
+          {
+            "name": "Rotate wallet key",
+            "purpose": "Master-OTP-gated key rotation; old key archived in audit log."
+          },
+          {
+            "name": "Manage Grapple consumers",
+            "purpose": "Which peer Pearls may claim wallet-sign / wallet-pubkey."
+          }
         ],
         "organizationOnly": [],
         "anyMember": [
-          { "name": "Sign transaction",   "purpose": "Standard wallet operation; OTP per high-value sig." },
-          { "name": "View balance",       "purpose": "Read-only wallet view." }
+          {
+            "name": "Sign transaction",
+            "purpose": "Standard wallet operation; OTP per high-value sig."
+          },
+          {
+            "name": "View balance",
+            "purpose": "Read-only wallet view."
+          }
         ]
       },
       "blockchains": [
-        { "chain": "solana", "cluster": "devnet",
+        {
+          "chain": "solana",
+          "cluster": "devnet",
           "programs": [
-            { "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "label": "license-registry", "calls": ["RegisterReleaseEntry"] },
-            { "id": "11111111111111111111111111111111",            "label": "System Program",   "calls": ["transfer"] },
-            { "id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",  "label": "SPL Token",        "calls": ["transfer", "approve"] }
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": [
+                "RegisterReleaseEntry"
+              ]
+            },
+            {
+              "id": "11111111111111111111111111111111",
+              "label": "System Program",
+              "calls": [
+                "transfer"
+              ]
+            },
+            {
+              "id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+              "label": "SPL Token",
+              "calls": [
+                "transfer",
+                "approve"
+              ]
+            }
           ],
-          "purpose": "Native SOL + SPL transfers + on-chain identity proofs against the license registry." }
+          "purpose": "Native SOL + SPL transfers + on-chain identity proofs against the license registry."
+        }
       ],
-      "staticPublishing": { "enabled": false, "via": "", "purpose": "" },
-      "httpOut":          { "enabled": false, "via": "none", "purpose": "", "endpoints": [] },
-      "incomingApi":      { "enabled": true, "kind": "capnp", "interfaces": ["CyberTeller.Sign@1", "CyberTeller.Pubkey@1"], "purpose": "Wallet capability for peer Pearls — Powerbox-claim only." }
+      "staticPublishing": {
+        "enabled": false,
+        "via": "",
+        "purpose": ""
+      },
+      "httpOut": {
+        "enabled": false,
+        "via": "none",
+        "purpose": "",
+        "endpoints": []
+      },
+      "incomingApi": {
+        "enabled": true,
+        "kind": "capnp",
+        "interfaces": [
+          {
+            "name": "CyberTeller.Sign@1",
+            "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
+            "roleGate": "anyMember"
+          },
+          {
+            "name": "CyberTeller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification.",
+            "roleGate": "anyMember"
+          }
+        ],
+        "purpose": "Wallet capability for peer Pearls — Powerbox-claim only."
+      }
     }
   ]
 }

@@ -2,7 +2,9 @@
   "schemaVersion": 1,
   "appSlug": "cca-sh-config",
   "appName": "cca.sh Config",
-  "companionApps": ["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"],
+  "companionApps": [
+    "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+  ],
   "pearls": [
     {
       "pearlId": "cca-sh-config",
@@ -10,15 +12,37 @@
       "pearlType": "admin-pearl",
       "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Powerbox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Powerbox-claim only.",
       "sidecars": [
-        { "id": "GRAIN_CRYPTO",   "level": "required", "label": "Grain Crypto Journal", "purpose": "Policy state + admin journal persisted as encrypted SQLite." },
-        { "id": "GRAIN_RESTORE",  "level": "required", "label": "Grain Restore",        "purpose": "Cross-machine move with sealed admin keys." },
-        { "id": "IDENTITY_GATE",  "level": "required", "label": "Identity Gate",         "purpose": "Every policy mutation requires a Squads-multisig-rooted Ed25519 OTP." },
-        { "id": "CAPNP",          "level": "required", "label": "Cap'n Proto WebSession","purpose": "Admin grain is in-process raw capnp UiView; no http-bridge." }
+        {
+          "id": "GRAIN_CRYPTO",
+          "level": "required",
+          "label": "Grain Crypto Journal",
+          "purpose": "Policy state + admin journal persisted as encrypted SQLite."
+        },
+        {
+          "id": "GRAIN_RESTORE",
+          "level": "required",
+          "label": "Grain Restore",
+          "purpose": "Cross-machine move with sealed admin keys."
+        },
+        {
+          "id": "IDENTITY_GATE",
+          "level": "required",
+          "label": "Identity Gate",
+          "purpose": "Every policy mutation requires a Squads-multisig-rooted Ed25519 OTP."
+        }
       ],
       "grapple": {
         "offers": [
-          { "name": "ccash-admin-gate",  "interface": "ccash.AdminGate@1",         "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks)." },
-          { "name": "policy-attest",     "interface": "ccash.PolicyAttest@1",      "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T." }
+          {
+            "name": "ccash-admin-gate",
+            "interface": "ccash.AdminGate@1",
+            "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks)."
+          },
+          {
+            "name": "policy-attest",
+            "interface": "ccash.PolicyAttest@1",
+            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
+          }
         ],
         "requests": []
       },
@@ -33,27 +57,75 @@
       },
       "roles": {
         "adminOnly": [
-          { "name": "Push policy update",            "purpose": "Squads-signed; updates the manifest pin every ccash grain reads on next request." },
-          { "name": "Add/remove operator wallet",    "purpose": "Add a wallet to the operator allowlist for the constellation." },
-          { "name": "Update station templates",      "purpose": "YAML edit; mtime-aware cache invalidation pushes to all grains on next request." }
+          {
+            "name": "Push policy update",
+            "purpose": "Squads-signed; updates the manifest pin every ccash grain reads on next request."
+          },
+          {
+            "name": "Add/remove operator wallet",
+            "purpose": "Add a wallet to the operator allowlist for the constellation."
+          },
+          {
+            "name": "Update station templates",
+            "purpose": "YAML edit; mtime-aware cache invalidation pushes to all grains on next request."
+          }
         ],
         "organizationOnly": [],
         "anyMember": []
       },
       "blockchains": [
         {
-          "chain":   "solana",
+          "chain": "solana",
           "cluster": "devnet",
           "programs": [
-            { "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "label": "license-registry",   "calls": ["approve_global_app", "RegisterReleaseEntry"] },
-            { "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf", "label": "Squads v4 multisig", "calls": ["proposalApprove", "vaultTransactionExecute"] }
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": [
+                "approve_global_app",
+                "RegisterReleaseEntry"
+              ]
+            },
+            {
+              "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+              "label": "Squads v4 multisig",
+              "calls": [
+                "proposalApprove",
+                "vaultTransactionExecute"
+              ]
+            }
           ],
           "purpose": "Policy attestations are Squads-vault-signed; a peer ccash grain can verify an admin-issued policy snapshot was approved by the multisig."
         }
       ],
-      "staticPublishing": { "enabled": false, "via": "", "purpose": "" },
-      "httpOut":          { "enabled": false, "via": "none", "purpose": "", "endpoints": [] },
-      "incomingApi":      { "enabled": true, "kind": "capnp", "interfaces": ["ccash.AdminGate@1", "ccash.PolicyAttest@1"], "purpose": "Powerbox-claim only; no public HTTP route." }
+      "staticPublishing": {
+        "enabled": false,
+        "via": "",
+        "purpose": ""
+      },
+      "httpOut": {
+        "enabled": false,
+        "via": "none",
+        "purpose": "",
+        "endpoints": []
+      },
+      "incomingApi": {
+        "enabled": true,
+        "kind": "capnp",
+        "interfaces": [
+          {
+            "name": "ccash.AdminGate@1",
+            "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
+            "roleGate": "adminOnly"
+          },
+          {
+            "name": "ccash.PolicyAttest@1",
+            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
+            "roleGate": "adminOnly"
+          }
+        ],
+        "purpose": "Powerbox-claim only; no public HTTP route."
+      }
     }
   ]
 }

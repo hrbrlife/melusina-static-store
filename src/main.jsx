@@ -47,12 +47,6 @@ const timeAgo = (v) => {
   try { return formatDistanceToNow(ts, { addSuffix: true }); } catch { return null; }
 };
 
-const latestVersionDate = (appId) => {
-  const versions = APP_VERSIONS[appId];
-  if (!versions || !versions.length) return null;
-  return Date.parse(versions[0].date);
-};
-
 const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
 
 const screenshotUrl = (appId, shot) => {
@@ -1044,10 +1038,10 @@ function CardSlideshow({ app, shots }) {
 
 /* ─── App Card ─────────────────────────────────────────────────────────────── */
 
-function AppCard({ app, onSelect, onInstall, onVersionClick }) {
+function AppCard({ app, onSelect, onInstall }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
-  const updatedAgo = timeAgo(latestVersionDate(app.appId) || app.createdAt);
+  const updatedAgo = timeAgo(app.createdAt);
 
   return (
     <div role="button" tabIndex={0}
@@ -1100,19 +1094,11 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
             letterSpacing: ".02em",
           }}>{app.name}</h3>
           {/* Version + updated ago */}
-          <div
-            role="button" tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); onVersionClick && onVersionClick(app.appId); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onVersionClick && onVersionClick(app.appId); } }}
-            style={{
-              fontSize: 11, color: T.textDim, marginTop: 3,
-              fontFamily: "'JetBrains Mono', monospace",
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              transition: 'color .2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = T.cyan; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = T.textDim; }}
-          >
+          <div style={{
+            fontSize: 11, color: T.textDim, marginTop: 3,
+            fontFamily: "'JetBrains Mono', monospace",
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
             <span>v{app.version || app.versionNumber || '—'}</span>
             {updatedAgo && <span style={{ opacity: 0.7 }}>· updated {updatedAgo}</span>}
           </div>
@@ -1124,20 +1110,6 @@ function AppCard({ app, onSelect, onInstall, onVersionClick }) {
             }}>
               <SimpleMarkdown text={app.shortDescription || app.summary} />
             </p>
-          )}
-          {/* USP selling points */}
-          {(APP_USP[app.appId] || []).length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-              {(APP_USP[app.appId] || []).map((usp, ui) => (
-                <div key={ui} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 6,
-                  fontSize: 12, lineHeight: 1.5, color: T.textSec,
-                }}>
-                  <span style={{ color: T.green, flexShrink: 0, fontSize: 13, textShadow: `0 0 4px ${T.greenGlow}` }}>✓</span>
-                  <span>{usp}</span>
-                </div>
-              ))}
-            </div>
           )}
           {/* Price display */}
           {(() => {
@@ -1426,14 +1398,6 @@ function StarRating({ rating, size = 14 }) {
 
 /* ─── App Extended Content ─────────────────────────────────────────────────── */
 
-const APP_GITHUB = {};
-
-/* ─── USP selling points per app (green checks) ───────────────────────────── */
-const APP_USP = {};
-
-/* legacy — docs removed, replaced with GitHub links */
-const APP_DOCS = {};
-
 const APP_FAQ = {
   _common: [
     { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Melusina server URL. Then click the **INSTALL** button on the app detail page. The app will be deployed to your server automatically.' },
@@ -1453,22 +1417,6 @@ const APP_FAQ = {
     { q: 'Can I modify the source code?', a: 'You have full access to the source code for auditing. Modifications for personal use on your own server are permitted. Redistribution requires the HLSL terms.' },
   ],
 };
-
-const APP_REVIEWS = {};
-
-const APP_VERSIONS = {};
-
-/* ─── App Audits ────────────────────────────────────────────────────────────── */
-const AUDIT_CATEGORIES = [
-  { key: 'security', label: 'Security', icon: '🛡️' },
-  { key: 'privacy', label: 'Privacy', icon: '🔒' },
-  { key: 'dataSafety', label: 'Data Safety', icon: '💾' },
-  { key: 'dataPortability', label: 'Data Portability', icon: '📦' },
-  { key: 'codeQuality', label: 'Code Quality', icon: '⚙️' },
-  { key: 'accessibility', label: 'Accessibility', icon: '♿' },
-];
-
-const APP_AUDITS = {};
 
 /* ─── License Texts ─────────────────────────────────────────────────────────── */
 const HLSL_LICENSE_TEXT = `HARBOR LIFE SOFTWARE LICENSE (HLSL) v1.0
@@ -1648,26 +1596,13 @@ function getAppFAQ(app) {
   return [...specific, ...license, ...common];
 }
 
-function getAppReviews(app) {
-  return APP_REVIEWS[app.appId] || [];
-}
-
-function getAvgRating(reviews) {
-  if (!reviews.length) return 0;
-  return reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-}
-
 /* ─── Detail Page ──────────────────────────────────────────────────────────── */
 
 function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
-  const reviews = useMemo(() => getAppReviews(app), [app]);
-  const avgRating = useMemo(() => getAvgRating(reviews), [reviews]);
   const faq = useMemo(() => getAppFAQ(app), [app]);
-  const docs = APP_DOCS[app.appId] || '';
-  const versions = APP_VERSIONS[app.appId] || [];
   const appFees = APP_FEES[app.appId] || [];
   const platformFees = APP_FEES._platform;
-  const githubUrl = APP_GITHUB[app.appId] || app.codeLink || '';
+  const githubUrl = app.codeLink || '';
 
   const featuredFaqSet = useMemo(() => {
     const s = new Set();
@@ -1712,9 +1647,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'versions', label: `Versions (${versions.length})` },
     { id: 'faq', label: `FAQ (${faq.length})` },
-    { id: 'audits', label: '🔍 Audits' },
     { id: 'sidecars', label: '🪝 Grapple & Sidecars' },
     { id: 'license', label: app.isOpenSource ? '📖 License' : '📜 License' },
   ];
@@ -1848,9 +1781,9 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                   build {app.versionNumber}
                 </span>
               )}
-              {timeAgo(latestVersionDate(app.appId) || app.createdAt) && (
+              {timeAgo(app.createdAt) && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {'\u00b7'} updated {timeAgo(latestVersionDate(app.appId) || app.createdAt)}
+                  {'\u00b7'} updated {timeAgo(app.createdAt)}
                 </span>
               )}
               {app.author?.name && (
@@ -2444,160 +2377,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
     </div>
   );
 
-  /* ---- AUDITS TAB ---- */
-  const appAudits = APP_AUDITS[app.appId] || { ai: [], human: [] };
-  const AuditsTab = () => {
-    const [aiPage, setAiPage] = useState(0);
-    const aiAudit = appAudits.ai[aiPage] || null;
-    const currentVersion = app.version || versions[0]?.version || '—';
-    /* find the latest human audit, and check if it matches current version */
-    const latestHuman = appAudits.human.length > 0 ? appAudits.human[0] : null;
-    const humanMatchesCurrent = latestHuman && latestHuman.version === currentVersion;
-
-    const ratingColor = (r) => r === 'Pass' ? T.green : r === 'Partial' ? T.yellow : T.magenta;
-    const ratingGlow = (r) => r === 'Pass' ? T.greenGlow : r === 'Partial' ? T.yellow + '44' : T.magentaGlow;
-
-    return (
-      <div style={{ maxWidth: 780 }}>
-        {/* AI Audits */}
-        <div style={{
-          padding: 28, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.cyan}33`, marginBottom: 24,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-            <SectionHeader color={T.cyan}>🤖 AI Audit</SectionHeader>
-            {appAudits.ai.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => setAiPage(Math.min(aiPage + 1, appAudits.ai.length - 1))} disabled={aiPage >= appAudits.ai.length - 1}
-                  style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 3, color: aiPage >= appAudits.ai.length - 1 ? T.textDim + '44' : T.cyan, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>← Older</button>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{aiPage + 1}/{appAudits.ai.length}</span>
-                <button onClick={() => setAiPage(Math.max(aiPage - 1, 0))} disabled={aiPage <= 0}
-                  style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 3, color: aiPage <= 0 ? T.textDim + '44' : T.cyan, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>Newer →</button>
-              </div>
-            )}
-          </div>
-
-          {aiAudit ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: T.cyan, fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 6px ${T.accentGlow}` }}>v{aiAudit.version}</span>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{aiAudit.date}</span>
-                {aiAudit.version !== currentVersion && (
-                  <span style={{ fontSize: 10, padding: '2px 8px', background: T.yellow + '22', border: `1px solid ${T.yellow}44`, borderRadius: 3, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>Not current version</span>
-                )}
-              </div>
-              {/* Results table */}
-              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden', marginBottom: 16 }}>
-                {AUDIT_CATEGORIES.map((cat, i) => {
-                  const r = aiAudit.results[cat.key];
-                  if (!r) return null;
-                  return (
-                    <div key={cat.key} style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px',
-                      borderBottom: i < AUDIT_CATEGORIES.length - 1 ? `1px solid ${T.borderLight}` : 'none',
-                      background: i % 2 === 0 ? 'transparent' : T.bg + '44',
-                    }}>
-                      <span style={{ fontSize: 15, flexShrink: 0, width: 24, textAlign: 'center' }}>{cat.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 2 }}>{cat.label}</div>
-                        <div style={{ fontSize: 11, color: T.textDim, lineHeight: 1.5 }}>{r.note}</div>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 3,
-                        color: ratingColor(r.rating), background: ratingColor(r.rating) + '15',
-                        border: `1px solid ${ratingColor(r.rating)}33`,
-                        fontFamily: "'JetBrains Mono', monospace",
-                        textShadow: `0 0 4px ${ratingGlow(r.rating)}`,
-                        flexShrink: 0, whiteSpace: 'nowrap',
-                      }}>{r.rating}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* AI conversation links */}
-              {aiAudit.links && Object.keys(aiAudit.links).length > 0 && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", alignSelf: 'center' }}>View conversation:</span>
-                  {aiAudit.links.chatgpt && <a href={aiAudit.links.chatgpt} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.green, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.green}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.green + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>ChatGPT ↗</a>}
-                  {aiAudit.links.claude && <a href={aiAudit.links.claude} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.peach, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.peach}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.peach + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Claude ↗</a>}
-                  {aiAudit.links.gemini && <a href={aiAudit.links.gemini} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.purple, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '3px 10px', border: `1px solid ${T.purple}33`, borderRadius: 3, transition: 'all .2s' }}   onMouseEnter={(e) => { e.currentTarget.style.background = T.purple + '15'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>Gemini ↗</a>}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ fontSize: 13, color: T.textDim, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
-              No AI audits available for this app yet.
-            </div>
-          )}
-        </div>
-
-        {/* Human Audits */}
-        <div style={{
-          padding: 28, background: T.surface, borderRadius: T.radius,
-          border: `1px solid ${T.yellow}33`,
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        }}>
-          <SectionHeader color={T.yellow}>👤 Human Audit</SectionHeader>
-          {latestHuman ? (
-            <div>
-              {!humanMatchesCurrent && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
-                  padding: '10px 14px', background: T.yellow + '0c', border: `1px solid ${T.yellow}33`,
-                  borderRadius: T.radiusSm,
-                }}>
-                  <span style={{ fontSize: 14 }}>⚠️</span>
-                  <span style={{ fontSize: 12, color: T.yellow, fontFamily: "'JetBrains Mono', monospace" }}>
-                    No human audit for current version (v{currentVersion}). Showing latest: v{latestHuman.version}
-                  </span>
-                </div>
-              )}
-              <div style={{ border: `1px solid ${T.border}`, borderRadius: T.radiusSm, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.yellow, fontFamily: "'Orbitron', sans-serif" }}>v{latestHuman.version}</span>
-                    <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{latestHuman.date}</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: T.textSec, fontFamily: "'JetBrains Mono', monospace" }}>{latestHuman.auditor}</span>
-                </div>
-                <div style={{ padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, lineHeight: 1.7, color: T.textSec }}>{latestHuman.summary}</div>
-                  {latestHuman.reportUrl && latestHuman.reportUrl !== '#' && (
-                    <a href={latestHuman.reportUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: T.yellow, fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none', padding: '4px 12px', border: `1px solid ${T.yellow}33`, borderRadius: 3 }}>View Full Report ↗</a>
-                  )}
-                </div>
-              </div>
-              {/* scroll back through all human audits if multiple */}
-              {appAudits.human.length > 1 && (
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Previous human audits:</div>
-                  {appAudits.human.slice(1).map((h, i) => (
-                    <div key={i} style={{
-                      padding: '10px 14px', marginBottom: 8,
-                      border: `1px solid ${T.borderLight}`, borderRadius: T.radiusSm,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: T.textSec, fontFamily: "'JetBrains Mono', monospace" }}>v{h.version}</span>
-                        <span style={{ fontSize: 10, color: T.textDim }}>{h.date}</span>
-                      </div>
-                      <span style={{ fontSize: 10, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{h.auditor}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ fontSize: 13, color: T.textDim, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
-              No human audits available for this app yet. Audits are performed periodically by the Harbor Life Security Team.
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   /* ---- APP DEVELOPMENT TAB (suggestions + bugs, each with voting & comments) ---- */
   const VoteButton = ({ dir, active, count, onClick }) => (
     <button onClick={onClick} style={{
@@ -2613,60 +2392,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       onMouseEnter={(e) => { e.currentTarget.style.borderColor = (dir === 1 ? T.green : T.magenta) + '66'; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = T.border; }}
     >{dir === 1 ? '▲' : '▼'}{count !== undefined ? ` ${count}` : ''}</button>
-  );
-
-  /* ---- VERSIONS TAB ---- */
-  const VersionsTab = () => (
-    <div style={{ maxWidth: 780 }}>
-      <SectionHeader>Version History</SectionHeader>
-      {versions.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ fontSize: 36, marginBottom: 16, opacity: 0.3 }}>📋</div>
-          <p style={{ color: T.textDim, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
-            Version history coming soon
-          </p>
-        </div>
-      ) : (
-        <div style={{ position: "relative", paddingLeft: 28, marginTop: 16 }}>
-          <div style={{ position: "absolute", left: 5, top: 0, bottom: 0, width: 2, background: `linear-gradient(180deg, ${T.cyan}44, ${T.purple}22, transparent)` }} />
-          {versions.map((v, i) => (
-            <div key={i} style={{ position: "relative", marginBottom: 32, animation: `fadeUp .3s ease-out ${i * 0.08}s both` }}>
-              <div style={{
-                position: "absolute", left: -28, top: 4, width: 12, height: 12,
-                borderRadius: "50%", background: i === 0 ? T.cyan : T.bgAlt,
-                border: `2px solid ${i === 0 ? T.cyan : T.textDim + '44'}`,
-                boxShadow: i === 0 ? `0 0 10px ${T.cyan}66` : "none",
-              }} />
-              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
-                <span style={{
-                  fontSize: 16, fontWeight: 800,
-                  color: i === 0 ? T.cyan : T.text,
-                  fontFamily: "'Orbitron', sans-serif",
-                  textShadow: i === 0 ? `0 0 8px ${T.accentGlow}` : "none",
-                }}>v{v.version}</span>
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v.date}</span>
-                {i === 0 && <Badge neon={T.cyan}>Latest</Badge>}
-              </div>
-              <div style={{
-                padding: "16px 20px", background: T.surface,
-                borderRadius: T.radius, border: `1px solid ${i === 0 ? T.cyan + '22' : T.border}`,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}>
-                {v.changes.map((c, j) => (
-                  <div key={j} style={{
-                    fontSize: 13, color: T.textSec, lineHeight: 1.8,
-                    paddingLeft: 16, position: "relative",
-                  }}>
-                    <span style={{ position: "absolute", left: 0, color: T.cyan, fontSize: 11, textShadow: `0 0 4px ${T.accentGlow}` }}>▸</span>
-                    {c}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 
   /* ---- FAQ TAB ---- */
@@ -2768,28 +2493,6 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             <p style={{ color: T.textSec, fontSize: 15, margin: "8px 0 0", lineHeight: 1.6 }}>
               {app.shortDescription || app.summary || ""}
             </p>
-            {/* USP selling points in detail hero */}
-            {(APP_USP[app.appId] || []).length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-                {(APP_USP[app.appId] || []).map((usp, ui) => (
-                  <div key={ui} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    fontSize: 14, lineHeight: 1.5, color: T.textSec,
-                  }}>
-                    <span style={{ color: T.green, flexShrink: 0, fontSize: 15, textShadow: `0 0 6px ${T.greenGlow}` }}>✓</span>
-                    <span>{usp}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {reviews.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                <StarRating rating={avgRating} size={14} />
-                <span style={{ fontSize: 12, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {avgRating.toFixed(1)} ({reviews.length})
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -2965,9 +2668,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
         {/* tab content */}
         <div style={{ animation: "fadeIn .2s ease-out" }} key={tab}>
           {tab === 'overview' && <OverviewTab />}
-          {tab === 'versions' && <VersionsTab />}
           {tab === 'faq' && <FAQTab />}
-          {tab === 'audits' && <AuditsTab />}
           {tab === 'sidecars' && <SidecarsTab />}
           {tab === 'license' && <LicenseTab />}
         </div>
@@ -3223,7 +2924,7 @@ function App() {
           }}>
             {filtered.map((app, i) => (
               <div key={app.appId} style={{ animationDelay: `${i * 60}ms` }}>
-                <AppCard app={app} onSelect={onSelect} onInstall={onInstall} onVersionClick={(id) => onSelect(id, 'versions')} />
+                <AppCard app={app} onSelect={onSelect} onInstall={onInstall} />
               </div>
             ))}
           </div>

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "appSlug": "cybertellerconfig",
+  "appName": "Cyberteller Config",
+  "tier": "admin",
+  "companionApps": [
+    "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
+  ],
+  "pearls": [
+    {
+      "pearlId": "cybertellerconfig",
+      "pearlName": "Configuration",
+      "pearlType": "admin-pearl",
+      "purpose": "The admin companion grain for the Cyberteller constellation. Holds policy state (allowed payment rails, fee caps, operator roles, settlement providers) and exposes an AdminGate over Powerbox. Operator Cyberteller grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Powerbox-claim only.",
+      "sidecars": [],
+      "grapple": {
+        "offers": [
+          {
+            "name": "cyberteller-admin-gate",
+            "interface": "cyberteller.AdminGate@1",
+            "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators)."
+          },
+          {
+            "name": "policy-attest",
+            "interface": "cyberteller.PolicyAttest@1",
+            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
+          }
+        ],
+        "requests": []
+      },
+      "encryption": {
+        "supported": true,
+        "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+        "fields": [
+          "Admin journal (every policy mutation)",
+          "Rail allowlist database",
+          "Fee cap schedule cache (mtime-aware re-read on each request)"
+        ]
+      },
+      "roles": {
+        "adminOnly": [
+          {
+            "name": "Push policy update",
+            "purpose": "Squads-signed; updates the manifest pin every Cyberteller grain reads on next request."
+          },
+          {
+            "name": "Add/remove operator wallet",
+            "purpose": "Add a wallet to the operator allowlist for the constellation."
+          },
+          {
+            "name": "Update rail / fee-cap schedule",
+            "purpose": "Edit the allowed-rail set and per-rail fee ceiling; mtime-aware cache invalidation pushes to all grains on next request."
+          }
+        ],
+        "organizationOnly": [],
+        "anyMember": []
+      },
+      "authority": {
+        "requires": [
+          {
+            "bit": "appContractPair",
+            "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+          },
+          {
+            "bit": "contractWhitelistEdit",
+            "purpose": "TODO: review — needed to edit the contract whitelist used by Cyberteller installs"
+          },
+          {
+            "bit": "installAdminEdit",
+            "purpose": "TODO: review — needed to push policy updates to operator installs"
+          }
+        ],
+        "grants": []
+      },
+      "blockchains": [
+        {
+          "chain": "solana",
+          "cluster": "devnet",
+          "programs": [
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": [
+                "approve_global_app",
+                "RegisterReleaseEntry"
+              ]
+            },
+            {
+              "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+              "label": "Squads v4 multisig",
+              "calls": [
+                "proposalApprove",
+                "vaultTransactionExecute"
+              ]
+            }
+          ],
+          "purpose": "Policy attestations are Squads-vault-signed; a peer Cyberteller grain can verify an admin-issued policy snapshot was approved by the multisig."
+        }
+      ],
+      "staticPublishing": {
+        "enabled": false,
+        "via": "",
+        "purpose": ""
+      },
+      "httpOut": {
+        "enabled": false,
+        "via": "none",
+        "purpose": "",
+        "endpoints": []
+      },
+      "apis": {
+        "capnp": [
+          {
+            "name": "cyberteller.AdminGate@1",
+            "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators).",
+            "roleGate": "adminOnly"
+          },
+          {
+            "name": "cyberteller.PolicyAttest@1",
+            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
+            "roleGate": "adminOnly"
+          }
+        ],
+        "http": []
+      }
+    }
+  ]
+}

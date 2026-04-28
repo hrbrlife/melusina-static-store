@@ -2723,6 +2723,179 @@
       }
     },
     {
+      "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
+      "packageId": "ec0a4ddcc0944c919c662838be9bcd54",
+      "name": "Cyberteller Config",
+      "version": "0.0.1",
+      "versionNumber": 1,
+      "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_cybertellerconfig_app",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1777396216000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "imageId": "1e314ab919c02ff5ae8bd794007896ae.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "e7cf23607fe68969b4bf30caf5d017e82d8cc5c7541f6b936d9e3fc4f6849cb7",
+        "releaseHash": "561c405b84dc9b8cbbbc0c8c704927060cd613654933957e12b06a63ab663569",
+        "releaseNonce": "d86aac32b3f4ec076d074b3b8cff43780125db5754c5065a73ffca75c2d2eed1",
+        "releaseEntryPda": "9nh3BKKhAKpPpGominYAZu1t5iLj4sg1TwNqJbq1fzpv",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
+        "signedAtUnix": 1777396216,
+        "authorSig": "oh3oZ+ecDNKjSHnFYGCq0Qz+VRFx+rrdkZG+c/GF4SnmnI0nXGfIoG1dxtTWZfKKrdC33hNXXZl95AH0a9ebCA==",
+        "quorumPolicy": {
+          "threshold": 2,
+          "memberCount": 4,
+          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "cybertellerconfig",
+        "appName": "Cyberteller Config",
+        "tier": "admin",
+        "companionApps": [
+          "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
+        ],
+        "pearls": [
+          {
+            "pearlId": "cybertellerconfig",
+            "pearlName": "Configuration",
+            "pearlType": "admin-pearl",
+            "purpose": "The admin companion grain for the Cyberteller constellation. Holds policy state (allowed payment rails, fee caps, operator roles, settlement providers) and exposes an AdminGate over Powerbox. Operator Cyberteller grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 Powerbox-claim only.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "cyberteller-admin-gate",
+                  "interface": "cyberteller.AdminGate@1",
+                  "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators)."
+                },
+                {
+                  "name": "policy-attest",
+                  "interface": "cyberteller.PolicyAttest@1",
+                  "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Admin journal (every policy mutation)",
+                "Rail allowlist database",
+                "Fee cap schedule cache (mtime-aware re-read on each request)"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Push policy update",
+                  "purpose": "Squads-signed; updates the manifest pin every Cyberteller grain reads on next request."
+                },
+                {
+                  "name": "Add/remove operator wallet",
+                  "purpose": "Add a wallet to the operator allowlist for the constellation."
+                },
+                {
+                  "name": "Update rail / fee-cap schedule",
+                  "purpose": "Edit the allowed-rail set and per-rail fee ceiling; mtime-aware cache invalidation pushes to all grains on next request."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": []
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appContractPair",
+                  "purpose": "TODO: review \u2014 needed to bind wholesale apps to operator contracts"
+                },
+                {
+                  "bit": "contractWhitelistEdit",
+                  "purpose": "TODO: review \u2014 needed to edit the contract whitelist used by Cyberteller installs"
+                },
+                {
+                  "bit": "installAdminEdit",
+                  "purpose": "TODO: review \u2014 needed to push policy updates to operator installs"
+                }
+              ],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "approve_global_app",
+                      "RegisterReleaseEntry"
+                    ]
+                  },
+                  {
+                    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+                    "label": "Squads v4 multisig",
+                    "calls": [
+                      "proposalApprove",
+                      "vaultTransactionExecute"
+                    ]
+                  }
+                ],
+                "purpose": "Policy attestations are Squads-vault-signed; a peer Cyberteller grain can verify an admin-issued policy snapshot was approved by the multisig."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "cyberteller.AdminGate@1",
+                  "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators).",
+                  "roleGate": "adminOnly"
+                },
+                {
+                  "name": "cyberteller.PolicyAttest@1",
+                  "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
+                  "roleGate": "adminOnly"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      },
+      "description": "Cyberteller Config is the admin Pearl for the Cyberteller crypto-payment sidecar. One install gets one Cyberteller Config Pearl; it owns the allowed-payment-rail registry, the per-rail fee-cap policy, and the operator-role allowlist that every Cyberteller grain in the install reads at boot. Operators never edit Cyberteller code to change which chains, which providers, or which fee ceilings apply \u2014 they edit policy served from this Pearl.\n\n## Why Cyberteller Config\n\n- **Pinned payment-rail policy** \u2014 the allowed-rails set (chains, address schemes, settlement providers) is hash-anchored to your Solana wallet at the moment a Cyberteller grain claims it. The grain's invoice-creation flow against rails-vN is tamper-evident, citable across grains via Grapple, and survives operator audits independent of who's running the install\n- **Fee-cap enforcement as fail-closed boundary** \u2014 every fee schedule a Cyberteller grain can quote is enumerated in a manifest the admin loads at boot; anything outside the cap range is rejected at the Cap'n Proto boundary, not at a sidecar's discretion. No silent over-fee, no out-of-band rail\n- **One-install-one-license** \u2014 the admin Pearl is the per-license boundary; every Cyberteller sibling Pearl in the install (operator desk, customer invoice view) Grapple-claims this single offerable. Revocation, audit, and policy live in one place\n\n## Status\n\n*Pre-release v0.0.1.* Scaffold + welcome page. The Cap'n Proto AdminGate offerable lands at v0.1.0 alongside the live Cyberteller invoice-creation surface; until then the policy-runtime handshake from sibling Pearls is stubbed."
+    },
+    {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
       "name": "Diagrams Bureau",
       "version": "1.0.4",

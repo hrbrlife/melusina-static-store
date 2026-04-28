@@ -5012,6 +5012,146 @@
       "screenshots": []
     },
     {
+      "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
+      "name": "Teleport",
+      "version": "2.0.0",
+      "versionNumber": 5,
+      "packageId": "5be59715444c0b7574a090c258587dc6",
+      "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
+      "categories": [
+        "Social",
+        "Communications"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/melusina-teleport",
+      "codeLink": "https://github.com/hrbrlife/melusina-teleport",
+      "upstreamAuthor": "Melusina Contributors",
+      "createdAt": 1777301034000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "imageId": "c020ca7fe862a9b48e5122f0a33036b9.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "234eaa0c24cd1be4475fe44842e69e9227dece8373f56dce7bbf0b973acc54b7",
+        "releaseHash": "62559b0ddfdfd2465102545375ca467b9241485101ba261690de3f5084d93525",
+        "releaseNonce": "e4f712d9e946665bddea084d64da8f3b5dbbdadea9b2d6a4b6be49e4b51e0f09",
+        "releaseEntryPda": "6XjChywdRxFDqRp1NizcXypnJHQKoYt7WrUppHEhC4Bn",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
+        "signedAtUnix": 1777301034,
+        "authorSig": "nxOzXEixKxrqHFT+zpmod0BHByhIDULTZPPU5cfaJ7cg6Ja60Uytw9XOc66WTgAl8QeVGjeQTEiRNHsBP5/xCA==",
+        "quorumPolicy": {
+          "threshold": 2,
+          "memberCount": 4,
+          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "teleport",
+        "appName": "Teleport",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "teleport",
+            "pearlName": "Teleport",
+            "pearlType": "user-pearl",
+            "purpose": "Sandstorm-native chat grain. TypeScript Express + Apollo GraphQL + better-sqlite3 server with session-scoped end-to-end field encryption performed in the browser. The server stays blind on E2E1: envelopes (single AES-256-GCM DEK per browser session); mixed-mode is supported, so plaintext chat coexists with encrypted fields when the operator opts in. Per-grain identity, role-aware permissions for admin / collaborator / auditor / client / assistant / public viewer.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM, single browser-session DEK; server stores E2E1: envelopes verbatim",
+              "fields": [
+                "Chat messages (E2E1: prefixed)",
+                "User public-key directory entries"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Manage grain membership",
+                  "purpose": "Owner-only: invite / remove members, set role assignments."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Send / receive chat messages",
+                  "purpose": "Standard chat \u2014 per-message E2E encryption is opt-in client-side."
+                },
+                {
+                  "name": "Publish own public key",
+                  "purpose": "Register a per-user public key in the grain directory for future per-recipient envelope wrapping."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only \u2014 no per-grain on-chain state."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": [
+                {
+                  "name": "POST /api/graphql",
+                  "purpose": "GraphQL endpoint for chat operations (insertMessage, listMessages, upsertUserPublicKey, getUserPublicKey).",
+                  "roleGate": "anyMember",
+                  "auth": "cookie"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/5be59715444c0b7574a090c258587dc6",
+      "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (client / instance / manager / client-ui-manager grain types, panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build. The four grain-action entries in the SPK manifest reflect the original four-grain shape; only the chat path is wired in this MVP.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
+      "screenshots": []
+    },
+    {
       "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
       "packageId": "964677265bd9175dbdac63694954d957",
       "name": "TeleScreen",

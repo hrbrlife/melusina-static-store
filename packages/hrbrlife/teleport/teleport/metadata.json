@@ -1,0 +1,27 @@
+{
+  "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
+  "name": "Teleport",
+  "version": "2.0.0",
+  "versionNumber": 5,
+  "packageId": "5be59715444c0b7574a090c258587dc6",
+  "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
+  "categories": [
+    "Social",
+    "Communications"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina-teleport",
+  "codeLink": "https://github.com/hrbrlife/melusina-teleport",
+  "upstreamAuthor": "Melusina Contributors",
+  "createdAt": 1777301034000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+}

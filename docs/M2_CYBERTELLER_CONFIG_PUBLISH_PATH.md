@@ -29,45 +29,47 @@ drift was the original §10.2 symptom: on-chain seat held
 
 ---
 
-## ⚠ Scope: §10.2 closure is **manifest re-pin only**
+## ✓ Scope: §10.2 + audit-2 P0-1 fully closed 2026-04-28
 
-The kill-list §10.2 closure this commit ships covers:
+The kill-list §10.2 closure shipped:
 - **Rebuilt** `cybertellerconfig.spk` at
   `/home/user/Desktop/melusina_cybertellerconfig_app/cybertellerconfig.spk`
-  (new hash `ec0a4ddc…`, sha256-verified on disk).
-- **Approval manifest re-pinned** at
+  (hash `ec0a4ddcc0944c919c662838be9bcd5473844e39855d511fac0b111c3f93a979`).
+- **Approval manifest pinned** at
   `Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json`
-  to match the new hash.
-- **This M2 doc** capturing the operator Squads ceremony to re-seat
-  the on-chain `GlobalAppApproval` PDA.
+  to match the SPK hash.
+- **`RegisterReleaseEntry` Squads ceremony executed** on Solana devnet
+  via `melusina-pearl-tool` 2026-04-28: `releaseEntryPda
+  9nh3BKKhAKpPpGominYAZu1t5iLj4sg1TwNqJbq1fzpv`, `signedAtUnix
+  1777396216`, multisig `9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse`
+  (Foundation, threshold 2/4, signed by licensee-signer-1 +
+  licensee-signer-2).
+- **static_store catalog slot populated** at
+  `packages/hrbrlife/melusina_cybertellerconfig_app/cybertellerconfig/`
+  with `{app.spk, metadata.json, RELEASE.json, capabilities.json,
+  description.md, icon.svg}`. Live at
+  `https://hrbrlife.github.io/melusina-static-store/` — index.json
+  carries the entry; SPK URL `packages/ec0a4ddcc0944c919c662838be9bcd54`
+  serves the binary byte-identical to the manifest pin.
 
-The static_store catalog publish (`packages/hrbrlife/
-melusina_cybertellerconfig_app/cybertellerconfig/{app.spk,
-metadata.json, RELEASE.json, description.md, icon.svg}`) is a
-**separate v1.1 workstream** (audit-2 P0-1 finding). Today's
-`static_store/packages/` does not contain a Cyberteller Config slot
-— installs that fetch by catalog will not find the binary at
-`ec0a4ddc…` until that workstream lands. Operators that build their
-own catalog from this checkout must hand-copy the SPK + author the
-metadata sidecars before serving it.
+audit-2 P0-1 (catalog publication of Cyberteller Config) is now
+closed. The on-chain seat and the off-chain mirror agree.
 
-The kill-list §10.2 line "12/13 manifest apps install cleanly; CT
-Config skipped. Not blocking." remains true post-this-commit: the
-Squads re-seat path documented here is the on-chain side; the
-catalog publish is the off-chain mirror.
-
-## ⚠ Operator note on the catalog slot directory
+## Operator note on the catalog slot directory
 
 The Cyberteller Config `Makefile` produces a single `.spk` file at
 the repo root (`cybertellerconfig.spk`) — it does NOT materialise
 a slug-shaped subdirectory `cybertellerconfig/` the way the
-`cca.sh Config` build does. The future catalog slot at
+`cca.sh Config` build does. The catalog slot at
 `packages/hrbrlife/melusina_cybertellerconfig_app/cybertellerconfig/`
-will need to be populated by **hand-copying** the `.spk` plus a
-freshly-authored `metadata.json`, `RELEASE.json`, `description.md`,
-and `icon.svg` into that subdirectory. A `make publish-catalog`
-target analogous to `cca.sh Config`'s build is the v1.1 follow-up
-that closes audit-2 P0-1.
+was populated 2026-04-28 by hand-copying the `.spk` plus an
+author-curated `metadata.json`, `capabilities.json`, `description.md`,
+`icon.svg`, and the `RELEASE.json` produced by the
+`melusina-pearl-tool propose-release / finalize-release` ceremony.
+A `make publish-catalog` target analogous to `cca.sh Config`'s
+build is still a useful v1.1 ergonomics follow-up so subsequent
+releases don't require hand-copy, but the audit-2 P0-1 finding
+itself is closed.
 
 ## ⚠ Operator note on `cmd_approve_global_app`
 

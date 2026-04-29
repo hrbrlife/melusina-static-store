@@ -1,11 +1,12 @@
 # M1 — `cca.sh Config` (admin grain) catalog publication path
 
-> **Status:** pre-staged 2026-04-25, ahead of ccash kill-list task **A1**.
-> The procedure below is what static_store runs the moment the admin
-> grain `melusina_ccashconfig_app` ships its first real Cap'n Proto
-> server (kill-list M1, projected v0.1.0). Until then, `cca.sh Config`
-> is **intentionally absent** from this static_store's local catalog
-> (gh-pages currently lists it; this checkout does not).
+> **Status:** closed loop as of 2026-04-26 — `cca.sh Config` v0.0.1
+> is live in the catalog (`packages/hrbrlife/melusina_ccashconfig_app/
+> cca-sh-config/`), kill-list tasks **A1+A2** are GREEN (see §1
+> footnotes). The procedure below is the operator runbook for
+> subsequent re-publishes (v0.2.0, v0.3.0, …) once the admin grain
+> ships the next signed `.spk`. The §1 pre-conditions still gate
+> every release.
 
 > **Owner:** static_store agent. Read together with
 > `/home/user/Desktop/ccash_go_htmx/docs/MVP_INTEGRATION_KILL_LIST_FINAL.md`
@@ -20,7 +21,7 @@
 | App display name | `cca.sh Config` |
 | AppId | `6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0` |
 | Source repo (working) | `/home/user/Desktop/melusina_ccashconfig_app/` |
-| Upstream | `hrbrlife/melusina_ccashconfig_app` (TBD; if absent, plain-tree-in-catalog per `PUBLISH_READINESS.md` §"Off-catalog") |
+| Upstream | `hrbrlife/melusina_ccashconfig_app` (confirmed; plain-tree-in-catalog rather than submodule per `PUBLISH_READINESS.md` §"Off-catalog") |
 | Catalog slot | `packages/hrbrlife/melusina_ccashconfig_app/cca-sh-config/` |
 | Approval manifest entry | `Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json` — name `cca.sh Config`, expected `app_hash` `d0fd938fac00...` |
 | Trust root | Solana `ReleaseEntry` + Squads multisig (no PGP, per Captain Janeway 2026-04-23 — `metadata.json.asc` is rejected at `build-store.sh:352`). Signing is gated through the offline-wallet / Squads path per Charter HT13 — no hot-key fallback for any on-chain release tx. |
@@ -165,10 +166,10 @@ The `versionNumber` (the integer the Sandstorm Update mechanism uses to compare 
 ## 5. What this procedure does **not** do
 
 - Does **not** advance the kill-list M1 milestone — that's owned by the admin-grain agent (task A1). M1 is "handshake alive end-to-end"; that test runs against the live Sandstorm install, not gh-pages.
-- Does **not** add the other 4 currently-missing apps (`cca.sh Wholesale`, `cca.sh Domain Template`, `TeleScreen`) — that's `POSTMORTEM.md` follow-up #3, gated on the Riker decision (#1) about the canonical builder.
+- Does **not** add other catalog apps. `cca.sh Wholesale`, `cca.sh Domain Template`, and `TeleScreen` were the original POSTMORTEM follow-up #3 batch and are now all live; this procedure stays scoped to `cca.sh Config` re-publishes only.
 - Does **not** change the Sandstorm bundle (`update/sandstorm-0.tar.xz`) — admin-grain landing has zero coupling to the bundle.
 - Does **not** mint or rotate the Solana ReleaseEntry — that's the deployer agent (Worf) and the admin-grain agent's Squads multisig, not static_store.
 
 ---
 
-*End of procedure. When A1 lands and (1)–(5) of §1 are green, run §2 in order.*
+*End of procedure. A1+A2 GREEN; v0.0.1 landed 2026-04-26. For v0.2.0+ re-publishes, re-verify (1)–(5) of §1 and run §2 in order.*

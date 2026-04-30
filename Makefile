@@ -19,7 +19,7 @@ MAX_FILE_SIZE  := $$((95 * 1024 * 1024))
 CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
-        plan apply
+        plan apply build-from-source
 
 # --- doctor: environment + readiness check ---------------------------------
 # Single-pass health report: tools on PATH, submodule init state, deployer
@@ -31,6 +31,43 @@ doctor:
 
 # Alias — `make publish-check` is the verb most people will reach for.
 publish-check: doctor
+
+# --- build-from-source: Captain Imperative idx 101 (v2 doctrine) -------------
+# Clone an upstream Sandstorm app at a specific branch+SHA, run its build,
+# produce a .spk via Melusina's patched bin/spk, capture sha256 + spk verify
+# output. The store-published SPK is the only test surface — local laptop
+# SPKs from source crews are sanity only.
+#
+# Usage:
+#   make build-from-source \
+#     SLUG=telescreen-sidecar-configurator \
+#     REPO=/home/user/Desktop/Melusina \
+#     BRANCH=feat/imp17-integration-2026-04-28 \
+#     SHA=ff60c5f5... \
+#     BUILD_CMD='cd sidecar/telescreen-companion-app && make spk' \
+#     SPK_OUTPUT=sidecar/telescreen-companion-app/telescreen-sidecar-configurator.spk \
+#     SUBMODULES='sidecar/go-sandstorm sidecar/go-util ...'
+#
+# REPO: git URL or absolute local path (file:// clone — no working-tree taint).
+# BUILD_CMD is required. Either SPK_OUTPUT or PKGDEF must be set; if SPK_OUTPUT
+# is missing, the script invokes `spk pack` itself with PKGDEF.
+# SUBMODULES is a space-separated list of paths to init explicitly (best when
+# the parent repo has stale or unfetchable submodule pointers elsewhere).
+build-from-source:
+	@test -n "$(SLUG)"      || { echo "ERROR: SLUG=... required"; exit 2; }
+	@test -n "$(REPO)"      || { echo "ERROR: REPO=... required"; exit 2; }
+	@test -n "$(BRANCH)"    || { echo "ERROR: BRANCH=... required"; exit 2; }
+	@test -n "$(SHA)"       || { echo "ERROR: SHA=... required"; exit 2; }
+	@test -n "$(BUILD_CMD)" || { echo "ERROR: BUILD_CMD=... required"; exit 2; }
+	bash scripts/build-from-source.sh \
+	    --slug "$(SLUG)" \
+	    --repo "$(REPO)" \
+	    --branch "$(BRANCH)" \
+	    --sha "$(SHA)" \
+	    --build-cmd "$(BUILD_CMD)" \
+	    $(if $(SPK_OUTPUT),--spk-output "$(SPK_OUTPUT)") \
+	    $(if $(PKGDEF),--pkgdef "$(PKGDEF)") \
+	    $(if $(SUBMODULES),--submodules "$(SUBMODULES)")
 
 # --- refresh: pull latest submodule commits -----------------------------------
 refresh:

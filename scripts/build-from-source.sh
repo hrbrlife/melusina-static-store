@@ -117,13 +117,15 @@ else
     echo "    WARN: some submodules failed to init (continuing — build will surface if essential)"
 fi
 
-# Verify SHA matches
+# Verify SHA matches (accept short-SHA prefixes since handoffs may use them)
 ACTUAL_SHA=$(git rev-parse HEAD)
-if [ "$ACTUAL_SHA" != "$SHA" ]; then
-  echo "ERROR: clone HEAD $ACTUAL_SHA != requested $SHA" >&2
+SHA_LOWER=$(echo "$SHA" | tr 'A-Z' 'a-z')
+ACTUAL_LOWER=$(echo "$ACTUAL_SHA" | tr 'A-Z' 'a-z')
+if [ "${ACTUAL_LOWER:0:${#SHA_LOWER}}" != "$SHA_LOWER" ]; then
+  echo "ERROR: clone HEAD $ACTUAL_SHA does not match requested $SHA" >&2
   exit 4
 fi
-echo "   HEAD verified: $ACTUAL_SHA"
+echo "   HEAD verified: $ACTUAL_SHA (matches requested $SHA)"
 echo ""
 
 # Run upstream build command (evaluated in the checkout root)

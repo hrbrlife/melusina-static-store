@@ -30,6 +30,20 @@ const sanitizeHost = (h) => {
   return (!/^https?:\/\//i.test(t) ? `https://${t}` : t).replace(/\/+$/, "");
 };
 
+// Validate that a sanitized host is parseable and has a real hostname.
+// Returns "" on valid, otherwise a short, user-actionable reason.
+// `localhost` and bare-host shapes used by dev/LAN are allowed.
+const hostValidationError = (raw) => {
+  const t = (raw || "").trim();
+  if (!t) return "Enter a server URL.";
+  let u;
+  try { u = new URL(sanitizeHost(t)); }
+  catch { return "Not a valid URL — example: example.melusina-os.org"; }
+  if (!u.hostname) return "Server address is missing a hostname.";
+  if (/\s/.test(u.hostname)) return "Hostname cannot contain spaces.";
+  return "";
+};
+
 const fmtDate = (v) => {
   if (!v) return "—";
   let ts = typeof v === "number" ? v : Date.parse(v);
@@ -398,15 +412,17 @@ function InstallModal({ app, onClose }) {
   const [privateServers, setPrivateServers] = useState(() => getPrivateServers());
   const [newPrivate, setNewPrivate] = useState('');
   const [addingPrivate, setAddingPrivate] = useState(false);
+  const [privateError, setPrivateError] = useState('');
+  const [installError, setInstallError] = useState('');
 
   const doInstall = useCallback((host) => {
     const h = sanitizeHost(host);
     if (!h) {
-      window.alert("Enter a Melusina server URL before installing.");
+      setInstallError("Enter a Melusina server URL before installing.");
       return;
     }
     if (!app.packageId) {
-      window.alert(`Cannot install "${app.name || 'this app'}": package is missing from the catalog.`);
+      setInstallError(`Cannot install "${app.name || 'this app'}": package is missing from the catalog.`);
       return;
     }
     const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
@@ -423,11 +439,13 @@ function InstallModal({ app, onClose }) {
   }, [doInstall]);
 
   const addAndInstallPrivate = useCallback(() => {
+    const err = hostValidationError(newPrivate);
+    if (err) { setPrivateError(err); return; }
     const h = sanitizeHost(newPrivate);
-    if (!h) return;
     addPrivateServer(h);
     setPrivateServers(getPrivateServers());
     setNewPrivate('');
+    setPrivateError('');
     setAddingPrivate(false);
     doInstall(h);
   }, [newPrivate, doInstall]);
@@ -489,13 +507,32 @@ function InstallModal({ app, onClose }) {
 
         {/* section tabs */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${T.purple}22` }}>
-          <button style={sectionTabStyle(section === 'pbay')} onClick={() => setSection('pbay')}>
+          <button style={sectionTabStyle(section === 'pbay')} onClick={() => { setSection('pbay'); setInstallError(''); }}>
             🌐 pbay.app
           </button>
-          <button style={sectionTabStyle(section === 'private')} onClick={() => setSection('private')}>
+          <button style={sectionTabStyle(section === 'private')} onClick={() => { setSection('private'); setInstallError(''); }}>
             🖥️ Private Servers
           </button>
         </div>
+
+        {installError && (
+          <div role="alert" style={{
+            margin: '14px 28px 0', padding: '10px 14px',
+            background: T.magenta + '14',
+            border: `1px solid ${T.magenta}55`,
+            borderRadius: T.radiusSm,
+            fontSize: 12, color: T.magenta,
+            fontFamily: "'JetBrains Mono', monospace",
+            textShadow: `0 0 4px ${T.magentaGlow}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          }}>
+            <span>{installError}</span>
+            <button onClick={() => setInstallError('')} aria-label="Dismiss" style={{
+              background: 'none', border: 'none', color: T.magenta, fontSize: 16,
+              cursor: 'pointer', padding: '0 4px', lineHeight: 1,
+            }}>×</button>
+          </div>
+        )}
 
         {/* ─── pbay.app section ─── */}
         {section === 'pbay' && (
@@ -663,26 +700,35 @@ function InstallModal({ app, onClose }) {
                   textShadow: `0 0 6px ${T.accentGlow}`,
                 }}>Server Address</label>
                 <input type="url" placeholder="https://example.melusina-os.org" value={newPrivate}
-                  onChange={(e) => setNewPrivate(e.target.value)} autoFocus
+                  onChange={(e) => { setNewPrivate(e.target.value); if (privateError) setPrivateError(''); }} autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && addAndInstallPrivate()}
+                  aria-invalid={!!privateError}
+                  aria-describedby={privateError ? 'private-server-error' : undefined}
                   style={{
                     width: '100%', padding: '12px 14px',
                     background: 'rgba(192,132,252,0.06)',
-                    border: `1px solid ${T.purple}33`,
+                    border: `1px solid ${privateError ? T.magenta + '99' : T.purple + '33'}`,
                     borderRadius: T.radiusSm, color: T.text,
                     fontSize: 13, outline: 'none',
                     fontFamily: "'JetBrains Mono', monospace",
                     transition: 'border-color .2s, box-shadow .2s',
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = T.cyan + '88';
-                    e.target.style.boxShadow = `0 0 15px ${T.accentGlow}`;
+                    e.target.style.borderColor = privateError ? T.magenta + 'cc' : T.cyan + '88';
+                    e.target.style.boxShadow = privateError ? `0 0 15px ${T.magentaGlow}` : `0 0 15px ${T.accentGlow}`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = T.purple + '33';
+                    e.target.style.borderColor = privateError ? T.magenta + '99' : T.purple + '33';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
+                {privateError && (
+                  <div id="private-server-error" role="alert" style={{
+                    marginTop: 8, fontSize: 11, color: T.magenta,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    textShadow: `0 0 4px ${T.magentaGlow}`,
+                  }}>{privateError}</div>
+                )}
                 <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
                   <button onClick={addAndInstallPrivate} style={{
                     flex: 1, padding: '10px 16px', borderRadius: 3,
@@ -1161,10 +1207,22 @@ function AppCard({ app, onSelect, onInstall }) {
 
 function ScreenshotGallery({ screenshots, appId }) {
   const [lightbox, setLightbox] = useState(null);
-  if (!screenshots || screenshots.length === 0) return null;
 
-  const prev = () => setLightbox((i) => (i > 0 ? i - 1 : screenshots.length - 1));
-  const next = () => setLightbox((i) => (i < screenshots.length - 1 ? i + 1 : 0));
+  const prev = useCallback(() => setLightbox((i) => (i > 0 ? i - 1 : (screenshots?.length || 1) - 1)), [screenshots]);
+  const next = useCallback(() => setLightbox((i) => (i < (screenshots?.length || 1) - 1 ? i + 1 : 0)), [screenshots]);
+
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setLightbox(null); }
+      else if (e.key === 'ArrowLeft' && (screenshots?.length || 0) > 1) { prev(); }
+      else if (e.key === 'ArrowRight' && (screenshots?.length || 0) > 1) { next(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox, screenshots, prev, next]);
+
+  if (!screenshots || screenshots.length === 0) return null;
 
   return (
     <>
@@ -1198,9 +1256,9 @@ function ScreenshotGallery({ screenshots, appId }) {
         </div>
       </div>
       {lightbox !== null && (
-        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+        <div className="lightbox-overlay" role="dialog" aria-modal="true" aria-label="Screenshot lightbox" onClick={() => setLightbox(null)}>
           {screenshots.length > 1 && (
-            <button onClick={(e) => { e.stopPropagation(); prev(); }} style={{
+            <button onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous screenshot" style={{
               position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)",
               background: "rgba(0,240,255,0.1)", border: `1px solid ${T.cyan}44`,
               color: T.cyan, width: 48, height: 48, borderRadius: 3,
@@ -1213,7 +1271,9 @@ function ScreenshotGallery({ screenshots, appId }) {
             >‹</button>
           )}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "92vw" }}>
-            <img src={screenshotUrl(appId, screenshots[lightbox])} alt="" onClick={(e) => e.stopPropagation()} style={{ cursor: "default" }} />
+            <img src={screenshotUrl(appId, screenshots[lightbox])}
+              alt={shotCaption(screenshots[lightbox]) || `Screenshot ${lightbox + 1} of ${screenshots.length}`}
+              onClick={(e) => e.stopPropagation()} style={{ cursor: "default" }} />
             {shotCaption(screenshots[lightbox]) && (
               <p style={{ color: T.cyan + "cc", fontSize: 13, textAlign: "center", maxWidth: 600,
                 fontFamily: "'JetBrains Mono', monospace",
@@ -1227,7 +1287,7 @@ function ScreenshotGallery({ screenshots, appId }) {
             </span>
           </div>
           {screenshots.length > 1 && (
-            <button onClick={(e) => { e.stopPropagation(); next(); }} style={{
+            <button onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next screenshot" style={{
               position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
               background: "rgba(0,240,255,0.1)", border: `1px solid ${T.cyan}44`,
               color: T.cyan, width: 48, height: 48, borderRadius: 3,
@@ -2410,6 +2470,7 @@ function App() {
   const [category, setCategory] = useState("All");
   const [installModalApp, setInstallModalApp] = useState(null);
   const [showGetMelusina, setShowGetMelusina] = useState(false);
+  const [appNotFound, setAppNotFound] = useState(null);
 
   useEffect(() => {
     const src = Array.isArray(data) ? data : data.apps || [];
@@ -2442,6 +2503,35 @@ function App() {
       window.history.replaceState({}, '', url.pathname + url.search + url.hash);
     } catch { /* in-app browsers may restrict URL APIs — fail silently */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ─── ?app=<appId> deep-link: open detail page on mount ─── */
+  useEffect(() => {
+    if (apps.length === 0) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const appParam = params.get('app');
+      if (!appParam) return;
+      const match = apps.find((a) => a.appId === appParam);
+      if (match) {
+        setSelectedId(match.appId);
+      } else {
+        setAppNotFound(appParam);
+        const url = new URL(window.location);
+        url.searchParams.delete('app');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+      }
+    } catch { /* in-app browsers may restrict URL APIs — fail silently */ }
+  }, [apps]);
+
+  /* Sync ?app= to URL whenever selection changes (bookmarkable detail pages). */
+  useEffect(() => {
+    try {
+      const url = new URL(window.location);
+      if (selectedId) url.searchParams.set('app', selectedId);
+      else url.searchParams.delete('app');
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch { /* fail silently in restricted browsers */ }
+  }, [selectedId]);
 
   const onInstall = useCallback((app) => { setInstallModalApp(app); }, []);
 
@@ -2596,6 +2686,23 @@ function App() {
 
       {/* grid */}
       <main style={{ maxWidth: 1440, margin: "0 auto", padding: "20px 24px 80px" }}>
+        {appNotFound && (
+          <div role="status" style={{
+            margin: "0 0 16px", padding: "12px 16px",
+            background: T.yellow + '12',
+            border: `1px solid ${T.yellow}55`,
+            borderRadius: T.radiusSm,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 12, color: T.yellow,
+          }}>
+            <span>App <code style={{ color: T.text }}>{appNotFound}</code> is not in this catalog. Showing all apps.</span>
+            <button onClick={() => setAppNotFound(null)} aria-label="Dismiss" style={{
+              background: 'none', border: 'none', color: T.yellow, fontSize: 16,
+              cursor: 'pointer', padding: '0 4px', lineHeight: 1,
+            }}>×</button>
+          </div>
+        )}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20
         }}>
@@ -2656,4 +2763,72 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+class RootErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    if (typeof console !== 'undefined') console.error('[bazaar] render error:', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          minHeight: '100dvh',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'linear-gradient(170deg, #0e0b1f 0%, #1a1040 50%, #110e24 100%)',
+          padding: '24px',
+        }}>
+          <div role="alert" style={{
+            maxWidth: 560, width: '100%',
+            background: 'rgba(22,16,48,0.9)',
+            border: `1px solid ${T.magenta}55`,
+            borderRadius: T.radius,
+            padding: '32px 28px',
+            boxShadow: `0 0 40px ${T.magentaGlow}`,
+            color: T.text,
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            <h1 style={{
+              fontSize: 18, fontWeight: 800, color: T.magenta,
+              fontFamily: "'Orbitron', sans-serif",
+              textShadow: `0 0 8px ${T.magentaGlow}`,
+              marginTop: 0, marginBottom: 12, letterSpacing: '.04em',
+            }}>The bazaar hit a snag</h1>
+            <p style={{ fontSize: 14, color: T.textSec, lineHeight: 1.7, marginBottom: 16 }}>
+              The page failed to render. This is usually a transient browser issue — reloading clears it.
+              If it persists, your browser may be missing a feature this site relies on.
+            </p>
+            <pre style={{
+              fontSize: 11, color: T.textDim,
+              background: 'rgba(0,0,0,0.25)',
+              padding: '10px 12px', borderRadius: T.radiusSm,
+              border: `1px solid ${T.border}`,
+              fontFamily: "'JetBrains Mono', monospace",
+              overflow: 'auto', maxHeight: 140,
+              marginBottom: 18, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}>{String(this.state.error && (this.state.error.message || this.state.error))}</pre>
+            <button onClick={() => window.location.reload()} style={{
+              padding: '12px 22px', borderRadius: T.radiusSm,
+              background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}15)`,
+              border: `1px solid ${T.cyan}55`,
+              color: T.cyan, fontSize: 12, fontWeight: 700,
+              fontFamily: "'Orbitron', sans-serif",
+              letterSpacing: '.08em', textTransform: 'uppercase',
+              cursor: 'pointer', textShadow: `0 0 8px ${T.accentGlow}`,
+            }}>Reload page</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+createRoot(document.getElementById("root")).render(
+  <RootErrorBoundary><App /></RootErrorBoundary>
+);

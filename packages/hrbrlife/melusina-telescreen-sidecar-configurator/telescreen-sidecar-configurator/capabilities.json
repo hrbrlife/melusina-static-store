@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "appSlug": "telescreen-sidecar-configurator",
+  "appName": "TeleScreen Sidecar Configurator",
+  "tier": "infrastructure",
+  "pearls": [
+    {
+      "pearlId": "telescreen-sidecar-configurator",
+      "pearlName": "TeleScreen Sidecar Configurator",
+      "pearlType": "infrastructure-pearl",
+      "purpose": "Admin-only configuration Pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm Powerbox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
+      "sidecars": [],
+      "grapple": {
+        "offers": [],
+        "requests": [
+          {
+            "name": "telescreen-sidecar-http-out",
+            "interface": "sandstorm.ApiSession",
+            "purpose": "HTTP-out capability for https://telescreen.sidecar.host so the configurator can read status and push sidecar configuration.",
+            "required": true
+          }
+        ]
+      },
+      "encryption": {
+        "supported": false,
+        "scheme": "",
+        "fields": []
+      },
+      "roles": {
+        "adminOnly": [
+          {
+            "name": "Configure TeleScreen sidecar",
+            "purpose": "Edit sidecar settings, secrets, platform toggles, crawl settings, and push signed configuration to the sidecar."
+          }
+        ],
+        "organizationOnly": [],
+        "anyMember": []
+      },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
+      "blockchains": [
+        {
+          "chain": "solana",
+          "cluster": "devnet",
+          "programs": [
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": ["RegisterReleaseEntry"]
+            }
+          ],
+          "purpose": "Release attestation only. The Configurator does not perform on-chain actions at runtime."
+        }
+      ],
+      "staticPublishing": {
+        "enabled": false,
+        "via": "",
+        "purpose": ""
+      },
+      "httpOut": {
+        "enabled": true,
+        "via": "sidecar:HTTP_COMPONENT",
+        "purpose": "Read status from and push configuration to the TeleScreen sidecar.",
+        "endpoints": ["https://telescreen.sidecar.host/*"]
+      },
+      "apis": {
+        "capnp": [
+          {
+            "name": "grain.UiView",
+            "purpose": "Standard Sandstorm grain interface for opening the configurator UI. No matchRequests or consumer-facing offers are advertised.",
+            "roleGate": "adminOnly"
+          }
+        ],
+        "http": [
+          {
+            "name": "GET /, GET /status, POST /api/push",
+            "purpose": "Configurator UI and signed sidecar configuration push endpoints inside the grain WebSession.",
+            "roleGate": "adminOnly",
+            "auth": "Sandstorm WebSession role"
+          }
+        ]
+      }
+    }
+  ]
+}

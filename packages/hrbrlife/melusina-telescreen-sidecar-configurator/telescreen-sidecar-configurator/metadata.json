@@ -1,0 +1,28 @@
+{
+  "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",
+  "packageId": "1d68b49f6c3c43558b64cec91985712a",
+  "name": "TeleScreen Sidecar Configurator",
+  "version": "0.4.0",
+  "versionNumber": 1,
+  "shortDescription": "Cap-routed configurator Pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Powerbox cap.",
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "isOpenSource": true,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/Melusina",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1777535000000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "MIT"
+}

@@ -2712,8 +2712,8 @@
       "name": "CyberTeller",
       "version": "0.1.0",
       "versionNumber": 1,
-      "packageId": "29ad66dc208175671cff2c721e0c1068",
-      "sha256": "29ad66dc208175671cff2c721e0c106882f941ec3240c527e9d8e6b3585ce63a",
+      "packageId": "3a113eebfe31dc040930139b8d92b6fa",
+      "sha256": "3a113eebfe31dc040930139b8d92b6fa56b5bdb9a33efa5de0241a0828802557",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2737,14 +2737,14 @@
       "imageId": "fbe7e07659382e0f52864912be2b136d.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "fbaeed5cc6a2df523c57f431b079591313bc5b5b08a100b8545bee98c8bf2487",
-        "releaseHash": "c13316737c899b82cc92509bc250ca35383e2da85271f4c422cd3f006c630494",
-        "releaseNonce": "bb1b7b349597fcbeee79feb887443f4abd0f84f4c49a2d819c99e681893660c4",
-        "releaseEntryPda": "J6VCzPyVz6s6tD83Hn7XyR2QDr7BCeeEhTGsHEDQhXMN",
+        "appHash": "f5e2d54d7e1e6bc57dc08f1df4df36d38b5bbf87530d0306c75c3dda487da1f4",
+        "releaseHash": "b8779bf724a01a1b8fa257c52b13cad7e0986af0557483284a0921df577bafea",
+        "releaseNonce": "0dabb92a069fb6d84c25e77410c220e0565b6f8584449dbc38f3e78d336003c4",
+        "releaseEntryPda": "3UauzgDsTj1ApTvcSXgrEeh7dN1ugS8ui6GWq4kkHYiM",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777735357,
-        "authorSig": "BE0K0TTepei4F12Px42usbSrshVCYX81o1ZCoXxGOJr3Bmh90gsrF5FccnVCcwt1tIwHTfRD2fxpUL1/vJkDBQ==",
+        "signedAtUnix": 1777746033,
+        "authorSig": "/jK+mUPsPohhhnJdi6HE0t7q9cUp9VlYzZskew2ni6mVy/xND54XZo9ElJHppEPs1m6RFSfiiUgA3QH6sX5FDg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,

@@ -1,11 +1,14 @@
 {
   "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-  "packageId": "ec0a4ddcc0944c919c662838be9bcd54",
+  "packageId": "0a4b03a929638d6337e1f35892f25845",
   "name": "Cyberteller Config",
-  "version": "0.0.1",
-  "versionNumber": 1,
-  "shortDescription": "Admin Pearl for Cyberteller — controls allowed payment rails, fee caps, and operator roles",
-  "categories": ["Productivity", "Office"],
+  "version": "0.1.1",
+  "versionNumber": 2,
+  "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
   "isOpenSource": false,
   "webLink": "https://hrbr.life",
   "codeLink": "https://github.com/hrbrlife/melusina_cybertellerconfig_app",
@@ -21,5 +24,6 @@
     "website": "https://hrbr.life"
   },
   "screenshots": [],
-  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.1"
 }

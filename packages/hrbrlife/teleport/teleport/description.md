@@ -18,6 +18,6 @@ Teleport is a Sandstorm-native chat grain with browser-side end-to-end field enc
 
 ## Status
 
-Teleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (client / instance / manager / client-ui-manager grain types, panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build. The four grain-action entries in the SPK manifest reflect the original four-grain shape; only the chat path is wired in this MVP.
+Teleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single "New Chat Room" grain action that launches the chat server directly.
 
 This release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session — no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.

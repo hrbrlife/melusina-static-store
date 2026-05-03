@@ -1,17 +1,17 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "e7cf23607fe68969b4bf30caf5d017e82d8cc5c7541f6b936d9e3fc4f6849cb7",
-  "releaseHash": "561c405b84dc9b8cbbbc0c8c704927060cd613654933957e12b06a63ab663569",
-  "version": "0.0.1",
-  "signedAtUnix": 1777396216,
-  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-  "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-  "releaseEntryPda": "9nh3BKKhAKpPpGominYAZu1t5iLj4sg1TwNqJbq1fzpv",
-  "authorSig": "oh3oZ+ecDNKjSHnFYGCq0Qz+VRFx+rrdkZG+c/GF4SnmnI0nXGfIoG1dxtTWZfKKrdC33hNXXZl95AH0a9ebCA==",
+  "version": "0.1.1",
+  "appHash": "0a4b03a929638d6337e1f35892f2584527e97192ac1e2cbaff0ed849e0aa1e4d",
+  "releaseHash": "7b6a40eb05af59373997c0e16952888d40cf8ffc94ee9931d70ca407a8c83b73",
+  "releaseNonce": "806604e8621a947f7721a90d6c64b81001ac550e86cd1873605acb87041efb77",
+  "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+  "masterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+  "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+  "authorSig": "39f8eb0ed5ab77c5a196e1c7b3aeaaf605f74635da3f2b51794ef959924e5c08",
+  "signedAtUnix": 1777769969,
   "quorumPolicy": {
-    "threshold": 2,
-    "memberCount": 4,
-    "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
-  },
-  "releaseNonce": "d86aac32b3f4ec076d074b3b8cff43780125db5754c5065a73ffca75c2d2eed1"
+    "threshold": 1,
+    "memberCount": 1,
+    "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
+  }
 }

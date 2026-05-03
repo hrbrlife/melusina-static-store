@@ -94,10 +94,6 @@
 	path = packages/hrbrlife/melusina-ccash-org-member-app
 	url = https://github.com/hrbrlife/melusina_ccash_org_member_app.git
 	branch = publish
-[submodule "packages/hrbrlife/CHEESESPREAD"]
-	path = packages/hrbrlife/CHEESESPREAD
-	url = https://github.com/hrbrlife/CHEESESPREAD.git
-	branch = publish
 [submodule "packages/hrbrlife/shell_tester"]
 	path = packages/hrbrlife/shell_tester
 	url = https://github.com/hrbrlife/shell_tester.git

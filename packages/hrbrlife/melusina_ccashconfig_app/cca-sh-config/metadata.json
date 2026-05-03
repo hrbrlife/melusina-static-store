@@ -1,11 +1,14 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "d0fd938fac00e99ed26bc6429a63c392",
+  "packageId": "b5b32824f949efab5045a8b33e5df38e",
   "name": "cca.sh Config",
-  "version": "0.0.1",
-  "versionNumber": 1,
-  "shortDescription": "Admin Pearl for cca.sh — controls procedure templates, hook allowlist, and per-install routing",
-  "categories": ["Productivity", "Office"],
+  "version": "0.0.2",
+  "versionNumber": 2,
+  "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
   "isOpenSource": false,
   "webLink": "https://hrbr.life",
   "codeLink": "https://github.com/hrbrlife/melusina_ccashconfig_app",
@@ -21,5 +24,6 @@
     "website": "https://hrbr.life"
   },
   "screenshots": [],
-  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.0.2"
 }

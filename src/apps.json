@@ -42,14 +42,14 @@
       "imageId": "0f5678081ffee8f98c258aad41b73b70.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "2bfaacfab0a990bdd1dd207d6268c05ebebc4e8e3e6db9bf7bfb1f727c30fb6b",
-        "releaseHash": "ec89d71b01724e2ae42575f0fa1ea189afced0d58e769346f231cbe08b0dfbe8",
-        "releaseNonce": "5e2336219d9ce808b1a3483644db49617afb1cf3e67159626b747393adf73fef",
-        "releaseEntryPda": "e43S4az9eM8vrPwLvu2NRC35UJStDvmpveAUDohcmBS",
+        "appHash": "00addb8ae65dc4b2df3d7561ec91b109383a9e13b7a0e97a05de5efa1ca03490",
+        "releaseHash": "769fb185495a4171edebc43a8d1b74ca2ddf468fd032a20403bd45188b886d11",
+        "releaseNonce": "67d467ae7a00c21cd636d5810f26bd805015d65cb61a46f0253c494745339f0f",
+        "releaseEntryPda": "AP17g7fBeEC8dNR2JenBb9CRss2fcUYCrbvNwBcfoq1Y",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267443,
-        "authorSig": "y6CRsGKlQKtmDoTfj+6G+2YfGpKy3MdWwf4soV7ZFLjg78SlGnii0nynz+FPqjgejdJqCLATpvi+L6C0FPSfAw==",
+        "signedAtUnix": 1777787070,
+        "authorSig": "s3ZYxGG3yM4XA/5npPo8NKsxApyOcTFn4GEmJFowUsmzVCxm7MA/tBcV77s/uLj7IbeZqbqqoP7fwW4A9XcoBg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -207,14 +207,14 @@
       "imageId": "4fee9934bbd5715653c18803672ca187.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "2dbb1fc767a1bafbfa89df551d1166be2dc11e275b757f49284fc9e29494cf64",
-        "releaseHash": "3a3e33a49f5aa80ed0f0778d0919a9ca14f107be3fdefcf6c75a1f8a9699ee2f",
-        "releaseNonce": "f88fe697faaf6cf45e6d6da2c456d79798819c7765d1b2ff4415042ce074d73d",
-        "releaseEntryPda": "CHUKuhCQ9QnL7sVZKwwespPtsifXBdVVoB3G2r8oX3Aq",
+        "appHash": "d83236c8dd48a7000aafa9ad663f43f9c4ec208ea1d2be40eabaafd5f758db75",
+        "releaseHash": "617ce3152ec348b86d9cbee1596017f68112ae93c231da350a9bd19f0475dcf6",
+        "releaseNonce": "2285a5d70e6640de9b8e5c05aa2f97fdb22bba8ed71d34e4fe0028d1ab03a9a6",
+        "releaseEntryPda": "9WaCwNjgmiMG9V38ZKeBxGFyZMgMkUid1hTCkMnBmnUY",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267447,
-        "authorSig": "bBTQaC4/S/dNyOt9TloqMHw7aizV5EFXq4JuuDCeAYIN2GdO6LxXcY6YV0jm8Obzn8y0vJ5+NDHxdRnOTMf6Ag==",
+        "signedAtUnix": 1777787073,
+        "authorSig": "5Cq4jb5BabvCVOE1nrkFEZM8C+zVPy7AJAVR49JPPi354pk2zaKqViKTfa+7zbi7d5NN6S6dU11N+tjxAYYgBw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -546,171 +546,6 @@
       "screenshots": []
     },
     {
-      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-      "name": "Bureau",
-      "version": "2.0.15",
-      "versionNumber": 7,
-      "packageId": "e7c520e187750cefd629dcc8c93f98bd",
-      "shortDescription": "Sovereign Office Suite \u2014 Spreadsheet, Document, Diagram, miniPaint",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1708790400000,
-      "screenshots": [
-        {
-          "url": "screenshot_docs.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_docs2.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_graphs.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_image.png",
-          "caption": ""
-        },
-        {
-          "url": "screenshot_sheets.png",
-          "caption": ""
-        }
-      ],
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "imageId": "b0ff2f4ee4dfde88210abe6cde7e43f4.svg",
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "ae875734a503d4e0bb313eb467abf2244f714a4074e66875a8b9ff4eb547e69a",
-        "releaseHash": "12f849714ed581206cfb4c3d9394af2cf77f8e4bcbbe4b17860fb2269c9cc051",
-        "releaseNonce": "c583202d9a949d360003dd14b5968870813a1bc857fec0baa3d69999da64f1d0",
-        "releaseEntryPda": "EDTH7GzBHhpDany6nMqRzDk1X87ttFwoR76fbAEsegEG",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267446,
-        "authorSig": "Es7OtA3LGb9269Mlo4/saq5UBs79hcUQ7S0UbqBBvMY7bJlarDb7mQVGQY8k+Z9vTYZV1IGe9Dfy+vKWeabCAA==",
-        "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "bureau",
-        "appName": "Bureau",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "bureau",
-            "pearlName": "Bureau Suite",
-            "pearlType": "user-pearl",
-            "purpose": "The umbrella Bureau Pearl \u2014 bundles Spreadsheet, Document, Diagram, mini-Paint, Notes, Calendar, and Contacts behind a single shell. Each child surface is loaded lazily; Grapple connections between them are wired by the shell so cross-bureau embeds work without re-prompting the user.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "bureau-shell",
-                  "interface": "Bureau.Shell@1",
-                  "purpose": "Lets a child bureau Pearl declare itself a tile in this shell and request inter-bureau Grapple wiring."
-                }
-              ],
-              "requests": [
-                {
-                  "name": "calendar-read",
-                  "interface": "BureauCalendar.Read@1",
-                  "purpose": "If a Calendar Bureau is installed, the shell shows the agenda tile.",
-                  "required": false
-                },
-                {
-                  "name": "contact-pick",
-                  "interface": "BureauContacts.Pick@1",
-                  "purpose": "Mailmerge / address-lookup integration with Contacts Bureau.",
-                  "required": false
-                },
-                {
-                  "name": "diagram-embed",
-                  "interface": "BureauDiagram.Embed@1",
-                  "purpose": "Live diagram embeds in Doc/Notes via Diagrams Bureau.",
-                  "required": false
-                },
-                {
-                  "name": "image-embed",
-                  "interface": "BureauPaint.Embed@1",
-                  "purpose": "Image embeds in Doc/Notes via Paint Bureau.",
-                  "required": false
-                },
-                {
-                  "name": "range-read",
-                  "interface": "BureauSheets.RangeRead@1",
-                  "purpose": "Spreadsheet range embeds in Doc/Notes.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Bureau composition",
-                  "purpose": "Owner-only: which bureau children are mounted, default Grapple wiring."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Use bureau apps",
-                  "purpose": "Standard productivity workflows."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "Bureau.Shell@1",
-                  "purpose": "Lets a child bureau Pearl declare itself a tile in this shell and request inter-bureau Grapple wiring.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/e7c520e187750cefd629dcc8c93f98bd",
-      "description": "# Bureau\n\n**Your office suite. Your server. Your rules.**\n\nBureau is a self-hosted office suite \u2014 four isolated workspaces that replace Google Docs, Sheets, Diagrams, and Photoshop for teams that refuse to hand their work to someone else's cloud.\n\nEvery spreadsheet, every document, every diagram, every image lives in its own sealed **Pearl** \u2014 a per-document container with its own storage, database, and permissions. No Pearl can see another unless you explicitly connect them via **Grapple**. That's not a setting \u2014 that's the architecture.\n\n---\n\n## \ud83c\udd9a Why Bureau\n\n| | Google / Microsoft | Bureau on Sandstorm |\n|---|---|---|\n| \ud83c\udfe0 **Where your data lives** | Their servers, their jurisdiction | Your server, your jurisdiction |\n| \ud83d\udd12 **Who can see it** | The vendor, their partners, hackers who breach them | Only people you explicitly share with |\n| \ud83e\uddf1 **Isolation** | One breach exposes everything | Each Pearl is a sealed container \u2014 a breach in one stays in one |\n| \ud83d\udd17 **Connections** | Everything wired to everything behind the scenes | Nothing connects unless you Grapple it explicitly |\n| \ud83d\udce1 **Offline** | Needs internet | Works air-gapped \u2014 every asset bundled |\n| \ud83d\udcb8 **Lock-in** | Try exporting from Google \u2014 it's a project | XLSX, CSV, PDF, JSON, HTML, PNG, SVG, XML \u2014 leave anytime |\n| \ud83d\udc41\ufe0f **Tracking** | Analytics, telemetry, ad targeting | Zero. No phone-home. No CDNs. No tracking pixels |\n\n---\n\n## \ud83d\udcca Spreadsheet\n\n**The spreadsheet your accountant can actually trust.**\n\nMultiple users edit the same sheet at the same time \u2014 every keystroke arrives in real time. Not \"syncs eventually.\" Real time. Formulas, formatting, multiple worksheets, comments, merge cells, sorting, search, pagination \u2014 the full toolkit. Import your existing Excel files with styles and column widths intact. Export to XLSX, CSV, PDF, or JSON when you need to share outside.\n\n| Capability | Details |\n|---|---|\n| \ud83e\udd1d Collaboration | Simultaneous multi-user editing, live presence indicators |\n| \ud83c\udfa8 Formatting | Fonts, colors, bold, italic, borders, alignment, fill, text wrap |\n| \ud83d\udd22 Formulas | A1 references, formula bar, cross-cell calculations |\n| \ud83d\udcd1 Worksheets | Multiple tabs \u2014 rename, reorder, add, delete |\n| \ud83e\udde9 Structure | Merge cells, freeze rows/columns, hide columns, multi-level sort |\n| \ud83d\udcac Comments | Per-cell threads with author attribution |\n| \ud83d\udce5 Import | XLSX (preserves styles), CSV, JSON |\n| \ud83d\udce4 Export | XLSX, CSV, ZIP (all sheets), PDF (per-sheet, ranges, page sizes), JSON |\n| \ud83d\udcf8 Snapshots | Named versions \u2014 save, browse, compare, restore |\n| \ud83d\udcf1 Mobile | Responsive layout, touch support, collapsible toolbar |\n| \ud83c\udf13 Themes | Light and Dark with keyboard toggle |\n\n---\n\n## \ud83d\udcdd Document\n\n**Write together without conflicts \u2014 mathematically guaranteed.**\n\nBureau Documents use Yjs CRDT \u2014 a technology where simultaneous edits merge automatically without conflicts. Two people editing the same paragraph at the same time? Both edits survive. No \"someone else is editing this\" lockouts. No copy-of-copy-of-final-v2 chaos.\n\n| Capability | Details |\n|---|---|\n| \ud83e\udd1d Collaboration | Conflict-free CRDT sync \u2014 unlimited simultaneous editors |\n| \ud83c\udfa8 Formatting | Bold, italic, underline, strikethrough |\n| \ud83d\udcd0 Structure | Headings (H1\u2013H3), bullet lists, numbered lists, blockquotes, code blocks, horizontal rules |\n| \ud83d\udcca Tables | Insert and edit tables inline |\n| \ud83d\udcc2 Sections | Organize long documents into named sections |\n| \ud83d\udcf8 Snapshots | Named versions with one-click restore |\n| \ud83d\udce4 Export | HTML |\n\n---\n\n## \ud83d\udcd0 Diagram\n\n**Flowcharts, org charts, and architecture diagrams \u2014 with the full draw.io engine.**\n\nNot a simplified diagramming toy. The complete draw.io application, running inside your grain. Every stencil library. Every shape. Every connector. Flowcharts, UML, ER diagrams, BPMN, network topology, freeform drawing. One person edits at a time \u2014 everyone else sees changes appear live.\n\n| Capability | Details |\n|---|---|\n| \u2699\ufe0f Engine | Full draw.io (mxGraph) \u2014 the same tool used by millions |\n| \ud83d\udcca Diagram types | Flowcharts, org charts, UML, ER, BPMN, network, freeform |\n| \ud83e\udde9 Shape library | Complete draw.io stencil collection |\n| \ud83e\udd1d Collaboration | Live viewer updates \u2014 edit lock with auto-acquire and auto-release |\n| \ud83d\udce4 Export | XML, PNG, SVG, PDF |\n| \ud83d\udcf8 Snapshots | Named versions with restore |\n| \ud83d\udce1 Offline | All draw.io assets bundled \u2014 no internet needed |\n\n---\n\n## \ud83c\udfa8 miniPaint\n\n**Quick image editing without uploading your photos to someone else's server.**\n\nLayers, filters, drawing tools, crop, resize, rotate \u2014 the essentials you need for graphics work without installing desktop software or trusting a cloud image editor with your files. Save snapshots before destructive edits. Export in any format you need.\n\n| Capability | Details |\n|---|---|\n| \ud83d\uddbc\ufe0f Layers | Create, reorder, merge, manage |\n| \u270f\ufe0f Drawing | Pencil, brush, line, circle, rectangle, text |\n| \ud83d\udd27 Filters | Blur, sharpen, brightness, contrast, adjustments |\n| \ud83d\udcd0 Transform | Crop, resize, rotate |\n| \ud83d\udce4 Export | PNG, JPG, BMP, WebP |\n| \ud83d\udcf8 Snapshots | Save state before destructive operations |\n\n---\n\n## \ud83d\udd10 Security & Permissions\n\nAll Bureau Pearls enforce permissions **server-side** \u2014 not client-side hints. The server rejects unauthorized requests no matter what the client sends.\n\n| Role | Capabilities |\n|---|---|\n| \ud83d\udc41\ufe0f **Viewer** | Read-only access \u2014 can browse but not modify |\n| \ud83d\udcac **Commenter** | Can add comments and annotations |\n| \u270f\ufe0f **Editor** | Full editing access to all content |\n| \ud83d\udc51 **Admin** | Manage permissions, settings, and configuration |\n\n> Every font, icon, library, and stylesheet is bundled. Bureau works with zero internet. No CDNs. No tracking. Nothing phones home. Ever.\n\n---\n\n## \ud83d\udcb0 Pricing\n\n**Free.** Install it on your server and use it. No subscription, no usage fees, no limits, no catch."
-    },
-    {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
       "packageId": "4589264bc4fef9b13f36bbaae3fd5718",
       "name": "Cal Bureau",
@@ -740,14 +575,14 @@
       "imageId": "643b227e6ad6a193927ce8ca7095016a.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "312cf6e874a8f7a3c8fb85e6925b144a5cd3c78a2fd4733fcb29e62e2bd4bfd3",
-        "releaseHash": "3800409357da7ebdfad04660870689897a103e14cbacd07fb19d3b13f4546c3c",
-        "releaseNonce": "36da027709e02d5598c23c00e2873e541407e46547d3a0cbee3f1c49400e8e6b",
-        "releaseEntryPda": "51r7yZanZHYzWDr633PWSp1YeULsqUc78CopAnFsDmmw",
+        "appHash": "a398e5d21738abe0f207743519bb9a34ab4ff8f59921c57d2c3ce0393fd7747b",
+        "releaseHash": "b13747fbfc5f83896814fe140e5c36aa482727a1126ac6eca84c7c972b0b9b0d",
+        "releaseNonce": "4cb7ab43cdfba9a6abfa12dd8fc219a495bc08f8db6f364df967c3c17374df31",
+        "releaseEntryPda": "BZPuepcwfZRku6rgZez5bydy5r5xrAQ4FCo7Sw3psRqd",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267448,
-        "authorSig": "4JlYjvyIUodA45bnJwEqbRLONmp3g+xneLCMOxzPZM+g/JAFe+I5ol/R7k0uB23v2PqYlGV132U9EHx1nkzBDg==",
+        "signedAtUnix": 1777787074,
+        "authorSig": "a1r79V0ri5CZIWjywdiqScIxC4soubn5A1a9QPGTrXcr9z/O1gtyO0uy5xTdNi0ij6khRv/CuFPFLvdusnfSCw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -874,14 +709,14 @@
       "imageId": "7e86226cccefca5af433f5c1598379ab.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e3751dbf47ecc8236dc3097041046a382a3189b5a83e5f760cb28fbafcc60963",
-        "releaseHash": "8b06509f83bb933298fed19ec939cbbcdc1813098bab1b7abe81950189dea358",
-        "releaseNonce": "791f4a2d97e81a39141802a13cd1571620aaf3c2633b562bd21b9b64a8ed870c",
-        "releaseEntryPda": "91JxmojASxfequFWKzfcVsxMSCSrbK8EjDMpS7XUU19k",
+        "appHash": "73264cc0fb2b0c039b4e23bb957b318de5fae24d6a385c0ff4591393a832c24a",
+        "releaseHash": "1fe0c862fbfa01ef0eb354be6708cd48fee0b17ab6b28238bde2ebc0aea3a0fe",
+        "releaseNonce": "b36a5e6cb29e5c4c6fa4350c608e5411a814bf4f6ac7bbe405361a61ed957c6d",
+        "releaseEntryPda": "C5pHuFNTRjYFTKUuPJc6MHk2RQQrVQVQdqrySmYw6nNX",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267451,
-        "authorSig": "kGReYI8T9Jn91xveFFmLIiK5uoWvvwiSrBOKyS+VJeY65ZdoSE1nydQqptqCNY1XgjexhVYTTdfU+Jf1y/NhBg==",
+        "signedAtUnix": 1777787077,
+        "authorSig": "o+RHKAPYWQQ3TdQ5mcQi1jjYue60+BlfP+MzazLKQ1pk6QQRVTLdoPqh9CSKtWQv/Xl6DWloexUDDGcHJruPBg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1018,14 +853,14 @@
       "imageId": "adb61e4f6d7ac77a8273d8b248499119.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "398ed9818d26e923a648b6d140033deba6cc98fd7ab8fe83f8c6c86233fc8326",
-        "releaseHash": "b831fcc7b852b32015f0dcf809c9d45c5c8cb9f1a37af4c962fbb7effe89bc61",
-        "releaseNonce": "c6a6889e2e18c8c0218331067690787da6f373cbc10ba12f81214a007b5c4639",
-        "releaseEntryPda": "Gsx6L9JgN2CVi8bKLVqjb6FzdPNp9LcuWDaMJtVdzvSt",
+        "appHash": "5ac1f3ba6274c6438311bf353ec2c0aca65f00f493c763ff047501b615188102",
+        "releaseHash": "792df967121853d9ff3def553c01ab7fbd52ab8655f206832cb58ab69de41292",
+        "releaseNonce": "bea7448a7f7f4f67ccf3305900c7700f9e44d591fd3b8604b6a62060f9bed695",
+        "releaseEntryPda": "Gx3d5NMJYeRF3MR6HkuFdMmDahtBB1TvEYEw2Ci2yug6",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267451,
-        "authorSig": "ZbJgGKQrf59zkPMG6tWuE8p7biC+WiFTIWC8Uf/H7TAhgbJd7oQ0zp7JFyDT+4cxbceoecPztHf+8ZJisaJxDg==",
+        "signedAtUnix": 1777787078,
+        "authorSig": "Izsd5IrsvqFudpV+CRrsvBZgvpwTTx5Pp0HXtOrlW6++5JMpO8FmoTRMRFoL4TPEKBoeWe7mAvneoWhlB6/EDQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1129,10 +964,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "d0fd938fac00e99ed26bc6429a63c392",
+      "packageId": "b5b32824f949efab5045a8b33e5df38e",
       "name": "cca.sh Config",
-      "version": "0.0.1",
-      "versionNumber": 1,
+      "version": "0.0.2",
+      "versionNumber": 2,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
         "Productivity",
@@ -1153,17 +988,18 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.0.2",
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "d36d226010601ea456bee50ecf7914fe28c295c990cbfddb4c6ceda18eaf093d",
-        "releaseHash": "11fc10348b2674cb8c3c7130d6d88072e8245fa87f1023e24db6281681b4f686",
-        "releaseNonce": "173e3ffc94f86395a704784a5cbc2fb03a1a339e6beea713f3a3b99b3a105562",
-        "releaseEntryPda": "DmTotb2zp3w7v7yoHV4dmiKCYQVh8c52dHhTrzDggMDZ",
+        "appHash": "1b9ed9542850bb2d122ff93bc56425cd67c237a770eb117530966fa5872f8ae6",
+        "releaseHash": "31334acf22a5bf751f59e62c8240bd967b91b7a68cb22c69b38d85d3b07a57e3",
+        "releaseNonce": "5b49901067ea4fd1464e31d3f153705dc0fda0b398a615b98169a0ba9532ed96",
+        "releaseEntryPda": "F6AiF86mGZtYvaHrt514Wq7aqVEa2SR6MwsZZGxRXkmb",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267451,
-        "authorSig": "uaU/F1wnrakVz9rtLpW8wmOBIsVOonj4fI/E3ZoO3vzbxqYB4+HLcDLlCPU9Fzq9eiNx4NSguwVbGcqX+YCZAA==",
+        "signedAtUnix": 1777787078,
+        "authorSig": "Useh5GLtPxP9wg5LHvniqhqb+7tkg8uwKrE8KDUQPPXNbUomWzc9jRenwjii4/L2cac7cL34StlnPqL+W7apDQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1302,10 +1138,10 @@
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-      "packageId": "cbad3088eca43d64e12a5d10fcbaf84d",
+      "packageId": "e1d3f8da142f463b7793c2163b53b5fe",
       "name": "cca.sh Domain Template",
-      "version": "0.2.0",
-      "versionNumber": 2,
+      "version": "0.2.1",
+      "versionNumber": 3,
       "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
       "categories": [
         "Productivity",
@@ -1326,17 +1162,18 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.2.1",
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1a6103a2279c2b68bce9d6af9ca5248d7f6b72e1d2cca87428cec2f26fc160ca",
-        "releaseHash": "7c6aec101406903f1303b1e823ab55db601139cefa52d3db6d56743f9bdf1bf2",
-        "releaseNonce": "4477fac5b0ecc47c2347ac41b7902d68721316e33262cf81e1904a05d5f43d5d",
-        "releaseEntryPda": "9wUSmTMotq2vrTc5EzAsqqukRpHKWZNyLTZvpRneHs8r",
+        "appHash": "f56ee6cf6374d96327843fbf3c1d32ebe236e1f262b6c476c5ac4cf1c187c3d0",
+        "releaseHash": "a020e59dade914b28b3f1727b1e8c7fe438a655d89fdc571f666e621f004ab34",
+        "releaseNonce": "f1564d09bb72ac11ad9cb7720b68a5eed7011663ebc6263cab099cf18064d440",
+        "releaseEntryPda": "4NCfF1MEvYjDLGvzzubJ6AXqsNarmaXBsJDmQbuBz1op",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267444,
-        "authorSig": "4Ko8Sthr/pW58ytiu0LWBgfCe+mhK+VgMnpJSZiCuPCjtSqhELUiH1yobibGgdAvb3L4IHmls0OEwwYO0GnZAw==",
+        "signedAtUnix": 1777787071,
+        "authorSig": "6Gzmj0OoVcV5a4jwKFBD0affK4jbwp8L2N0BePPZuuO2PjD8pDfT88vAjDYu1rnTfoExgFlVWEHKeLZRK+GOAQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1471,14 +1308,14 @@
       "imageId": "3cc31aed7d96495acd320e996882e98b.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9fc74bfe460b102770104aeef29a8d42797a4db575dab341ce8d2808c36e83f6",
-        "releaseHash": "450276d0098a01980fea627f20a9c6077f63b0299e6aed9628a5708d4d3386a0",
-        "releaseNonce": "51b96678c1160fe9551820328c54457a6c2bec53bce2f6b3cd958ca860125ff2",
-        "releaseEntryPda": "3Du8Ypauc6hUJEcW7ZXM2NurV2SAvRWqqcEMfgDex64Z",
+        "appHash": "b6a234af3e374d3c10f134b7ca4fd0800f9b4e94a4a8a11ba441080840ebe185",
+        "releaseHash": "c158bfe0d6d36373f490be856fa9252af243f809e0c49dbba12baf749ff0c484",
+        "releaseNonce": "2648adbd55f24af58268c8c581e5bb78c0d07434a0a12721bbf12409bbac09a3",
+        "releaseEntryPda": "UEAWsfc8uXmfbxcR8anQR2Btiu4GUT4PoPCDvaqLGkM",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267451,
-        "authorSig": "1CNoz2G7wemPE8kJi+oKd9m92CU0+z8oFzi7w2CLJvXoEDxlx6sx9YzKQFkG8XAx3t6rZCDJvxnofODZeY0GBg==",
+        "signedAtUnix": 1777787078,
+        "authorSig": "ooOfyX7fbb2EIp4hD6cfX+hUd3EuTVmesZTAcjG+c0b8l6Asm9OfWeJjUUBhCrFvngyrxxzFDZi/0RBt8n3eDA==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1582,10 +1419,10 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "1d4cda823c5baa6db0579fc3d774993d",
+      "packageId": "6a88b04225c6056d1052b049762ef400",
       "name": "cca.sh Wholesale",
-      "version": "0.2.0",
-      "versionNumber": 2,
+      "version": "0.2.1",
+      "versionNumber": 3,
       "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
@@ -1606,17 +1443,18 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.2.1",
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9191718e69dec098b9af176b1194060a0afa2c52d6faf2f1a137a2010d899f21",
-        "releaseHash": "037bcc6efc3d7b6b536a16fbf468265359c3a442e55fa67a5bcd6a06edf72b71",
-        "releaseNonce": "cb63071a96a99f185d4efc0bb7284c7400db779b756200265452f0ba0dbbaff4",
-        "releaseEntryPda": "CqAUpWSbrnA12SRNdu4Q9iexABKciJSkVP3kR6gWjdCa",
+        "appHash": "10413260db01a5a19503ed28ed2549be9036f58a89d4d270e5e76009deeb8878",
+        "releaseHash": "80185f8678964692ea371ffe4d1d258ad969e51627952a42c0552a70b4ac16e8",
+        "releaseNonce": "cb577fdcaeaed186415e802b00944cd3a62a1bc702b8d478df023812f0c36d5a",
+        "releaseEntryPda": "BMJUJhVcFgtCLNtgUScDTehzL7gZqm4DeWx7L2Qjbe88",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267445,
-        "authorSig": "M3ogyLeJJaZ2fy3czAmDuyXIm6Lh0rcYnsEG/19JtnN7ZUypcXEEu+p/coIoDxB2ePAXs1UYLExmdGXyIKIpCQ==",
+        "signedAtUnix": 1777787071,
+        "authorSig": "A9zKIgsWo5FravWrCKochnjyU5NwRepaUbsjevheMV9mZFKdJGHDcSDIODxCjyxT7i2AnsCs9zidJa50FYjXBg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1738,10 +1576,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "ec806e725dc5298ee82676205b021616",
+      "packageId": "1e453cb58347f0153aa7d45b830fa2cd",
       "name": "ccash",
-      "version": "0.2.0",
-      "versionNumber": 1,
+      "version": "0.3.1",
+      "versionNumber": 4,
       "shortDescription": "Procedure-driven MSB/PSP/VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "cca.sh Admin is the operator console for MSB/PSP/VASP back offices. Manage wallets, approve transactions, configure workflows, and audit every action \u2014 all signed with your Solana key, encrypted, and accessible from any device.\n\n## Why cca.sh Admin\n\n- **Procedure-versioned approvals via YAML** \u2014 define approval workflows declaratively; version control them; audit which procedure version was active when each approval happened; no hidden logic\n- **Pinned transaction batches for audit** \u2014 cryptographically anchor any batch of transactions to your Solana wallet; batches are tamper-evident, citable, verifiable independent of the operator, and compliance-ready\n- **Operator accountability through Solana signatures** \u2014 every operator action is signed with their Solana key; non-repudiation; audit trail proves who did what and when\n\n## Features\n\n- **Wallet Management** \u2014 multi-chain support (Solana, Ethereum, Tron, TON); HD-wallet derivation; no address reuse\n- **Transaction Approval** \u2014 request/approve/settle workflows; configurable thresholds; escalation paths\n- **Contact Management** \u2014 KYC status, sanctions screening, identity verification\n- **Encrypted Communication** \u2014 all operator notes and approvals stay encrypted in-Pearl\n- **Mobile-first UI** \u2014 Powder blue on slate; serif headings; Inter Tight tabular numerals; responsive across devices\n- **Real-time Updates** \u2014 WebSocket notifications for pending approvals and transactions\n- **Role-based Access** \u2014 admin, approver, viewer roles; server-enforced permissions\n\n## Sibling Apps\n\n- **cca.sh Client** \u2014 client-facing seat (view balances, submit transactions for approval)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, share contacts, track approvals)\n\n## Status\n\n*Shipped v0.2.0.* MSB/PSP/VASP operator console with Solana signing, procedure-versioned approvals, multi-chain wallet management.",
       "categories": [
@@ -1763,17 +1601,18 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.3.1",
       "imageId": "851f4fb5507e350525b4e01676885b48.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f5aa10fc4627d1b7d1e5dafd1745b93232175466d8c86578410bc90192b7e018",
-        "releaseHash": "f57692618794169f8f31fdfa6021f51698c8db80ca7c1304ebccba9e2fc3a25c",
-        "releaseNonce": "7a936f880f4f8e790ee8038aa5f429ec23a1104f346e2967aec996306b83fa01",
-        "releaseEntryPda": "9pVFJGgYFycF1zL6H76YSVBVLWrfPFJbSr6f55nP4Phu",
+        "appHash": "3421122b6969412862a7d060829232464106e4df6ff3ed2f90db7d2f10efac73",
+        "releaseHash": "6a9aa1388fbfc087817becc824f5625bfe7ee1cfd778bc30701e1557f6b3cb39",
+        "releaseNonce": "ae4a1999755dfa179a05dd777dd2cce5d5bdb665722c114dddb2bb100b618e42",
+        "releaseEntryPda": "5MPnacdNsQXMBDJjBCKrKdML8JHXRCsY5d6eKUunx5T8",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267444,
-        "authorSig": "jOUPgFZz8bWF2z/PXIOCkihQd1dUDiF7c0jOoc4fBnCP8I31AuPgfpDC/cu+v4iXCA6QUdUMX0j0YCP3LlJpDw==",
+        "signedAtUnix": 1777787071,
+        "authorSig": "6XMeF5akm5fFR+FJoO4uxLW5uDs26JyZt+lJ3/SDC4iirHy7HXzTcFGmndfo/ElRrGKbiCgY53eMQyYcMQeUAg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -1982,13 +1821,13 @@
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "37c447fff6de781ceb12b6a9f3ba3025a1ab02ee1ecdc9ad075e9d32ab7fa039",
-        "releaseHash": "0f9e6942c34d6fccc35cc37e65c8c212d3cfb905da134ed4dbeea1c7f69ce239",
-        "releaseNonce": "7ef856b8d01d9f7d144ecc240c3ffd4c7c1310a9c91eed0ef4f02789185abcda",
+        "releaseHash": "f71a7a85af25876d1bf57bdca63f41e30c381e3c8a2eaa81183ea40b2a7d64c2",
+        "releaseNonce": "34495329ce7d0e7aa114791a900c54cc6e56ba2e09b8bb1043c9de9d9176cab8",
         "releaseEntryPda": "4iQ1Nb6X9qCQyd9cB4FAbdQ1TVNbM5ivJTNYTyx5TgEN",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777759371,
-        "authorSig": "MAIkNdGcXw9X7cHVp7Q/Wd8b/UIS2OYg/Q+sBzFKEDGtxVXqUS0If0HfBuKzD5N64GF+PeVX2mWDAbUYagMKBg==",
+        "signedAtUnix": 1777787072,
+        "authorSig": "wqX1FF8kI8JVg3M4wIYipNfFUFwqMknWPci2YuohguNZWijJTrdg6vUPGBQ0VVTeNvLxZnuk6bpLaJmaelhEDw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2105,9 +1944,9 @@
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "c57e1954168936d0355982d0755c5473",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "packageId": "868e2b787acf085d05c72b09cdf6ce19",
       "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
@@ -2126,17 +1965,18 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.1",
       "imageId": "89811f494fdee85cead74a37f859dd48.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "925370cc7916fec3e82dce7c53f0bc7ccfe29bdb26d4023e486081b934a6ea2e",
-        "releaseHash": "7b7174d822c0560abfe8a7ad0d0044ec33e5d76d226e8797b57ec92b85c7e52c",
-        "releaseNonce": "361d601395b12efbed6bc0764f84e4fd9e4b13a1dabfb36f0cf8205a163078fb",
-        "releaseEntryPda": "E8d4YJ7Szo38TmHCcfHkumMvzpoL2TesoX9Esbx3Ux5U",
+        "appHash": "16f9ddf191f661dfb15659e88d8c7209364be42fdd318599000decad6126e4d3",
+        "releaseHash": "ffb6990e6357cafe363c0f137c885c0829950283d358f986e7fdfe6e55a0596f",
+        "releaseNonce": "feb7de3eecccdb6e4b1762dac584edefa7a024113b663075672c66bd5f99ed64",
+        "releaseEntryPda": "AFQfQ9LiWx5CzL1eHcnsrGJw8wWmUyt7zVAWiucB3fxE",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267446,
-        "authorSig": "ycFsNyaKYsqVnAbojSJZ15NUKv1Fw8UTYa8RM9G46g9fKiHlQYC/WOyy1PtnjQ/zOJkrymcMOFZLQZQ/c/I8Bg==",
+        "signedAtUnix": 1777787072,
+        "authorSig": "l4au0eLU9rrhKMGP0O5KeLjnocNsTGZqru1kmm1DcTVgubeGMN8LFcL4fVnOQrjcVomk3y/EpG1Cj+lQ/juOBw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2290,14 +2130,14 @@
       "imageId": "3eab074071e29a06602c88e8568f5541.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "dcce66bb638e04ced96172078108928822f9027ea5a1df569aef811e88c91945",
-        "releaseHash": "df063f06dc2d3680c0cb75abde3946283d44e43c4c6171b168c4813bef1257f6",
-        "releaseNonce": "3a740ffdae1aa06f5c856c40fde5827260b6a3acb671e9468d82a93f57beda1b",
-        "releaseEntryPda": "CEhUdhAYxvS9UDKhoNcSvy5za1VG5ecArYqLWYvLUehj",
+        "appHash": "fd267c5478e93e594c95c1e39b05cb83abc85a4504653e31e0bc49a494ea845e",
+        "releaseHash": "62f595870a3c22e6c3bf2710a61ba93c88f05a3df9eff8095f2fd1dd9e8235d5",
+        "releaseNonce": "62befda0f8bb74f31b49822ddd699dc366c2d199fc3759b5026a4868f3f6a5ce",
+        "releaseEntryPda": "DMypc62jaEHMUvzdrGxaNYNtrgRdWuCuCaVALfXQedRQ",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267452,
-        "authorSig": "v0ODFkXcCs4DmpiwvoVV/dj10NcUvL1lFIIoxMjRkHNUn8pgWuXvKf7wOgEg3hdpQW7aX/ip+GXiqZ4cVHRJCA==",
+        "signedAtUnix": 1777787079,
+        "authorSig": "RvHeVCNVBeRcxmBWeiqrQSQu826ITf+HtnqPpOK/flvc/bhnL7pQcIZejqwMzfGXTZR0GREv4FAVlhjGIHvoBw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2444,14 +2284,14 @@
       "imageId": "c633e830a075b1e84238968321ed0fc1.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8e25674e02b6df31f3220fdc27ea0a7afb2ddd39a04cc188fb50d076c639e7e6",
-        "releaseHash": "b4e0d514079f5325d506cdd62080633d79c3347995e31aae996302e2c2eaaa15",
-        "releaseNonce": "84d790278c38bb69060f86b6f3483356b9e3892e0a44ef979fc93a8029db7960",
-        "releaseEntryPda": "8GUNgLMVpmSCVoR8QvM5GCyCSLfiqddsHSrS7xSWvAVd",
+        "appHash": "d9484a49abc633ed445cd9ce216031cdfc0298f47206bf012b272a696234d91f",
+        "releaseHash": "952d331cc8ec04909704e99b9a78ea8c7337ac50d011f7677175915ef319a65e",
+        "releaseNonce": "ef91e8695eec6fef1359e1bdfde7e5838323da51172ab5752826582f73dc78c4",
+        "releaseEntryPda": "3zXkELB449GPi8NYhMWYRLu3roXpXMZA7KEGQQgDSDVj",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267448,
-        "authorSig": "FVZSoNIfcGhAUCUOTs7Yq8RGivs+YaQPFNQUZgjxjftDqYNvuEfJL4ZvNtlsMYw/A9ll4VHR6Rn61gAKwR+4Bw==",
+        "signedAtUnix": 1777787074,
+        "authorSig": "hov6IgZ7By5ZLiHSFQcUCsG87/sjB6QPBJy8MR0dJLQ32kMFg29pYrT5xQnN+K/7NEbNb3HYRcmX+5LA/l9rCQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2579,14 +2419,14 @@
       "imageId": "36cc23ee551c6a8538a57ee8de247424.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1a583bef37af5cc050603b8748786efd6c96ea857c1f3fdaf5f09e783eca9d56",
-        "releaseHash": "d0d0d4cba76cf81ba5c7e333e3145433db0d75d58ebefd1faaf745420b84f787",
-        "releaseNonce": "c86929b3e939c7e41419b68ccec327dc70446686d6401cf90e2f1f565bd00933",
-        "releaseEntryPda": "8GGa8PebTJdBF1vLVuC6ZeGZLwG9Yk15zwyquTpYvuRd",
+        "appHash": "a082badff63a9e46e5cc189653a6bad98a1c56c54dee390ba2f76ac45726b4fc",
+        "releaseHash": "cde21a8289d4e0068dc47b00913845ea3e96bd8899463c5e8624faaf48444667",
+        "releaseNonce": "25db08d6a9ab570a6e09f583fa3ed17d1e569cb1dbd11282c3ec80188f6af901",
+        "releaseEntryPda": "AP1mJKJToVssdi5hfSbry18wRnjErkpnbvX34PfwXPGY",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267452,
-        "authorSig": "jGrpUoD2osxOJt8OZotPZ8kEj37eUJkTIsBfdik0WX3FDA3fRAIpxaecY/CFr2TALdE1gvoIGZ5ZSGAHPBJsBg==",
+        "signedAtUnix": 1777787079,
+        "authorSig": "glOwuTfRX7Pps0qe9a6Xak6QDlhyHNlcH2SP2Lcg6mCwTsg0t3CdRmkeyvjhFJGt/sqEEYsCQ+NB0emEvTMlCQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2710,9 +2550,9 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "versionNumber": 2,
-      "packageId": "ecec1b88b97e27c38e0788c60cb7ce64",
+      "packageId": "2cc4a758ed9044892a4d6c5ca84955ad",
       "sha256": "ecec1b88b97e27c38e0788c60cb7ce64bdac789efc6aeb7b49f63fe8d90690f5",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
@@ -2734,17 +2574,18 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
+      "marketingVersion": "0.1.1",
       "imageId": "fbe7e07659382e0f52864912be2b136d.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0eeae64384acc7bb02ea5badab4bf70af0bd2fca5b7cbd0c589bcf5c1c330edc",
-        "releaseHash": "c3fbec1d4c962b9754bc67b1708d1afebca8287f7b11028c7a45047be38344e5",
-        "releaseNonce": "0c4d4427637e5b3318e6e7810215e4bd0412b905f61fe1823ff570c37686fd2b",
-        "releaseEntryPda": "DXn6mbeF2WADwrisZjSDezEGA8xe4cK429vYDu1Rw6AN",
+        "appHash": "7642fedebaf2562a99ce630073204f0873bfe5f7822a3f74920513c510a2071e",
+        "releaseHash": "a26f6a57fa9788efe325275deab846fbb3bc20aed1908ede5cd8ade8774d5d3b",
+        "releaseNonce": "578c7a5bb6e13d5f54326873afc788ce7febd3eb984e4bf5b277d35049278ab9",
+        "releaseEntryPda": "AeT9uNa2grqUR4uLUYWJkvsE8QWbf65dPZ6drmkeLBv8",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777752195,
-        "authorSig": "XJ5dpeXd7LJpbx4BNuZvYRn4o3i8OvcNW+KvxUWAaKYbGCgK2TENUij+Ps1E8EAMrSW0mFnTgaXK8ZN0Ljm/Bw==",
+        "signedAtUnix": 1777787072,
+        "authorSig": "ir5On1/51w+hIuxyaF1iX6LswUJJMi/khCObPGUXoqCjAmrPs+0sAU2/u2BPgRKC/MN50RA5W8XlF4U1ClNpAQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -2877,10 +2718,10 @@
     },
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-      "packageId": "ec0a4ddcc0944c919c662838be9bcd54",
+      "packageId": "0a4b03a929638d6337e1f35892f25845",
       "name": "Cyberteller Config",
-      "version": "0.0.1",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
       "categories": [
         "Productivity",
@@ -2901,17 +2742,18 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.1",
       "imageId": "1e314ab919c02ff5ae8bd794007896ae.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e7cf23607fe68969b4bf30caf5d017e82d8cc5c7541f6b936d9e3fc4f6849cb7",
-        "releaseHash": "561c405b84dc9b8cbbbc0c8c704927060cd613654933957e12b06a63ab663569",
-        "releaseNonce": "d86aac32b3f4ec076d074b3b8cff43780125db5754c5065a73ffca75c2d2eed1",
-        "releaseEntryPda": "9nh3BKKhAKpPpGominYAZu1t5iLj4sg1TwNqJbq1fzpv",
+        "appHash": "69eabb5a86d7575c35e4bc45d85b3afc65a7eb27d061c883c45f92512f42d1ee",
+        "releaseHash": "10fa34f078504e0639d35bce1aac28ccfb3fe74b19416bc09dfb555ccbaab353",
+        "releaseNonce": "e8ecc931de2056ebcfbbc5c5c9f27974ccbee4f343999a347e98ef558b800d22",
+        "releaseEntryPda": "437CeDotHeAh5Y7J8zx9wJS8TaJDRqJzQqJsa8oiJEUb",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777396216,
-        "authorSig": "oh3oZ+ecDNKjSHnFYGCq0Qz+VRFx+rrdkZG+c/GF4SnmnI0nXGfIoG1dxtTWZfKKrdC33hNXXZl95AH0a9ebCA==",
+        "signedAtUnix": 1777787079,
+        "authorSig": "yAQU7Uc3qxU2PVFNRscraySazCk/fwyAoglz0bH3eaXi/JIpPLLQp3ni5C27j/TriIQlr89McKgFtEQiVLh7Bg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -3098,14 +2940,14 @@
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "4edd9fd619ac5c1deb51f52c3252c80a06b0fdf4514c1ac9e92eff1eaf15f486",
-        "releaseHash": "6f3b6b117cddaf7721a210a48a1860dfc81d2550749cd170038cd48d2f6b5dab",
-        "releaseNonce": "da8f889e8bb0e30ce2904de0f698b09d6c0418865175655c0dd8af5bfd5c528d",
-        "releaseEntryPda": "D1Vz5G6QuX2Y9m5CgPyGyUupp5sLr1obAWiSeK3j9bra",
+        "appHash": "9d7b5be7892db91dd057dffe2ecc7fd19dd8cb6a260811b719e4077b4d8b048b",
+        "releaseHash": "30c00adc00864213b06e7423bdbf89eea9b10bbc708ae202a3a9e8ba8d3ac2fc",
+        "releaseNonce": "b84a5d52a1dca50967b9ef5b7c510f1df8ca1a17402d11c319f81e94e76fc4fd",
+        "releaseEntryPda": "F97Cv5BFrCnHtwLRUuV4feZaJdYSdJaXNar6TXKjU7Gi",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267448,
-        "authorSig": "FpiWNoLFDPhdkva6m5kL+mIwMPOmJeuDKJckZsEkRQWA4906KpkMWQ30exrb0/8kMPeHXoCGRhIH8HM7bvJICQ==",
+        "signedAtUnix": 1777787075,
+        "authorSig": "2BXqyJZsm6Jxi2RIoRrGUJvWUGqixiBkTP+FYEYCUNj1R1k5X7dJ6T5yusHZJv7P1eQ8TYrez91pyVrCrpfYCQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -3250,14 +3092,14 @@
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "29715f07c8cf2ca297d5505adac9c54c83d250e9a062fb834e83f655782e2bc0",
-        "releaseHash": "f73597fb1f2ceb3bd528a4fc21984c2f02258e9d7ac35e9bd595d170ca4bc4f9",
-        "releaseNonce": "1dcaee9ec99d8f30b71b7e7bcaad075389560302b1e9607d3f295d3fe1258505",
-        "releaseEntryPda": "8GLuShaU2P89cYc8qZMm6LE83jCuCiiLsmJ2FGRoadFS",
+        "appHash": "688267a427d38d2a45d5d117baf835fe2df2034d284b75e471fd294a86b13676",
+        "releaseHash": "963f60ca29fdbcbb8f6a7b729efd1dcfb54a0442fbaecdfa6f44ee8208c0dc63",
+        "releaseNonce": "c3ed5485ac5a64296394e7d60ebdee770aaf8caad7d8a0d92282e7f3dd39d4e1",
+        "releaseEntryPda": "3wmJsTKYAkffN3pFWjYuktUpFRJBnkwypf1LcG4BL7B4",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267449,
-        "authorSig": "k3auXYE91bOMcgIiMcG3Ki4SqizcaEkJEzXnFXIPlbQcELJE7pPKkE4ni8MON1OkLZRcc4dqfNBHjwOVz6wxAQ==",
+        "signedAtUnix": 1777787075,
+        "authorSig": "+hTbeY2MDuerNKmVtyVV7X2hkGlzO3/uAsx4e8QFk67kz2qS1SWy5K2TyAuBEz3uwt+9MrXNP9oY1iYfaAMCCg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -3392,14 +3234,14 @@
       "imageId": "76db8bc647165e14ce7b94c7b0849277.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a54adf7b742bbe500a5ce8bdf75b63d241717bb8f150d1a04a22248434b81b1d",
-        "releaseHash": "29a9c66bbc8a4bc96225e8abf7e4bd1d145947a3f0b5e576ad3590177f0ad6fc",
-        "releaseNonce": "b19786a563a7246604537fa700ddfa1d7344aa18c7b27978c99b69d0bc055c8d",
-        "releaseEntryPda": "5EUn2YPpGm1GJf1sywxeAbny1ScfMUU6fmWbADGbbuds",
+        "appHash": "8cac71e570dcf17dbc4bc8ba3543fd3bed58a70203d91565c610596106514363",
+        "releaseHash": "269499dc93249bcd9d8a9027e0e82b5ee438de83c6178c58ca8ffb03781f00e2",
+        "releaseNonce": "a3b6e403048557fc953814c59e42cfd739f4d86244563f157a4a6cc7ee93654e",
+        "releaseEntryPda": "8GELCsHkPUX74KZd3uksxZWkFPq9oWsJm9XsMt3iazsY",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267443,
-        "authorSig": "OpNHZ09tec4Rc1bygbLyJcKxqzjUtjJ0g3s6iv87z3MlgTbniCDXdX/BmbNxXxtzwqdFiO3wm1nw6IA3wEbVCg==",
+        "signedAtUnix": 1777787071,
+        "authorSig": "KiH8EUT7By16oln2ov1wgw3k9wsylQGhr8hOqypbJ7/CI+TvUs7a9c40xm9WcsxPFbdkQys8NS5rX69Ss9wyBw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -3869,14 +3711,14 @@
       "imageId": "396b738f2ae4731aef1a5745a4a08d3f.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "4ad40a4d17bd90c51172ad81172de076fc9b058b10e13dba348930b2208cc98b",
-        "releaseHash": "6d8bf2992863dcec8e2ffd5b7875b0bdda240d7e8b457e3c682017994fdc91a2",
-        "releaseNonce": "0811aab750d79cffbe39a93eece7b349272557f789a9261a71e363ec6c54015b",
-        "releaseEntryPda": "BH182QAuKBko8oeVofbqKmzE2VchZ6x6VXkALkQGa6jk",
+        "appHash": "319715600f8cb56622ab0a79aea335aa4f332b751426f077e82bcb6d56b8bd52",
+        "releaseHash": "0032ce54f965f0f8b23a9420807573ca50975e43607500036b79bed69348ddaf",
+        "releaseNonce": "e868f676da373e0d6badc953ff5c13898b077c90f73a1fa736cf505dcb2d6300",
+        "releaseEntryPda": "5TDWsdQnwBVUVDjtAWHVqQQCxgb8YARe1f5BZbKNWZ5c",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267447,
-        "authorSig": "kKeV3HdEcuhR4R6/Rcr0uUZpEgV4AyIjYYvMmL7pngCWWG64Kne8f9ztTaleMDLmg1eZGRbOBELQPm46FryxDQ==",
+        "signedAtUnix": 1777787073,
+        "authorSig": "r3TVWieDSut/z+dswBzCMFERoFlX3nHXBemrnkBvPX4BZhbpSdHf7nQ25lfb9yzRwVr4hVSNOTfk82HQ8Ov5Bg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -3978,9 +3820,9 @@
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "name": "instaco",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "50d37581ec11582193a7af905d784d10",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "packageId": "072a9272d276b1b5f9988ad7344db4e9",
       "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
@@ -3999,17 +3841,18 @@
         "website": "https://hrbr.life"
       },
       "license": "MIT",
+      "marketingVersion": "0.1.1",
       "imageId": "8f5f4739eb8d9055fbaae40bb09c1d66.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "063820f0577cb63b37adf1540d3c2e93e7a2771716b853b060f7b1073871d1c3",
-        "releaseHash": "217c23c03660d1016ada1b0dc902aaecb610cd02e2c728f4ed517b13040c8cad",
-        "releaseNonce": "e560978cfcbc498ed5371b6b11187ffa83b722996d9356615b2713a179d5acd8",
-        "releaseEntryPda": "6ss7msRHg4LC21dW2S8N11xfF1hodiGdKXAngJt2UU6U",
+        "appHash": "8a9b56c1512f52d7c7c84ef7f8ba34a07fd71b5af91e4c8e93d3c20d55a38c14",
+        "releaseHash": "456c81e91dd5b8618f80d927e685e9381f1a529806a30f70987c19de9f2311c5",
+        "releaseNonce": "561ba2f76037412221ea628137789452223bc4390c4829d024c6f9ee29130235",
+        "releaseEntryPda": "e6FENs4BPwr4kedoHvY9PtyBa3iJL1TALcK5rzQGBho",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267447,
-        "authorSig": "7m9fgF8f15JpZlu5XHlbXWG8wDLtp2YerZKjSYSRADGseZQhgdRon4Vz2xkYFZNML4/mM48DX43tqgzm2o66Cg==",
+        "signedAtUnix": 1777787073,
+        "authorSig": "CPzxX28dp7Jnr9v8VeUc9uhgBVnkB24lqdjLbxV2sCqQDto/wXyup/z0DIFsVjXDpFJzQfnosbxeOq++3XyQCQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4146,14 +3989,14 @@
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "693828a4d7cf9e6c622d89977d2d49b3dd80bc8e343fa060954952d3a9374d7a",
-        "releaseHash": "ac8f874d805ef9b60ca284290d392c1e08840abadfc662e01b101cf9ea0889dd",
-        "releaseNonce": "ab306da988be55ae7a7ca56fa2d67e71365d4df8b0bf8fb92284d46848372e14",
-        "releaseEntryPda": "2x4gK9znG82Ej94tipsi6E6zBamdx7eYXJAMRGgaGpMS",
+        "appHash": "37df48798deeff468f026a9ea174b558e87921eba873e5bed82b89b2af91f84e",
+        "releaseHash": "2da86d84ba97df965cef1e730045f098a685d758fb4944ac6d2e6e0e504371de",
+        "releaseNonce": "d3efbe3483e9a8056bc7b05ac6503d977662aaabab859b327161a043e5a0ab77",
+        "releaseEntryPda": "EK4A1XGoXy35fJYGBWUdSRtEfr49SpLnukxZHo1RhHFs",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267454,
-        "authorSig": "ei2J8Dnisr8QTT+gkHIKPDwicOa607nouoroIpxRA0oOJhdhOXJj3+Ec+npPY+izi9rph81rqwq8ZqWgiRaoCQ==",
+        "signedAtUnix": 1777787081,
+        "authorSig": "o1u0DW3LpMyHuwoAMyPCrkwKHJ46gb7k1/7sTHQKdbi7+GblCUt+PqtVd1H+Ph9cg4xyFvqnLvwkvwcmLHpgDg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4370,14 +4213,14 @@
       "imageId": "4cc86bda386b13d2740cadf6f4f5047c.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "973ce8ad0a1cb768eafad2d60b236aed0b3c20f152d576891a2da09387cf55a6",
-        "releaseHash": "861db21d1c47b37556ea7d1af07d62f997e701bcb72892c34ba43cffa1e6cb0d",
-        "releaseNonce": "d4db1c105429cb8e5b540fa295b07e56a6c8a9237ebffd9d8ecc7804f3dc20e5",
-        "releaseEntryPda": "BYoCU64Wjbe8QJPS8aRMyiKZgcNtX8ews1FiD13EEGuH",
+        "appHash": "3d61fbfef8ae0c9de5a190a439836ab95c999e38c30ff8d7d07e362c23349d11",
+        "releaseHash": "a0bb600ea4a502cdd9fdb4ef982f9eebd5b8a1ec859383f43b768982c170a2a4",
+        "releaseNonce": "2b6ec52dcb682b4a098d5a1d9b64089e3fb3bdc41b7c79ab7ae36f17dd9b62b8",
+        "releaseEntryPda": "7AUZqfehwkndxqGa6WEgmaw1SAzk9hAKisRerSzEtseY",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267447,
-        "authorSig": "VU4+KOWa9u5o+QsvF6AX1xIWNGWyrvVvOW03Ppe+hzo2HcfGIwgbjK5DBCw/zfTyjzapqr4wlQd1DMBRbDYZBw==",
+        "signedAtUnix": 1777787073,
+        "authorSig": "XQWrk2l8rukhJedm+8lErA9Sn2A7D45RaUG/loOK/EepQhsFefeiwA2q/axdl6zWVlF1K8YEs8qmsVZGaoQ6CA==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4525,14 +4368,14 @@
       "imageId": "7499db1cea602288bf73a75611790e88.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "01a6a209c265723519fa947b856f4113a7559bb861d1b1a9e4250f7f1d769bb2",
-        "releaseHash": "d56bdf40ea2ebb4dcfdb95fa718c26d263ecee2488ac2fe3c126a45f3c11804f",
-        "releaseNonce": "6ce048222a527a609ed945405f642dcb260d3fb3993357aaecf2a77f844ec66b",
-        "releaseEntryPda": "Cw9xGoRpY4XAtMe3bZGywjmiW2v5XHYqYytg4xZDPkBY",
+        "appHash": "b56d6d603dd89a1a32fbfce3769b7fc15639cb389e99dfda7dad48c9fd23606e",
+        "releaseHash": "a76051fcf497b1c29b385d37e4b9bf077e10362db444a3568179da4cf0128f0f",
+        "releaseNonce": "99e22b851327016519c3e6a134252e7883db2b8235c6554bc5e1e4dd9e402352",
+        "releaseEntryPda": "8Aw7dnedCKNp8FozWrW7HpZh3FimU4Xhabzk82UCTBpW",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267453,
-        "authorSig": "hhlfSKMpIg+Ys/7CWA/1VKTY/iDp7gr31Hbk45bl4mK6chU4Pl5Z61T0SQrFqw5qCiDM9huNK3tFAhgwzQ3WAA==",
+        "signedAtUnix": 1777787080,
+        "authorSig": "Y8ah/WRaWZ7Ub9FYissGJZhzX8mmijjafVCLtdqeqwbJqs/6ne3UJ7MmhMK3MJQykUPIEm2vCEgoQDiZ2VATAQ==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4663,14 +4506,14 @@
       "imageId": "6808801193391d9254773a067bc1b295.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "17f8353a1d4234750ae8a6abd01987c04b1de9205d3f8e080e23c4c415e47990",
-        "releaseHash": "496528861d24cb6eecf0a0400821fcb508ea1e28a86c521b5a410e2a1546f1b9",
-        "releaseNonce": "a61efbded4fed99789bd7c0d245974c3593e1d5f60451d8fc20ec2d095dedd16",
-        "releaseEntryPda": "EJWHrEpuFyFtdPi6VxKcHKFF6uxTCfo3sM2D3gQjyPjx",
+        "appHash": "7c6e58ac6ece49aec9fadd9552209e0dc3ec41329cdb1cb4d51bc532e213c50f",
+        "releaseHash": "394f76270b3955d861734ea8bc11952123a1c8fc068ac83b186b52320c5bc89f",
+        "releaseNonce": "6966cb4d526faf863e95833ce41c2c01218831fd6587b0c9bd944871f22a9cea",
+        "releaseEntryPda": "Hq6rdntJS7bqJPMU2LyRMFsUNWEp8mig1qa2kMJrs9zQ",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267452,
-        "authorSig": "RldnZaEJ+vJz2HqVXFsx0rfhAhMqv3OpvNIj9Qz9ACgXbYqQAOfYWSUiciGJ09x8IsjwqNQHNEB6tbxryXFqAA==",
+        "signedAtUnix": 1777787079,
+        "authorSig": "iA8H/A8jW4cX0tRJaufP46fG8l44QYARQsTVeGthlWlryQGI+OMN6lJPwcPZy/+ID+CDYPRYEF6Lfsc7IPoSBA==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4809,14 +4652,14 @@
       "imageId": "8f83955329bb084df12ec10161e6352e.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "fb2682b85128ec49151cdda55832f2a78bed1d04cff4eac430073d48b5e798c2",
-        "releaseHash": "56503229d4baa9accd04c7d837c8f2bad841dcadde725c76d2f5bee5752b341c",
-        "releaseNonce": "d47de264f8f73fe7eb9522d76a2ade43c24c0626c621842c98c1a380ed49bb49",
-        "releaseEntryPda": "Boar2UhZ14VSNV9inZZ83a5oqFCKF656kprAVGK6uewd",
+        "appHash": "f89c5ec770e21b24283cddee9c4e2c3d99386efcd0865c04d216600ffce6264b",
+        "releaseHash": "33af9a4d8c7c503e260710499cf7e80be8cd2870726b3b40457c8349cfe8a8b1",
+        "releaseNonce": "528a1c1bf457913ee3955e24fb648983ef5d8183af8467cb46319f98b47df3f3",
+        "releaseEntryPda": "A73WzkYmPf6KiMeWaYTYqPMtsYXUJcLG1cBdFGJe6XQG",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267449,
-        "authorSig": "Yzd4expGgeF4qSwynz4xbGLTVeOfhulVKn0pJ9vHXoduBOgMxd/ADjai3BmwOtlArSSLtaWB0JrUffDbMQIODg==",
+        "signedAtUnix": 1777787076,
+        "authorSig": "tux83YRx6tz8ZCkV2NqxbbwYG7aOusQsHnc4kijc6QSdrVpjVMxtZWdXTyrfLqX6fXCogA9SUs1/i2DNZDW2Dw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -4960,14 +4803,14 @@
       "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c32a97185e21c7b7ad5be42896f816ebc6664ad708076541e5a2c8eab75115f1",
-        "releaseHash": "0eb62072af4f2a9e2c3c4eaa4cdfe8fd4ff37d88e93d90958e4cbc1b6edb1fbc",
-        "releaseNonce": "261259ab45dc6c1f987804a1f1a623520e4b2bb1597da3189bc849f1c112a6cd",
-        "releaseEntryPda": "4Ncjs6NktjGkpavMTTexgBkX74yfiV7FBFstUQd2XNzU",
+        "appHash": "eba04b74092bfd33aa9ee24bfc6da66e2bb355949e9b6ebf2f8199eda5635b1c",
+        "releaseHash": "01d9c4f085a259206075635bcb4e6a8fcfd4c202f11d19ea3db0f1f150f5fc73",
+        "releaseNonce": "cba3a72ab211f7c153b4faf17daf3103302b5c50e09cc24e69f0fcc003c3ec8b",
+        "releaseEntryPda": "7dNMjj95DQhNf4Zw7SrA2Jrxcq4MRQdRgUY7XoBvsFJf",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267450,
-        "authorSig": "731UKS6Py3V5dIgdNib6uEdHxqX4kNLZ2h60Fqr5kxSxNIHT8QIWT0O4GFi5bDMSGwKT99g65XATK/OhKbMGAw==",
+        "signedAtUnix": 1777787076,
+        "authorSig": "C4U1hozw23MvWOf/2KO+N/k5kYRCSBMMAB+hIDnD2VHxrMFnnevgbDcEWes+ln6SvBv1QJ0EErUO8Xr92FP+Aw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5112,14 +4955,14 @@
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "11d1a120af682b04cdfef7f949bd703daf3792be73345bf9dbcda550129c1228",
-        "releaseHash": "183acea484b159511abc82daa86a457e03a03f1602fa4c1360095c0a5658a2f8",
-        "releaseNonce": "3e0c3d0bebe9263159f6cd5349c67a5a5381eaa1e38b33c8d6badacd68315dd3",
-        "releaseEntryPda": "7NuFLKJqzkDnceBFjsD1PgqAf7DJtA9pnoDC2sshAjxP",
+        "appHash": "99e86a61080a8585ae99469cbbcfcad912d361e260177d915d96394f85d0cb20",
+        "releaseHash": "23a1005290f8fea6dac038232e7ad4cde3488fe9eeacb9123428c420d9a68adf",
+        "releaseNonce": "7210e6d92dce65627f5684e5eaee48a23f8d63ef8d6f5f51fea927b1cc2644e1",
+        "releaseEntryPda": "ECxdgLuc5U42dcqvXNm77g5qWpVdi8zeKJ92Y5GS84xd",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267450,
-        "authorSig": "6DKl3xBRU9KqvLlVvdOaTIXzgub9NyoURBDjZTCqxssMVWFNuKhhzt2ttizkpOo8FDqI30/1Qe8czIqDiLA/DQ==",
+        "signedAtUnix": 1777787077,
+        "authorSig": "44frXVDoH6AqNOxRd3U5zmwIHxjJmWoXB/o6kzuImbofOD/CG/1Nq3rp7tzEuGVNwzJLLfxejGk0U0OHkZm2Dg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5245,17 +5088,17 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "d1ba2752fc9a9b6df28d64805c889a3c.svg",
+      "imageId": "489cd1dc774020674b8c7d91c24eeab1.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "7ac452fc3fa3e99b9b9b7a766ad7a716eb59a63d564264a822baea44484f58a8",
-        "releaseHash": "08ee3518dd15e907320808bafab37a9609414d85b40374fd943143118371d576",
-        "releaseNonce": "b8387be9e78bac1498770febe5c5cd296c41125c04c84cc9d2089daaad8c3f01",
-        "releaseEntryPda": "3J2iQpzej8Tur6qJFwUHVRmgcrv96NSGzMawH12az1gZ",
+        "appHash": "3f523b4f1b0ca1619d13cbf3b241a3e92996209a7a92e24b6995f9568e99ce12",
+        "releaseHash": "61b9905c5b39d96e8e38458d5651d7d8ec8b5952d04688b38e692d5bf5c1e950",
+        "releaseNonce": "7a3374e3980f747eb6c18f1078a15dc7293e7c17ada1765aa613dc6f5cc349b7",
+        "releaseEntryPda": "5AyKqgKaNJtfpwCDhGwy9wtwkbQpmK6TnQF3pu2uM4Qo",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267454,
-        "authorSig": "WXAvwdrNq3uvQqPATz6Hzkg8SRo4mHQtNrWbAn3cZHx1DOvco0CfnGPitMhlJUI+FhE70ELg9YowrmxDnJ9QCw==",
+        "signedAtUnix": 1777787081,
+        "authorSig": "dNaJBydQc12KboBWiYOnCT8b19T20UR4QbavznnI8WrdMHCpZQdV9IC2f7eBYWFeSBS4sMOiX5/MiH2RVBDJAw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5340,9 +5183,9 @@
     {
       "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
       "name": "Teleport",
-      "version": "2.0.0",
-      "versionNumber": 5,
-      "packageId": "5be59715444c0b7574a090c258587dc6",
+      "version": "2.1.2",
+      "versionNumber": 8,
+      "packageId": "8d3fa98888eac9c7acb28c0d495f04f4",
       "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
       "categories": [
         "Social",
@@ -5362,17 +5205,18 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "2.1.2",
       "imageId": "c020ca7fe862a9b48e5122f0a33036b9.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "234eaa0c24cd1be4475fe44842e69e9227dece8373f56dce7bbf0b973acc54b7",
-        "releaseHash": "62559b0ddfdfd2465102545375ca467b9241485101ba261690de3f5084d93525",
-        "releaseNonce": "e4f712d9e946665bddea084d64da8f3b5dbbdadea9b2d6a4b6be49e4b51e0f09",
-        "releaseEntryPda": "6XjChywdRxFDqRp1NizcXypnJHQKoYt7WrUppHEhC4Bn",
+        "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
+        "releaseHash": "97d8e44471c168863b09b9a0232d76b21190effdf9e54645502ce2ee4a8fc1a3",
+        "releaseNonce": "e57686dddfa77b1c152a540f300e1320c3ae0d8112208bba63243122c7164f3b",
+        "releaseEntryPda": "54f1X8dibNxmqfGySndZeo8MBT3xc9FKerMZjDCku34m",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777301034,
-        "authorSig": "nxOzXEixKxrqHFT+zpmod0BHByhIDULTZPPU5cfaJ7cg6Ja60Uytw9XOc66WTgAl8QeVGjeQTEiRNHsBP5/xCA==",
+        "signedAtUnix": 1777787082,
+        "authorSig": "fwHUzKji/9yYLsaQ3CfhJyyl1Zv26CUsyLAb6YGIVtId/y5g78S33XByvs4z/WZ6ovleuy6hJ1L9oFmXodGjAw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5473,15 +5317,15 @@
           }
         ]
       },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/5be59715444c0b7574a090c258587dc6",
-      "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (client / instance / manager / client-ui-manager grain types, panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build. The four grain-action entries in the SPK manifest reflect the original four-grain shape; only the chat path is wired in this MVP.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/8d3fa98888eac9c7acb28c0d495f04f4",
+      "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" grain action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
     {
       "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
-      "packageId": "964677265bd9175dbdac63694954d957",
+      "packageId": "d34cd9b157664275e86672d20fefdd13",
       "name": "TeleScreen",
-      "version": "0.1.1",
+      "version": "0.0.2",
       "versionNumber": 2,
       "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar \u2014 signed configuration, grant validation",
       "categories": [
@@ -5503,17 +5347,18 @@
       },
       "screenshots": [],
       "license": "MIT",
+      "marketingVersion": "0.0.2",
       "imageId": "a985809e5d71f4992bbe95df5d938661.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5a5259b49d50525cbf09901df96323f8e24278cce06e343640199c95c799d725",
-        "releaseHash": "055a9aadee5317bf6860eafd9063b2fac1d86a9e22eaa2a7de5575c0e5f9b647",
-        "releaseNonce": "57f8a659df810eb3247a6f9963a57e88dd6c3e234111a0ba052269b752c65342",
-        "releaseEntryPda": "8BtmyV5nfhCiTDYPUcorZGhEsGD9p52KKmiCnxzNSWxA",
+        "appHash": "1ec50c1d375663a961a031e4852685725b5a6fd121223250ff73c797eba965ed",
+        "releaseHash": "0bfe2e01e7b198a4ec41cad88883993c46509877ae536270113080623cbd2ae2",
+        "releaseNonce": "a4576e96635b4a4e433d63c4faf9eb2f579eca8c54ca3123315aac9523bd13fc",
+        "releaseEntryPda": "2irASduq9xsUy9Rmd3S4kMa577ovLgkBsyTS3CEfwKP9",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777267454,
-        "authorSig": "TO5rVg2aNRgMbqtSgs+aaZb5+qMD7LuSsdfUis58jixFPrchePXAgT7/bRT48FNQL4p4RsPKPo311OOIBhXcBg==",
+        "signedAtUnix": 1777787081,
+        "authorSig": "Pq9KUyzld+v3+CCCvi8D5k/m23W1FdYt0UQMQKoJnoocvs4iPOK5AlHjFD6UZ8gk4bZf6ZaoWocvU3CbCXVFCw==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5660,17 +5505,17 @@
       },
       "screenshots": [],
       "license": "MIT",
-      "imageId": "14f3d7c7bc79352c07d7b56161a6cf83.svg",
+      "imageId": "f55b5c98cdffec074defe2a647ca9995.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1faa1b16a1932adf2a16486ada0bd9f38e25d885887b9cd3da176eae25b3d435",
-        "releaseHash": "f364b88e47e39e05edaad9465e72f4d9c1dff6fa9d69eccebf1a62f962786a7c",
-        "releaseNonce": "8463fc479e3c9db3eed2a34cb65ae73b1a94d0f548630902594367098c74f4a4",
-        "releaseEntryPda": "3kLbdv6GmYhk1Kmcev6vN6crNRaN4t3XNV561xDbgC9W",
+        "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
+        "releaseHash": "9d5833da81b3c3bee6122af3ab3209623f7f9ed8fb45229a82467015ddbd2004",
+        "releaseNonce": "69831972bc70df8b6af3b17195132dc6c928194f35642701c16b5f6a4fbdd360",
+        "releaseEntryPda": "8YVJ1Mcow17Wy9mdP2kaqw7tjhH8EV1CWhNBmWmp64hs",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777644162,
-        "authorSig": "gHV4rNZch+aR0GOwTZxvOb70BOsW9lMrG3eENz3mIJss8lVeQPXrSGv3D3n1SG57eQvGxn/34HZm2QENyPBhDg==",
+        "signedAtUnix": 1777787080,
+        "authorSig": "Ac92e1eCYU0oEH7WsojrYQt7jDYaxT/D/xnevnKjYbySnVtwOGjmXBjCJBKwIqsV9nH7CTIRO0DuQsr1wuRtDg==",
         "quorumPolicy": {
           "threshold": 2,
           "memberCount": 4,
@@ -5773,9 +5618,9 @@
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
-      "version": "1.0.9",
-      "versionNumber": 10,
-      "packageId": "d59be850fd57f918cfb72d68ece5fd30",
+      "version": "1.0.10",
+      "versionNumber": 11,
+      "packageId": "0a0b4331960281ec67815ebabc75adcd",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
       "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
@@ -5800,21 +5645,22 @@
       "domains": [
         "*"
       ],
+      "marketingVersion": "1.0.10",
       "imageId": "0969e7fc37035b1add2c878e6e27f494.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6190a795f9ebb6ff2f99cd4e227088fa7f7fd4c687897bc133c04efc4c6d1a84",
-        "releaseHash": "ad956587151bd4d03d623846fde02113d3ea9aa8f5be2413a1805122a0c66fc7",
-        "releaseNonce": "f1930b161cad9cc14d6f50afe596f4acf6c33b73f3c217107ebf7a8cfaabe8c5",
-        "releaseEntryPda": "2S1hS6ghUkdCwqkCjEEeWQkXyqAYu4PqxdEq18UKvcD8",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777643748,
-        "authorSig": "i/1nc44WiusmjFnXVBi1gE3z2QRG+QDlt8AObtk6KMi/mPyMr/Z4nFa/7dzQY/rdObVWWr1vk6BLF+CoVXorAQ==",
+        "appHash": "05f02a56648c7a95bf7c2523a2c92cb0f06c64b493006cf2af369732a0187392",
+        "releaseHash": "a9c5e74e471372d30a8ac9ed9c65c717543d5cc6fc117c47b4094ec27d70ec81",
+        "releaseNonce": "b85c139ebe06432f750ebdeaf373d9d96aac5761a8bff95697242b22df6f50d1",
+        "releaseEntryPda": "DZ1WZzoTdcgVmHcwSLxEqQVd7Dpv8jHE1i8aQFjHQEfa",
+        "masterNftMint": "8kZ9GLytCBRyNqJjihnBsHK6c56DMjn6PAVdpegoR4bu",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1777795646,
+        "authorSig": "UZsRx9+IMUa0Vxi4CahTP7TdPvDT4gm+oQrLMoCsb+RXHU4cwEhlKuKdObdZpLneI7zGWo8hizjmjVCb0SQXAA==",
         "quorumPolicy": {
-          "threshold": 2,
+          "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {

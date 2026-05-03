@@ -19,7 +19,8 @@ MAX_FILE_SIZE  := $$((95 * 1024 * 1024))
 CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
-        plan apply build-from-source
+        plan apply build-from-source publish-apps publish-app sync \
+        bump-version icon-qc
 
 # --- doctor: environment + readiness check ---------------------------------
 # Single-pass health report: tools on PATH, submodule init state, deployer
@@ -258,7 +259,10 @@ apply:
 	git add packages/ src/apps.json package.json package-lock.json e2e/fixtures/expected_apps.ts 2>/dev/null || true
 	git diff --cached --quiet || git commit -m "Store build $$(date +%Y-%m-%d)" --quiet
 	@# Pull --rebase to integrate any remote changes before pushing
-	git pull --rebase $(REMOTE) $(MAIN_BRANCH) 2>/dev/null || true
+	git pull --rebase $(REMOTE) $(MAIN_BRANCH) 2>/dev/null || { \
+	  echo "✗ apply aborted: git pull --rebase $(REMOTE) $(MAIN_BRANCH) failed"; \
+	  echo "  Resolve conflicts (git rebase --abort to bail), then re-run make plan."; \
+	  exit 1; }
 	git push $(REMOTE) $(MAIN_BRANCH) || { echo "⚠ main push failed — continuing to deploy publish branch"; }
 
 	@# --- Orphan commit directly to publish ---
@@ -297,11 +301,36 @@ deploy:
 	@$(MAKE) apply
 
 # --- publish: all-in-one (refresh + build + plan + apply) --------------------
+# Optional APPS=  (or REBUILD=, alias for back-compat) chains
+# scripts/publish-apps.sh before the catalog sweep so a single command does:
+# per-app bump+pack+sign+push, then catalog rebuild + plan + apply.
+#
+#   make publish                                       # catalog only (current)
+#   make publish APPS=all                              # rebuild every resolvable source
+#   make publish APPS="teleport openclaw-main"         # subset
+#   make publish APPS=all SKIP_STEPS=ceremony,push     # offline-stub, no remote push
+#   make publish APPS=all BUMP=minor                   # minor version bump everywhere
+#
+# Cardinal rule: this single command must produce a fully signed, version-
+# bumped, on-chain-attested release that auto-syncs into the catalog and
+# deploys gh-pages — no manual stages.
+publish: REBUILD ?= $(APPS)
 publish:
 	@echo "╔══════════════════════════════════════════════╗"
-	@echo "║   Full publish: refresh → build → plan → apply"
+	@echo "║   Full publish: $(if $(REBUILD),per-app rebuild → )refresh → build → plan → apply"
 	@echo "╚══════════════════════════════════════════════╝"
 	@echo ""
+	@if [ -n "$(REBUILD)" ]; then \
+	   echo "=== Per-app rebuild (APPS='$(REBUILD)') ==="; \
+	   if [ "$(REBUILD)" = "all" ]; then \
+	     BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
+	       bash scripts/publish-apps.sh || exit 1; \
+	   else \
+	     BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
+	       bash scripts/publish-apps.sh --apps "$(REBUILD)" || exit 1; \
+	   fi; \
+	   echo ""; \
+	 fi
 	$(MAKE) refresh
 	@echo ""
 	bash build-store.sh --no-refresh
@@ -310,6 +339,56 @@ publish:
 	$(MAKE) plan
 	@echo ""
 	$(MAKE) apply
+
+# --- publish-apps: rebuild + sign + push N source apps (no catalog deploy) ---
+# Useful when you want to ship app changes upstream but stage the catalog
+# rebuild for a later, batched `make refresh && make plan && make apply`.
+#   make publish-apps                                   # all resolvable sources
+#   make publish-apps APPS="teleport openclaw-main"     # subset
+#   make publish-apps APPS=all SKIP_STEPS=ceremony      # offline-stub only
+#   make publish-apps DRY_RUN=1                         # show plan, no execution
+publish-apps:
+	@if [ -n "$(APPS)" ] && [ "$(APPS)" != "all" ]; then \
+	   BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
+	     bash scripts/publish-apps.sh --apps "$(APPS)" \
+	       $(if $(DRY_RUN),--dry-run) $(if $(STRICT),--strict); \
+	 else \
+	   BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
+	     bash scripts/publish-apps.sh \
+	       $(if $(DRY_RUN),--dry-run) $(if $(STRICT),--strict); \
+	 fi
+
+# --- publish-app: same as above but for a single app source (any path) ------
+# Lets the operator point at any source dir, even one not currently a
+# package submodule.
+#   make publish-app SRC=/home/user/Desktop/openclaw-main
+#   make publish-app SRC=... BUMP=minor SKIP_STEPS=ceremony,push
+publish-app:
+	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
+	bash scripts/publish-app-full.sh "$(SRC)" \
+	  --bump "$(or $(BUMP),patch)" \
+	  $(if $(SKIP_STEPS),--skip "$(SKIP_STEPS)") \
+	  $(if $(DRY_RUN),--dry-run)
+
+# --- sync: refresh submodules + rebuild dist-publish (no plan/apply) ---------
+# Cheap "pick up whatever publish branches have moved upstream" target.
+# Without --deploy it just rebuilds the catalog locally; add MELUSINA_PUBLISH_AUTHORITATIVE=1
+# and DEPLOY=1 to also force-push gh-pages.
+sync:
+	bash scripts/sync-catalog.sh \
+	  $(if $(APP),--app "$(APP)") \
+	  $(if $(NO_BUILD),--no-build) \
+	  $(if $(DEPLOY),--deploy)
+
+# --- bump-version: bump a single app's version --------------------------------
+#   make bump-version SRC=/home/user/Desktop/openclaw-main BUMP=minor
+bump-version:
+	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
+	bash scripts/version-bump.sh "$(SRC)" $(or $(BUMP),patch) $(if $(DRY_RUN),--dry-run)
+
+# --- icon-qc: standalone catalog icon scan -----------------------------------
+icon-qc:
+	bash scripts/icon-qc.sh
 
 dev:
 	@npm install --silent 2>/dev/null

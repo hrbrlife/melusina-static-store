@@ -13,8 +13,14 @@
 #   3. authoritative-host gate — warn if MELUSINA_PUBLISH_AUTHORITATIVE
 #      is unset. Makefile target `deploy` also hard-gates on this var, so
 #      preflight here is informational; the Makefile is the abort point.
-#   4. pre-push announce — print the added/removed/changed app summary.
-#   5. exit code 0 on green, 1 on any abort condition.
+#   4. icon QC — scripts/icon-qc.sh: catalog icon present and not
+#      blank/placeholder; per-Sandstorm-slot icon set present in
+#      app_icons/<AppName>/. FAIL on missing/broken catalog icon by
+#      default; warnings (placeholder size, missing app_icons/) are
+#      informational. Override with MELUSINA_PUBLISH_ALLOW_ICON_QC_WARN=1
+#      while the icon backfill ships.
+#   5. pre-push announce — print the added/removed/changed app summary.
+#   exit code 0 on green, 1 on any abort condition.
 #
 # Run from the static_store root after `bash build-store.sh ...` has
 # produced dist-publish/. Invoked by `make preflight` and as a
@@ -214,8 +220,29 @@ else
   warn "MELUSINA_PUBLISH_AUTHORITATIVE not set — set =1 in the canonical builder's env to silence this warning"
 fi
 
-# --- 4. Pre-push announce ----------------------------------------------------
-info "Gate 4/4: pre-push announce"
+# --- 4. Icon QC --------------------------------------------------------------
+info "Gate 4/5: icon QC (catalog icons + Sandstorm-spec icon set)"
+if [[ -x "$SCRIPT_DIR/icon-qc.sh" ]]; then
+  set +e
+  "$SCRIPT_DIR/icon-qc.sh"
+  RC=$?
+  set -e
+  if [[ "$RC" -ne 0 ]]; then
+    if [[ "${MELUSINA_PUBLISH_ALLOW_ICON_QC_WARN:-}" == "1" ]]; then
+      warn "Icon QC issues, proceeding under MELUSINA_PUBLISH_ALLOW_ICON_QC_WARN=1"
+    else
+      fail "Icon QC found broken icons — fix or set MELUSINA_PUBLISH_ALLOW_ICON_QC_WARN=1 to override."
+      ABORT=1
+    fi
+  else
+    ok "Icon QC clean"
+  fi
+else
+  warn "$SCRIPT_DIR/icon-qc.sh missing or not executable — skipping icon QC"
+fi
+
+# --- 5. Pre-push announce ----------------------------------------------------
+info "Gate 5/5: pre-push announce"
 LOCAL_COUNT="$(python3 -c "import json; print(len(json.load(open('$LOCAL_BUILD')).get('apps', [])))")"
 echo "  Local catalog will publish $LOCAL_COUNT apps."
 if [[ -s "$LIVE_TMP" ]]; then

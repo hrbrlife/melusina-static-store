@@ -3,7 +3,7 @@
   "name": "Vintage Remote Desktop",
   "version": "1.0.10",
   "versionNumber": 11,
-  "packageId": "43e7dc1daa3ecb0dfbf7d02508b421cd",
+  "packageId": "0a0b4331960281ec67815ebabc75adcd",
   "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
   "description": "",
   "categories": [

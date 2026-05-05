@@ -1138,10 +1138,10 @@
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-      "packageId": "e1d3f8da142f463b7793c2163b53b5fe",
+      "packageId": "070df8e7daab1d0e5721723f3cb71c50",
       "name": "cca.sh Domain Template",
-      "version": "0.2.1",
-      "versionNumber": 3,
+      "version": "0.2.2",
+      "versionNumber": 4,
       "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
       "categories": [
         "Productivity",
@@ -1166,18 +1166,18 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f56ee6cf6374d96327843fbf3c1d32ebe236e1f262b6c476c5ac4cf1c187c3d0",
-        "releaseHash": "a020e59dade914b28b3f1727b1e8c7fe438a655d89fdc571f666e621f004ab34",
-        "releaseNonce": "f1564d09bb72ac11ad9cb7720b68a5eed7011663ebc6263cab099cf18064d440",
-        "releaseEntryPda": "4NCfF1MEvYjDLGvzzubJ6AXqsNarmaXBsJDmQbuBz1op",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787071,
-        "authorSig": "6Gzmj0OoVcV5a4jwKFBD0affK4jbwp8L2N0BePPZuuO2PjD8pDfT88vAjDYu1rnTfoExgFlVWEHKeLZRK+GOAQ==",
+        "appHash": "070df8e7daab1d0e5721723f3cb71c50eeeb7c033523c4d346a2cb4f843ce68a",
+        "releaseHash": "468f9b64c84dad0bed2371d9315830d160b42294dc166279c74d089fca871a8f",
+        "releaseNonce": "23ba227ca31695dab7bf76defba50bb7b6f05ed6c78f7248d3c1df231c502ba4",
+        "releaseEntryPda": "offline-release-entry-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "masterNftMint": "offline-master-nft-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "licenseSquadsVault": "offline-license-vault-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
+        "signedAtUnix": 1777995727,
+        "authorSig": "92515fb28eb4f4d57cb4f90539c849ab2a8c0a181dabd04f201a1b0689f5e75d",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-hck466e5ath1p4k4z1hhmd75ujjhs6z4"
         }
       },
       "capabilities": {
@@ -1419,10 +1419,10 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "6a88b04225c6056d1052b049762ef400",
+      "packageId": "3236821618e30b7ebce452593c31674a",
       "name": "cca.sh Wholesale",
-      "version": "0.2.1",
-      "versionNumber": 3,
+      "version": "0.2.2",
+      "versionNumber": 4,
       "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
@@ -1447,18 +1447,18 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "10413260db01a5a19503ed28ed2549be9036f58a89d4d270e5e76009deeb8878",
-        "releaseHash": "80185f8678964692ea371ffe4d1d258ad969e51627952a42c0552a70b4ac16e8",
-        "releaseNonce": "cb577fdcaeaed186415e802b00944cd3a62a1bc702b8d478df023812f0c36d5a",
-        "releaseEntryPda": "BMJUJhVcFgtCLNtgUScDTehzL7gZqm4DeWx7L2Qjbe88",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787071,
-        "authorSig": "A9zKIgsWo5FravWrCKochnjyU5NwRepaUbsjevheMV9mZFKdJGHDcSDIODxCjyxT7i2AnsCs9zidJa50FYjXBg==",
+        "appHash": "3236821618e30b7ebce452593c31674ac7b8055e9299eab0fbc542daa57147b2",
+        "releaseHash": "8cc802b714a7ea09ab8dfeda0edb32c5ecd6bbc6c29e52f405e90528998d2cd2",
+        "releaseNonce": "39a2bd9bea7c1028714b6979ccc8ce8fab727f4a611e48f33d4d073ac3fe293c",
+        "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "masterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "signedAtUnix": 1777995727,
+        "authorSig": "b635d6ed887046f9279f93bc46afc096be6a163248c30339f36eab7e34de633e",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3gd0393f45qrn3evmx4uf4kczvea61wp"
         }
       },
       "capabilities": {
@@ -3465,9 +3465,9 @@
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
       "name": "fineract Setup",
-      "version": "0.2.0",
-      "versionNumber": 2,
-      "packageId": "b98fd88687c563149b391010169dbbe7",
+      "version": "0.2.1",
+      "versionNumber": 3,
+      "packageId": "5957072da62ecb6d0f53671301f990c7",
       "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
       "description": "fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per Pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
@@ -3496,18 +3496,18 @@
       "imageId": "396b738f2ae4731aef1a5745a4a08d3f.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "319715600f8cb56622ab0a79aea335aa4f332b751426f077e82bcb6d56b8bd52",
-        "releaseHash": "0032ce54f965f0f8b23a9420807573ca50975e43607500036b79bed69348ddaf",
-        "releaseNonce": "e868f676da373e0d6badc953ff5c13898b077c90f73a1fa736cf505dcb2d6300",
-        "releaseEntryPda": "5TDWsdQnwBVUVDjtAWHVqQQCxgb8YARe1f5BZbKNWZ5c",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787073,
-        "authorSig": "r3TVWieDSut/z+dswBzCMFERoFlX3nHXBemrnkBvPX4BZhbpSdHf7nQ25lfb9yzRwVr4hVSNOTfk82HQ8Ov5Bg==",
+        "appHash": "5957072da62ecb6d0f53671301f990c747e7f6d42fe070114b130c9dc3b0a8dc",
+        "releaseHash": "42945f153eb4fabfd5a75786db9dbc2b4971a8decfd8daa88d5787a5e201e978",
+        "releaseNonce": "046f0ec20aeb6d6dbf35949231f229f691cb30525094e813cca6536183037fbe",
+        "releaseEntryPda": "offline-release-entry-7htu16dens78fcfkc7u498sx33n0gsm2",
+        "masterNftMint": "offline-master-nft-7htu16dens78fcfkc7u498sx33n0gsm2",
+        "licenseSquadsVault": "offline-license-vault-7htu16dens78fcfkc7u498sx33n0gsm2",
+        "signedAtUnix": 1777995726,
+        "authorSig": "1bf573b6b2f3e59ee22b68fd62a45ce2bde30364efbf0e3f25aaecc2b2f9d653",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-7htu16dens78fcfkc7u498sx33n0gsm2"
         }
       },
       "capabilities": {
@@ -5181,9 +5181,9 @@
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
-      "version": "1.0.10",
-      "versionNumber": 11,
-      "packageId": "0a0b4331960281ec67815ebabc75adcd",
+      "version": "1.0.11",
+      "versionNumber": 12,
+      "packageId": "bc94dc403714173d68fc53f70799bb90",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
       "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
@@ -5212,18 +5212,18 @@
       "imageId": "0969e7fc37035b1add2c878e6e27f494.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "05f02a56648c7a95bf7c2523a2c92cb0f06c64b493006cf2af369732a0187392",
-        "releaseHash": "a9c5e74e471372d30a8ac9ed9c65c717543d5cc6fc117c47b4094ec27d70ec81",
-        "releaseNonce": "b85c139ebe06432f750ebdeaf373d9d96aac5761a8bff95697242b22df6f50d1",
-        "releaseEntryPda": "DZ1WZzoTdcgVmHcwSLxEqQVd7Dpv8jHE1i8aQFjHQEfa",
-        "masterNftMint": "8kZ9GLytCBRyNqJjihnBsHK6c56DMjn6PAVdpegoR4bu",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1777795646,
-        "authorSig": "UZsRx9+IMUa0Vxi4CahTP7TdPvDT4gm+oQrLMoCsb+RXHU4cwEhlKuKdObdZpLneI7zGWo8hizjmjVCb0SQXAA==",
+        "appHash": "bc94dc403714173d68fc53f70799bb90858a8755269594950482322fa76713dc",
+        "releaseHash": "f41b40be9921d146b0d73c43fb718c78e39521eb674080b2ef8840d432a319e7",
+        "releaseNonce": "de640152f890c122cd31a55042713483edb35fe0ce7534ddeb7f605470839f61",
+        "releaseEntryPda": "offline-release-entry-yea96s13pj9d7ugxzjuc8447u0ar42dr",
+        "masterNftMint": "offline-master-nft-yea96s13pj9d7ugxzjuc8447u0ar42dr",
+        "licenseSquadsVault": "offline-license-vault-yea96s13pj9d7ugxzjuc8447u0ar42dr",
+        "signedAtUnix": 1777995728,
+        "authorSig": "95d7b81b98ce975417c0c1efee5a962693bf862e691eff1b1ed6d1c4f4c940b9",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-yea96s13pj9d7ugxzjuc8447u0ar42dr"
         }
       },
       "capabilities": {

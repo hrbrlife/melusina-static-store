@@ -67,3 +67,34 @@ Per my Pass-1 verification:
 - `melusina-pearl-tool` on PATH at `/home/user/.local/bin/melusina-pearl-tool`
 - BUT the per-app ceremony in `publish-app-full.sh` Step 3 currently runs `melusina-pearl-tool propose-release` in dry-run mode and falls back to offline-stub `RELEASE.json`. Live `node squads-vault-exec.js` finalization step is "scheduled for v1.1" per kill-list §10.4 Phase 6e⅝ — operator must invoke manually.
 - Safety gate: `make plan` requires `MELUSINA_PUBLISH_AUTHORITATIVE=1`; this session used overrides (also `MELUSINA_PUBLISH_SHRINK_OK=1`, `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1`, `MELUSINA_ATTEST_OFFLINE=1`, `MELUSINA_SKIP_BUNDLE_UPDATE=1`) to push catalog updates from this dev mirror. Captain awareness needed: this checkout is the "dev mirror", not "Melusina/static_store"; the two have non-overlapping app sets. Net delta on every plan today was 0 apps (no shrink), so the POSTMORTEM 2026-04-25 catalog-shrink regression was NOT recurred.
+
+## 2026-05-05 16:00 — Metadata polish
+
+User screenshot of Sandstorm desktop showed redundant double-titles
+("Untitled BotMother BotMother message hub", "cca.sh Config cca.sh
+config", etc.) — the pkgdef nounPhrase contained the appName
+redundantly. Sandstorm renders `Untitled <appTitle> <nounPhrase>` so
+the appName never belongs inside the noun.
+
+Fixed nounPhrase + bumped + repacked + republished across 6 apps:
+
+| App                        | Before nounPhrase                            | After       | New version |
+|----------------------------|----------------------------------------------|-------------|-------------|
+| cca.sh Config              | "cca.sh config"                              | "config"    | 0.0.4       |
+| Cyberteller Config         | "cyberteller config"                         | "config"    | 0.1.2       |
+| cca.sh Wholesale           | "wholesale institution"                      | "institution" | 0.2.2     |
+| cca.sh Domain Template     | "domain template"                            | "template"  | 0.2.2       |
+| fineract Setup             | "setup wizard"                               | "wizard"    | 0.2.1       |
+| Vintage Remote Desktop     | "Linux desktop"                              | "session"   | 1.0.11      |
+
+All shipped to gh-pages. New PEARLS created from these versions will
+show the clean title; existing pearls keep their previously-assigned
+auto-name (Sandstorm only picks up nounPhrase at create time).
+
+**Skipped: BotMother** — same nounPhrase fix prepped + committed in
+melusina_botmother source repo (`message hub` instead of `BotMother
+message hub with routing rules`), but `make pack` failed on a
+libpcre2-8.so.0 version mismatch (.0.11.2 expected, host has .0.14.0).
+Fixable by updating `alwaysInclude` to point at the host's actual
+.0.14.0 file. Deferred — current BotMother v1.1.0 still works for
+end-to-end tests, just keeps the old verbose pearl noun.

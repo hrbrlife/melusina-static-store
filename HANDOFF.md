@@ -146,6 +146,24 @@ Final additional checks:
 
 The Bureau apps (Doc / Sheets / Diagrams / Paint) all render IDENTICAL spreadsheet UIs — they share the same bureau-doc engine and the per-app branding is wallpaper only. Real product issue, not a packaging issue, but worth flagging.
 
+## BotMother fix proposal (not shipped — local store-rebuild source missing submodules)
+
+The `pthread_create: Resource temporarily unavailable` failure on BotMother is the Go runtime hitting Sandstorm's sandbox NPROC limit when it tries to spawn one OS thread per logical CPU on this many-core host. Easy fix: pin Go's scheduler to 2 OS threads via `GOMAXPROCS=2` in the pkgdef environ for `botmotherCommand` (and the other grain types). Add `GOMEMLIMIT=256MiB` for good measure since the sandbox NPROC is partially memory-driven via thread stack reservation:
+
+```
+const botmotherCommand :Spk.Manifest.Command = (
+  argv = ["/bin/bash", "/.sandstorm/launcher.sh", "botmother"],
+  environ = [
+    (key = "PATH", ...),
+    (key = "GOMAXPROCS", value = "2"),
+    (key = "GOMEMLIMIT", value = "256MiB"),
+    ...
+  ]
+);
+```
+
+I didn't repack tonight because `/home/user/Desktop/store-rebuild/melusina_botmother/shared/grain-crypto-journal/` is missing (submodule not initialized), and bringing the submodule + Go build chain online for a single env-var fix wasn't worth the time budget. Next operator: clone the actual upstream `melusina_botmother` repo with submodules, apply the env-var diff, repack, restage, republish. Bumping `appVersion = 11` and `appMarketingVersion = "1.1.0"` to force the upgrade prompt.
+
 ## Reproducibility notes for the operator
 
 - The publish flow's pull-rebase failed because of submodule pointer drift + `.claude/scheduled_tasks.lock`. I worked around it by: `make plan` → fix-up `git push origin main` → manual `git commit-tree`/`git update-ref refs/heads/publish` → `git push -f origin publish` (mirroring the Makefile's apply target). If you re-run my fix path, either commit the submodule pointer drift first or stash before `make apply`.

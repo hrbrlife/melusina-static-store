@@ -1,0 +1,86 @@
+# static_store HANDOFF — overnight catalog smoke test, 2026-05-05
+
+Predecessor: gpt-5-5 idx ≤201 (was working Imp #22 catalog publish). Captain Imperative 2026-05-05 ~05:00 Dubai: drive Chrome through the dev.pbay.app catalog and verify each app **actually starts** — not just renders an icon — and fix/republish anything that doesn't. Operator: claude-opus-4-7[1m].
+
+## Cron / autopilot
+- 30-min cron job `b42b36a4` is running (CronCreate, recurring). Session-only, dies when this Claude exits or after 7 days.
+- Stop time: 09:00 Dubai (2026-05-05).
+
+## Squads / publish capability on this host
+**This machine holds every key needed to author + sign the foundation Squads multisig** (`9X5ECjTMTtjJ…`, threshold 2-of-4):
+- `~/Desktop/Melusina/test-wallets/licensee-signer-{1,2,3,4}.json` (the on-chain Squads members)
+- `~/Desktop/Melusina/test-wallets-NEW/foundation.json` (author / master-NFT authority `E68zuB…2VfKa`)
+- `melusina-pearl-tool` is on PATH (`~/.local/bin/melusina-pearl-tool` → `~/Desktop/melusina-attestdeployer-tool/`). Subcommands: `compute-app-hash`, `propose-release`, `finalize-release`, `verify-release`, sidecar variants. Default RPC = devnet.
+- `make preflight` PASSED at session start: 35 local apps vs 34 live (+1: Marshall). 10 manifest entries flagged `pending_reseat=true` (informational; install still works in dev). `MELUSINA_PUBLISH_AUTHORITATIVE=1` not set in this shell — set before `make plan`/`make publish`.
+
+## Per-app smoke test results (catalog at https://hrbrlife.github.io/melusina-static-store/)
+
+### ✅ STARTS (UI fully renders)
+| App | Notes |
+|---|---|
+| AiLagoon | Get-started UI: Ollama / ChatGPT / OpenRouter |
+| MerMail | Inbox / Compose / Drafts / Sent / Trash |
+| Shell Tester | 11-tab postMessage API test suite, 31 tests |
+| TeleScreen Sidecar Configurator | Overview + Secrets/Platforms/AiLagoon&Crawl/Status; "sidecar not linked" |
+| CyberTeller | Admin Dashboard, "First-launch setup (3 steps): Connect admin Solana wallet, Public static publishing URL, Configuration" |
+| Cyberteller Config | Install identity + Cyberteller boot environment form (AITX_URL, FINREACT_*, etc) |
+| fineract Setup | Multi-step wizard: Connectivity → Tenant → Org → Chart → Products → Providers → Signers → Governance → Validate |
+| DueProcess | "Configure This Station" (Apply from Templates / Build from Scratch) |
+| cca.sh Domain Template | Authoring grain for 6 domains (Ccash, MSB, OpenClaw, Org, CCash Procedures, TeleScreen Profiles) |
+| cca.sh Wholesale | Institutional Admin (Dashboard / Correspondents / Settlements) |
+
+### ⚠ STARTS BUT DEGRADED
+| App | Failure mode |
+|---|---|
+| Vintage Remote Desktop | UI loads ("Desktop Setup"), provisioning fails: `template selection failed: web-session.capnp:WebSession.put: unable to verify the first certificate` (TLS cert validation against orchestrator) |
+| TeleScreen Hub | iframe `didn't send any data`. sandstorm.log: `openWebSocket not implemented` + `Connection reset by peer` |
+| MiniGit | iframe loads, then renders blank. Same `openWebSocket not implemented` family |
+
+### ❌ STORE VERSION DOES NOT START
+| App | Root cause from supervisor log |
+|---|---|
+| **ccash (popaye)** | `MELUSINA_INSTALL_TRUST_ROOT is unset. Expected ed25519:<base64 32-byte pubkey>. The wallet-anchored keybox cannot boot without it.` → exit 1 restart loop. main.go:279-280 calls `mustEd25519Env`. `MELUSINA_OPERATOR_WALLET_PUBKEY` also fatal-required. Pkgdef only sets `DATA_DIR=/var`. |
+| **cca.sh Config** (admin grain) | `manifest load: manifest not found at /var/manifest.json (and no dev fallback succeeded)` → exit 1. SPK bundles only `[ccashconfig, sandstorm-manifest]` — popaye `manifest.json` is NOT shipped. |
+| **NamedCoin** | Built from same ccash codebase, same `MELUSINA_INSTALL_TRUST_ROOT` fatal. |
+| **Melusina OpenClaw** | `/launcher.sh: line 57: mkdir: command not found` → exit 127 restart loop. SPK missing /bin/mkdir or unset PATH. |
+
+## Critical cross-cutting findings
+
+### CF-1 — Sandstorm shell `openWebSocket not implemented`
+`/opt/sandstorm/var/log/sandstorm.log` repeatedly throws:
+```
+kj/compat/http.c++:7233: info: threw exception while serving HTTP response;
+exception = (remote):0: unimplemented: remote exception: openWebSocket not implemented
+```
+Followed by `Error: remote exception: ::read(fd, buffer, maxBytes): Connection reset by peer`. Any grain whose UI uses websockets returns ERR_EMPTY_RESPONSE in the browser (TeleScreen Hub, MiniGit confirmed). The custom shell at `/opt/sandstorm/sandstorm-melusina/` (which the user is streaming via dev-shell) appears to be missing the `openWebSocket` impl in gateway-router. **This blocks every websocket-using app in the catalog regardless of code correctness.**
+
+### CF-2 — Catalog ccash family doesn't ship a wallet-anchored boot path
+`MELUSINA_INSTALL_TRUST_ROOT` + `MELUSINA_OPERATOR_WALLET_PUBKEY` are documented to live in `/etc/melusina/secrets.env` and be sourced by `FULL_REDEPLOY.sh`, but Sandstorm grains are sandboxed (userns) and don't see /etc on the host. The `secrets.env` on this host doesn't even contain those keys. So neither the foundation pubkey nor an operator wallet pubkey reaches the grain at boot. Per kill-list §1.13 the fail-loud is intentional, BUT the grain currently exit-1's *before* serving any "System unavailable" HTTP — so the user can't even get to a Powerbox-claim flow to bind a wallet. Fix needs a design call from Captain: (A) pkgdef pre-sets a deploy-time default trust root, (B) deployer mounts secrets via Sandstorm sandbox bindPaths, or (C) main.go boot fail-loud serves an HTML "System unavailable" instead of exiting.
+
+### CF-3 — Reduced mode active on dev.pbay.app
+`PUBLIC_SETTINGS.melusinaReducedModeInitial=true`. Top-bar warning `⚠ Reduced mode active — click for details` always visible. Possibly related to the §10.1 authz socket blocker from the kill list, but I didn't click through to confirm — not on the critical path.
+
+## Fixes shipped this session
+
+### ✅ cca.sh Config v0.0.3 — DOES NOW START
+- `melusina_ccashconfig_app@3380242` on `feat/killlist-audit-20260501-1500` (pushed): bundles `popaye/manifest.json` + sets `MANIFEST_PATH=/manifest.json` in pkgdef.
+- `melusina-static-store@e516100` on `publish` (force-pushed): catalog now ships v0.0.3 spk `3af4bd4bd98a595bc3c8f5fd62ba833a07a1cc1f3a39a8d5ca91192290ab7b10`. `publish-prev` tag at the prior tip for cheap revert.
+- `melusina-os-deployer@852c505` on `feat/imp17-register-release-squads-emit` (pushed): manifest entry's `app_hash` updated to match new spk.
+- Build flow: I had to `MELUSINA_ATTEST_OFFLINE=1 bash build-store.sh --no-refresh` because the on-chain `verify-release` step hits the stub-onchain ReleaseEntry state for ~12 catalog apps and times out devnet RPC — that's pre-existing (per `pearl-ceremony.sh` comment "the on-chain RegisterReleaseEntry seat is not actually created"). Heads-up for next operator: until those reseats happen, every `make build` run needs the offline flag.
+- Verification end-to-end: post-upgrade supervisor log `2026/05/05 02:07:52 manifest loaded: id=popaye version=2 hooks=[...] / cca.sh Config v0.1.0 — raw capnp on FD 3 (no http-bridge)`. Browser shows 404 at `/` (expected — this app exposes AdminGate via Powerbox, no HTTP UI; only `/healthz` is served).
+
+## Next steps (if time / Captain GO)
+
+1. **OpenClaw** mkdir — fix shape: `usr/bin/mkdir` is missing from `alwaysInclude` in `.sandstorm/sandstorm-pkgdef.capnp`. Either add it explicitly or change `bin` (currently included as a directory) to actually pack the symlink target. Spk is 90 MB — full rebuild + republish requires ~10 min plus another gh-pages CDN cycle.
+2. **ccash family** (ccash + NamedCoin) needs Captain decision before patching: pre-set `MELUSINA_INSTALL_TRUST_ROOT` + `MELUSINA_OPERATOR_WALLET_PUBKEY` in pkgdef (publisher default), or change the boot to serve "System unavailable" HTML instead of `log.Fatal`. Either is a doctrine call I shouldn't make alone.
+3. **Sandstorm shell `openWebSocket not implemented`** is upstream of the apps. The shell at `/opt/sandstorm/sandstorm-melusina/` is being actively rebuilt (user said `make dev` + `sandstorm dev-shell` are streaming). Once a new bundle lands with websocket support, MiniGit and TeleScreen Hub should start rendering. Catalog-side it's already published correctly.
+4. **Vintage TLS cert** — UI loads ("Desktop Setup → Checking orchestrator connection") then fails on `unable to verify the first certificate`. Distinct from the websocket family. Probably the orchestrator endpoint is `https://` with a cert the grain doesn't trust. Not investigated tonight.
+5. **TeleScreen Hub websocket** — same family as MiniGit. If shell websocket lands, this should resolve.
+
+## Reproducibility notes for the operator
+
+- The publish flow's pull-rebase failed because of submodule pointer drift + `.claude/scheduled_tasks.lock`. I worked around it by: `make plan` → fix-up `git push origin main` → manual `git commit-tree`/`git update-ref refs/heads/publish` → `git push -f origin publish` (mirroring the Makefile's apply target). If you re-run my fix path, either commit the submodule pointer drift first or stash before `make apply`.
+- The new ccashconfig grain installs as an UPGRADE on top of the existing one (Sandstorm matches by appId). Existing grain (`QXTohv2RGJmSfKSnr6qstL`) was the broken-boot grain from earlier in the session; after upgrade and "Upgrade Pearls" click, it boots cleanly. No data loss.
+
+## Tabs context this session
+Chrome MCP session opened tab 12555169 on dev.pbay.app. User was already signed in as `cream_same_cargo_661` (no auth touched). Created multiple grains (one per tested app). Each fresh grain at /opt/sandstorm/var/sandstorm/grains/.

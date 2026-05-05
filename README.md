@@ -31,7 +31,7 @@ That's it. One command. It does everything:
 1. Pulls latest from all app submodules (their `publish` branches)
 2. Runs `build-store.sh` (scans metadata, builds Vite frontend, assembles `dist-publish/`)
 3. Copies the Melusina server binary update (`update/sandstorm-0.tar.xz`, filename retained for updater compatibility) into the output
-4. Splits any files over 95MB into 90MB chunks (GitHub Pages limit)
+4. Routes any SPK over 90 MiB to GitHub Releases (the gh-pages catalog can't reliably serve files near GitHub's 100 MB push ceiling); the server tarball is the one thing that does get split into 90 MB parts (the Sandstorm updater knows how to rejoin them)
 5. Commits and pushes `main`
 6. `make plan` — stages everything to `/tmp/melusina-publish-plan-<id>/` and writes a marker
 7. `make apply` — force-pushes the staged tree to the `publish` branch

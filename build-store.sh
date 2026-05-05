@@ -25,7 +25,8 @@ IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
 ATTEST_OUT="$OUTPUT_DIR/attest"
-MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MB — packages larger than this use GitHub Releases
+MAX_SPK_SIZE=$((90 * 1024 * 1024))  # 90 MiB (94.4 MB) — packages larger than this use GitHub Releases. GitHub rejects pushes >100 MB and serves large gh-pages files unreliably; 90 MiB leaves a ~5 MB cushion against SPKs growing into the cliff.
+GH_HARD_LIMIT_BYTES=100000000  # GitHub's documented push rejection limit (decimal MB)
 RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
@@ -732,6 +733,24 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
 done
 
 info "Copied $ICON_COUNT icons, $SPK_COUNT SPK packages"
+
+# --- Step 4b: Verify no staged package exceeds GitHub's push limit -----------
+# Backstop the MAX_SPK_SIZE routing: if any file landed in $PACKAGES_OUT that
+# is over GH_HARD_LIMIT_BYTES, the publish branch push will be rejected — so
+# fail fast here with the offending file named.
+oversized=()
+while IFS= read -r f; do
+  sz=$(stat -c%s "$f")
+  if [[ $sz -gt $GH_HARD_LIMIT_BYTES ]]; then
+    oversized+=("$f ($sz bytes)")
+  fi
+done < <(find "$PACKAGES_OUT" -type f 2>/dev/null)
+if [[ ${#oversized[@]} -gt 0 ]]; then
+  fail "$PACKAGES_OUT contains files over GitHub's ${GH_HARD_LIMIT_BYTES}-byte push limit:"
+  for o in "${oversized[@]}"; do echo "    $o" >&2; done
+  echo "  Lower MAX_SPK_SIZE or shrink the source app.spk." >&2
+  exit 1
+fi
 
 # --- Step 5: Write apps/index.json -------------------------------------------
 info "Writing $APPS_OUT/index.json..."

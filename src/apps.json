@@ -182,9 +182,9 @@
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
-      "version": "1.0.9",
-      "versionNumber": 10,
-      "packageId": "cf10fbc04a2680c5028dc7ccfbcc97e4",
+      "version": "1.1.0",
+      "versionNumber": 11,
+      "packageId": "6c14a7bfb2a808d66593050732292618",
       "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",

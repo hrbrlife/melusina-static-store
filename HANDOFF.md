@@ -77,6 +77,16 @@ Followed by `Error: remote exception: ::read(fd, buffer, maxBytes): Connection r
 4. **Vintage TLS cert** — UI loads ("Desktop Setup → Checking orchestrator connection") then fails on `unable to verify the first certificate`. Distinct from the websocket family. Probably the orchestrator endpoint is `https://` with a cert the grain doesn't trust. Not investigated tonight.
 5. **TeleScreen Hub websocket** — same family as MiniGit. If shell websocket lands, this should resolve.
 
+## OpenClaw fix drafted (NOT republished)
+
+Pushed to `hrbrlife/openclaw-melusina@fix/launcher-mkdir-2026-05-05` (commit `765e30f`):
+
+```
+spk: bundle /usr/bin/mkdir + bump to v0.1.3
+```
+
+The `bin` directive in alwaysInclude only ships the `/bin -> usr/bin` symlink, not the contents of the target — so `/usr/bin/mkdir` was never in the spk. Added it explicitly. **Did not republish:** my `make pack` failed on `Couldn't read file for embed: icons/app-grid.svg` (embed-root resolution issue I didn't have time to trace). Next operator: `cd /home/user/Desktop/openclaw-main && git checkout fix/launcher-mkdir-2026-05-05 && make build && make pack`, then verify the spk has `/usr/bin/mkdir`, then publish via static_store.
+
 ## Reproducibility notes for the operator
 
 - The publish flow's pull-rebase failed because of submodule pointer drift + `.claude/scheduled_tasks.lock`. I worked around it by: `make plan` → fix-up `git push origin main` → manual `git commit-tree`/`git update-ref refs/heads/publish` → `git push -f origin publish` (mirroring the Makefile's apply target). If you re-run my fix path, either commit the submodule pointer drift first or stash before `make apply`.

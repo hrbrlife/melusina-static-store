@@ -1575,221 +1575,6 @@
       "description": "cca.sh Wholesale is the institutional Pearl of the cca.sh constellation. It owns the four correspondent relationships \u2014 SWIFT, SEPA, crypto-custodian, crypto-exchange \u2014 at the Fineract / sidecar boundary, and grants per-sub-account capabilities to whitelabel-partner operator Pearls (the popaye / cca.sh-Admin family) over Grapple. End-clients never see this Pearl directly; their operator sees it as a Grapple-grant of \"settle this envelope to that correspondent at this rate\".\n\n## Why cca.sh Wholesale\n\n- **Pinned settlement envelopes** \u2014 every settlement request is signed at draft time, pinned to the operator's Solana wallet at approval time, and recorded as an immutable, citable artifact. Disputes between wholesale and a whitelabel partner are resolved against the signed envelope, not a database row that either side could mutate\n- **Per-correspondent Grapple capability scoping** \u2014 a whitelabel partner's operator Pearl claims a sub-account capability scoped to one correspondent + one rate sheet. They cannot see other partners' correspondents; they cannot escalate to the wholesale-admin role; they cannot enumerate the full correspondent topology. Capability surface is enforced at the Cap'n Proto boundary, not at a SaaS endpoint\n- **Operator-accountability through wallet signatures** \u2014 every wholesale-admin action (correspondent CRUD, rate-sheet edit, sub-account grant) is non-repudiable; the wholesale operator's Solana wallet signs the change. The audit log is provably theirs, not a vendor-database table they can claim was tampered with\n\n## Topology\n\n```\nG-ccash Wholesale (this Pearl) \u2500\u2500\u2500 grants sub-account caps \u2500\u2500\u25b6 G-organization (whitelabel partner)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   \u25bc\nfinreact-sidecar                                                  G-popaye (operator console)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   drafts sends\nFineract GL                                                       emits envelopes\n```\n\n## Status\n\n*Pre-release v0.2.0.* The institutional correspondent surface and sub-account grant flow are scaffolded; first end-to-end SWIFT settlement against the live finreact-sidecar lands in v0.3."
     },
     {
-      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "1e453cb58347f0153aa7d45b830fa2cd",
-      "name": "ccash",
-      "version": "0.3.1",
-      "versionNumber": 4,
-      "shortDescription": "Procedure-driven MSB/PSP/VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
-      "description": "cca.sh Admin is the operator console for MSB/PSP/VASP back offices. Manage wallets, approve transactions, configure workflows, and audit every action \u2014 all signed with your Solana key, encrypted, and accessible from any device.\n\n## Why cca.sh Admin\n\n- **Procedure-versioned approvals via YAML** \u2014 define approval workflows declaratively; version control them; audit which procedure version was active when each approval happened; no hidden logic\n- **Pinned transaction batches for audit** \u2014 cryptographically anchor any batch of transactions to your Solana wallet; batches are tamper-evident, citable, verifiable independent of the operator, and compliance-ready\n- **Operator accountability through Solana signatures** \u2014 every operator action is signed with their Solana key; non-repudiation; audit trail proves who did what and when\n\n## Features\n\n- **Wallet Management** \u2014 multi-chain support (Solana, Ethereum, Tron, TON); HD-wallet derivation; no address reuse\n- **Transaction Approval** \u2014 request/approve/settle workflows; configurable thresholds; escalation paths\n- **Contact Management** \u2014 KYC status, sanctions screening, identity verification\n- **Encrypted Communication** \u2014 all operator notes and approvals stay encrypted in-Pearl\n- **Mobile-first UI** \u2014 Powder blue on slate; serif headings; Inter Tight tabular numerals; responsive across devices\n- **Real-time Updates** \u2014 WebSocket notifications for pending approvals and transactions\n- **Role-based Access** \u2014 admin, approver, viewer roles; server-enforced permissions\n\n## Sibling Apps\n\n- **cca.sh Client** \u2014 client-facing seat (view balances, submit transactions for approval)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, share contacts, track approvals)\n\n## Status\n\n*Shipped v0.2.0.* MSB/PSP/VASP operator console with Solana signing, procedure-versioned approvals, multi-chain wallet management.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1744848000000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.3.1",
-      "imageId": "851f4fb5507e350525b4e01676885b48.png",
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "3421122b6969412862a7d060829232464106e4df6ff3ed2f90db7d2f10efac73",
-        "releaseHash": "6a9aa1388fbfc087817becc824f5625bfe7ee1cfd778bc30701e1557f6b3cb39",
-        "releaseNonce": "ae4a1999755dfa179a05dd777dd2cce5d5bdb665722c114dddb2bb100b618e42",
-        "releaseEntryPda": "5MPnacdNsQXMBDJjBCKrKdML8JHXRCsY5d6eKUunx5T8",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787071,
-        "authorSig": "6XMeF5akm5fFR+FJoO4uxLW5uDs26JyZt+lJ3/SDC4iirHy7HXzTcFGmndfo/ElRrGKbiCgY53eMQyYcMQeUAg==",
-        "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "ccash",
-        "appName": "ccash",
-        "tier": "regular",
-        "companionApps": [
-          "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"
-        ],
-        "pearls": [
-          {
-            "pearlId": "ccash",
-            "pearlName": "Operator Console",
-            "pearlType": "user-pearl",
-            "purpose": "ccash (codename popaye) is a whitelabel MSB / PSP / VASP operator console. Each install runs under a domain-template and a wholesale constellation; an operator manages clients, OTC deals, support tickets, and signed transactions. The Pearl persists everything as encrypted SQLite at /var/grain.db.enc and exposes a raw Cap'n Proto WebSession (no http-bridge), so every cross-grain link is an explicit Grapple capability claim.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "ccash-admin-gate",
-                  "interface": "ccash.AdminGate@1",
-                  "purpose": "Surface this operator console to a peer admin Pearl (e.g. cca.sh Config) so the admin can issue policy + template updates without seeing operator-private state."
-                },
-                {
-                  "name": "ccash-client-cap",
-                  "interface": "ccash.ClientCap@1",
-                  "purpose": "Hand a client-bound capability to a peer Pearl (cca.sh Client) so end customers can see only their own deals."
-                }
-              ],
-              "requests": [
-                {
-                  "name": "domain-template",
-                  "interface": "ccash.DomainTemplate@1",
-                  "purpose": "Request the canonical domain template (countries, regulatory profile, station tree) from cca.sh Domain Template.",
-                  "required": true
-                },
-                {
-                  "name": "ai-text",
-                  "interface": "AiLagoon.AiText@1",
-                  "purpose": "Optional: route operator notes to AiLagoon for auto-summarisation.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope; install-root DEK anchored by melusina-grain-restore",
-              "fields": [
-                "/var/grain.db.enc \u2014 entire SQLite database (users, projects, wallets, transactions, otcDeals, tickets, attachments)",
-                "Anchored DEK (install-root key) \u2014 held outside the grain via grain-restore"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Promote operator \u2192 admin",
-                  "purpose": "Requires IDENTITY_GATE OTP; gated by the wholesale Squads multisig."
-                },
-                {
-                  "name": "Rotate signing wallets",
-                  "purpose": "Same OTP gate; rotates the ed25519 author key."
-                },
-                {
-                  "name": "Configure templates / hooks",
-                  "purpose": "Push policy via the admin Grapple; requires Squads sig."
-                }
-              ],
-              "organizationOnly": [
-                {
-                  "name": "View org-wide dashboard",
-                  "purpose": "Aggregate metrics across all clients in the org."
-                },
-                {
-                  "name": "Approve cross-client transfer",
-                  "purpose": "Org-member-only with 2-of-N internal sign-off."
-                }
-              ],
-              "anyMember": [
-                {
-                  "name": "Create OTC deal",
-                  "purpose": "Operators draft deals; require admin sign-off to settle."
-                },
-                {
-                  "name": "Open support ticket",
-                  "purpose": "Anyone with operator role."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "installAdminEdit",
-                  "purpose": "TODO: review \u2014 needed to update operator-tier configuration on the install"
-                },
-                {
-                  "bit": "keyholderAdd",
-                  "purpose": "TODO: review \u2014 needed to rotate signing wallets via Squads multisig"
-                },
-                {
-                  "bit": "audit",
-                  "purpose": "TODO: review \u2014 needed to surface install-wide audit metadata to operators"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry",
-                      "VerifyLocalSidecar",
-                      "VerifyResellerSidecar"
-                    ]
-                  },
-                  {
-                    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-                    "label": "Squads v4 multisig",
-                    "calls": [
-                      "proposalApprove",
-                      "vaultTransactionExecute"
-                    ]
-                  }
-                ],
-                "purpose": "On-chain release attestation + per-install Identity Gate Ed25519 proofs anchored to the operator's Squads vault."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "ccash itself makes no outbound HTTP. The fineract-sidecar (separate Pearl) is the only HTTP egress path; ccash speaks to it via Grapple, never directly.",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "graincontext.GrainContext",
-                  "purpose": "Read-only context API consumed by AI-assistant pearls (e.g. AiLagoon) to summarise or describe grain state without holding a write capability.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "ccash.AdminGate@1",
-                  "purpose": "Surface this operator console to a peer admin Pearl (e.g. cca.sh Config) so the admin can issue policy + template updates without seeing operator-private state.",
-                  "roleGate": "adminOnly"
-                },
-                {
-                  "name": "ccash.ClientCap@1",
-                  "purpose": "Hand a client-bound capability to a peer Pearl (cca.sh Client) so end customers can see only their own deals.",
-                  "roleGate": "organizationOnly"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
       "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
       "name": "ChainWatch",
       "version": "0.1.0",
@@ -4904,6 +4689,54 @@
         ]
       },
       "description": "Paint Bureau is the image editor pearl of the Melusina Bureau office suite. Layered editing, filters, drawing tools, crop, resize, rotate \u2014 entirely in your browser on your own server.\n\n## Why Paint\n\n- **Pinned image revisions** \u2014 cryptographically anchor any image snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Edit-lock with live viewers** \u2014 one editor at a time; all connected viewers see changes appear live\n- **Multi-format export** \u2014 PNG, JPG, BMP, WebP; no lock-in\n\n## Features\n\n- **Layers** \u2014 create, reorder, merge, and manage layers\n- **Drawing tools** \u2014 pencil, brush, line, circle, rectangle, text\n- **Filters** \u2014 blur, sharpen, brightness, contrast, and adjustments\n- **Transform** \u2014 crop, resize, rotate with live preview\n- **Per-image Pearl** \u2014 each image is a sealed container; share by Pearl, not org-wide\n- **Offline-capable** \u2014 all assets bundled; no internet needed\n\n## Suite integration\n\nPaint Bureau speaks Grapple to the suite \u2014 embed a diagram in a document, attach an image to a contact card, reference an image in a CanBoard card.\n\n## Status\n\n*Shipped v1.0.4.* Layered image editor with filters, real-time multi-user, Solana-pinned revisions."
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "packageId": "e6bfffe7aaa00535f95c305d523aaa37",
+      "name": "popaye",
+      "version": "0.3.2",
+      "versionNumber": 5,
+      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
+      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1744848000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.3.2",
+      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg",
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "e6bfffe7aaa00535f95c305d523aaa37172525686e311dbcd2545c4d60ad5e62",
+        "releaseHash": "59b7ab501a66d0c4ea4dfa7373d6ffdd6300369b2dacb57249f63f29417039a3",
+        "releaseNonce": "29dc1b2679f69989d80b08ac8089f52177e67455019a118fd10a1ba74312ae3d",
+        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "masterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "signedAtUnix": 1777968680,
+        "authorSig": "1b94a0e657cc50750c3653998ae0f1b983af96512b01d9acf7bd4d195cdac928",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+        }
+      },
+      "capabilities": null
     },
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",

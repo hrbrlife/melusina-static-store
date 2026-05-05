@@ -4886,10 +4886,10 @@
     },
     {
       "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
-      "packageId": "d34cd9b157664275e86672d20fefdd13",
+      "packageId": "83695a91cf1452f16b4365ef52d723d4",
       "name": "TeleScreen",
-      "version": "0.0.2",
-      "versionNumber": 2,
+      "version": "0.0.3",
+      "versionNumber": 3,
       "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar \u2014 signed configuration, grant validation",
       "categories": [
         "Productivity",
@@ -4914,18 +4914,18 @@
       "imageId": "a985809e5d71f4992bbe95df5d938661.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1ec50c1d375663a961a031e4852685725b5a6fd121223250ff73c797eba965ed",
-        "releaseHash": "0bfe2e01e7b198a4ec41cad88883993c46509877ae536270113080623cbd2ae2",
-        "releaseNonce": "a4576e96635b4a4e433d63c4faf9eb2f579eca8c54ca3123315aac9523bd13fc",
-        "releaseEntryPda": "2irASduq9xsUy9Rmd3S4kMa577ovLgkBsyTS3CEfwKP9",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787081,
-        "authorSig": "Pq9KUyzld+v3+CCCvi8D5k/m23W1FdYt0UQMQKoJnoocvs4iPOK5AlHjFD6UZ8gk4bZf6ZaoWocvU3CbCXVFCw==",
+        "appHash": "83695a91cf1452f16b4365ef52d723d438914632301ec7963f451cf573f62a47",
+        "releaseHash": "b70372e89869e5bc4a3dffb9b2ad3f3392a9b823bdb13247f0a8ce1b19f80e88",
+        "releaseNonce": "fddc75f8ff13990b4511e5f9c7790e1b39cc1fa4fd9a718407fb0a965184eb32",
+        "releaseEntryPda": "offline-release-entry-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "masterNftMint": "offline-master-nft-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "licenseSquadsVault": "offline-license-vault-w1wq63jy7jtuwhxmf0y36w8egmpyej0v",
+        "signedAtUnix": 1777998905,
+        "authorSig": "028da2f4dc24d7ca73afb2c48b4b906eb61c41c8b827ec74795040d1482b5f09",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-w1wq63jy7jtuwhxmf0y36w8egmpyej0v"
         }
       },
       "capabilities": {

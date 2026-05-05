@@ -964,10 +964,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "b5b32824f949efab5045a8b33e5df38e",
+      "packageId": "3af4bd4bd98a595bc3c8f5fd62ba833a",
       "name": "cca.sh Config",
-      "version": "0.0.2",
-      "versionNumber": 2,
+      "version": "0.0.3",
+      "versionNumber": 3,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
         "Productivity",
@@ -988,7 +988,7 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.0.2",
+      "marketingVersion": "0.0.3",
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",

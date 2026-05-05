@@ -91,10 +91,7 @@ All shipped to gh-pages. New PEARLS created from these versions will
 show the clean title; existing pearls keep their previously-assigned
 auto-name (Sandstorm only picks up nounPhrase at create time).
 
-**Skipped: BotMother** — same nounPhrase fix prepped + committed in
-melusina_botmother source repo (`message hub` instead of `BotMother
-message hub with routing rules`), but `make pack` failed on a
-libpcre2-8.so.0 version mismatch (.0.11.2 expected, host has .0.14.0).
-Fixable by updating `alwaysInclude` to point at the host's actual
-.0.14.0 file. Deferred — current BotMother v1.1.0 still works for
-end-to-end tests, just keeps the old verbose pearl noun.
+**BotMother also shipped (v1.1.1)** — fixed sandstorm-files.list stale
+libpcre2-8.so.0.11.2 → .0.14.0 + libtinfo.so.6.4 → .6.5 to match
+Debian trixie host. nounPhrase now `message hub` instead of `BotMother
+message hub with routing rules`. pkg=1b050397bb4ed06b48905e3a9e46833a.

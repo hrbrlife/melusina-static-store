@@ -1,12 +1,15 @@
 {
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
   "name": "fineract Setup",
-  "version": "0.2.0",
-  "versionNumber": 2,
-  "packageId": "b98fd88687c563149b391010169dbbe7",
-  "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
+  "version": "0.2.1",
+  "versionNumber": 3,
+  "packageId": "5957072da62ecb6d0f53671301f990c7",
+  "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
   "description": "",
-  "categories": ["Productivity", "Office"],
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
   "isOpenSource": false,
   "webLink": "https://ccash.services",
   "codeLink": "https://github.com/hrbrlife/ccash_go_htmx/tree/main/fineract-sidecar",
@@ -21,8 +24,10 @@
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "license": "Proprietary — Internal development build",
+  "license": "Proprietary \u2014 Internal development build",
   "screenshots": [],
   "tier": "admin",
-  "domains": ["*"]
+  "domains": [
+    "*"
+  ]
 }

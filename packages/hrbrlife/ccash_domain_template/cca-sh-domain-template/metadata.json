@@ -1,10 +1,11 @@
 {
   "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-  "packageId": "e1d3f8da142f463b7793c2163b53b5fe",
   "name": "cca.sh Domain Template",
-  "version": "0.2.1",
-  "versionNumber": 3,
-  "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
+  "version": "0.2.2",
+  "versionNumber": 4,
+  "packageId": "070df8e7daab1d0e5721723f3cb71c50",
+  "shortDescription": "Domain configuration authority for cca.sh grains",
+  "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
   "categories": [
     "Productivity",
     "Office"
@@ -19,11 +20,11 @@
     "githubUsername": "hrbrlife",
     "keybaseUsername": "",
     "twitterUsername": "",
-    "picture": "",
-    "email": "ak@hrbr.life",
-    "website": "https://hrbr.life"
+    "picture": ""
   },
-  "screenshots": [],
-  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "tier": "admin",
+  "domains": [
+    "*"
+  ],
   "marketingVersion": "0.2.1"
 }

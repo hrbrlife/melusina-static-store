@@ -4099,142 +4099,42 @@
       "name": "NamedCoin",
       "version": "0.1.0",
       "versionNumber": 1,
-      "packageId": "dd0fc29c77a43894009958d54f75b856",
-      "shortDescription": "KYC + signature flow \u2014 pass screening, get a tradeable attestation NFT.",
+      "packageId": "91851dcbd05a76c45a7e188f806c03fc",
+      "shortDescription": "KYC onboarding + signature flow \u2014 pass, get an attestation NFT",
       "categories": [
         "Productivity"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source)",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
       "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776763008000,
+      "createdAt": 1777976973000,
       "author": {
         "name": "hrbr.life",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "imageId": "6808801193391d9254773a067bc1b295.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "7c6e58ac6ece49aec9fadd9552209e0dc3ec41329cdb1cb4d51bc532e213c50f",
-        "releaseHash": "394f76270b3955d861734ea8bc11952123a1c8fc068ac83b186b52320c5bc89f",
-        "releaseNonce": "6966cb4d526faf863e95833ce41c2c01218831fd6587b0c9bd944871f22a9cea",
-        "releaseEntryPda": "Hq6rdntJS7bqJPMU2LyRMFsUNWEp8mig1qa2kMJrs9zQ",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787079,
-        "authorSig": "iA8H/A8jW4cX0tRJaufP46fG8l44QYARQsTVeGthlWlryQGI+OMN6lJPwcPZy/+ID+CDYPRYEF6Lfsc7IPoSBA==",
+        "appHash": "91851dcbd05a76c45a7e188f806c03fcabc71797af475ccb6407a9070aa4be97",
+        "releaseHash": "a9c9a12178a25ebc0d1eb6ba0a864d1a750d87c75826f0dbc8edbc24bc3ab273",
+        "releaseNonce": "d9acb7533a02d9086313a4544e60302dbd73c6d38eeb6b8f2fe88352401926ab",
+        "releaseEntryPda": "offline-release-entry-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "masterNftMint": "offline-master-nft-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "licenseSquadsVault": "offline-license-vault-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "signedAtUnix": 1777977006,
+        "authorSig": "c5878c564b0efd692bd50f0318070e24fc8bf9a4c8da5027d5a93454bb2cfe87",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-8kea8reanvm5cw7awrxj8udguh5hf3yf"
         }
       },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "namedcoin",
-        "appName": "NamedCoin",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "namedcoin",
-            "pearlName": "NamedCoin",
-            "pearlType": "user-pearl",
-            "purpose": "Solana-rooted personal namespace \u2014 register human-readable names, bind them to wallets, sign transferable name capabilities. The Pearl issues NamedCoin caps that peer Pearls (ccash, AiLagoon, anywhere a 'who is this person?' question matters) can claim to resolve human-readable identity into wallet pubkey + KYC level.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "name-resolve",
-                  "interface": "NamedCoin.Resolve@1",
-                  "purpose": "Resolve a name to its current bound wallet + KYC tier."
-                },
-                {
-                  "name": "name-attest",
-                  "interface": "NamedCoin.Attest@1",
-                  "purpose": "Issue a signed attestation 'name X = wallet Y at time T' for downstream cross-Pearl use."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Owned-name registry",
-                "Per-name secrets / signing material"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Register / transfer names",
-                  "purpose": "OTP-gated; on-chain confirmation lands the registration."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Resolve names",
-                  "purpose": "Anyone with a Resolve cap can read."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation; name registrations land via Identity Gate signatures over canonical name-binding payloads."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "NamedCoin.Resolve@1",
-                  "purpose": "Resolve a name to its current bound wallet + KYC tier.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "NamedCoin.Attest@1",
-                  "purpose": "Issue a signed attestation 'name X = wallet Y at time T' for downstream cross-Pearl use.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "description": "NamedCoin is the KYC onboarding Pearl for Melusina. Pass an identity and sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other Pearls.\n\n## Why NamedCoin\n\n- **Pinned KYC attestations as revocable, tradeable NFTs** \u2014 cryptographically anchor any KYC attestation to your Solana wallet; attestations are tamper-evident, citable across Pearls via Grapple, revocable at any time, and tradeable on-chain as NFTs\n- **Merkle-tree selective disclosure** \u2014 raw ID images + questionnaire answers never leave the Pearl's encrypted store; what lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\") with a selective-disclosure Merkle probe\n- **Encrypted Pearl storage for raw IDs** \u2014 no leakage of raw identity documents; encrypted at rest; accessible only to authorized signatories via Grapple\n\n## Features\n\n- **Time-boxed attestations** \u2014 configure expiry (90/180/365 days or up to five years)\n- **Sanctions list integration** \u2014 TeleScreen sidecar for real-time sanctions screening\n- **Document authenticity + face matching** \u2014 AI Lagoon integration for document verification\n- **Admin-side review** \u2014 KYC packet approval, sanctions list configuration, issue/revoke, consumer-trust editing\n- **On-chain attestation** \u2014 attestation NFT lands on Solana; apps verify selectively without re-uploading\n\n## Admin Pearl\n\nAdmin-side review and configuration lives in the companion admin Pearl: melusina-namedcoin-admin-app.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live KYC flow lands in v0.2.",
+      "capabilities": null,
+      "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-namedcoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
     },
     {

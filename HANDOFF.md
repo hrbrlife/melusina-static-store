@@ -138,3 +138,38 @@ Branches all pushed to their respective repos:
 Outstanding (require external state changes):
 - Catalog Teleport — different app from on-host melusina_teleport2
 - Per-app feature click-through verification — Chrome MCP outage
+
+## 2026-05-06 03:25 — Icon audit + bulk fix (5 apps)
+
+User screenshot of Sandstorm desktop showed many apps stuck on
+generic Sandstorm letter-avatar fallback icons. Audit revealed two
+distinct patterns:
+
+1. **Empty `icons = ()` in pkgdef** — Sandstorm falls back to letter
+   avatar. Affected: cca.sh Config, Cyberteller Config.
+2. **Embedded the ccash brown-C letter-avatar SVG** instead of the
+   app's own — pkgdef referenced `icons/grain.svg` which was the ccash
+   letter-avatar copy-paste. Affected: fineract Setup, instaco, others.
+3. **Reference to wrong asset** — OpenClaw embedded a generic blue
+   chart-line SVG instead of the Clawberg lobster the user wanted.
+
+Fixed by bundling proper PNGs from `static_store/icons_split/`
+(24/64/128/512 sizes) and rewriting pkgdef icons section to embed PNG
+directly. Catalog-side icon (dst/icon.png) also updated for store-list
+display consistency.
+
+Apps shipped this iteration:
+
+| App                       | New version | Icon now embedded             |
+|---------------------------|-------------|--------------------------------|
+| Melusina OpenClaw         | 0.1.12      | Clawberg lobster (PNG)        |
+| cca.sh Config             | 0.0.6       | CcashAdmin (PNG)              |
+| Cyberteller Config        | 0.1.4       | CyberTeller (PNG)             |
+| fineract Setup            | 0.2.2       | fineract Setup (PNG)          |
+| instaco                   | 0.1.2       | InstaCo.app (PNG)             |
+
+Remaining apps in user's screenshot that may still show generic icons
+(supervisor logs would reveal — to inspect via mongo or `spk unpack`):
+DueProcess, Doc Bureau, ClientSpace, cca.sh Wholesale, CyberTeller
+(wallet, not config). Same fix recipe applies if pkgdef icons section
+is empty or references a copy-pasted ccash icon.

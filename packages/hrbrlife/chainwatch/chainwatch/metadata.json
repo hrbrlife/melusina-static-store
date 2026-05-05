@@ -1,10 +1,10 @@
 {
   "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
   "name": "ChainWatch",
-  "version": "0.1.0",
-  "versionNumber": 2,
-  "packageId": "2b98c08efda03658675aa7967573066c",
-  "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller — stateless, no keys, talks to chain RPCs.",
+  "version": "0.1.1",
+  "versionNumber": 3,
+  "packageId": "b6459b68a7d88698744be32ce374aca4",
+  "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller \u2014 stateless, no keys, talks to chain RPCs.",
   "categories": [
     "Productivity",
     "DeveloperTools"

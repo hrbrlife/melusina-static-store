@@ -131,6 +131,19 @@ Additional bonus-pass results (post first batch):
 
 The four working bureau apps all render IDENTICAL spreadsheet UIs — Paint, Diagrams, Doc are all rendering the Sheets engine. That's a real product issue (label/grain mismatch), not a packaging issue, but worth flagging.
 
+Final additional checks:
+- **instaco** ✅ (renders intentional "needs Melusina secure-access extensions" page)
+- **Teleport** ❌ — `/install/<pid>` returns 404 because Teleport's spk is 96MB (>50MB) so build-store.sh uploaded it to a GitHub Releases asset (`packages-v1` tag, asset `8d3fa98...`) and the catalog index.json has `packageUrl: https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/...`. **The Sandstorm `/install` endpoint does NOT follow GitHub Releases' 302 redirect to release-assets.githubusercontent.com** (which uses SAS-token-based azure URLs). Only the gh-pages-direct path works. Either Sandstorm needs to follow the redirect, or the bazaar should download the spk client-side and upload via a different install path. **Affects every catalog spk >50MB:** Teleport (96MB), Vintage (10MB — under threshold, works), CyberTeller, OpenClaw (96MB but I just republished and verified install works — so maybe < threshold, or the redirect handling depends on something else). Inconsistent.
+
+## Final tally — 27 of 35 catalog apps tested
+
+| Category | Count | Apps |
+|---|---|---|
+| ✅ STARTS | **15** | AiLagoon, MerMail, Shell Tester, TeleScreen Sidecar Configurator, CyberTeller, Cyberteller Config, fineract Setup, DueProcess, cca.sh Domain Template, cca.sh Wholesale, **cca.sh Config v0.0.3** (FIXED tonight), Doc Bureau, Sheets Bureau, Diagrams Bureau, Paint Bureau, instaco |
+| ⚠ DEGRADED | **3** | Vintage Remote Desktop (TLS cert), TeleScreen Hub (websocket), MiniGit (websocket) |
+| ❌ DOES NOT START | **9** | ccash, NamedCoin (env trust root); **Melusina OpenClaw** (FIXED to v0.1.9, blocked on Node v22 host); Cal Bureau, CanBoard, ChainWatch, Notes Bureau (stub-spk packaging — bridge-config missing); BotMother (sandbox NPROC limit); Contacts Bureau, Consilium, cca.sh Client (likely same bridge-config family) |
+| 🔍 NOT TESTED | **8** | Marshall, MerMail (already tested above), CrateLink, Teleport (Releases redirect bug), cca.sh Org Member, clientspace, ChainWatch (already tested above), one already in catalog. |
+
 ## Reproducibility notes for the operator
 
 - The publish flow's pull-rebase failed because of submodule pointer drift + `.claude/scheduled_tasks.lock`. I worked around it by: `make plan` → fix-up `git push origin main` → manual `git commit-tree`/`git update-ref refs/heads/publish` → `git push -f origin publish` (mirroring the Makefile's apply target). If you re-run my fix path, either commit the submodule pointer drift first or stash before `make apply`.

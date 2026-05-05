@@ -118,7 +118,18 @@ The `/sandstorm-http-bridge-config` pattern is **stub-spk leftover, not pkgdef b
 
 Each affected app needs to be rebuilt from its current source repo and re-staged into the catalog. That's a targeted `make publish APPS=<slug>` per-app-rebuild workflow that the static_store Makefile already supports (`scripts/publish-apps.sh` clones upstream and packs); it just hasn't been run for these apps recently.
 
-**Updated apps tested:** 24 of 35 catalog apps now have explicit smoke results (was 18 before this pass).
+**Updated apps tested:** 26 of 35 catalog apps now have explicit smoke results.
+
+Additional bonus-pass results (post first batch):
+- **Doc Bureau** ✅ (renders spreadsheet UI — note: misleading name)
+- **Sheets Bureau** ✅ (spreadsheet UI)
+- **Diagrams Bureau** ✅ (spreadsheet UI — same template, not actual diagram)
+- **Paint Bureau** ✅ (spreadsheet UI — same template, not actual paint)
+- **Contacts Bureau** ❌ ("didn't send any data")
+- **Consilium** ❌ ("didn't send any data")
+- **cca.sh Client** ❌ ("didn't send any data")
+
+The four working bureau apps all render IDENTICAL spreadsheet UIs — Paint, Diagrams, Doc are all rendering the Sheets engine. That's a real product issue (label/grain mismatch), not a packaging issue, but worth flagging.
 
 ## Reproducibility notes for the operator
 

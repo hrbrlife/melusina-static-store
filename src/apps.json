@@ -3750,9 +3750,9 @@
     {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
-      "version": "0.1.11",
-      "versionNumber": 13,
-      "packageId": "6c26ded78d09a8d8303345b09e7d8a20",
+      "version": "0.1.12",
+      "versionNumber": 14,
+      "packageId": "8f8618aacbaf4d7135c48059a175c1bb",
       "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
       "categories": [
         "Productivity"
@@ -3772,17 +3772,17 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.11",
-      "imageId": "c8dbcc6ade4269af9ce292b5fc0527d0.svg",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6c26ded78d09a8d8303345b09e7d8a20d2f5db731bb32684c78dfc6c0d142c40",
-        "releaseHash": "8082d448ab3af81eef364ba366ca752231c99460332118b624233960aaee97fc",
-        "releaseNonce": "41ac3b43cff561d1b212e57b4eb07e5ceb63d36c8835a7d65652521a4b35a265",
+        "appHash": "8f8618aacbaf4d7135c48059a175c1bbac5bf8e8e86e923014b243b5753bccf8",
+        "releaseHash": "6414bb25e3d9531c65e8b94e9c7d2f409e39b6833e86a3b4872335065a7e8345",
+        "releaseNonce": "d813497b1f553bd754e7d572b2a60f6815d30c38de66b1c2ab720c3990be104f",
         "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1777975642,
-        "authorSig": "99989f07d2e381741f42ec431cf43b0bb6b0b0574ae6be4d2bce18a58a405944",
+        "signedAtUnix": 1778022382,
+        "authorSig": "ce46ed7aa9be32db9c0601427006e42d5f69bb8998ba1031e0f4d5bd42923ca4",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

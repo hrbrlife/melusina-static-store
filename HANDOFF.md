@@ -173,3 +173,27 @@ Remaining apps in user's screenshot that may still show generic icons
 DueProcess, Doc Bureau, ClientSpace, cca.sh Wholesale, CyberTeller
 (wallet, not config). Same fix recipe applies if pkgdef icons section
 is empty or references a copy-pasted ccash icon.
+
+## 2026-05-06 03:55 — Icon batch complete (12 apps total)
+
+Continued audit + bulk fix. Fully shipped icon updates for:
+
+| App                          | Icon                |
+|------------------------------|---------------------|
+| Melusina OpenClaw            | Clawberg lobster    |
+| cca.sh Config                | CcashAdmin          |
+| Cyberteller Config           | CyberTeller         |
+| fineract Setup               | fineract Setup      |
+| instaco                      | InstaCo.app         |
+| CyberTeller (wallet)         | CyberTeller         |
+| cca.sh Client                | CcashClient         |
+| cca.sh Org Member            | CcashOrgMember      |
+| cca.sh Wholesale             | CashSurge           |
+| cca.sh Domain Template       | ccash dollar        |
+| DueProcess                   | DueProcess          |
+| ClientSpace                  | ClientSpace         |
+
+All catalog dst icon.png files also updated for store-list display
+consistency. Source repos committed + pushed for each (except
+openclaw-melusina which has push-rejected remote due to >50MB SPK
+binary in repo — that's a pre-existing issue not caused by icon work).

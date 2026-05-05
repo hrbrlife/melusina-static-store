@@ -101,6 +101,23 @@ To finish openclaw.mjs actually starting, the next operator needs ONE of:
 
 Untracked files at the openclaw repo root after my work (`app/`, `bundled-node/`, `icons/`, `launcher.sh`, `description.md`, `changelog.md`, `license.txt`, `sandstorm-files.list`, `sandstorm-pkgdef.capnp`, `app.spk`) are build-time staging only — a clean checkout of the fix branch needs them re-symlinked or re-copied from `.sandstorm/` before `make pack`. The real fix is to point spkmodule's `MOUNT` / `PKGDEF` at `.sandstorm/` so the embed paths and `alwaysInclude` paths resolve there directly.
 
+## Bonus pass — additional broken catalog apps
+
+After the priority e2e set was finished, I rapid-tested a handful of apps not on the kill list. Results:
+
+| App | Result | Detail |
+|---|---|---|
+| **BotMother** | ❌ | Grain starts, reaches `Cap'n Proto RPC server started on FD 3`, then `runtime/cgo: pthread_create failed: Resource temporarily unavailable` → SIGABRT. Sandstorm sandbox `RLIMIT_NPROC` (or similar) too low for this Go runtime. Upstream issue, not the spk. |
+| **Cal Bureau** | ❌ | `sandstorm/util.c++:46: failed: open(name.cStr(), flags, mode): No such file or directory; name = /sandstorm-http-bridge-config`. Pkgdef invokes sandstorm-http-bridge but bridgeConfig isn't shipped in the spk root. Packaging bug. |
+| **CanBoard** | ❌ | Same `/sandstorm-http-bridge-config` packaging bug as Cal Bureau. |
+| **ChainWatch** | ❌ | Same `/sandstorm-http-bridge-config` packaging bug. |
+| **Notes Bureau** | ❌ | Same `/sandstorm-http-bridge-config` packaging bug. |
+| **Doc Bureau** | ✅ | Renders a spreadsheet UI ("A1 — Enter value or formula"). Note: catalog name is "Docs Bureau" but grain UI says "Doc Bureau", and the UI is spreadsheet-shaped, not docs-shaped — possible cross-app icon/name swap somewhere in the catalog. |
+
+The `/sandstorm-http-bridge-config` pattern is a **fleet-wide packaging bug**: any app with `bridgeConfig` reference in its argv/launcher but no `bridgeConfig = (...)` block in pkgdef will hit this. To fix, each app's pkgdef needs a real `bridgeConfig` block (or its launcher should not invoke `sandstorm-http-bridge` directly). Likely affects Sheets Bureau, Paint Bureau, Diagrams Bureau, Contacts Bureau, instaco, cca.sh Client, cca.sh Org Member, Teleport, Consilium, MiniGit (which I hit earlier under the websocket angle), and possibly more — I didn't exhaustively test.
+
+**Updated apps tested:** 24 of 35 catalog apps now have explicit smoke results (was 18 before this pass).
+
 ## Reproducibility notes for the operator
 
 - The publish flow's pull-rebase failed because of submodule pointer drift + `.claude/scheduled_tasks.lock`. I worked around it by: `make plan` → fix-up `git push origin main` → manual `git commit-tree`/`git update-ref refs/heads/publish` → `git push -f origin publish` (mirroring the Makefile's apply target). If you re-run my fix path, either commit the submodule pointer drift first or stash before `make apply`.

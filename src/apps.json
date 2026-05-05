@@ -3750,9 +3750,9 @@
     {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
-      "version": "0.1.10",
-      "versionNumber": 2,
-      "packageId": "44776600418ac3d115105b453a671232",
+      "version": "0.1.11",
+      "versionNumber": 13,
+      "packageId": "6c26ded78d09a8d8303345b09e7d8a20",
       "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
       "categories": [
         "Productivity"
@@ -3771,17 +3771,18 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.11",
       "imageId": "c8dbcc6ade4269af9ce292b5fc0527d0.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "44776600418ac3d115105b453a6712328bbaeae4e5dd55c1808bc66871c4429e",
-        "releaseHash": "0f9c55354d2d96eed1428417dc85b4e236d1a340f6dc90aaed2182ae13e7b4b1",
-        "releaseNonce": "f38203aa51f954a12454d15a5f872a741d94821720f5ab8da5c6ea0d288db2a8",
+        "appHash": "6c26ded78d09a8d8303345b09e7d8a20d2f5db731bb32684c78dfc6c0d142c40",
+        "releaseHash": "8082d448ab3af81eef364ba366ca752231c99460332118b624233960aaee97fc",
+        "releaseNonce": "41ac3b43cff561d1b212e57b4eb07e5ceb63d36c8835a7d65652521a4b35a265",
         "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1777971247,
-        "authorSig": "fd54700f355335a333f9c61bf1eaffb8cc7e38daf04d28be63778cb3c8dc19af",
+        "signedAtUnix": 1777975642,
+        "authorSig": "99989f07d2e381741f42ec431cf43b0bb6b0b0574ae6be4d2bce18a58a405944",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

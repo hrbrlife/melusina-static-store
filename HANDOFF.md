@@ -54,7 +54,7 @@ The 0-traffic ones are NOT broken — they're un-exercised. The Chrome extension
 
 - **Bridge-config family** (Bureau Cal, Notes, Contacts, CanBoard, ChainWatch, Consilium, cca.sh Client, cca.sh Org Member): all boot-loop on `failed: open /sandstorm-http-bridge-config: No such file or directory` because their catalog SPKs were packed before `bridgeConfig` was added to source pkgdef. Per HANDOFF (4/24 session): "catalog rebuild from current source, not a code change" — but source repos for these aren't on this host, so blocked on offshore rebuild.
 - ~~**TeleScreen**~~: ✅ FIXED + SHIPPED v0.0.3 (pkg=83695a91cf1452f16b4365ef52d723d4). sandstorm-http-bridge binary now bundled in alwaysInclude. Source: pr_ninja@feat/imp22-hub-cap-routed=3eb57a9.
-- **MiniGit**: "Gogs did not start within 30 seconds". Pre-existing.
+- ~~**MiniGit**~~: ✅ FIXED + SHIPPED v0.2.1 (pkg=a9092e475d213762bada76b8d54cd6eb). Same pthread_create fix as BotMother — added GOMAXPROCS=2 + GOMEMLIMIT=256MiB to commandEnvironment. Source: app-audit/MiniGit.
 - ~~**NamedCoin**~~: ✅ FIXED + SHIPPED v0.1.0 (pkg=`91851dcbd05a76c45a7e188f806c03fc`). Same trust-root + sqlite-alias bundle as ccash.
 - **Teleport**: 96 MB SPK routed to GH Releases via packages-v1; Sandstorm install client doesn't follow the 302. Symptom: `Package download returned error: 404` — verified live today.
 - **OpenClaw**: ✅ SHIPPED v0.1.11 with bundled Node v22.12. Trim of optional node_modules makes canvas/sharp/PDF/Matrix/clipboard features unavailable until restored — see BUNDLED_NODE_TRIM_NOTES.md.

@@ -3965,9 +3965,9 @@
     {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
-      "version": "0.1.6",
-      "versionNumber": 7,
-      "packageId": "f2ff1ca578e0257033d6f448c14fe5af",
+      "version": "0.1.7",
+      "versionNumber": 8,
+      "packageId": "4071fcb6e014a4fb7e7925b36bf349e4",
       "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
       "categories": [
         "Productivity"

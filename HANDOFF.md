@@ -5,7 +5,8 @@
 - gh-pages publish branch tip: pushed multiple times today; final tip carries:
   - `popaye` v0.3.2 (pkg=`e702b58a362ed8623075ce79a70b0954`) — re-shipped with trust-root + sqlite-driver-alias fixes (see below)
   - `Melusina OpenClaw` v0.1.11 (pkg=`6c26ded78d09a8d8303345b09e7d8a20`) — bundled Node v22.12 NOW SHIPPED. Trimmed non-runtime node_modules (canvas/skia 32 MB, libvips 16 MB, pdfjs 20 MB, matrix-crypto 6.5 MB, clipboard 2.5 MB, all docs/tests) to drop SPK from 117 MiB → 95 MiB. See `BUNDLED_NODE_TRIM_NOTES.md` in the openclaw repo for the trim list + reversal recipe.
-  - All other 32 apps unchanged
+  - `NamedCoin` v0.1.0 (pkg=`91851dcbd05a76c45a7e188f806c03fc`) — same trust-root + sqlite-driver alias fix as ccash, plus added missing offline-stub RELEASE.json + dropped legacy GPG `metadata.json.asc`. Boots end-to-end through Cap'n Proto on FD 3 (boot path is shared with ccash since the binary forks the ccash baseline).
+  - All other 31 apps unchanged
 
 ## What shipped in code
 
@@ -54,7 +55,7 @@ The 0-traffic ones are NOT broken — they're un-exercised. The Chrome extension
 - **Bridge-config family** (Bureau Cal, Notes, Contacts, CanBoard, ChainWatch, Consilium, cca.sh Client, cca.sh Org Member): all boot-loop on `failed: open /sandstorm-http-bridge-config: No such file or directory` because their catalog SPKs were packed before `bridgeConfig` was added to source pkgdef. Per HANDOFF (4/24 session): "catalog rebuild from current source, not a code change" — but source repos for these aren't on this host, so blocked on offshore rebuild.
 - **TeleScreen**: boot-loops on `execve /sandstorm-http-bridge: No such file or directory` — even more broken than bridge-config family (binary itself missing from spk).
 - **MiniGit**: "Gogs did not start within 30 seconds". Pre-existing.
-- **NamedCoin**: same `MELUSINA_INSTALL_TRUST_ROOT is unset` boot-loop as ccash. Source IS on host (`/home/user/Desktop/namedcoin-work`); applying the same pkgdef fix as ccash would unblock — out of MVP-kill-list scope per Pass-1 audit, deferred to next session.
+- ~~**NamedCoin**~~: ✅ FIXED + SHIPPED v0.1.0 (pkg=`91851dcbd05a76c45a7e188f806c03fc`). Same trust-root + sqlite-alias bundle as ccash.
 - **Teleport**: 96 MB SPK routed to GH Releases via packages-v1; Sandstorm install client doesn't follow the 302. Symptom: `Package download returned error: 404` — verified live today.
 - **OpenClaw**: ✅ SHIPPED v0.1.11 with bundled Node v22.12. Trim of optional node_modules makes canvas/sharp/PDF/Matrix/clipboard features unavailable until restored — see BUNDLED_NODE_TRIM_NOTES.md.
 

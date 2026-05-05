@@ -1729,9 +1729,9 @@
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
-      "version": "0.1.1",
-      "versionNumber": 2,
-      "packageId": "868e2b787acf085d05c72b09cdf6ce19",
+      "version": "0.1.2",
+      "versionNumber": 3,
+      "packageId": "70688a4e89c99e1c057a52a3526ce228",
       "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
@@ -1751,21 +1751,21 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
-      "imageId": "89811f494fdee85cead74a37f859dd48.png",
+      "imageId": "03bf01373c90d9067844f63b89738a90.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "16f9ddf191f661dfb15659e88d8c7209364be42fdd318599000decad6126e4d3",
-        "releaseHash": "ffb6990e6357cafe363c0f137c885c0829950283d358f986e7fdfe6e55a0596f",
-        "releaseNonce": "feb7de3eecccdb6e4b1762dac584edefa7a024113b663075672c66bd5f99ed64",
-        "releaseEntryPda": "AFQfQ9LiWx5CzL1eHcnsrGJw8wWmUyt7zVAWiucB3fxE",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787072,
-        "authorSig": "l4au0eLU9rrhKMGP0O5KeLjnocNsTGZqru1kmm1DcTVgubeGMN8LFcL4fVnOQrjcVomk3y/EpG1Cj+lQ/juOBw==",
+        "appHash": "70688a4e89c99e1c057a52a3526ce228a3719bbc65f6aef9861b5bbf0dd40d53",
+        "releaseHash": "8362047d86618051dad2a466f47e28b8b66945b4245d6df4a945e6d62f52d5cf",
+        "releaseNonce": "c881fbb655951df61ef8393182ed3b263a7307d05dac34b40929271aaffa7d61",
+        "releaseEntryPda": "offline-release-entry-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
+        "masterNftMint": "offline-master-nft-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
+        "licenseSquadsVault": "offline-license-vault-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
+        "signedAtUnix": 1778025123,
+        "authorSig": "1a46fb96a50053ac5a2cb99a53a11a827f6b76b3d0e991549dcd3f93a08f5ac7",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-kcemn7du4wnacu6uh4aghd2qjm3r86u6"
         }
       },
       "capabilities": {
@@ -2995,9 +2995,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "4ef562d4181f6eaf78af5a64f620f8c9",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "packageId": "6931e9f11e24da4d770ac1a12475c203",
       "shortDescription": "Domain-agnostic process and workflow engine \u2014 author once in YAML, reuse everywhere.",
       "categories": [
         "Productivity"
@@ -3019,18 +3019,18 @@
       "imageId": "76db8bc647165e14ce7b94c7b0849277.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8cac71e570dcf17dbc4bc8ba3543fd3bed58a70203d91565c610596106514363",
-        "releaseHash": "269499dc93249bcd9d8a9027e0e82b5ee438de83c6178c58ca8ffb03781f00e2",
-        "releaseNonce": "a3b6e403048557fc953814c59e42cfd739f4d86244563f157a4a6cc7ee93654e",
-        "releaseEntryPda": "8GELCsHkPUX74KZd3uksxZWkFPq9oWsJm9XsMt3iazsY",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787071,
-        "authorSig": "KiH8EUT7By16oln2ov1wgw3k9wsylQGhr8hOqypbJ7/CI+TvUs7a9c40xm9WcsxPFbdkQys8NS5rX69Ss9wyBw==",
+        "appHash": "6931e9f11e24da4d770ac1a12475c203600fbded06a1c4ea177c22712a8fdeeb",
+        "releaseHash": "e95efc05f6e36abff38ee9b913f32499b04d0b98a12a9c13a03183bc203cf289",
+        "releaseNonce": "d750f9a82a90d86c8f05993d819ae02fefaebafd6a90043d2f6fc1bc16ea6d66",
+        "releaseEntryPda": "offline-release-entry-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
+        "masterNftMint": "offline-master-nft-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
+        "licenseSquadsVault": "offline-license-vault-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
+        "signedAtUnix": 1778025144,
+        "authorSig": "e6c3c14d4e7e1f49f753aa8916173283806d7ae4d0e06ac2e40c822469e94061",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s"
         }
       },
       "capabilities": {

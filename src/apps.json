@@ -964,10 +964,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "3af4bd4bd98a595bc3c8f5fd62ba833a",
+      "packageId": "bc0414100188cf357cb778c3218b25a2",
       "name": "cca.sh Config",
-      "version": "0.0.3",
-      "versionNumber": 3,
+      "version": "0.0.4",
+      "versionNumber": 4,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
         "Productivity",
@@ -992,18 +992,18 @@
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1b9ed9542850bb2d122ff93bc56425cd67c237a770eb117530966fa5872f8ae6",
-        "releaseHash": "31334acf22a5bf751f59e62c8240bd967b91b7a68cb22c69b38d85d3b07a57e3",
-        "releaseNonce": "5b49901067ea4fd1464e31d3f153705dc0fda0b398a615b98169a0ba9532ed96",
-        "releaseEntryPda": "F6AiF86mGZtYvaHrt514Wq7aqVEa2SR6MwsZZGxRXkmb",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787078,
-        "authorSig": "Useh5GLtPxP9wg5LHvniqhqb+7tkg8uwKrE8KDUQPPXNbUomWzc9jRenwjii4/L2cac7cL34StlnPqL+W7apDQ==",
+        "appHash": "3af4bd4bd98a595bc3c8f5fd62ba833a07a1cc1f3a39a8d5ca91192290ab7b10",
+        "releaseHash": "ffaa5c49773ff17c4716b82c1a0efc96ad2557c91ae06a0dc771a09173118d5f",
+        "releaseNonce": "108f31063d5ae2e0ab64a1050f3dfa99c9868853d3dc86108f866417fa1279f7",
+        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "masterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "signedAtUnix": 1777994611,
+        "authorSig": "d3abe4ad6e698338fef8ebac5407c4ae595ea0969faa83dbe8c86ae6cb2116d9",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
         }
       },
       "capabilities": {
@@ -2503,10 +2503,10 @@
     },
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-      "packageId": "0a4b03a929638d6337e1f35892f25845",
+      "packageId": "d2e356df38f1587a2c17d646872357c0",
       "name": "Cyberteller Config",
-      "version": "0.1.1",
-      "versionNumber": 2,
+      "version": "0.1.2",
+      "versionNumber": 3,
       "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
       "categories": [
         "Productivity",
@@ -2531,18 +2531,18 @@
       "imageId": "1e314ab919c02ff5ae8bd794007896ae.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "69eabb5a86d7575c35e4bc45d85b3afc65a7eb27d061c883c45f92512f42d1ee",
-        "releaseHash": "10fa34f078504e0639d35bce1aac28ccfb3fe74b19416bc09dfb555ccbaab353",
-        "releaseNonce": "e8ecc931de2056ebcfbbc5c5c9f27974ccbee4f343999a347e98ef558b800d22",
-        "releaseEntryPda": "437CeDotHeAh5Y7J8zx9wJS8TaJDRqJzQqJsa8oiJEUb",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787079,
-        "authorSig": "yAQU7Uc3qxU2PVFNRscraySazCk/fwyAoglz0bH3eaXi/JIpPLLQp3ni5C27j/TriIQlr89McKgFtEQiVLh7Bg==",
+        "appHash": "0a4b03a929638d6337e1f35892f2584527e97192ac1e2cbaff0ed849e0aa1e4d",
+        "releaseHash": "a0fa31bc686480f77a9efe6c1908570ecd22d36013505322c9fd57bb529d5e1d",
+        "releaseNonce": "806604e8621a947f7721a90d6c64b81001ac550e86cd1873605acb87041efb77",
+        "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "masterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "signedAtUnix": 1777994611,
+        "authorSig": "39f8eb0ed5ab77c5a196e1c7b3aeaaf605f74635da3f2b51794ef959924e5c08",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
         }
       },
       "capabilities": {

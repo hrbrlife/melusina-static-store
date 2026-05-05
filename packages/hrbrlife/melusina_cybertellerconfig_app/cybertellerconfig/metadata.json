@@ -1,9 +1,9 @@
 {
   "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-  "packageId": "0a4b03a929638d6337e1f35892f25845",
+  "packageId": "d2e356df38f1587a2c17d646872357c0",
   "name": "Cyberteller Config",
-  "version": "0.1.1",
-  "versionNumber": 2,
+  "version": "0.1.2",
+  "versionNumber": 3,
   "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
   "categories": [
     "Productivity",

@@ -77,15 +77,29 @@ Followed by `Error: remote exception: ::read(fd, buffer, maxBytes): Connection r
 4. **Vintage TLS cert** — UI loads ("Desktop Setup → Checking orchestrator connection") then fails on `unable to verify the first certificate`. Distinct from the websocket family. Probably the orchestrator endpoint is `https://` with a cert the grain doesn't trust. Not investigated tonight.
 5. **TeleScreen Hub websocket** — same family as MiniGit. If shell websocket lands, this should resolve.
 
-## OpenClaw fix drafted (NOT republished)
+## OpenClaw — 9 iterations shipped, blocked on Node v22
 
-Pushed to `hrbrlife/openclaw-melusina@fix/launcher-mkdir-2026-05-05` (commit `765e30f`):
+Pushed to `hrbrlife/openclaw-melusina@fix/launcher-mkdir-2026-05-05` (final commit `2327832`); deployer manifest in sync at `melusina-os-deployer@d315a9a`. Live in catalog as **v0.1.9** (packageId `cf15998e6f569f24194e6ffee291ee22`).
 
-```
-spk: bundle /usr/bin/mkdir + bump to v0.1.3
-```
+The grain now **boots all the way through launcher.sh and through node startup**, then hits openclaw.mjs's own version check and exits cleanly with `openclaw: Node.js v22.12+ is required (current: v20.19.2)`. That is real, intentional, and the only remaining gap is binary version. The original v0.1.0 fataled at line 57 with `mkdir: command not found`.
 
-The `bin` directive in alwaysInclude only ships the `/bin -> usr/bin` symlink, not the contents of the target — so `/usr/bin/mkdir` was never in the spk. Added it explicitly. **Did not republish:** my `make pack` failed on `Couldn't read file for embed: icons/app-grid.svg` (embed-root resolution issue I didn't have time to trace). Next operator: `cd /home/user/Desktop/openclaw-main && git checkout fix/launcher-mkdir-2026-05-05 && make build && make pack`, then verify the spk has `/usr/bin/mkdir`, then publish via static_store.
+Iteration log (each version is one bug deeper):
+- **v0.1.0** (catalog before): `mkdir: command not found` → exit 127
+- **v0.1.3 first try**: launcher.sh packed as a dangling symlink → `/launcher.sh: No such file or directory`
+- **v0.1.3 second try**: real launcher.sh, but mkdir fails → `mkdir: error while loading shared libraries: libselinux.so.1`
+- **v0.1.4** (libselinux + libpcre2 added): `cat: command not found`
+- **v0.1.5** (cat + tail added): `FATAL: unknown GRAIN_TYPE ''` — Sandstorm `continueCommand` doesn't set GRAIN_TYPE, and a 1-byte (newline-only) state file from an earlier failed boot fed the launcher empty
+- **v0.1.6** (tr-based whitespace strip): missed bundling tr, broken
+- **v0.1.7** (`read` builtin in launcher instead of tr): `sleep: command not found`
+- **v0.1.8** (sleep + tr + true bundled): node loads but immediately exits with `Cannot load externalized builtin: internal/deps/cjs-module-lexer/lexer:/usr/share/nodejs/cjs-module-lexer/lexer.js`
+- **v0.1.9** (Debian externalized node builtins bundled — cjs-module-lexer, acorn, acorn-walk, minimatch, undici, ~3.3MB): node starts, openclaw.mjs runs, hits its own engine check and exits 1.
+
+To finish openclaw.mjs actually starting, the next operator needs ONE of:
+1. **Bundle node v22.12+ in the spk.** The pkgdef comment says the bundled-node binary at `.sandstorm/bundled-node/bin/node` is ~104MB and the team chose to leave it out so the spk fits under GitHub's 100MB limit. Putting it back means moving the 96MB current spk to ~190MB and either (a) using GitHub LFS, (b) using the static_store's GitHub Releases upload path which build-store.sh already triggers for files >50MB, or (c) hosting the spk elsewhere.
+2. **Upgrade the host's libnode.so.115 to a v22 build.** Affects every spk that ships `usr/bin/node`. Touches the OS, not openclaw.
+3. **Patch openclaw.mjs's engine check.** Probably not what Captain wants, but quickest unblock for testing. Engine check is in `app/openclaw.mjs` — grep for "v22" or "Node.js" in that file.
+
+Untracked files at the openclaw repo root after my work (`app/`, `bundled-node/`, `icons/`, `launcher.sh`, `description.md`, `changelog.md`, `license.txt`, `sandstorm-files.list`, `sandstorm-pkgdef.capnp`, `app.spk`) are build-time staging only — a clean checkout of the fix branch needs them re-symlinked or re-copied from `.sandstorm/` before `make pack`. The real fix is to point spkmodule's `MOUNT` / `PKGDEF` at `.sandstorm/` so the embed paths and `alwaysInclude` paths resolve there directly.
 
 ## Reproducibility notes for the operator
 

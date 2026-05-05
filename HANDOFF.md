@@ -4,7 +4,7 @@
 - 34 apps in `dist-publish/apps/index.json`
 - gh-pages publish branch tip: pushed multiple times today; final tip carries:
   - `popaye` v0.3.2 (pkg=`e702b58a362ed8623075ce79a70b0954`) — re-shipped with trust-root + sqlite-driver-alias fixes (see below)
-  - `Melusina OpenClaw` v0.1.10 (pkg=`44776600418ac3d115105b453a671232`) — bundled-Node intent landed in pkgdef + staged binary, but final SPK still 117 MiB (over GH 100 MB push limit) so the live catalog still serves the v0.1.9 SPK without bundled Node. See "Open issues" below.
+  - `Melusina OpenClaw` v0.1.11 (pkg=`6c26ded78d09a8d8303345b09e7d8a20`) — bundled Node v22.12 NOW SHIPPED. Trimmed non-runtime node_modules (canvas/skia 32 MB, libvips 16 MB, pdfjs 20 MB, matrix-crypto 6.5 MB, clipboard 2.5 MB, all docs/tests) to drop SPK from 117 MiB → 95 MiB. See `BUNDLED_NODE_TRIM_NOTES.md` in the openclaw repo for the trim list + reversal recipe.
   - All other 32 apps unchanged
 
 ## What shipped in code
@@ -56,7 +56,7 @@ The 0-traffic ones are NOT broken — they're un-exercised. The Chrome extension
 - **MiniGit**: "Gogs did not start within 30 seconds". Pre-existing.
 - **NamedCoin**: same `MELUSINA_INSTALL_TRUST_ROOT is unset` boot-loop as ccash. Source IS on host (`/home/user/Desktop/namedcoin-work`); applying the same pkgdef fix as ccash would unblock — out of MVP-kill-list scope per Pass-1 audit, deferred to next session.
 - **Teleport**: 96 MB SPK routed to GH Releases via packages-v1; Sandstorm install client doesn't follow the 302. Symptom: `Package download returned error: 404` — verified live today.
-- **OpenClaw**: see above.
+- **OpenClaw**: ✅ SHIPPED v0.1.11 with bundled Node v22.12. Trim of optional node_modules makes canvas/sharp/PDF/Matrix/clipboard features unavailable until restored — see BUNDLED_NODE_TRIM_NOTES.md.
 
 ## Squads-multisig publish status
 

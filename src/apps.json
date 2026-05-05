@@ -547,10 +547,10 @@
     },
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
-      "packageId": "4589264bc4fef9b13f36bbaae3fd5718",
+      "packageId": "bfd47419bdfc08eeade3327811b55fe6",
       "name": "Cal Bureau",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
       "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar Pearl** \u2014 share Pearl-by-Pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
       "categories": [
@@ -575,18 +575,18 @@
       "imageId": "643b227e6ad6a193927ce8ca7095016a.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a398e5d21738abe0f207743519bb9a34ab4ff8f59921c57d2c3ce0393fd7747b",
-        "releaseHash": "b13747fbfc5f83896814fe140e5c36aa482727a1126ac6eca84c7c972b0b9b0d",
-        "releaseNonce": "4cb7ab43cdfba9a6abfa12dd8fc219a495bc08f8db6f364df967c3c17374df31",
-        "releaseEntryPda": "BZPuepcwfZRku6rgZez5bydy5r5xrAQ4FCo7Sw3psRqd",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787074,
-        "authorSig": "a1r79V0ri5CZIWjywdiqScIxC4soubn5A1a9QPGTrXcr9z/O1gtyO0uy5xTdNi0ij6khRv/CuFPFLvdusnfSCw==",
+        "appHash": "bfd47419bdfc08eeade3327811b55fe6d4695c84c8676ef21a79664f8340d154",
+        "releaseHash": "a7f2c9d6d6e441d7d904b0d836bbbf91086aea31ae213b249692f6ba403c76f3",
+        "releaseNonce": "fae3fde188ab6a4e19273b5de95563ecb535c24c34d82924f432c8c9a0893f42",
+        "releaseEntryPda": "offline-release-entry-p0wjp099ry06x0shap6ts270x55tn24p",
+        "masterNftMint": "offline-master-nft-p0wjp099ry06x0shap6ts270x55tn24p",
+        "licenseSquadsVault": "offline-license-vault-p0wjp099ry06x0shap6ts270x55tn24p",
+        "signedAtUnix": 1778002505,
+        "authorSig": "28c8565dc6ba99f9eafe4a3d71325a7a2d565e02e85ed09d6b22126c0ff8a7d9",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-p0wjp099ry06x0shap6ts270x55tn24p"
         }
       },
       "capabilities": {
@@ -682,10 +682,10 @@
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
-      "packageId": "e468c876b7aa4ccbd2a2774a966f44c5",
+      "packageId": "8c58fa752945642ffb68ca66c49aee7b",
       "name": "CanBoard",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
       "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board Pearl** \u2014 each board is its own sealed container; share by Pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
       "categories": [
@@ -709,18 +709,18 @@
       "imageId": "7e86226cccefca5af433f5c1598379ab.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "73264cc0fb2b0c039b4e23bb957b318de5fae24d6a385c0ff4591393a832c24a",
-        "releaseHash": "1fe0c862fbfa01ef0eb354be6708cd48fee0b17ab6b28238bde2ebc0aea3a0fe",
-        "releaseNonce": "b36a5e6cb29e5c4c6fa4350c608e5411a814bf4f6ac7bbe405361a61ed957c6d",
-        "releaseEntryPda": "C5pHuFNTRjYFTKUuPJc6MHk2RQQrVQVQdqrySmYw6nNX",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787077,
-        "authorSig": "o+RHKAPYWQQ3TdQ5mcQi1jjYue60+BlfP+MzazLKQ1pk6QQRVTLdoPqh9CSKtWQv/Xl6DWloexUDDGcHJruPBg==",
+        "appHash": "8c58fa752945642ffb68ca66c49aee7b3a81d6ffd88f8592d37328da40980d39",
+        "releaseHash": "8ec1e7d11bcd8a4e031c1de4ef1501be33ec3752725cc2b2b4d9b7502722f1ab",
+        "releaseNonce": "b22221fba81b3d9c54fe2e031498e9aa178e5e7017cab107b6381d8507078adc",
+        "releaseEntryPda": "offline-release-entry-30k1u80j35a4w3cgg9kpkug6kad2pk70",
+        "masterNftMint": "offline-master-nft-30k1u80j35a4w3cgg9kpkug6kad2pk70",
+        "licenseSquadsVault": "offline-license-vault-30k1u80j35a4w3cgg9kpkug6kad2pk70",
+        "signedAtUnix": 1778002497,
+        "authorSig": "e259857ed683bde7a791bb809fda1698b339b639b2d3aae8fc9e3625d4418145",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-30k1u80j35a4w3cgg9kpkug6kad2pk70"
         }
       },
       "capabilities": {
@@ -825,10 +825,10 @@
     },
     {
       "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
-      "packageId": "beef2a24e23b097a07e88fb7a87b0b97",
+      "packageId": "054d881bd668aa17d749cc263f6a10ad",
       "name": "cca.sh Client",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Client seat for cca.sh \u2014 access financial services, submit approvals, view settled activity.",
       "description": "cca.sh Client is the client-facing mode of cca.sh \u2014 the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** \u2014 cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** \u2014 see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** \u2014 every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** \u2014 see your account balance and transaction history\n- **Submit Transactions** \u2014 request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** \u2014 compare transactions against your books; download statements\n- **Solana-signed Actions** \u2014 every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** \u2014 contacts are identity-only, not stored cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (approval and sign authority)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
       "categories": [
@@ -853,18 +853,18 @@
       "imageId": "adb61e4f6d7ac77a8273d8b248499119.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5ac1f3ba6274c6438311bf353ec2c0aca65f00f493c763ff047501b615188102",
-        "releaseHash": "792df967121853d9ff3def553c01ab7fbd52ab8655f206832cb58ab69de41292",
-        "releaseNonce": "bea7448a7f7f4f67ccf3305900c7700f9e44d591fd3b8604b6a62060f9bed695",
-        "releaseEntryPda": "Gx3d5NMJYeRF3MR6HkuFdMmDahtBB1TvEYEw2Ci2yug6",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787078,
-        "authorSig": "Izsd5IrsvqFudpV+CRrsvBZgvpwTTx5Pp0HXtOrlW6++5JMpO8FmoTRMRFoL4TPEKBoeWe7mAvneoWhlB6/EDQ==",
+        "appHash": "054d881bd668aa17d749cc263f6a10ad02bafdbcf1699bd80fb207e6ddaa75d4",
+        "releaseHash": "a24de3c9d4447a75fa5f08a43638020c044ac4ac17bcacfc231ad47aab2d0344",
+        "releaseNonce": "47813d97454cf9e597061c99fdee6bf47790e7f895324875e84eb374af13aa2f",
+        "releaseEntryPda": "offline-release-entry-fa9m63d4e5x5aqvnu8xmc69x0ts53vg0",
+        "masterNftMint": "offline-master-nft-fa9m63d4e5x5aqvnu8xmc69x0ts53vg0",
+        "licenseSquadsVault": "offline-license-vault-fa9m63d4e5x5aqvnu8xmc69x0ts53vg0",
+        "signedAtUnix": 1778002544,
+        "authorSig": "d64c0afa64cbdf09a73bf4b2fbbf00377d04aaab5c515793dd39e66fa1f34eaf",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-fa9m63d4e5x5aqvnu8xmc69x0ts53vg0"
         }
       },
       "capabilities": {
@@ -1280,10 +1280,10 @@
     },
     {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
-      "packageId": "db77ecf42fdb5a208da78e5e453a97b4",
+      "packageId": "88e6f2c96d125727a6ae8f55bc32dc60",
       "name": "cca.sh Org Member",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
       "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped Pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
       "categories": [
@@ -1308,18 +1308,18 @@
       "imageId": "3cc31aed7d96495acd320e996882e98b.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b6a234af3e374d3c10f134b7ca4fd0800f9b4e94a4a8a11ba441080840ebe185",
-        "releaseHash": "c158bfe0d6d36373f490be856fa9252af243f809e0c49dbba12baf749ff0c484",
-        "releaseNonce": "2648adbd55f24af58268c8c581e5bb78c0d07434a0a12721bbf12409bbac09a3",
-        "releaseEntryPda": "UEAWsfc8uXmfbxcR8anQR2Btiu4GUT4PoPCDvaqLGkM",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787078,
-        "authorSig": "ooOfyX7fbb2EIp4hD6cfX+hUd3EuTVmesZTAcjG+c0b8l6Asm9OfWeJjUUBhCrFvngyrxxzFDZi/0RBt8n3eDA==",
+        "appHash": "88e6f2c96d125727a6ae8f55bc32dc6034cf0ac37617af76d2fad45c884d8a59",
+        "releaseHash": "261916d418013ff282ac3d78cfbabd2cb3e8ad189c9bab8d5c3ccc123ec0ae9d",
+        "releaseNonce": "6bd95f2d981acf00281bf771783c27b8a8101d1bd2a3e120a1126c634cc8770f",
+        "releaseEntryPda": "offline-release-entry-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
+        "masterNftMint": "offline-master-nft-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
+        "licenseSquadsVault": "offline-license-vault-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
+        "signedAtUnix": 1778002552,
+        "authorSig": "25bdbbe93f3b09821e8ffb392b02031b3b554fdc859495ab879a8c21f1a9466a",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-g5kzmttt0092pw3mrqg96yu5z13y0jg0"
         }
       },
       "capabilities": {
@@ -1887,10 +1887,10 @@
     },
     {
       "appId": "pjqare81cxtxjz411jsr4r35fsdpgrwnem6qm82deycfhzw1xz70",
-      "packageId": "b22b8eb8a0bd2332c77b556f6fcd3b48",
+      "packageId": "8aa8b86190f6406185739bccf69b0f2c",
       "name": "Consilium",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Unified messaging hub \u2014 bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
       "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord \u2014 manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** \u2014 cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge Pearl isolation** \u2014 each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** \u2014 swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** \u2014 Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** \u2014 view all conversations in one interface; no context switching\n- **Per-protocol thread history** \u2014 keep full audit trail per channel\n- **Grapple integrations** \u2014 connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** \u2014 full-text search in all bridged conversations\n- **Privacy-first** \u2014 no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium Pearl\n2. Add messaging connections \u2014 one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your Pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
       "categories": [
@@ -1915,18 +1915,18 @@
       "imageId": "3eab074071e29a06602c88e8568f5541.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "fd267c5478e93e594c95c1e39b05cb83abc85a4504653e31e0bc49a494ea845e",
-        "releaseHash": "62f595870a3c22e6c3bf2710a61ba93c88f05a3df9eff8095f2fd1dd9e8235d5",
-        "releaseNonce": "62befda0f8bb74f31b49822ddd699dc366c2d199fc3759b5026a4868f3f6a5ce",
-        "releaseEntryPda": "DMypc62jaEHMUvzdrGxaNYNtrgRdWuCuCaVALfXQedRQ",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787079,
-        "authorSig": "RvHeVCNVBeRcxmBWeiqrQSQu826ITf+HtnqPpOK/flvc/bhnL7pQcIZejqwMzfGXTZR0GREv4FAVlhjGIHvoBw==",
+        "appHash": "8aa8b86190f6406185739bccf69b0f2cbfbebf6dc2ba442ccd1705ae96a2b05f",
+        "releaseHash": "b1baa35cee39bec528fa2e4be73795dcbe69a2be643c0ec3fa3a8cf316f8489d",
+        "releaseNonce": "da24bbd01fe26dfc8ff9a73818be30c479a89c5b0fdb047b6fa799004db2c119",
+        "releaseEntryPda": "offline-release-entry-pjqare81cxtxjz411jsr4r35fsdpgrwn",
+        "masterNftMint": "offline-master-nft-pjqare81cxtxjz411jsr4r35fsdpgrwn",
+        "licenseSquadsVault": "offline-license-vault-pjqare81cxtxjz411jsr4r35fsdpgrwn",
+        "signedAtUnix": 1778002513,
+        "authorSig": "64e85aa874f9adfd7e62dc868533be41f607993b0b5acb24eb277ec8130522f7",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-pjqare81cxtxjz411jsr4r35fsdpgrwn"
         }
       },
       "capabilities": {
@@ -2041,10 +2041,10 @@
     },
     {
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
-      "packageId": "f1970b4025ff0918d78664e04425ac91",
+      "packageId": "2f1239956ac026ac9b15e5007d04f779",
       "name": "Contacts Bureau",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage \u2014 entirely self-hosted.",
       "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why Contacts\n\n- **Pinned contact-list snapshots** \u2014 cryptographically anchor any contact list state to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-list Pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls with per-Pearl access control\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n\n## Features\n\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add to any list\n- **No leakage to address-book scrapers** \u2014 they cannot reach your Pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.",
       "categories": [
@@ -2069,18 +2069,18 @@
       "imageId": "c633e830a075b1e84238968321ed0fc1.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "d9484a49abc633ed445cd9ce216031cdfc0298f47206bf012b272a696234d91f",
-        "releaseHash": "952d331cc8ec04909704e99b9a78ea8c7337ac50d011f7677175915ef319a65e",
-        "releaseNonce": "ef91e8695eec6fef1359e1bdfde7e5838323da51172ab5752826582f73dc78c4",
-        "releaseEntryPda": "3zXkELB449GPi8NYhMWYRLu3roXpXMZA7KEGQQgDSDVj",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787074,
-        "authorSig": "hov6IgZ7By5ZLiHSFQcUCsG87/sjB6QPBJy8MR0dJLQ32kMFg29pYrT5xQnN+K/7NEbNb3HYRcmX+5LA/l9rCQ==",
+        "appHash": "2f1239956ac026ac9b15e5007d04f7790fbf20d73d4d150fe0e527b5fe7f960c",
+        "releaseHash": "6826428c6fb8a0fae4b0120caa9644fcfde01fb8a1332f5dbe372d89e2d4045a",
+        "releaseNonce": "8438a1a10e2f71c15582384412c08c154053cb3c203f65cc01d69ece33334970",
+        "releaseEntryPda": "offline-release-entry-trymnqgywrmc3pskv6160e7h2gjscm9k",
+        "masterNftMint": "offline-master-nft-trymnqgywrmc3pskv6160e7h2gjscm9k",
+        "licenseSquadsVault": "offline-license-vault-trymnqgywrmc3pskv6160e7h2gjscm9k",
+        "signedAtUnix": 1778002489,
+        "authorSig": "c65f4953d7d1159a8d60c9839c195a2082b660d46310bd312c65f65938a8760b",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-trymnqgywrmc3pskv6160e7h2gjscm9k"
         }
       },
       "capabilities": {
@@ -4139,10 +4139,10 @@
     },
     {
       "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
-      "packageId": "fe7a66a1879fe5be440fb6acf062549a",
+      "packageId": "baa130682d0d0ff3be1a9a96542483fa",
       "name": "Notes Bureau",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.1",
+      "versionNumber": 2,
       "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
       "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by Pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
       "categories": [
@@ -4167,18 +4167,18 @@
       "imageId": "8f83955329bb084df12ec10161e6352e.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f89c5ec770e21b24283cddee9c4e2c3d99386efcd0865c04d216600ffce6264b",
-        "releaseHash": "33af9a4d8c7c503e260710499cf7e80be8cd2870726b3b40457c8349cfe8a8b1",
-        "releaseNonce": "528a1c1bf457913ee3955e24fb648983ef5d8183af8467cb46319f98b47df3f3",
-        "releaseEntryPda": "A73WzkYmPf6KiMeWaYTYqPMtsYXUJcLG1cBdFGJe6XQG",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787076,
-        "authorSig": "tux83YRx6tz8ZCkV2NqxbbwYG7aOusQsHnc4kijc6QSdrVpjVMxtZWdXTyrfLqX6fXCogA9SUs1/i2DNZDW2Dw==",
+        "appHash": "baa130682d0d0ff3be1a9a96542483fa4314cf8a13d5d0f8da8b9e965126ba2a",
+        "releaseHash": "00c95a1c52d4d1244b699b096df79643489312f3f60b18b51bb432c4cef3c0d4",
+        "releaseNonce": "a82f6e1a796ed7765c988d71aea5825a73437726c96c38393c3c4c79d82c7390",
+        "releaseEntryPda": "offline-release-entry-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
+        "masterNftMint": "offline-master-nft-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
+        "licenseSquadsVault": "offline-license-vault-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
+        "signedAtUnix": 1778002481,
+        "authorSig": "bd962b633e25ac5860403406db5c4b514c1949404801d0484a92a20f4ed1b520",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69"
         }
       },
       "capabilities": {

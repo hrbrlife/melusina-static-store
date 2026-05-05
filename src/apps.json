@@ -3748,222 +3748,6 @@
       "screenshots": []
     },
     {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Melusina OpenClaw",
-      "version": "0.1.9",
-      "versionNumber": 10,
-      "packageId": "cf15998e6f569f24194e6ffee291ee22",
-      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776987130000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "37df48798deeff468f026a9ea174b558e87921eba873e5bed82b89b2af91f84e",
-        "releaseHash": "2da86d84ba97df965cef1e730045f098a685d758fb4944ac6d2e6e0e504371de",
-        "releaseNonce": "d3efbe3483e9a8056bc7b05ac6503d977662aaabab859b327161a043e5a0ab77",
-        "releaseEntryPda": "EK4A1XGoXy35fJYGBWUdSRtEfr49SpLnukxZHo1RhHFs",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787081,
-        "authorSig": "o1u0DW3LpMyHuwoAMyPCrkwKHJ46gb7k1/7sTHQKdbi7+GblCUt+PqtVd1H+Ph9cg4xyFvqnLvwkvwcmLHpgDg==",
-        "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "melusina-openclaw",
-        "appName": "Melusina OpenClaw",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "assistant",
-            "pearlName": "Assistant",
-            "pearlType": "user-pearl",
-            "purpose": "User-facing OpenClaw assistant Pearl \u2014 bundles a Node 22 runtime + assistant front-end + a Go bridge that mediates Cap'n Proto calls between the Node app and Melusina's grain APIs. The user runs conversations here; the bridge does the heavy lifting (capability routing, file IO, Powerbox claims).",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "ai-text",
-                  "interface": "AiLagoon.AiText@1",
-                  "purpose": "Inference for the assistant \u2014 supplied by AiLagoon Pearl.",
-                  "required": true
-                },
-                {
-                  "name": "ai-vision",
-                  "interface": "AiLagoon.AiVision@1",
-                  "purpose": "Optional vision capability for image-attached conversations.",
-                  "required": false
-                },
-                {
-                  "name": "doc-read",
-                  "interface": "BureauDoc.Read@1",
-                  "purpose": "Read a document the user references.",
-                  "required": false
-                },
-                {
-                  "name": "note-write",
-                  "interface": "BureauNotes.Write@1",
-                  "purpose": "Capture a note from the assistant flow.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Conversation history",
-                "Assistant memory / scratchpad"
-              ]
-            },
-            "roles": {
-              "adminOnly": [],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Chat with the assistant",
-                  "purpose": "Standard assistant interaction."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "releaseRegister",
-                  "purpose": "TODO: review \u2014 needed to register a new on-chain ReleaseEntry seat for an app"
-                },
-                {
-                  "bit": "releaseRevoke",
-                  "purpose": "TODO: review \u2014 needed to revoke a previously-registered release"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "All AI inference goes through AiLagoon Grapple \u2014 no direct HTTP from this Pearl.",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          },
-          {
-            "pearlId": "bridge",
-            "pearlName": "Dev Bridge",
-            "pearlType": "infrastructure-pearl",
-            "purpose": "Developer-only grain that exposes the Go bridge in standalone mode (no Node front-end). Used during OpenClaw development for capnp wire debugging. Does NOT ship as a user-facing tile.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": []
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Inspect capnp wire",
-                  "purpose": "Dev tool only."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "releaseRegister",
-                  "purpose": "TODO: review \u2014 needed to register a new on-chain ReleaseEntry seat for an app"
-                },
-                {
-                  "bit": "releaseRevoke",
-                  "purpose": "TODO: review \u2014 needed to revoke a previously-registered release"
-                }
-              ],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "description": "OpenClaw is a personal AI assistant Pearl for Melusina. A conversational interface that discovers tools from any Melusina Pearl you connect via Grapple, reasons over your data, and executes actions \u2014 all without exposing your data to cloud AI vendors.\n\n## Why OpenClaw\n\n- **Pinned session transcripts** \u2014 cryptographically anchor any conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator; audit-ready for compliance\n- **Per-Pearl permission scoping** \u2014 each connected Pearl decides what the agent can see and do, based on the scope of the Grapple grant; OpenClaw never interprets app permission tables itself\n- **Wallet-signed critical actions** \u2014 operations marked as critical in a Pearl's interface must be approved by the user's connected Solana wallet via the Melusina shell's signature flow\n\n## Setup\n\n1. Install the SPK on your Melusina instance\n2. Open the New OpenClaw assistant action\n3. Use Grapple to grant the new Pearl access to an AiLagoon Pearl so the agent can think\n4. Use Grapple to connect any other Melusina Pearls you want OpenClaw to read or act on (Bureau spreadsheets and documents, DueProcess stations, Mermail mailboxes, Vintage desktops, anything that implements the capability interface)\n5. Chat with the assistant to configure monitors, schedules, and behaviour; configuration is conversational and incremental\n\n## Features\n\n- **Native Melusina Pearl** \u2014 raw Cap'n Proto, programmatic interface definition, Grapple-driven capability discovery, persistent state\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own AiLagoon Pearl; OpenClaw never holds API keys directly\n- **Two Pearl types** \u2014 `assistant` (full runtime) and `dev-bridge` (sidecar with the demo Pearl registered, for testing)\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live assistant lands in v0.2.",
-      "screenshots": []
-    },
-    {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.6",
@@ -4692,7 +4476,7 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "e6bfffe7aaa00535f95c305d523aaa37",
+      "packageId": "e702b58a362ed8623075ce79a70b0954",
       "name": "popaye",
       "version": "0.3.2",
       "versionNumber": 5,
@@ -4722,14 +4506,14 @@
       "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e6bfffe7aaa00535f95c305d523aaa37172525686e311dbcd2545c4d60ad5e62",
-        "releaseHash": "59b7ab501a66d0c4ea4dfa7373d6ffdd6300369b2dacb57249f63f29417039a3",
-        "releaseNonce": "29dc1b2679f69989d80b08ac8089f52177e67455019a118fd10a1ba74312ae3d",
+        "appHash": "e702b58a362ed8623075ce79a70b095420bc56e93f0e226a1f4ffd1fd64b9ff3",
+        "releaseHash": "795d34e0a457a518667bf338c87e8f41b4f2d3dc480db49bb7af4cf177f4a83e",
+        "releaseNonce": "fd260e6849fc0c53c26f71b6e0210fe19bae2291d3e6efc9ebc34c6670b66607",
         "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "masterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1777968680,
-        "authorSig": "1b94a0e657cc50750c3653998ae0f1b983af96512b01d9acf7bd4d195cdac928",
+        "signedAtUnix": 1777970708,
+        "authorSig": "0238965e530be1aadd6c7dc0c8426c99b2916a538a977663129db5f2934ac4c7",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

@@ -95,3 +95,46 @@ auto-name (Sandstorm only picks up nounPhrase at create time).
 libpcre2-8.so.0.11.2 → .0.14.0 + libtinfo.so.6.4 → .6.5 to match
 Debian trixie host. nounPhrase now `message hub` instead of `BotMother
 message hub with routing rules`. pkg=1b050397bb4ed06b48905e3a9e46833a.
+
+## 2026-05-06 00:35 — verified Shell Tester is the reference impl
+
+Shell Tester (catalog v0.1.6, pkg=561c24c7e983ec13e2a6270716765bcc) was
+the only un-touched MVP-adjacent app in the catalog this session.
+Supervisor log inspection shows it's a fully-working example of the
+user-mandated stack — raw Cap'n Proto on FD 3, sqlite-with-E2E-fields,
+htmx frontend rendering 31 tests, no http-bridge anywhere. Source at
+`/home/user/Desktop/Melusina/shell_tester/`.
+
+Future reference: when scaffolding a new core app, mirror Shell
+Tester's pkgdef shape (argv = ["/shell-tester"], alwaysInclude =
+["shell-tester"], no bridgeConfig) rather than the http-bridge
+template that hit the bridge-config family.
+
+CrateLink is the only other untouched catalog app — labeled "Coming
+Soon" in metadata, no source on this host, so no path to improve from
+this session.
+
+## Session totals (final)
+
+20 catalog updates total — 14 broken→fixed apps + 7 metadata polish
+reships (with BotMother in both classes).
+
+Branches all pushed to their respective repos:
+- melusina-static-store @ main, publish (gh-pages)
+- ccash_go_htmx @ feat/killlist-audit-20260501T114701Z, publish
+- openclaw-melusina @ fix/launcher-mkdir-2026-05-05, publish
+- melusina-namedcoin-app @ feat/catalog-trust-root-default-2026-05-05, publish
+- melusina_botmother @ main
+- pr_ninja @ feat/imp22-hub-cap-routed
+- MiniGit @ feat/gomaxprocs-pthread-fix (rebased + force-pushed locally; main has stricter conflict)
+- melusina_ccashconfig_app @ feat/killlist-audit-20260501-1500
+- melusina_cybertellerconfig_app @ main
+- ccash_wholesale @ main
+- ccash_domain_template @ main
+- vintage-test-dec @ fix/imp17-revert-to-sid-query-auth-2026-05-01
+- cyberteller @ feat/admin-auth-harmonize (chainwatch sidecar)
+- melusina_teleport2 @ main (libpcre2/libtinfo fix only — different app from catalog Teleport)
+
+Outstanding (require external state changes):
+- Catalog Teleport — different app from on-host melusina_teleport2
+- Per-app feature click-through verification — Chrome MCP outage

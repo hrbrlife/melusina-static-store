@@ -1,9 +1,9 @@
 {
   "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
-  "packageId": "64181be6bb30e7a6cf62ff66b17de1f5",
+  "packageId": "b9c66114a6b59705c4fb9a83b2eaa962",
   "name": "TeleScreen",
   "version": "0.0.4-icon-hires",
-  "versionNumber": 4,
+  "versionNumber": 5,
   "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar — signed configuration, grant validation",
   "categories": [
     "Productivity",

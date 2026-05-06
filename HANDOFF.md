@@ -254,3 +254,25 @@ Triggered new-SPK installs via Sandstorm `/install/<pkgId>?url=<gh>/packages/<pk
 - Existing pearls (grains created before the upgrade) keep their cached icon and will continue to render the OLD pkgdef's icon (or Sandstorm's blue-diamond fallback when none was set) until the user clicks "Upgrade Pearls" on each app's page.
 - New pearls created after the SPK upgrade get the canonical icon automatically.
 - Sandstorm shell shows the new icon end-to-end for: Vintage Remote Desktop (was BLANK), Melusina OpenClaw (Clawberg lobster — user's specific call-out), AiLagoon (alligator), popaye (cedi/peso), BotMother (mama bot + baby), MerMail, NamedCoin.
+
+### Round 4: PNG-embed icons (the actual fix, 2026-05-06 ~10:00 GST)
+**Root-cause discovered**: Sandstorm shell's icon renderer (Caja-sanitized SVG) does NOT display SVG containing `<image href="data:image/png;base64,...">`. Apps that *appeared* to work in earlier rounds were rendering OLD cached PNG files from previous SPK installs (e.g. OpenClaw still had `clawberg-128.png` etc. from its prior version).
+
+**Fix**: `fix_app_icon_v2.py` ships REAL PNG files (icon-24/48/128/256/150/300.png) and embeds them directly via `(png = (dpi1x = embed "icons/icon-24.png", dpi2x = embed "icons/icon-48.png"))` shape. Sandstorm renders these reliably.
+
+**Live-verified**: After upgrade, popaye pearl thumbnails on the Sandstorm shell grain dashboard show the canonical green-dollar-sign icon — not the previous blue-diamond fallback.
+
+**Commits**:
+- main: source repos updated with `fix_app_icon_v2.py` PNG variants + pkgdef PNG-embed blocks
+- publish: round 4 commit `d0c86bf` with 34 SPKs (33 PNG-embed + 1 vector SVG for shell_tester)
+
+**To replicate the fix on a new app**:
+```
+python3 .icon-fix-2026-05-06/fix_app_icon_v2.py <pkgdef> <canonical.png>
+spk pack <repo>/app.spk      # from the dir containing pkgdef OR per its sourceMap
+cp app.spk packages/hrbrlife/<app>/<sub>/app.spk
+cp icons/icon-256.png packages/hrbrlife/<app>/<sub>/icon.png  # for catalog UI
+# bump packageId + versionNumber in submodule's metadata.json
+./build-store.sh --aggregate --no-refresh    # patched to bypass attest stubs + gh-release for non-Teleport runs
+git push origin <new-tree>:publish --force
+```

@@ -1,5 +1,18 @@
 # HANDOFF — 2026-05-05 (afternoon session)
 
+## 2026-05-06 13:02 UTC — TeleScreen Hub re-signed (PNG icons + appId rotation)
+
+- **TeleScreen** v0.0.3 → v0.0.4-icon-hires (catalog appId rotated)
+  - appVersion 2 → 3
+  - appId rotation: `w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0` → `55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60`
+    (intentional — pkgdef noted "Imperative #22 reset" months ago; the catalog metadata was still pinning the old key)
+  - packageId 83695a91 → 64181be6
+  - Pkgdef icons: SVG (~430 bytes) → 128/256 PNG embeds (`23488/70650` for grain+appGrid, `30075/92969` for market)
+  - Source: hrbrlife/pr_ninja @ 0230253 on feat/imp22-hub-cap-routed
+  - Catalog: packages/hrbrlife/pr_ninja/telescreen/ (regular dir, not submodule) updated in place
+  - Patched Makefile stage_sandstorm to copy icons/icon-*.png alongside SVGs
+  - Plan/apply required `MELUSINA_PUBLISH_SHRINK_OK=1` (intentional appId rotation looks like 1 drop + 1 add)
+
 ## 2026-05-06 12:36 UTC — AiLagoon + DueProcess re-signed and live
 
 Resigned + repacked + published via the catalog plan/apply lane:

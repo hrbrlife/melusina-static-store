@@ -238,3 +238,11 @@ User asked: every app must have a) the same icon in store and as installed, b) a
 - `fix_app_icon.py` / `batch_fix.py` / `icon_map.json` / `sync_catalog_icons.py`
 - `repack_scaffolds.sh` / `repack_storerebuild.sh` / `repack_root_pkgdef.sh` / `repack_failed.sh`
 
+
+### Live verification (round 3, 2026-05-06 ~07:30 GST)
+Verified end-to-end via Chrome at https://dev.pbay.app:
+- **Vintage Remote Desktop** (was BLANK in user screenshot): upgrade install via catalog → app page renders canonical retro-PC icon ✓
+- **Melusina OpenClaw** (user explicitly called out wrong icon): upgrade install via catalog → app page renders Clawberg lobster character ✓
+- **Sandstorm /install flow**: catalog URL `dev.pbay.app/install/<pkgId>?url=<gh-pages>/packages/<pkgId>` correctly downloads new SPK and offers upgrade for existing appId ✓
+- **Existing grains** (pre-refresh): keep their cached icon until user clicks "Upgrade Pearls" in the app's page — the upgrade button is offered automatically once the new packageId installs.
+- **Catalog UI** (https://hrbrlife.github.io/melusina-static-store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).

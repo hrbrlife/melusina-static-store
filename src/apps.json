@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "c48710e0090f1957bd00947e344d829b",
+      "packageId": "5b5a1030a023a9ee09d8741f7f0d68fc",
       "name": "AiLagoon",
       "version": "0.7.0",
-      "versionNumber": 10,
+      "versionNumber": 12,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "AiLagoon is the AI model hub pearl for Melusina. Register multiple LLM providers, manage per-model connections, and expose AI capabilities to other pearls via Grapple \u2014 all behind a single Melusina HTTP-out permission to the ai-lagoon sidecar.\n\n## Why AiLagoon\n\n- **Pinned inference transcripts** \u2014 cryptographically anchor any model conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Single HTTP-out permission** \u2014 one security boundary; all provider traffic routes through the sidecar; you grant access once, revoke anytime\n- **Wallet-rooted Grapple capability routing** \u2014 consuming Pearls request AI capabilities via Grapple; routing is scoped to the requesting Pearl; no cross-Pearl data leakage\n\n## Supported Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **OpenAI** \u2014 ChatGPT API (GPT-4o, 4-Turbo, o1, o3, 4.5, 4.6, newer models)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral, DeepSeek, and more through a single proxy\n\n## Published Grapple Capabilities\n\nOther Pearls request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model; useful when a consumer wants a specific capability class (e.g., reasoning)\n\n## Playground\n\nA built-in chat playground lets you test any connected model without leaving the pearl \u2014 useful for validating credentials, checking capabilities, or prototyping prompts before calling them from another Pearl via Grapple.\n\n## Status\n\n*Shipped v0.7.0.* Production-ready AI model hub with Ollama, ChatGPT, OpenRouter; Solana-pinned inference transcripts.",
       "categories": [
@@ -39,7 +39,7 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "0f5678081ffee8f98c258aad41b73b70.svg",
+      "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "00addb8ae65dc4b2df3d7561ec91b109383a9e13b7a0e97a05de5efa1ca03490",
@@ -183,8 +183,8 @@
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
       "version": "1.1.1",
-      "versionNumber": 12,
-      "packageId": "1b050397bb4ed06b48905e3a9e46833a",
+      "versionNumber": 16,
+      "packageId": "917eee2b2b2810f82986cc8b0892d1f8",
       "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",
@@ -204,7 +204,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "4fee9934bbd5715653c18803672ca187.svg",
+      "imageId": "d2c943e821cc0170e4143d0621fdf414.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1b050397bb4ed06b48905e3a9e46833ae3d9c7a8bb32f662943283a9437216fb",
@@ -547,10 +547,10 @@
     },
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
-      "packageId": "bfd47419bdfc08eeade3327811b55fe6",
+      "packageId": "27d868dffd5ee12056f9a58f7e56e89d",
       "name": "Cal Bureau",
       "version": "0.1.1",
-      "versionNumber": 2,
+      "versionNumber": 7,
       "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
       "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar Pearl** \u2014 share Pearl-by-Pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
       "categories": [
@@ -572,7 +572,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "643b227e6ad6a193927ce8ca7095016a.png",
+      "imageId": "f166bad0c103ed1c45939b2c980a9a2a.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "bfd47419bdfc08eeade3327811b55fe6d4695c84c8676ef21a79664f8340d154",
@@ -682,10 +682,10 @@
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
-      "packageId": "8c58fa752945642ffb68ca66c49aee7b",
+      "packageId": "8457dd57251fad612be59305236c4165",
       "name": "CanBoard",
       "version": "0.1.1",
-      "versionNumber": 2,
+      "versionNumber": 5,
       "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
       "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board Pearl** \u2014 each board is its own sealed container; share by Pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
       "categories": [
@@ -706,7 +706,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "7e86226cccefca5af433f5c1598379ab.png",
+      "imageId": "3c5d87c1716fe1c23d4450cde68023ba.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8c58fa752945642ffb68ca66c49aee7b3a81d6ffd88f8592d37328da40980d39",
@@ -825,10 +825,10 @@
     },
     {
       "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
-      "packageId": "1f5e03a24fa908baf251ccaac5cf6efc",
+      "packageId": "8f035d941c5f72653ebf701f29667f61",
       "name": "cca.sh Client",
       "version": "0.1.2",
-      "versionNumber": 3,
+      "versionNumber": 6,
       "shortDescription": "Client seat for cca.sh \u2014 access financial services, submit approvals, view settled activity.",
       "description": "cca.sh Client is the client-facing mode of cca.sh \u2014 the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** \u2014 cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** \u2014 see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** \u2014 every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** \u2014 see your account balance and transaction history\n- **Submit Transactions** \u2014 request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** \u2014 compare transactions against your books; download statements\n- **Solana-signed Actions** \u2014 every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** \u2014 contacts are identity-only, not stored cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (approval and sign authority)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
       "categories": [
@@ -850,7 +850,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "adb61e4f6d7ac77a8273d8b248499119.png",
+      "imageId": "a04d0e8ca56e9509fd1754a9111b4ee8.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1f5e03a24fa908baf251ccaac5cf6efcc4493931acc1aad73c91bd688cafd4d5",
@@ -964,10 +964,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "c9267947e78bbae3778684134ea942fe",
+      "packageId": "e4db471ad0c20d74c3f518a372ca3a1d",
       "name": "cca.sh Config",
       "version": "0.0.6",
-      "versionNumber": 6,
+      "versionNumber": 9,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
         "Productivity",
@@ -989,7 +989,7 @@
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.3",
-      "imageId": "851f4fb5507e350525b4e01676885b48.png",
+      "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c9267947e78bbae3778684134ea942fe666beabcce70706b5b4d81f35ba6883d",
@@ -1138,10 +1138,10 @@
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-      "packageId": "fb50255094e64afcf68daf2639926a5c",
+      "packageId": "39a611c54a08b80d38a0183f15ba54be",
       "name": "cca.sh Domain Template",
       "version": "0.2.3",
-      "versionNumber": 5,
+      "versionNumber": 8,
       "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
       "categories": [
         "Productivity",
@@ -1163,7 +1163,7 @@
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.1",
-      "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
+      "imageId": "171e254c68669c061150533245e42212.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fb50255094e64afcf68daf2639926a5c4ed474846e2a6a8d277e9108b0cb33a1",
@@ -1280,10 +1280,10 @@
     },
     {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
-      "packageId": "775f44f58fa67fede4ad8a73180c5475",
+      "packageId": "a2f035d8562b6445b99dcaec4248c9cf",
       "name": "cca.sh Org Member",
       "version": "0.1.2",
-      "versionNumber": 3,
+      "versionNumber": 6,
       "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
       "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped Pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
       "categories": [
@@ -1305,7 +1305,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "3cc31aed7d96495acd320e996882e98b.png",
+      "imageId": "dc69cdcd227631bed4a9b9acaacbed09.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "775f44f58fa67fede4ad8a73180c547574c581a24fe0743e16969c2b23ba95c2",
@@ -1419,10 +1419,10 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "f87ca0094502012d94727adbbf0521f8",
+      "packageId": "81f677defe1c922a8f47ae97f4dd3e5b",
       "name": "cca.sh Wholesale",
       "version": "0.2.3",
-      "versionNumber": 5,
+      "versionNumber": 8,
       "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
@@ -1444,7 +1444,7 @@
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.1",
-      "imageId": "0728ef2bda52553a91e00a1fc630e72b.png",
+      "imageId": "171e254c68669c061150533245e42212.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f87ca0094502012d94727adbbf0521f879290a83427b6605f901dfdbf1334d68",
@@ -1578,8 +1578,8 @@
       "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
       "name": "ChainWatch",
       "version": "0.1.1",
-      "versionNumber": 3,
-      "packageId": "b6459b68a7d88698744be32ce374aca4",
+      "versionNumber": 6,
+      "packageId": "c328d6c692eef8b87a5837a07938ca37",
       "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller \u2014 stateless, no keys, talks to chain RPCs.",
       "categories": [
         "Productivity",
@@ -1602,7 +1602,7 @@
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
       "sha256": "2b98c08efda03658675aa7967573066c01c58e4d6f14c449445356ae883095aa",
-      "imageId": "fbe7e07659382e0f52864912be2b136d.svg",
+      "imageId": "e53093c86cac61436fdef4105636455d.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "b6459b68a7d88698744be32ce374aca4710fc7ac50b3f37014730ef45b5cfd62",
@@ -1730,8 +1730,8 @@
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
       "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "70688a4e89c99e1c057a52a3526ce228",
+      "versionNumber": 6,
+      "packageId": "ea99f9bb5a631bb4b6c9e0c74dfa2b40",
       "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
@@ -1751,7 +1751,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
-      "imageId": "03bf01373c90d9067844f63b89738a90.png",
+      "imageId": "f2b56f75a58a78894a88c5b4244e49b3.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "70688a4e89c99e1c057a52a3526ce228a3719bbc65f6aef9861b5bbf0dd40d53",
@@ -1887,10 +1887,10 @@
     },
     {
       "appId": "pjqare81cxtxjz411jsr4r35fsdpgrwnem6qm82deycfhzw1xz70",
-      "packageId": "8aa8b86190f6406185739bccf69b0f2c",
+      "packageId": "25881777394e49fd2000d98d27fe2048",
       "name": "Consilium",
       "version": "0.1.1",
-      "versionNumber": 2,
+      "versionNumber": 5,
       "shortDescription": "Unified messaging hub \u2014 bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
       "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord \u2014 manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** \u2014 cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge Pearl isolation** \u2014 each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** \u2014 swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** \u2014 Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** \u2014 view all conversations in one interface; no context switching\n- **Per-protocol thread history** \u2014 keep full audit trail per channel\n- **Grapple integrations** \u2014 connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** \u2014 full-text search in all bridged conversations\n- **Privacy-first** \u2014 no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium Pearl\n2. Add messaging connections \u2014 one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your Pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
       "categories": [
@@ -1912,7 +1912,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "3eab074071e29a06602c88e8568f5541.png",
+      "imageId": "0f5445d499983ab6c7b937b3a2840ffa.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8aa8b86190f6406185739bccf69b0f2cbfbebf6dc2ba442ccd1705ae96a2b05f",
@@ -2041,10 +2041,10 @@
     },
     {
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
-      "packageId": "2f1239956ac026ac9b15e5007d04f779",
+      "packageId": "4217d852ba2cfdbc03bb91f216d26669",
       "name": "Contacts Bureau",
       "version": "0.1.1",
-      "versionNumber": 2,
+      "versionNumber": 5,
       "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage \u2014 entirely self-hosted.",
       "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why Contacts\n\n- **Pinned contact-list snapshots** \u2014 cryptographically anchor any contact list state to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-list Pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls with per-Pearl access control\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n\n## Features\n\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add to any list\n- **No leakage to address-book scrapers** \u2014 they cannot reach your Pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.",
       "categories": [
@@ -2066,7 +2066,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "c633e830a075b1e84238968321ed0fc1.png",
+      "imageId": "26a19bda4c5efe30f10f6a4883b65381.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2f1239956ac026ac9b15e5007d04f7790fbf20d73d4d150fe0e527b5fe7f960c",
@@ -2176,10 +2176,10 @@
     },
     {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
-      "packageId": "5f43bada0effd3084dc0d56994573b61",
+      "packageId": "c7ae7d3c068007c9bdaa2637cad70847",
       "name": "CrateLink",
       "version": "0.1.0",
-      "versionNumber": 1,
+      "versionNumber": 4,
       "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
       "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your Pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the Pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
       "categories": [
@@ -2201,7 +2201,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "36cc23ee551c6a8538a57ee8de247424.png",
+      "imageId": "695055d514268edaeff050b55f227d3e.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a082badff63a9e46e5cc189653a6bad98a1c56c54dee390ba2f76ac45726b4fc",
@@ -2336,8 +2336,8 @@
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
       "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "3351a94e5138bafa1893d9ab073c89b6",
+      "versionNumber": 6,
+      "packageId": "1048d4f76b97b990e10be24592dd9955",
       "sha256": "ecec1b88b97e27c38e0788c60cb7ce64bdac789efc6aeb7b49f63fe8d90690f5",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
@@ -2360,7 +2360,7 @@
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
-      "imageId": "b382aa41aa99d05033545fd22f49390e.png",
+      "imageId": "e53093c86cac61436fdef4105636455d.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3351a94e5138bafa1893d9ab073c89b65f1827b6b7350961e412184b39e74927",
@@ -2503,10 +2503,10 @@
     },
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-      "packageId": "f88720d3e1ac145cf74fdf8ba2358d7e",
+      "packageId": "42f569bd3f308664dd57a2129ff6975a",
       "name": "Cyberteller Config",
       "version": "0.1.4",
-      "versionNumber": 5,
+      "versionNumber": 8,
       "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
       "categories": [
         "Productivity",
@@ -2528,7 +2528,7 @@
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
-      "imageId": "b382aa41aa99d05033545fd22f49390e.png",
+      "imageId": "e53093c86cac61436fdef4105636455d.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f88720d3e1ac145cf74fdf8ba2358d7e3cbe9a59c7db264d3bb77bab1268e57c",
@@ -2679,8 +2679,8 @@
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
       "name": "Diagrams Bureau",
       "version": "1.0.4",
-      "versionNumber": 5,
-      "packageId": "7dd466a436884aaa1b426789c247866d",
+      "versionNumber": 8,
+      "packageId": "37c29a1b77765dbb05fb9fd34f60de14",
       "shortDescription": "Flowcharts, mindmaps, UML diagrams \u2014 draw.io engine, collaborative, self-hosted, no cloud upload.",
       "categories": [
         "Productivity",
@@ -2722,7 +2722,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
+      "imageId": "a07e000d529a65cb9027226e2f39aee5.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9d7b5be7892db91dd057dffe2ecc7fd19dd8cb6a260811b719e4077b4d8b048b",
@@ -2831,8 +2831,8 @@
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
       "name": "Docs Bureau",
       "version": "1.0.4",
-      "versionNumber": 5,
-      "packageId": "44ec54074a7b8d9d69e292c02c143ae1",
+      "versionNumber": 8,
+      "packageId": "2ddae8e0b91f9750b75ee573a5c025c6",
       "shortDescription": "Rich-text documents with CRDT sync, unlimited simultaneous editors, HTML export \u2014 self-hosted.",
       "categories": [
         "Productivity",
@@ -2874,7 +2874,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
+      "imageId": "561bb356d573a81f7f1246ed9e119b55.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "688267a427d38d2a45d5d117baf835fe2df2034d284b75e471fd294a86b13676",
@@ -2996,8 +2996,8 @@
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
       "version": "0.1.1",
-      "versionNumber": 2,
-      "packageId": "6931e9f11e24da4d770ac1a12475c203",
+      "versionNumber": 6,
+      "packageId": "d74ec3bd964251bb6284ae3f3ca7ab38",
       "shortDescription": "Domain-agnostic process and workflow engine \u2014 author once in YAML, reuse everywhere.",
       "categories": [
         "Productivity"
@@ -3016,7 +3016,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "76db8bc647165e14ce7b94c7b0849277.png",
+      "imageId": "de151eacd63c362bc8cd00c88bc16d68.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6931e9f11e24da4d770ac1a12475c203600fbded06a1c4ea177c22712a8fdeeb",
@@ -3466,8 +3466,8 @@
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
       "name": "fineract Setup",
       "version": "0.2.2",
-      "versionNumber": 4,
-      "packageId": "491be9905335f897fc8642182f16f9fe",
+      "versionNumber": 7,
+      "packageId": "76627a814927e65080f9222fb8cad39a",
       "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
       "description": "fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per Pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
@@ -3493,7 +3493,7 @@
       "domains": [
         "*"
       ],
-      "imageId": "de15e498a7b1d93f9990b052fb5b1293.png",
+      "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "491be9905335f897fc8642182f16f9fe60cf2adaf82863b1b942169ba64ec6a4",
@@ -3606,8 +3606,8 @@
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "name": "instaco",
       "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "ad429cecfd21b9c6e26394984be94310",
+      "versionNumber": 6,
+      "packageId": "458dcd6c1798e1cc4786a45a16e15621",
       "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
@@ -3627,7 +3627,7 @@
       },
       "license": "MIT",
       "marketingVersion": "0.1.1",
-      "imageId": "e5c8fb13845cf9bbbc307baca8badc6d.png",
+      "imageId": "92d18734b91cb994660ebcce9830cd97.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad429cecfd21b9c6e26394984be94310df2b2ad8c5137ba35ba64cee7d0dd33e",
@@ -3750,9 +3750,9 @@
     {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
-      "version": "0.1.12",
-      "versionNumber": 14,
-      "packageId": "8f8618aacbaf4d7135c48059a175c1bb",
+      "version": "0.1.10",
+      "versionNumber": 5,
+      "packageId": "183b96b3b9076337ef1f2c8fcd97f4ee",
       "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
       "categories": [
         "Productivity"
@@ -3771,18 +3771,17 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.11",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "imageId": "04e162d3a950a3065ebd7345dff7b037.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8f8618aacbaf4d7135c48059a175c1bbac5bf8e8e86e923014b243b5753bccf8",
-        "releaseHash": "6414bb25e3d9531c65e8b94e9c7d2f409e39b6833e86a3b4872335065a7e8345",
-        "releaseNonce": "d813497b1f553bd754e7d572b2a60f6815d30c38de66b1c2ab720c3990be104f",
+        "appHash": "44776600418ac3d115105b453a6712328bbaeae4e5dd55c1808bc66871c4429e",
+        "releaseHash": "0f9c55354d2d96eed1428417dc85b4e236d1a340f6dc90aaed2182ae13e7b4b1",
+        "releaseNonce": "f38203aa51f954a12454d15a5f872a741d94821720f5ab8da5c6ea0d288db2a8",
         "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1778022382,
-        "authorSig": "ce46ed7aa9be32db9c0601427006e42d5f69bb8998ba1031e0f4d5bd42923ca4",
+        "signedAtUnix": 1777971247,
+        "authorSig": "fd54700f355335a333f9c61bf1eaffb8cc7e38daf04d28be63778cb3c8dc19af",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -3797,8 +3796,8 @@
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.6",
-      "versionNumber": 10,
-      "packageId": "a236d6e03235bb19dbf20d7c4675d275",
+      "versionNumber": 13,
+      "packageId": "6385bb20e44e31b3d9cc6a3f94402759",
       "shortDescription": "Sovereign email client with cryptographically pinned threads and per-mailbox Pearl isolation.",
       "categories": [
         "Productivity",
@@ -3825,7 +3824,7 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "4cc86bda386b13d2740cadf6f4f5047c.png",
+      "imageId": "c426048bdee74158cb0a73f38984aef1.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3d61fbfef8ae0c9de5a190a439836ab95c999e38c30ff8d7d07e362c23349d11",
@@ -3949,8 +3948,8 @@
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
       "name": "MiniGit",
       "version": "0.2.1",
-      "versionNumber": 3,
-      "packageId": "a9092e475d213762bada76b8d54cd6eb",
+      "versionNumber": 6,
+      "packageId": "8ecb1b165ac11eace11a508e23c1528f",
       "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
       "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
       "categories": [
@@ -3980,7 +3979,7 @@
         }
       ],
       "license": "MIT",
-      "imageId": "7499db1cea602288bf73a75611790e88.svg",
+      "imageId": "1bd35de29580bab052ff6b8f26e03c66.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a9092e475d213762bada76b8d54cd6eb94b6ccd1906b8e3c698eeec343ec523b",
@@ -4098,8 +4097,8 @@
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
       "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "91851dcbd05a76c45a7e188f806c03fc",
+      "versionNumber": 4,
+      "packageId": "94a76997d49fc17aad7656a983b88e54",
       "shortDescription": "KYC onboarding + signature flow \u2014 pass, get an attestation NFT",
       "categories": [
         "Productivity"
@@ -4116,7 +4115,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "6808801193391d9254773a067bc1b295.svg",
+      "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "91851dcbd05a76c45a7e188f806c03fcabc71797af475ccb6407a9070aa4be97",
@@ -4139,10 +4138,10 @@
     },
     {
       "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
-      "packageId": "baa130682d0d0ff3be1a9a96542483fa",
+      "packageId": "713387206830adc24e67fd053779081b",
       "name": "Notes Bureau",
       "version": "0.1.1",
-      "versionNumber": 2,
+      "versionNumber": 5,
       "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
       "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by Pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
       "categories": [
@@ -4164,7 +4163,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "8f83955329bb084df12ec10161e6352e.png",
+      "imageId": "65392bba92f7a89bb4656fb09bfdf8ef.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "baa130682d0d0ff3be1a9a96542483fa4314cf8a13d5d0f8da8b9e965126ba2a",
@@ -4272,8 +4271,8 @@
       "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
       "name": "Paint Bureau",
       "version": "1.0.4",
-      "versionNumber": 5,
-      "packageId": "632f3e097db8eefcb2670252dad3bf21",
+      "versionNumber": 8,
+      "packageId": "56e3ae155294be63434c106dc85967f6",
       "shortDescription": "Layered image editor with filters, crop, rotate \u2014 browser-based, self-hosted, no cloud upload.",
       "categories": [
         "Productivity",
@@ -4315,7 +4314,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
+      "imageId": "d1a17e2d490234be10db6703d6df30f1.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "eba04b74092bfd33aa9ee24bfc6da66e2bb355949e9b6ebf2f8199eda5635b1c",
@@ -4422,10 +4421,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "e702b58a362ed8623075ce79a70b0954",
+      "packageId": "c4f38cef240c0ad4db54bc7db269a24b",
       "name": "popaye",
       "version": "0.3.2",
-      "versionNumber": 5,
+      "versionNumber": 9,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4449,7 +4448,7 @@
         "*"
       ],
       "marketingVersion": "0.3.2",
-      "imageId": "2ea0a6363e23ad4f56f2c2b2e30d062f.svg",
+      "imageId": "171e254c68669c061150533245e42212.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "e702b58a362ed8623075ce79a70b095420bc56e93f0e226a1f4ffd1fd64b9ff3",
@@ -4472,8 +4471,8 @@
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "name": "Sheets Bureau",
       "version": "1.0.7",
-      "versionNumber": 8,
-      "packageId": "a28ac6bd8af79f664a78f4109ae363b1",
+      "versionNumber": 11,
+      "packageId": "1233b5fa9d2c36ff2e361a2689e65356",
       "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
       "categories": [
         "Productivity",
@@ -4515,7 +4514,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
+      "imageId": "36d6f844d1633abc19c2c892c08c7813.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "99e86a61080a8585ae99469cbbcfcad912d361e260177d915d96394f85d0cb20",
@@ -4634,8 +4633,8 @@
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
       "name": "Shell Tester",
       "version": "0.1.6",
-      "versionNumber": 1,
-      "packageId": "561c24c7e983ec13e2a6270716765bcc",
+      "versionNumber": 4,
+      "packageId": "d61ed8a5e72ddee71db047d17c013193",
       "shortDescription": "Melusina Shell Extension Tester",
       "categories": [
         "Developer Tools"
@@ -4651,7 +4650,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "489cd1dc774020674b8c7d91c24eeab1.svg",
+      "imageId": "0a635740fedea7931e10e74e9cbf261b.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3f523b4f1b0ca1619d13cbf3b241a3e92996209a7a92e24b6995f9568e99ce12",
@@ -4747,8 +4746,8 @@
       "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
       "name": "Teleport",
       "version": "2.1.2",
-      "versionNumber": 8,
-      "packageId": "8d3fa98888eac9c7acb28c0d495f04f4",
+      "versionNumber": 11,
+      "packageId": "7ff5da0f2c282385e664ff4700a72029",
       "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
       "categories": [
         "Social",
@@ -4769,7 +4768,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
-      "imageId": "c020ca7fe862a9b48e5122f0a33036b9.svg",
+      "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4880,7 +4879,7 @@
           }
         ]
       },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/8d3fa98888eac9c7acb28c0d495f04f4",
+      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/7ff5da0f2c282385e664ff4700a72029",
       "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" grain action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
@@ -4911,7 +4910,7 @@
       "screenshots": [],
       "license": "MIT",
       "marketingVersion": "0.0.2",
-      "imageId": "a985809e5d71f4992bbe95df5d938661.svg",
+      "imageId": "9d853e8a4c84b6c33df33ded797fb97f.svg",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "83695a91cf1452f16b4365ef52d723d438914632301ec7963f451cf573f62a47",
@@ -5044,10 +5043,10 @@
     },
     {
       "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",
-      "packageId": "1d68b49f6c3c43558b64cec91985712a",
+      "packageId": "a6f89134ed0938fbe49c6136be726e76",
       "name": "TeleScreen Sidecar Configurator",
       "version": "0.4.0",
-      "versionNumber": 1,
+      "versionNumber": 4,
       "shortDescription": "Cap-routed configurator Pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Powerbox cap.",
       "categories": [
         "Productivity",
@@ -5068,7 +5067,7 @@
       },
       "screenshots": [],
       "license": "MIT",
-      "imageId": "f55b5c98cdffec074defe2a647ca9995.svg",
+      "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -5182,8 +5181,8 @@
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
       "version": "1.0.11",
-      "versionNumber": 12,
-      "packageId": "bc94dc403714173d68fc53f70799bb90",
+      "versionNumber": 15,
+      "packageId": "f421d21d6d110694d3219cd9ce1c00e1",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
       "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
@@ -5209,7 +5208,7 @@
         "*"
       ],
       "marketingVersion": "1.0.10",
-      "imageId": "0969e7fc37035b1add2c878e6e27f494.svg",
+      "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "bc94dc403714173d68fc53f70799bb90858a8755269594950482322fa76713dc",

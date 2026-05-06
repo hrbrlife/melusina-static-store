@@ -1,9 +1,9 @@
 {
   "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-  "packageId": "57b7e2e933f1c9be644554a6d3b67e02",
+  "packageId": "81f677defe1c922a8f47ae97f4dd3e5b",
   "name": "cca.sh Wholesale",
   "version": "0.2.3",
-  "versionNumber": 6,
+  "versionNumber": 8,
   "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
   "categories": [
     "Productivity",

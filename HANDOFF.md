@@ -1,5 +1,27 @@
 # HANDOFF — 2026-05-05 (afternoon session)
 
+## 2026-05-06 ~21:00 Dubai — catalog cross-field audit clean
+
+After this session's TeleScreen/AiLagoon/DueProcess/OpenClaw catalog
+updates landed, I ran a cross-field audit of all 34 catalog apps:
+
+- **appId drift**: 0 (every metadata.json appId matches its SPK manifest)
+- **packageId drift**: 0 (every metadata.json packageId matches its SPK manifest)
+- **marketingVersion string drift**: 13 apps (catalog UI string ahead of SPK
+  manifest string by 1 patch — purely cosmetic, doesn't affect install
+  routing or upgrade path because Sandstorm uses appVersion integer for
+  that). Not fixing in this session.
+- **bridge-config audit** (unpack each SPK, check for bin without
+  config): 9 apps flagged, 8 false positives (commented `bridgeConfig`
+  blocks, no config file generated). 1 genuine fix → TeleScreen v0.0.4
+  (shipped this session).
+- **dual-pkgdef drift**: 3 source repos had drift between root and
+  `.sandstorm/sandstorm-pkgdef.capnp`. Synced openclaw-main (local
+  commit, push pending) and INSTASYS_CHAT (Teleport, pushed to main
+  @90f443c6).
+
+Catalog is operationally consistent end-to-end.
+
 ## 2026-05-06 17:50 UTC — OpenClaw catalog vn sync + final push
 
 Discovered the live catalog had Melusina OpenClaw stuck at pkg

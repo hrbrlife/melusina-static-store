@@ -1,5 +1,17 @@
 # AiLagoon Changelog
 
+## v0.7.6 (2026-05-07) — Powerbox: actually wire owner-bypass
+
+- v0.7.5 added the `if !s.isAdmin { requireAuth(...) }` owner-bypass on
+  `handlePowerboxSelect` but `NewRequestSession` was hardcoding
+  `isAdmin: false` for *every* powerbox-request session, so the
+  bypass never fired and grain owners still hit a grainauth deny on
+  bundle fulfillment. `NewRequestSession` now reads
+  `userInfo.Permissions()` and computes `isOwner`/`isAdmin` the same
+  way `NewSession` does, matching Sandstorm's owner convention
+  (zero-length permissions list ⇒ owner ⇒ admin). External / shared
+  sessions remain license-gated unchanged.
+
 ## v0.7.5 (2026-05-07) — Powerbox: owner bypass for grant gate
 
 - `handlePowerboxSelect` no longer fails closed on `forbidden: not-admin`

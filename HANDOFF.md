@@ -246,3 +246,11 @@ Verified end-to-end via Chrome at https://dev.pbay.app:
 - **Sandstorm /install flow**: catalog URL `dev.pbay.app/install/<pkgId>?url=<gh-pages>/packages/<pkgId>` correctly downloads new SPK and offers upgrade for existing appId ✓
 - **Existing grains** (pre-refresh): keep their cached icon until user clicks "Upgrade Pearls" in the app's page — the upgrade button is offered automatically once the new packageId installs.
 - **Catalog UI** (https://hrbrlife.github.io/melusina-static-store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).
+
+### Bulk-upgrade verification (round 4, 2026-05-06 ~07:50 GST)
+Triggered new-SPK installs via Sandstorm `/install/<pkgId>?url=<gh>/packages/<pkgId>` for: Vintage, OpenClaw, popaye, AiLagoon, BotMother, NamedCoin, MerMail. All accepted as upgrades; each app page now renders canonical icon at full size.
+
+**Important behavior to communicate to end users:**
+- Existing pearls (grains created before the upgrade) keep their cached icon and will continue to render the OLD pkgdef's icon (or Sandstorm's blue-diamond fallback when none was set) until the user clicks "Upgrade Pearls" on each app's page.
+- New pearls created after the SPK upgrade get the canonical icon automatically.
+- Sandstorm shell shows the new icon end-to-end for: Vintage Remote Desktop (was BLANK), Melusina OpenClaw (Clawberg lobster — user's specific call-out), AiLagoon (alligator), popaye (cedi/peso), BotMother (mama bot + baby), MerMail, NamedCoin.

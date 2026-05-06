@@ -2,8 +2,8 @@
   "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
   "name": "Teleport",
   "version": "2.1.2",
-  "versionNumber": 11,
-  "packageId": "7ff5da0f2c282385e664ff4700a72029",
+  "versionNumber": 12,
+  "packageId": "9c5060f77122fced9176401e206d1dfd",
   "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
   "categories": [
     "Social",

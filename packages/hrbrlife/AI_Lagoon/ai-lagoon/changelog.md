@@ -1,5 +1,12 @@
 # AiLagoon Changelog
 
+## v0.7.4 (2026-05-06) — icon hi-res
+
+- High-resolution catalog and apps-grid icons. The pkgdef now embeds
+  128/256-px PNGs in both the `appGrid` and `grain` slots so the
+  Melusina shell stops upscaling a 48-px asset onto its 132-px grain
+  card. No application-logic changes since v0.7.3.
+
 ## v0.7.0 (2026-04-20)
 
 - **Harmonise the stack on `melusina-http-component` + SQLite.** All
@@ -20,10 +27,16 @@
   plug.
 - **No more `/var/connections.json` and no more `/var/httpout_*`.**
   Connection records and Powerbox tokens both live in the grain's
-  encrypted SQLite database at `/var/ailagoon.db`. There is no
-  migration path from the old JSON/file-token shape — fresh install
-  on every upgrade. Pre-existing grains will present an empty
-  connections list and a clean slate.
+  SQLite database at `/var/ailagoon.db`. The database schema is
+  encryption-ready (the shared `grain-crypto-journal/sqlitestore`
+  supports AES-256-GCM at rest via a keybox-wrapped DEK), but the
+  Encryptor is intentionally unwired in v0.7.0 — the master-key
+  derivation flow is being ported from ccash and will land in v0.8.
+  Until then, `/var/ailagoon.db` is plaintext inside the grain's
+  Sandstorm sandbox boundary. There is no migration path from the
+  old JSON/file-token shape — fresh install on every upgrade.
+  Pre-existing grains will present an empty connections list and a
+  clean slate.
 - Removed the `pkg/httpout/` in-grain copy and the `*.PowerboxToken`
   field on `connections.Connection`; both shifted into the shared module.
 - `connections.Store` keeps the same public API (`Add` / `Get` / `List`

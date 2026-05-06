@@ -1,9 +1,9 @@
 {
   "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",
-  "packageId": "a6f89134ed0938fbe49c6136be726e76",
+  "packageId": "7ddf27ddfa3af21268c52f3ecb37251d",
   "name": "TeleScreen Sidecar Configurator",
   "version": "0.4.0",
-  "versionNumber": 4,
+  "versionNumber": 5,
   "shortDescription": "Cap-routed configurator Pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Powerbox cap.",
   "categories": [
     "Productivity",

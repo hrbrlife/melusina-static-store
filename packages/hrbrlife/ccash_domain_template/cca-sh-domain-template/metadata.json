@@ -1,9 +1,9 @@
 {
   "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-  "packageId": "fb50255094e64afcf68daf2639926a5c",
+  "packageId": "8d2be72c91c88913feac71abcc32e6c1",
   "name": "cca.sh Domain Template",
   "version": "0.2.3",
-  "versionNumber": 5,
+  "versionNumber": 6,
   "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
   "categories": [
     "Productivity",

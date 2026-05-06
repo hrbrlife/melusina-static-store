@@ -1,5 +1,28 @@
 # HANDOFF — 2026-05-05 (afternoon session)
 
+## 2026-05-06 19:55 UTC — Teleport packages-v1 upload restored
+
+Live SPK URL audit (HEAD every catalog packageId via gh-pages) flagged
+Teleport at `9c5060f77122fced9176401e206d1dfd` as 404. Catalog index
+points at GitHub Releases for that one (SPK is 98 MB, over the 95 MB
+gh-pages threshold), but the asset was never actually uploaded — the
+prior session disabled `gh release upload` in build-store.sh as a
+workaround for an unrelated build failure.
+
+Manual upload of the local `app.spk` (102 MB on disk) to the
+`packages-v1` release tag — URL now resolves (302 → SAS → 200). Task
+list note from 2026-05-05 says Sandstorm doesn't follow GH Releases'
+SAS-redirect chain, so install may still fail at the client side; but
+the catalog reference URL is no longer a hard 404.
+
+Re-enabled `gh release upload` in build-store.sh:552 so future
+builds don't silently re-break this.
+
+Outstanding: confirm whether Sandstorm 1.x can follow the Releases
+302→SAS chain for download. If not, options are (a) shrink Teleport
+SPK below 95 MB, (b) self-host SPK on a non-redirecting CDN, or
+(c) drop Teleport from catalog.
+
 ## 2026-05-06 ~21:00 Dubai — catalog cross-field audit clean
 
 After this session's TeleScreen/AiLagoon/DueProcess/OpenClaw catalog

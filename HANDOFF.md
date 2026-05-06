@@ -1,5 +1,29 @@
 # HANDOFF — 2026-05-05 (afternoon session)
 
+## 2026-05-06 13:14 UTC — TeleScreen Hub bridge-config fix (re-pack)
+
+After the icon-hires re-pack landed, the catalog audit (unpack each
+SPK, check for bridge bin + config) flagged 9 apps as `bin without
+cfg`. Eight were false positives — bureau-cal/canboard/ccash-client/
+ccash-org-member/consilium/contacts-bureau/cratelink/notes-bureau all
+have `bridgeConfig = (...)` *commented out* in pkgdef, so spk pack
+doesn't generate a config file and the bridge runs in default-permission
+mode at runtime. They've been booting fine for weeks.
+
+The ninth — TeleScreen Hub — has an active `bridgeConfig` block (line
+118 of pkgdef) which does generate the config, but `fileList` was
+pinning the package contents and missing the `sandstorm-http-bridge-config`
+entry. The grain would crash on first boot with
+`open(/sandstorm-http-bridge-config): No such file or directory` (the
+same family as the ChainWatch fix from 2026-05-05).
+
+Fix: added `sandstorm-http-bridge` and `sandstorm-http-bridge-config`
+to sandstorm-files.list, re-packed, re-published.
+
+- TeleScreen v0.0.4-icon-hires re-packed
+  - packageId 64181be6 → b9c66114a6b59705c4fb9a83b2eaa962
+  - vn 4 → 5
+
 ## 2026-05-06 13:02 UTC — TeleScreen Hub re-signed (PNG icons + appId rotation)
 
 - **TeleScreen** v0.0.3 → v0.0.4-icon-hires (catalog appId rotated)

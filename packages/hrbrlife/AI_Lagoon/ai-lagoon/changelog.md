@@ -1,5 +1,19 @@
 # AiLagoon Changelog
 
+## v0.7.5 (2026-05-07) — Powerbox: owner bypass for grant gate
+
+- `handlePowerboxSelect` no longer fails closed on `forbidden: not-admin`
+  for the grain owner. The grainauth license check ran on every consumer
+  who tried to claim an `AICapBundle` / `AIText` / `AIVision` /
+  `AIGeneric` / `AIAgent` capability via the Sandstorm picker, which
+  forced every user to first link a Solana wallet — wrong product
+  shape for "open AiLagoon, attach it to my Clawberg assistant". The
+  fix: when the calling Sandstorm session holds the grain's `admin`
+  permission bit (`isAdmin`), Powerbox grants pass through; external /
+  shared sessions still go through the license-gated path. Admin-tier
+  changes (add/remove provider connection, edit billing) remain
+  license-gated unchanged.
+
 ## v0.7.4 (2026-05-06) — icon hi-res
 
 - High-resolution catalog and apps-grid icons. The pkgdef now embeds

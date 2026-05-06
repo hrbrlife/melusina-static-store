@@ -1,9 +1,9 @@
 {
   "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-  "packageId": "e51408b1160c6091597f45a5533a8e6b",
+  "packageId": "2d082f40abe0dda62742737790d96f2f",
   "name": "AiLagoon",
-  "version": "0.7.4-icon-hires",
-  "versionNumber": 13,
+  "version": "0.7.5-powerbox-owner-bypass",
+  "versionNumber": 16,
   "shortDescription": "AI model hub — aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
   "description": "",
   "categories": [

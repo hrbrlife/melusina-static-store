@@ -224,3 +224,17 @@ User asked: every app must have a) the same icon in store and as installed, b) a
 - **Teleport (pr_ninja sibling) ships via GH Releases** — Sandstorm's /install does NOT follow the 302 redirect (verified 2026-05-05 in MEMORY). Catalog still references it; install will 404. This pre-dates the icon refresh.
 - **pr_ninja/telescreen** — SPK in catalog is the prior version (icon already correct in screenshot). Repack blocked on 1 GiB uncompressed limit.
 
+
+### Final state (push round 2)
+- **Live catalog UI**: serves all 34 apps with crisp HiDPI icons. New SPKs published to gh-pages packages/ at `13ec9b0`.
+- **Live SPK serving** verified via curl 200 OK on bureau-paint (afa3f9bd...) and openclaw (ae845edc...).
+- **Submodule sync**: 18/24 publish-branch submodules synced. 6 drift (won't affect production but means future `make refresh` would re-pull old SHAs):
+  - **LFS-budget exhaustion** on 4 bureau-app submodules (diagram, doc, paint, sheets): "This repository exceeded its LFS budget. The account responsible for the budget should increase it." Their app.spk is tracked via Git LFS in the submodule. Workaround: untrack LFS, commit raw, push. Or top up LFS quota.
+  - **openclaw-main publish branch push**: still investigating (force push attempt didn't complete in earlier kill cycles).
+  - **Melusina submodule** (HEAD detached): intentional, no action needed.
+- **pr_ninja/TeleScreen Hub SPK**: not repacked (hits 1 GiB uncompressed limit). Existing catalog SPK kept as-is. Its catalog UI icon was synced (TeleScreen.png canonical) so screen icon parity holds.
+
+### Tools committed at .icon-fix-2026-05-06/
+- `fix_app_icon.py` / `batch_fix.py` / `icon_map.json` / `sync_catalog_icons.py`
+- `repack_scaffolds.sh` / `repack_storerebuild.sh` / `repack_root_pkgdef.sh` / `repack_failed.sh`
+

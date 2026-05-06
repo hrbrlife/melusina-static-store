@@ -1,5 +1,23 @@
 # HANDOFF — 2026-05-05 (afternoon session)
 
+## 2026-05-06 17:50 UTC — OpenClaw catalog vn sync + final push
+
+Discovered the live catalog had Melusina OpenClaw stuck at pkg
+`927a636641c2f963 vn=6` even though the openclaw-main submodule's HEAD
+(`def0cea6 icon refresh 2026-05-06`) had pkg `9889d8a67aec93c4 vn=3`
+in its metadata.json. Cause: the publish-branch deploy hadn't been
+re-aggregated since the submodule bump.
+
+Re-aggregated dist-publish (build-store.sh --no-refresh --aggregate),
+re-planned, and force-pushed publish — now openclaw vn=3 with the
+icon-refresh SPK. Note: the openclaw catalog SPK still embeds an
+*SVG* icons block (~123KB blob per slot) rather than the standardized
+128/256 PNG embed shape. The root sandstorm-pkgdef.capnp asks for
+PNG, but `.sandstorm/sandstorm-pkgdef.capnp` (also present in the
+repo) still uses single-dpi PNG with smaller assets and got copied
+into the local app.spk. Pack-pathway alignment between root pkgdef
+and `.sandstorm/sandstorm-pkgdef.capnp` is a follow-up.
+
 ## 2026-05-06 13:14 UTC — TeleScreen Hub bridge-config fix (re-pack)
 
 After the icon-hires re-pack landed, the catalog audit (unpack each

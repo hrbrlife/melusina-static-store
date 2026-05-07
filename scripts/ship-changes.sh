@@ -232,9 +232,17 @@ for pkg in "${TARGET[@]}"; do
   # subshell-as-condition. Run the subshell separately, capture exit code,
   # then branch — otherwise a failed `make build` lets the script march on
   # to `make pack` and `make publish` and report [OK] on a degenerate ship.
+  #
+  # Env: MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 because the pre-pack hook
+  # auto-bumps app version on every pack, which changes SPK bytes and the
+  # sha256 → manifest pin no longer matches. Without the override, publish
+  # would only succeed on the *first* pack after a manifest update; every
+  # subsequent loop tick would FATAL on hash drift. spkmodule manifest-check
+  # honors this env var (post-iter9 fix in melusina-spkmodule-component).
   (
     cd "$src"
     set -e
+    export MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1
     echo "=== ship-changes: $repo ==="; date
     echo "--- make build ---";   make build
     echo "--- make pack ---";    make pack

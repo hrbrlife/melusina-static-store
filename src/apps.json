@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "e51408b1160c6091597f45a5533a8e6b",
+      "packageId": "67423c5e436b65aebf13706659b63e4f",
       "name": "AiLagoon",
-      "version": "0.7.4-icon-hires",
-      "versionNumber": 13,
+      "version": "0.7.6-isadmin-fix",
+      "versionNumber": 18,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "AiLagoon is the AI model hub pearl for Melusina. Register multiple LLM providers, manage per-model connections, and expose AI capabilities to other pearls via Grapple \u2014 all behind a single Melusina HTTP-out permission to the ai-lagoon sidecar.\n\n## Why AiLagoon\n\n- **Pinned inference transcripts** \u2014 cryptographically anchor any model conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Single HTTP-out permission** \u2014 one security boundary; all provider traffic routes through the sidecar; you grant access once, revoke anytime\n- **Wallet-rooted Grapple capability routing** \u2014 consuming Pearls request AI capabilities via Grapple; routing is scoped to the requesting Pearl; no cross-Pearl data leakage\n\n## Supported Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **OpenAI** \u2014 ChatGPT API (GPT-4o, 4-Turbo, o1, o3, 4.5, 4.6, newer models)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral, DeepSeek, and more through a single proxy\n\n## Published Grapple Capabilities\n\nOther Pearls request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model; useful when a consumer wants a specific capability class (e.g., reasoning)\n\n## Playground\n\nA built-in chat playground lets you test any connected model without leaving the pearl \u2014 useful for validating credentials, checking capabilities, or prototyping prompts before calling them from another Pearl via Grapple.\n\n## Status\n\n*Shipped v0.7.0.* Production-ready AI model hub with Ollama, ChatGPT, OpenRouter; Solana-pinned inference transcripts.",
       "categories": [
@@ -42,18 +42,18 @@
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "00addb8ae65dc4b2df3d7561ec91b109383a9e13b7a0e97a05de5efa1ca03490",
-        "releaseHash": "769fb185495a4171edebc43a8d1b74ca2ddf468fd032a20403bd45188b886d11",
-        "releaseNonce": "67d467ae7a00c21cd636d5810f26bd805015d65cb61a46f0253c494745339f0f",
-        "releaseEntryPda": "AP17g7fBeEC8dNR2JenBb9CRss2fcUYCrbvNwBcfoq1Y",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787070,
-        "authorSig": "s3ZYxGG3yM4XA/5npPo8NKsxApyOcTFn4GEmJFowUsmzVCxm7MA/tBcV77s/uLj7IbeZqbqqoP7fwW4A9XcoBg==",
+        "appHash": "67423c5e436b65aebf13706659b63e4f44fc4fb0c2fd14f65e5d086c3adc9bf6",
+        "releaseHash": "95967a1f8ce8fb4010eb4c42d3e107f5aabbb5932001cb1dbd43a709bdf5b5ae",
+        "releaseNonce": "22f91dadfb7971ac75caac2c8de7ca06f8ee8aee298593c511ee14ac33dffa4d",
+        "releaseEntryPda": "offline-release-entry-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "masterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "licenseSquadsVault": "offline-license-vault-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "signedAtUnix": 1778106306,
+        "authorSig": "87bdc9ba6131f68fa1861efe4cffc10c1df84e0c74ce15e2dd7fc13c53575ecb",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-v4ywsgcuc6wgqvjre99k9j4js21rxt0h"
         }
       },
       "capabilities": {
@@ -182,9 +182,9 @@
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
-      "version": "1.1.1",
-      "versionNumber": 17,
-      "packageId": "c9ef9ec22b26b72f7bfc9d68fa4cbb82",
+      "version": "1.1.2",
+      "versionNumber": 18,
+      "packageId": "70005533f5c0002a90679cab56533e0c",
       "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",
@@ -204,352 +204,32 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "d2c943e821cc0170e4143d0621fdf414.png",
+      "imageId": "1c107ba3e2e486a030867e3b9f6157ee.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1b050397bb4ed06b48905e3a9e46833ae3d9c7a8bb32f662943283a9437216fb",
-        "releaseHash": "4a1575fc3d7a42cf9bf49b4224bf4aaec0f33bdd52a1794c0122f6aee5d6c4aa",
-        "releaseNonce": "9519ae930abbbfcd552d3329f2184c715b7b0bdc9e4943994d66244cf4141543",
+        "appHash": "bb147d6efc530246af0e43c3a1024e38c83acab3b565689132e7758b134d2809",
+        "releaseHash": "fadb3323e63ba92ccb3f6e02ff3ba7e0f1b976c902c75f3ffc43ece1f8ed9c84",
+        "releaseNonce": "b245603918e626b8a30b775a08a68d7fde2f7d4a5d6a760ec2de7162254b1d31",
         "releaseEntryPda": "offline-release-entry-xjdtxcy392qtrf317pyutxt2h5m022h2",
         "masterNftMint": "offline-master-nft-xjdtxcy392qtrf317pyutxt2h5m022h2",
         "licenseSquadsVault": "offline-license-vault-xjdtxcy392qtrf317pyutxt2h5m022h2",
-        "signedAtUnix": 1777997048,
-        "authorSig": "92c1663813d078db166f3440379d92893789dbc7629658833a82c54f32b722c8",
+        "signedAtUnix": 1778146377,
+        "authorSig": "0c530e1a4186cb7769ddc3aa2ab517bc17b1a5363bd60809711fb33889cda666",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
           "multisigPda": "offline-multisig-xjdtxcy392qtrf317pyutxt2h5m022h2"
         }
       },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "botmother",
-        "appName": "BotMother",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "botmother",
-            "pearlName": "BotMother Hub",
-            "pearlType": "user-pearl",
-            "purpose": "The hub Pearl \u2014 defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "botmother-route",
-                  "interface": "BotMother.Route@1",
-                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there."
-                }
-              ],
-              "requests": [
-                {
-                  "name": "ai-text",
-                  "interface": "AiLagoon.AiText@1",
-                  "purpose": "Optional: AI text completion for auto-replies; supplied by AiLagoon Pearl.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Persona definitions",
-                "Routing rules",
-                "Conversation history"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Define personas + routing",
-                  "purpose": "Owner-only: persona prompts, routing rules, channel bindings."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "View hub state",
-                  "purpose": "Read-only operator view."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "BotMother.Route@1",
-                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          },
-          {
-            "pearlId": "telegram",
-            "pearlName": "Telegram Bridge",
-            "pearlType": "infrastructure-pearl",
-            "purpose": "Telegram-webhook handler. Receives Telegram messages, delivers them to the BotMother hub via a Route capability, sends replies back through the Telegram Bot API. Only Pearl in the package allowed to talk to api.telegram.org directly.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "botmother-route",
-                  "interface": "BotMother.Route@1",
-                  "purpose": "The hub-issued capability defining what to do with incoming Telegram messages.",
-                  "required": true
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Telegram bot token",
-                "Per-chat session state"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Configure bot token / webhook",
-                  "purpose": "Owner-only: set the Telegram bot token + webhook URL."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": []
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
-                }
-              ],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": true,
-              "via": "sidecar:HTTP_COMPONENT",
-              "purpose": "Telegram Bot API for sending messages + acknowledging webhooks.",
-              "endpoints": [
-                "https://api.telegram.org/bot{token}/*"
-              ]
-            },
-            "apis": {
-              "capnp": [],
-              "http": [
-                {
-                  "name": "POST /telegram/webhook",
-                  "roleGate": "anyMember"
-                }
-              ]
-            }
-          },
-          {
-            "pearlId": "chatroom",
-            "pearlName": "Chatroom",
-            "pearlType": "user-pearl",
-            "purpose": "Internal chatroom Pearl \u2014 operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "botmother-route",
-                  "interface": "BotMother.Route@1",
-                  "purpose": "Hub-issued routing cap deciding which chatroom messages go to bots.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Chat history",
-                "Uploaded files"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Manage chatroom membership",
-                  "purpose": "Add / remove members."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Send / receive messages",
-                  "purpose": "Standard chat."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
-                }
-              ],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          },
-          {
-            "pearlId": "station",
-            "pearlName": "Station",
-            "pearlType": "admin-pearl",
-            "purpose": "Admin Pearl \u2014 bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "botmother-policy",
-                  "interface": "BotMother.Policy@1",
-                  "purpose": "Issue per-constellation policy: allowed models, retention, content rules."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Station policy"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Push station policy",
-                  "purpose": "Squads-signed; consumed by hub on next request."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": []
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-                    "label": "Squads v4 multisig",
-                    "calls": [
-                      "proposalApprove",
-                      "vaultTransactionExecute"
-                    ]
-                  }
-                ],
-                "purpose": "Squads-rooted policy attestations."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "BotMother.Policy@1",
-                  "purpose": "Issue per-constellation policy: allowed models, retention, content rules.",
-                  "roleGate": "adminOnly"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "description": "BotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own Pearl \u2014 a sealed, per-document container with its own database, message history, and permissions.\n\n## Why BotMother\n\n- **Pinned chatroom snapshots** \u2014 cryptographically anchor any chatroom snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bot Pearl isolation** \u2014 each bot runs in its own sealed container with separate storage, config, and message logs; no bot Pearl can see another unless you explicitly connect via Grapple\n- **Wallet-rooted bot identity** \u2014 bot tokens and credentials stored locally; bot ownership linked to Solana wallet; non-repudiable access logs\n\n## Features\n\n- **Message Routing** \u2014 define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Mermail, or log events to MiniGit\n- **Webhook Integration** \u2014 receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 all messages stay on your server; no third-party bot hosting; no message logging by others\n- **Offline Queuing** \u2014 messages received while offline are queued and processed when the bot reconnects\n\n## Setup\n\n1. Create a bot via BotFather on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n## Security Model\n\n- Viewer \u2014 see bot status and message logs\n- Editor \u2014 configure routing rules, manage chatrooms\n- Admin \u2014 manage bot tokens, permissions, and Grapple connections\n\nEvery message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n## Status\n\n*Production.* Free to install and use on your own server. No subscription, no per-message fees, no limits.",
+      "capabilities": null,
+      "description": "",
       "screenshots": []
     },
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
       "packageId": "0a68629b7e941e463770e23f3d763ea8",
       "name": "Cal Bureau",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 9,
       "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
       "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar Pearl** \u2014 share Pearl-by-Pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
@@ -684,7 +364,7 @@
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
       "packageId": "aa7baec7685ee8c7b5d6b87d3879fe84",
       "name": "CanBoard",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 6,
       "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
       "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board Pearl** \u2014 each board is its own sealed container; share by Pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
@@ -827,7 +507,7 @@
       "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
       "packageId": "360c5eb4aa1e8cf2ff853c526e9b0ae1",
       "name": "cca.sh Client",
-      "version": "0.1.2",
+      "version": "0.1.1",
       "versionNumber": 7,
       "shortDescription": "Client seat for cca.sh \u2014 access financial services, submit approvals, view settled activity.",
       "description": "cca.sh Client is the client-facing mode of cca.sh \u2014 the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** \u2014 cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** \u2014 see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** \u2014 every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** \u2014 see your account balance and transaction history\n- **Submit Transactions** \u2014 request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** \u2014 compare transactions against your books; download statements\n- **Solana-signed Actions** \u2014 every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** \u2014 contacts are identity-only, not stored cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's Pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (approval and sign authority)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
@@ -966,7 +646,7 @@
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
       "packageId": "bdc2fb9d9954323d70e6da60f035d971",
       "name": "cca.sh Config",
-      "version": "0.0.6",
+      "version": "0.0.5",
       "versionNumber": 10,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "categories": [
@@ -1282,7 +962,7 @@
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
       "packageId": "f882335d85e9e44ab1d237cb46a1c6a1",
       "name": "cca.sh Org Member",
-      "version": "0.1.2",
+      "version": "0.1.1",
       "versionNumber": 7,
       "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
       "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped Pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
@@ -1577,7 +1257,7 @@
     {
       "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
       "name": "ChainWatch",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 8,
       "packageId": "c3dc0e57293e31f5a4724de56dbc058e",
       "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller \u2014 stateless, no keys, talks to chain RPCs.",
@@ -1729,9 +1409,9 @@
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
-      "version": "0.1.2",
-      "versionNumber": 7,
-      "packageId": "80b68a1c77ac2ed040de49dc544bc9e3",
+      "version": "0.1.3",
+      "versionNumber": 8,
+      "packageId": "2058b644d7a6e45b31b612585069150e",
       "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
@@ -1754,14 +1434,14 @@
       "imageId": "f2b56f75a58a78894a88c5b4244e49b3.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "70688a4e89c99e1c057a52a3526ce228a3719bbc65f6aef9861b5bbf0dd40d53",
-        "releaseHash": "8362047d86618051dad2a466f47e28b8b66945b4245d6df4a945e6d62f52d5cf",
-        "releaseNonce": "c881fbb655951df61ef8393182ed3b263a7307d05dac34b40929271aaffa7d61",
+        "appHash": "2058b644d7a6e45b31b612585069150e1db97ea49267757466e9c8ca68c61929",
+        "releaseHash": "d5bec0c95f9b770ab60cc4e031a857adb4a68559810037232098f8b6dacb2159",
+        "releaseNonce": "61de7a778d2b4d3260b928ca42d68badf6b2c915cd402b50eec03208805e5097",
         "releaseEntryPda": "offline-release-entry-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
         "masterNftMint": "offline-master-nft-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
         "licenseSquadsVault": "offline-license-vault-kcemn7du4wnacu6uh4aghd2qjm3r86u6",
-        "signedAtUnix": 1778025123,
-        "authorSig": "1a46fb96a50053ac5a2cb99a53a11a827f6b76b3d0e991549dcd3f93a08f5ac7",
+        "signedAtUnix": 1778108338,
+        "authorSig": "4083a6f46fe3c580d44d8841d095826afd934f86f7e82b904d21db59f4eebe43",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -1889,7 +1569,7 @@
       "appId": "pjqare81cxtxjz411jsr4r35fsdpgrwnem6qm82deycfhzw1xz70",
       "packageId": "92fd3349f29844a730a6db7cc4945b15",
       "name": "Consilium",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 6,
       "shortDescription": "Unified messaging hub \u2014 bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
       "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord \u2014 manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** \u2014 cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge Pearl isolation** \u2014 each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** \u2014 swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** \u2014 Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** \u2014 view all conversations in one interface; no context switching\n- **Per-protocol thread history** \u2014 keep full audit trail per channel\n- **Grapple integrations** \u2014 connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** \u2014 full-text search in all bridged conversations\n- **Privacy-first** \u2014 no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium Pearl\n2. Add messaging connections \u2014 one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your Pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
@@ -2043,7 +1723,7 @@
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
       "packageId": "c247efd6ca62fe195e5405415d9d37fb",
       "name": "Contacts Bureau",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 6,
       "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage \u2014 entirely self-hosted.",
       "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why Contacts\n\n- **Pinned contact-list snapshots** \u2014 cryptographically anchor any contact list state to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-list Pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls with per-Pearl access control\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n\n## Features\n\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add to any list\n- **No leakage to address-book scrapers** \u2014 they cannot reach your Pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.",
@@ -2505,7 +2185,7 @@
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
       "packageId": "b440cb8cb5234dfc7cf3f55f073c20b7",
       "name": "Cyberteller Config",
-      "version": "0.1.4",
+      "version": "0.1.3",
       "versionNumber": 9,
       "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
       "categories": [
@@ -3605,9 +3285,9 @@
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "name": "instaco",
-      "version": "0.1.2",
-      "versionNumber": 7,
-      "packageId": "ecdf75a01b6c7a8ea5e9db00c8e855ba",
+      "version": "0.1.3",
+      "versionNumber": 8,
+      "packageId": "892d9b65d205c5387fa8b16980023c6f",
       "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
@@ -3630,14 +3310,14 @@
       "imageId": "92d18734b91cb994660ebcce9830cd97.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ad429cecfd21b9c6e26394984be94310df2b2ad8c5137ba35ba64cee7d0dd33e",
-        "releaseHash": "b10c4ed9d1859e7bb398dbb7210995dd38dfd9fb71d9a80e69d9cbf5f856e236",
-        "releaseNonce": "e168d913333d3f5886acd33f8fef944d527494333e0827ff013aedca48e15e9d",
+        "appHash": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
+        "releaseHash": "eaf1cf3ec663d6105298f06f9ec82b8d189df5443b2aa17f6cae82a5c76cf702",
+        "releaseNonce": "8d75613a03eeda4207b8ea7d085b7ab08bbb556096313b5fba98a679c931af78",
         "releaseEntryPda": "offline-release-entry-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
         "masterNftMint": "offline-master-nft-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
         "licenseSquadsVault": "offline-license-vault-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
-        "signedAtUnix": 1778023280,
-        "authorSig": "f52f665a114768d44d1e0a4d7d668c841fa7729a37acb093c563909b143dc2eb",
+        "signedAtUnix": 1778108338,
+        "authorSig": "795af48a8c5607ec951aadf1a3d1cba666b105f9ee299063b55adce88dafb453",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -3750,9 +3430,9 @@
     {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
-      "version": "0.1.10",
-      "versionNumber": 6,
-      "packageId": "927a636641c2f96361e30b44fe867e94",
+      "version": "0.1.13",
+      "versionNumber": 15,
+      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
       "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
       "categories": [
         "Productivity"
@@ -3771,17 +3451,18 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "04e162d3a950a3065ebd7345dff7b037.png",
+      "marketingVersion": "0.1.11",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "44776600418ac3d115105b453a6712328bbaeae4e5dd55c1808bc66871c4429e",
-        "releaseHash": "0f9c55354d2d96eed1428417dc85b4e236d1a340f6dc90aaed2182ae13e7b4b1",
-        "releaseNonce": "f38203aa51f954a12454d15a5f872a741d94821720f5ab8da5c6ea0d288db2a8",
+        "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
+        "releaseHash": "a6d3afef81c676e6cb4908f86aa18b332a92b1ed52e9828da943cd6f58b23752",
+        "releaseNonce": "21f994b4150c0dea924ea8a0c90a7f35d7fa5876a08ef791ceef4267d6721002",
         "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
         "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1777971247,
-        "authorSig": "fd54700f355335a333f9c61bf1eaffb8cc7e38daf04d28be63778cb3c8dc19af",
+        "signedAtUnix": 1778107489,
+        "authorSig": "05c1feaa1b6b142f4d135cbf0376c83e822c40c8945f08e19aac8289fab49ab6",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -3947,7 +3628,7 @@
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
       "name": "MiniGit",
-      "version": "0.2.1",
+      "version": "0.2.0",
       "versionNumber": 7,
       "packageId": "e512808599abffbcce3cca247d237e80",
       "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
@@ -4140,7 +3821,7 @@
       "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
       "packageId": "5d54984037e8e9bb0030dfcecb18e953",
       "name": "Notes Bureau",
-      "version": "0.1.1",
+      "version": "0.1.0",
       "versionNumber": 6,
       "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
       "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by Pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
@@ -4470,9 +4151,9 @@
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "name": "Sheets Bureau",
-      "version": "1.0.7",
+      "version": "1.1.5",
       "versionNumber": 12,
-      "packageId": "7835003d45805dfbe2967e50131fcbc2",
+      "packageId": "ff8df4eec3bae85ca6b07a6a113cea1f",
       "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
       "categories": [
         "Productivity",
@@ -4514,21 +4195,21 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "36d6f844d1633abc19c2c892c08c7813.png",
+      "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "99e86a61080a8585ae99469cbbcfcad912d361e260177d915d96394f85d0cb20",
-        "releaseHash": "23a1005290f8fea6dac038232e7ad4cde3488fe9eeacb9123428c420d9a68adf",
-        "releaseNonce": "7210e6d92dce65627f5684e5eaee48a23f8d63ef8d6f5f51fea927b1cc2644e1",
-        "releaseEntryPda": "ECxdgLuc5U42dcqvXNm77g5qWpVdi8zeKJ92Y5GS84xd",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787077,
-        "authorSig": "44frXVDoH6AqNOxRd3U5zmwIHxjJmWoXB/o6kzuImbofOD/CG/1Nq3rp7tzEuGVNwzJLLfxejGk0U0OHkZm2Dg==",
+        "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
+        "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
+        "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
+        "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "masterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "signedAtUnix": 1778142421,
+        "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-fz7r56h1kr79g4v65cgxf7dv85ymt3ys"
         }
       },
       "capabilities": {
@@ -4632,7 +4313,7 @@
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
       "name": "Shell Tester",
-      "version": "0.1.6",
+      "version": "0.1.4",
       "versionNumber": 5,
       "packageId": "4368a01e16712f86dd38c1ed9f09e39b",
       "shortDescription": "Melusina Shell Extension Tester",
@@ -4879,16 +4560,15 @@
           }
         ]
       },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/9c5060f77122fced9176401e206d1dfd",
       "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" grain action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
     {
-      "appId": "w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0",
-      "packageId": "83695a91cf1452f16b4365ef52d723d4",
+      "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
+      "packageId": "b9c66114a6b59705c4fb9a83b2eaa962",
       "name": "TeleScreen",
-      "version": "0.0.3",
-      "versionNumber": 3,
+      "version": "0.0.4-icon-hires",
+      "versionNumber": 5,
       "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar \u2014 signed configuration, grant validation",
       "categories": [
         "Productivity",
@@ -4910,7 +4590,7 @@
       "screenshots": [],
       "license": "MIT",
       "marketingVersion": "0.0.2",
-      "imageId": "9d853e8a4c84b6c33df33ded797fb97f.svg",
+      "imageId": "c2b5542bdd9852f66f77539165af7179.png",
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "83695a91cf1452f16b4365ef52d723d438914632301ec7963f451cf573f62a47",
@@ -5180,9 +4860,9 @@
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
-      "version": "1.0.11",
-      "versionNumber": 16,
-      "packageId": "507767d1bed517347e0f3cc91e293dcd",
+      "version": "1.2.0",
+      "versionNumber": 18,
+      "packageId": "a58e4a65b94c15f0b5a4236f1667cd87",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
       "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
@@ -5211,14 +4891,14 @@
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bc94dc403714173d68fc53f70799bb90858a8755269594950482322fa76713dc",
-        "releaseHash": "f41b40be9921d146b0d73c43fb718c78e39521eb674080b2ef8840d432a319e7",
-        "releaseNonce": "de640152f890c122cd31a55042713483edb35fe0ce7534ddeb7f605470839f61",
+        "appHash": "a58e4a65b94c15f0b5a4236f1667cd87b2c7b9ad8fa8aebd34e442a15bb14554",
+        "releaseHash": "a3dfa607d057c5ef82f0a7d405e4c7dd2d6490f93fae590b1a1572374bc50461",
+        "releaseNonce": "21acc52d14ad1b1fc4f4bc6771c8e4de25816cbf59b00d68cbecba357ebabcc2",
         "releaseEntryPda": "offline-release-entry-yea96s13pj9d7ugxzjuc8447u0ar42dr",
         "masterNftMint": "offline-master-nft-yea96s13pj9d7ugxzjuc8447u0ar42dr",
         "licenseSquadsVault": "offline-license-vault-yea96s13pj9d7ugxzjuc8447u0ar42dr",
-        "signedAtUnix": 1777995728,
-        "authorSig": "95d7b81b98ce975417c0c1efee5a962693bf862e691eff1b1ed6d1c4f4c940b9",
+        "signedAtUnix": 1778138062,
+        "authorSig": "dd301172c3ea6c8b1da1cace317b3ee58866b2aed5958f6567da61dda6b5e3fa",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

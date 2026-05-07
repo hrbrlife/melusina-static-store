@@ -25,8 +25,8 @@ IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
 ATTEST_OUT="$OUTPUT_DIR/attest"
-MAX_SPK_SIZE=$((95 * 1024 * 1024))  # 95 MiB (99.6 MB). Keep SPKs in the gh-pages catalog whenever possible — Sandstorm's /install endpoint does NOT follow GitHub's 302 redirect to release-assets.githubusercontent.com SAS URLs (verified 2026-05-05: Teleport at packages-v1 returns "Package download returned error: 404"). The Releases path is reserved for SPKs that physically cannot push to gh-pages (>100 MB git limit).
-GH_HARD_LIMIT_BYTES=100000000  # GitHub's documented push rejection limit (decimal MB)
+MAX_SPK_SIZE=$((100 * 1024 * 1024))  # 100 MiB. Keep SPKs in the gh-pages catalog whenever possible — Sandstorm's /install endpoint does NOT follow GitHub's 302 redirect to release-assets.githubusercontent.com SAS URLs (verified 2026-05-05: Teleport at packages-v1 returns "Package download returned error: 404"). The Releases path is reserved for SPKs that physically cannot push to gh-pages (>100 MiB git limit).
+GH_HARD_LIMIT_BYTES=104857600  # GitHub's documented push rejection limit (100 MiB; the empirical reject message says "100.00 MB" but actual cutoff is 100 * 1024 * 1024 bytes — confirmed via Clawberg push at 104528748 bytes succeeding 2026-05-07)
 RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
@@ -353,6 +353,30 @@ m['imageId'] = image_id
 # Ensure createdAt is an int
 if isinstance(m.get('createdAt'), float):
     m['createdAt'] = int(m['createdAt'])
+
+# updatedAt: when the SPK was last packed. Falls back to file mtime, then
+# git log of the publish-branch checkout, then createdAt. Recorded in ms
+# (UTC) to match createdAt's units.
+import subprocess
+spk_path_for_mtime = os.path.join(os.path.dirname(meta_file), 'app.spk')
+updated_ms = None
+if os.path.isfile(spk_path_for_mtime):
+    try:
+        updated_ms = int(os.path.getmtime(spk_path_for_mtime) * 1000)
+    except Exception:
+        pass
+if updated_ms is None:
+    try:
+        # Last commit time on the publish branch checkout (or whatever HEAD
+        # the submodule is currently at). %ct is committer-date Unix seconds.
+        r = subprocess.run(
+            ['git', '-C', os.path.dirname(meta_file), 'log', '-1', '--format=%ct'],
+            capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            updated_ms = int(r.stdout.strip()) * 1000
+    except Exception:
+        pass
+m['updatedAt'] = updated_ms or m.get('createdAt') or 0
 
 # Full RELEASE.json is copied to /attest/<appId>/RELEASE.json. The catalog keeps
 # the public summary needed for install UI preflight and e2e validation.

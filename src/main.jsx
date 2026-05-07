@@ -1087,7 +1087,7 @@ function CardSlideshow({ app, shots }) {
 function AppCard({ app, onSelect, onInstall }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
-  const updatedAgo = timeAgo(app.createdAt);
+  const updatedAgo = timeAgo(app.updatedAt || app.createdAt);
 
   return (
     <div role="button" tabIndex={0}
@@ -2054,9 +2054,9 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                   build {app.versionNumber}
                 </span>
               )}
-              {timeAgo(app.createdAt) && (
+              {timeAgo(app.updatedAt || app.createdAt) && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {'\u00b7'} updated {timeAgo(app.createdAt)}
+                  {'\u00b7'} updated {timeAgo(app.updatedAt || app.createdAt)}
                 </span>
               )}
               {app.author?.name && (

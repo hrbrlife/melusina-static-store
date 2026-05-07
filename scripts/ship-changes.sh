@@ -290,9 +290,14 @@ fi
 step "catalog rebuild: bump pointers for shipped apps + build + plan + apply"
 cd "$ROOT"
 
-# Bump submodule pointers for shipped apps. Avoid the wholesale `make refresh`
-# which would also bump every other stale submodule pointer and risk
-# surprise-shipping unaudited state.
+# Reflect each shipped app into the catalog. Two paths:
+#   - submodule entry (in .gitmodules): bump pointer to origin/publish so
+#     'git submodule update' in the catalog brings the new tree.
+#   - plain-dir entry: run scripts/stage-into-catalog.sh to copy the freshly-
+#     packed SPK from the source repo into packages/<repo>/<slug>/, regen
+#     metadata.json (version sync) + RELEASE.json (offline-stub).
+# Avoid the wholesale `make refresh` which would also bump every other stale
+# submodule pointer.
 for repo in "${SHIPPED[@]}"; do
   pkg_dir=""
   while IFS= read -r d; do
@@ -307,6 +312,34 @@ for repo in "${SHIPPED[@]}"; do
       git fetch -q origin publish 2>/dev/null || true
       git checkout -q origin/publish 2>/dev/null || true
     )
+    git add "$pkg_dir" 2>/dev/null || true
+  else
+    # Plain-dir catalog entry. Find the source repo + its just-built SPK,
+    # find the catalog slug subdir(s), call stage-into-catalog for each.
+    if ! src=$(resolve_source "$pkg_dir"); then continue; fi
+    spk="$src/app.spk"
+    if [[ ! -f "$spk" ]]; then
+      warn "  $repo: plain-dir catalog entry but $spk missing — skipping stage-into-catalog"
+      continue
+    fi
+    # stage-into-catalog.sh defaults to a hardcoded RELEASE_JSON_STUB at
+    # /home/user/Desktop/INSTASYS_CHAT_stripped/spkmodule/bin/... that may
+    # not exist on this host. Override via env to the source's own spkmodule
+    # bin (every spkmodule-using app ships release-json-stub there).
+    rjs=""
+    for cand in "$src/spkmodule/bin/release-json-stub" \
+                "$DESKTOP_ROOT/melusina_botmother/spkmodule/bin/release-json-stub"; do
+      [[ -x "$cand" ]] && { rjs="$cand"; break; }
+    done
+    while IFS= read -r slug_dir; do
+      [[ -f "$slug_dir/metadata.json" ]] || continue
+      info "  staging $repo SPK into catalog slug $(basename "$slug_dir")"
+      stage_log="$LOG_DIR/stage-${repo}-$(date +%Y%m%d-%H%M%S).log"
+      RELEASE_JSON_STUB="$rjs" bash "$SCRIPT_DIR/stage-into-catalog.sh" \
+        "$spk" "$slug_dir" >"$stage_log" 2>&1 \
+        || { warn "    stage-into-catalog failed for $slug_dir (log: $stage_log)";
+             tail -5 "$stage_log" | sed "s|^|      |"; }
+    done < <(find "$pkg_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
     git add "$pkg_dir" 2>/dev/null || true
   fi
 done

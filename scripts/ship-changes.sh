@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+#
+# ship-changes.sh — fast per-app ship loop for the Melusina static_store.
+#
+# For each catalog submodule:
+#   1. resolve source repo on this host (alias map / .source-repo / sibling)
+#   2. fetch origin/publish; skip if HEAD is not ahead of origin/publish
+#   3. run `make build && make pack && make publish` in the source repo
+#
+# After the per-app pass, if anything shipped, refresh the catalog submodule
+# pointers and force-push the catalog publish branch (`make refresh` then
+# `MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish`).
+#
+# Designed for a 7-min outer loop. Idempotent: when nothing changed, the
+# whole pass is just N quick git fetches and a printed summary. Per-app
+# failures do not stop the rest of the loop.
+#
+# `make dev` is intentionally NOT run — `make pack` does its own bind-mount
+# discipline (spkmodule core.mk:148-190), so dev is redundant for automation
+# and only slows the loop.
+#
+# Usage:
+#   scripts/ship-changes.sh                       # all apps, then catalog
+#   scripts/ship-changes.sh --apps "ccash openclaw-main"
+#   scripts/ship-changes.sh --skip-catalog        # ship apps only, don't rebuild catalog
+#   scripts/ship-changes.sh --skip-fetch          # use local refs, don't network-fetch publish branches
+#   scripts/ship-changes.sh --dry-run             # print plan, ship nothing
+#
+# Env:
+#   DESKTOP_ROOT                                  # default: $HOME/Desktop
+#   MELUSINA_PUBLISH_AUTHORITATIVE                # default: 1 when catalog rebuild needed
+#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT"
+
+DESKTOP_ROOT="${DESKTOP_ROOT:-$HOME/Desktop}"
+PACKAGES_DIR="${PACKAGES_DIR:-packages}"
+LOG_DIR="$ROOT/.build-tmp"
+
+APPS_FILTER=""
+SKIP_CATALOG=false
+SKIP_FETCH=false
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apps)         APPS_FILTER="$2"; shift 2 ;;
+    --skip-catalog) SKIP_CATALOG=true; shift ;;
+    --skip-fetch)   SKIP_FETCH=true;   shift ;;
+    --dry-run)      DRY_RUN=true;      shift ;;
+    -h|--help)
+      sed -n '/^# Usage:/,/^# Env:/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+      exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+# --- printing -----------------------------------------------------------------
+ok()    { printf '\033[0;32m[OK]\033[0m   %s\n' "$*"; }
+info()  { printf '\033[0;36m[INFO]\033[0m %s\n' "$*"; }
+warn()  { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
+fail()  { printf '\033[0;31m[FAIL]\033[0m %s\n' "$*"; }
+skip()  { printf '\033[0;90m[SKIP]\033[0m %s\n' "$*"; }
+step()  { printf '\033[1;36m[STEP]\033[0m %s\n' "$*"; }
+
+# --- alias map: catalog dir-name -> path under $DESKTOP_ROOT ------------------
+# Mirrors scripts/publish-apps.sh and the user's auto-memory dir-mapping.
+# Add aliases here as repos move.
+declare -A ALIAS_MAP=(
+  [ccash]="ccash_go_htmx"
+  [client_collection]="client_collection"
+  [AITX-Procedures]="DueProcess"
+  [pr_ninja]="pr_ninja"
+  [instaco-app]="instaco.app"
+  [openclaw-main]="Clawberg"
+  [MELUSINA_BOTMOTHER]="melusina_botmother"
+  [INSTASYS_MAIL]="store-rebuild/INSTASYS_MAIL"
+  [MiniGit]="MiniGit"
+  [shell_tester]="store-rebuild/shell_tester"
+  [melusina-galactic-council]="store-rebuild/melusina-galactic-council"
+  [melusina-bureau-doc-app]="store-rebuild/melusina-bureau-doc-app"
+  [melusina-bureau-diagram-app]="store-rebuild/melusina-bureau-diagram-app"
+  [melusina-bureau-paint-app]="store-rebuild/melusina-bureau-paint-app"
+  [melusina-bureau-sheets-app]="store-rebuild/melusina-bureau-sheets-app"
+  [melusina-namedcoin-app]="namedcoin-work/melusina-namedcoin-app"
+)
+
+resolve_source() {
+  local pkg_dir="$1"
+  local repo
+  repo="$(basename "$pkg_dir")"
+
+  # 1. per-package override file: a single absolute path in <pkg>/.source-repo
+  if [[ -f "$pkg_dir/.source-repo" ]]; then
+    local override
+    override="$(grep -v '^[[:space:]]*#' "$pkg_dir/.source-repo" | head -1 | xargs)"
+    if [[ -n "$override" && -d "$override/.git" ]]; then
+      echo "$override"; return 0
+    fi
+  fi
+
+  # 2. alias map -> $DESKTOP_ROOT/<aliased>
+  if [[ -n "${ALIAS_MAP[$repo]:-}" ]]; then
+    local p="$DESKTOP_ROOT/${ALIAS_MAP[$repo]}"
+    [[ -d "$p/.git" ]] && { echo "$p"; return 0; }
+  fi
+
+  # 3. direct sibling: $DESKTOP_ROOT/<repo>
+  local p="$DESKTOP_ROOT/$repo"
+  [[ -d "$p/.git" ]] && { echo "$p"; return 0; }
+
+  return 1
+}
+
+# --- enumerate target apps ----------------------------------------------------
+declare -a TARGET=()
+
+if [[ -n "$APPS_FILTER" ]]; then
+  # Match by package-dir basename (the directory under packages/<author>/).
+  for slug in $APPS_FILTER; do
+    found=false
+    while IFS= read -r d; do
+      if [[ "$(basename "$d")" == "$slug" ]]; then
+        TARGET+=("$d"); found=true; break
+      fi
+    done < <(find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort)
+    $found || warn "filter: no package dir matches '$slug'"
+  done
+else
+  while IFS= read -r d; do
+    TARGET+=("$d")
+  done < <(find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort)
+fi
+
+if (( ${#TARGET[@]} == 0 )); then
+  fail "no apps to scan"
+  exit 1
+fi
+
+info "scanning ${#TARGET[@]} app(s)"
+$DRY_RUN && info "DRY RUN — no commands will be executed"
+echo
+
+mkdir -p "$LOG_DIR"
+
+# --- per-app loop -------------------------------------------------------------
+declare -a SHIPPED=()
+declare -a FAILED=()
+declare -a SKIPPED=()
+
+for pkg in "${TARGET[@]}"; do
+  repo="$(basename "$pkg")"
+
+  if ! src="$(resolve_source "$pkg")"; then
+    skip "$repo: no source repo on this host"
+    SKIPPED+=("$repo:no-source")
+    continue
+  fi
+
+  if [[ ! -f "$src/Makefile" ]]; then
+    skip "$repo: source has no Makefile ($src)"
+    SKIPPED+=("$repo:no-makefile")
+    continue
+  fi
+
+  # Detect changes ahead of origin/publish, plus dirty working tree (informational).
+  pushd "$src" >/dev/null
+  if ! $SKIP_FETCH; then
+    git fetch -q origin publish 2>/dev/null || true
+  fi
+  if ! git rev-parse --verify -q origin/publish >/dev/null 2>&1; then
+    warn "$repo: no origin/publish ref — first publish? shipping anyway"
+    ahead=1
+  else
+    ahead=$(git rev-list --count origin/publish..HEAD 2>/dev/null || echo 0)
+  fi
+  dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  popd >/dev/null
+
+  if (( dirty > 0 )); then
+    warn "$repo: $dirty uncommitted file(s) in $src — pack will include working-tree state"
+  fi
+
+  if (( ahead == 0 )); then
+    skip "$repo: HEAD == origin/publish (nothing to ship)"
+    SKIPPED+=("$repo:no-changes")
+    continue
+  fi
+
+  step "$repo: $ahead commit(s) ahead — shipping from $src"
+  if $DRY_RUN; then
+    info "  would: cd $src && make build && make pack && make publish"
+    SHIPPED+=("$repo (dry-run)")
+    continue
+  fi
+
+  log="$LOG_DIR/ship-${repo}-$(date +%Y%m%d-%H%M%S).log"
+
+  # NOTE: bash's `set -e` is silently suppressed inside `if ( ... )`
+  # subshell-as-condition. Run the subshell separately, capture exit code,
+  # then branch — otherwise a failed `make build` lets the script march on
+  # to `make pack` and `make publish` and report [OK] on a degenerate ship.
+  (
+    cd "$src"
+    set -e
+    echo "=== ship-changes: $repo ==="; date
+    echo "--- make build ---";   make build
+    echo "--- make pack ---";    make pack
+    echo "--- make publish ---"; make publish
+    echo "=== done ==="
+  ) >"$log" 2>&1
+  rc=$?
+  if (( rc == 0 )); then
+    ok "$repo: shipped (log: $log)"
+    SHIPPED+=("$repo")
+  else
+    fail "$repo: ship failed (rc=$rc, log: $log)"
+    tail -25 "$log" | sed "s|^|    [$repo] |"
+    FAILED+=("$repo")
+  fi
+done
+
+# --- per-app summary ----------------------------------------------------------
+echo
+info "===== per-app summary ====="
+echo "  shipped: ${#SHIPPED[@]}"
+echo "  skipped: ${#SKIPPED[@]}"
+echo "  failed : ${#FAILED[@]}"
+for r in "${SHIPPED[@]}"; do echo "    + $r"; done
+for r in "${FAILED[@]}";  do echo "    ! $r"; done
+
+# --- catalog rebuild ----------------------------------------------------------
+if (( ${#SHIPPED[@]} == 0 )); then
+  info "no apps shipped — skipping catalog rebuild"
+  (( ${#FAILED[@]} == 0 )) && exit 0 || exit 1
+fi
+
+if $SKIP_CATALOG; then
+  info "--skip-catalog set — leaving catalog untouched"
+  (( ${#FAILED[@]} == 0 )) && exit 0 || exit 1
+fi
+
+if $DRY_RUN; then
+  info "would: cd $ROOT && MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish"
+  exit 0
+fi
+
+step "catalog rebuild: refresh + build + plan + apply"
+cd "$ROOT"
+
+catalog_log="$LOG_DIR/ship-catalog-$(date +%Y%m%d-%H%M%S).log"
+# `make publish` (no APPS) chains: refresh → build-store.sh → plan → apply.
+# We don't pass APPS — per-app pushes already happened in the loop above, so
+# this just picks up the bumped submodule pointers and any plain-dir working-
+# tree changes, then force-pushes the catalog publish branch.
+if (
+  set -e
+  echo "=== make publish (authoritative) ==="; date
+  MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish
+) 2>&1 | tee "$catalog_log"; then
+  ok "catalog deployed (log: $catalog_log)"
+  (( ${#FAILED[@]} == 0 )) && exit 0 || exit 1
+else
+  fail "catalog rebuild failed (log: $catalog_log)"
+  exit 1
+fi

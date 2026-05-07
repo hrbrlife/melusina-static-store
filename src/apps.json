@@ -2413,11 +2413,11 @@
     },
     {
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
-      "name": "Docs Bureau",
-      "version": "1.0.4",
-      "versionNumber": 9,
-      "packageId": "427279adaa140a775cb755cd27e10084",
-      "shortDescription": "Rich-text documents with CRDT sync, unlimited simultaneous editors, HTML export \u2014 self-hosted.",
+      "name": "Doc Bureau",
+      "version": "1.0.2",
+      "versionNumber": 1,
+      "packageId": "561239828b1707d7f7d72c4f38bb8f5f",
+      "shortDescription": "Sovereign document grain (Doc Bureau)",
       "categories": [
         "Productivity",
         "Office"
@@ -2426,155 +2426,55 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-bureau-doc-app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776663049000,
+      "createdAt": 1776663049,
       "screenshots": [
         {
-          "url": "screenshots/screenshot_docs.png",
-          "caption": "Collaborative document editing"
+          "url": "screenshot_docs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs2.png",
-          "caption": "Multi-user document review"
+          "url": "screenshot_docs2.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_graphs.png",
-          "caption": "Diagrams and flowcharts"
+          "url": "screenshot_graphs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_image.png",
-          "caption": "Layered image editor"
+          "url": "screenshot_image.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_sheets.png",
-          "caption": "Spreadsheet with live formulas"
+          "url": "screenshot_sheets.png",
+          "caption": ""
         }
       ],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "561bb356d573a81f7f1246ed9e119b55.png",
-      "updatedAt": 1778064763466,
+      "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
+      "updatedAt": 1778158269098,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "688267a427d38d2a45d5d117baf835fe2df2034d284b75e471fd294a86b13676",
-        "releaseHash": "963f60ca29fdbcbb8f6a7b729efd1dcfb54a0442fbaecdfa6f44ee8208c0dc63",
-        "releaseNonce": "c3ed5485ac5a64296394e7d60ebdee770aaf8caad7d8a0d92282e7f3dd39d4e1",
-        "releaseEntryPda": "3wmJsTKYAkffN3pFWjYuktUpFRJBnkwypf1LcG4BL7B4",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787075,
-        "authorSig": "+hTbeY2MDuerNKmVtyVV7X2hkGlzO3/uAsx4e8QFk67kz2qS1SWy5K2TyAuBEz3uwt+9MrXNP9oY1iYfaAMCCg==",
+        "appHash": "1ec58e42e93db9556d204d274825928f2d20bc0864037db8fb08a0c633ca120c",
+        "releaseHash": "c5f0353d874b4a975a68418050e62f9d4ba64f8e54da52d2cfb45040979caba4",
+        "releaseNonce": "50b99f5f00e21b97721c55108d4d20b32f543b8feb6c7b02f65c8f2c000e30f9",
+        "releaseEntryPda": "offline-release-entry-v38a293urgrhgpppr5q15j3chfv965zh",
+        "masterNftMint": "offline-master-nft-v38a293urgrhgpppr5q15j3chfv965zh",
+        "licenseSquadsVault": "offline-license-vault-v38a293urgrhgpppr5q15j3chfv965zh",
+        "signedAtUnix": 1778158015,
+        "authorSig": "d653e47fe3c0cc4aedbc1da7c676562084aa1a1387e8689077566bbb6bddce3f",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-v38a293urgrhgpppr5q15j3chfv965zh"
         }
       },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "doc-bureau",
-        "appName": "Docs Bureau",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "doc-bureau",
-            "pearlName": "Docs Bureau",
-            "pearlType": "user-pearl",
-            "purpose": "Rich-text document Pearl \u2014 long-form prose, tables, embedded diagrams. Local-first storage; each document is a Pearl-scoped file; Pearls can claim a Read or Embed capability via Grapple.",
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the editor + file I/O."
-            },
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "doc-read",
-                  "interface": "BureauDoc.Read@1",
-                  "purpose": "Read a specific document's text/markdown for downstream rendering."
-                },
-                {
-                  "name": "doc-attach-image",
-                  "interface": "BureauDoc.AttachImage@1",
-                  "purpose": "Inverse: a Bureau Paint or Diagram Pearl can offer this capability so Doc embeds the image live."
-                }
-              ],
-              "requests": [
-                {
-                  "name": "diagram-embed",
-                  "interface": "BureauDiagram.Embed@1",
-                  "purpose": "Embed a live diagram from Diagrams Bureau.",
-                  "required": false
-                },
-                {
-                  "name": "contact-pick",
-                  "interface": "BureauContacts.Pick@1",
-                  "purpose": "Pick a contact for mailmerge fields.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Document permissions",
-                  "purpose": "Owner-only: per-document share + Grapple grants."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "View / edit docs",
-                  "purpose": "Standard editing for permitted users."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "BureauDoc.Read@1",
-                  "purpose": "Read a specific document's text/markdown for downstream rendering.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "BureauDoc.AttachImage@1",
-                  "purpose": "Inverse: a Bureau Paint or Diagram Pearl can offer this capability so Doc embeds the image live.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
+      "capabilities": null,
       "description": "Docs Bureau is the document editor pearl of the Melusina Bureau office suite. Rich-text documents with real-time collaborative editing, no conflicts, and unlimited simultaneous editors \u2014 entirely on your server.\n\n## Why Docs\n\n- **Pinned document revisions** \u2014 cryptographically anchor any document snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Conflict-free CRDT sync** \u2014 unlimited simultaneous editors; Yjs CRDT merges edits automatically without conflicts\n- **Per-document Pearl** \u2014 each document is a sealed container; Grapple-scoped roles (viewer, commenter, editor, admin) enforced server-side\n\n## Features\n\n- **Real-time collaboration** \u2014 see who's connected, watch edits appear as they happen, presence indicators\n- **Rich formatting** \u2014 bold, italic, underline, strikethrough, headings, bullets, numbered lists, blockquotes, code blocks\n- **Sections** \u2014 organize long documents into named sections\n- **Tables** \u2014 insert and edit tables inline\n- **HTML export** \u2014 no lock-in; leave anytime with full fidelity\n\n## Suite integration\n\nDocs Bureau speaks Grapple to the suite \u2014 link a spreadsheet to a proposal, reference a diagram in a design doc, attach a contact card, embed a calendar into an agenda.\n\n## Status\n\n*Shipped v1.0.4.* Rich-text documents with Yjs CRDT, real-time collaboration, Solana-pinned revisions."
     },
     {

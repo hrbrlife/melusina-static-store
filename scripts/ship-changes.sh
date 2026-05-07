@@ -40,6 +40,7 @@ cd "$ROOT"
 DESKTOP_ROOT="${DESKTOP_ROOT:-$HOME/Desktop}"
 PACKAGES_DIR="${PACKAGES_DIR:-packages}"
 LOG_DIR="$ROOT/.build-tmp"
+STATE_DIR="$LOG_DIR/shipped"
 
 APPS_FILTER=""
 SKIP_CATALOG=false
@@ -167,31 +168,38 @@ for pkg in "${TARGET[@]}"; do
     continue
   fi
 
-  # Detect changes ahead of origin/publish, plus dirty working tree (informational).
+  # publish-to-branch creates an orphan publish branch (no shared history with
+  # main), so `git rev-list origin/publish..HEAD` is always non-zero on
+  # parallel histories — useless as a gate. Instead, record the main HEAD SHA
+  # at last successful ship in $STATE_DIR/<repo>.sha and skip if HEAD matches.
   pushd "$src" >/dev/null
-  if ! $SKIP_FETCH; then
-    git fetch -q origin publish 2>/dev/null || true
-  fi
-  if ! git rev-parse --verify -q origin/publish >/dev/null 2>&1; then
-    warn "$repo: no origin/publish ref — first publish? shipping anyway"
-    ahead=1
-  else
-    ahead=$(git rev-list --count origin/publish..HEAD 2>/dev/null || echo 0)
-  fi
+  current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
   dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
   popd >/dev/null
+
+  state_file="$STATE_DIR/$repo.sha"
+  recorded_sha=""
+  [[ -f "$state_file" ]] && recorded_sha="$(cat "$state_file" 2>/dev/null | tr -d '[:space:]')"
 
   if (( dirty > 0 )); then
     warn "$repo: $dirty uncommitted file(s) in $src — pack will include working-tree state"
   fi
 
-  if (( ahead == 0 )); then
-    skip "$repo: HEAD == origin/publish (nothing to ship)"
-    SKIPPED+=("$repo:no-changes")
+  # Gate: skip when main HEAD matches the SHA recorded at last successful ship.
+  # Dirty working-tree files are pack-bump artifacts (.sandstorm/sandstorm-files.list,
+  # .sandstorm/sandstorm-pkgdef.capnp) — expected post-pack and not intended for
+  # ship until committed. A user with real changes commits them, which moves HEAD.
+  if [[ -n "$recorded_sha" && "$recorded_sha" == "$current_sha" ]]; then
+    skip "$repo: HEAD ${current_sha:0:8} matches last ship — nothing to do"
+    SKIPPED+=("$repo:already-shipped")
     continue
   fi
 
-  step "$repo: $ahead commit(s) ahead — shipping from $src"
+  if [[ -z "$recorded_sha" ]]; then
+    step "$repo: no ship state recorded — shipping (HEAD=${current_sha:0:8}) from $src"
+  else
+    step "$repo: HEAD moved ${recorded_sha:0:8} -> ${current_sha:0:8} — shipping from $src"
+  fi
   if $DRY_RUN; then
     info "  would: cd $src && make build && make pack && make publish"
     SHIPPED+=("$repo (dry-run)")
@@ -216,6 +224,8 @@ for pkg in "${TARGET[@]}"; do
   rc=$?
   if (( rc == 0 )); then
     ok "$repo: shipped (log: $log)"
+    mkdir -p "$STATE_DIR"
+    echo "$current_sha" > "$state_file"
     SHIPPED+=("$repo")
   else
     fail "$repo: ship failed (rc=$rc, log: $log)"

@@ -168,24 +168,25 @@ for pkg in "${TARGET[@]}"; do
     continue
   fi
 
-  # Only attempt apps that use the canonical spkmodule discipline. Bespoke
-  # Makefiles may use PGP signing (banned per project memory), have non-
-  # standard publish flows, or lack the build/pack/publish targets the
-  # script expects. Mark them skipped so the operator can decide: migrate
-  # to spkmodule, or leave bespoke and add a .melusina/ship-skip with
-  # custom-flow notes.
-  if ! grep -q '^include spkmodule/' "$src/Makefile" 2>/dev/null; then
-    skip "$repo: bespoke Makefile (no spkmodule include) — needs migration or custom flow"
-    SKIPPED+=("$repo:bespoke")
+  # Skip apps that explicitly opt out via .melusina/ship-skip marker.
+  # Place this BEFORE the bespoke check so apps with explicit operator
+  # notes ("PGP banned, needs migration", "9-iter packaging issue", etc.)
+  # show their note instead of the generic "bespoke Makefile" message.
+  if [[ -f "$src/.melusina/ship-skip" ]]; then
+    reason="$(head -1 "$src/.melusina/ship-skip" 2>/dev/null | tr -d '\n')"
+    skip "$repo: ship-skip — ${reason:-no reason given}"
+    SKIPPED+=("$repo:ship-skip")
     continue
   fi
 
-  # Skip apps that explicitly opt out via .melusina/ship-skip marker.
-  # Earliest gate so we don't even read git state for known-broken apps.
-  if [[ -f "$src/.melusina/ship-skip" ]]; then
-    reason="$(head -1 "$src/.melusina/ship-skip" 2>/dev/null | tr -d '\n')"
-    skip "$repo: ship-skip marker — ${reason:-no reason given}"
-    SKIPPED+=("$repo:ship-skip")
+  # Only attempt apps that use the canonical spkmodule discipline. Bespoke
+  # Makefiles may use PGP signing (banned per project memory), have non-
+  # standard publish flows, or lack the build/pack/publish targets the
+  # script expects. The user can document each one's status by adding a
+  # .melusina/ship-skip marker; absent that, we skip with a generic note.
+  if ! grep -q '^include spkmodule/' "$src/Makefile" 2>/dev/null; then
+    skip "$repo: bespoke Makefile (no spkmodule include) — needs migration or custom flow"
+    SKIPPED+=("$repo:bespoke")
     continue
   fi
 

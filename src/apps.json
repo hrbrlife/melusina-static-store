@@ -1417,6 +1417,53 @@
       }
     },
     {
+      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+      "name": "Claudeberg",
+      "version": "0.1.13",
+      "versionNumber": 15,
+      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
+      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776987130000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.11",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "updatedAt": 1778107489133,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
+        "releaseHash": "a6d3afef81c676e6cb4908f86aa18b332a92b1ed52e9828da943cd6f58b23752",
+        "releaseNonce": "21f994b4150c0dea924ea8a0c90a7f35d7fa5876a08ef791ceef4267d6721002",
+        "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "signedAtUnix": 1778107489,
+        "authorSig": "05c1feaa1b6b142f4d135cbf0376c83e822c40c8945f08e19aac8289fab49ab6",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-mjgmurff66jn7m1xtr6hk106m867vvxu"
+        }
+      },
+      "capabilities": null,
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "screenshots": []
+    },
+    {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
       "version": "0.1.3",
@@ -2707,53 +2754,6 @@
       },
       "capabilities": null,
       "description": "",
-      "screenshots": []
-    },
-    {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Melusina OpenClaw",
-      "version": "0.1.13",
-      "versionNumber": 15,
-      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
-      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776987130000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.11",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1778107489133,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
-        "releaseHash": "a6d3afef81c676e6cb4908f86aa18b332a92b1ed52e9828da943cd6f58b23752",
-        "releaseNonce": "21f994b4150c0dea924ea8a0c90a7f35d7fa5876a08ef791ceef4267d6721002",
-        "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1778107489,
-        "authorSig": "05c1feaa1b6b142f4d135cbf0376c83e822c40c8945f08e19aac8289fab49ab6",
-        "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-mjgmurff66jn7m1xtr6hk106m867vvxu"
-        }
-      },
-      "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {

@@ -40,6 +40,7 @@
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
+      "updatedAt": 1778106306189,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "67423c5e436b65aebf13706659b63e4f44fc4fb0c2fd14f65e5d086c3adc9bf6",
@@ -205,6 +206,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "1c107ba3e2e486a030867e3b9f6157ee.png",
+      "updatedAt": 1778155799102,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "bb147d6efc530246af0e43c3a1024e38c83acab3b565689132e7758b134d2809",
@@ -253,6 +255,7 @@
       },
       "screenshots": [],
       "imageId": "f166bad0c103ed1c45939b2c980a9a2a.png",
+      "updatedAt": 1778064984526,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "bfd47419bdfc08eeade3327811b55fe6d4695c84c8676ef21a79664f8340d154",
@@ -387,6 +390,7 @@
       },
       "screenshots": [],
       "imageId": "3c5d87c1716fe1c23d4450cde68023ba.png",
+      "updatedAt": 1778064595370,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8c58fa752945642ffb68ca66c49aee7b3a81d6ffd88f8592d37328da40980d39",
@@ -531,6 +535,7 @@
       },
       "screenshots": [],
       "imageId": "a04d0e8ca56e9509fd1754a9111b4ee8.png",
+      "updatedAt": 1778064633634,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1f5e03a24fa908baf251ccaac5cf6efcc4493931acc1aad73c91bd688cafd4d5",
@@ -670,6 +675,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.3",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
+      "updatedAt": 1778155798678,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c9267947e78bbae3778684134ea942fe666beabcce70706b5b4d81f35ba6883d",
@@ -844,6 +850,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.1",
       "imageId": "171e254c68669c061150533245e42212.png",
+      "updatedAt": 1778155798646,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fb50255094e64afcf68daf2639926a5c4ed474846e2a6a8d277e9108b0cb33a1",
@@ -986,6 +993,7 @@
       },
       "screenshots": [],
       "imageId": "dc69cdcd227631bed4a9b9acaacbed09.png",
+      "updatedAt": 1778064646122,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "775f44f58fa67fede4ad8a73180c547574c581a24fe0743e16969c2b23ba95c2",
@@ -1099,10 +1107,10 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "3515d961fae76080d4e446de8fbb582d",
+      "packageId": "155d3e1bef01daa2c07c16779883b58e",
       "name": "cca.sh Wholesale",
       "version": "0.2.3",
-      "versionNumber": 9,
+      "versionNumber": 5,
       "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
@@ -1123,18 +1131,19 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.2.1",
+      "marketingVersion": "0.2.3",
       "imageId": "171e254c68669c061150533245e42212.png",
+      "updatedAt": 1778155798654,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f87ca0094502012d94727adbbf0521f879290a83427b6605f901dfdbf1334d68",
-        "releaseHash": "88319466bedbc6581fd69d116119941e3587ddf5180a4ee3194ca4288c88dc0f",
-        "releaseNonce": "97d0b9036f79b59f6c3e66b23e7c70ad864bf7d0ea3a63fcd0e2820c928cb759",
+        "appHash": "155d3e1bef01daa2c07c16779883b58e27914d3ad74d6ed44c90c27aaae36827",
+        "releaseHash": "16718fc03019561b3ef6f37e99b448c36ba23f5d474da9ea74112a29c1c629e3",
+        "releaseNonce": "fe0d629b1fd1c593fc35449142d027479e8e0448c7ee9fb38aba34d335391d11",
         "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
         "masterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
         "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "signedAtUnix": 1778024683,
-        "authorSig": "b75636e2fcda6e367b055d1ec7372eac0f3596abb960a95450b213d39c36a93a",
+        "signedAtUnix": 1778149525,
+        "authorSig": "bae42a85b973bd4a8970e7cd87bff8738d7b4958ec27575d825625ff3c68ff5f",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -1283,6 +1292,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "sha256": "2b98c08efda03658675aa7967573066c01c58e4d6f14c449445356ae883095aa",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
+      "updatedAt": 1778064893778,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "b6459b68a7d88698744be32ce374aca4710fc7ac50b3f37014730ef45b5cfd62",
@@ -1431,7 +1441,8 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
-      "imageId": "f2b56f75a58a78894a88c5b4244e49b3.png",
+      "imageId": "9fc0bc2534da8b218446ec06dfdf0204.svg",
+      "updatedAt": 1778155799198,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2058b644d7a6e45b31b612585069150e1db97ea49267757466e9c8ca68c61929",
@@ -1593,6 +1604,7 @@
       },
       "screenshots": [],
       "imageId": "0f5445d499983ab6c7b937b3a2840ffa.png",
+      "updatedAt": 1778064607726,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8aa8b86190f6406185739bccf69b0f2cbfbebf6dc2ba442ccd1705ae96a2b05f",
@@ -1747,6 +1759,7 @@
       },
       "screenshots": [],
       "imageId": "26a19bda4c5efe30f10f6a4883b65381.png",
+      "updatedAt": 1778064568574,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2f1239956ac026ac9b15e5007d04f7790fbf20d73d4d150fe0e527b5fe7f960c",
@@ -1882,6 +1895,7 @@
       },
       "screenshots": [],
       "imageId": "695055d514268edaeff050b55f227d3e.png",
+      "updatedAt": 1778064620378,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a082badff63a9e46e5cc189653a6bad98a1c56c54dee390ba2f76ac45726b4fc",
@@ -2041,6 +2055,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
+      "updatedAt": 1778064825070,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3351a94e5138bafa1893d9ab073c89b65f1827b6b7350961e412184b39e74927",
@@ -2209,6 +2224,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
+      "updatedAt": 1778155798698,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f88720d3e1ac145cf74fdf8ba2358d7e3cbe9a59c7db264d3bb77bab1268e57c",
@@ -2403,6 +2419,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "a07e000d529a65cb9027226e2f39aee5.png",
+      "updatedAt": 1778064799890,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9d7b5be7892db91dd057dffe2ecc7fd19dd8cb6a260811b719e4077b4d8b048b",
@@ -2555,6 +2572,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "561bb356d573a81f7f1246ed9e119b55.png",
+      "updatedAt": 1778064763466,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "688267a427d38d2a45d5d117baf835fe2df2034d284b75e471fd294a86b13676",
@@ -2697,6 +2715,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "de151eacd63c362bc8cd00c88bc16d68.png",
+      "updatedAt": 1778155798970,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6931e9f11e24da4d770ac1a12475c203600fbded06a1c4ea177c22712a8fdeeb",
@@ -3174,6 +3193,7 @@
         "*"
       ],
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
+      "updatedAt": 1778155798666,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "491be9905335f897fc8642182f16f9fe60cf2adaf82863b1b942169ba64ec6a4",
@@ -3307,7 +3327,8 @@
       },
       "license": "MIT",
       "marketingVersion": "0.1.1",
-      "imageId": "92d18734b91cb994660ebcce9830cd97.png",
+      "imageId": "8b9eca39ba100eca66b057648720ddf4.svg",
+      "updatedAt": 1778155799242,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
@@ -3453,6 +3474,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.11",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "updatedAt": 1778107489133,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
@@ -3470,7 +3492,6 @@
         }
       },
       "capabilities": null,
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/7b13c3a70625d7aa67ac71b251b007fb",
       "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
@@ -3507,6 +3528,7 @@
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "c426048bdee74158cb0a73f38984aef1.png",
+      "updatedAt": 1778064811078,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3d61fbfef8ae0c9de5a190a439836ab95c999e38c30ff8d7d07e362c23349d11",
@@ -3662,6 +3684,7 @@
       ],
       "license": "MIT",
       "imageId": "1bd35de29580bab052ff6b8f26e03c66.png",
+      "updatedAt": 1778065056110,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a9092e475d213762bada76b8d54cd6eb94b6ccd1906b8e3c698eeec343ec523b",
@@ -3779,8 +3802,8 @@
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
       "version": "0.1.0",
-      "versionNumber": 7,
-      "packageId": "948eae13b4c6f9e0e27c939fee7f6497",
+      "versionNumber": 2,
+      "packageId": "ce407e5c8a08e0df2a92cdfa51def473",
       "shortDescription": "KYC onboarding + signature flow \u2014 pass, get an attestation NFT",
       "categories": [
         "Productivity"
@@ -3797,7 +3820,8 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
+      "imageId": "d329b80dfe7b1da0de8e59c8c679d2e5.svg",
+      "updatedAt": 1778155799310,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "91851dcbd05a76c45a7e188f806c03fcabc71797af475ccb6407a9070aa4be97",
@@ -3846,6 +3870,7 @@
       },
       "screenshots": [],
       "imageId": "65392bba92f7a89bb4656fb09bfdf8ef.png",
+      "updatedAt": 1778064582570,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "baa130682d0d0ff3be1a9a96542483fa4314cf8a13d5d0f8da8b9e965126ba2a",
@@ -3997,6 +4022,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "d1a17e2d490234be10db6703d6df30f1.png",
+      "updatedAt": 1778064687806,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "eba04b74092bfd33aa9ee24bfc6da66e2bb355949e9b6ebf2f8199eda5635b1c",
@@ -4103,10 +4129,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "a6cf179a90edbf8c7fd845982f9148a4",
+      "packageId": "3dca6c5249d631bf4078d09a02271fed",
       "name": "popaye",
       "version": "0.3.2",
-      "versionNumber": 10,
+      "versionNumber": 6,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4130,7 +4156,8 @@
         "*"
       ],
       "marketingVersion": "0.3.2",
-      "imageId": "171e254c68669c061150533245e42212.png",
+      "imageId": "def201ee125dab5fe6a6935f9020bc4c.svg",
+      "updatedAt": 1778155799154,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "e702b58a362ed8623075ce79a70b095420bc56e93f0e226a1f4ffd1fd64b9ff3",
@@ -4197,6 +4224,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
+      "updatedAt": 1778142421782,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
@@ -4333,6 +4361,7 @@
         "picture": ""
       },
       "imageId": "0a635740fedea7931e10e74e9cbf261b.png",
+      "updatedAt": 1778064881366,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3f523b4f1b0ca1619d13cbf3b241a3e92996209a7a92e24b6995f9568e99ce12",
@@ -4451,6 +4480,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
+      "updatedAt": 1778064972502,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4561,7 +4591,6 @@
           }
         ]
       },
-      "packageUrl": "https://github.com/hrbrlife/melusina-static-store/releases/download/packages-v1/9c5060f77122fced9176401e206d1dfd",
       "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" grain action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
@@ -4593,6 +4622,7 @@
       "license": "MIT",
       "marketingVersion": "0.0.2",
       "imageId": "c2b5542bdd9852f66f77539165af7179.png",
+      "updatedAt": 1778072948902,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "83695a91cf1452f16b4365ef52d723d438914632301ec7963f451cf573f62a47",
@@ -4750,6 +4780,7 @@
       "screenshots": [],
       "license": "MIT",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
+      "updatedAt": 1778064881206,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4891,6 +4922,7 @@
       ],
       "marketingVersion": "1.0.10",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
+      "updatedAt": 1778155798754,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a58e4a65b94c15f0b5a4236f1667cd87b2c7b9ad8fa8aebd34e442a15bb14554",

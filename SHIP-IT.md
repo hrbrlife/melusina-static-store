@@ -13,35 +13,71 @@ done by `scripts/ship-changes.sh` — this doc explains what it does and why.
 ./scripts/ship-changes.sh
 ```
 
-That's it. The script:
+That's it. The script walks every catalog entry under `packages/<author>/<repo>/`,
+ships any whose source repo has moved since last successful ship, then force-pushes
+the catalog to gh-pages.
 
-1. Walks every catalog submodule under `packages/<author>/<repo>/`.
-2. Resolves each to its source repo on this host (alias map + Desktop sibling).
-3. Skips if there's nothing to ship (`HEAD == origin/publish`).
-4. For each app with new commits: `make build && make pack && make publish`
-   in the source repo. The Makefile (via `spkmodule/mk/core.mk`) picks the
-   right signing mode automatically.
-5. After per-app pushes, runs `make refresh` + `MELUSINA_PUBLISH_AUTHORITATIVE=1
-   make publish` in the static_store to force-push the catalog to gh-pages.
-
-No `make dev`. No post-deploy verification. ~30 s per ship, ~2 min for catalog.
+A quiet tick (nothing changed) finishes in ~3 sec across 36 apps. A tick that
+ships one app takes ~30 s (warm cache) to ~5 min (cold Go build). The catalog
+deploy adds ~30 s.
 
 ---
 
-## What "shippable" means
+## How an app gets categorized on each tick
 
-An app is shippable when its source-repo `HEAD` is ahead of `origin/publish`:
+The script applies these gates in order. The first one to match decides the
+app's outcome:
 
-```bash
-git -C $SRC fetch -q origin publish
-git -C $SRC rev-list --count origin/publish..HEAD
-```
+| Gate | Triggers when | Outcome |
+|------|---------------|---------|
+| no source | `$DESKTOP_ROOT/<repo>/.git` not present | `[SKIP] no source repo on this host` |
+| no Makefile | source has no `Makefile` | `[SKIP] no Makefile` |
+| bespoke Makefile | Makefile doesn't `include spkmodule/...` | `[SKIP] bespoke Makefile — needs migration or custom flow` |
+| ship-skip marker | `$src/.melusina/ship-skip` exists | `[SKIP] ship-skip marker — <reason>` |
+| state matches | `.build-tmp/shipped/<repo>.sha` equals current `git rev-parse HEAD` | `[SKIP] HEAD <sha> matches last ship` |
+| Makefile parse error | `make help` fails or times out (10 s) | `[FAIL] Makefile parse error` (1 s, no build) |
+| ship | none of the above | runs `make build && make pack && make publish`, records SHA on success |
 
-If that count > 0, there are committed source changes that haven't been packed
-into a new SPK on the publish branch. The script ships those.
+After all per-app outcomes, if any apps shipped, the catalog rebuild step runs:
 
-Uncommitted working-tree changes are NOT shipped — the operator has to commit
-them first. (`git status --porcelain` is informational only.)
+1. For each shipped app, reflect its change into the catalog tree:
+   - **Submodule** entry → bump `packages/<author>/<repo>` pointer to `origin/publish`.
+   - **Plain-dir** entry → run `scripts/stage-into-catalog.sh` (with `RELEASE_JSON_STUB` env override) to copy the freshly-packed SPK into `packages/<author>/<repo>/<slug>/` and regen metadata + RELEASE.json offline-stub.
+2. Stash any dirty working-tree files (lots of `m` submodule flags + the `.claude/scheduled_tasks.lock` make `git pull --rebase` refuse to proceed otherwise).
+3. `bash build-store.sh --no-refresh` (with `MELUSINA_SKIP_BUNDLE_UPDATE=1`).
+4. `make plan` (with `MELUSINA_PUBLISH_AUTHORITATIVE=1` and `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1`).
+5. `make apply` (same env). Force-pushes the catalog `publish` branch → gh-pages live within ~1 min.
+6. Restore stash.
+
+---
+
+## Adopting a new app into the loop
+
+The cascade pattern (proven on 4 apps so far):
+
+1. Bump the source repo's `spkmodule` submodule to the canonical commit (currently `2ee80d2` on `hrbrlife/melusina-spkmodule-component:main`):
+   ```bash
+   cd $APP_SRC/spkmodule && git fetch origin main && git checkout origin/main
+   cd .. && git add spkmodule && git commit -m "spkmodule: bump pin"
+   ```
+2. If the Makefile lacks `APP_PEARL_ENABLED := no` (and the app isn't on-chain Pearl-onboarded), add it before `include spkmodule/mk/core.mk`. Without this, the Makefile errors at parse time on missing `PEARL_MASTER_NFT_MINT`.
+3. If the pkgdef lives at `.sandstorm/sandstorm-pkgdef.capnp` (not at root), add `PKGDEF := .sandstorm/sandstorm-pkgdef.capnp` to the Makefile before the include.
+4. Ensure the source repo has a `metadata.json` at root (copy from the publish-branch checkout if missing).
+5. Ensure `.spkmodule-hooks/.manifest` exists with `appSlug` matching `APP_SLUG`. Initialize from `spkmodule/hooks/.manifest.sample`.
+6. Ensure the app has an entry in `/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json`. If new, run `make approval-manifest-entry` in the source to get the JSON entry, append it (text-replace, not jq, per project memory).
+7. If the publish-branch icon was previously copied from `.sandstorm/icons/` only, also copy it to the source repo root: `cp icons/icon-128.png icon.png`. `publish-to-branch` only sees root icons.
+
+That's it. The next tick of the loop ships the app autonomously.
+
+---
+
+## Halting an app from the loop
+
+Drop a single line into `$src/.melusina/ship-skip` describing why. The script will skip with that line as the reason. Remove the file when fixed.
+
+Examples in the wild:
+- `/home/user/Desktop/DueProcess/.melusina/ship-skip` — Go module path issue (`dueprocess-client-collection/pkg/client is not in std`).
+- `/home/user/Desktop/Clawberg/.melusina/ship-skip` — `./app` symlink → `.sandstorm/app` packaging conflict.
 
 ---
 

@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "67423c5e436b65aebf13706659b63e4f",
+      "packageId": "f54e4b545cb679106a490b21b8de4aab",
       "name": "AiLagoon",
-      "version": "0.7.6-isadmin-fix",
-      "versionNumber": 18,
+      "version": "0.7.8",
+      "versionNumber": 17,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "AiLagoon is the AI model hub pearl for Melusina. Register multiple LLM providers, manage per-model connections, and expose AI capabilities to other pearls via Grapple \u2014 all behind a single Melusina HTTP-out permission to the ai-lagoon sidecar.\n\n## Why AiLagoon\n\n- **Pinned inference transcripts** \u2014 cryptographically anchor any model conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Single HTTP-out permission** \u2014 one security boundary; all provider traffic routes through the sidecar; you grant access once, revoke anytime\n- **Wallet-rooted Grapple capability routing** \u2014 consuming Pearls request AI capabilities via Grapple; routing is scoped to the requesting Pearl; no cross-Pearl data leakage\n\n## Supported Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **OpenAI** \u2014 ChatGPT API (GPT-4o, 4-Turbo, o1, o3, 4.5, 4.6, newer models)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral, DeepSeek, and more through a single proxy\n\n## Published Grapple Capabilities\n\nOther Pearls request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model; useful when a consumer wants a specific capability class (e.g., reasoning)\n\n## Playground\n\nA built-in chat playground lets you test any connected model without leaving the pearl \u2014 useful for validating credentials, checking capabilities, or prototyping prompts before calling them from another Pearl via Grapple.\n\n## Status\n\n*Shipped v0.7.0.* Production-ready AI model hub with Ollama, ChatGPT, OpenRouter; Solana-pinned inference transcripts.",
       "categories": [
@@ -40,17 +40,17 @@
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1778106306189,
+      "updatedAt": 1778164776306,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "67423c5e436b65aebf13706659b63e4f44fc4fb0c2fd14f65e5d086c3adc9bf6",
-        "releaseHash": "95967a1f8ce8fb4010eb4c42d3e107f5aabbb5932001cb1dbd43a709bdf5b5ae",
-        "releaseNonce": "22f91dadfb7971ac75caac2c8de7ca06f8ee8aee298593c511ee14ac33dffa4d",
+        "appHash": "f54e4b545cb679106a490b21b8de4aabdf763f5480c5289a133e695053a633bb",
+        "releaseHash": "f96eccdc72d79e3a58790a9e061f894223cc6018db8fea33529c0ee238311abe",
+        "releaseNonce": "2a0c21a29bc8e635b499647bc8fd7e48e937ebd8546be685516c0b964f3f6d0c",
         "releaseEntryPda": "offline-release-entry-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "masterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "licenseSquadsVault": "offline-license-vault-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
-        "signedAtUnix": 1778106306,
-        "authorSig": "87bdc9ba6131f68fa1861efe4cffc10c1df84e0c74ce15e2dd7fc13c53575ecb",
+        "signedAtUnix": 1778164776,
+        "authorSig": "1a01c6dbfc60cf06c481b6018975a8a3e60d559baed239e91f0b5f57c600bb60",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

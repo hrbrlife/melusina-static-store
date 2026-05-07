@@ -1,5 +1,39 @@
 # AiLagoon Changelog
 
+## v0.7.8 (2026-05-07) — drop MCP / AIAgent: Clawberg owns orchestration
+
+- AiLagoon's role narrows back to "AI provider gateway". Agentic
+  orchestration (tool-calling loop, ContextProvider discovery,
+  write-confirmation, templates, engine) moves to Clawberg. AiLagoon
+  keeps `AICapBundle` (text / vision / generic) as the unified Grapple
+  capability; Ollama / OpenAI / OpenRouter routing is unchanged.
+- Removed: `pkg/mcp/`, the `AIAgent` capnp interface and its server,
+  `pkg/contextprovider/`, `aicontext.capnp`, the `/mcp` admin UI plus
+  `templates/mcp.html`, and the Routing-page MCP / engine-config /
+  queue-status panels. `ARCHITECTURE-MCP-BRIDGE.md` and
+  `DEEP-DIVE-3-ACTOR-FLOW.md` are gone; canonical replacements live
+  in the Clawberg repo.
+- Refreshed the OpenRouter catalog: 26 new entries (GPT-5 Pro,
+  Claude Sonnet/Opus/Haiku Latest, Gemini Pro/Flash Latest, o1,
+  o3-pro, o3-deep-research, o4-mini-deep-research, GLM 4.5V, ERNIE
+  4.5 VL, Nova Premier, Lyria 3 Pro/Clip, FLUX.2 Flex, Arcee
+  Spotlight, plus the `openrouter/auto` and `openrouter/free`
+  routers). `Last updated:` bumped to 2026-05-07.
+
+## v0.7.7 (2026-05-07) — D3 discovery: AILAGOON_X25519_PUBLIC_KEY env var
+
+- Documented the recipient-pubkey discovery contract for Phase D3
+  sealedchat. Consumers (DueProcess Process grain in particular) read
+  the long-lived x25519 pubkey from the `AILAGOON_X25519_PUBLIC_KEY`
+  env var at boot, cache it on `AIBundleClient`, and auto-engage
+  NaCl-box encryption on every PII-bearing call. Companion var
+  `AILAGOON_REQUIRE_ENCRYPTION=1` flips the contract from "encrypt
+  when possible" to "encrypt or refuse", which is the production
+  posture. Format: 32-byte pubkey, base64-std (44 chars) or hex
+  (64 chars). DueProcess `pkg/ailagoon/discovery.go` owns the
+  caller-side parser; `ai-lagoon/pkg/sealedchat` is unchanged. See
+  DueProcess `docs/TEST_ENV_SETUP.md` for the consumer-side env table.
+
 ## v0.7.6 (2026-05-07) — Powerbox: actually wire owner-bypass
 
 - v0.7.5 added the `if !s.isAdmin { requireAuth(...) }` owner-bypass on

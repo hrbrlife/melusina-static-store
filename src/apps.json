@@ -2260,11 +2260,11 @@
     },
     {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
-      "name": "Diagrams Bureau",
-      "version": "1.0.4",
-      "versionNumber": 9,
-      "packageId": "9fcf33f422c9c33a5e5c42f61fce64c7",
-      "shortDescription": "Flowcharts, mindmaps, UML diagrams \u2014 draw.io engine, collaborative, self-hosted, no cloud upload.",
+      "name": "Diagram Bureau",
+      "version": "1.0.2",
+      "versionNumber": 1,
+      "packageId": "b63ab36054515bc6b5f87bae6783d47e",
+      "shortDescription": "Sovereign diagram grain (Diagram Bureau)",
       "categories": [
         "Productivity",
         "Office"
@@ -2273,54 +2273,52 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-bureau-diagram-app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776663241000,
+      "createdAt": 1776663241,
       "screenshots": [
         {
-          "url": "screenshots/screenshot_graphs.png",
-          "caption": "Diagrams and flowcharts"
+          "url": "screenshot_docs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs.png",
-          "caption": "Collaborative document editing"
+          "url": "screenshot_docs2.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs2.png",
-          "caption": "Multi-user document review"
+          "url": "screenshot_graphs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_image.png",
-          "caption": "Layered image editor"
+          "url": "screenshot_image.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_sheets.png",
-          "caption": "Spreadsheet with live formulas"
+          "url": "screenshot_sheets.png",
+          "caption": ""
         }
       ],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "a07e000d529a65cb9027226e2f39aee5.png",
-      "updatedAt": 1778064799890,
+      "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
+      "updatedAt": 1778161198994,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9d7b5be7892db91dd057dffe2ecc7fd19dd8cb6a260811b719e4077b4d8b048b",
-        "releaseHash": "30c00adc00864213b06e7423bdbf89eea9b10bbc708ae202a3a9e8ba8d3ac2fc",
-        "releaseNonce": "b84a5d52a1dca50967b9ef5b7c510f1df8ca1a17402d11c319f81e94e76fc4fd",
-        "releaseEntryPda": "F97Cv5BFrCnHtwLRUuV4feZaJdYSdJaXNar6TXKjU7Gi",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787075,
-        "authorSig": "2BXqyJZsm6Jxi2RIoRrGUJvWUGqixiBkTP+FYEYCUNj1R1k5X7dJ6T5yusHZJv7P1eQ8TYrez91pyVrCrpfYCQ==",
+        "appHash": "55e7131d00a4e185723a1e27efb42c7c2825005565b970d900ae86ad26b53118",
+        "releaseHash": "618d724b692cf22e3f530c46ee139284b507c115e5b5dd17ccfb488233fe1e69",
+        "releaseNonce": "c0d4adf79b5c6879f46c93efd5a5e5cac73f5e4d28186a8ccc5e8f91bdae0065",
+        "releaseEntryPda": "offline-release-entry-sexh707e9gpems03ae8c71wn02ummdah",
+        "masterNftMint": "offline-master-nft-sexh707e9gpems03ae8c71wn02ummdah",
+        "licenseSquadsVault": "offline-license-vault-sexh707e9gpems03ae8c71wn02ummdah",
+        "signedAtUnix": 1778158845,
+        "authorSig": "8b469143891610010666ffad4f2e9272b46626eb893518bdff5bde089e485817",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-sexh707e9gpems03ae8c71wn02ummdah"
         }
       },
       "capabilities": {
@@ -2762,9 +2760,9 @@
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.6",
-      "versionNumber": 14,
-      "packageId": "36cd891f9fa320a8c6290e8526072554",
-      "shortDescription": "Sovereign email client with cryptographically pinned threads and per-mailbox Pearl isolation.",
+      "versionNumber": 2,
+      "packageId": "a236d6e03235bb19dbf20d7c4675d275",
+      "shortDescription": "Sovereign email client for Melusina with Pearl-based mail server control",
       "categories": [
         "Productivity",
         "Communications"
@@ -2778,34 +2776,31 @@
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
-      "description": "MerMail is a sovereign email client for Melusina. Direct SMTP/IMAP integration \u2014 no commercial mail gateway, no third-party storage, no data resale.\n\n## Why MerMail\n\n- **Pinned mail threads** \u2014 cryptographically anchor any email thread to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and usable as legal/contract receipts\n- **Per-mailbox Pearl isolation** \u2014 each mailbox is a sealed container with independent storage; share by Pearl, not org-wide\n- **No third-party mail gateway** \u2014 all messages stored locally in your Pearl; no vendor lock-in\n\n## Features\n\n- **Inbox & Folders** \u2014 view, organise, and search email across custom folders\n- **Compose & Reply** \u2014 rich compose with reply, reply-all, and forward\n- **Attachments** \u2014 upload, download, inline-view\n- **Drafts** \u2014 auto-save and manual save; resume editing anytime\n- **Full-text search** \u2014 across all messages in the mailbox\n- **Star & Organise** \u2014 star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 your personal email client; independent inbox, folders, drafts, and contacts\n- **Station Pearl** \u2014 mail server control panel for managing forwarding rules, DNS configuration, and aliases\n\n## Status\n\n*Shipped v0.4.6.* Sovereign email client with direct SMTP/IMAP, cryptographically pinned threads, per-mailbox Pearl isolation.",
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",
           "caption": "inbox"
         }
       ],
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "c426048bdee74158cb0a73f38984aef1.png",
-      "updatedAt": 1778064811078,
+      "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
+      "updatedAt": 1778161199554,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3d61fbfef8ae0c9de5a190a439836ab95c999e38c30ff8d7d07e362c23349d11",
-        "releaseHash": "a0bb600ea4a502cdd9fdb4ef982f9eebd5b8a1ec859383f43b768982c170a2a4",
-        "releaseNonce": "2b6ec52dcb682b4a098d5a1d9b64089e3fb3bdc41b7c79ab7ae36f17dd9b62b8",
-        "releaseEntryPda": "7AUZqfehwkndxqGa6WEgmaw1SAzk9hAKisRerSzEtseY",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787073,
-        "authorSig": "XQWrk2l8rukhJedm+8lErA9Sn2A7D45RaUG/loOK/EepQhsFefeiwA2q/axdl6zWVlF1K8YEs8qmsVZGaoQ6CA==",
+        "appHash": "a1b12013869c58cb5c1dd43648dd67930591df55f1a7e7689c67eea41a8933d4",
+        "releaseHash": "d45eba5db1906f6cd1c8535833e0681e83adc2d66b9e6a438ed9660eb62278a6",
+        "releaseNonce": "7ec2892d567410d6817293e408d434959d0a6ba733ff93f15820d997e529fed8",
+        "releaseEntryPda": "offline-release-entry-wfy0c4706yw6rp70t4a4pse8c2spm0d4",
+        "masterNftMint": "offline-master-nft-wfy0c4706yw6rp70t4a4pse8c2spm0d4",
+        "licenseSquadsVault": "offline-license-vault-wfy0c4706yw6rp70t4a4pse8c2spm0d4",
+        "signedAtUnix": 1778160862,
+        "authorSig": "cd73be91d24699f4b0640603703a63f85bd12a174fd9c48bc52191a017d9a969",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-wfy0c4706yw6rp70t4a4pse8c2spm0d4"
         }
       },
       "capabilities": {
@@ -3244,10 +3239,10 @@
     {
       "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
       "name": "Paint Bureau",
-      "version": "1.0.4",
-      "versionNumber": 9,
-      "packageId": "77a9e9b980b507082ba4cfe948094235",
-      "shortDescription": "Layered image editor with filters, crop, rotate \u2014 browser-based, self-hosted, no cloud upload.",
+      "version": "1.0.2",
+      "versionNumber": 1,
+      "packageId": "ec855cadddcb476638441e2e50e92408",
+      "shortDescription": "Sovereign minipaint grain (Paint Bureau)",
       "categories": [
         "Productivity",
         "Office"
@@ -3256,54 +3251,52 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-bureau-paint-app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776663498000,
+      "createdAt": 1776663498,
       "screenshots": [
         {
-          "url": "screenshots/screenshot_image.png",
-          "caption": "Layered image editor"
+          "url": "screenshot_docs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs.png",
-          "caption": "Collaborative document editing"
+          "url": "screenshot_docs2.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs2.png",
-          "caption": "Multi-user document review"
+          "url": "screenshot_graphs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_graphs.png",
-          "caption": "Diagrams and flowcharts"
+          "url": "screenshot_image.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_sheets.png",
-          "caption": "Spreadsheet with live formulas"
+          "url": "screenshot_sheets.png",
+          "caption": ""
         }
       ],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "imageId": "d1a17e2d490234be10db6703d6df30f1.png",
-      "updatedAt": 1778064687806,
+      "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
+      "updatedAt": 1778161199242,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "eba04b74092bfd33aa9ee24bfc6da66e2bb355949e9b6ebf2f8199eda5635b1c",
-        "releaseHash": "01d9c4f085a259206075635bcb4e6a8fcfd4c202f11d19ea3db0f1f150f5fc73",
-        "releaseNonce": "cba3a72ab211f7c153b4faf17daf3103302b5c50e09cc24e69f0fcc003c3ec8b",
-        "releaseEntryPda": "7dNMjj95DQhNf4Zw7SrA2Jrxcq4MRQdRgUY7XoBvsFJf",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787076,
-        "authorSig": "C4U1hozw23MvWOf/2KO+N/k5kYRCSBMMAB+hIDnD2VHxrMFnnevgbDcEWes+ln6SvBv1QJ0EErUO8Xr92FP+Aw==",
+        "appHash": "7bbff34c5eac99cf10b3310839ed3d5fc630f4b7cbd7275ebac5c7a1a34b3f4c",
+        "releaseHash": "fb78acb1250471106e1bac3a4cfb7ab517eaa727598e30d0fc63ae281c5717cf",
+        "releaseNonce": "2638c71de6db3ab1892ac45726310e8af8d45ef5da6eaf448ab0814e596f4c45",
+        "releaseEntryPda": "offline-release-entry-q4332kctv72tw70z8cgfk0adxve57p12",
+        "masterNftMint": "offline-master-nft-q4332kctv72tw70z8cgfk0adxve57p12",
+        "licenseSquadsVault": "offline-license-vault-q4332kctv72tw70z8cgfk0adxve57p12",
+        "signedAtUnix": 1778159431,
+        "authorSig": "e4c76645eea72f10993652e7f4a31d0ab804d4cbb5221498734bbea3d1fef121",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-q4332kctv72tw70z8cgfk0adxve57p12"
         }
       },
       "capabilities": {
@@ -3446,10 +3439,10 @@
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "name": "Sheets Bureau",
-      "version": "1.1.5",
-      "versionNumber": 12,
-      "packageId": "ff8df4eec3bae85ca6b07a6a113cea1f",
-      "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
+      "version": "1.0.4",
+      "versionNumber": 1,
+      "packageId": "e45c09c332350c273a163ca8a115b62f",
+      "shortDescription": "Sovereign spreadsheet grain (Sheets Bureau)",
       "categories": [
         "Productivity",
         "Office"
@@ -3458,50 +3451,48 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-bureau-sheets-app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776662583000,
+      "createdAt": 1776662583,
       "screenshots": [
         {
-          "url": "screenshots/screenshot_sheets.png",
-          "caption": "Spreadsheet with live formulas"
+          "url": "screenshot_docs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs.png",
-          "caption": "Collaborative document editing"
+          "url": "screenshot_docs2.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_docs2.png",
-          "caption": "Multi-user document review"
+          "url": "screenshot_graphs.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_graphs.png",
-          "caption": "Diagrams and flowcharts"
+          "url": "screenshot_image.png",
+          "caption": ""
         },
         {
-          "url": "screenshots/screenshot_image.png",
-          "caption": "Layered image editor"
+          "url": "screenshot_sheets.png",
+          "caption": ""
         }
       ],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1778160561950,
+      "updatedAt": 1778161199514,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
-        "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
-        "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
+        "appHash": "fe778f03a281fb1975277b7debea1de27dbac29096cd81c3c80c9cacca7972cd",
+        "releaseHash": "7e1e934f9217417727189283c0a5e3943b2d79cbac8cabcce1dec1a3bab01451",
+        "releaseNonce": "2c08e08a79140ca1dfa9f710f4d08489930989d41c58bd9d03a64869fcb21f0d",
         "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "masterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "signedAtUnix": 1778142421,
-        "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
+        "signedAtUnix": 1778160407,
+        "authorSig": "4ce91509ebbd9506c01ddec16d52c98aa2e0d9b9da252a98444d7241bc23dc91",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

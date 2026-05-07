@@ -359,6 +359,20 @@ done
 
 # Stash any dirty working-tree state so make apply's `git pull --rebase` can
 # proceed cleanly. Restore after the deploy.
+#
+# Defensive: bail early if the index has unmerged paths (U state). Iter28 saw
+# `make build` racing a prior stash-pop leave src/apps.json stuck in U state;
+# `git stash push` then failed silently (rc!=0, set -e suppressed by `if`),
+# and `make apply` later reported a confusing rebase error. Surface the cause.
+unmerged="$(git diff --name-only --diff-filter=U 2>/dev/null)"
+if [[ -n "$unmerged" ]]; then
+  fail "catalog rebuild aborted — unmerged paths in index:"
+  echo "$unmerged" | sed 's|^|    |'
+  echo "  Resolve via: git add <file> (to accept current working-tree version)"
+  echo "             or: git checkout HEAD -- <file> (to drop changes)"
+  exit 1
+fi
+
 stash_msg="ship-changes-catalog-$(date +%s)"
 stashed=false
 if ! git diff --quiet 2>/dev/null || git status --porcelain 2>/dev/null | grep -q '^??'; then

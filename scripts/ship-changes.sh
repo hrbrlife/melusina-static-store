@@ -255,26 +255,79 @@ if $SKIP_CATALOG; then
 fi
 
 if $DRY_RUN; then
-  info "would: cd $ROOT && MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish"
+  info "would: cd $ROOT && bump-pointers && build && plan && apply"
   exit 0
 fi
 
-step "catalog rebuild: refresh + build + plan + apply"
+step "catalog rebuild: bump pointers for shipped apps + build + plan + apply"
 cd "$ROOT"
 
+# Bump submodule pointers for shipped apps. Avoid the wholesale `make refresh`
+# which would also bump every other stale submodule pointer and risk
+# surprise-shipping unaudited state.
+for repo in "${SHIPPED[@]}"; do
+  pkg_dir=""
+  while IFS= read -r d; do
+    [[ "$(basename "$d")" == "$repo" ]] && { pkg_dir="$d"; break; }
+  done < <(find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort)
+  [[ -z "$pkg_dir" ]] && continue
+
+  if git config -f .gitmodules --get "submodule.$pkg_dir.path" >/dev/null 2>&1; then
+    info "  bumping $repo submodule pointer to origin/publish"
+    (
+      cd "$pkg_dir"
+      git fetch -q origin publish 2>/dev/null || true
+      git checkout -q origin/publish 2>/dev/null || true
+    )
+    git add "$pkg_dir" 2>/dev/null || true
+  fi
+done
+
+# Stash any dirty working-tree state so make apply's `git pull --rebase` can
+# proceed cleanly. Restore after the deploy.
+stash_msg="ship-changes-catalog-$(date +%s)"
+stashed=false
+if ! git diff --quiet 2>/dev/null || git status --porcelain 2>/dev/null | grep -q '^??'; then
+  if git stash push -u -m "$stash_msg" >/dev/null 2>&1; then
+    stashed=true
+    info "  stashed dirty tree as $stash_msg"
+  fi
+fi
+
 catalog_log="$LOG_DIR/ship-catalog-$(date +%Y%m%d-%H%M%S).log"
-# `make publish` (no APPS) chains: refresh → build-store.sh → plan → apply.
-# We don't pass APPS — per-app pushes already happened in the loop above, so
-# this just picks up the bumped submodule pointers and any plain-dir working-
-# tree changes, then force-pushes the catalog publish branch.
-if (
+# Use plan + apply directly (NOT `make publish`) to avoid `make refresh` which
+# would also bump every other stale submodule pointer.
+(
   set -e
-  echo "=== make publish (authoritative) ==="; date
-  MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish
-) 2>&1 | tee "$catalog_log"; then
+  echo "=== build-store.sh --no-refresh ==="; date
+  MELUSINA_SKIP_BUNDLE_UPDATE=1 bash build-store.sh --no-refresh
+  echo "=== make plan ==="
+  MELUSINA_PUBLISH_AUTHORITATIVE=1 \
+  MELUSINA_SKIP_BUNDLE_UPDATE=1 \
+  MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 \
+    make plan
+  echo "=== make apply ==="
+  MELUSINA_PUBLISH_AUTHORITATIVE=1 \
+  MELUSINA_SKIP_BUNDLE_UPDATE=1 \
+  MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 \
+    make apply
+) >"$catalog_log" 2>&1
+catalog_rc=$?
+
+# Restore stash regardless of outcome.
+if $stashed; then
+  if git stash pop >/dev/null 2>&1; then
+    info "  restored stashed tree"
+  else
+    warn "  stash pop failed — see 'git stash list' for $stash_msg"
+  fi
+fi
+
+if (( catalog_rc == 0 )); then
   ok "catalog deployed (log: $catalog_log)"
   (( ${#FAILED[@]} == 0 )) && exit 0 || exit 1
 else
   fail "catalog rebuild failed (log: $catalog_log)"
+  tail -30 "$catalog_log" | sed "s|^|    [catalog] |"
   exit 1
 fi

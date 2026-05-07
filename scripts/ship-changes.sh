@@ -323,7 +323,13 @@ for repo in "${SHIPPED[@]}"; do
     (
       cd "$pkg_dir"
       git fetch -q origin publish 2>/dev/null || true
-      git checkout -q origin/publish 2>/dev/null || true
+      # `git checkout` aborts if the submodule's working tree has dirty
+      # leftovers (build-store.sh's Vite copies, repacked SPKs from earlier
+      # cycles, etc). The submodule is just a tree pointer for the catalog
+      # — we don't need to preserve anything in its working tree, so reset
+      # hard. Iter38 saw 4/5 bureau pointers stuck stale because of this.
+      git reset --hard -q origin/publish 2>/dev/null || \
+        git checkout -q origin/publish 2>/dev/null || true
     )
     git add "$pkg_dir" 2>/dev/null || true
   else

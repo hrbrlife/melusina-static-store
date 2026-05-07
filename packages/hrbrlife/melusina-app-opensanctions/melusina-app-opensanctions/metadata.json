@@ -1,0 +1,26 @@
+{
+  "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
+  "name": "OpenSanctions",
+  "tier": "admin",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "",
+  "shortDescription": "Sanctions, crypto wallet risk, and third-party-API risk lookups",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina-app-opensanctions",
+  "codeLink": "https://github.com/hrbrlife/melusina-app-opensanctions",
+  "upstreamAuthor": "Melusina",
+  "createdAt": 1778155200000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

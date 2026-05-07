@@ -1,0 +1,26 @@
+{
+  "appId": "jkt51nyrcp2wk6n4atseexddjv9wnyrzu3ypmdp2qzk6d9n2q4eh",
+  "name": "Creeper",
+  "tier": "admin",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "",
+  "shortDescription": "Search engines + crawlers + handle/contact lookup primitives",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina-app-creeper",
+  "codeLink": "https://github.com/hrbrlife/melusina-app-creeper",
+  "upstreamAuthor": "Melusina",
+  "createdAt": 1778155200000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "description": "",
+  "screenshots": []
+}

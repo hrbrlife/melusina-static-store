@@ -168,6 +168,15 @@ for pkg in "${TARGET[@]}"; do
     continue
   fi
 
+  # Skip apps that explicitly opt out via .melusina/ship-skip marker.
+  # Earliest gate so we don't even read git state for known-broken apps.
+  if [[ -f "$src/.melusina/ship-skip" ]]; then
+    reason="$(head -1 "$src/.melusina/ship-skip" 2>/dev/null | tr -d '\n')"
+    skip "$repo: ship-skip marker — ${reason:-no reason given}"
+    SKIPPED+=("$repo:ship-skip")
+    continue
+  fi
+
   # publish-to-branch creates an orphan publish branch (no shared history with
   # main), so `git rev-list origin/publish..HEAD` is always non-zero on
   # parallel histories — useless as a gate. Instead, record the main HEAD SHA
@@ -207,6 +216,17 @@ for pkg in "${TARGET[@]}"; do
   fi
 
   log="$LOG_DIR/ship-${repo}-$(date +%Y%m%d-%H%M%S).log"
+
+  # Pre-flight: does the Makefile even parse? Catches things like
+  # spkmodule's pearl.mk hard-error when APP_PEARL_ENABLED=yes (default)
+  # and PEARL_MASTER_NFT_MINT is unset. ~1 sec; saves wasted minutes on
+  # subsequent build/pack/publish attempts that all fail at parse anyway.
+  if ! ( cd "$src" && timeout 10 make help >/dev/null 2>&1 ); then
+    fail "$repo: Makefile parse error or 'make help' timeout — skipping"
+    ( cd "$src" && timeout 10 make help 2>&1 || true ) | head -3 | sed "s|^|    [$repo] |"
+    FAILED+=("$repo:parse-error")
+    continue
+  fi
 
   # NOTE: bash's `set -e` is silently suppressed inside `if ( ... )`
   # subshell-as-condition. Run the subshell separately, capture exit code,

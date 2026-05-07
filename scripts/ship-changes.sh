@@ -168,6 +168,18 @@ for pkg in "${TARGET[@]}"; do
     continue
   fi
 
+  # Only attempt apps that use the canonical spkmodule discipline. Bespoke
+  # Makefiles may use PGP signing (banned per project memory), have non-
+  # standard publish flows, or lack the build/pack/publish targets the
+  # script expects. Mark them skipped so the operator can decide: migrate
+  # to spkmodule, or leave bespoke and add a .melusina/ship-skip with
+  # custom-flow notes.
+  if ! grep -q '^include spkmodule/' "$src/Makefile" 2>/dev/null; then
+    skip "$repo: bespoke Makefile (no spkmodule include) — needs migration or custom flow"
+    SKIPPED+=("$repo:bespoke")
+    continue
+  fi
+
   # Skip apps that explicitly opt out via .melusina/ship-skip marker.
   # Earliest gate so we don't even read git state for known-broken apps.
   if [[ -f "$src/.melusina/ship-skip" ]]; then

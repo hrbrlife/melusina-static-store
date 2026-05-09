@@ -851,7 +851,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.4",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1778301560799,
+      "updatedAt": 1778305487491,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6a3c675188609e3bb2cbb5bfbe6bcc84acdab4e38ab3cad8ef23e285e513312e",
@@ -1990,7 +1990,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778301426223,
+      "updatedAt": 1778305487639,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "3351a94e5138bafa1893d9ab073c89b65f1827b6b7350961e412184b39e74927",

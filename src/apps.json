@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "f54e4b545cb679106a490b21b8de4aab",
+      "packageId": "2d54e9e254b36729ce231339a231d2b5",
       "name": "AiLagoon",
-      "version": "0.7.8",
-      "versionNumber": 17,
+      "version": "0.7.10",
+      "versionNumber": 18,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "AiLagoon is the AI model hub pearl for Melusina. Register multiple LLM providers, manage per-model connections, and expose AI capabilities to other pearls via Grapple \u2014 all behind a single Melusina HTTP-out permission to the ai-lagoon sidecar.\n\n## Why AiLagoon\n\n- **Pinned inference transcripts** \u2014 cryptographically anchor any model conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Single HTTP-out permission** \u2014 one security boundary; all provider traffic routes through the sidecar; you grant access once, revoke anytime\n- **Wallet-rooted Grapple capability routing** \u2014 consuming Pearls request AI capabilities via Grapple; routing is scoped to the requesting Pearl; no cross-Pearl data leakage\n\n## Supported Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **OpenAI** \u2014 ChatGPT API (GPT-4o, 4-Turbo, o1, o3, 4.5, 4.6, newer models)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral, DeepSeek, and more through a single proxy\n\n## Published Grapple Capabilities\n\nOther Pearls request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model; useful when a consumer wants a specific capability class (e.g., reasoning)\n\n## Playground\n\nA built-in chat playground lets you test any connected model without leaving the pearl \u2014 useful for validating credentials, checking capabilities, or prototyping prompts before calling them from another Pearl via Grapple.\n\n## Status\n\n*Shipped v0.7.0.* Production-ready AI model hub with Ollama, ChatGPT, OpenRouter; Solana-pinned inference transcripts.",
       "categories": [
@@ -39,18 +39,19 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.7.10",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1778301426091,
+      "updatedAt": 1778303014823,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f54e4b545cb679106a490b21b8de4aabdf763f5480c5289a133e695053a633bb",
-        "releaseHash": "f96eccdc72d79e3a58790a9e061f894223cc6018db8fea33529c0ee238311abe",
-        "releaseNonce": "2a0c21a29bc8e635b499647bc8fd7e48e937ebd8546be685516c0b964f3f6d0c",
+        "appHash": "2d54e9e254b36729ce231339a231d2b57b0b65fd8f672042a081408da04282df",
+        "releaseHash": "eb7c2377db8d55258cdb6b63dc75d3c10c2eb309591f55c3c260a533ee458489",
+        "releaseNonce": "3baf032ba2b4e781d55650b6e78c817647125f5a26ce7d2feefadf381b38bab2",
         "releaseEntryPda": "offline-release-entry-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "masterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "licenseSquadsVault": "offline-license-vault-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
-        "signedAtUnix": 1778164776,
-        "authorSig": "1a01c6dbfc60cf06c481b6018975a8a3e60d559baed239e91f0b5f57c600bb60",
+        "signedAtUnix": 1778303014,
+        "authorSig": "b05c5b8bcbeafd39673b6601960ee0cc2dbbff3551f5e658dcab4435b4d1b035",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -2757,6 +2758,53 @@
       "screenshots": []
     },
     {
+      "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
+      "packageId": "4347bd8bde746efd7a4ef743899a48b5",
+      "name": "Jinn",
+      "version": "0.0.1-scaffolding",
+      "versionNumber": 1,
+      "shortDescription": "Pearl orchestrator + dream-shell. Routes all AI traffic via AiLagoon and orchestrates other pearls.",
+      "description": "Jinn is the Melusina pearl orchestrator. It coordinates other pearls (Bureau, gitpearl, ccash) through Cap'n Proto capabilities and routes all AI traffic exclusively through the AiLagoon AICapBundle, so AI access is gated by a single Sandstorm permission rather than per-grain capability hops. Includes a setup-wizard for first-time pearl onboarding.",
+      "categories": [
+        "Productivity"
+      ],
+      "license": "Melusina Public License v1.0 (source-available, not open source).",
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/Clawberg",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1746748800000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "marketingVersion": "0.0.1-scaffolding",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "updatedAt": 1778302960067,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "4347bd8bde746efd7a4ef743899a48b5d163b578875535437ea1d02856ceea1a",
+        "releaseHash": "bee5123feec87a720893c88ed9545524bd47c5b5df8eef7aefc92577ad22f756",
+        "releaseNonce": "bee2a20fa64ed247cded0b3104005dd3a491dac965b0b9f146852182b09cf5d2",
+        "releaseEntryPda": "offline-release-entry-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "masterNftMint": "offline-master-nft-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "licenseSquadsVault": "offline-license-vault-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "signedAtUnix": 1778302960,
+        "authorSig": "beb0f3704cf706354f00100379440c17fd7a3a116ecb72735733cc160acde53e",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-vau6r6xst3mg96npt6zf0wkc1hzycrtz"
+        }
+      },
+      "capabilities": null,
+      "screenshots": []
+    },
+    {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.6",
@@ -2941,8 +2989,8 @@
         }
       ],
       "license": "MIT",
-      "imageId": "1bd35de29580bab052ff6b8f26e03c66.png",
-      "updatedAt": 1778065056110,
+      "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
+      "updatedAt": 1778302876011,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a9092e475d213762bada76b8d54cd6eb94b6ccd1906b8e3c698eeec343ec523b",

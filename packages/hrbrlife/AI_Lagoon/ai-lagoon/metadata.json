@@ -1,9 +1,9 @@
 {
   "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-  "packageId": "f54e4b545cb679106a490b21b8de4aab",
+  "packageId": "2d54e9e254b36729ce231339a231d2b5",
   "name": "AiLagoon",
-  "version": "0.7.8",
-  "versionNumber": 17,
+  "version": "0.7.10",
+  "versionNumber": 18,
   "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
   "description": "",
   "categories": [
@@ -37,5 +37,6 @@
       "caption": "Built-in chat playground for testing models"
     }
   ],
-  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md"
+  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.7.10"
 }

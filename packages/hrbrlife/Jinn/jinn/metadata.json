@@ -1,0 +1,28 @@
+{
+  "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
+  "packageId": "4347bd8bde746efd7a4ef743899a48b5",
+  "name": "Jinn",
+  "version": "0.0.1-scaffolding",
+  "versionNumber": 1,
+  "shortDescription": "Pearl orchestrator + dream-shell. Routes all AI traffic via AiLagoon and orchestrates other pearls.",
+  "description": "Jinn is the Melusina pearl orchestrator. It coordinates other pearls (Bureau, gitpearl, ccash) through Cap'n Proto capabilities and routes all AI traffic exclusively through the AiLagoon AICapBundle, so AI access is gated by a single Sandstorm permission rather than per-grain capability hops. Includes a setup-wizard for first-time pearl onboarding.",
+  "categories": [
+    "Productivity"
+  ],
+  "license": "Melusina Public License v1.0 (source-available, not open source).",
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/Clawberg",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1746748800000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "marketingVersion": "0.0.1-scaffolding"
+}

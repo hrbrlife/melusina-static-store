@@ -2526,8 +2526,8 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.5-icon-hires",
-      "versionNumber": 8,
+      "version": "0.1.6",
+      "versionNumber": 9,
       "packageId": "286e7f2b8af1b16c8394361c7f703a38",
       "shortDescription": "Domain-agnostic process and workflow engine \u2014 author once in YAML, reuse everywhere.",
       "categories": [
@@ -2547,18 +2547,19 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.6",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1778156501070,
+      "updatedAt": 1778794644873,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5cf05f1159fc5b90691e998272a0c4d71c4efacd81f03b8e262ac1fb75a1be30",
-        "releaseHash": "b1c913427ea7c02ed71d5874a5339e154df3115424d95f09cba936a2b0217a20",
-        "releaseNonce": "c155a0cdd95a4471e57bd558e8134b6f97c366e2161544b666cff4e93bfc112d",
+        "appHash": "6d441911436af3f15a4410e199cc4002ac92fa5a253766817e12de79b2944049",
+        "releaseHash": "0c3e52d15c5bb8211717e91252186908aa02ca8045675e8405c550b84f899fbc",
+        "releaseNonce": "46e670a52aeb7441f95c5f0263d4fa9d52a5c56b53f90c1668e8cef447f7b637",
         "releaseEntryPda": "offline-release-entry-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
         "masterNftMint": "offline-master-nft-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
         "licenseSquadsVault": "offline-license-vault-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
-        "signedAtUnix": 1778156061,
-        "authorSig": "3f9bddbb5129788c0758ec542103d065ac9ebb1a5c8e51c9bc8c1a812334ae8e",
+        "signedAtUnix": 1778794609,
+        "authorSig": "ad59b41308a2b4d862ba7d1fa6d5add5ac56d4cfdbfd27f075a175b3f27eb685",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

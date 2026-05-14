@@ -2528,7 +2528,7 @@
       "name": "DueProcess",
       "version": "0.1.6",
       "versionNumber": 9,
-      "packageId": "286e7f2b8af1b16c8394361c7f703a38",
+      "packageId": "6d441911436af3f15a4410e199cc4002",
       "shortDescription": "Domain-agnostic process and workflow engine \u2014 author once in YAML, reuse everywhere.",
       "categories": [
         "Productivity"
@@ -2548,6 +2548,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.6",
+      "appHash": "6d441911436af3f15a4410e199cc4002ac92fa5a253766817e12de79b2944049",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
       "updatedAt": 1778794644873,
       "attest": {

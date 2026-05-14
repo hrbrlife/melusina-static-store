@@ -321,17 +321,29 @@ for repo in "${SHIPPED[@]}"; do
 
   if git config -f .gitmodules --get "submodule.$pkg_dir.path" >/dev/null 2>&1; then
     info "  bumping $repo submodule pointer to origin/publish"
-    (
-      cd "$pkg_dir"
-      git fetch -q origin publish 2>/dev/null || true
-      # `git checkout` aborts if the submodule's working tree has dirty
-      # leftovers (build-store.sh's Vite copies, repacked SPKs from earlier
-      # cycles, etc). The submodule is just a tree pointer for the catalog
-      # — we don't need to preserve anything in its working tree, so reset
-      # hard. Iter38 saw 4/5 bureau pointers stuck stale because of this.
-      git reset --hard -q origin/publish 2>/dev/null || \
-        git checkout -q origin/publish 2>/dev/null || true
-    )
+    # Verify the bump actually landed. Previous version swallowed every error
+    # silently with `2>/dev/null || true` chains; when the source repo had
+    # JUST pushed a new publish tip, the submodule's local origin/publish ref
+    # sometimes lagged (or reset --hard hit a transient lock), and the catalog
+    # deployed with the prior submodule tree. Surface failure so the deploy
+    # can be retried before push.
+    bump_rc=0
+    bump_out=$(cd "$pkg_dir" && git fetch -q origin publish 2>&1 && git reset --hard -q origin/publish 2>&1) || bump_rc=$?
+    target=$(cd "$pkg_dir" && git rev-parse origin/publish 2>/dev/null || true)
+    current=$(cd "$pkg_dir" && git rev-parse HEAD 2>/dev/null || true)
+    if [[ -n "$target" && "$current" != "$target" ]]; then
+      warn "  $repo: submodule HEAD did not advance to origin/publish (cur=${current:0:8} tgt=${target:0:8} rc=$bump_rc)"
+      [[ -n "$bump_out" ]] && echo "$bump_out" | sed "s|^|    [$repo] |"
+      # Last-resort: explicit reset --hard at parent level. Submodule worktree
+      # was probably locked. Reset --hard works even on locked worktrees.
+      ( cd "$pkg_dir" && git reset --hard "$target" 2>&1 || true ) | sed "s|^|    [$repo retry] |"
+      current=$(cd "$pkg_dir" && git rev-parse HEAD 2>/dev/null || true)
+      if [[ "$current" != "$target" ]]; then
+        fail "  $repo: submodule bump FAILED after retry — catalog will deploy stale pointer"
+      else
+        info "  $repo: retry advanced pointer to ${target:0:8}"
+      fi
+    fi
     git add "$pkg_dir" 2>/dev/null || true
   else
     # Plain-dir catalog entry. Find the source repo + its just-built SPK,

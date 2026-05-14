@@ -3648,9 +3648,9 @@
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
       "name": "Shell Tester",
-      "version": "0.1.4",
-      "versionNumber": 5,
-      "packageId": "4368a01e16712f86dd38c1ed9f09e39b",
+      "version": "0.1.6",
+      "versionNumber": 8,
+      "packageId": "20907be9210f4f2e91d9ceb91aff691f",
       "shortDescription": "Melusina Shell Extension Tester",
       "categories": [
         "Developer Tools"
@@ -3666,18 +3666,19 @@
         "twitterUsername": "",
         "picture": ""
       },
+      "marketingVersion": "0.1.6",
       "imageId": "80e1089b7cd64c8fecfba4740f38fe33.svg",
-      "updatedAt": 1778300249335,
+      "updatedAt": 1778756774423,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e30a2c4759dea08b990e3ddbfca54b265112c709dd300c7c70319da99375cf9a",
-        "releaseHash": "ef4fe46bf671b4d4b6913a3de0210edb5e4656c6b487122ec190942411280066",
-        "releaseNonce": "24e273e722843b6046a3536f0a8b6efd8b10800aee97a91e6ceb9984e2e2702c",
+        "appHash": "20907be9210f4f2e91d9ceb91aff691faa73eb9369757437b65bb45f0cad45e3",
+        "releaseHash": "2fea0059899455f7dc9a8e2edeb10aff8d8651a5d5be3f4192fc199995b6e201",
+        "releaseNonce": "80e68d8a33700929ab22ea8f83c59f399a6fba0cb686927c4d70f430f597ad93",
         "releaseEntryPda": "offline-release-entry-nn4ddmmdrs72caf25m0czd4ayk6qt0vx",
         "masterNftMint": "offline-master-nft-nn4ddmmdrs72caf25m0czd4ayk6qt0vx",
         "licenseSquadsVault": "offline-license-vault-nn4ddmmdrs72caf25m0czd4ayk6qt0vx",
-        "signedAtUnix": 1778157045,
-        "authorSig": "68d77257c7b7126fff8cca8b75a3516d2ba187f16f030ce20ade3959fbb1701a",
+        "signedAtUnix": 1778756774,
+        "authorSig": "32b9ce30ccf34324bd4086d3dd71a7e1d3ef21676feb7f47a1646b909d349e11",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

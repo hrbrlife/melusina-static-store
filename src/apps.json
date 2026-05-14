@@ -851,7 +851,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.4",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1778755233507,
+      "updatedAt": 1778760627483,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "cfd14c6a7fe40d88b3e87cb17b495c00e845d43f4cc7407d9d1812c1e0016277",
@@ -3466,7 +3466,7 @@
       "marketingVersion": "0.3.2",
       "appHash": "19c52a59ada733a909ec32d49dd5757e3088022eb569a119b27a0cb501440064",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1778757495963,
+      "updatedAt": 1778760627603,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "19c52a59ada733a909ec32d49dd5757e3088022eb569a119b27a0cb501440064",

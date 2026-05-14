@@ -1,9 +1,9 @@
 {
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
   "name": "fineract Setup",
-  "version": "0.2.2",
-  "versionNumber": 8,
-  "packageId": "06ebfe659c83cd21770c4684a68341f9",
+  "version": "0.2.3",
+  "versionNumber": 9,
+  "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
   "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
   "description": "",
   "categories": [
@@ -29,5 +29,6 @@
   "tier": "admin",
   "domains": [
     "*"
-  ]
+  ],
+  "marketingVersion": "0.2.3"
 }

@@ -2572,9 +2572,9 @@
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
       "name": "fineract Setup",
-      "version": "0.2.2",
-      "versionNumber": 8,
-      "packageId": "06ebfe659c83cd21770c4684a68341f9",
+      "version": "0.2.3",
+      "versionNumber": 9,
+      "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
       "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
       "description": "fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per Pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
@@ -2600,18 +2600,19 @@
       "domains": [
         "*"
       ],
+      "marketingVersion": "0.2.3",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1778301426239,
+      "updatedAt": 1778794103557,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "491be9905335f897fc8642182f16f9fe60cf2adaf82863b1b942169ba64ec6a4",
-        "releaseHash": "320eb8ac2beceb6d6b1434d54d8a6d8d83cb9c1bed2fbc3edbf27edc045bba36",
-        "releaseNonce": "e4ba568131c94e9ad44bb214382d07db07b942221c9dc4386d346f1bbc944af4",
+        "appHash": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc",
+        "releaseHash": "afbd449d5f3c5443991f42650adef48d60ca101c34f2ab7983740d6226316c1a",
+        "releaseNonce": "d7d0d7654da58261c6b8349ca7cba3c38ed8370d6b0d3b58fe296d1bbddd4d4c",
         "releaseEntryPda": "offline-release-entry-7htu16dens78fcfkc7u498sx33n0gsm2",
         "masterNftMint": "offline-master-nft-7htu16dens78fcfkc7u498sx33n0gsm2",
         "licenseSquadsVault": "offline-license-vault-7htu16dens78fcfkc7u498sx33n0gsm2",
-        "signedAtUnix": 1778023236,
-        "authorSig": "0b61dd10823a3580b19a5cd6f3135ef532ebc7cb4bf2acb1db884ba091cf7c22",
+        "signedAtUnix": 1778794103,
+        "authorSig": "7dce9c538b6177d2c195f10e86af79d6879a9c1bff07baa65aad8c53a36ac58e",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

@@ -1,9 +1,9 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "e543ad9f4ad9278687dd8e500d89299f",
+  "packageId": "25e569b49b59ae05540f5790ca882240",
   "name": "cca.sh Config",
   "version": "0.0.5",
-  "versionNumber": 5,
+  "versionNumber": 11,
   "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
   "categories": [
     "Productivity",

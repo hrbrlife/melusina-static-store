@@ -304,6 +304,31 @@ fi
 step "catalog rebuild: bump pointers for shipped apps + build + plan + apply"
 cd "$ROOT"
 
+# IMPORTANT: stash BEFORE bumping submodule pointers. `git stash push -u`
+# (without --keep-index) reverts BOTH index AND worktree to HEAD, which means
+# a freshly-staged submodule pointer (gitlink) gets thrown away — the worktree
+# reverts to HEAD's recorded gitlink and build-store reads stale content.
+# Observed across 5 consecutive ccash ship cycles 2026-05-14.
+# Stashing first, then bumping, means the bump operates on a clean parent
+# worktree and the bumped pointer/staged SPK survive until apply commits them.
+unmerged="$(git diff --name-only --diff-filter=U 2>/dev/null)"
+if [[ -n "$unmerged" ]]; then
+  fail "catalog rebuild aborted — unmerged paths in index:"
+  echo "$unmerged" | sed 's|^|    |'
+  echo "  Resolve via: git add <file> (to accept current working-tree version)"
+  echo "             or: git checkout HEAD -- <file> (to drop changes)"
+  exit 1
+fi
+
+stash_msg="ship-changes-catalog-$(date +%s)"
+stashed=false
+if ! git diff --quiet 2>/dev/null || git status --porcelain 2>/dev/null | grep -q '^??'; then
+  if git stash push -u -m "$stash_msg" >/dev/null 2>&1; then
+    stashed=true
+    info "  stashed dirty tree as $stash_msg (pre-bump, so bumps survive apply)"
+  fi
+fi
+
 # Reflect each shipped app into the catalog. Two paths:
 #   - submodule entry (in .gitmodules): bump pointer to origin/publish so
 #     'git submodule update' in the catalog brings the new tree.
@@ -375,31 +400,6 @@ for repo in "${SHIPPED[@]}"; do
     git add "$pkg_dir" 2>/dev/null || true
   fi
 done
-
-# Stash any dirty working-tree state so make apply's `git pull --rebase` can
-# proceed cleanly. Restore after the deploy.
-#
-# Defensive: bail early if the index has unmerged paths (U state). Iter28 saw
-# `make build` racing a prior stash-pop leave src/apps.json stuck in U state;
-# `git stash push` then failed silently (rc!=0, set -e suppressed by `if`),
-# and `make apply` later reported a confusing rebase error. Surface the cause.
-unmerged="$(git diff --name-only --diff-filter=U 2>/dev/null)"
-if [[ -n "$unmerged" ]]; then
-  fail "catalog rebuild aborted — unmerged paths in index:"
-  echo "$unmerged" | sed 's|^|    |'
-  echo "  Resolve via: git add <file> (to accept current working-tree version)"
-  echo "             or: git checkout HEAD -- <file> (to drop changes)"
-  exit 1
-fi
-
-stash_msg="ship-changes-catalog-$(date +%s)"
-stashed=false
-if ! git diff --quiet 2>/dev/null || git status --porcelain 2>/dev/null | grep -q '^??'; then
-  if git stash push -u -m "$stash_msg" >/dev/null 2>&1; then
-    stashed=true
-    info "  stashed dirty tree as $stash_msg"
-  fi
-fi
 
 catalog_log="$LOG_DIR/ship-catalog-$(date +%Y%m%d-%H%M%S).log"
 # Use plan + apply directly (NOT `make publish`) to avoid `make refresh` which

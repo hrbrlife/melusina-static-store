@@ -407,15 +407,13 @@ catalog_log="$LOG_DIR/ship-catalog-$(date +%Y%m%d-%H%M%S).log"
 (
   set -e
   echo "=== build-store.sh --no-refresh ==="; date
-  MELUSINA_SKIP_BUNDLE_UPDATE=1 bash build-store.sh --no-refresh
+  bash build-store.sh --no-refresh
   echo "=== make plan ==="
   MELUSINA_PUBLISH_AUTHORITATIVE=1 \
-  MELUSINA_SKIP_BUNDLE_UPDATE=1 \
   MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 \
     make plan
   echo "=== make apply ==="
   MELUSINA_PUBLISH_AUTHORITATIVE=1 \
-  MELUSINA_SKIP_BUNDLE_UPDATE=1 \
   MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1 \
     make apply
 ) >"$catalog_log" 2>&1

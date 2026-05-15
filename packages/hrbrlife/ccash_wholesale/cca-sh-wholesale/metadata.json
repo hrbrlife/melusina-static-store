@@ -1,9 +1,9 @@
 {
   "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-  "packageId": "155d3e1bef01daa2c07c16779883b58e",
+  "packageId": "1f70789790b0a13bd198d27984214a35",
   "name": "cca.sh Wholesale",
-  "version": "0.2.3",
-  "versionNumber": 5,
+  "version": "0.2.2",
+  "versionNumber": 6,
   "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
   "categories": [
     "Productivity",
@@ -25,5 +25,5 @@
   },
   "screenshots": [],
   "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-  "marketingVersion": "0.2.3"
+  "marketingVersion": "0.2.2"
 }

@@ -1,9 +1,9 @@
 {
   "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-  "packageId": "94d0d646156b3122eb339f73ad29ad77",
+  "packageId": "3d61c2d440c14429fc83d3d64a04750f",
   "name": "cca.sh Domain Template",
-  "version": "0.2.6",
-  "versionNumber": 13,
+  "version": "0.2.7",
+  "versionNumber": 14,
   "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
   "categories": [
     "Productivity",
@@ -25,5 +25,5 @@
   },
   "screenshots": [],
   "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-  "marketingVersion": "0.2.6"
+  "marketingVersion": "0.2.7"
 }

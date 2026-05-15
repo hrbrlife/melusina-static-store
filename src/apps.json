@@ -41,7 +41,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.7.10",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1778303014823,
+      "updatedAt": 1778854888531,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2d54e9e254b36729ce231339a231d2b57b0b65fd8f672042a081408da04282df",
@@ -676,7 +676,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.10",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1778854181523,
+      "updatedAt": 1778854888659,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9a7bcdb001315dbb125b4fd2ed3737e67934b77691000eaf13ff341177fb466b",
@@ -825,10 +825,10 @@
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-      "packageId": "94d0d646156b3122eb339f73ad29ad77",
+      "packageId": "3d61c2d440c14429fc83d3d64a04750f",
       "name": "cca.sh Domain Template",
-      "version": "0.2.6",
-      "versionNumber": 13,
+      "version": "0.2.7",
+      "versionNumber": 14,
       "shortDescription": "Domain configuration authority \u2014 workflow YAMLs, kanban vocabularies, hook manifests served per install",
       "categories": [
         "Productivity",
@@ -849,19 +849,19 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.2.6",
+      "marketingVersion": "0.2.7",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1778787812930,
+      "updatedAt": 1778854972999,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "94d0d646156b3122eb339f73ad29ad77d0f76977bed5601ab751879a5e3b8005",
-        "releaseHash": "7f07cd7cdf0f14ff37e36bb182071dac8aaa933b2b02ebbc5c80d37d6abc7280",
-        "releaseNonce": "a31c70df9bdf874fac4e58e41a3ca0f4278e3651f1ba3d7332371b521f18b2b0",
+        "appHash": "3d61c2d440c14429fc83d3d64a04750f27bf8e5e1af2a557f78aaddfb095bbc5",
+        "releaseHash": "7b9ed9a3b5d9c11ab57f7df862a7e842081cb91e62b6ad2e89f8eac4a96232f2",
+        "releaseNonce": "c94b447a8d12b1345178d1596a0a9fc918e43921377145ad1f6bd5cd0ce933ff",
         "releaseEntryPda": "offline-release-entry-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
         "masterNftMint": "offline-master-nft-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
         "licenseSquadsVault": "offline-license-vault-hck466e5ath1p4k4z1hhmd75ujjhs6z4",
-        "signedAtUnix": 1778787812,
-        "authorSig": "cd8923929677c655c352903c74bda3e9df7fbd17e472c7c310ce71562df36333",
+        "signedAtUnix": 1778854972,
+        "authorSig": "d40052593e3d634ce1982907bc76a281ffa047ea9933478292595427bed20cf1",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -1134,7 +1134,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.3",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1778301426131,
+      "updatedAt": 1778854888555,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "155d3e1bef01daa2c07c16779883b58e27914d3ad74d6ed44c90c27aaae36827",
@@ -1293,7 +1293,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "sha256": "2b98c08efda03658675aa7967573066c01c58e4d6f14c449445356ae883095aa",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778301426167,
+      "updatedAt": 1778854888575,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "b6459b68a7d88698744be32ce374aca4710fc7ac50b3f37014730ef45b5cfd62",
@@ -1990,7 +1990,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.3",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778843284071,
+      "updatedAt": 1778854888615,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "e1120f34f949d839471f15336d46adfa26dbc3536f875b2a936c433307093fb4",
@@ -2159,7 +2159,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.3",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778756227191,
+      "updatedAt": 1778854888671,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "65e0b5bc2921675014c5cd55b2cb51fcc7b6956d78a7800c17c2bbc3266cde13",
@@ -2604,7 +2604,7 @@
       ],
       "marketingVersion": "0.2.3",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1778794103557,
+      "updatedAt": 1778854888623,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc",
@@ -2787,7 +2787,7 @@
       },
       "marketingVersion": "0.0.1-scaffolding",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1778302960067,
+      "updatedAt": 1778854888547,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "4347bd8bde746efd7a4ef743899a48b5d163b578875535437ea1d02856ceea1a",
@@ -3720,7 +3720,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1778301427179,
+      "updatedAt": 1778854889383,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -3862,7 +3862,7 @@
       "license": "MIT",
       "marketingVersion": "0.0.2",
       "imageId": "c2b5542bdd9852f66f77539165af7179.png",
-      "updatedAt": 1778301426591,
+      "updatedAt": 1778854888791,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "83695a91cf1452f16b4365ef52d723d438914632301ec7963f451cf573f62a47",
@@ -4020,7 +4020,7 @@
       "screenshots": [],
       "license": "MIT",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1778301426291,
+      "updatedAt": 1778854888643,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4162,7 +4162,7 @@
       ],
       "marketingVersion": "1.2.0",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1778301427227,
+      "updatedAt": 1778854889415,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "0ee5ff3b5e9b692892fb00c03ba29e5c3a75d804e4e600269fd484a228ac4ab2",
@@ -4284,7 +4284,7 @@
       "license": "MIT",
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1778854266399,
+      "updatedAt": 1778854889431,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1989c0c145afaf6df037ca528bd7c7c8d1e4028fcfc57a3d3d5cd083e0f83c2e",

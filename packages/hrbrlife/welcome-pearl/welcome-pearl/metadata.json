@@ -1,0 +1,27 @@
+{
+  "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+  "name": "Welcome Pearl",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "1989c0c145afaf6df037ca528bd7c7c8",
+  "sha256": "1989c0c145afaf6df037ca528bd7c7c8d1e4028fcfc57a3d3d5cd083e0f83c2e",
+  "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
+  "categories": ["Productivity"],
+  "isOpenSource": true,
+  "webLink": "https://processstation.app",
+  "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+  "upstreamAuthor": "ProcessStation",
+  "createdAt": 1778843284000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "support@processstation.app",
+    "website": "https://processstation.app"
+  },
+  "description": "",
+  "screenshots": [],
+  "license": "MIT",
+  "marketingVersion": "0.1.0"
+}

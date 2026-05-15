@@ -4254,6 +4254,54 @@
           }
         ]
       }
+    },
+    {
+      "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+      "name": "Welcome Pearl",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "1989c0c145afaf6df037ca528bd7c7c8",
+      "sha256": "1989c0c145afaf6df037ca528bd7c7c8d1e4028fcfc57a3d3d5cd083e0f83c2e",
+      "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://processstation.app",
+      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+      "upstreamAuthor": "ProcessStation",
+      "createdAt": 1778843284000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "support@processstation.app",
+        "website": "https://processstation.app"
+      },
+      "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
+      "screenshots": [],
+      "license": "MIT",
+      "marketingVersion": "0.1.0",
+      "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
+      "updatedAt": 1778853407399,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "1989c0c145afaf6df037ca528bd7c7c8d1e4028fcfc57a3d3d5cd083e0f83c2e",
+        "releaseHash": "ff50e14fd97e7194f7318d2fa2b706e105a66e17f96c7b65673a02a0cbb3d186",
+        "releaseNonce": "32b166dda3f00f889b6a93ee28d4cc724526cee3595df34b63be459fd318aa46",
+        "releaseEntryPda": "offline-release-entry-021x360jnqz798taefscu7r69a0xvvqy",
+        "masterNftMint": "offline-master-nft-021x360jnqz798taefscu7r69a0xvvqy",
+        "licenseSquadsVault": "offline-license-vault-021x360jnqz798taefscu7r69a0xvvqy",
+        "signedAtUnix": 1778853407,
+        "authorSig": "2081073357a54abde6fb7e2ec858ad67209328a8f6e8a477f461cc0d53861f45",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-021x360jnqz798taefscu7r69a0xvvqy"
+        }
+      },
+      "capabilities": null
     }
   ]
 }

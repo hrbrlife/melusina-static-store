@@ -3491,8 +3491,8 @@
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "name": "Sheets Bureau",
-      "version": "1.0.6",
-      "versionNumber": 7,
+      "version": "1.0.7",
+      "versionNumber": 9,
       "packageId": "e45c09c332350c273a163ca8a115b62f",
       "shortDescription": "Sovereign spreadsheet grain (Sheets Bureau)",
       "categories": [
@@ -3533,18 +3533,19 @@
         "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "1.0.7",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1778877857610,
+      "updatedAt": 1778878879094,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "d8f6215d06d5d9c7e004d25c3725462c4249ee8d783f22c8f71202093e7b2ef3",
-        "releaseHash": "897dffbdfaaa761e614125ee97d862d4c6c491907c1108b3bc9015b75ce12c06",
-        "releaseNonce": "382ae16d92589f0ab9506079c1fd1dce1dd1cc52437867631a44d633e3b2f938",
+        "appHash": "ab3e2e09eafc7d32668e158aabe3f1849bf596dfb3dbf623b7821707a685a78f",
+        "releaseHash": "7003bae77fd69d783629111c6461299527335e259cc1c06edbe25ba654d36951",
+        "releaseNonce": "8e19772bc77deb1757a7853c769033efc66a6df9ace39c2ac5061468dd0187ff",
         "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "masterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "signedAtUnix": 1778162358,
-        "authorSig": "882ba2982721d98b229992261721609ac10502406964eec3970ec821706a6a29",
+        "signedAtUnix": 1778878829,
+        "authorSig": "cdbc5561121813babf6cb422c703af31045eb4c25843b463d555dcb7c20dd404",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

@@ -47,43 +47,49 @@ while (( $# >= 2 )); do
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
   fi
 
-  # Pull the new app version from the source pkgdef (most authoritative for
-  # the SPK that's about to be staged). Fall back to source metadata.json.
-  SRC_DIR="$(dirname "$SPK")"
-  PKGDEF=""
-  for cand in "$SRC_DIR/sandstorm-pkgdef.capnp" "$SRC_DIR/.sandstorm/sandstorm-pkgdef.capnp"; do
-    [[ -f "$cand" ]] && { PKGDEF="$cand"; break; }
-  done
-
-  NEW_VER=""
-  NEW_NUM=""
-  if [[ -n "$PKGDEF" ]]; then
-    NEW_NUM="$(grep -oE 'appVersion[[:space:]]*=[[:space:]]*[0-9]+' "$PKGDEF" | grep -oE '[0-9]+' | head -1 || true)"
-    NEW_VER="$(grep -oE 'appMarketingVersion[[:space:]]*=[[:space:]]*\(defaultText[[:space:]]*=[[:space:]]*"[^"]+"\)' "$PKGDEF" | grep -oE '"[^"]+"' | head -1 | tr -d '"' || true)"
-  fi
-  if [[ -z "$NEW_VER" && -f "$SRC_DIR/metadata.json" ]]; then
-    NEW_VER="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('marketingVersion','0.0.0'))" "$SRC_DIR/metadata.json")"
-    NEW_NUM="$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); v=d.get('versionNumber',0); print(int(v))" "$SRC_DIR/metadata.json" 2>/dev/null || echo 0)"
-  fi
-  : "${NEW_VER:=0.0.0}"
-  : "${NEW_NUM:=0}"
-
   # 1) copy SPK
   cp -f "$SPK" "$PKG/app.spk"
-  SHA="$(sha256sum "$PKG/app.spk" | cut -c1-12)"
+  FULL_SHA="$(sha256sum "$PKG/app.spk" | cut -d' ' -f1)"
+  SHA="${FULL_SHA:0:12}"
   SZ="$(stat -c%s "$PKG/app.spk")"
-  PKG_ID="$(spk verify -d "$PKG/app.spk" 2>/dev/null | grep -oE '"packageId":[[:space:]]*"[0-9a-f]+"' | head -1 | grep -oE '[0-9a-f]+' | tail -1)"
 
-  # 2) sync catalog metadata.json (version, versionNumber, packageId)
-  python3 - "$CAT_META" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" <<'PY'
+  # Extract authoritative version/versionNumber/packageId FROM THE SPK ITSELF.
+  # The SPK is the source of truth — pkgdef may have moved past the on-disk
+  # pack, and metadata.json drifts. spk verify output is Cap'n Proto text
+  # (JSON-like but not strict JSON), so we use a small python parser that
+  # tolerates the trailing-comma + LargeDataBlob syntax.
+  SPK_INFO="$(spk verify -d "$PKG/app.spk" 2>/dev/null)"
+  if [[ -z "$SPK_INFO" ]]; then
+    fail "  spk verify -d failed on $PKG/app.spk — refusing to stage with unknown identity"
+    FAILS=$((FAILS+1)); continue
+  fi
+  read -r PKG_ID NEW_NUM NEW_VER < <(python3 - <<PY
+import re, sys
+s = """$SPK_INFO"""
+pkg = re.search(r'"packageId"\s*:\s*"([0-9a-f]+)"', s)
+ver_num = re.search(r'"version"\s*:\s*(\d+)', s)
+mkt = re.search(r'"marketingVersion"\s*:\s*\{\s*"defaultText"\s*:\s*"([^"]+)"', s)
+print(pkg.group(1) if pkg else "", ver_num.group(1) if ver_num else "0", mkt.group(1) if mkt else "0.0.0")
+PY
+  )
+  : "${NEW_VER:=0.0.0}"
+  : "${NEW_NUM:=0}"
+  if [[ -z "$PKG_ID" ]]; then
+    fail "  could not extract packageId from spk verify output — refusing to stage"
+    FAILS=$((FAILS+1)); continue
+  fi
+
+  # 2) sync catalog metadata.json (version, versionNumber, packageId, sha256)
+  python3 - "$CAT_META" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
 import json, sys
-path, ver, num, pkg_id = sys.argv[1:5]
+path, ver, num, pkg_id, full_sha = sys.argv[1:6]
 d = json.load(open(path))
 d["version"] = ver
 d["marketingVersion"] = ver
 d["versionNumber"] = int(num)
 if pkg_id:
     d["packageId"] = pkg_id
+d["sha256"] = full_sha
 with open(path, "w") as f:
     json.dump(d, f, indent=2)
     f.write("\n")

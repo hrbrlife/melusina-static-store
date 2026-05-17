@@ -1,10 +1,17 @@
 {
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "CyberTeller",
+<<<<<<< Updated upstream
   "version": "0.1.14",
   "versionNumber": 20,
   "packageId": "7900899ae62ac2d0654083495f2f8479",
   "sha256": "85b1a52d2b9b8edcaf447b816e082b0688fcc1d2f54ade15a3e1df0af6874f4d",
+=======
+  "version": "0.1.4",
+  "versionNumber": 10,
+  "packageId": "6e1d3050dc1c173085e2b2a1c4aa08e1",
+  "sha256": "6e1d3050dc1c173085e2b2a1c4aa08e14b3f7597658d020906432e8e7d346137",
+>>>>>>> Stashed changes
   "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
   "categories": [
     "Productivity"
@@ -26,5 +33,9 @@
   "description": "",
   "screenshots": [],
   "license": "Proprietary - AiTX.pro Limited",
+<<<<<<< Updated upstream
   "marketingVersion": "0.1.14"
+=======
+  "marketingVersion": "0.1.4"
+>>>>>>> Stashed changes
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "melusina-release-v1",
-<<<<<<< Updated upstream
   "version": "0.1.14",
   "appHash": "7900899ae62ac2d0654083495f2f8479afd05f79194d16b81b9d7e124623c877",
   "releaseHash": "bd1475e35d5c6dca4f342e6a655c9c427e9811e22a416249e46fb5468603e087",
@@ -10,17 +9,6 @@
   "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
   "authorSig": "e3fbe254e899cfb91fac9394e5e48164fe9556619f2c6ef1188ae39b59671943",
   "signedAtUnix": 1779004005,
-=======
-  "version": "0.1.4",
-  "appHash": "ecc31c920c5c0113da8bd6819314bbe02bf920a0c519e2324e2661e5d45e0718",
-  "releaseHash": "94e6375613b5b909229eb8d62c6a04075f6f71618ef0c9a982f346052857ab89",
-  "releaseNonce": "9bf13b29019736ce694414f14eeab2f2bd529eb74ed225358111a36a41dde07e",
-  "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-  "masterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-  "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-  "authorSig": "a9a7abfbfbc30c9f366b34f064ef87bd71b5b05b2c4281ffdffbf886641ba3b2",
-  "signedAtUnix": 1779002958,
->>>>>>> Stashed changes
   "quorumPolicy": {
     "threshold": 1,
     "memberCount": 1,

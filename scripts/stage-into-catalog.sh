@@ -19,8 +19,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-STUB="${RELEASE_JSON_STUB:-/home/user/Desktop/INSTASYS_CHAT_stripped/spkmodule/bin/release-json-stub}"
-[[ -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable at $STUB" >&2; exit 2; }
+STUB="${RELEASE_JSON_STUB:-}"
+if [[ -z "$STUB" ]]; then
+  # Probe canonical spkmodule copies on this host. Any reachable copy works
+  # — release-json-stub is a pure script in the shared spkmodule component.
+  for cand in \
+    /home/user/Desktop/welcome-pearl/spkmodule/bin/release-json-stub \
+    /home/user/Desktop/_killlist_staging/melusina-spkmodule-component/bin/release-json-stub \
+    /home/user/Desktop/melusina_botmother/spkmodule/bin/release-json-stub \
+    /home/user/Desktop/ccash_wholesale/spkmodule/bin/release-json-stub \
+    /home/user/Desktop/ccash_domain_template/spkmodule/bin/release-json-stub; do
+    if [[ -x "$cand" ]]; then STUB="$cand"; break; fi
+  done
+fi
+[[ -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB + 5 canonical spkmodule paths. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
 
 ok()   { printf '\033[0;32m[OK]\033[0m   %s\n' "$*"; }
 warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }

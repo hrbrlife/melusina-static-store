@@ -231,10 +231,10 @@
     },
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
-      "packageId": "0a68629b7e941e463770e23f3d763ea8",
+      "packageId": "69f1a5a6b29bd6157a709a6fb1ff6086",
       "name": "Cal Bureau",
-      "version": "0.1.0",
-      "versionNumber": 9,
+      "version": "0.1.2",
+      "versionNumber": 12,
       "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
       "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar Pearl** \u2014 share Pearl-by-Pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
       "categories": [
@@ -256,18 +256,19 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "f166bad0c103ed1c45939b2c980a9a2a.png",
-      "updatedAt": 1778877857582,
+      "marketingVersion": "0.1.2",
+      "imageId": "53380c5a01317190b23b5af6a1452899.svg",
+      "updatedAt": 1779001839310,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bfd47419bdfc08eeade3327811b55fe6d4695c84c8676ef21a79664f8340d154",
-        "releaseHash": "a7f2c9d6d6e441d7d904b0d836bbbf91086aea31ae213b249692f6ba403c76f3",
-        "releaseNonce": "fae3fde188ab6a4e19273b5de95563ecb535c24c34d82924f432c8c9a0893f42",
+        "appHash": "69f1a5a6b29bd6157a709a6fb1ff6086553bf26bf85c6f83c991eb1b3bc9208d",
+        "releaseHash": "ab31d2ef72835732bc55a35b8ed888e029e6edea37cc88a00c2b653b65a73620",
+        "releaseNonce": "d55de1a47289606450d5d4dd542fe49905582fb015c1d6c0587e6dbc4e55a2e9",
         "releaseEntryPda": "offline-release-entry-p0wjp099ry06x0shap6ts270x55tn24p",
         "masterNftMint": "offline-master-nft-p0wjp099ry06x0shap6ts270x55tn24p",
         "licenseSquadsVault": "offline-license-vault-p0wjp099ry06x0shap6ts270x55tn24p",
-        "signedAtUnix": 1778002505,
-        "authorSig": "28c8565dc6ba99f9eafe4a3d71325a7a2d565e02e85ed09d6b22126c0ff8a7d9",
+        "signedAtUnix": 1778880682,
+        "authorSig": "81fa5645c27fc99d525936d763ac45006c6560ea054714979796d955e4efcf94",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -391,8 +392,8 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "3c5d87c1716fe1c23d4450cde68023ba.png",
-      "updatedAt": 1778877857614,
+      "imageId": "d1094f6e2253f02fda782364633d7705.svg",
+      "updatedAt": 1779001863858,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8c58fa752945642ffb68ca66c49aee7b3a81d6ffd88f8592d37328da40980d39",
@@ -536,8 +537,8 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "a04d0e8ca56e9509fd1754a9111b4ee8.png",
-      "updatedAt": 1778877857618,
+      "imageId": "d3599b206f5c5eae2ddfc7816cf2ee87.svg",
+      "updatedAt": 1779001863922,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1f5e03a24fa908baf251ccaac5cf6efcc4493931acc1aad73c91bd688cafd4d5",
@@ -971,8 +972,8 @@
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
       "packageId": "f882335d85e9e44ab1d237cb46a1c6a1",
       "name": "cca.sh Org Member",
-      "version": "0.1.1",
-      "versionNumber": 7,
+      "version": "0.1.2",
+      "versionNumber": 3,
       "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
       "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped Pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
       "categories": [
@@ -984,7 +985,7 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_ccash_org_member_app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776851512660,
+      "createdAt": 1776836094911,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -994,18 +995,19 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "dc69cdcd227631bed4a9b9acaacbed09.png",
-      "updatedAt": 1778877857626,
+      "marketingVersion": "0.1.2",
+      "imageId": "272778a6f471a5d19fb9e09431d95ccf.svg",
+      "updatedAt": 1779001839350,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "775f44f58fa67fede4ad8a73180c547574c581a24fe0743e16969c2b23ba95c2",
-        "releaseHash": "772fc1dd6d84a339389951f20976e2b3a04a246e23bb8c5ed2e32fe275709891",
-        "releaseNonce": "ad667b95456cd93b40475ef70191df8a1f7f15bd9e7d484b598c006fae96648a",
+        "appHash": "45ad6f8e01fe22f126a78fb55f77cea1dd888111e6dd8d299a26a6ba83ada51b",
+        "releaseHash": "50a4cef3e80a7a2942c94079a150e22401e30597bdba60809f2e8b3e4fc1fefc",
+        "releaseNonce": "a124170d9578676869095974136463c291558929fc390bc44525301af25c0a6e",
         "releaseEntryPda": "offline-release-entry-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
         "masterNftMint": "offline-master-nft-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
         "licenseSquadsVault": "offline-license-vault-g5kzmttt0092pw3mrqg96yu5z13y0jg0",
-        "signedAtUnix": 1778023984,
-        "authorSig": "9c2c92edd78e513e72e712c3c5340d2b1828fa496cc8a93b02d8e057aa966c55",
+        "signedAtUnix": 1778879754,
+        "authorSig": "feb6b102c1e0989463966ac951fe18729b728fe23d94ff375c0faf26e1b3c3ab",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -1268,8 +1270,8 @@
     {
       "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
       "name": "ChainWatch",
-      "version": "0.1.0",
-      "versionNumber": 8,
+      "version": "0.1.1",
+      "versionNumber": 9,
       "packageId": "c3dc0e57293e31f5a4724de56dbc058e",
       "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller \u2014 stateless, no keys, talks to chain RPCs.",
       "categories": [
@@ -1292,19 +1294,19 @@
       "description": "ChainWatch is the multi-chain RPC proxy sidecar for CyberTeller. It exposes three HTTP endpoints \u2014 `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` \u2014 and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate grain\n\n- **Single chokepoint for outbound RPC.** CyberTeller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs \u2014 nothing else. CyberTeller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator grain or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot \u2014 there is no stub fallback (greenfield posture, fail loud).",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "sha256": "2b98c08efda03658675aa7967573066c01c58e4d6f14c449445356ae883095aa",
+      "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778880863930,
+      "updatedAt": 1778881116174,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b6459b68a7d88698744be32ce374aca4710fc7ac50b3f37014730ef45b5cfd62",
-        "releaseHash": "f5055606118f5cd804d79a439df5d4568b3a18b45ccbecc7b00d54e8d6268877",
-        "releaseNonce": "a8e9ea782588dc57494822b3e991f7202166274d03ccb511c6de79c9f933d199",
+        "appHash": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb",
+        "releaseHash": "624c66e7982ad2a9e724f5bd5f670fad9478256b1c8fb6de843f79a65669146a",
+        "releaseNonce": "3a8611816fe04e94a8812e7bf15f9f546c4d3ff7bd175ba0850ca85147c6ca46",
         "releaseEntryPda": "offline-release-entry-9prnz5fa0c59r9fy20x9d9z1f8gqa2f5",
         "masterNftMint": "offline-master-nft-9prnz5fa0c59r9fy20x9d9z1f8gqa2f5",
         "licenseSquadsVault": "offline-license-vault-9prnz5fa0c59r9fy20x9d9z1f8gqa2f5",
-        "signedAtUnix": 1778005025,
-        "authorSig": "023b9d833fc288fd30d00b862fbea231c8d0dbada5410059f6a3b218d7c9feb8",
+        "signedAtUnix": 1778880459,
+        "authorSig": "505db6f6eba456357dce49a0b6a895f383d0f36849e4aa0e81f67e76ebcac647",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -1419,53 +1421,6 @@
       }
     },
     {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Claudeberg",
-      "version": "0.1.13",
-      "versionNumber": 15,
-      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
-      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776987130000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.11",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1778877857646,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
-        "releaseHash": "a6d3afef81c676e6cb4908f86aa18b332a92b1ed52e9828da943cd6f58b23752",
-        "releaseNonce": "21f994b4150c0dea924ea8a0c90a7f35d7fa5876a08ef791ceef4267d6721002",
-        "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
-        "signedAtUnix": 1778107489,
-        "authorSig": "05c1feaa1b6b142f4d135cbf0376c83e822c40c8945f08e19aac8289fab49ab6",
-        "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-mjgmurff66jn7m1xtr6hk106m867vvxu"
-        }
-      },
-      "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
-      "screenshots": []
-    },
-    {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
       "version": "0.1.3",
@@ -1539,8 +1494,8 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "0f5445d499983ab6c7b937b3a2840ffa.png",
-      "updatedAt": 1778877857626,
+      "imageId": "bf3059900d8fd5c80f7e63af53b011a5.svg",
+      "updatedAt": 1779001864018,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8aa8b86190f6406185739bccf69b0f2cbfbebf6dc2ba442ccd1705ae96a2b05f",
@@ -1694,8 +1649,8 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "26a19bda4c5efe30f10f6a4883b65381.png",
-      "updatedAt": 1778877857590,
+      "imageId": "f9f915ff60fc663abd2d3167a4db0fac.svg",
+      "updatedAt": 1779001863726,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2f1239956ac026ac9b15e5007d04f7790fbf20d73d4d150fe0e527b5fe7f960c",
@@ -1805,10 +1760,10 @@
     },
     {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
-      "packageId": "287ea22a57d091c5d0c7cf7240148ce1",
+      "packageId": "7e70ef836cac405ac9e168bf066c125b",
       "name": "CrateLink",
-      "version": "0.1.0",
-      "versionNumber": 2,
+      "version": "0.1.1",
+      "versionNumber": 6,
       "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
       "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your Pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the Pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
       "categories": [
@@ -1830,22 +1785,23 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
+      "marketingVersion": "0.1.1",
       "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
-      "updatedAt": 1778879477374,
+      "updatedAt": 1779001810842,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a082badff63a9e46e5cc189653a6bad98a1c56c54dee390ba2f76ac45726b4fc",
-        "releaseHash": "cde21a8289d4e0068dc47b00913845ea3e96bd8899463c5e8624faaf48444667",
-        "releaseNonce": "25db08d6a9ab570a6e09f583fa3ed17d1e569cb1dbd11282c3ec80188f6af901",
-        "releaseEntryPda": "AP1mJKJToVssdi5hfSbry18wRnjErkpnbvX34PfwXPGY",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
-        "signedAtUnix": 1777787079,
-        "authorSig": "glOwuTfRX7Pps0qe9a6Xak6QDlhyHNlcH2SP2Lcg6mCwTsg0t3CdRmkeyvjhFJGt/sqEEYsCQ+NB0emEvTMlCQ==",
+        "appHash": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a",
+        "releaseHash": "d7ffb35234877b766bb3120ee611ffb98b3155d5778cb71c1c94005c4d367397",
+        "releaseNonce": "8e009edf75bb02b7ddcd32c3a79fbe9ad819c0a71abe8a17070d78ef6f70571a",
+        "releaseEntryPda": "offline-release-entry-ztxjck2pk8ecy6mxchrwprtss0vt8vgk",
+        "masterNftMint": "offline-master-nft-ztxjck2pk8ecy6mxchrwprtss0vt8vgk",
+        "licenseSquadsVault": "offline-license-vault-ztxjck2pk8ecy6mxchrwprtss0vt8vgk",
+        "signedAtUnix": 1778879366,
+        "authorSig": "d82f4f7b342fbbf387f7441eb61b7a4ff60f9fd99340f280adb84b84dc915815",
         "quorumPolicy": {
-          "threshold": 2,
-          "memberCount": 4,
-          "multisigPda": "9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-ztxjck2pk8ecy6mxchrwprtss0vt8vgk"
         }
       },
       "capabilities": {
@@ -1965,10 +1921,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.4",
-      "versionNumber": 10,
-      "packageId": "86efdbc3429ac62f3088cce60f0924c2",
-      "sha256": "6e1d3050dc1c173085e2b2a1c4aa08e14b3f7597658d020906432e8e7d346137",
+      "version": "0.1.5",
+      "versionNumber": 11,
+      "packageId": "85b1a52d2b9b8edcaf447b816e082b06",
+      "sha256": "85b1a52d2b9b8edcaf447b816e082b0688fcc1d2f54ade15a3e1df0af6874f4d",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -1989,9 +1945,9 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.4",
+      "marketingVersion": "0.1.5",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1778880883358,
+      "updatedAt": 1779002046374,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86efdbc3429ac62f3088cce60f0924c20b1c7bfbd94a7d397d637b1c03486884",
@@ -2310,8 +2266,8 @@
     {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
       "name": "Diagram Bureau",
-      "version": "1.0.6",
-      "versionNumber": 7,
+      "version": "1.0.7",
+      "versionNumber": 8,
       "packageId": "b63ab36054515bc6b5f87bae6783d47e",
       "shortDescription": "Sovereign diagram grain (Diagram Bureau)",
       "categories": [
@@ -2352,18 +2308,19 @@
         "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "1.0.7",
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
-      "updatedAt": 1778877857594,
+      "updatedAt": 1779001694026,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a545fa3a2d69ac6871a346a2b1c0b59a52a9baf4f74a5c59f06eaaeff3a817de",
-        "releaseHash": "4057bf475ee577525b1524c54460ecb1f4ea8527b84cae8282cc8e162397d862",
-        "releaseNonce": "0e6ff5f5065628c22fed66fe7534ee5189a5c98350f0ac1e1def1d22d4bda0c5",
+        "appHash": "bc14e4dadd64fc0f5ec4da83bda30811dce9d2015defe4491609cdcde3c409c0",
+        "releaseHash": "4bc86f65edb94167affad6b2c62f3636d2e14da86e756f1ab9e17dab58e8b7ef",
+        "releaseNonce": "b9850e766fe270b36f04b72e18edd5f26dca20ba0196071eff17323c1b030811",
         "releaseEntryPda": "offline-release-entry-sexh707e9gpems03ae8c71wn02ummdah",
         "masterNftMint": "offline-master-nft-sexh707e9gpems03ae8c71wn02ummdah",
         "licenseSquadsVault": "offline-license-vault-sexh707e9gpems03ae8c71wn02ummdah",
-        "signedAtUnix": 1778161892,
-        "authorSig": "bf67b34c68ad1b3dfa98b5dfdcdcc4e671c44b8bdfc99076d8d42843a6e4ad3a",
+        "signedAtUnix": 1778880337,
+        "authorSig": "1c0a92f1f86dcf010f714c8af5fb6c12728b948be81c8edd044a6dcba4c484be",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -2461,8 +2418,8 @@
     {
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
       "name": "Doc Bureau",
-      "version": "1.0.8",
-      "versionNumber": 9,
+      "version": "1.0.9",
+      "versionNumber": 10,
       "packageId": "561239828b1707d7f7d72c4f38bb8f5f",
       "shortDescription": "Sovereign document grain (Doc Bureau)",
       "categories": [
@@ -2503,18 +2460,19 @@
         "picture": ""
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "1.0.9",
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
-      "updatedAt": 1778877857598,
+      "updatedAt": 1779001691726,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c937c368a0db072c023bd4100cc8b34894e3c420e7f2eeaf2ecf1f54b643d8fa",
-        "releaseHash": "45b10780ed33fa3b3c2938e454af15b04d2d4f890d62f45e16bdcffcc5ca2ac7",
-        "releaseNonce": "d98154bc6151ee56cef8aae995836454f60c2a9811581325fb5741bf510011a8",
+        "appHash": "2bbc0843359c8383f1f8001510393e17cd58cb7282bc290c4545a89def6c188d",
+        "releaseHash": "43e16f4fd69078dca4c915bc2c56dd5036e58d806e11d7df5b6c38a0296a5651",
+        "releaseNonce": "128a98f80cc049b90b892ac3059025be24d39896120c87648853d301880bc626",
         "releaseEntryPda": "offline-release-entry-v38a293urgrhgpppr5q15j3chfv965zh",
         "masterNftMint": "offline-master-nft-v38a293urgrhgpppr5q15j3chfv965zh",
         "licenseSquadsVault": "offline-license-vault-v38a293urgrhgpppr5q15j3chfv965zh",
-        "signedAtUnix": 1778163443,
-        "authorSig": "53a9e5470eca0d5490c8f5354510971ad9ae1511a06490b352f13f595208c4fb",
+        "signedAtUnix": 1778881003,
+        "authorSig": "c24e0c079f7971eac71f502e0db6f0626af8b0e801ba5f335f916289561720a2",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,
@@ -2853,6 +2811,100 @@
       "screenshots": []
     },
     {
+      "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
+      "packageId": "4347bd8bde746efd7a4ef743899a48b5",
+      "name": "Jinn",
+      "version": "0.0.4",
+      "versionNumber": 4,
+      "shortDescription": "Pearl orchestrator + dream-shell. Routes all AI traffic via AiLagoon and orchestrates other pearls.",
+      "description": "Jinn is the Melusina pearl orchestrator. It coordinates other pearls (Bureau, gitpearl, ccash) through Cap'n Proto capabilities and routes all AI traffic exclusively through the AiLagoon AICapBundle, so AI access is gated by a single Sandstorm permission rather than per-grain capability hops. Includes a setup-wizard for first-time pearl onboarding.",
+      "categories": [
+        "Productivity"
+      ],
+      "license": "Melusina Public License v1.0 (source-available, not open source).",
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/Clawberg",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1746748800000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "marketingVersion": "0.0.4",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "updatedAt": 1779001687858,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "2eccc423055827472fbe45e209c0e9d34de8ae2fe97e3365f9b819965ed33d4b",
+        "releaseHash": "02a3d525c31262910c1120d915e5077222bed63e7a6cba9ff0bccd89339b8746",
+        "releaseNonce": "5dacd61a1e1a710212206c4283ac490973208932a228750870c20b85f2478137",
+        "releaseEntryPda": "offline-release-entry-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "masterNftMint": "offline-master-nft-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "licenseSquadsVault": "offline-license-vault-vau6r6xst3mg96npt6zf0wkc1hzycrtz",
+        "signedAtUnix": 1778880654,
+        "authorSig": "1b4d54ff5f3f74a7b5dd272d487c12652eb49fbd931a89a076365e49858c1c60",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-vau6r6xst3mg96npt6zf0wkc1hzycrtz"
+        }
+      },
+      "capabilities": null,
+      "screenshots": []
+    },
+    {
+      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+      "name": "Melusina OpenClaw",
+      "version": "0.1.13",
+      "versionNumber": 15,
+      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
+      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776987130000,
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.11",
+      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
+      "updatedAt": 1778877857646,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
+        "releaseHash": "a6d3afef81c676e6cb4908f86aa18b332a92b1ed52e9828da943cd6f58b23752",
+        "releaseNonce": "21f994b4150c0dea924ea8a0c90a7f35d7fa5876a08ef791ceef4267d6721002",
+        "releaseEntryPda": "offline-release-entry-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "masterNftMint": "offline-master-nft-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "licenseSquadsVault": "offline-license-vault-mjgmurff66jn7m1xtr6hk106m867vvxu",
+        "signedAtUnix": 1778107489,
+        "authorSig": "05c1feaa1b6b142f4d135cbf0376c83e822c40c8945f08e19aac8289fab49ab6",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-mjgmurff66jn7m1xtr6hk106m867vvxu"
+        }
+      },
+      "capabilities": null,
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "screenshots": []
+    },
+    {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
       "version": "0.4.7",
@@ -3002,6 +3054,111 @@
           }
         ]
       }
+    },
+    {
+      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+      "packageId": "e512808599abffbcce3cca247d237e80",
+      "name": "MiniGit",
+      "version": "0.2.1",
+      "versionNumber": 8,
+      "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
+      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
+      "categories": [
+        "Developer Tools"
+      ],
+      "license": "MIT",
+      "isOpenSource": true,
+      "webLink": "https://github.com/hrbrlife/MiniGit",
+      "codeLink": "https://github.com/hrbrlife/MiniGit",
+      "upstreamAuthor": "Gogs Authors + alexeikarp",
+      "createdAt": 1772577065000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "contactEmail": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "codeUrl": "https://github.com/hrbrlife/MiniGit",
+      "screenshots": [
+        {
+          "url": "screenshots/01-repository-browser.png",
+          "caption": "Repository Browser"
+        },
+        {
+          "url": "screenshots/02-clone-and-file-tree.png",
+          "caption": "Clone And File Tree"
+        }
+      ],
+      "permissionVocabulary": [
+        {
+          "name": "view",
+          "title": "View",
+          "description": "Browse repository state, clone, and fetch."
+        },
+        {
+          "name": "edit",
+          "title": "Edit",
+          "description": "Push, mutate refs, write files, and apply patches."
+        },
+        {
+          "name": "admin",
+          "title": "Admin",
+          "description": "Owner-class actions: publish, change default branch, manage repo settings."
+        }
+      ],
+      "roles": [
+        {
+          "name": "admin",
+          "title": "admin",
+          "permissions": [
+            "view",
+            "edit",
+            "admin"
+          ],
+          "verbPhrase": "can read, push, manage settings, and publish"
+        },
+        {
+          "name": "editor",
+          "title": "edit",
+          "permissions": [
+            "view",
+            "edit"
+          ],
+          "verbPhrase": "can clone, fetch, and push",
+          "default": true
+        },
+        {
+          "name": "viewer",
+          "title": "pull only",
+          "permissions": [
+            "view"
+          ],
+          "verbPhrase": "can clone and fetch only"
+        }
+      ],
+      "marketingVersion": "0.2.1",
+      "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
+      "updatedAt": 1779001673822,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "82d7c95713a253825ac0379a91f46f68479e63879dba1566127f9b3a4be421f9",
+        "releaseHash": "484b804ac5ce0b8596af319ecf2f0462f16aadcaa3728dcc5e40bec806fde3d4",
+        "releaseNonce": "d551d81a1350b23d4b39d0bf721c43215d588958b2e49017c56c7ff546215f3e",
+        "releaseEntryPda": "offline-release-entry-pe3k6wapfczy7797n8xxu3qsn40sd1k4",
+        "masterNftMint": "offline-master-nft-pe3k6wapfczy7797n8xxu3qsn40sd1k4",
+        "licenseSquadsVault": "offline-license-vault-pe3k6wapfczy7797n8xxu3qsn40sd1k4",
+        "signedAtUnix": 1778879393,
+        "authorSig": "304ef1321692a8add8ca194841e3a71230107fb036a3805a554ec56c67213382",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-pe3k6wapfczy7797n8xxu3qsn40sd1k4"
+        }
+      },
+      "capabilities": null
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
@@ -3204,10 +3361,9 @@
     },
     {
       "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
-      "packageId": "5d54984037e8e9bb0030dfcecb18e953",
       "name": "Notes Bureau",
-      "version": "0.1.0",
-      "versionNumber": 6,
+      "version": "0.1.1",
+      "versionNumber": 7,
       "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
       "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed Pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by Pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
       "categories": [
@@ -3229,18 +3385,20 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "imageId": "65392bba92f7a89bb4656fb09bfdf8ef.png",
-      "updatedAt": 1778877857602,
+      "marketingVersion": "0.1.1",
+      "packageId": "630f3dcdfd88882049eb566908402f64",
+      "imageId": "e1eea7542528c8855253068f1cf9b1f2.svg",
+      "updatedAt": 1779001839266,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "baa130682d0d0ff3be1a9a96542483fa4314cf8a13d5d0f8da8b9e965126ba2a",
-        "releaseHash": "00c95a1c52d4d1244b699b096df79643489312f3f60b18b51bb432c4cef3c0d4",
-        "releaseNonce": "a82f6e1a796ed7765c988d71aea5825a73437726c96c38393c3c4c79d82c7390",
+        "appHash": "630f3dcdfd88882049eb566908402f64899e767dba276fe27452b52534ebd1f1",
+        "releaseHash": "19623968b1ea95acdc076a360129660505ae055e1cb9a2ef60e1cda8f0599b93",
+        "releaseNonce": "02b9be43b732f043e9be70fc0669e6f90ba8ea735076a90035b12326d90b7d98",
         "releaseEntryPda": "offline-release-entry-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
         "masterNftMint": "offline-master-nft-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
         "licenseSquadsVault": "offline-license-vault-pywzhp2ajsmpj1zttsmw1j3mvzz4qw69",
-        "signedAtUnix": 1778002481,
-        "authorSig": "bd962b633e25ac5860403406db5c4b514c1949404801d0484a92a20f4ed1b520",
+        "signedAtUnix": 1778880144,
+        "authorSig": "af57990743aff7aa1edb0639c0d198052ea21e12746a90242333df07ce8599f1",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

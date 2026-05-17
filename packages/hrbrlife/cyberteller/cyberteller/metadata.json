@@ -4,7 +4,7 @@
   "version": "0.1.16",
   "versionNumber": 22,
   "packageId": "10477053a1a2931fcbbcad7b54b432f3",
-  "sha256": "7900899ae62ac2d0654083495f2f8479afd05f79194d16b81b9d7e124623c877",
+  "sha256": "10477053a1a2931fcbbcad7b54b432f3a0f4d35b7c4aee72407d52eb285d0afd",
   "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
   "categories": [
     "Productivity"

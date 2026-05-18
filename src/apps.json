@@ -3635,10 +3635,10 @@
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "name": "Sheets Bureau",
-      "version": "1.0.7",
-      "versionNumber": 9,
-      "packageId": "ab3e2e09eafc7d32668e158aabe3f184",
-      "shortDescription": "Sovereign spreadsheet grain (Sheets Bureau)",
+      "version": "1.1.5",
+      "versionNumber": 12,
+      "packageId": "ff8df4eec3bae85ca6b07a6a113cea1f",
+      "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
       "categories": [
         "Productivity",
         "Office"
@@ -3647,53 +3647,54 @@
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-bureau-sheets-app",
       "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776662583,
+      "createdAt": 1776662583000,
       "screenshots": [
         {
-          "url": "screenshot_docs.png",
-          "caption": ""
+          "url": "screenshots/screenshot_sheets.png",
+          "caption": "Spreadsheet with live formulas"
         },
         {
-          "url": "screenshot_docs2.png",
-          "caption": ""
+          "url": "screenshots/screenshot_docs.png",
+          "caption": "Collaborative document editing"
         },
         {
-          "url": "screenshot_graphs.png",
-          "caption": ""
+          "url": "screenshots/screenshot_docs2.png",
+          "caption": "Multi-user document review"
         },
         {
-          "url": "screenshot_image.png",
-          "caption": ""
+          "url": "screenshots/screenshot_graphs.png",
+          "caption": "Diagrams and flowcharts"
         },
         {
-          "url": "screenshot_sheets.png",
-          "caption": ""
+          "url": "screenshots/screenshot_image.png",
+          "caption": "Layered image editor"
         }
       ],
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": ""
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "1.0.7",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1778878879094,
+      "updatedAt": 1779126816393,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ee723d45a934e9e06297491545acf65e298278a109b484325cf5a82ef81da3b1",
-        "releaseHash": "a1493b6d6a61db6a4ecced31f97c6f486beb74e71544dc33ff4f2b41f2e833fd",
-        "releaseNonce": "dbb6aab4d497bd6839b8427539cbb123",
-        "releaseEntryPda": "7mcLVQTgDNPgLntrFbAzKTC5VUfKjFkyjmmeRsjQmiUK",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779094923,
-        "authorSig": "cLM/u7ebpzvPwYk09WO0nU3VTETm+jgp8aWambugWKKoemjbxdB0ESc3BP2HStZ5w4EvzwcpIdmIg4dBFHbACA==",
+        "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
+        "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
+        "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
+        "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "masterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "signedAtUnix": 1778142421,
+        "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-fz7r56h1kr79g4v65cgxf7dv85ymt3ys"
         }
       },
       "capabilities": {
@@ -4007,7 +4008,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.3",
       "imageId": "c2b5542bdd9852f66f77539165af7179.png",
-      "updatedAt": 1779125584512,
+      "updatedAt": 1779125352969,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4136,8 +4137,7 @@
           }
         ]
       },
-      "description": "TeleScreen is the screening Pearl of the Melusina ecosystem \u2014 sanctions lists, adverse-media checks, on-chain wallet risk, and PEP / AML compliance probes, all wrapped in a single Pearl with signed configuration, Grapple-scoped grants, and per-Pearl isolation. A complete install is three Pearls across two SPKs: a REST/JSON sidecar, an HTMX admin + member core Pearl (both in this SPK), plus the setup Pearl shipped as `telescreen-companion.spk` separately. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\n## Why TeleScreen\n\n- **Pinned screening-result snapshots** \u2014 every screening result (sanctions hit, adverse-media match, on-chain risk score) is pinned to the requesting Pearl's Solana wallet at the moment of issuance. Compliance teams later cite \"this counterparty was OFAC-clean as of date X per a wallet-rooted, tamper-evident attestation\" \u2014 not \"our SaaS vendor told us so once and we trust the dashboard\"\n- **Per-screening-config Pearl isolation** \u2014 each screening list (custom OFAC profile, internal blocklist, partner-specific PEP set) lives in its own sealed Pearl with signed configuration. A breach or misconfiguration in one list cannot leak into another; revoking access to one does not impact the others. Melusina-shipped permission isolation, not application-layer ACLs\n- **Grant-validated capability surface** \u2014 consuming Pearls (cca.sh, NamedCoin, Bureau apps doing client-onboarding) request screening via Grapple with scoped grants \u2014 \"ai-text\" / \"ai-vision\" / \"screening-sanctions\" / \"screening-adverse-media\". The grant is verified against the signed trust bundle at the Cap'n Proto boundary; bypass requires forging the bundle's cryptographic root, not sidecar credentials\n\n## Architecture\n\n- **REST/JSON sidecar** \u2014 sanctions + adverse-media + blockchain-risk APIs over signed gRPC\n- **HTMX admin + member core Pearl** \u2014 bundle authoring, list management, partner-trust editing\n- **Setup Pearl** (separate SPK: `telescreen-companion.spk`) \u2014 signs the trust bundle distributed to consumer Pearls\n\nDeployment is `spk dev` / `spk pack`. Docker / direct system service paths are out of scope for the polished MVP.\n\n## Status\n\n*Pre-release v0.1.1.* REST surface + sanctions screening live; adverse-media and on-chain wallet-risk integrations follow in v0.2.",
-      "sha256": "305201284d1ce3c9df6891cabfe056a6fc26a8e82d3a1da7b46069dcb8eef687"
+      "description": "TeleScreen is the Sandstorm-side screening sidecar plus admin core grain for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nA complete install is three Sandstorm grains that compose across two SPKs: the REST/JSON sidecar and the HTMX admin + member core grain (both in this SPK), plus the setup grain shipped separately as `telescreen-companion.spk`. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\nPackaging is `spk dev` / `spk pack`. Docker and direct system service deployment are not part of the polished MVP path."
     },
     {
       "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",

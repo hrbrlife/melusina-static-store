@@ -4,7 +4,7 @@
   "tier": "admin",
   "version": "0.1.0",
   "versionNumber": 1,
-  "packageId": "",
+  "packageId": "00000000000000000000000000000000",
   "shortDescription": "Sanctions, crypto wallet risk, and third-party-API risk lookups",
   "categories": [
     "Productivity"

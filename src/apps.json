@@ -4278,9 +4278,9 @@
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
-      "version": "1.2.0",
-      "versionNumber": 14,
-      "packageId": "0ee5ff3b5e9b692892fb00c03ba29e5c",
+      "version": "1.2.1",
+      "versionNumber": 15,
+      "packageId": "a37f47180828d8ae6b00d1d3a08cb480",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
       "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
@@ -4305,24 +4305,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "1.2.0",
+      "marketingVersion": "1.2.1",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1778877857658,
+      "updatedAt": 1779125118752,
       "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "9b6ad2330913a990734b2e5e02163f7531923d0d9243dc14f2c01c0fdec77073",
-        "releaseHash": "8376d6c1076a473d4c19700330cae374cae62fe0836f05106ac88e068c167156",
-        "releaseNonce": "9b86104fbc5e46345a537388f2a220dc",
-        "releaseEntryPda": "Fg4Uf21k9xj2dJNKVro41XxsnUVoGmMyP3LuBNfLXLFW",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779088537,
-        "authorSig": "9b+ia6pVqjuCfmhzAx3Hn2is44k7HX/RRcyaQ1aThzuK6L9Qeh3MjiBrWSXnTkdFhRslmj5ga7li0k247bOqCA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
+        "schema": "",
+        "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
+        "releaseHash": "",
+        "releaseNonce": "",
+        "releaseEntryPda": "",
+        "masterNftMint": "",
+        "licenseSquadsVault": "",
+        "signedAtUnix": 1778880636,
+        "authorSig": "",
+        "quorumPolicy": {}
       },
       "capabilities": {
         "schemaVersion": 2,

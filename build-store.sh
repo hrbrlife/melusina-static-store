@@ -648,6 +648,128 @@ with open(sys.argv[2], 'w') as f:
 print(f'  Wrote {len(apps)} apps to {sys.argv[2]}')
 PY
 
+# --- Step 5b: Attest subset assertion ----------------------------------------
+# Per cross-compat audit drift #5 (Riker tick164 idx 2116): the `attest`
+# subset embedded per-app in apps/index.json must field-equal the canonical
+# attest/<appId>/RELEASE.json that ships alongside. If they ever diverge
+# (build-store.sh bug, manual edit of one path but not the other, partial
+# regen), wolfdog / install UI would attest against stale values while the
+# real ReleaseEntry would resolve elsewhere — invisible drift.
+#
+# Duplicate-appId entries are a separate fleet-policy issue (multiple
+# /packages/<slug>/ dirs sharing one appId — Sandstorm shell sees them as
+# one app under MongoDB _id; /attest/<appId>/ is overwritten by whichever
+# build-loop iteration ran last). We WARN but don't fail on those, since
+# the fix is at the catalog source (collapse or appId-rename), not in
+# build-store.sh.
+info "Asserting apps/index.json attest subset matches attest/<appId>/RELEASE.json..."
+python3 - "$APPS_OUT/index.json" "$ATTEST_OUT" <<'PY'
+import json, os, sys
+from collections import Counter
+
+index_path, attest_root = sys.argv[1], sys.argv[2]
+index = json.load(open(index_path))
+apps = index.get('apps', [])
+EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
+                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'authorSig', 'quorumPolicy']
+
+# Pre-pass: find duplicate appIds (warn-only).
+id_counts = Counter(a.get('appId', '') for a in apps if a.get('appId'))
+duplicate_ids = {aid for aid, n in id_counts.items() if n > 1}
+
+checked = 0
+warnings = []
+mismatches = []
+for app in apps:
+    app_id = app.get('appId', '')
+    attest = app.get('attest') or {}
+    if not app_id or not attest:
+        continue
+    if app_id in duplicate_ids:
+        warnings.append(f'duplicate-appId {app_id}: {app.get("name","?")} v{app.get("version","?")} — /attest/{app_id}/ may shadow')
+        continue
+    rel_path = os.path.join(attest_root, app_id, 'RELEASE.json')
+    if not os.path.isfile(rel_path):
+        if attest.get('releaseEntryPda', '').startswith(('offline-', '')):
+            continue
+        mismatches.append(f'{app_id}: embedded attest is on-chain but /attest/{app_id}/RELEASE.json missing')
+        continue
+    canonical = json.load(open(rel_path))
+    if attest.get('schema') != canonical.get('$schema'):
+        mismatches.append(f'{app_id}: schema drift — index={attest.get("schema")!r} vs RELEASE={canonical.get("$schema")!r}')
+    for k in EMBEDDED_KEYS:
+        ev = attest.get(k)
+        cv = canonical.get(k)
+        if ev != cv:
+            mismatches.append(f'{app_id}: field {k!r} drift — index={ev!r} vs RELEASE={cv!r}')
+    checked += 1
+
+if warnings:
+    print(f'  WARN: {len(warnings)} duplicate-appId entries (fleet-policy; not a build-store.sh bug):', file=sys.stderr)
+    for w in warnings:
+        print(f'    {w}', file=sys.stderr)
+if mismatches:
+    print(f'  FAIL: {len(mismatches)} drift entries across {checked} checked apps:', file=sys.stderr)
+    for m in mismatches[:20]:
+        print(f'    {m}', file=sys.stderr)
+    if len(mismatches) > 20:
+        print(f'    ... +{len(mismatches)-20} more', file=sys.stderr)
+    sys.exit(1)
+print(f'  OK: attest subset matches /attest tree across {checked} apps ({len(duplicate_ids)} duplicate-appIds warned)')
+PY
+
+# --- Step 5c: metadata.packageId vs sha256(app.spk)[:32] assertion -----------
+# Per `publish-to-branch-packageId-not-synced-bug` memory note + popaye idx
+# 2350 reject (2026-05-18): spkmodule's publish-to-branch script copies
+# source metadata.json verbatim and forgets to update packageId after a
+# fresh pack. The Sandstorm-canonical packageId is sha256(app.spk)[:32]
+# (matches `spk verify` internal packageId output), so a stale metadata
+# packageId means:
+#   • static_store ships the SPK at /packages/<stale-pkgid>
+#   • index.json says packageId = <stale-pkgid>
+#   • Consumer (Sandstorm shell) fetches /packages/<stale-pkgid>, gets the
+#     SPK file, runs `spk verify` which returns the REAL internal
+#     packageId = sha256(spk)[:32]. If Sandstorm cross-checks, install fails.
+# Surface the drift here as WARN-only (don't block deploys — currently
+# 20/39 apps in the catalog are affected fleet-wide, blocking would brick
+# the bazaar). The right fix lives upstream in spkmodule's
+# publish-to-branch helper.
+info "Asserting metadata.packageId matches sha256(app.spk)[:32] across catalog..."
+python3 - "$SCRIPT_DIR/$PACKAGES_DIR/hrbrlife" <<'PY'
+import os, json, hashlib, sys, glob
+root = sys.argv[1]
+checked = 0
+mismatches = []
+for app_dir in glob.glob(f'{root}/*/*/'):
+    spk = os.path.join(app_dir, 'app.spk')
+    meta = os.path.join(app_dir, 'metadata.json')
+    if not (os.path.isfile(spk) and os.path.isfile(meta)):
+        continue
+    with open(spk, 'rb') as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    canonical = sha[:32]
+    try:
+        m = json.load(open(meta))
+    except Exception as e:
+        mismatches.append(f'{app_dir}: metadata.json parse error {e}')
+        continue
+    pkg_in_meta = m.get('packageId', '')
+    if pkg_in_meta != canonical:
+        rel = os.path.relpath(app_dir, root)
+        mismatches.append(f'  {rel}: metadata={pkg_in_meta[:16]}… SPK={canonical[:16]}…')
+    checked += 1
+print(f'  {checked} catalog apps checked')
+if mismatches:
+    print(f'  WARN: {len(mismatches)} apps have stale metadata.packageId (publish-to-branch-not-synced bug):', file=sys.stderr)
+    for m in mismatches:
+        print(f'  {m}', file=sys.stderr)
+    print(f'  Fix lives in spkmodule publish-to-branch helper (not static_store).', file=sys.stderr)
+    print(f'  Catalog still works — SPK files are renamed to metadata.packageId at /packages/<id> — but `spk verify` internal packageId differs.', file=sys.stderr)
+else:
+    print(f'  OK: 0 metadata.packageId drift')
+PY
+
 # --- Step 6: Package Melusina binary update ----------------------------------
 info "Packaging Melusina binary update..."
 

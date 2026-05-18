@@ -793,18 +793,43 @@ SANDSTORM_BUILD_NUM=""
 if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   warn "MELUSINA_SKIP_BUNDLE_UPDATE=1 — skipping Sandstorm bundle-update block; catalog only this round"
 elif [[ -d "$SANDSTORM_SRC" ]]; then
-  # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast)
-  for f in "$SANDSTORM_SRC"/sandstorm-[0-9]*.tar.xz; do
-    [[ "$f" == *-fast.tar.xz ]] && continue
-    [[ -f "$f" ]] || continue
-    SANDSTORM_TARBALL="$f"
-  done
+  # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast).
+  # Numeric sort so sandstorm-10.tar.xz beats sandstorm-2.tar.xz.
+  SANDSTORM_TARBALL="$(
+    find "$SANDSTORM_SRC" -maxdepth 1 -type f -name 'sandstorm-[0-9]*.tar.xz' \
+      ! -name '*-fast.tar.xz' -printf '%f\n' 2>/dev/null \
+      | sed 's/sandstorm-\([0-9]*\)\.tar\.xz/\1 &/' \
+      | sort -k1,1 -n \
+      | awk 'END{print $2}'
+  )"
+  [[ -n "$SANDSTORM_TARBALL" ]] && SANDSTORM_TARBALL="$SANDSTORM_SRC/$SANDSTORM_TARBALL"
 
   if [[ -n "$SANDSTORM_TARBALL" ]]; then
     # Extract build number from filename: sandstorm-0.tar.xz → 0
     SANDSTORM_BUILD_NUM="$(basename "$SANDSTORM_TARBALL" | sed 's/sandstorm-\([0-9]*\)\.tar\.xz/\1/')"
     TARBALL_SIZE="$(du -h "$SANDSTORM_TARBALL" | cut -f1)"
     info "Found Melusina build $SANDSTORM_BUILD_NUM ($TARBALL_SIZE): $SANDSTORM_TARBALL"
+
+    # Bundle-update regression gate: refuse to ship a build older than what's
+    # already live on gh-pages. A silent regression would auto-downgrade every
+    # client's Sandstorm binary on next self-update poll. Hit once 2026-05-19:
+    # local source dir held only builds 0+1 while live was build=4.
+    LIVE_BUILD="$(curl -sf --max-time 8 \
+      "https://hrbrlife.github.io/melusina-static-store/update/manifest.json" \
+      2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("build",-1))' \
+      2>/dev/null || echo -1)"
+    if [[ "$LIVE_BUILD" =~ ^[0-9]+$ ]] && [[ "$SANDSTORM_BUILD_NUM" -lt "$LIVE_BUILD" ]]; then
+      if [[ "${MELUSINA_ALLOW_BUNDLE_REGRESSION:-}" == "1" ]]; then
+        warn "Local Sandstorm build=$SANDSTORM_BUILD_NUM < live build=$LIVE_BUILD — proceeding under MELUSINA_ALLOW_BUNDLE_REGRESSION=1"
+      else
+        fail "Bundle-update regression: local build=$SANDSTORM_BUILD_NUM < live build=$LIVE_BUILD"
+        fail "Publishing would silently downgrade every client's Sandstorm binary on next self-update poll."
+        fail "Either restore the newer tarball in $SANDSTORM_SRC/ (Melusina agent's lane), set"
+        fail "MELUSINA_SKIP_BUNDLE_UPDATE=1 to ship catalog without touching /update/, or set"
+        fail "MELUSINA_ALLOW_BUNDLE_REGRESSION=1 if the downgrade is intentional."
+        exit 1
+      fi
+    fi
 
     # Pre-flight: signing setup must be present before we copy a tarball into
     # the update channel. Sandstorm clients refuse unsigned bundle updates,

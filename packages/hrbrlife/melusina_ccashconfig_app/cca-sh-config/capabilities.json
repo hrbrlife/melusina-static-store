@@ -4,7 +4,10 @@
   "appName": "cca.sh Config",
   "tier": "admin",
   "companionApps": [
-    "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+    "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+    "9tc4v3j2kz6evqhdw4064szmfj1t39h742869f0chc7uht62jpwh",
+    "ngafx721jajfca1y7zuh6tthyc5nfq0urk4xfxgwuscpcv11e9kh",
+    "8yaffw5afhse1m1d1yemp6gcs77jd4a1jf8a5skkmm342mauexjh"
   ],
   "pearls": [
     {
@@ -19,11 +22,6 @@
             "name": "ccash-admin-gate",
             "interface": "ccash.AdminGate@1",
             "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks)."
-          },
-          {
-            "name": "policy-attest",
-            "interface": "ccash.PolicyAttest@1",
-            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
           }
         ],
         "requests": []
@@ -94,7 +92,7 @@
               ]
             }
           ],
-          "purpose": "Policy attestations are Squads-vault-signed; a peer ccash grain can verify an admin-issued policy snapshot was approved by the multisig."
+          "purpose": "Solana programs invoked by the Pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime — recorded for catalog visibility into the app's on-chain release lineage."
         }
       ],
       "staticPublishing": {
@@ -113,11 +111,6 @@
           {
             "name": "ccash.AdminGate@1",
             "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
-            "roleGate": "adminOnly"
-          },
-          {
-            "name": "ccash.PolicyAttest@1",
-            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
             "roleGate": "adminOnly"
           }
         ],

@@ -702,7 +702,10 @@
         "appName": "cca.sh Config",
         "tier": "admin",
         "companionApps": [
-          "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+          "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+          "9tc4v3j2kz6evqhdw4064szmfj1t39h742869f0chc7uht62jpwh",
+          "ngafx721jajfca1y7zuh6tthyc5nfq0urk4xfxgwuscpcv11e9kh",
+          "8yaffw5afhse1m1d1yemp6gcs77jd4a1jf8a5skkmm342mauexjh"
         ],
         "pearls": [
           {
@@ -717,11 +720,6 @@
                   "name": "ccash-admin-gate",
                   "interface": "ccash.AdminGate@1",
                   "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks)."
-                },
-                {
-                  "name": "policy-attest",
-                  "interface": "ccash.PolicyAttest@1",
-                  "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
                 }
               ],
               "requests": []
@@ -792,7 +790,7 @@
                     ]
                   }
                 ],
-                "purpose": "Policy attestations are Squads-vault-signed; a peer ccash grain can verify an admin-issued policy snapshot was approved by the multisig."
+                "purpose": "Solana programs invoked by the Pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime \u2014 recorded for catalog visibility into the app's on-chain release lineage."
               }
             ],
             "staticPublishing": {
@@ -811,11 +809,6 @@
                 {
                   "name": "ccash.AdminGate@1",
                   "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
-                  "roleGate": "adminOnly"
-                },
-                {
-                  "name": "ccash.PolicyAttest@1",
-                  "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
                   "roleGate": "adminOnly"
                 }
               ],
@@ -2142,43 +2135,44 @@
     },
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
-      "packageId": "2b05351e0a89402786f532b2349b0df3",
       "name": "Cyberteller Config",
-      "version": "0.1.2",
-      "versionNumber": 11,
-      "shortDescription": "Admin Pearl for Cyberteller \u2014 controls allowed payment rails, fee caps, and operator roles",
+      "version": "0.1.3",
+      "versionNumber": 12,
+      "packageId": "90e216786a64ba5d5c034460b7e1accf",
+      "shortDescription": "Cyberteller install-admin (boot env source)",
+      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Powerbox capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
-        "Productivity",
-        "Office"
+        "Productivity"
       ],
       "isOpenSource": false,
-      "webLink": "https://hrbr.life",
+      "webLink": "https://sails.to/melusina",
       "codeLink": "https://github.com/hrbrlife/melusina_cybertellerconfig_app",
       "upstreamAuthor": "hrbr.life",
-      "createdAt": 1777396216000,
+      "createdAt": 1745366400000,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
-      "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.2",
+      "tier": "admin",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.1.3",
+      "appTitle": "Cyberteller Config",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779099623655,
+      "updatedAt": 1779102448431,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9c3133f95b02bde05dfd6cd755953da86f37755b2628b2adbe39c5254685bd6b",
-        "releaseHash": "ddf1d78b98783d4d19bb39e0ae12187d9d3d3c72eb3e09247bd1d5ad29cf2bc6",
-        "releaseNonce": "40cef97520f1fd884d108201fac66fe8",
-        "releaseEntryPda": "Dk76Tseuu2wizwgqZMGy3ZR4hsDvuvYzLzhWxHNuzEap",
+        "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
+        "releaseHash": "ec9f02d853d3fd98744ed75b947bed44ce16f14294ef329c114ff4c98c907243",
+        "releaseNonce": "0f124cf77f8b57bc4b175b74716e5d41",
+        "releaseEntryPda": "3vKiS55sYcnw6q9tUaCcEJMXTYiYoPP25fzQi8HvTzAB",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779088839,
-        "authorSig": "VKdNTbjauizSiE3gdNOPZRi2P39umDftBI2DEAWjHg/hN/vilG/ZUFxq5t8sXGTygfOYArmhUc4x7xjWSWGECA==",
+        "signedAtUnix": 1779102710,
+        "authorSig": "EiXChfpRwS9Q2FqZR8ke+UhQqjCPia/HQIrRv5RbD67GgcQFwRf6zaGUlGrL/LS1aqhd5k3fMJMcsmqqhDi6CQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2303,7 +2297,7 @@
           }
         ]
       },
-      "description": "Cyberteller Config is the admin Pearl for the Cyberteller crypto-payment sidecar. One install gets one Cyberteller Config Pearl; it owns the allowed-payment-rail registry, the per-rail fee-cap policy, and the operator-role allowlist that every Cyberteller grain in the install reads at boot. Operators never edit Cyberteller code to change which chains, which providers, or which fee ceilings apply \u2014 they edit policy served from this Pearl.\n\n## Why Cyberteller Config\n\n- **Pinned payment-rail policy** \u2014 the allowed-rails set (chains, address schemes, settlement providers) is hash-anchored to your Solana wallet at the moment a Cyberteller grain claims it. The grain's invoice-creation flow against rails-vN is tamper-evident, citable across grains via Grapple, and survives operator audits independent of who's running the install\n- **Fee-cap enforcement as fail-closed boundary** \u2014 every fee schedule a Cyberteller grain can quote is enumerated in a manifest the admin loads at boot; anything outside the cap range is rejected at the Cap'n Proto boundary, not at a sidecar's discretion. No silent over-fee, no out-of-band rail\n- **One-install-one-license** \u2014 the admin Pearl is the per-license boundary; every Cyberteller sibling Pearl in the install (operator desk, customer invoice view) Grapple-claims this single offerable. Revocation, audit, and policy live in one place\n\n## Status\n\n*Pre-release v0.0.1.* Scaffold + welcome page. The Cap'n Proto AdminGate offerable lands at v0.1.0 alongside the live Cyberteller invoice-creation surface; until then the policy-runtime handshake from sibling Pearls is stubbed."
+      "screenshots": []
     },
     {
       "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
@@ -2573,54 +2567,6 @@
       "screenshots": []
     },
     {
-      "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
-      "name": "DueProcess",
-      "version": "0.1.6",
-      "versionNumber": 9,
-      "packageId": "c7cb24e174caec72c3dcab72ae94b2a4",
-      "shortDescription": "Domain-agnostic process and workflow engine \u2014 author once in YAML, reuse everywhere.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776612839000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.6",
-      "appHash": "c7cb24e174caec72c3dcab72ae94b2a4c05aa3e405111723fe9271fc2fb5bcdd",
-      "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1778880882798,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "e63b3b97f92942f42073217f51a1982323a7840d49d5588224f237d40f27d1b7",
-        "releaseHash": "d26005a27a47acbf66c3fb01aac3b035057f6ab17bc1696a76c841339e5e9938",
-        "releaseNonce": "f676f379b95d329ff008e99d7ca92dd5",
-        "releaseEntryPda": "25VmnMCGvyHSugAHQ9LGx5boJL9HbHN8eQ5zpztWhzGy",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779095492,
-        "authorSig": "Un5h74q5vd/cI0JIOv4IbCWqDofXlILevKDDqkrRCtYLU+qyspgYavXruxREzt0gQqjf1ELxY6NycETuICxjAw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
-      "screenshots": []
-    },
-    {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
       "name": "fineract Setup",
       "version": "0.2.3",
@@ -2807,53 +2753,6 @@
       },
       "capabilities": null,
       "description": "",
-      "screenshots": []
-    },
-    {
-      "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
-      "packageId": "4347bd8bde746efd7a4ef743899a48b5",
-      "name": "Jinn",
-      "version": "0.0.1-scaffolding",
-      "versionNumber": 1,
-      "shortDescription": "Pearl orchestrator + dream-shell. Routes all AI traffic via AiLagoon and orchestrates other pearls.",
-      "description": "Jinn is the Melusina pearl orchestrator. It coordinates other pearls (Bureau, gitpearl, ccash) through Cap'n Proto capabilities and routes all AI traffic exclusively through the AiLagoon AICapBundle, so AI access is gated by a single Sandstorm permission rather than per-grain capability hops. Includes a setup-wizard for first-time pearl onboarding.",
-      "categories": [
-        "Productivity"
-      ],
-      "license": "Melusina Public License v1.0 (source-available, not open source).",
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/Clawberg",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1746748800000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "marketingVersion": "0.0.1-scaffolding",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1778877857574,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "8f4aa9a35194e0a9d9954389010609b25851a9d6680e3bf056a73d43cb78fd61",
-        "releaseHash": "340733db274af051c53c1055106e6024708851453b714e6873c90b2e8262e5a6",
-        "releaseNonce": "74f5f0fa163a7b0a4df689b41099892e",
-        "releaseEntryPda": "5AspC4ZvGcu7brHHP7LckkakS7LUHEsE2Yoik9cU77sD",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779092570,
-        "authorSig": "f05Na2hgSFKdPcfjqa/vUTGRjGvu5m8ootcmv6S6lDrRfYuSkak3/lRDY7kSclLFnsZ4T2jgPelX26QPyIOuDw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
       "screenshots": []
     },
     {

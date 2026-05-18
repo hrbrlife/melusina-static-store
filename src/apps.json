@@ -848,7 +848,7 @@
       ],
       "marketingVersion": "0.2.8",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779098979231,
+      "updatedAt": 1779124225480,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c94bb00f06c144fefccfae3679d0e018fbcaa665e09c10fa6eafcac016520ed8",
@@ -1943,7 +1943,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779091941795,
+      "updatedAt": 1779124225516,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "54c5dceeacdc15d40dff841df1ad2a72efa92b122d6e91e10af73e4e0a975414",
@@ -2162,7 +2162,7 @@
       "marketingVersion": "0.1.3",
       "appTitle": "Cyberteller Config",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779102448431,
+      "updatedAt": 1779124225572,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
@@ -3411,7 +3411,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779091563471,
+      "updatedAt": 1779124225544,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad71da2ebe796a6d8cec0a61c307e12c8155b7c2c36ca6dc89f883d30c23647f",

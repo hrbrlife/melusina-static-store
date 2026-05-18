@@ -2,7 +2,7 @@
     "version": "0.20260308.1021",
     "build": 4,
     "sha256": "d5953a3527fece9530e60155b40704c6feac779141520d53d1f4e287536daa14",
-    "bundle_url": "https://hrbrlife.github.io/melusina-static-store/update/sandstorm-4.tar.xz",
+    "bundle_url": "https://github.com/hrbrlife/melusina-static-store/releases/download/v0/sandstorm-4.tar.xz",
     "tarball": "sandstorm-4.tar.xz",
     "size": 160407880,
     "channel": "dev",

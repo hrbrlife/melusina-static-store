@@ -388,11 +388,68 @@ on-chain RELEASE.json after running pearl-app-ceremony.sh.
 
 | File | Required | Purpose |
 |---|---|---|
-| `app.spk` | YES | Sandstorm package binary; the appHash is computed over its bytes (excluding RELEASE.json sibling). |
-| `metadata.json` | YES | `appId`, `marketingVersion`, `versionNumber`, `packageId`. The slug comes from `APP_SLUG`, not metadata. |
-| `RELEASE.json` | optional | If present and OFFLINE-stub, will be overwritten. If present and on-chain, the ceremony refuses to overwrite — `COPY_TO_CATALOG=0` to leave alone. |
-| `capabilities.json` | optional | If present, the catalog index embeds it verbatim. Independent of the ceremony. |
-| `description.md`, `icon.png` | optional | Catalog-only metadata; ceremony doesn't read. |
+| `app.spk` | YES | Sandstorm package binary. The appHash is computed over the staged tree below. |
+| `metadata.json` | YES | Must be CATALOG-SCHEMA, not upstream-schema. Required keys: `appId`, `name`, `version`, `versionNumber`, `packageId`, `shortDescription`, `categories`, `isOpenSource`, `webLink`, `codeLink`, `upstreamAuthor`, `createdAt`, `author.name`. `make build` validation rejects upstream-schema (`authorName`, `codeUrl`, `website`, `licenseType`). |
+| `RELEASE.json` | optional | Provisional OK; ceremony overwrites with on-chain payload. |
+| `capabilities.json` | optional | If present, catalog index embeds verbatim. **Does NOT enter the ceremony appHash** — see "appHash compute semantics" below. |
+| `description.md`, `icon.png` | optional | Catalog-only metadata; not in ceremony appHash. |
+
+### appHash compute semantics — DO NOT GET WRONG
+
+`pearl-app-ceremony.sh` stages a CLEAN sub-tree under `$APP_DIR` containing
+ONLY two files:
+- `app.spk`
+- `metadata.json`
+
+Then it calls `melusina-pearl-tool compute-app-hash --app-dir $APP_DIR`,
+which walks the staged tree (skipping `.git/`, `.melusina/`, and explicit
+excludes — RELEASE.json by default). So **the canonical on-chain appHash
+is the hash of (app.spk + metadata.json), period.**
+
+Downstream verifiers (consumer-side) that recompute appHash directly
+against the catalog dir (which has capabilities.json + description.md +
+icon.png alongside) will produce a DIFFERENT hash and conclude DRIFT
+even when nothing has drifted. The verifier must replicate the
+ceremony's clean-tree staging step before computing — i.e., extract
+just `app.spk + metadata.json` to a tmp dir, exclude RELEASE.json, hash.
+
+Practical implications:
+- **You CAN patch capabilities.json or icon.png in-place on the
+  catalog** without invalidating the on-chain attestation. The
+  ceremony's appHash already excluded them.
+- **You CANNOT patch metadata.json** in-place without re-running the
+  ceremony. The metadata bytes ARE hashed.
+- **You CANNOT swap the SPK** without re-running the ceremony. SPK
+  bytes ARE hashed.
+- Wolfdog / sandstorm-shell verifying against on-chain PDA must use
+  the clean-tree compute, not raw catalog-dir compute.
+
+### Direct catalog writes are REJECTED
+
+If an upstream agent writes app.spk + metadata.json + RELEASE.json
+directly into `packages/hrbrlife/<repo>/<slug>/` (bypassing the §10
+handoff `/msg` request), static_store crew:
+
+1. Identifies the write via `git status` showing `M packages/.../{spk,metadata,RELEASE}.json`.
+2. Verifies the claimed PDA on-chain (`solana account <pda> --url devnet`).
+3. Inspects metadata.json schema — upstream schema (`authorName`,
+   `codeUrl`, etc.) is the smoking gun.
+4. `git stash push` the writes with descriptive message
+   (e.g., `"v0.1.3-smuggled-work"`).
+5. Drops the stash after `/msg`ing the agent: write rejected, send
+   via §10 handoff with catalog-schema metadata.json.
+
+Reasons for the policy:
+- Schema validation in `make build` will reject upstream-schema metadata.
+- The on-chain PDA minted by the agent is unusable to static_store
+  (we cannot verify its provenance against the smuggled bundle if
+  the metadata schema differs — the appHash hash-domain changes).
+- Riker tick164 DROP item explicitly forbids non-static_store agents
+  writing to `packages/*` directly. The §10 handoff is the contract.
+
+Witnessed 2026-05-18 with cybertellerconfig v0.1.3 (PDA 4vQuX1D5... was
+minted on-chain but the smuggled metadata.json was upstream-schema,
+build validation failed; stashed and rejected at chatroom idx 2114).
 
 ### ccash_organization unblock recipe (the THEN-NEXT case)
 

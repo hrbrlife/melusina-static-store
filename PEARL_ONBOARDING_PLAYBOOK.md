@@ -383,6 +383,21 @@ on-chain RELEASE.json after running pearl-app-ceremony.sh.
 - **STOP** minting License NFTs on the upstream side. The ceremony
   driver mints a fresh license-mint internally per app — any
   pre-minted NFT is wasted SOL.
+- **STOP** shipping handoff bundles where `metadata.json.packageId`
+  doesn't match `sha256(app.spk)[:32]`. The canonical Sandstorm
+  packageId IS `sha256(spk)[:32]` (matches `spk verify` internal
+  packageId). Stale metadata.packageId means static_store ships the
+  SPK at `/packages/<stale-id>` while `spk verify` reveals a
+  different internal id — wolfdog/dashboards misrepresent the
+  artifact. Fix at the source: spkmodule's publish-to-branch helper
+  must recompute metadata.packageId post-pack (TODO: upstream PR).
+  Until then, manual jq edit before shipping:
+  ```bash
+  pkg=$(sha256sum app.spk | awk '{print substr($1,1,32)}')
+  jq --arg p "$pkg" '.packageId = $p' metadata.json > metadata.json.tmp && \
+    mv metadata.json.tmp metadata.json
+  ```
+  build-store.sh step 5c (commit `cfada055`) WARNs on this drift fleet-wide.
 
 ### What pearl-app-ceremony.sh expects from the handoff bundle
 

@@ -389,15 +389,29 @@ on-chain RELEASE.json after running pearl-app-ceremony.sh.
   packageId). Stale metadata.packageId means static_store ships the
   SPK at `/packages/<stale-id>` while `spk verify` reveals a
   different internal id — wolfdog/dashboards misrepresent the
-  artifact. Fix at the source: spkmodule's publish-to-branch helper
-  must recompute metadata.packageId post-pack (TODO: upstream PR).
-  Until then, manual jq edit before shipping:
+  artifact. Fix at the source: ROOT CAUSE sits at the `spk pack`
+  binary layer — two back-to-back packs of byte-identical source
+  produce different SPK sha256 (signature nonce or xz metadata),
+  confirmed independently by cybertellerconfig (idx 2434) and
+  ccashconfig (idx 2447) using `SOURCE_DATE_EPOCH=$(git log -1
+  --format=%ct HEAD)`. So spkmodule's publish-to-branch:133 verbatim
+  copy of metadata.json is one drift surface, but the SPK binary
+  itself reshuffles each pack — apps must (a) sync
+  `metadata.packageId` against `sha256(app.spk)[:32]` *post-pack*,
+  not pre-pack, and (b) ship `make verify-packageId-sync` as the
+  pack-time guard. Fleet-standard target lives at
+  cybertellerconfig commit `c50895d` (and adopted line-for-line by
+  ccashconfig `d54ef68`, popaye `7296a2e`). Manual jq edit if the
+  Makefile target isn't wired:
   ```bash
   pkg=$(sha256sum app.spk | awk '{print substr($1,1,32)}')
   jq --arg p "$pkg" '.packageId = $p' metadata.json > metadata.json.tmp && \
     mv metadata.json.tmp metadata.json
   ```
-  build-store.sh step 5c (commit `cfada055`) WARNs on this drift fleet-wide.
+  build-store.sh step 5c (commit `cfada055`) WARNs on this drift
+  fleet-wide; catalog side stays absorbed by /packages/<packageId>
+  rename (the served SPK file is named by metadata.packageId, not
+  index field — so a fixed metadata.json relocates the served file).
 
 ### What pearl-app-ceremony.sh expects from the handoff bundle
 

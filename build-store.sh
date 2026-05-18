@@ -719,6 +719,57 @@ if mismatches:
 print(f'  OK: attest subset matches /attest tree across {checked} apps ({len(duplicate_ids)} duplicate-appIds warned)')
 PY
 
+# --- Step 5c: metadata.packageId vs sha256(app.spk)[:32] assertion -----------
+# Per `publish-to-branch-packageId-not-synced-bug` memory note + popaye idx
+# 2350 reject (2026-05-18): spkmodule's publish-to-branch script copies
+# source metadata.json verbatim and forgets to update packageId after a
+# fresh pack. The Sandstorm-canonical packageId is sha256(app.spk)[:32]
+# (matches `spk verify` internal packageId output), so a stale metadata
+# packageId means:
+#   • static_store ships the SPK at /packages/<stale-pkgid>
+#   • index.json says packageId = <stale-pkgid>
+#   • Consumer (Sandstorm shell) fetches /packages/<stale-pkgid>, gets the
+#     SPK file, runs `spk verify` which returns the REAL internal
+#     packageId = sha256(spk)[:32]. If Sandstorm cross-checks, install fails.
+# Surface the drift here as WARN-only (don't block deploys — currently
+# 20/39 apps in the catalog are affected fleet-wide, blocking would brick
+# the bazaar). The right fix lives upstream in spkmodule's
+# publish-to-branch helper.
+info "Asserting metadata.packageId matches sha256(app.spk)[:32] across catalog..."
+python3 - "$SCRIPT_DIR/$PACKAGES_DIR/hrbrlife" <<'PY'
+import os, json, hashlib, sys, glob
+root = sys.argv[1]
+checked = 0
+mismatches = []
+for app_dir in glob.glob(f'{root}/*/*/'):
+    spk = os.path.join(app_dir, 'app.spk')
+    meta = os.path.join(app_dir, 'metadata.json')
+    if not (os.path.isfile(spk) and os.path.isfile(meta)):
+        continue
+    with open(spk, 'rb') as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    canonical = sha[:32]
+    try:
+        m = json.load(open(meta))
+    except Exception as e:
+        mismatches.append(f'{app_dir}: metadata.json parse error {e}')
+        continue
+    pkg_in_meta = m.get('packageId', '')
+    if pkg_in_meta != canonical:
+        rel = os.path.relpath(app_dir, root)
+        mismatches.append(f'  {rel}: metadata={pkg_in_meta[:16]}… SPK={canonical[:16]}…')
+    checked += 1
+print(f'  {checked} catalog apps checked')
+if mismatches:
+    print(f'  WARN: {len(mismatches)} apps have stale metadata.packageId (publish-to-branch-not-synced bug):', file=sys.stderr)
+    for m in mismatches:
+        print(f'  {m}', file=sys.stderr)
+    print(f'  Fix lives in spkmodule publish-to-branch helper (not static_store).', file=sys.stderr)
+    print(f'  Catalog still works — SPK files are renamed to metadata.packageId at /packages/<id> — but `spk verify` internal packageId differs.', file=sys.stderr)
+else:
+    print(f'  OK: 0 metadata.packageId drift')
+PY
+
 # --- Step 6: Package Melusina binary update ----------------------------------
 info "Packaging Melusina binary update..."
 

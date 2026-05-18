@@ -6,6 +6,67 @@ done by `scripts/ship-changes.sh` — this doc explains what it does and why.
 
 ---
 
+## Greenfield Pearl-mode (in flight)
+
+> **Status (2026-05-18):** the spkmodule canonical branch is still `main` in
+> offline-stub mode; `greenfield` is a parallel preview branch and the system
+> below is not yet activated. This section describes the destination, not the
+> current behavior.
+
+The spkmodule canonical branch will eventually move from `main` → `greenfield`
+(v0.7.0+). Greenfield requires **Pearl-mode**: every app must have a
+`PEARL_LIVE_MASTER_NFT_MINT` (or `PEARL_DEV_MASTER_NFT_MINT` on the dev
+lineage) and a **completed Squads ReleaseEntry ceremony** before
+`make publish` will succeed. Offline-stub publish goes away entirely.
+
+**When activation happens** (Stream A v105 + Stream C sidecar landed): per-app
+cutover via a wrapper that handles the on-chain ceremony once, recording the
+mint into the source repo:
+
+```bash
+bin/pearl-onboard --lineage=live <app-dir>
+```
+
+After that, the app is greenfield-ready and the loop ships it through Pearl
+phase A → cosigner approval → phase B as today, just without the offline
+escape hatch.
+
+**The 3 publish gates (greenfield):**
+
+1. **version-bump** — pkgdef appVersion must monotonically increase vs the
+   last published release (no quiet re-publishes of the same version).
+2. **SPK-size auto-route** — small SPKs ride the publish branch as today;
+   ≥100 MiB ones auto-route to the Stream C sidecar dev-store envelope and
+   the catalog stub points at the sidecar.
+3. **Squads quorum** — `make publish` will not produce a finalized
+   RELEASE.json without a Squads-executed ReleaseEntry proposal (2-of-4
+   quorum on devnet, real signer set on mainnet).
+
+**What gets deleted on greenfield activation:**
+
+- `APP_PEARL_ENABLED` (toggle goes away — Pearl always on).
+- `_publish-non-pearl` target in `core.mk`.
+- `manifest-check` target + `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT` env var.
+- `RELEASE.json` offline-stub generator (`release-json-stub`).
+- `MELUSINA_DEPLOYER_MANIFEST` lookup path (on-chain ReleaseEntry replaces it).
+
+**New env vars / Makefile vars (greenfield):**
+
+- `APP_LIVE_MASTER_NFT` / `APP_DEV_MASTER_NFT` (per-app, per-lineage).
+- `TEAM_LIVE_SQUADS` / `TEAM_DEV_SQUADS` (per-team multisig PDA).
+
+**Links:**
+
+- [Greenfield publish design](https://github.com/hrbrlife/melusina-spkmodule-component/tree/greenfield)
+- `docs/pearl-ceremony-gotchas.md` (in spkmodule)
+- `docs/stream-c-dev-store-envelope-proposal.md` (in spkmodule)
+
+The rest of this runbook describes the **current** (offline-stub) flow. When
+greenfield lands, sections below marked with offline-stub semantics will be
+rewritten; until then they remain authoritative for day-to-day shipping.
+
+---
+
 ## TL;DR
 
 ```bash

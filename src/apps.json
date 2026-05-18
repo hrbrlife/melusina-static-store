@@ -3258,8 +3258,8 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.1",
-      "versionNumber": 2,
+      "version": "0.1.2",
+      "versionNumber": 3,
       "packageId": "91851dcbd05a76c45a7e188f806c03fc",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
@@ -3281,19 +3281,19 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.1",
+      "marketingVersion": "0.1.2",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1778879964626,
+      "updatedAt": 1779102529000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "66304138712d0906b2dccb0cb3a75e432edb97a3870f79f9ab13ef6960b3bbb8",
-        "releaseHash": "13ed40074ca2410ccf2833ac1120e6a7b7114f6b020480cb1d264b42f17f7d7b",
-        "releaseNonce": "1710d9a27310763487b08d27182ab446",
-        "releaseEntryPda": "8DcAMfNZSGNrpsPw3sQd8bRe7KvzPZxHVCSUEAKJvDEr",
+        "appHash": "8d262ed2180a1cd5858f4c1a89cd7bc09bc9a037db6754bb491e340d69b6ad29",
+        "releaseHash": "02a9f1d44341d8d09c56b7b2a106b9dabd390e716b23778c14dd9abb6191b8f8",
+        "releaseNonce": "440077f1642995f3eb0e76f7c836f628",
+        "releaseEntryPda": "8DKnCXpjzgmXJAJ2ML5xvPBQcGaNkJehiXVFERryQrYL",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779095093,
-        "authorSig": "I8LMlxal0wleW2CwPxiD+uSfWkL30R0ek1oRM+SACmZUeQdUiNX48BTgEvl1L7Pxldwh+FPFtfcujLuJRhOPCQ==",
+        "signedAtUnix": 1779102529,
+        "authorSig": "wZhhO4DMJS7PygTDeHWuuhq8N9V7T7paj0jctv1hzaPk2+57GK2dV40X/ws5DFhLXYlpd0LxLjuwKEHulDnhAw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

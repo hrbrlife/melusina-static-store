@@ -11,19 +11,14 @@
       "pearlId": "cybertellerconfig",
       "pearlName": "Configuration",
       "pearlType": "admin-pearl",
-      "purpose": "The admin companion grain for the Cyberteller constellation. Holds policy state (allowed payment rails, fee caps, operator roles, settlement providers) and exposes an AdminGate over Powerbox. Operator Cyberteller grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Powerbox-claim only.",
+      "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Powerbox capability every cyberteller grain claims at first launch — hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
       "sidecars": [],
       "grapple": {
         "offers": [
           {
-            "name": "cyberteller-admin-gate",
-            "interface": "cyberteller.AdminGate@1",
-            "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators)."
-          },
-          {
-            "name": "policy-attest",
-            "interface": "cyberteller.PolicyAttest@1",
-            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T."
+            "name": "config-gate",
+            "interface": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
+            "purpose": "Single Powerbox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
           }
         ],
         "requests": []
@@ -111,14 +106,9 @@
       "apis": {
         "capnp": [
           {
-            "name": "cyberteller.AdminGate@1",
-            "purpose": "Surface configuration to peer Cyberteller operator grains (read policy, fetch rail allowlist, list fee caps, list allowed operators).",
-            "roleGate": "adminOnly"
-          },
-          {
-            "name": "cyberteller.PolicyAttest@1",
-            "purpose": "Sign a Squads-rooted attestation that a given policy snapshot was approved at time T.",
-            "roleGate": "adminOnly"
+            "name": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
+            "purpose": "Hosted via NewSession(sessionType = ConfigGate_TypeID) per pkg/server.ConfigGate. Three methods — hello (handshake + digest), getEnv (read-only boot fetch), setEnv (admin-bit-gated mutation). Source-of-truth schema at melusina_cybertellerconfig_app/capnp/cybertellerconfig.capnp.",
+            "roleGate": "consumerOrAdmin"
           }
         ],
         "http": []

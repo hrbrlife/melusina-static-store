@@ -648,6 +648,77 @@ with open(sys.argv[2], 'w') as f:
 print(f'  Wrote {len(apps)} apps to {sys.argv[2]}')
 PY
 
+# --- Step 5b: Attest subset assertion ----------------------------------------
+# Per cross-compat audit drift #5 (Riker tick164 idx 2116): the `attest`
+# subset embedded per-app in apps/index.json must field-equal the canonical
+# attest/<appId>/RELEASE.json that ships alongside. If they ever diverge
+# (build-store.sh bug, manual edit of one path but not the other, partial
+# regen), wolfdog / install UI would attest against stale values while the
+# real ReleaseEntry would resolve elsewhere — invisible drift.
+#
+# Duplicate-appId entries are a separate fleet-policy issue (multiple
+# /packages/<slug>/ dirs sharing one appId — Sandstorm shell sees them as
+# one app under MongoDB _id; /attest/<appId>/ is overwritten by whichever
+# build-loop iteration ran last). We WARN but don't fail on those, since
+# the fix is at the catalog source (collapse or appId-rename), not in
+# build-store.sh.
+info "Asserting apps/index.json attest subset matches attest/<appId>/RELEASE.json..."
+python3 - "$APPS_OUT/index.json" "$ATTEST_OUT" <<'PY'
+import json, os, sys
+from collections import Counter
+
+index_path, attest_root = sys.argv[1], sys.argv[2]
+index = json.load(open(index_path))
+apps = index.get('apps', [])
+EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
+                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'authorSig', 'quorumPolicy']
+
+# Pre-pass: find duplicate appIds (warn-only).
+id_counts = Counter(a.get('appId', '') for a in apps if a.get('appId'))
+duplicate_ids = {aid for aid, n in id_counts.items() if n > 1}
+
+checked = 0
+warnings = []
+mismatches = []
+for app in apps:
+    app_id = app.get('appId', '')
+    attest = app.get('attest') or {}
+    if not app_id or not attest:
+        continue
+    if app_id in duplicate_ids:
+        warnings.append(f'duplicate-appId {app_id}: {app.get("name","?")} v{app.get("version","?")} — /attest/{app_id}/ may shadow')
+        continue
+    rel_path = os.path.join(attest_root, app_id, 'RELEASE.json')
+    if not os.path.isfile(rel_path):
+        if attest.get('releaseEntryPda', '').startswith(('offline-', '')):
+            continue
+        mismatches.append(f'{app_id}: embedded attest is on-chain but /attest/{app_id}/RELEASE.json missing')
+        continue
+    canonical = json.load(open(rel_path))
+    if attest.get('schema') != canonical.get('$schema'):
+        mismatches.append(f'{app_id}: schema drift — index={attest.get("schema")!r} vs RELEASE={canonical.get("$schema")!r}')
+    for k in EMBEDDED_KEYS:
+        ev = attest.get(k)
+        cv = canonical.get(k)
+        if ev != cv:
+            mismatches.append(f'{app_id}: field {k!r} drift — index={ev!r} vs RELEASE={cv!r}')
+    checked += 1
+
+if warnings:
+    print(f'  WARN: {len(warnings)} duplicate-appId entries (fleet-policy; not a build-store.sh bug):', file=sys.stderr)
+    for w in warnings:
+        print(f'    {w}', file=sys.stderr)
+if mismatches:
+    print(f'  FAIL: {len(mismatches)} drift entries across {checked} checked apps:', file=sys.stderr)
+    for m in mismatches[:20]:
+        print(f'    {m}', file=sys.stderr)
+    if len(mismatches) > 20:
+        print(f'    ... +{len(mismatches)-20} more', file=sys.stderr)
+    sys.exit(1)
+print(f'  OK: attest subset matches /attest tree across {checked} apps ({len(duplicate_ids)} duplicate-appIds warned)')
+PY
+
 # --- Step 6: Package Melusina binary update ----------------------------------
 info "Packaging Melusina binary update..."
 

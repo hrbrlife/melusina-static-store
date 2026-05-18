@@ -2492,8 +2492,6 @@ function App() {
       if (pbayMatch) {
         setPbayServer(pbayMatch);
       } else {
-        const ok = window.confirm(`Add private Melusina server ${h}?`);
-        if (!ok) return;
         addPrivateServer(h);
       }
 

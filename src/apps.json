@@ -187,7 +187,7 @@
       "name": "BotMother",
       "version": "1.1.3",
       "versionNumber": 19,
-      "packageId": "70005533f5c0002a90679cab56533e0c",
+      "packageId": "d964d735966674d52efe08af231df7ec",
       "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",
@@ -369,7 +369,7 @@
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
-      "packageId": "aa7baec7685ee8c7b5d6b87d3879fe84",
+      "packageId": "75181d409aeccd93fef7eacab6146851",
       "name": "CanBoard",
       "version": "0.1.0",
       "versionNumber": 6,
@@ -513,7 +513,7 @@
     },
     {
       "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
-      "packageId": "360c5eb4aa1e8cf2ff853c526e9b0ae1",
+      "packageId": "1ea51595d768be9d4fc51cc16c3c779d",
       "name": "cca.sh Client",
       "version": "0.1.1",
       "versionNumber": 7,
@@ -965,7 +965,7 @@
     },
     {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
-      "packageId": "f882335d85e9e44ab1d237cb46a1c6a1",
+      "packageId": "45ad6f8e01fe22f126a78fb55f77cea1",
       "name": "cca.sh Org Member",
       "version": "0.1.2",
       "versionNumber": 3,
@@ -1267,7 +1267,7 @@
       "name": "ChainWatch",
       "version": "0.1.1",
       "versionNumber": 9,
-      "packageId": "c3dc0e57293e31f5a4724de56dbc058e",
+      "packageId": "4f2caa3d99dad793d38b7b869e612a71",
       "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller \u2014 stateless, no keys, talks to chain RPCs.",
       "categories": [
         "Productivity",
@@ -1420,7 +1420,7 @@
       "name": "clientspace",
       "version": "0.1.3",
       "versionNumber": 8,
-      "packageId": "2058b644d7a6e45b31b612585069150e",
+      "packageId": "f501f3a72d2500b6277fa0b919a2fb38",
       "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
@@ -1464,7 +1464,7 @@
     },
     {
       "appId": "pjqare81cxtxjz411jsr4r35fsdpgrwnem6qm82deycfhzw1xz70",
-      "packageId": "92fd3349f29844a730a6db7cc4945b15",
+      "packageId": "c7bf146520e6ee18cc5d173db2f1eb64",
       "name": "Consilium",
       "version": "0.1.0",
       "versionNumber": 6,
@@ -1619,7 +1619,7 @@
     },
     {
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
-      "packageId": "c247efd6ca62fe195e5405415d9d37fb",
+      "packageId": "a0034f59644d5e0b7059b895b76a1234",
       "name": "Contacts Bureau",
       "version": "0.1.0",
       "versionNumber": 6,
@@ -1755,7 +1755,7 @@
     },
     {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
-      "packageId": "7e70ef836cac405ac9e168bf066c125b",
+      "packageId": "d884341d4fd51d8d3976590d44485c5e",
       "name": "CrateLink",
       "version": "0.1.1",
       "versionNumber": 6,
@@ -2304,7 +2304,7 @@
       "name": "Diagram Bureau",
       "version": "1.0.7",
       "versionNumber": 8,
-      "packageId": "b63ab36054515bc6b5f87bae6783d47e",
+      "packageId": "bc14e4dadd64fc0f5ec4da83bda30811",
       "shortDescription": "Sovereign diagram grain (Diagram Bureau)",
       "categories": [
         "Productivity",
@@ -2456,7 +2456,7 @@
       "name": "Doc Bureau",
       "version": "1.0.9",
       "versionNumber": 10,
-      "packageId": "561239828b1707d7f7d72c4f38bb8f5f",
+      "packageId": "2bbc0843359c8383f1f8001510393e17",
       "shortDescription": "Sovereign document grain (Doc Bureau)",
       "categories": [
         "Productivity",
@@ -2713,7 +2713,7 @@
       "name": "instaco",
       "version": "0.1.3",
       "versionNumber": 8,
-      "packageId": "892d9b65d205c5387fa8b16980023c6f",
+      "packageId": "09c192b905beeff1a8bfdd69db049671",
       "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
@@ -2757,7 +2757,7 @@
     },
     {
       "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
-      "packageId": "4347bd8bde746efd7a4ef743899a48b5",
+      "packageId": "2eccc423055827472fbe45e209c0e9d3",
       "name": "Jinn",
       "version": "0.0.4",
       "versionNumber": 4,
@@ -3436,7 +3436,7 @@
       "name": "Paint Bureau",
       "version": "1.0.7",
       "versionNumber": 9,
-      "packageId": "ec855cadddcb476638441e2e50e92408",
+      "packageId": "febd9be232e208149725c25d721c233d",
       "shortDescription": "Sovereign minipaint grain (Paint Bureau)",
       "categories": [
         "Productivity",
@@ -3637,7 +3637,7 @@
       "name": "Sheets Bureau",
       "version": "1.0.7",
       "versionNumber": 9,
-      "packageId": "e45c09c332350c273a163ca8a115b62f",
+      "packageId": "ab3e2e09eafc7d32668e158aabe3f184",
       "shortDescription": "Sovereign spreadsheet grain (Sheets Bureau)",
       "categories": [
         "Productivity",
@@ -3799,7 +3799,7 @@
       "name": "Shell Tester",
       "version": "0.1.5",
       "versionNumber": 9,
-      "packageId": "4368a01e16712f86dd38c1ed9f09e39b",
+      "packageId": "ecbe596ba91cb0abb96292b8dd3f9c84",
       "shortDescription": "Melusina Shell Extension Tester",
       "categories": [
         "Developer Tools"

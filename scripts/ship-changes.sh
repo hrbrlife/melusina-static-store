@@ -22,9 +22,16 @@
 # Usage:
 #   scripts/ship-changes.sh                       # all apps, then catalog
 #   scripts/ship-changes.sh --apps "ccash openclaw-main"
+#   scripts/ship-changes.sh --only <slug>         # thin alias for --apps <slug>
+#                                                 # (post-publish hook uses this when an app
+#                                                 #  dispatches a self-targeted catalog rebuild)
 #   scripts/ship-changes.sh --skip-catalog        # ship apps only, don't rebuild catalog
-#   scripts/ship-changes.sh --skip-fetch          # use local refs, don't network-fetch publish branches
+#   scripts/ship-changes.sh --skip-fetch          # don't run `git fetch origin publish` in catalog
+#                                                 #  submodule bumps. Set this when the caller has
+#                                                 #  already pushed origin/publish for the target
+#                                                 #  (e.g. the post-publish hook in spkmodule core.mk).
 #   scripts/ship-changes.sh --dry-run             # print plan, ship nothing
+#   scripts/ship-changes.sh -h | --help           # this help
 #
 # Env:
 #   DESKTOP_ROOT                                  # default: $HOME/Desktop
@@ -50,6 +57,15 @@ DRY_RUN=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apps)         APPS_FILTER="$2"; shift 2 ;;
+    # --only <slug> is a thin alias for --apps <slug>. The post-publish hook
+    # in spkmodule (hooks/post-publish.sample) uses --only because it always
+    # dispatches exactly one app. If --only is passed alongside --apps, the
+    # last one wins (the slugs get space-joined so multiple --only flags work).
+    --only)
+      if [[ -z "$APPS_FILTER" ]]; then APPS_FILTER="$2"
+      else                              APPS_FILTER="$APPS_FILTER $2"
+      fi
+      shift 2 ;;
     --skip-catalog) SKIP_CATALOG=true; shift ;;
     --skip-fetch)   SKIP_FETCH=true;   shift ;;
     --dry-run)      DRY_RUN=true;      shift ;;
@@ -353,7 +369,16 @@ for repo in "${SHIPPED[@]}"; do
     # deployed with the prior submodule tree. Surface failure so the deploy
     # can be retried before push.
     bump_rc=0
-    bump_out=$(cd "$pkg_dir" && git fetch -q origin publish 2>&1 && git reset --hard -q origin/publish 2>&1) || bump_rc=$?
+    # --skip-fetch: caller (e.g. spkmodule post-publish hook) just pushed
+    # origin/publish themselves. A redundant fetch can stall under contention
+    # or fail if the just-pushed ref hasn't propagated to this submodule's
+    # configured remote yet. The reset --hard alone is enough when the local
+    # remote-tracking ref already points at the new tip.
+    if $SKIP_FETCH; then
+      bump_out=$(cd "$pkg_dir" && git reset --hard -q origin/publish 2>&1) || bump_rc=$?
+    else
+      bump_out=$(cd "$pkg_dir" && git fetch -q origin publish 2>&1 && git reset --hard -q origin/publish 2>&1) || bump_rc=$?
+    fi
     target=$(cd "$pkg_dir" && git rev-parse origin/publish 2>/dev/null || true)
     current=$(cd "$pkg_dir" && git rev-parse HEAD 2>/dev/null || true)
     if [[ -n "$target" && "$current" != "$target" ]]; then

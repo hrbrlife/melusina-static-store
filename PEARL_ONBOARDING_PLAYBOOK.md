@@ -278,6 +278,137 @@ are NOT publishable grains — by design, no RELEASE.json.
   for the static_store agent itself on 2026-05-18 under the imperative
   to act tirelessly. Document the lift if you reach this branch state.
 
+## 10. Pearl-only `make publish` model — for upstream app repos
+
+> Added 2026-05-18 (Riker tick164 THEN-NEXT). Documents the path apps
+> should follow when they want to ship a new version through the
+> static_store catalog without the legacy OFFLINE escape hatch.
+
+### Why the upstream `attestdeployer-tool onboard` live flow is blocked
+
+`attestdeployer-tool onboard` (the supposed single-command app-side
+ceremony) currently fails at Step 5 (propose-release) with:
+
+> live Squads submission requires Phase 0.6 multisig config; rerun with --dry-run
+
+This is a fleet-wide blocker for any app trying a **fresh**
+onboarding via the upstream tool. The sister-app sync pattern (idx
+1683: "commit 8962409 just SYNCED from an already-on-chain
+ReleaseEntry") works only for apps that already have an on-chain
+ReleaseEntry from an earlier crew session — first-time onboardings
+hit the Phase 0.6 gap. Witnessed:
+- 2026-05-18 cybertellerconfig v0.1.3 attempt (idx 1943) — two
+  License NFTs minted (`2iYNdL8RZtmGMAW…`, `J8zTpgkjzfDM…`),
+  ~0.008 SOL sunk; could not submit propose-release live.
+- 2026-05-18 ccash_organization (Pearl-RED status flagged by Riker).
+
+### The static_store workaround
+
+`scripts/pearl-app-ceremony.sh` (productized in §8) bypasses the
+tool entirely — it calls `@sqds/multisig` SDK directly to compose
+the vault-create + proposal + 3× approve + ed25519+execute path,
+and submits as one outer v0 transaction. This is how all 41/41
+catalog entries were onboarded on 2026-05-18. It does NOT require
+the tool's Phase 0.6 config to exist.
+
+### App-side `make publish` contract (Pearl-only)
+
+The app repo's `make publish` target writes the **handoff bundle**:
+SPK + metadata.json + (provisional) RELEASE.json + capabilities.json.
+The on-chain ceremony is the static_store crew's job afterwards.
+
+```make
+# In every app's Makefile (canonical melusina-spkmodule shape):
+publish: pack compute-apphash release-json-stub
+	@echo "→ handoff bundle ready: $(SPK_OUT) + metadata.json + RELEASE.json"
+	@echo "→ static_store crew: copy into packages/hrbrlife/<app>/<slug>/"
+	@echo "→ then run pearl-app-ceremony.sh to mint the real on-chain PDA"
+
+pack:                 ## produce $(SPK_OUT) and update metadata.json packageId
+	spk pack -p $(PKGDEF) $(SPK_OUT)
+	# (spkmodule sets packageId in metadata.json automatically)
+
+compute-apphash:      ## canonical appHash for RELEASE.json
+	attestdeployer-tool compute-app-hash --in $(APP_DIR) --exclude RELEASE.json
+
+release-json-stub:    ## write a provisional RELEASE.json with offline-* placeholders
+	attestdeployer-tool release-json-stub --version $(MELUSINA_VERSION) > RELEASE.json
+```
+
+`make publish` does NOT call propose-release / Squads submission.
+The OFFLINE-marked RELEASE.json in the handoff bundle is a
+**provisional stub** — static_store overwrites it with the real
+on-chain RELEASE.json after running pearl-app-ceremony.sh.
+
+### Handoff workflow
+
+1. **App repo** runs `make publish`. Output is committed to the app's
+   own publish branch (`git push origin HEAD:publish`).
+2. **App agent** /msg's static_store with:
+   - Upstream commit SHA of the publish branch tip.
+   - Target catalog path: `packages/hrbrlife/<repo>/<slug>/`.
+   - SPK md5 + size (so static_store can verify the file pulled
+     matches what was packed).
+3. **static_store crew** pulls the artifact, copies into the catalog
+   dir, then runs:
+
+   ```bash
+   APP_CATALOG_PATH=/home/user/Desktop/static_store/packages/hrbrlife/<repo>/<slug>/ \
+   APP_SLUG=<canonical-slug> \
+   MELUSINA_VERSION=<version> \
+   OUTPUT_DIR=/tmp/pearl-ceremony-<slug> \
+   bash scripts/pearl-app-ceremony.sh
+   ```
+
+   The driver:
+   - Recomputes appHash (with RELEASE.json excluded — critical).
+   - Submits a Squads vault transaction, proposalCreate, 3 approvals,
+     execute composed as one outer v0 tx (sigverify outer, execute
+     inner).
+   - Reads back the on-chain ReleaseEntry PDA into RELEASE.json.
+   - Writes the real RELEASE.json into the catalog dir.
+4. **static_store crew** commits the bumped submodule pointer + the
+   real RELEASE.json + a CHANGELOG line; pushes to
+   `feat/greenfield-shipit-update` (or main when merged).
+5. **Deploy** waits on Riker's `make plan` / `make apply` call (HT12
+   path; no Mongo writes).
+
+### What apps must STOP doing
+
+- **STOP** invoking `attestdeployer-tool onboard` for fresh apps
+  until the Phase 0.6 gap is fixed. Use the handoff pattern.
+- **STOP** writing OFFLINE-stub RELEASE.json into the static_store
+  catalog directly. The static_store crew overwrites it anyway, and
+  shipping OFFLINE regresses the on-chain Pearl coverage.
+- **STOP** minting License NFTs on the upstream side. The ceremony
+  driver mints a fresh license-mint internally per app — any
+  pre-minted NFT is wasted SOL.
+
+### What pearl-app-ceremony.sh expects from the handoff bundle
+
+| File | Required | Purpose |
+|---|---|---|
+| `app.spk` | YES | Sandstorm package binary; the appHash is computed over its bytes (excluding RELEASE.json sibling). |
+| `metadata.json` | YES | `appId`, `marketingVersion`, `versionNumber`, `packageId`. The slug comes from `APP_SLUG`, not metadata. |
+| `RELEASE.json` | optional | If present and OFFLINE-stub, will be overwritten. If present and on-chain, the ceremony refuses to overwrite — `COPY_TO_CATALOG=0` to leave alone. |
+| `capabilities.json` | optional | If present, the catalog index embeds it verbatim. Independent of the ceremony. |
+| `description.md`, `icon.png` | optional | Catalog-only metadata; ceremony doesn't read. |
+
+### ccash_organization unblock recipe (the THEN-NEXT case)
+
+Same as above — ccash_organization's repo should:
+1. Add `release-json-stub` target to its Makefile (or pull in
+   melusina-spkmodule v0.5+ which has it).
+2. Run `make pack && make compute-apphash && make release-json-stub`
+   to produce a handoff bundle.
+3. Push the bundle to the catalog target and /msg static_store
+   with the handoff message.
+
+static_store then runs pearl-app-ceremony.sh, mints the on-chain
+PDA, and ccash_organization joins the Pearl-onboarded fleet.
+
+---
+
 ## Failure modes seen during the pilot
 
 | Symptom | Cause | Fix |

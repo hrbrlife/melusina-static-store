@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # preflight.sh — gate `make publish` against the regression mode that
-# bit us on 2026-04-25 (see ../POSTMORTEM.md). Walks five checks:
+# bit us on 2026-04-25 (see ../POSTMORTEM.md). Walks six checks:
 #
 #   1. live-catalog diff against the just-built dist-publish/apps/index.json
 #      — abort if any appId disappears (set MELUSINA_PUBLISH_SHRINK_OK=1
@@ -19,7 +19,11 @@
 #      default; warnings (placeholder size, missing app_icons/) are
 #      informational. Override with MELUSINA_PUBLISH_ALLOW_ICON_QC_WARN=1
 #      while the icon backfill ships.
-#   5. pre-push announce — print the added/removed/changed app summary.
+#   5. metadata QC — name / shortDescription / description coverage on
+#      every app. FAIL if any app.name is blank (would render blank card
+#      title in UI). WARN-only on missing shortDescription or description.
+#      Override hard failure with MELUSINA_PUBLISH_ALLOW_METADATA_GAP=1.
+#   6. pre-push announce — print the added/removed/changed app summary.
 #   exit code 0 on green, 1 on any abort condition.
 #
 # Run from the static_store root after `bash build-store.sh ...` has
@@ -54,7 +58,7 @@ if [[ ! -f "$LOCAL_BUILD" ]]; then
 fi
 
 # --- 1. Live-catalog diff ----------------------------------------------------
-info "Gate 1/4: live-catalog diff (vs $LIVE_CATALOG_URL)"
+info "Gate 1/6: live-catalog diff (vs $LIVE_CATALOG_URL)"
 LIVE_TMP="$(mktemp /tmp/preflight-live.XXXXXX.json)"
 trap 'rm -f "$LIVE_TMP"' EXIT
 
@@ -108,7 +112,7 @@ else
 fi
 
 # --- 2. Manifest cross-check -------------------------------------------------
-info "Gate 2/4: manifest cross-check (vs $DEPLOYER_MANIFEST)"
+info "Gate 2/6: manifest cross-check (vs $DEPLOYER_MANIFEST)"
 if [[ -f "$DEPLOYER_MANIFEST" ]]; then
   set +e
   python3 - "$DEPLOYER_MANIFEST" "$PACKAGES_DIR" <<'PY'
@@ -213,7 +217,7 @@ else
 fi
 
 # --- 3. Authoritative-host gate ----------------------------------------------
-info "Gate 3/4: authoritative-host check"
+info "Gate 3/6: authoritative-host check"
 if [[ "${MELUSINA_PUBLISH_AUTHORITATIVE:-}" == "1" ]]; then
   ok "MELUSINA_PUBLISH_AUTHORITATIVE=1 — host declared canonical builder"
 else
@@ -221,7 +225,7 @@ else
 fi
 
 # --- 4. Icon QC --------------------------------------------------------------
-info "Gate 4/5: icon QC (catalog icons + Sandstorm-spec icon set)"
+info "Gate 4/6: icon QC (catalog icons + Sandstorm-spec icon set)"
 if [[ -x "$SCRIPT_DIR/icon-qc.sh" ]]; then
   set +e
   "$SCRIPT_DIR/icon-qc.sh"
@@ -241,8 +245,48 @@ else
   warn "$SCRIPT_DIR/icon-qc.sh missing or not executable — skipping icon QC"
 fi
 
-# --- 5. Pre-push announce ----------------------------------------------------
-info "Gate 5/5: pre-push announce"
+# --- 5. Metadata QC ----------------------------------------------------------
+info "Gate 5/6: metadata QC (name / shortDescription / description coverage)"
+set +e
+python3 - "$LOCAL_BUILD" <<'PY'
+import json, sys
+apps = json.load(open(sys.argv[1])).get('apps', [])
+missing_name  = [a for a in apps if not (a.get('name') or '').strip()]
+missing_short = [a for a in apps if not (a.get('shortDescription') or a.get('summary') or '').strip()]
+missing_desc  = [a for a in apps if not (a.get('description') or '').strip()]
+total = len(apps)
+print(f"  apps: {total}")
+print(f"  with name:             {total - len(missing_name)}/{total}")
+print(f"  with shortDescription: {total - len(missing_short)}/{total}")
+print(f"  with description:      {total - len(missing_desc)}/{total}")
+def show(label, items, key='appId'):
+    if items:
+        print(f"  missing {label} ({len(items)}):")
+        for a in items[:20]:
+            print(f"    - {a.get('name','?'):28s} ({a.get(key,'')[:16]}...)")
+show('name (card title — hard regression)', missing_name)
+show('shortDescription (card subtitle)', missing_short)
+show('description (detail panel body)', missing_desc)
+# Hard fail only if a card-title field is missing — those are user-visible blanks
+sys.exit(2 if missing_name else 1 if (missing_short or missing_desc) else 0)
+PY
+RC=$?
+set -e
+if [[ "$RC" -eq 2 ]]; then
+  if [[ "${MELUSINA_PUBLISH_ALLOW_METADATA_GAP:-}" == "1" ]]; then
+    warn "Metadata gaps in card-title fields, proceeding under MELUSINA_PUBLISH_ALLOW_METADATA_GAP=1"
+  else
+    fail "Missing app.name on one or more apps — blank card title in UI. Fix metadata.json, or set MELUSINA_PUBLISH_ALLOW_METADATA_GAP=1 to override."
+    ABORT=1
+  fi
+elif [[ "$RC" -eq 1 ]]; then
+  warn "Soft metadata gaps (subtitle / detail body). Catalog still ships."
+else
+  ok "Metadata coverage: 100% on name / shortDescription / description"
+fi
+
+# --- 6. Pre-push announce ----------------------------------------------------
+info "Gate 6/6: pre-push announce"
 LOCAL_COUNT="$(python3 -c "import json; print(len(json.load(open('$LOCAL_BUILD')).get('apps', [])))")"
 echo "  Local catalog will publish $LOCAL_COUNT apps."
 if [[ -s "$LIVE_TMP" ]]; then

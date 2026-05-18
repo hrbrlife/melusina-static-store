@@ -60,6 +60,7 @@ escape hatch.
 - [Greenfield publish design](https://github.com/hrbrlife/melusina-spkmodule-component/tree/greenfield)
 - `docs/pearl-ceremony-gotchas.md` (in spkmodule)
 - `docs/stream-c-dev-store-envelope-proposal.md` (in spkmodule)
+- See also: [`docs/PEARL_ONBOARDING_RUNBOOK.md`](docs/PEARL_ONBOARDING_RUNBOOK.md) — step-by-step app-developer ceremony walkthrough
 
 The rest of this runbook describes the **current** (offline-stub) flow. When
 greenfield lands, sections below marked with offline-stub semantics will be

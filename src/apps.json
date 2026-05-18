@@ -817,7 +817,7 @@
           }
         ]
       },
-      "description": "cca.sh Config is the admin Pearl for the cca.sh / popaye operator console. One install gets one Config Pearl; it owns the procedure-template registry, the hook allowlist, the cross-Pearl case index, and the routing policy that every cca.sh sibling Pearl claims via Grapple at boot. Operators never edit ccash code to change product behavior \u2014 they edit YAML templates served from this Pearl.\n\n## Why cca.sh Config\n\n- **Pinned procedure-template versions** \u2014 every YAML template the admin serves is hash-anchored to your Solana wallet at the moment a case starts. The case's evaluation against template-vN is tamper-evident, citable across Pearls via Grapple, and survives operator audits independent of who's running the install\n- **Hook allowlist as fail-closed boundary** \u2014 every typed event a procedure can fire is enumerated in a manifest the admin loads at boot; anything outside the allowlist is rejected at the Cap'n Proto boundary, not at a sidecar's discretion. No silent webhook spawn, no dynamic event routing\n- **One-install-one-license** \u2014 the admin Pearl is the per-license boundary; every cca.sh sibling Pearl in the install (popaye operator, client seat, org member) Grapple-claims this single offerable. Revocation, audit, and policy live in one place\n\n## Status\n\n*Pre-release v0.0.1.* Scaffold + welcome page. The Cap'n Proto AdminGate offerable lands at v0.1.0 alongside ccash kill-list M1; until then the procedure-runtime handshake from sibling Pearls is stubbed."
+      "description": "cca.sh Config is the admin Pearl for the cca.sh / popaye operator console. One install gets one Config Pearl; it owns the procedure-template registry, the hook allowlist, the cross-Pearl case index, and the routing policy that every cca.sh sibling Pearl claims via Grapple at boot. Operators never edit ccash code to change product behavior \u2014 they edit YAML templates served from this Pearl.\n\n## Why cca.sh Config\n\n- **Pinned procedure-template versions** \u2014 every YAML template the admin serves is hash-anchored at the moment a case starts. The case's evaluation against template-vN is tamper-evident, citable across Pearls via Grapple, and survives operator audits independent of who's running the install.\n- **Hook allowlist as fail-closed boundary** \u2014 every typed event a procedure can fire is enumerated in a manifest the admin loads at boot; anything outside the allowlist is rejected at the Cap'n Proto boundary, not at a sidecar's discretion. No silent webhook spawn, no dynamic event routing.\n- **One-install-one-license** \u2014 the admin Pearl is the per-license boundary; every cca.sh sibling Pearl in the install (popaye operator, client seat, tradechain operator/vendor/buyer) Grapple-claims this single offerable. Revocation, audit, and policy live in one place.\n\n## Status\n\n**v0.0.10 \u2014 Pearl-onboarded.** Live on Solana devnet, 3-of-4 Core App Team Squads quorum, canonical foundation master `B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe`. AdminGate Cap'n Proto offerable (`@0xa7c4d2e91b8f5634`) is served on FD 3 \u2014 sibling ccash Pearls (popaye + the cca-tc-* tradechain variants) Powerbox-claim it at first boot and import the bindings via `go.mod replace` for compile-time wire stability. See `RELEASE.json` and `changelog.md` for the on-chain attestation and per-release notes."
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
@@ -3260,7 +3260,7 @@
       "name": "NamedCoin",
       "version": "0.1.2",
       "versionNumber": 3,
-      "packageId": "91851dcbd05a76c45a7e188f806c03fc",
+      "packageId": "b7ee317756fecb4e8d5655199ae436ef",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3283,7 +3283,7 @@
       },
       "marketingVersion": "0.1.2",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1779102529000,
+      "updatedAt": 1779103911172,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8d262ed2180a1cd5858f4c1a89cd7bc09bc9a037db6754bb491e340d69b6ad29",
@@ -3640,10 +3640,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "c3d4672d9e0e2205f6e3f794ea48de11",
+      "packageId": "2213aa947965327844ff4d1bd9d1aa8a",
       "name": "popaye",
-      "version": "0.3.42-system-down-build-line",
-      "versionNumber": 34,
+      "version": "0.3.47-quarantine-fields",
+      "versionNumber": 39,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -3666,21 +3666,19 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.42-system-down-build-line",
-      "appHash": "78cb1836e2add8887bb3e02b37566a7fd1e369c481f8053453565c086b10c169",
-      "sha256": "c3d4672d9e0e2205f6e3f794ea48de11902e305859a1054198ca5fae99be46a6",
+      "marketingVersion": "0.3.47-quarantine-fields",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779091119291,
+      "updatedAt": 1779113244588,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8c155be4eb024ceb0f18f5ed023c093f969bddbfee334fc76f92a7f056267c49",
-        "releaseHash": "286e83364158aefb32dda127100839a135e4dd4e8380e780e8049341f431a1dc",
-        "releaseNonce": "3550564742145d048f208cf9766f00d9",
-        "releaseEntryPda": "4DLMSzprewdQkdBR9xbHKUaQ2TGUD5aV3xULLjJgydLj",
+        "appHash": "b101a9e1614e010e41efed8e22df2359102c338a1d3cfa7d7756281ba72ede15",
+        "releaseHash": "64cbaba4f2ca658500727a7d6bc20a1fefbf5f8f15f30f94f596cdbc38d09609",
+        "releaseNonce": "488dd0cb84ab1422443d4362ef23e208",
+        "releaseEntryPda": "9PnT4Tu5x7yK4mJzzCt3BUEbNjYhq2r4gzg7i63T5Wdm",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779091206,
-        "authorSig": "FtUx4i82GWR66FuzZogajBslkQeFxfHAkG1FPLPYv5tz2Czxgg3dPCma03bbv6I6mwuoaYMQ1X8SmU2guxxFBg==",
+        "signedAtUnix": 1779113527,
+        "authorSig": "UGV/2iRUIuwfPZfFEXMwA2DL8/InqAEyQ7jymheYTFqpDWCJ1bLRSSNx5cV9mDqojaR8gv8LzWXYcnjwY1YIBg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

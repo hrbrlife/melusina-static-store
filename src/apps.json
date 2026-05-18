@@ -2782,7 +2782,7 @@
       },
       "marketingVersion": "0.0.4",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1779001687858,
+      "updatedAt": 1779133388192,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "183afdc353a2ec27ad292466196795544edb7e065e8fcdb94727f6a678f8d5fe",
@@ -3086,7 +3086,7 @@
       ],
       "marketingVersion": "0.2.1",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1779001673822,
+      "updatedAt": 1779133326864,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d51d22b17f77ad7c3d983dd630e68fdb03a8f7e71f9f7b5e0a729d45ada60df1",
@@ -3228,7 +3228,7 @@
       },
       "marketingVersion": "0.1.2",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1779103911172,
+      "updatedAt": 1779133421372,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8d262ed2180a1cd5858f4c1a89cd7bc09bc9a037db6754bb491e340d69b6ad29",

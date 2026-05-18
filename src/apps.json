@@ -3982,33 +3982,33 @@
     },
     {
       "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
-      "packageId": "305201284d1ce3c9df6891cabfe056a6",
       "name": "TeleScreen Hub",
       "version": "0.0.3",
-      "versionNumber": 5,
-      "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar \u2014 multi-provider Powerbox cap-routed",
+      "versionNumber": 6,
+      "packageId": "305201284d1ce3c9df6891cabfe056a6",
+      "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
       "categories": [
         "Productivity",
         "Developer Tools"
       ],
-      "isOpenSource": false,
+      "isOpenSource": true,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/pr_ninja",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
       "author": {
-        "name": "alexeikarp",
+        "name": "hrbr.life",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
-      "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.3",
-      "imageId": "c2b5542bdd9852f66f77539165af7179.png",
-      "updatedAt": 1779125352969,
+      "imageId": "b951f2165d328f2ed171dc86c690d9ea.svg",
+      "updatedAt": 1779127701749,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4137,7 +4137,8 @@
           }
         ]
       },
-      "description": "TeleScreen is the Sandstorm-side screening sidecar plus admin core grain for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nA complete install is three Sandstorm grains that compose across two SPKs: the REST/JSON sidecar and the HTMX admin + member core grain (both in this SPK), plus the setup grain shipped separately as `telescreen-companion.spk`. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\nPackaging is `spk dev` / `spk pack`. Docker and direct system service deployment are not part of the polished MVP path."
+      "description": "TeleScreen is the Sandstorm-side screening sidecar plus admin core grain for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nA complete install is three Sandstorm grains that compose across two SPKs: the REST/JSON sidecar and the HTMX admin + member core grain (both in this SPK), plus the setup grain shipped separately as `telescreen-companion.spk`. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\nPackaging is `spk dev` / `spk pack`. Docker and direct system service deployment are not part of the polished MVP path.",
+      "screenshots": []
     },
     {
       "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",

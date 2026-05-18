@@ -104,7 +104,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 cat > "$TMP/package.json" <<'JSON'
-{"type":"module","dependencies":{"@solana/web3.js":"^1.98.0","@sqds/multisig":"^2.1.4"}}
+{"type":"module","dependencies":{"@solana/web3.js":"~1.98.0","@sqds/multisig":"~2.1.4"}}
 JSON
 echo "[ceremony:$APP_SLUG] installing @sqds/multisig…"
 npm install --prefix "$TMP" --silent

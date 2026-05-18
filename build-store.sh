@@ -696,6 +696,15 @@ for app in apps:
         mismatches.append(f'{app_id}: embedded attest is on-chain but /attest/{app_id}/RELEASE.json missing')
         continue
     canonical = json.load(open(rel_path))
+    # Offline-stub RELEASE.json uses schemaVersion=1 (no $schema, no on-chain
+    # fields). When embedded attest is also empty-on-chain (releaseEntryPda='',
+    # releaseHash=''), both sides agree this app has no Pearl on-chain release —
+    # not a drift. Skip the field comparison.
+    canonical_is_offline = canonical.get('$schema') is None and canonical.get('schemaVersion') == 1
+    embedded_is_offline = not attest.get('releaseEntryPda') and not attest.get('releaseHash')
+    if canonical_is_offline and embedded_is_offline:
+        checked += 1
+        continue
     if attest.get('schema') != canonical.get('$schema'):
         mismatches.append(f'{app_id}: schema drift — index={attest.get("schema")!r} vs RELEASE={canonical.get("$schema")!r}')
     for k in EMBEDDED_KEYS:

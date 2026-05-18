@@ -3103,69 +3103,14 @@
           "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
-      "capabilities": null
-    },
-    {
-      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "name": "MiniGit",
-      "version": "0.2.0",
-      "versionNumber": 7,
-      "packageId": "e512808599abffbcce3cca247d237e80",
-      "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
-      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
-      "categories": [
-        "Developer Tools"
-      ],
-      "isOpenSource": true,
-      "webLink": "https://github.com/hrbrlife/MiniGit",
-      "codeLink": "https://github.com/hrbrlife/MiniGit",
-      "upstreamAuthor": "Gogs Authors + alexeikarp",
-      "createdAt": 1772577065000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [
-        {
-          "url": "screenshots/01-repository-browser.png",
-          "caption": "Repository Browser"
-        },
-        {
-          "url": "screenshots/02-clone-and-file-tree.png",
-          "caption": "Clone And File Tree"
-        }
-      ],
-      "license": "MIT",
-      "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1778877857642,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "fabefd97d4756cd70b44f5fabbb08de65cfc34fb6e666dcca96f6ab2d71d5c48",
-        "releaseHash": "b1f1a5131378eb6023073fb67179f20d1d2eeeecdad0e6a122e7f28a457ec7a1",
-        "releaseNonce": "4cdfe73b80f8c67ced0cd21ba815b24b",
-        "releaseEntryPda": "GjPeH6oo6tKZUxtG8XXAcJNqoXb3FHqktUcCWzBM2oSn",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779092669,
-        "authorSig": "j+k4W8veg0rGiGdRe5PtxkuUgkUonqS0HZG13hl0SuFy0Gj7qugwOa7DkvrUEw0l9Dh9wLNKuoBYmetphAjHCQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
       "capabilities": {
         "schemaVersion": 2,
-        "appSlug": "minigit",
+        "appSlug": "gitpearl",
         "appName": "MiniGit",
         "tier": "regular",
         "pearls": [
           {
-            "pearlId": "minigit",
+            "pearlId": "gitpearl",
             "pearlName": "MiniGit",
             "pearlType": "user-pearl",
             "purpose": "In-Pearl Git server \u2014 host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",

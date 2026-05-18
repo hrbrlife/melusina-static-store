@@ -15,7 +15,7 @@ REMOTE         := origin
 MAIN_BRANCH    := main
 PUBLISH_BRANCH := publish
 OUTPUT_DIR     := dist-publish
-MAX_FILE_SIZE  := $$((95 * 1024 * 1024))
+MAX_FILE_SIZE  := $$((100 * 1024 * 1024 - 4096))
 CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \

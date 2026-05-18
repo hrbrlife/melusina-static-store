@@ -1,15 +1,15 @@
 {
   "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
-  "packageId": "b9c66114a6b59705c4fb9a83b2eaa962",
-  "name": "TeleScreen",
-  "version": "0.0.4-icon-hires",
+  "packageId": "305201284d1ce3c9df6891cabfe056a6",
+  "name": "TeleScreen Hub",
+  "version": "0.0.3",
   "versionNumber": 5,
-  "shortDescription": "Sanctions, adverse-media, and on-chain screening sidecar — signed configuration, grant validation",
+  "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar \u2014 multi-provider Powerbox cap-routed",
   "categories": [
     "Productivity",
     "Developer Tools"
   ],
-  "isOpenSource": true,
+  "isOpenSource": false,
   "webLink": "https://hrbr.life",
   "codeLink": "https://github.com/hrbrlife/pr_ninja",
   "upstreamAuthor": "hrbr.life",
@@ -24,6 +24,6 @@
     "website": "https://hrbr.life"
   },
   "screenshots": [],
-  "license": "MIT",
-  "marketingVersion": "0.0.2"
+  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.0.3"
 }

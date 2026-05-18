@@ -227,7 +227,7 @@
         }
       },
       "capabilities": null,
-      "description": "",
+      "description": "**BotMother** is a Telegram bot management Pearl built on the gohtmx framework with native Cap'n Proto grain communication (no `sandstorm-http-bridge`).\n\nA single grain hosts a message hub plus chatroom and per-bot webhook handlers \u2014 each bot type runs as its own isolated pearl binary, so a token leak or runtime crash in one bot can't cascade across the fleet. Built-in grain types: a routing-rules message hub, Telegram webhook handlers, an auto-reply chatroom engine, and workflow instance + station pearls for longer-running flows.\n\nFor fleet operators who need routing, chatrooms, and isolated bot runtimes all in one Sandstorm grain. MIT-licensed.",
       "screenshots": []
     },
     {
@@ -2752,7 +2752,7 @@
         }
       },
       "capabilities": null,
-      "description": "",
+      "description": "**InstaCo** is the mobile-first app for a Montana series-LLC formation product. A global resident can form a real US company \u2014 a \"series\" sitting under a parent \"clan\" LLC operated by the platform \u2014 get a real US tax ID and address, and run the company entirely in-app, with named AI assistants drafting work and humans approving via Solana wallet or OTP.\n\n**One grain = one company.** Each grain hosts exactly one series LLC; multi-company workflows are a Sandstorm shell concern, not an InstaCo concern. Clans are real domains whose names become the legal name of the parent series LLC \u2014 v1 clans include `impex.direct` (importers / exporters / dropshippers), `ngneer.pro` (engineers), `codest.works` (developers), `adhaus.agency` (marketers), `porto.fund` (traders / angels), and `vellum.studio` (designers / fashion / brand). A customer's business lives as a subdomain under their clan, e.g. `wildhoney.impex.direct` is the website *and* part of the legal name *\"WILDHONEY, a series of IMPEX.DIRECT SERIES LLC\"*.\n\nBuilt in Go + TypeScript (lit-html + Vite) as a Sandstorm grain. Pairs with the sibling `ccash` grain over native Cap'n Proto for payment intents.",
       "screenshots": []
     },
     {

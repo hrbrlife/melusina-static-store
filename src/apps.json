@@ -825,7 +825,6 @@
       "version": "0.2.9",
       "versionNumber": 16,
       "packageId": "b5391143539e1af20f10fb40120cf00f",
-      "sha256": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -848,17 +847,19 @@
         "*"
       ],
       "marketingVersion": "0.2.9",
+      "sha256": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
+      "appHash": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779124225480,
+      "updatedAt": 1779155477128,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c94bb00f06c144fefccfae3679d0e018fbcaa665e09c10fa6eafcac016520ed8",
+        "appHash": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
         "releaseHash": "62247801dd0af0e5c6ef5d740ce3fe38473e915c1eff15a4ee94304bb3b58c11",
         "releaseNonce": "eae6f4a7ec8b274b3a1fc1f9f803b5f3",
         "releaseEntryPda": "6Btyj2uiA65ma6ZPRhyGCQQUx4FNRREG4VeJgpLYstzh",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779099288,
+        "signedAtUnix": 1779155477,
         "authorSig": "YsOc1VXP6rdJidb4Up1PuXqn7oPcOGkk9R4mvA6FYSOlh6OmjFTcJf3Z3Oaf611lGK2drt8J1DJboUh9XbZ4DA==",
         "quorumPolicy": {
           "threshold": 3,

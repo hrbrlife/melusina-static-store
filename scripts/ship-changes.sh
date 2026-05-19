@@ -253,6 +253,11 @@ for pkg in "${TARGET[@]}"; do
   # would only succeed on the *first* pack after a manifest update; every
   # subsequent loop tick would FATAL on hash drift. spkmodule manifest-check
   # honors this env var (post-iter9 fix in melusina-spkmodule-component).
+  # set +e around the subshell so a per-app FATAL doesn't abort the outer
+  # loop. Without this, `set -euo pipefail` at the top fires when the
+  # subshell exits non-zero, before `rc=$?` can capture the code, and the
+  # whole sweep dies after the first failing app.
+  set +e
   (
     cd "$src"
     set -e
@@ -264,6 +269,7 @@ for pkg in "${TARGET[@]}"; do
     echo "=== done ==="
   ) >"$log" 2>&1
   rc=$?
+  set -e
   if (( rc == 0 )); then
     ok "$repo: shipped (log: $log)"
     mkdir -p "$STATE_DIR"

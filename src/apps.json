@@ -4471,22 +4471,18 @@
       "license": "MIT",
       "marketingVersion": "0.1.1",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1778877857658,
+      "updatedAt": 1779149110736,
       "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "58dad3214b424eda358a0a31fe9b40f04e7861cc00e686454a26b9174757499e",
-        "releaseHash": "a1a1a4d0c3c09630cdd55828eea68c953cc6682d1959d42af816269575eecafd",
-        "releaseNonce": "8c0b6b326da55e57d2da6a7432c4af56",
-        "releaseEntryPda": "CnbZxP7XaY3zppvmwjC5kgkKK8Pi1s2Vr1h6Yu16AWyw",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779086479,
-        "authorSig": "xYlYt1wT5BcZPfMkHl/Z85zYNfyVrxfzkQpHMvVNNi9MBopFaoXQHoyKBRNc7gdsQ+gPBqAzK31jILA7lfL+CA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
+        "schema": "",
+        "appHash": "c7cb24e174caec72c3dcab72ae94b2a4c05aa3e405111723fe9271fc2fb5bcdd",
+        "releaseHash": "",
+        "releaseNonce": "",
+        "releaseEntryPda": "",
+        "masterNftMint": "",
+        "licenseSquadsVault": "",
+        "signedAtUnix": 1778880747,
+        "authorSig": "",
+        "quorumPolicy": {}
       },
       "capabilities": null
     }

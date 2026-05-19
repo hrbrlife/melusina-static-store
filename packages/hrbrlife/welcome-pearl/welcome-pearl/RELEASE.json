@@ -1,11 +1,17 @@
 {
-  "schemaVersion": 1,
-  "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
-  "appName": "Welcome Pearl",
-  "appHash": "c7cb24e174caec72c3dcab72ae94b2a4c05aa3e405111723fe9271fc2fb5bcdd",
-  "packageId": "c7cb24e174caec72c3dcab72ae94b2a4",
-  "marketingVersion": "0.1.1",
-  "versionNumber": 2,
-  "mode": "offline",
-  "signedAtUnix": 1778880747
+  "$schema": "melusina-release-v1",
+  "appHash": "a23eff6303a956ba99b9229f6d6f49c719208a831556eb82e8c10d0f1e489d37",
+  "releaseHash": "283ea4103af6e7d8c9e3316470f03a994c2af3a76f56e9a75c9768647cee3ae1",
+  "version": "0.1.2",
+  "signedAtUnix": 1779165655,
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+  "releaseEntryPda": "8fzTG3fEkeATg2CxmiaDgNQPoWxFMWVsSSSj77ZoW2Jd",
+  "authorSig": "7Bg5lQd36TdtSsqlw6XyQJh4M4l54itPQH+LInieK3YFCNxPfaFDansNnMOdCuEaXFsOOX/g8zTuim/XE3rrBQ==",
+  "quorumPolicy": {
+    "threshold": 3,
+    "memberCount": 4,
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+  },
+  "releaseNonce": "dc366428615df1242ae428e01cdc8dc7"
 }

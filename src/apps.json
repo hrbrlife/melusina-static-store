@@ -1107,6 +1107,55 @@
       }
     },
     {
+      "appId": "gyxwadv96vyss1qt05epahsgyn2993y86378hn49jzt6z4ts36x0",
+      "packageId": "6f891ec3dbd22bf62156ce1c39a5e148",
+      "name": "cca.sh Organization",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "shortDescription": "Partner administration relay grain for cca.sh",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_organization",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776902400000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.0",
+      "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
+      "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
+      "updatedAt": 1779190473378,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
+        "releaseHash": "0a1f3b2fbb92b42ae2c31bfb17ff20f3675efb181253d774ac4f12bf61513c46",
+        "releaseNonce": "e905a6c618944ad37117abf11b25fc75aa07b48f381f5d82d4422999b4e98535",
+        "releaseEntryPda": "offline-release-entry-gyxwadv96vyss1qt05epahsgyn2993y8",
+        "masterNftMint": "offline-master-nft-gyxwadv96vyss1qt05epahsgyn2993y8",
+        "licenseSquadsVault": "offline-license-vault-gyxwadv96vyss1qt05epahsgyn2993y8",
+        "signedAtUnix": 1779190473,
+        "authorSig": "e955c34a8475fe1144109ee3a61e1afd8a81698ad5da23db7d624f4fb5b9e85f",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-gyxwadv96vyss1qt05epahsgyn2993y8"
+        }
+      },
+      "capabilities": null,
+      "description": "Partner-admin relay grain for the cca.sh constellation. Adopts\nwholesale sub-account capabilities, records organization-local grant\nand member metadata, mints scoped operator and per-member capabilities,\nand forwards settlement escrows upstream after four-eyes capture.\nShips an admin web UI for member invite + role-change (CLAUDE.md\nTask #34) with the `client` role first-class."
+    },
+    {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
       "packageId": "1f70789790b0a13bd198d27984214a35",
       "name": "cca.sh Wholesale",
@@ -3204,9 +3253,9 @@
     {
       "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
       "name": "MLSNA Admin",
-      "version": "0.1.15",
-      "versionNumber": 16,
-      "packageId": "ca69ca77989f2ad1de094658f30c6d38",
+      "version": "0.1.16",
+      "versionNumber": 17,
+      "packageId": "868bb5fc65fb93bd125c540d36d74c6d",
       "shortDescription": "MLSNA token admin console",
       "description": "# MLSNA Admin\n\nAdmin console for the **MLSNA** SPL token issued by Melusina Services US LLC.\n\nSingle Sandstorm grain, raw Cap'n Proto WebSession (no HTTP bridge). All\nSolana RPC and wallet signing routes through the Melusina shell's\n`HackSessionContext.solanaRpc` (@11) and `requestWalletSign` (@9) \u2014 the grain\nnever opens an outbound HTTP socket.\n\n## What it does\n\n- **Dashboard** \u2014 supply, USDC vault balance, SOL vault balance, offer\n  status, pending Squads proposals, authorized-issuers list, program\n  addresses.\n- **Squads** \u2014 list the last 25 proposals with vote tallies; approve,\n  reject, or execute as a Squads member (2-of-4 threshold).\n- **Mint** \u2014 Squads-gated proposal to mint MLSNA to any ATA, with a\n  32-byte memo carried into the `MintAllocation` event.\n- **Freeze / Thaw** \u2014 Squads-gated compliance levers on any holder ATA.\n- **Burn** \u2014 Squads burns its own holdings (permissionless burn signed\n  by the Squads vault as holder).\n- **Offer** \u2014 manage the standing-offer's USDC and SOL routes\n  independently:\n  - set/get rate (num/denom)\n  - set/get limit-of-honor (cumulative MLSNA cap)\n  - pause/resume per route\n  - withdraw_usdc / withdraw_sol to a Squads-picked recipient\n  - register/deregister the offer PDA in MLSNA's `authorized_issuers`\n- **Events** \u2014 last 25 signatures touching `mlsna_token` and\n  `standing_offer_usdc`, with on-chain memo decoded.\n\n## Token shape\n\n- Plain SPL Token, decimals 6 (USDC convention).\n- Free transfer (no tier hooks, no permanent delegate, no transfer hooks).\n- Mint authority + freeze authority both held by a single program-owned\n  PDA at `[b\"mint_authority\"]`.\n- 2-of-4 Squads multisig governs mint, freeze, thaw, issuer-allow-list,\n  and offer admin. Permissionless burn for any holder.\n\n## Standing offer\n\n- **USDC route** \u2014 1:1 USD soft ceiling. Buyer transfers USDC, receives\n  MLSNA. Squads sets rate (num/denom) and limit-of-honor.\n- **SOL route** \u2014 Squads-set rate (lamports per MLSNA base unit). Buyer\n  transfers native SOL via `system_program::transfer` into a\n  lamports-only PDA vault; receives MLSNA. No oracle dependence \u2014 Squads\n  re-tunes rate as SOL/USD moves.\n- **No USDT route** \u2014 devnet lacks a canonical SPL USDT mint. Mainnet\n  bring-up may add it later via a third route.\n\n## Issuer of record\n\n**Melusina Services US LLC.** Separate from the Melusina Foundation\nSquads (same 4 natural-person signers, different multisig PDA).\nRecommended legal entity: Montana Series LLC with Form 8832 C-corp\nelection.",
       "categories": [
@@ -3226,16 +3275,16 @@
       },
       "screenshots": [],
       "imageId": "faf732ca56d38b49972872d13cde1c6d.svg",
-      "updatedAt": 1779188096410,
+      "updatedAt": 1779188733670,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ca69ca77989f2ad1de094658f30c6d389c442b0935fbf0cf8214cb0e7cb87281",
-        "releaseHash": "ca69ca77989f2ad1de094658f30c6d389c442b0935fbf0cf8214cb0e7cb87281",
-        "releaseNonce": "ca69ca77989f2ad1de094658f30c6d38",
+        "appHash": "868bb5fc65fb93bd125c540d36d74c6d7ebbe3b377db0bd06aace590cecd49a8",
+        "releaseHash": "868bb5fc65fb93bd125c540d36d74c6d7ebbe3b377db0bd06aace590cecd49a8",
+        "releaseNonce": "868bb5fc65fb93bd125c540d36d74c6d",
         "releaseEntryPda": "11111111111111111111111111111111",
         "masterNftMint": "11111111111111111111111111111111",
         "licenseSquadsVault": "HtabU1Wh3UfFfEyq4Yub7B5dPHPo7QDYSRRs1DX2xgFe",
-        "signedAtUnix": 1779891600,
+        "signedAtUnix": 1779893400,
         "authorSig": "",
         "quorumPolicy": {
           "threshold": 2,

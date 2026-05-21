@@ -1,0 +1,8 @@
+{
+  "name": "DueProcess (v2 — Riker rebuild with powerboxRequest-context fix)",
+  "version": "0.1.10",
+  "versionNumber": 13,
+  "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+  "packageId": "fad37d1bd9c1f0aa822f0e71aa8975c0",
+  "shortDescription": "Multi-grain PSP case queue + approval suite (Riker option-b rebuild, 2026-05-21)"
+}

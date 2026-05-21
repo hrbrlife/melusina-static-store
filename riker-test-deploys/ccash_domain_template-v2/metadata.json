@@ -1,0 +1,8 @@
+{
+  "name": "ccash Domain Template (v2 — Riker rebuild with account-opening.yaml in ccash/stations/)",
+  "version": "0.2.9",
+  "versionNumber": 16,
+  "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
+  "packageId": "d6778e50e4b7bbd68df45bed6a6b44fb",
+  "shortDescription": "Domain Template grain — adds account-opening.yaml mirror at canonical ccash/stations/ path (Riker option-b rebuild)"
+}

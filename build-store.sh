@@ -791,7 +791,31 @@ SANDSTORM_BUILD_NUM=""
 # Catalog still ships; clients see no Sandstorm self-update this round.
 # Default remains fail-hard via the pre-flight check below.
 if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
-  warn "MELUSINA_SKIP_BUNDLE_UPDATE=1 — skipping Sandstorm bundle-update block; catalog only this round"
+  warn "MELUSINA_SKIP_BUNDLE_UPDATE=1 — skipping Sandstorm bundle-update build; preserving live update/ files"
+
+  # Fetch the current live update/ payload into dist-publish/update/ so the
+  # apply step (orphan-commit replaces the publish tree) does not delete
+  # dev/stable/latest.json/manifest.json/install.sh/sandstorm-N.tar.xz.update-sig.
+  # SKIP=1 means "don't change the bundle channel" — without this fetch it
+  # would mean "delete the bundle channel", which is the bug this guards.
+  LIVE_BASE="https://hrbrlife.github.io/melusina-static-store/update"
+  for f in dev stable latest.json manifest.json install.sh; do
+    if curl -fsS --max-time 12 -o "$UPDATE_OUT/$f" "$LIVE_BASE/$f"; then
+      ok "Preserved live update/$f"
+    else
+      warn "Could not fetch live update/$f — publish branch would lose it on apply"
+    fi
+  done
+  # Also fetch the .update-sig for the live build, if any.
+  LIVE_BUILD_FOR_SIG="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("build",""))' "$UPDATE_OUT/manifest.json" 2>/dev/null || true)"
+  if [[ -n "$LIVE_BUILD_FOR_SIG" ]]; then
+    sig_name="sandstorm-${LIVE_BUILD_FOR_SIG}.tar.xz.update-sig"
+    if curl -fsS --max-time 12 -o "$UPDATE_OUT/$sig_name" "$LIVE_BASE/$sig_name"; then
+      ok "Preserved live update/$sig_name"
+    else
+      warn "Could not fetch live update/$sig_name — apply will leave publish-branch sig absent"
+    fi
+  fi
 elif [[ -d "$SANDSTORM_SRC" ]]; then
   # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast).
   # Numeric sort so sandstorm-10.tar.xz beats sandstorm-2.tar.xz.

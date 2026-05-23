@@ -181,7 +181,91 @@ validate_catalog_ids() {
 }
 
 validate_release_attestation() {
-  return 0  # patched: skip Pearl attestation validation
+  local meta_file="$1"
+  local app_dir="$2"
+  local rel_file="$app_dir/RELEASE.json"
+  local errors=0
+
+  if [[ ! -f "$rel_file" ]]; then
+    fail "$app_dir: RELEASE.json missing — every app must ship a ReleaseEntry attestation or offline stub"
+    return 1
+  fi
+
+  if ! python3 -m json.tool "$rel_file" > /dev/null 2>&1; then
+    fail "$app_dir: RELEASE.json is not valid JSON"
+    return 1
+  fi
+
+  local schema
+  schema="$(python3 -c "import json; d=json.load(open('$rel_file')); print(d.get('\$schema', d.get('schemaVersion', '')))" 2>/dev/null)"
+
+  case "$schema" in
+    melusina-release-v1)
+      local missing_fields=()
+      local empty_fields=()
+      for field in appHash releaseHash releaseNonce authorSig; do
+        if ! python3 -c "
+import json, sys
+d = json.load(open('$rel_file'))
+if '$field' not in d:
+    sys.exit(2)
+if not isinstance(d['$field'], str):
+    sys.exit(1)
+sys.exit(0)
+" 2>/dev/null; then
+          missing_fields+=("$field")
+        elif ! python3 -c "
+import json, sys
+d = json.load(open('$rel_file'))
+if d.get('$field', '').strip() == '':
+    sys.exit(1)
+" 2>/dev/null; then
+          empty_fields+=("$field")
+        fi
+      done
+      if [[ ${#missing_fields[@]} -gt 0 ]]; then
+        for fld in "${missing_fields[@]}"; do
+          fail "$app_dir: on-chain RELEASE.json missing required field '$fld'"
+        done
+        ((errors += ${#missing_fields[@]}))
+      fi
+      if [[ ${#empty_fields[@]} -gt 0 ]]; then
+        for fld in "${empty_fields[@]}"; do
+          warn "$app_dir: on-chain RELEASE.json field '$fld' is empty — not yet Pearl-signed"
+        done
+      fi
+
+      local quorum_ok
+      quorum_ok="$(python3 -c "
+import json
+d = json.load(open('$rel_file'))
+qp = d.get('quorumPolicy', {})
+if not isinstance(qp, dict):
+    print('missing')
+elif 'threshold' not in qp or 'memberCount' not in qp or 'multisigPda' not in qp:
+    print('incomplete')
+else:
+    print('ok')
+" 2>/dev/null)"
+      if [[ "$quorum_ok" == "missing" ]]; then
+        fail "$app_dir: on-chain RELEASE.json quorumPolicy missing (threshold + memberCount + multisigPda required)"
+        ((errors++))
+      elif [[ "$quorum_ok" == "incomplete" ]]; then
+        warn "$app_dir: on-chain RELEASE.json quorumPolicy incomplete"
+      fi
+      ;;
+
+    1)
+      ok "$app_dir: offline-stub RELEASE.json (schemaVersion=1, no on-chain attestation)"
+      ;;
+
+    *)
+      fail "$app_dir: RELEASE.json has unrecognized schema: $schema"
+      ((errors++))
+      ;;
+  esac
+
+  return $errors
 }
 
 validate_metadata() {

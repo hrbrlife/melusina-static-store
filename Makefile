@@ -287,6 +287,19 @@ apply:
 	else \
 		echo "  no previous $(REMOTE)/$(PUBLISH_BRANCH) — first publish, no rollback tag"; \
 	fi
+	@# --- Remote-drift gate: refuse to force-push if another publisher raced us ---
+	@echo "=== apply: remote-drift gate ==="
+	@git fetch $(REMOTE) $(PUBLISH_BRANCH) 2>/dev/null; \
+	CURRENT_REMOTE=$$(git rev-parse $(REMOTE)/$(PUBLISH_BRANCH) 2>/dev/null || echo ""); \
+	if [ -n "$$PREV" ] && [ "$$PREV" != "$$CURRENT_REMOTE" ]; then \
+		echo "✗ apply aborted: remote $(PUBLISH_BRANCH) advanced since plan."; \
+		echo "  expected: $$PREV"; \
+		echo "  actual:   $$CURRENT_REMOTE"; \
+		echo "  Another publisher force-pushed concurrently. Re-run 'make plan' then 'make apply'."; \
+		rm -rf "$(PLAN_DIR)"; \
+		exit 1; \
+	fi
+	@echo "  remote $(PUBLISH_BRANCH) at $$CURRENT_REMOTE — no concurrent push"
 	git push $(REMOTE) $(PUBLISH_BRANCH) --force
 
 	@# --- Cleanup: marker is consumed; require fresh plan next time ---

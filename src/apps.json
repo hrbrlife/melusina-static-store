@@ -2,12 +2,12 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "0197beac36828aa19b92332ba1367c91",
+      "packageId": "1fa328376d306f4b02c9d6d0222f6db9",
       "name": "AiLagoon",
-      "version": "0.7.10",
-      "versionNumber": 18,
+      "version": "0.7.11",
+      "versionNumber": 19,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
-      "description": "AiLagoon is the AI model hub pearl for Melusina. Register multiple LLM providers, manage per-model connections, and expose AI capabilities to other pearls via Grapple \u2014 all behind a single Melusina HTTP-out permission to the ai-lagoon sidecar.\n\n## Why AiLagoon\n\n- **Pinned inference transcripts** \u2014 cryptographically anchor any model conversation to your Solana wallet; transcripts are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Single HTTP-out permission** \u2014 one security boundary; all provider traffic routes through the sidecar; you grant access once, revoke anytime\n- **Wallet-rooted Grapple capability routing** \u2014 consuming Pearls request AI capabilities via Grapple; routing is scoped to the requesting Pearl; no cross-Pearl data leakage\n\n## Supported Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **OpenAI** \u2014 ChatGPT API (GPT-4o, 4-Turbo, o1, o3, 4.5, 4.6, newer models)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral, DeepSeek, and more through a single proxy\n\n## Published Grapple Capabilities\n\nOther Pearls request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model; useful when a consumer wants a specific capability class (e.g., reasoning)\n\n## Playground\n\nA built-in chat playground lets you test any connected model without leaving the pearl \u2014 useful for validating credentials, checking capabilities, or prototyping prompts before calling them from another Pearl via Grapple.\n\n## Status\n\n*Shipped v0.7.0.* Production-ready AI model hub with Ollama, ChatGPT, OpenRouter; Solana-pinned inference transcripts.",
+      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At grain startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the grain picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the grain's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
       "categories": [
         "Productivity"
       ],
@@ -39,19 +39,19 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.7.10",
-      "sha256": "0197beac36828aa19b92332ba1367c91da51a70cfc1857f545232d5e37c50054",
+      "marketingVersion": "0.7.11",
+      "sha256": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779566768927,
+      "updatedAt": 1779579085349,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5b942cb1a6d6ca679a1e5d4f38a86d40c00b594760c892e3d4e02c639345c97f",
-        "releaseHash": "8a95abc67c716c01e1a9cab08aeb66356924fe85587aa3f82698d0777e891b92",
-        "releaseNonce": "fd117d12d462d22b1082bd9c4d72f0e4",
+        "appHash": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
+        "releaseHash": "cbb6ffb81b4d107ff00d00276565ad3e7ae279316601ca896a01d1beafafaec2",
+        "releaseNonce": "131296c8cc16a785ff7e9a977ee0d1b1",
         "releaseEntryPda": "CuZsocRZB4RPAfLvfyV2umuBQoePsHjv9UkEC7Gv3csH",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779088390,
+        "signedAtUnix": 1779579193,
         "authorSig": "22Ftbv1HJLi9Gn3qkbt4fMkuGpqdO6Ivbz3SsjIK8GRSuCBCNiMaqOmR9xDGp6rpa2dybSDaXxU/GPdtlY3OBA==",
         "quorumPolicy": {
           "threshold": 3,
@@ -964,6 +964,58 @@
         ]
       },
       "screenshots": []
+    },
+    {
+      "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
+      "name": "cca.sh Domain Template v2 (option-b)",
+      "version": "0.2.11",
+      "versionNumber": 18,
+      "packageId": "bc94942f362c9ea97b9bcab70bfecc40",
+      "shortDescription": "Domain Template option-b \u2014 adds four-eyes dual-control workflows (msb/four-eyes-kyc, ccash/four-eyes-request) to the Apply-Templates picker.",
+      "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1745366400000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "tier": "admin",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.2.11",
+      "sha256": "bc94942f362c9ea97b9bcab70bfecc40c14da4e2ec851e5e23276259881489a3",
+      "appHash": "bc94942f362c9ea97b9bcab70bfecc40c14da4e2ec851e5e23276259881489a3",
+      "screenshots": [],
+      "spkPath": "riker-test-deploys/ccash_domain_template-v2/app.spk",
+      "imageId": "171e254c68669c061150533245e42212.png",
+      "updatedAt": 1779579468877,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
+        "releaseHash": "62247801dd0af0e5c6ef5d740ce3fe38473e915c1eff15a4ee94304bb3b58c11",
+        "releaseNonce": "eae6f4a7ec8b274b3a1fc1f9f803b5f3",
+        "releaseEntryPda": "6Btyj2uiA65ma6ZPRhyGCQQUx4FNRREG4VeJgpLYstzh",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779155477,
+        "authorSig": "YsOc1VXP6rdJidb4Up1PuXqn7oPcOGkk9R4mvA6FYSOlh6OmjFTcJf3Z3Oaf611lGK2drt8J1DJboUh9XbZ4DA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null
     },
     {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
@@ -2615,6 +2667,56 @@
       "capabilities": null,
       "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
       "screenshots": []
+    },
+    {
+      "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+      "name": "DueProcess v2 (option-b)",
+      "version": "0.1.14",
+      "versionNumber": 20,
+      "packageId": "894ff9ad201501084e79bcd738485d7b",
+      "shortDescription": "DueProcess option-b rebuild \u2014 PR #16 merged + Riker's powerboxRequest-context fix (fresh appId, 2026-05-21).",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1776612839000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "0.1.16",
+      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+      "screenshots": [],
+      "sha256": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
+      "appHash": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
+      "spkPath": "riker-test-deploys/AITX-Procedures/dueprocess-v2/app.spk",
+      "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
+      "updatedAt": 1779579468873,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "d9f570944bfedeca5b9e6baeb58bb1ba9105d2f5e543d1d3e7d3eaa3a8ecdd82",
+        "releaseHash": "830a125e9609191142967d29930d898bf0a703500698c8ecb73d070bb5f81a72",
+        "releaseNonce": "43489fb5a8af1c797748a441510c5fab",
+        "releaseEntryPda": "4858Vf62tZX4RKrUjZaSWMZ5uhTpLRRqhLmGm23suBX9",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779168916,
+        "authorSig": "adJAzMeslJGgXH8wP2YZRqXQXotpWMflrFGiRlSOjgI29E0klKjHHaTN5FTbxkQQM71WbMwaUgaBPDus6xJaAA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
@@ -4495,10 +4597,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "5ff5eed37f1c15cbb620bca294ae3dfb",
-      "sha256": "5ff5eed37f1c15cbb620bca294ae3dfb3e5eb38997b0c01c275c558516b4d36e",
+      "version": "0.1.3",
+      "versionNumber": 4,
+      "packageId": "a5f2ebc105af7106f220bfad6e339488",
+      "sha256": "a5f2ebc105af7106f220bfad6e33948847fc400d36beff003faedff752bfd439",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4519,19 +4621,19 @@
       "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "MIT",
-      "marketingVersion": "0.1.2",
+      "marketingVersion": "0.1.3",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779566769555,
+      "updatedAt": 1779579085741,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a23eff6303a956ba99b9229f6d6f49c719208a831556eb82e8c10d0f1e489d37",
-        "releaseHash": "283ea4103af6e7d8c9e3316470f03a994c2af3a76f56e9a75c9768647cee3ae1",
-        "releaseNonce": "dc366428615df1242ae428e01cdc8dc7",
-        "releaseEntryPda": "8fzTG3fEkeATg2CxmiaDgNQPoWxFMWVsSSSj77ZoW2Jd",
+        "appHash": "1b28f1ffdc7e9f391b8090f2941d49962a74539946a62a6c034ddc2ca5d56cc5",
+        "releaseHash": "a1553b373b99d93f3a2bacefa704830f0ba92d294833996f0127b9a67fd54dc4",
+        "releaseNonce": "f25e5b573a849bba73dbc06e7ea9a2a5",
+        "releaseEntryPda": "DBmvkPtxfpdtgtwzgFeP751wTH8ExhEHRvbBc9WXuT9Y",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779165655,
-        "authorSig": "7Bg5lQd36TdtSsqlw6XyQJh4M4l54itPQH+LInieK3YFCNxPfaFDansNnMOdCuEaXFsOOX/g8zTuim/XE3rrBQ==",
+        "signedAtUnix": 1779578117,
+        "authorSig": "s3HCkWiE2aU1HtD2OxAGbWUNlZu/qV0KvM9csr6em5y+sXCVX17pY42yaCEb3h8cnabBZMu/sCZ8KRq251VDBA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

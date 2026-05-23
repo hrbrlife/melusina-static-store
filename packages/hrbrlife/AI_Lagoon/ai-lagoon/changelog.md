@@ -1,5 +1,29 @@
 # AiLagoon Changelog
 
+## v0.7.11 (2026-05-24) — PSP-polish pass 2: provenance + overclaim retraction
+
+- **Playground provenance card on every assistant reply.** Each AI
+  bubble now renders an ISO-8601 UTC timestamp, the `request_id`
+  (cross-referenceable with `/audit`), the connection name + provider
+  slug, and a `sealed` / `cleartext` envelope pill underneath the
+  message body. Compliance officers drafting AML narratives in the
+  playground can now attribute, time-stamp, and cross-reference every
+  output back to the audit row without leaving the chat surface.
+  Closes PSP-audit gaps **P0-2** (no provenance affordance under chat
+  output), **P1-1** (provider missing from bubble), **P1-2** (no
+  timestamp), **P1-3** (request_id not surfaced).
+- **`/api/chat` + `/api/chat/poll` + `/api/vision` + `/api/vision/poll`
+  responses now include `request_id`, `provider`, `connection_name`,
+  and `sealed`** so the client can render the provenance card without
+  a second round-trip.
+- **Honest retraction of "Solana-pinned inference transcripts"
+  overclaim** in `description.md` and `changelog.md`. The grain has
+  never implemented per-conversation transcript anchoring; the
+  on-chain `RegisterReleaseEntry` PDA referenced in the catalog
+  `attest` block signs the SPK publish manifest, not per-call LLM
+  output. Transcript pinning to Squads-controlled wallets remains on
+  the v0.8 roadmap. Closes PSP-audit gap **P0-1**.
+
 ## v0.7.8 (2026-05-07) — drop MCP / AIAgent: Clawberg owns orchestration
 
 - AiLagoon's role narrows back to "AI provider gateway". Agentic

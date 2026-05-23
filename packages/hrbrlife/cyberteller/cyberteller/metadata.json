@@ -1,11 +1,11 @@
 {
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "CyberTeller",
-  "version": "0.1.39-authz-sock-mount",
-  "versionNumber": 45,
-  "packageId": "f7b1815a10353ecc71d9616269e7a703",
-  "sha256": "f7b1815a10353ecc71d9616269e7a7034a18eb047ddde256774821b481d094cb",
-  "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
+  "version": "0.1.41-psp-polish",
+  "versionNumber": 47,
+  "packageId": "7cc033baeed694f057c06d9e6f9834c4",
+  "sha256": "7cc033baeed694f057c06d9e6f9834c4e8a4af15c2ccca79ce829cd1c0dce210",
+  "shortDescription": "Payment-slip ledger \u2014 multi-chain settlement node.",
   "categories": [
     "Productivity"
   ],
@@ -26,5 +26,5 @@
   "description": "",
   "screenshots": [],
   "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.1.39-authz-sock-mount"
+  "marketingVersion": "0.1.41-psp-polish"
 }

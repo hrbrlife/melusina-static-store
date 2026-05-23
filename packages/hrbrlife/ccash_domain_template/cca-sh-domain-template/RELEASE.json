@@ -1,20 +1,32 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "ea9d01697ea60505f7118f1883a1c73a2c6d97d5debf802242ddd1619c7f8e64",
-  "releaseHash": "62247801dd0af0e5c6ef5d740ce3fe38473e915c1eff15a4ee94304bb3b58c11",
-  "version": "0.2.8",
-  "signedAtUnix": 1779554847,
+  "appHash": "0c1b329dbfedbbe0100178cee565532d81a0911e1157b81185da4517a3a380c3",
+  "releaseHash": "498dae8acab4900b1ddbc3ca5ec0cd62843fd8c5541b7500337ba503d776352b",
+  "version": "0.3.1",
+  "signedAtUnix": 1779580427,
   "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-  "releaseEntryPda": "6Btyj2uiA65ma6ZPRhyGCQQUx4FNRREG4VeJgpLYstzh",
-  "authorSig": "YsOc1VXP6rdJidb4Up1PuXqn7oPcOGkk9R4mvA6FYSOlh6OmjFTcJf3Z3Oaf611lGK2drt8J1DJboUh9XbZ4DA==",
+  "releaseEntryPda": "7Pt2cgSrgSRDkooivr69KGgfNDYojm19YDYRqZeye55X",
+  "authorSig": "UOmg3T6PTL2cwYL6iTGe/6n0Ssg5aBAy8EcsaY8D6C5nIjYc+e6M7lo5DTvNlyw9hTdxHhXRtFgjXAAu4pkkCA==",
   "quorumPolicy": {
     "threshold": 3,
     "memberCount": 4,
-    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+    "signatureCount": 3,
+    "signatures": [
+      {
+        "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
+        "sigBase58": "Hoz2jCz1Zrs7BNGNa7mEj8D34ByKRSFVJbZUHpb7Pqv6vrvukpbSKy5e4xdDyrGHPjXbJrKDdbR6SeC89CnF6gc"
+      },
+      {
+        "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
+        "sigBase58": "5FgdtUiqTEGkn6E2ZSNrG3jnczaKRauWnVfrD4Uu8YmzNXaoMkZkkmvbLXurZZmVekqh2m1tr6VrKQBWbUuThnW8"
+      },
+      {
+        "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+        "sigBase58": "3jpYtgvJtoia1SNFRAsx3BpkFDbZnyz6PbR9o79vjKxqiv13SFSTspoYifq6ys6e9qu5r7o5r6g4i52FTji9zH2E"
+      }
+    ]
   },
-  "releaseNonce": "eae6f4a7ec8b274b3a1fc1f9f803b5f3",
-  "packageId": "ea9d01697ea60505f7118f1883a1c73a",
-  "marketingVersion": "0.3.0",
-  "versionNumber": 17
+  "releaseNonce": "f7fb1aca8b1843a77e3de5d7fdfa1ea7a210b9a0fc0f3655876730d4f238362f"
 }

@@ -1,8 +1,8 @@
 {
-    "build": 6,
+    "build": 7,
     "channel": "dev",
-    "tarball": "sandstorm-6.tar.xz",
-    "sha256": "9015a93108dfc515bb7d9d073b241e0b030a628bf74ee944377b7b71cc658b50",
-    "size": 168908184,
-    "timestamp": "2026-05-19T11:35:35Z"
+    "tarball": "sandstorm-7.tar.xz",
+    "sha256": "6ca7f1fec4c1a2a59adf84d9513ad2a6852b6eb1b241980d11b92999d64005d4",
+    "size": 168916548,
+    "timestamp": "2026-05-23T09:59:41Z"
 }

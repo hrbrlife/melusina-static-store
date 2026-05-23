@@ -42,7 +42,7 @@
       "marketingVersion": "0.7.10",
       "sha256": "0197beac36828aa19b92332ba1367c91da51a70cfc1857f545232d5e37c50054",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779554775151,
+      "updatedAt": 1779566768927,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5b942cb1a6d6ca679a1e5d4f38a86d40c00b594760c892e3d4e02c639345c97f",
@@ -679,7 +679,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.10",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1779554775511,
+      "updatedAt": 1779566769127,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c2f46c4d704896ae8f1f30563f96b34ce7ab98a95682c72b735bd4603b82e784",
@@ -850,7 +850,7 @@
       "sha256": "ea9d01697ea60505f7118f1883a1c73a2c6d97d5debf802242ddd1619c7f8e64",
       "appHash": "ea9d01697ea60505f7118f1883a1c73a2c6d97d5debf802242ddd1619c7f8e64",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779555228863,
+      "updatedAt": 1779566768935,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ea9d01697ea60505f7118f1883a1c73a2c6d97d5debf802242ddd1619c7f8e64",
@@ -1135,7 +1135,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1779554775175,
+      "updatedAt": 1779566768943,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
@@ -1183,7 +1183,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.2",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779554775187,
+      "updatedAt": 1779566768947,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c232ba5f7098328e022433a3a8893ac0707cb92d689c246fbf38303a86c1151f",
@@ -1342,7 +1342,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779554775243,
+      "updatedAt": 1779566768979,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -1994,7 +1994,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779554775375,
+      "updatedAt": 1779566769047,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "54c5dceeacdc15d40dff841df1ad2a72efa92b122d6e91e10af73e4e0a975414",
@@ -2043,7 +2043,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.39-authz-sock-mount",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779554775311,
+      "updatedAt": 1779566769015,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8f527e1ef26acc09edfdbee762da92316a444afa09533b5dcae935131115a816",
@@ -2213,7 +2213,7 @@
       "marketingVersion": "0.1.3",
       "appTitle": "Cyberteller Config",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779554775539,
+      "updatedAt": 1779566769139,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
@@ -2649,7 +2649,7 @@
       ],
       "marketingVersion": "0.2.3",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1779554775335,
+      "updatedAt": 1779566769027,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -2808,9 +2808,9 @@
     {
       "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
       "name": "InstaDAO",
-      "version": "1.0.2",
-      "versionNumber": 53,
-      "packageId": "9b5824c5febffdd0d5281ad8b5f45bee",
+      "version": "1.0.3",
+      "versionNumber": 54,
+      "packageId": "d07e08204b1fd66fb18fa2abef4941cf",
       "shortDescription": "Deploy + manage a Solana DAO",
       "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a Powerbox-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
       "categories": [
@@ -2822,6 +2822,7 @@
       "codeLink": "https://github.com/hrbrlife/MLSNA_token",
       "upstreamAuthor": "Melusina Services US LLC",
       "createdAt": 1779408000000,
+      "updatedAt": 1779566955791,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -2830,16 +2831,15 @@
       },
       "screenshots": [],
       "imageId": "faf732ca56d38b49972872d13cde1c6d.svg",
-      "updatedAt": 1779554316215,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9b5824c5febffdd0d5281ad8b5f45beef74346d423cc4810555dc8b60366099f",
-        "releaseHash": "9b5824c5febffdd0d5281ad8b5f45beef74346d423cc4810555dc8b60366099f",
-        "releaseNonce": "9b5824c5febffdd0d5281ad8b5f45bee",
+        "appHash": "d07e08204b1fd66fb18fa2abef4941cf7d06adcc563ad9e2d502d3cf55aa2894",
+        "releaseHash": "d07e08204b1fd66fb18fa2abef4941cf7d06adcc563ad9e2d502d3cf55aa2894",
+        "releaseNonce": "d07e08204b1fd66fb18fa2abef4941cf",
         "releaseEntryPda": "11111111111111111111111111111111",
         "masterNftMint": "11111111111111111111111111111111",
         "licenseSquadsVault": "HtabU1Wh3UfFfEyq4Yub7B5dPHPo7QDYSRRs1DX2xgFe",
-        "signedAtUnix": 1780024800,
+        "signedAtUnix": 1779566969,
         "authorSig": "",
         "quorumPolicy": {
           "threshold": 2,
@@ -3505,7 +3505,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779554775415,
+      "updatedAt": 1779566769079,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad71da2ebe796a6d8cec0a61c307e12c8155b7c2c36ca6dc89f883d30c23647f",
@@ -3960,7 +3960,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1779554776227,
+      "updatedAt": 1779566769499,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4102,7 +4102,7 @@
       },
       "marketingVersion": "0.0.3",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1779554775715,
+      "updatedAt": 1779566769231,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4261,7 +4261,7 @@
       "screenshots": [],
       "license": "MIT",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1779554775471,
+      "updatedAt": 1779566769107,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4403,7 +4403,7 @@
       ],
       "marketingVersion": "1.2.1",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1779554776287,
+      "updatedAt": 1779566769535,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -4521,7 +4521,7 @@
       "license": "MIT",
       "marketingVersion": "0.1.2",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779554776323,
+      "updatedAt": 1779566769555,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a23eff6303a956ba99b9229f6d6f49c719208a831556eb82e8c10d0f1e489d37",

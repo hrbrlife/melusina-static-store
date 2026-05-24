@@ -1,10 +1,10 @@
 {
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "CyberTeller",
-  "version": "0.1.5",
-  "versionNumber": 50,
-  "packageId": "ec1e90c61a3b53c5a117388994c8486d",
-  "sha256": "ec1e90c61a3b53c5a117388994c8486db6913d85f1ce17ba8f3bc7f09d2fbb54",
+  "version": "0.1.6",
+  "versionNumber": 51,
+  "packageId": "cc94661d99bd56522c2a6ddb49e1d318",
+  "sha256": "cc94661d99bd56522c2a6ddb49e1d3182e9c1d83d41b7bd67c1e366b18843403",
   "shortDescription": "Payment-slip ledger \u2014 multi-chain settlement node.",
   "categories": [
     "Productivity"
@@ -26,5 +26,5 @@
   "description": "",
   "screenshots": [],
   "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.1.5"
+  "marketingVersion": "0.1.6"
 }

@@ -822,9 +822,9 @@
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
       "name": "cca.sh Domain Template",
-      "version": "0.3.1",
-      "versionNumber": 18,
-      "packageId": "d838666686814283102702029b7286b6",
+      "version": "0.3.2-picker-copy",
+      "versionNumber": 19,
+      "packageId": "c25993188696d679beaed68411c225e6",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -846,38 +846,24 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.1",
+      "marketingVersion": "0.3.2-picker-copy",
+      "sha256": "c25993188696d679beaed68411c225e675d824dd1c3772c7188a15eaa9a4d4e9",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779580498857,
+      "updatedAt": 1779612731172,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0c1b329dbfedbbe0100178cee565532d81a0911e1157b81185da4517a3a380c3",
-        "releaseHash": "498dae8acab4900b1ddbc3ca5ec0cd62843fd8c5541b7500337ba503d776352b",
-        "releaseNonce": "f7fb1aca8b1843a77e3de5d7fdfa1ea7a210b9a0fc0f3655876730d4f238362f",
-        "releaseEntryPda": "7Pt2cgSrgSRDkooivr69KGgfNDYojm19YDYRqZeye55X",
+        "appHash": "e77ebea89ad51ea2393fd32dc6bf83ac695fc5b437a69f254d1e66fc16e071f3",
+        "releaseHash": "0a371d6f6fd61eb0e1c95cbb0a95a39e1a39cb2eb25a270902a94fe73c40d494",
+        "releaseNonce": "d8650779d5fc2cb7300a080e7106d65b",
+        "releaseEntryPda": "8qE6FXtCiXnW9NwvMyp6vn8YSdKbTxow1kRpyEe94JeN",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779580427,
-        "authorSig": "UOmg3T6PTL2cwYL6iTGe/6n0Ssg5aBAy8EcsaY8D6C5nIjYc+e6M7lo5DTvNlyw9hTdxHhXRtFgjXAAu4pkkCA==",
+        "signedAtUnix": 1779613024,
+        "authorSig": "C1qiC2rgA4N9g4YLiHwhjzvIbdMGoeSAtEcfTkBjePq8J6uiI9aFOkj/6bI2w2x63tO4RcshebuEp3X32Vs6CQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-          "signatureCount": 3,
-          "signatures": [
-            {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "Hoz2jCz1Zrs7BNGNa7mEj8D34ByKRSFVJbZUHpb7Pqv6vrvukpbSKy5e4xdDyrGHPjXbJrKDdbR6SeC89CnF6gc"
-            },
-            {
-              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "5FgdtUiqTEGkn6E2ZSNrG3jnczaKRauWnVfrD4Uu8YmzNXaoMkZkkmvbLXurZZmVekqh2m1tr6VrKQBWbUuThnW8"
-            },
-            {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "3jpYtgvJtoia1SNFRAsx3BpkFDbZnyz6PbR9o79vjKxqiv13SFSTspoYifq6ys6e9qu5r7o5r6g4i52FTji9zH2E"
-            }
-          ]
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -2082,10 +2068,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.41-psp-polish",
-      "versionNumber": 47,
-      "packageId": "7cc033baeed694f057c06d9e6f9834c4",
-      "sha256": "7cc033baeed694f057c06d9e6f9834c4e8a4af15c2ccca79ce829cd1c0dce210",
+      "version": "0.1.42-sender-screen",
+      "versionNumber": 48,
+      "packageId": "fe988ff4998346c94cffb1f2bfd94ba2",
+      "sha256": "fe988ff4998346c94cffb1f2bfd94ba25a4026b45e423bbe071ba9aa5c9175a9",
       "shortDescription": "Payment-slip ledger \u2014 multi-chain settlement node.",
       "categories": [
         "Productivity"
@@ -2106,38 +2092,23 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.41-psp-polish",
+      "marketingVersion": "0.1.42-sender-screen",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779580498837,
+      "updatedAt": 1779613021388,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3d0bcb832a148c364519936a1b21f635992b616b7b99cd09df8868c2fe40b5b3",
-        "releaseHash": "a5a349bdc1d130dd86a73a3638935f98a03f2d36294731f8dbe6ce7ec43615ea",
-        "releaseNonce": "13f0e7ba1f2d4b5afa2792fb23f386e3409153789fc9dfbb73b49ef855453a71",
-        "releaseEntryPda": "39fXDHspk3yAMsRH9NrvPgb1WVH6Cu7f1BGXt7HedgLh",
+        "appHash": "80ce92616a464a0b1c7e7aaf9efa98d1cede9bebec9695d85de752f2ea038867",
+        "releaseHash": "02a484938d60ef179815d8a3af918504db11dee21848e5be8be9e6f0f651aa41",
+        "releaseNonce": "e8284eae5d64a5060354f20707b51a12",
+        "releaseEntryPda": "HbiXyfn8nMb8iy5wYLVmbjwGSjCb9zL9wazd6G18sbuS",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779580373,
-        "authorSig": "Gywx50wJzWX+e1fRbmiPqNNDmSdx0BH5I/DvtvCJ4piUsPk86xzPZ/iCiTghpt6UIeAiRj9dgU1QsyerGIsFAg==",
+        "signedAtUnix": 1779613291,
+        "authorSig": "5tIa18UDvOpmF4YAySKXevtH5vx4HNDsKNUIvGMIb4tTkTaa2rxVsfYePEsbfa44nGMVg0/jmaWwx7iJYMPnBg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-          "signatureCount": 3,
-          "signatures": [
-            {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "28USRkaBWEA8K7FZAuW311mouy7E6gCfESMrceGU3uyS6XnXRQUWj2LG3cgAgCi3G3HMB5f2UDN2NGarPWGSQANs"
-            },
-            {
-              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "n8AssXMhJAwknM9LcjaP4TcQDLmXU4RZ9ZmnVjrgCePg4nA3RCRETGufXJrYyQpzX5Ro1PAyp3M7tpTjUDaN2Fb"
-            },
-            {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "4ysMunGYzU7rn83jdw8YZpFPk8mBhHDHyiRcyAXD53wd1Xi4c5dW9tBeZuYqtmNKMknaFiavfvNrRSeAhac667TF"
-            }
-          ]
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -3824,10 +3795,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "000f2476ad716124de85c98234220a15",
+      "packageId": "7946c7b7663950ae7acb323c45d4c896",
       "name": "popaye",
-      "version": "0.3.50-psp-welcome-handoff",
-      "versionNumber": 42,
+      "version": "0.3.51-kyb-onboarding",
+      "versionNumber": 40,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -3850,19 +3821,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.50-psp-welcome-handoff",
+      "marketingVersion": "0.3.51-kyb-onboarding",
+      "sha256": "7946c7b7663950ae7acb323c45d4c8968be66a2bfb897c10bb01a5e36adb66f0",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779594022737,
+      "updatedAt": 1779612866732,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3f5fbc419b979e5ed5dee1451bb9fca92d9b6d07e3cb0a3c7f1d12b295fa5657",
-        "releaseHash": "b20f955538d87f920f66bb67d32927daa45cd456fa8921d2b31f3fc3ae86253f",
-        "releaseNonce": "8950ba68f84ed3b118e696acfd0b02d7",
-        "releaseEntryPda": "caDUiPJrcQ4hUEiWTvQL8BFVdK1iPS6yK4aJZYavqXP",
+        "appHash": "b7db9e22308407ac05d6e35fa7db6367991345ad048634f096374de6c334167e",
+        "releaseHash": "0998a20603a87671e93e93c5dea39dd6dfb996e22b02a2aa33cfc3ee4f614a59",
+        "releaseNonce": "a78b082312d237356a2667bc50113540",
+        "releaseEntryPda": "3MQYbfghaHB6ceL1qj3KbLtSrhcGNJ8cymgdUnHf3tA3",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779592143,
-        "authorSig": "6JB3A5iVEXZCU/6Kh+/Pl97FdZscGlgTL2f0lms+vb2tz0Hu6IoVuVXqpPy1eyUUPuV4p2EWKSAxkgbU0CU8AA==",
+        "signedAtUnix": 1779613152,
+        "authorSig": "NhvR41A02hY68pXYpLfwdry5jE4M90om/rXXcbZhxfRNs3a7p1IX96iKE3zDjsfC62bw/m0XqC352x1SDxRgCQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

@@ -1,32 +1,17 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "0c1b329dbfedbbe0100178cee565532d81a0911e1157b81185da4517a3a380c3",
-  "releaseHash": "498dae8acab4900b1ddbc3ca5ec0cd62843fd8c5541b7500337ba503d776352b",
-  "version": "0.3.1",
-  "signedAtUnix": 1779580427,
+  "appHash": "e77ebea89ad51ea2393fd32dc6bf83ac695fc5b437a69f254d1e66fc16e071f3",
+  "releaseHash": "0a371d6f6fd61eb0e1c95cbb0a95a39e1a39cb2eb25a270902a94fe73c40d494",
+  "version": "0.3.2-picker-copy",
+  "signedAtUnix": 1779613024,
   "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-  "releaseEntryPda": "7Pt2cgSrgSRDkooivr69KGgfNDYojm19YDYRqZeye55X",
-  "authorSig": "UOmg3T6PTL2cwYL6iTGe/6n0Ssg5aBAy8EcsaY8D6C5nIjYc+e6M7lo5DTvNlyw9hTdxHhXRtFgjXAAu4pkkCA==",
+  "releaseEntryPda": "8qE6FXtCiXnW9NwvMyp6vn8YSdKbTxow1kRpyEe94JeN",
+  "authorSig": "C1qiC2rgA4N9g4YLiHwhjzvIbdMGoeSAtEcfTkBjePq8J6uiI9aFOkj/6bI2w2x63tO4RcshebuEp3X32Vs6CQ==",
   "quorumPolicy": {
     "threshold": 3,
     "memberCount": 4,
-    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-    "signatureCount": 3,
-    "signatures": [
-      {
-        "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-        "sigBase58": "Hoz2jCz1Zrs7BNGNa7mEj8D34ByKRSFVJbZUHpb7Pqv6vrvukpbSKy5e4xdDyrGHPjXbJrKDdbR6SeC89CnF6gc"
-      },
-      {
-        "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-        "sigBase58": "5FgdtUiqTEGkn6E2ZSNrG3jnczaKRauWnVfrD4Uu8YmzNXaoMkZkkmvbLXurZZmVekqh2m1tr6VrKQBWbUuThnW8"
-      },
-      {
-        "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-        "sigBase58": "3jpYtgvJtoia1SNFRAsx3BpkFDbZnyz6PbR9o79vjKxqiv13SFSTspoYifq6ys6e9qu5r7o5r6g4i52FTji9zH2E"
-      }
-    ]
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
   },
-  "releaseNonce": "f7fb1aca8b1843a77e3de5d7fdfa1ea7a210b9a0fc0f3655876730d4f238362f"
+  "releaseNonce": "d8650779d5fc2cb7300a080e7106d65b"
 }

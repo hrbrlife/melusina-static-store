@@ -2652,9 +2652,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.10",
-      "versionNumber": 13,
-      "packageId": "1d29673bf4e643aa51854cf7c2492d9f",
+      "version": "0.1.12",
+      "versionNumber": 15,
+      "packageId": "60d294fd92965bac2ebe88f22575bc84",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2673,19 +2673,19 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.10",
+      "marketingVersion": "0.1.12",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779580428129,
+      "updatedAt": 1779587697217,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "44ad4801c24a281240cc840d8562134d85d3d122d2f7168e9ab69938bd0604f0",
-        "releaseHash": "1b60b43c4573a0a149e89c347a0ead90d836bb06bb33285969229d768432b0c1",
-        "releaseNonce": "5bd3e309b89e886384c3353205039aacaa44ffe55d925be23cdb3d17060ffc6b",
-        "releaseEntryPda": "3LxUbMJZm6QXQgXdEFHtwh4FX9pco2aigTtARC6dJP6v",
+        "appHash": "9045f717a91d9152a49ab0233b778e9811102c917759aae8bcccdbdc8e156251",
+        "releaseHash": "82e73fb900911e919be8765b9887dcf1694ca0276e91291c40425f9ddee00bbc",
+        "releaseNonce": "fa3afd7fc36f64eac8a18af970da325c0d877f3f2577a924bfa05fd78a0f09e8",
+        "releaseEntryPda": "A6kZcGDXu7FwBQ33JtJK52zY8cPWa3qi1XUGJyDwQaMa",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779579984,
-        "authorSig": "NAqOofmNOcTQi4jY5nctKqxBra8d0TLPu7/HVSzJP7Jp1My3z2l4aj8tcKjsUyin9UZKLMyE4qEIybPiXAvNBA==",
+        "signedAtUnix": 1779587277,
+        "authorSig": "YuSFNFDHeM1vI+uBnKec9DKcxeP8gudYkdU+Fq2lhycUAgnHKW7sTTiuFSgjRMmPYXU9hUlIQ9RpbYlEWBr1Dw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2693,16 +2693,16 @@
           "signatureCount": 3,
           "signatures": [
             {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "2EZAw7ktWfSSh5XbDgr4jiHCBrZbMkmMBK4sBTcJft5RbgverinrfJBcKnF8QwT6YtAVQZLKuN543DLXKzXygJTg"
+              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+              "sigBase58": "4Bk9sMLBdY7Aj1o8hfycqG5Ku2UTiYSoYYfSppG2Q4XLwWvNPurDFZFmFSdzebYeX16zHGoV3EBSKts4TCqWdUTh"
             },
             {
               "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "2SCgSqGDukB9m5kZRGnQKyJspwqijiqfzE6mDQWeX9GyGkAsD2YBxgfATBr6tcpwo6AxrjFUjq2fonmxj1FPh1WT"
+              "sigBase58": "FTgThMG4vHs3cq9MqPpHbHrhmZCN7Ai249FctLgJ3JSibwBFUzLcxibJbxMUuGmCDJHLU1tr22hu6Yy7HLCzZh3"
             },
             {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "3pgLPCt3NW6Uar7GpATvY7nNJyTPbHcNTYXFq6BdScSQEYjVuC2A1q5UH1pTpEMHACFKuMzfaW6jVNX9PV9xKZUk"
+              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
+              "sigBase58": "3KaWuMfDAjKBcPeQCABG2CX1N3KSUsvPq53ScwauaKKmyeCHZUUNUKXgkV3SVZ29LyK5tw5wpx23UxnCGpNn9gU"
             }
           ]
         }
@@ -4655,10 +4655,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.3",
-      "versionNumber": 4,
-      "packageId": "a5f2ebc105af7106f220bfad6e339488",
-      "sha256": "a5f2ebc105af7106f220bfad6e33948847fc400d36beff003faedff752bfd439",
+      "version": "0.1.4",
+      "versionNumber": 5,
+      "packageId": "fe3018ea2d53ab23005e01ea9f4df166",
+      "sha256": "fe3018ea2d53ab23005e01ea9f4df16695b7e383372fbd3e5c3b9f445b66aa1c",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4679,19 +4679,19 @@
       "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "MIT",
-      "marketingVersion": "0.1.3",
+      "marketingVersion": "0.1.4",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779579085741,
+      "updatedAt": 1779587732017,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1b28f1ffdc7e9f391b8090f2941d49962a74539946a62a6c034ddc2ca5d56cc5",
-        "releaseHash": "a1553b373b99d93f3a2bacefa704830f0ba92d294833996f0127b9a67fd54dc4",
-        "releaseNonce": "f25e5b573a849bba73dbc06e7ea9a2a5",
-        "releaseEntryPda": "DBmvkPtxfpdtgtwzgFeP751wTH8ExhEHRvbBc9WXuT9Y",
+        "appHash": "10fa3c9c6501061833ff97d2bc1446e6ec20d4889a90d9eee2299aed4e95a6a0",
+        "releaseHash": "3d13572a9b0747ae0a3209b409637b3f9e0e639ee486110557893ba090bee1ba",
+        "releaseNonce": "23c488eb1b0fa66efd661e85003e1713",
+        "releaseEntryPda": "ABVSBEREBhQzB9wgqFXmdG5eWhPT4eMbkimurtW127W5",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779578117,
-        "authorSig": "s3HCkWiE2aU1HtD2OxAGbWUNlZu/qV0KvM9csr6em5y+sXCVX17pY42yaCEb3h8cnabBZMu/sCZ8KRq251VDBA==",
+        "signedAtUnix": 1779586787,
+        "authorSig": "8O+jZxZ/gTrayUkiGihHxUbTp9pI1QpOPkW+XxWWd0DMpOuYWvVlwVCHi4pJAMqXKDrSSllMFpHuDNMMZD2TDQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

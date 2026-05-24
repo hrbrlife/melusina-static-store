@@ -1,1 +1,1 @@
-release-tag=2026-05-15T17:56Z welcome-pearl-installer initial-publish 0.1.0
+release-tag=2026-05-24T07:13Z welcome-pearl 0.1.5-popaye-handoff packageId=4037dc37281e72030fd836f27361296a

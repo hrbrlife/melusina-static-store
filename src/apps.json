@@ -2652,9 +2652,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.12",
-      "versionNumber": 15,
-      "packageId": "60d294fd92965bac2ebe88f22575bc84",
+      "version": "0.1.13",
+      "versionNumber": 16,
+      "packageId": "199879d4e1354bfcc052e4de141df264",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2673,9 +2673,9 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.12",
+      "marketingVersion": "0.1.13",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779587697217,
+      "updatedAt": 1779593798049,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9045f717a91d9152a49ab0233b778e9811102c917759aae8bcccdbdc8e156251",
@@ -3824,7 +3824,7 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "82fd14e98837744c3ac9be801b491224",
+      "packageId": "000f2476ad716124de85c98234220a15",
       "name": "popaye",
       "version": "0.3.50-psp-welcome-handoff",
       "versionNumber": 42,
@@ -3852,36 +3852,21 @@
       ],
       "marketingVersion": "0.3.50-psp-welcome-handoff",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779589750561,
+      "updatedAt": 1779594022737,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "db5c8124424075c16ea82bdea84ca493fa71ea3223a957dbb4a567ec5ac7bf14",
-        "releaseHash": "b7b8ad93801688e337aa4f453d98002877ba372733c703b8d8f3efa30e8a1104",
-        "releaseNonce": "cf5fbc69bac8659f19ac81651bf480d8def55bc2240850e7147ca2d3b5708ed4",
-        "releaseEntryPda": "77HsFqdzRp7izjFujeZhJmkenL8YxVB62pSE4doygymD",
+        "appHash": "3f5fbc419b979e5ed5dee1451bb9fca92d9b6d07e3cb0a3c7f1d12b295fa5657",
+        "releaseHash": "b20f955538d87f920f66bb67d32927daa45cd456fa8921d2b31f3fc3ae86253f",
+        "releaseNonce": "8950ba68f84ed3b118e696acfd0b02d7",
+        "releaseEntryPda": "caDUiPJrcQ4hUEiWTvQL8BFVdK1iPS6yK4aJZYavqXP",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779580536,
-        "authorSig": "46UsuC6yMIHsaI6coZbL3YySfdYulXO6155v9UK3ZMcV8Ke+1+5SPpmNez7xQ7/DTC5XdYIdQuwyjZBUbd+OAQ==",
+        "signedAtUnix": 1779592143,
+        "authorSig": "6JB3A5iVEXZCU/6Kh+/Pl97FdZscGlgTL2f0lms+vb2tz0Hu6IoVuVXqpPy1eyUUPuV4p2EWKSAxkgbU0CU8AA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-          "signatureCount": 3,
-          "signatures": [
-            {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "2VD3NSa3dsLdsBrqu2xtDNv6iHsxzZQo2PmFXs3qhvFMHQJwegW3fz7eswYnCgqpHTQ3NNciJqR8GCxELEMgWZdk"
-            },
-            {
-              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "5f9Q5G4zAx2Zov1tDRCoyXp6ftUee373pPKgZnTD7xNRsZTThQxrQ4KxVwejt7S9zA1UeSwCMRCdc4DnH3v87WzB"
-            },
-            {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "4zwr7hZ6XheToEbXFKfho6LPjXvbpYjmE2dXgX4aETiRBNbsf7LtyuvW3aH6cxA7PrXMP3CrpjU3s36QaoAM5YhP"
-            }
-          ]
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null
@@ -4655,10 +4640,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.4",
-      "versionNumber": 5,
-      "packageId": "fe3018ea2d53ab23005e01ea9f4df166",
-      "sha256": "fe3018ea2d53ab23005e01ea9f4df16695b7e383372fbd3e5c3b9f445b66aa1c",
+      "version": "0.1.5-popaye-handoff",
+      "versionNumber": 6,
+      "packageId": "8c9c714c225a2b81f30746a0a77acb5c",
+      "sha256": "8c9c714c225a2b81f30746a0a77acb5cdd247fb141b3a106194c4a13b13c250d",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4679,19 +4664,19 @@
       "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "MIT",
-      "marketingVersion": "0.1.4",
+      "marketingVersion": "0.1.5-popaye-handoff",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779587732017,
+      "updatedAt": 1779612167196,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "10fa3c9c6501061833ff97d2bc1446e6ec20d4889a90d9eee2299aed4e95a6a0",
-        "releaseHash": "3d13572a9b0747ae0a3209b409637b3f9e0e639ee486110557893ba090bee1ba",
-        "releaseNonce": "23c488eb1b0fa66efd661e85003e1713",
-        "releaseEntryPda": "ABVSBEREBhQzB9wgqFXmdG5eWhPT4eMbkimurtW127W5",
+        "appHash": "d63b64b7eeb33def5d50feed151bd858e1c19eb2b629b13d8037baa3bc87b177",
+        "releaseHash": "fd3f2dc3b447185ffecca224c5c99968e644260a24d253a8ab84e2a02090cc8c",
+        "releaseNonce": "b0ea781e082e28ab2f1ae252fc0020c7",
+        "releaseEntryPda": "B9aqWu6LbjpESY7DhbxJhzBU9DToQ83dTZ3VZsqBegPe",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779586787,
-        "authorSig": "8O+jZxZ/gTrayUkiGihHxUbTp9pI1QpOPkW+XxWWd0DMpOuYWvVlwVCHi4pJAMqXKDrSSllMFpHuDNMMZD2TDQ==",
+        "signedAtUnix": 1779612470,
+        "authorSig": "tDgGmpkBAMBtVJDXi5K7sYdEcyUVFxqoOE8IhZaUxtZkPLdqM8dy90GZL6Pg8Bg2SifhJnSGl9L2djifE7KLDQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

@@ -3,8 +3,8 @@
   "name": "Welcome Pearl",
   "version": "0.1.5-popaye-handoff",
   "versionNumber": 6,
-  "packageId": "4037dc37281e72030fd836f27361296a",
-  "sha256": "4037dc37281e72030fd836f27361296af6a6cd2ab29296493eecdfa1d03f64c4",
+  "packageId": "8c9c714c225a2b81f30746a0a77acb5c",
+  "sha256": "8c9c714c225a2b81f30746a0a77acb5cdd247fb141b3a106194c4a13b13c250d",
   "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
   "categories": [
     "Productivity"

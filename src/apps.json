@@ -2068,11 +2068,11 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.45-sender-screen",
-      "versionNumber": 55,
-      "packageId": "74d1ff412a7018b16851a7ea591d58a7",
-      "sha256": "74d1ff412a7018b16851a7ea591d58a745afd8e98df3f9cab00b3c3cd6b22848",
-      "shortDescription": "Payment-slip ledger \u2014 multi-chain settlement node.",
+      "version": "0.1.6",
+      "versionNumber": 57,
+      "packageId": "efbdd2865b7c591d12cc832ccbf9a986",
+      "sha256": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
+      "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
       ],
@@ -2092,13 +2092,13 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.45-sender-screen",
+      "marketingVersion": "0.1.6",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779677572668,
+      "updatedAt": 1779702893525,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8ed7eda89d4c9f56651fef48cffb1c6e9425ef8197fce9a9d0ac86ec71f139ce",
-        "releaseHash": "0b7ee73a75103a1b1632b43c71518bc11561b31b81273187cfc2f8a5e9511371",
+        "appHash": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
+        "releaseHash": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
         "releaseNonce": "f24dab980d81ae7f18b16936e59d0ab2",
         "releaseEntryPda": "3Mvrg1PrQw3uziAMu8y3LSLtTHtHkvtaBPbTktabZT6v",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
@@ -2623,9 +2623,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.13",
-      "versionNumber": 16,
-      "packageId": "199879d4e1354bfcc052e4de141df264",
+      "version": "0.1.19",
+      "versionNumber": 23,
+      "packageId": "356e02fe4896cdc13a465d224fae47b5",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2644,38 +2644,24 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.13",
+      "marketingVersion": "0.1.19",
+      "sha256": "356e02fe4896cdc13a465d224fae47b535819cb7c148a21e4e4f2109c4441933",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779646095604,
+      "updatedAt": 1779702900437,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9045f717a91d9152a49ab0233b778e9811102c917759aae8bcccdbdc8e156251",
-        "releaseHash": "82e73fb900911e919be8765b9887dcf1694ca0276e91291c40425f9ddee00bbc",
-        "releaseNonce": "fa3afd7fc36f64eac8a18af970da325c0d877f3f2577a924bfa05fd78a0f09e8",
-        "releaseEntryPda": "A6kZcGDXu7FwBQ33JtJK52zY8cPWa3qi1XUGJyDwQaMa",
+        "appHash": "f8d852728b58c97d298426b7cc26a7a5d0bd7c40506e3b3fe8970d6667f07b86",
+        "releaseHash": "c9e63dba2e8f0d525c0a8f245e8553889ea468d09a822defa32e1773083f8d4d",
+        "releaseNonce": "18711ee2c0898ea3f62681065d2cbb37",
+        "releaseEntryPda": "DVNdYxSmNqHw7DuyEibGixEDwDBBB4iCqbA4MXKJ8ymK",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779587277,
-        "authorSig": "YuSFNFDHeM1vI+uBnKec9DKcxeP8gudYkdU+Fq2lhycUAgnHKW7sTTiuFSgjRMmPYXU9hUlIQ9RpbYlEWBr1Dw==",
+        "signedAtUnix": 1779703211,
+        "authorSig": "qSooR5pWPlAkIM6OaxW4IWcE3qUGLjDoNhFW040cH8/jBMbxQ8/atfF4QYWw6cknZ7PWZ6oIDU3/Ht+971jLBg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-          "signatureCount": 3,
-          "signatures": [
-            {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "4Bk9sMLBdY7Aj1o8hfycqG5Ku2UTiYSoYYfSppG2Q4XLwWvNPurDFZFmFSdzebYeX16zHGoV3EBSKts4TCqWdUTh"
-            },
-            {
-              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "FTgThMG4vHs3cq9MqPpHbHrhmZCN7Ai249FctLgJ3JSibwBFUzLcxibJbxMUuGmCDJHLU1tr22hu6Yy7HLCzZh3"
-            },
-            {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "3KaWuMfDAjKBcPeQCABG2CX1N3KSUsvPq53ScwauaKKmyeCHZUUNUKXgkV3SVZ29LyK5tw5wpx23UxnCGpNn9gU"
-            }
-          ]
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,

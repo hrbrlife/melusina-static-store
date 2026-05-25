@@ -2068,10 +2068,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.6",
-      "versionNumber": 58,
-      "packageId": "79c1b3813255f92c9dcafdc710b2e48a",
-      "sha256": "79c1b3813255f92c9dcafdc710b2e48a1b006ae3ee5a947d35b62784ff6451a5",
+      "version": "0.1.8",
+      "versionNumber": 60,
+      "packageId": "995f75458eed9f39882950fe0ae400b0",
+      "sha256": "995f75458eed9f39882950fe0ae400b095de0001627ba64f1e57512f66dc0ec0",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2092,23 +2092,23 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.6",
+      "marketingVersion": "0.1.8",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779703353289,
+      "updatedAt": 1779705346561,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "79c1b3813255f92c9dcafdc710b2e48a1b006ae3ee5a947d35b62784ff6451a5",
-        "releaseHash": "b5b55ecb472eec9812dc483e0be2d91bdbcd3715919412e633fabae61ade2d03",
-        "releaseNonce": "8b1c341a52c24a3a5cd98593389e9f783103ef14d161f400fd5723acb010ae08",
-        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "masterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "signedAtUnix": 1779703353,
-        "authorSig": "60a8ecbc1ad35702496e2b2f3ae253cf7c70c861f9bd16b64d65e032321b8f83",
+        "appHash": "a227acb92768d603284f5387a944f46ebf78bdf272a3b2c29b0752b4508989c2",
+        "releaseHash": "27c846f16448f501b7bc5dacd528196c4111e388433f84481461e466606d6bf0",
+        "releaseNonce": "9bea78cb1c0f26886d04ebf19047d25e",
+        "releaseEntryPda": "2XVkRzVQxuutXdhxpmhUXzh5hfDvwa4zY8NAXStCmEiQ",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779705638,
+        "authorSig": "Pb91uC+oK/tVJ6IA5mTZA1RqI3VoV6/sZn0QcN3bQKaNzdkYkIAritSKmT7aJ/14eyJLpd4ti+qIX3WAYhL6Cw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {

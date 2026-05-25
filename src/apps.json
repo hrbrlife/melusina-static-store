@@ -2069,9 +2069,9 @@
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
       "version": "0.1.6",
-      "versionNumber": 57,
-      "packageId": "efbdd2865b7c591d12cc832ccbf9a986",
-      "sha256": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
+      "versionNumber": 58,
+      "packageId": "79c1b3813255f92c9dcafdc710b2e48a",
+      "sha256": "79c1b3813255f92c9dcafdc710b2e48a1b006ae3ee5a947d35b62784ff6451a5",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2094,21 +2094,21 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.6",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779702893525,
+      "updatedAt": 1779703353289,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
-        "releaseHash": "efbdd2865b7c591d12cc832ccbf9a98628f2a82ca2db9c611cfef177db535bf9",
-        "releaseNonce": "f24dab980d81ae7f18b16936e59d0ab2",
-        "releaseEntryPda": "3Mvrg1PrQw3uziAMu8y3LSLtTHtHkvtaBPbTktabZT6v",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779677862,
-        "authorSig": "n1WGsssS8gkgXWvrVQzoFSEAfVgWWCPHzGjRdmjcKAyaaKgkTdsY27K6bm5ScAWvQNgnZC20iPeIz1KMiJnFAg==",
+        "appHash": "79c1b3813255f92c9dcafdc710b2e48a1b006ae3ee5a947d35b62784ff6451a5",
+        "releaseHash": "b5b55ecb472eec9812dc483e0be2d91bdbcd3715919412e633fabae61ade2d03",
+        "releaseNonce": "8b1c341a52c24a3a5cd98593389e9f783103ef14d161f400fd5723acb010ae08",
+        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "masterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "signedAtUnix": 1779703353,
+        "authorSig": "60a8ecbc1ad35702496e2b2f3ae253cf7c70c861f9bd16b64d65e032321b8f83",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
         }
       },
       "capabilities": {

@@ -3,8 +3,8 @@
   "name": "Welcome Pearl",
   "version": "0.1.6-merchant-strip",
   "versionNumber": 7,
-  "packageId": "33588fdf36acc1c2593e5d85385e2f7b",
-  "sha256": "33588fdf36acc1c2593e5d85385e2f7be70adf2ca7add677ac4afd3ec623498b",
+  "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
+  "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
   "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
   "categories": [
     "Productivity"

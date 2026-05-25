@@ -3795,10 +3795,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "309c5edf305e506e52f5185bbbb9164d",
+      "packageId": "7e279df152d6b4480d15ac79c4f96e18",
       "name": "popaye",
-      "version": "0.3.59",
-      "versionNumber": 48,
+      "version": "0.3.60",
+      "versionNumber": 49,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -3821,24 +3821,24 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.59",
-      "sha256": "309c5edf305e506e52f5185bbbb9164d1ef37388f0b63f28fc9d5911f95e8dd4",
+      "marketingVersion": "0.3.60",
+      "sha256": "7e279df152d6b4480d15ac79c4f96e18d04caeef587651e61e2719cb043b3f3c",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779732484794,
+      "updatedAt": 1779735039487,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "57a7e78a11ce819e8cffd29ff1b2c33be61a65c7951c6bd70377bf77dc306dea",
-        "releaseHash": "b43862b56440f986d161132f01561bba68fa8f7af53581e2d1ed207bef1e1941",
-        "releaseNonce": "d01e409167410e639527d0259d7ded44",
-        "releaseEntryPda": "DjuTTGLtqgAzbzyxaAYC4HnNWThNF5wJyCpQPEeYkJML",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779732802,
-        "authorSig": "7JYoy67CniIYw3yPNymJGsMfS+00a5QVbNlBBScCNVJKlARUMh1mHEVLUEaxCrxMvBAlmVK68UHKwdXljiAfAA==",
+        "appHash": "7e279df152d6b4480d15ac79c4f96e18d04caeef587651e61e2719cb043b3f3c",
+        "releaseHash": "55a8c23789684a8fa2d6498aa40c36e60c6ca356234bfe6159b4ca510b3aa1fd",
+        "releaseNonce": "18a2b999e2b119b7a3954651f109e69bf01a4aaf9f102c842e69b0be5e9f0a87",
+        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "masterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "signedAtUnix": 1779735039,
+        "authorSig": "d32ba510036abfd99c26b752b34db5fa7e19a1f0dc32495a0269b33f44adbaba",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
         }
       },
       "capabilities": null
@@ -4612,10 +4612,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.6-merchant-strip",
-      "versionNumber": 7,
-      "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
-      "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
+      "version": "0.1.7",
+      "versionNumber": 8,
+      "packageId": "3d8b202eddbbf364a9b19ed043528cea",
+      "sha256": "3d8b202eddbbf364a9b19ed043528ceaeae8202bff1f9ed146e50f4a1663ffce",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4636,19 +4636,19 @@
       "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "MIT",
-      "marketingVersion": "0.1.6-merchant-strip",
+      "marketingVersion": "0.1.7",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779731833414,
+      "updatedAt": 1779734928214,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ae53597cb21935c814bf169116ed10ceee7a500f0bd138229f4f0b2b434192ed",
-        "releaseHash": "c7b23466f6c5529c8682c3b23aea90d48ab854be6a53a835e3dadc0be978e6fd",
-        "releaseNonce": "f7e95b4081f33d6305dc7a0d58bac431",
-        "releaseEntryPda": "CFsLF3cSncbK5yjq48hQnzHGt8ubQACvrkRDbfLbhkF3",
+        "appHash": "2ea51af2d35646e7967e31734a28d247d95a89a21d4d52e9d1d28b301e88234a",
+        "releaseHash": "4bae9cd605357b7e4943a0a371acbc69133133b283122996ba6fb58904f5b885",
+        "releaseNonce": "c8b7aac5e58dd187e3315c8886e66531",
+        "releaseEntryPda": "AneFD4TYey7gRVXsx2X1BKgHnejMj7gJhwKKYtda1YZV",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779732159,
-        "authorSig": "xSkwlbSCGxk0JKWHxXt5Io5vTRnpa9zDi2HLYLiYXdWkM4SkzXrX1HIGdxn0r01qwOB46C7xNjEjbC20k/R2DQ==",
+        "signedAtUnix": 1779735224,
+        "authorSig": "KvQdzl1iD2slDSwvm6JDlCOjycyX+qhbrdgdZQh7RZPppbFNUTG32RKF1SMVp3ZNzoy5etkunEZK89mKF3yvCA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

@@ -1,10 +1,10 @@
 {
   "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
   "name": "Welcome Pearl",
-  "version": "0.1.6-merchant-strip",
-  "versionNumber": 7,
-  "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
-  "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
+  "version": "0.1.7",
+  "versionNumber": 8,
+  "packageId": "3d8b202eddbbf364a9b19ed043528cea",
+  "sha256": "3d8b202eddbbf364a9b19ed043528ceaeae8202bff1f9ed146e50f4a1663ffce",
   "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
   "categories": [
     "Productivity"
@@ -25,5 +25,5 @@
   "description": "",
   "screenshots": [],
   "license": "MIT",
-  "marketingVersion": "0.1.6-merchant-strip"
+  "marketingVersion": "0.1.7"
 }

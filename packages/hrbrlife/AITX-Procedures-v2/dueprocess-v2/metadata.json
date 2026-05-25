@@ -1,10 +1,10 @@
 {
   "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
   "name": "DueProcess v2 (option-b)",
-  "version": "0.1.14",
-  "versionNumber": 20,
-  "packageId": "894ff9ad201501084e79bcd738485d7b",
-  "shortDescription": "DueProcess option-b rebuild \u2014 PR #16 merged + Riker's powerboxRequest-context fix (fresh appId, 2026-05-21).",
+  "version": "0.1.22",
+  "versionNumber": 26,
+  "packageId": "eed330593f2770e59767027c5beeccaa",
+  "shortDescription": "Compliance casework engine — KYC, sanctions, payment-block, SAR/CTR (FinCEN Forms 111/112).",
   "categories": [
     "Productivity"
   ],
@@ -16,16 +16,17 @@
   "author": {
     "name": "alexeikarp",
     "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
     "twitterUsername": "",
     "picture": "",
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-  "marketingVersion": "0.1.16",
-  "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.22",
+  "description": "DueProcess v0.1.22: SAR Form 111 + CTR Form 112 + boot-orchestrator fixes + US-reg purge + onboarding flowing.",
   "screenshots": [],
-  "sha256": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
-  "appHash": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
+  "sha256": "eed330593f2770e59767027c5beeccaac052eb870da36f607c66aed835917efd",
+  "appHash": "eed330593f2770e59767027c5beeccaac052eb870da36f607c66aed835917efd",
   "spkPath": "riker-test-deploys/AITX-Procedures/dueprocess-v2/app.spk"
 }

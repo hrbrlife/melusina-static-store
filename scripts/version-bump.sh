@@ -70,7 +70,10 @@ fi
 if [[ -n "$EXPLICIT_VERSION" ]]; then
   NEW_MARK="$EXPLICIT_VERSION"
 else
-  IFS=. read -r MAJ MIN PAT <<<"$OLD_MARK"
+  # Strip any semver pre-release suffix (e.g. "0.3.54-kyb-tier-card" -> "0.3.54")
+  # so the arithmetic below works on clean numeric parts.
+  CLEAN_MARK="${OLD_MARK%%-*}"
+  IFS=. read -r MAJ MIN PAT <<<"$CLEAN_MARK"
   case "$BUMP" in
     patch) PAT=$((PAT + 1)) ;;
     minor) MIN=$((MIN + 1)); PAT=0 ;;

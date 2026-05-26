@@ -2,9 +2,9 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "1fa328376d306f4b02c9d6d0222f6db9",
+      "packageId": "1c49ba7f29f2ae82187e7087a93da9bb",
       "name": "AiLagoon",
-      "version": "0.7.11",
+      "version": "0.7.12",
       "versionNumber": 20,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At grain startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the grain picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the grain's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
@@ -40,23 +40,23 @@
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.7.12",
-      "sha256": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
+      "sha256": "1c49ba7f29f2ae82187e7087a93da9bb418f6a8cd5058a9b90d3c5b478168842",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779813049514,
+      "updatedAt": 1779837529407,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
-        "releaseHash": "cbb6ffb81b4d107ff00d00276565ad3e7ae279316601ca896a01d1beafafaec2",
-        "releaseNonce": "131296c8cc16a785ff7e9a977ee0d1b1",
-        "releaseEntryPda": "CuZsocRZB4RPAfLvfyV2umuBQoePsHjv9UkEC7Gv3csH",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779579193,
-        "authorSig": "22Ftbv1HJLi9Gn3qkbt4fMkuGpqdO6Ivbz3SsjIK8GRSuCBCNiMaqOmR9xDGp6rpa2dybSDaXxU/GPdtlY3OBA==",
+        "appHash": "1c49ba7f29f2ae82187e7087a93da9bb418f6a8cd5058a9b90d3c5b478168842",
+        "releaseHash": "32ff45a06c19004748190529635717b72a55da8c9dc0c49b0a4058709e561ead",
+        "releaseNonce": "39fdab0f560a16ed7a9c1058abb24c89f126f5822012af6facab1a1ac1f552aa",
+        "releaseEntryPda": "offline-release-entry-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "masterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "licenseSquadsVault": "offline-license-vault-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "signedAtUnix": 1779837529,
+        "authorSig": "cde832a5e5618e0be031d47bc5545e637999aec208725520effeba359a00fbba",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-v4ywsgcuc6wgqvjre99k9j4js21rxt0h"
         }
       },
       "capabilities": {
@@ -653,9 +653,9 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "9a7bcdb001315dbb125b4fd2ed3737e6",
+      "packageId": "280f5913beb8cc18e79c92e1274cfcb7",
       "name": "cca.sh Config",
-      "version": "0.0.10",
+      "version": "0.0.11",
       "versionNumber": 18,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
@@ -683,23 +683,23 @@
         "*"
       ],
       "marketingVersion": "0.0.11",
-      "sha256": "aa4b60c849575f7dfeb1f6248599dfda9cda3e3f501f5906fb6be6fb8ba54b93",
+      "sha256": "280f5913beb8cc18e79c92e1274cfcb716f72542c5132bd7a691e64a60e2507f",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1779812848522,
+      "updatedAt": 1779837528779,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a1e2cca9327c2b7617eeb430aefd7c06dce567bc6f7ac9aea5c1e8aae235fa7a",
-        "releaseHash": "c5444c14ac6305b7cd635d3ba98f35fd63223474f92c926167fc4015f9e5a9f0",
-        "releaseNonce": "0b636d371877564016715c17ed6c8e39",
-        "releaseEntryPda": "FvG7zPPK33kB15LwxioQ2pADVqfEZRyfh1BKkihxQgxd",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779807142,
-        "authorSig": "3T7Al3onCGp7gXvVnIrmhcs8tWd2Bhje7h9eeYS9AhNfXa7KLfHkMsGknOR+HonMfgCVugZsAMSIm4rcLjktAg==",
+        "appHash": "280f5913beb8cc18e79c92e1274cfcb716f72542c5132bd7a691e64a60e2507f",
+        "releaseHash": "29a1c91c67c86eadeb0b6fa101ee9d46282c32d05c6f3ee64b84955d0eeb51dd",
+        "releaseNonce": "c229f0bfb2071e72ea32986ed5cb00dd140a9c804b116e968f1b42d05596a900",
+        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "masterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "signedAtUnix": 1779837528,
+        "authorSig": "059ef43691caebf9995cdd0f18f1eaf48aba5c7c6ea1aacbd9d7146ed0d4f196",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
         }
       },
       "capabilities": {
@@ -854,7 +854,7 @@
       "marketingVersion": "0.4.0",
       "sha256": "4efebbbd4f788ffa04f88079d034a251ad6f4720fac8e57f626f9352c56096db",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779811080462,
+      "updatedAt": 1779813732570,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "077624509239f8a9a001d172ee4b74f92c91e4d9a946a5cdee0becb1d4bd1439",
@@ -1139,7 +1139,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1779811080482,
+      "updatedAt": 1779813732618,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
@@ -1161,7 +1161,7 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "584b6574a6d693ab5635f350a6e8b361",
+      "packageId": "f223e341093aec4b10f1592ab4685e03",
       "name": "cca.sh Wholesale",
       "version": "0.2.3",
       "versionNumber": 7,
@@ -1185,23 +1185,24 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.2.2",
+      "marketingVersion": "0.2.3",
+      "sha256": "f223e341093aec4b10f1592ab4685e035698563b50ddac926b6ebaa699d33200",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779811080498,
+      "updatedAt": 1779837528347,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c232ba5f7098328e022433a3a8893ac0707cb92d689c246fbf38303a86c1151f",
-        "releaseHash": "5d5c18d0f8b01ea4159466ebdc26d179668ad79002618f9ac3decdc072878d58",
-        "releaseNonce": "036b38a96eb3a6eec5475d4f2f4f5dd7",
-        "releaseEntryPda": "SYwdxRwMe3bZXjvdDAUgoUfFpKGggdJLPFXYAqA8aN9",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779092701,
-        "authorSig": "1AFLEiicUHwa//YX9Xb+LpQKr6FTOBFgA8UctJbCvzxtnTAVkAVxLsYa6ZLtz1tutMfBFbggLtyLq0ATwta+Ag==",
+        "appHash": "f223e341093aec4b10f1592ab4685e035698563b50ddac926b6ebaa699d33200",
+        "releaseHash": "4b0bca36c2d294c2eb2e9deeadba791bebb27dff756903ff944034f6132e3af2",
+        "releaseNonce": "9ef8a75cbdbc584194bf580aef6be5fdab3183f2c719b15778b7ef141f847b27",
+        "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "masterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "signedAtUnix": 1779837528,
+        "authorSig": "13e009d965fe13d8b62f89d661e76dc898613aca7b24ca2e9dbd9c2c95ecaaf9",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3gd0393f45qrn3evmx4uf4kczvea61wp"
         }
       },
       "capabilities": {
@@ -1346,7 +1347,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779811080534,
+      "updatedAt": 1779813732666,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -1998,7 +1999,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779811080574,
+      "updatedAt": 1779813732706,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "54c5dceeacdc15d40dff841df1ad2a72efa92b122d6e91e10af73e4e0a975414",
@@ -2021,9 +2022,9 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.14",
-      "versionNumber": 67,
-      "packageId": "a8a805a53213eceb92bd549e5a3a23f2",
+      "version": "0.1.13",
+      "versionNumber": 66,
+      "packageId": "afb433b7171cbe741adabaec2e522b18",
       "sha256": "afb433b7171cbe741adabaec2e522b183e28fde10d2254f1d08d1252e0832a6a",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
@@ -2047,7 +2048,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.13",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779811080534,
+      "updatedAt": 1779813732666,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "590b2e9316a382617c6403e6be5ce264ba959102986772d2aabc752b1acb57fb",
@@ -2217,7 +2218,7 @@
       "marketingVersion": "0.1.3",
       "appTitle": "Cyberteller Config",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779811080682,
+      "updatedAt": 1779813732814,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
@@ -2576,9 +2577,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.13",
+      "version": "0.1.23",
       "versionNumber": 27,
-      "packageId": "199879d4e1354bfcc052e4de141df264",
+      "packageId": "616d7078ac82de13c5b53609b812a0fd",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2626,7 +2627,7 @@
       "name": "DueProcess v2 (option-b)",
       "version": "0.1.23",
       "versionNumber": 27,
-      "packageId": "616d7078ac82de13c5b53609b812a0fd",
+      "packageId": "e7e31ba8653388b7f5f1676c40edc054",
       "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
       "categories": [
         "Productivity"
@@ -2648,7 +2649,7 @@
       "marketingVersion": "0.1.23",
       "sha256": "e7e31ba8653388b7f5f1676c40edc054470afb566ec311ff191ab45338d5966b",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779811080422,
+      "updatedAt": 1779813732522,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "7e11f2d87eb751b74907054be51384c858ea9eb789db645177a371cbaed99ff5",
@@ -2702,7 +2703,7 @@
       ],
       "marketingVersion": "0.2.3",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1779811080546,
+      "updatedAt": 1779813732678,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -3558,7 +3559,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779811080598,
+      "updatedAt": 1779813732730,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad71da2ebe796a6d8cec0a61c307e12c8155b7c2c36ca6dc89f883d30c23647f",
@@ -3732,9 +3733,58 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "60f9e465b9831a76665272cbc237349a",
+      "packageId": "de002f2f9505a98214b668ac5b0e0198",
       "name": "popaye",
-      "version": "0.3.62",
+      "version": "0.3.61",
+      "versionNumber": 50,
+      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
+      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1744848000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.3.61",
+      "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
+      "updatedAt": 1779781676333,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "e9a02b5552bd820840facdf3080d569e78bd9b0221bcec49315b84850b2dee3e",
+        "releaseHash": "673225be2d16ce263ba05ee3a63aa9d46eb368206e0ded10988f931fba8b5a91",
+        "releaseNonce": "da383b9724c3a02eaebb7e3677d9cdc6",
+        "releaseEntryPda": "BDPDVvGUwwnrGoSZzXMW9UKdoYyEW9twgWSxx53NKXEq",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779735411,
+        "authorSig": "tucc0s32OrobT8D+wBp8h4H+iv0V/rxGCTjytyOHyYvqXhSgLR24mS8mKKGVReeOZCrHzmKl+jxwaSzGNVhVDA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "packageId": "fcca23c27f8be6a185874b01419bf3c7",
+      "name": "popaye",
+      "version": "0.3.63",
       "versionNumber": 52,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
@@ -3761,7 +3811,7 @@
       "marketingVersion": "0.3.63",
       "sha256": "fcca23c27f8be6a185874b01419bf3c7bce03b6b94f41661d27c82d3cf12dab0",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779812777690,
+      "updatedAt": 1779813732602,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fcca23c27f8be6a185874b01419bf3c7bce03b6b94f41661d27c82d3cf12dab0",
@@ -4014,7 +4064,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1779811081378,
+      "updatedAt": 1779813733522,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4156,7 +4206,7 @@
       },
       "marketingVersion": "0.0.3",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1779811080790,
+      "updatedAt": 1779813732926,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4315,7 +4365,7 @@
       "screenshots": [],
       "license": "MIT",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1779811080630,
+      "updatedAt": 1779813732766,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4457,7 +4507,7 @@
       ],
       "marketingVersion": "1.2.1",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1779811081434,
+      "updatedAt": 1779813733582,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -4549,9 +4599,9 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.7",
-      "versionNumber": 8,
-      "packageId": "3d8b202eddbbf364a9b19ed043528cea",
+      "version": 9,
+      "versionNumber": 7,
+      "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
       "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
@@ -4575,7 +4625,7 @@
       "license": "MIT",
       "marketingVersion": "0.1.6-merchant-strip",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779811081454,
+      "updatedAt": 1779813733602,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "4a475eaa4e87e4babeb901c7a1bfbcd99ecddbf6df73edc9a328a786ea66691a",

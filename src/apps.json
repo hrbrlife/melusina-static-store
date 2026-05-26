@@ -42,7 +42,7 @@
       "marketingVersion": "0.7.11",
       "sha256": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779579085349,
+      "updatedAt": 1779777579944,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1fa328376d306f4b02c9d6d0222f6db9155efadf97b797af5cfa60cf3d2b8b91",
@@ -209,7 +209,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.1.3",
       "imageId": "1c107ba3e2e486a030867e3b9f6157ee.png",
-      "updatedAt": 1778880905498,
+      "updatedAt": 1779780580421,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1e0c4d7cd0574a3bf94df9b9729aaa2ce5a75fbc78a3f6e6414d0a103a7dbba6",
@@ -259,7 +259,7 @@
       "screenshots": [],
       "marketingVersion": "0.1.2",
       "imageId": "53380c5a01317190b23b5af6a1452899.svg",
-      "updatedAt": 1779001839310,
+      "updatedAt": 1779780584857,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "13dbedd1bde3e37baa2cae5817843be42ac089b88da8771c87409cb0f91aeff8",
@@ -394,7 +394,7 @@
       },
       "screenshots": [],
       "imageId": "d1094f6e2253f02fda782364633d7705.svg",
-      "updatedAt": 1779001863858,
+      "updatedAt": 1779780588417,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9d0fa5258d6aaabf1ab4a54cf0387bfaaf333a79b658c941d7b082aac5975050",
@@ -539,7 +539,7 @@
       },
       "screenshots": [],
       "imageId": "d3599b206f5c5eae2ddfc7816cf2ee87.svg",
-      "updatedAt": 1779001863922,
+      "updatedAt": 1779780588521,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "38f8c6735d6117fc95746f71f460dcb50a6ba63be74591bc10a3abea67383152",
@@ -679,7 +679,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.0.10",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1779566769127,
+      "updatedAt": 1779777580124,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c2f46c4d704896ae8f1f30563f96b34ce7ab98a95682c72b735bd4603b82e784",
@@ -849,7 +849,7 @@
       "marketingVersion": "0.4.0",
       "sha256": "4efebbbd4f788ffa04f88079d034a251ad6f4720fac8e57f626f9352c56096db",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779715878234,
+      "updatedAt": 1779777579956,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "077624509239f8a9a001d172ee4b74f92c91e4d9a946a5cdee0becb1d4bd1439",
@@ -997,7 +997,7 @@
       "screenshots": [],
       "spkPath": "riker-test-deploys/ccash_domain_template-v2/app.spk",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779579468877,
+      "updatedAt": 1779777579952,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "b5391143539e1af20f10fb40120cf00fc752be7f84ad28c8cc2636c2c7be5696",
@@ -1045,7 +1045,7 @@
       "screenshots": [],
       "marketingVersion": "0.1.2",
       "imageId": "272778a6f471a5d19fb9e09431d95ccf.svg",
-      "updatedAt": 1779001839350,
+      "updatedAt": 1779780588605,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "804755299473fc2d20755fb32d2914d94a6216344fb3af76ffd3c40a47d91f94",
@@ -1186,7 +1186,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1779566768943,
+      "updatedAt": 1779777579964,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
@@ -1234,7 +1234,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.2",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779566768947,
+      "updatedAt": 1779777579968,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c232ba5f7098328e022433a3a8893ac0707cb92d689c246fbf38303a86c1151f",
@@ -1393,7 +1393,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779566768979,
+      "updatedAt": 1779777579992,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -1543,7 +1543,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
       "imageId": "0bde48f210028b0491cfacfd30e16537.png",
-      "updatedAt": 1778877857562,
+      "updatedAt": 1779777275640,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad56d960a5baf9ea74810cc52c453c9baf451971435c5dd6208bea0797db405a",
@@ -1592,7 +1592,7 @@
       },
       "screenshots": [],
       "imageId": "bf3059900d8fd5c80f7e63af53b011a5.svg",
-      "updatedAt": 1779001864018,
+      "updatedAt": 1779780588689,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "2150068b8c1ddc4741778a2dd7cce69d4c3ec78f9f3c12254dde6f8906e36f96",
@@ -1747,7 +1747,7 @@
       },
       "screenshots": [],
       "imageId": "f9f915ff60fc663abd2d3167a4db0fac.svg",
-      "updatedAt": 1779001863726,
+      "updatedAt": 1779780584957,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1a87b612a01db2934087d98e2cffdd82cc8e6bd6f7715d96e8d7ab9b8142c5f4",
@@ -1884,7 +1884,7 @@
       "screenshots": [],
       "marketingVersion": "0.1.1",
       "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
-      "updatedAt": 1779001810842,
+      "updatedAt": 1779780588793,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "56005e76de77ae3b43b4af501f92edcd44a22fb7d0b4ddd946dd13ab23711bf4",
@@ -2045,7 +2045,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779566769047,
+      "updatedAt": 1779777580072,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "54c5dceeacdc15d40dff841df1ad2a72efa92b122d6e91e10af73e4e0a975414",
@@ -2068,10 +2068,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.11",
-      "versionNumber": 64,
-      "packageId": "5afc8e1c6f8526db70d1468de693d6f9",
-      "sha256": "5afc8e1c6f8526db70d1468de693d6f981157b827a8c11177de47067aa6cdf8c",
+      "version": "0.1.13",
+      "versionNumber": 66,
+      "packageId": "afb433b7171cbe741adabaec2e522b18",
+      "sha256": "afb433b7171cbe741adabaec2e522b183e28fde10d2254f1d08d1252e0832a6a",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2092,23 +2092,23 @@
       "description": "CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why CyberTeller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.11",
+      "marketingVersion": "0.1.13",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779729631014,
+      "updatedAt": 1779791853849,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5afc8e1c6f8526db70d1468de693d6f981157b827a8c11177de47067aa6cdf8c",
-        "releaseHash": "c62793f93b48803f119196c216fd8a79d35c1d8ce4d42f173a0468d5ce579293",
-        "releaseNonce": "b1654c7e92303174dc15ad8483b5f3f8770eb5a32bdc58e886efd6790f9a03af",
-        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "masterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "signedAtUnix": 1779729631,
-        "authorSig": "e73a06dd1063b6dd1001860526df35d0eba24b0382d0e48238d27d72e704062e",
+        "appHash": "590b2e9316a382617c6403e6be5ce264ba959102986772d2aabc752b1acb57fb",
+        "releaseHash": "63bc1452d5e801628a06f10c34c7227e906b826ca345384a21e768ee534d46d1",
+        "releaseNonce": "edec88d147462adad8e65972d818875d",
+        "releaseEntryPda": "C1KJ56CV73xGhHVZmckLU6PmEzFD2Wn9AQNt4BnyWAvN",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779783285,
+        "authorSig": "GRDHgP1aT2VQkVPLuCJdVIu4U/0EpSUtfK5laFRfEPgoCw5nntINb7H1snC9zpvRSq2FOp2TUvFESQkUEnoSAQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -2264,7 +2264,7 @@
       "marketingVersion": "0.1.3",
       "appTitle": "Cyberteller Config",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779566769139,
+      "updatedAt": 1779777580136,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
@@ -2448,7 +2448,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.0.7",
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
-      "updatedAt": 1779001694026,
+      "updatedAt": 1779780585465,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "edd9217597bddcd877590a8f7f71a2bd8fc35d837b5db2050589afa6bb7fe225",
@@ -2600,7 +2600,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.0.9",
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
-      "updatedAt": 1779001691726,
+      "updatedAt": 1779780586213,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "021e81985194befabab980174c37143a6251c578ad036cb160b58d27cb9c7d17",
@@ -2646,7 +2646,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.13",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779732001550,
+      "updatedAt": 1779780579877,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9045f717a91d9152a49ab0233b778e9811102c917759aae8bcccdbdc8e156251",
@@ -2685,10 +2685,10 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.14",
-      "versionNumber": 20,
-      "packageId": "894ff9ad201501084e79bcd738485d7b",
-      "shortDescription": "DueProcess option-b rebuild \u2014 PR #16 merged + Riker's powerboxRequest-context fix (fresh appId, 2026-05-21).",
+      "version": "0.1.23",
+      "versionNumber": 27,
+      "packageId": "e7e31ba8653388b7f5f1676c40edc054",
+      "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
       "categories": [
         "Productivity"
       ],
@@ -2706,31 +2706,29 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.16",
-      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
-      "screenshots": [],
-      "sha256": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
-      "appHash": "894ff9ad201501084e79bcd738485d7baf7b46e65d27344cc4a94e359fed086f",
-      "spkPath": "riker-test-deploys/AITX-Procedures/dueprocess-v2/app.spk",
+      "marketingVersion": "0.1.23",
+      "sha256": "e7e31ba8653388b7f5f1676c40edc054470afb566ec311ff191ab45338d5966b",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779579468873,
+      "updatedAt": 1779790022241,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "d9f570944bfedeca5b9e6baeb58bb1ba9105d2f5e543d1d3e7d3eaa3a8ecdd82",
-        "releaseHash": "830a125e9609191142967d29930d898bf0a703500698c8ecb73d070bb5f81a72",
-        "releaseNonce": "43489fb5a8af1c797748a441510c5fab",
-        "releaseEntryPda": "4858Vf62tZX4RKrUjZaSWMZ5uhTpLRRqhLmGm23suBX9",
+        "appHash": "7e11f2d87eb751b74907054be51384c858ea9eb789db645177a371cbaed99ff5",
+        "releaseHash": "0d0486071d3bf4641bccc0e6944c2450baf1cb4ad831a595a532b6662376fe2f",
+        "releaseNonce": "d7200921e18fb8d35233ba7c7d582721",
+        "releaseEntryPda": "AeZyfFcLppGTC2YTwPHfm9zUpumxcmgMuJMoGci7Qq1h",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779168916,
-        "authorSig": "adJAzMeslJGgXH8wP2YZRqXQXotpWMflrFGiRlSOjgI29E0klKjHHaTN5FTbxkQQM71WbMwaUgaBPDus6xJaAA==",
+        "signedAtUnix": 1779790445,
+        "authorSig": "h69Hwr5W6G0GCzHkZ5AaGJoAtJs8Xkfu8TspNOIrfyEK2HkPEkUQhdJX0sLp0nspWB6M6rozCxkOI+b9CARvDQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
           "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
-      "capabilities": null
+      "capabilities": null,
+      "description": "",
+      "screenshots": []
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
@@ -2765,7 +2763,7 @@
       ],
       "marketingVersion": "0.2.3",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1779566769027,
+      "updatedAt": 1779777580052,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -2900,7 +2898,7 @@
       "license": "MIT",
       "marketingVersion": "0.1.1",
       "imageId": "716f4b5c4f22652a9ec42c1d6bcc3a43.png",
-      "updatedAt": 1778877857570,
+      "updatedAt": 1779777275676,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ccf709b5977579688ff32dc159099ace21591b3459f24004db3f319655fe823f",
@@ -2938,7 +2936,7 @@
       "codeLink": "https://github.com/hrbrlife/MLSNA_token",
       "upstreamAuthor": "Melusina Services US LLC",
       "createdAt": 1779408000000,
-      "updatedAt": 1779573579979,
+      "updatedAt": 1779780580553,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -2992,7 +2990,7 @@
       },
       "marketingVersion": "0.0.4",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1779133388192,
+      "updatedAt": 1779777275716,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "183afdc353a2ec27ad292466196795544edb7e065e8fcdb94727f6a678f8d5fe",
@@ -3038,7 +3036,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.11",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1778877857646,
+      "updatedAt": 1779777275916,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "585e8a590bb97cf21c95fb49779cf9b2f305ed300e7b00c3c5c6f9c71a874f54",
@@ -3090,7 +3088,7 @@
       ],
       "marketingVersion": "0.4.7",
       "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
-      "updatedAt": 1778879956230,
+      "updatedAt": 1779780580169,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9672f236472cadfdb2d3e951fa135a2d85ce6fab28aea75c7817440fdf9a3039",
@@ -3296,7 +3294,7 @@
       ],
       "marketingVersion": "0.2.1",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1779133326864,
+      "updatedAt": 1779780584617,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d51d22b17f77ad7c3d983dd630e68fdb03a8f7e71f9f7b5e0a729d45ada60df1",
@@ -3438,7 +3436,7 @@
       },
       "marketingVersion": "0.1.2",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1779133421372,
+      "updatedAt": 1779780590173,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8d262ed2180a1cd5858f4c1a89cd7bc09bc9a037db6754bb491e340d69b6ad29",
@@ -3488,7 +3486,7 @@
       "marketingVersion": "0.1.1",
       "packageId": "630f3dcdfd88882049eb566908402f64",
       "imageId": "e1eea7542528c8855253068f1cf9b1f2.svg",
-      "updatedAt": 1779001839266,
+      "updatedAt": 1779780586457,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "baaed0d2f5b54fd3a06d38eb99c1830750530c42191378e41ed20d4ddae06dcf",
@@ -3621,7 +3619,7 @@
       ],
       "marketingVersion": "0.1.0",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779566769079,
+      "updatedAt": 1779777580088,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad71da2ebe796a6d8cec0a61c307e12c8155b7c2c36ca6dc89f883d30c23647f",
@@ -3688,7 +3686,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.0.7",
       "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
-      "updatedAt": 1778880928142,
+      "updatedAt": 1779780587085,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c961db01ee758ac0edd1a1474099c363c9792249f7f5829b08a3a2aa0177af56",
@@ -3795,12 +3793,12 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "309c5edf305e506e52f5185bbbb9164d",
+      "packageId": "de002f2f9505a98214b668ac5b0e0198",
       "name": "popaye",
-      "version": "0.3.59",
-      "versionNumber": 48,
+      "version": "0.3.61",
+      "versionNumber": 50,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
-      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a workspace that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
+      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
         "Productivity",
         "Office"
@@ -3821,20 +3819,68 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.59",
-      "sha256": "309c5edf305e506e52f5185bbbb9164d1ef37388f0b63f28fc9d5911f95e8dd4",
+      "marketingVersion": "0.3.61",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779732484794,
+      "updatedAt": 1779781676333,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "57a7e78a11ce819e8cffd29ff1b2c33be61a65c7951c6bd70377bf77dc306dea",
-        "releaseHash": "b43862b56440f986d161132f01561bba68fa8f7af53581e2d1ed207bef1e1941",
-        "releaseNonce": "d01e409167410e639527d0259d7ded44",
-        "releaseEntryPda": "DjuTTGLtqgAzbzyxaAYC4HnNWThNF5wJyCpQPEeYkJML",
+        "appHash": "e9a02b5552bd820840facdf3080d569e78bd9b0221bcec49315b84850b2dee3e",
+        "releaseHash": "673225be2d16ce263ba05ee3a63aa9d46eb368206e0ded10988f931fba8b5a91",
+        "releaseNonce": "da383b9724c3a02eaebb7e3677d9cdc6",
+        "releaseEntryPda": "BDPDVvGUwwnrGoSZzXMW9UKdoYyEW9twgWSxx53NKXEq",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779732802,
-        "authorSig": "7JYoy67CniIYw3yPNymJGsMfS+00a5QVbNlBBScCNVJKlARUMh1mHEVLUEaxCrxMvBAlmVK68UHKwdXljiAfAA==",
+        "signedAtUnix": 1779735411,
+        "authorSig": "tucc0s32OrobT8D+wBp8h4H+iv0V/rxGCTjytyOHyYvqXhSgLR24mS8mKKGVReeOZCrHzmKl+jxwaSzGNVhVDA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "packageId": "60f9e465b9831a76665272cbc237349a",
+      "name": "popaye",
+      "version": 52,
+      "versionNumber": 51,
+      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
+      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": true,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1744848000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "screenshots": [],
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.3.62",
+      "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
+      "updatedAt": 1779791976737,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "31d5cd9ba04cf9886271ffabbd98461b0a082983d394ea23e5e020b55d5e6b19",
+        "releaseHash": "04e74e40b6c222b9cf8a9feb9e57ff40e2291f6ee5ecb26412a0e8f61022f78e",
+        "releaseNonce": "3cd37315a5fa912abcab87e2498d29dd",
+        "releaseEntryPda": "4FEcn2YNMdTT6bqjdgJu6n7n5bKGmyzc1KiZAdjNySu6",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779792388,
+        "authorSig": "IjWU1OWny4KWLkE6nnnAe/59ihVSVRmdDfLtVNF+l7gwRQzCuVRrfyFwW0Kti9QPTpoTkRnQixC+og49x2egCw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3891,7 +3937,7 @@
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1779126816393,
+      "updatedAt": 1779780588185,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
@@ -4029,7 +4075,7 @@
       },
       "marketingVersion": "0.1.5",
       "imageId": "9226fef017ea9c232b39113a140478a5.svg",
-      "updatedAt": 1778879973658,
+      "updatedAt": 1779780590257,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f052b904897eb95e5a34afa46cd5e1eb0925783aaf8e535894aaaf26a686defc",
@@ -4077,7 +4123,7 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1779566769499,
+      "updatedAt": 1779777580524,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4219,7 +4265,7 @@
       },
       "marketingVersion": "0.0.3",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1779566769231,
+      "updatedAt": 1779777580216,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4378,7 +4424,7 @@
       "screenshots": [],
       "license": "MIT",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1779566769107,
+      "updatedAt": 1779777580112,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4520,7 +4566,7 @@
       ],
       "marketingVersion": "1.2.1",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1779566769535,
+      "updatedAt": 1779777580552,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -4612,7 +4658,7 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": "0.1.6-merchant-strip",
+      "version": 9,
       "versionNumber": 7,
       "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
       "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
@@ -4638,17 +4684,17 @@
       "license": "MIT",
       "marketingVersion": "0.1.6-merchant-strip",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779731833414,
+      "updatedAt": 1779791941669,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ae53597cb21935c814bf169116ed10ceee7a500f0bd138229f4f0b2b434192ed",
-        "releaseHash": "c7b23466f6c5529c8682c3b23aea90d48ab854be6a53a835e3dadc0be978e6fd",
-        "releaseNonce": "f7e95b4081f33d6305dc7a0d58bac431",
-        "releaseEntryPda": "CFsLF3cSncbK5yjq48hQnzHGt8ubQACvrkRDbfLbhkF3",
+        "appHash": "4a475eaa4e87e4babeb901c7a1bfbcd99ecddbf6df73edc9a328a786ea66691a",
+        "releaseHash": "68f31ab050d5441b0cc21d10c470271c21f0faee0111bf2848ad32a33c40c160",
+        "releaseNonce": "21f64d8798ebe3874cb69df7c17f91f7",
+        "releaseEntryPda": "5rWNrXTErvp9xc7Qqh8nFv663Vju3cyFmRQiLdzWc8gk",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779732159,
-        "authorSig": "xSkwlbSCGxk0JKWHxXt5Io5vTRnpa9zDi2HLYLiYXdWkM4SkzXrX1HIGdxn0r01qwOB46C7xNjEjbC20k/R2DQ==",
+        "signedAtUnix": 1779792320,
+        "authorSig": "dD1JBej/gTZAvQh4QeQB58IdatZRg8x9BcMnSHMeJBB/XP29TG5SMZV9eHcdCcmPB5pMbtTXyxsLoFufApckBw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

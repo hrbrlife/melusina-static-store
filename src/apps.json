@@ -2,9 +2,9 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "7a4c9b3b842fabb4c7298a207978712b",
+      "packageId": "1fa328376d306f4b02c9d6d0222f6db9",
       "name": "AiLagoon",
-      "version": "0.7.12",
+      "version": "0.7.11",
       "versionNumber": 20,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At grain startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the grain picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the grain's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
@@ -653,9 +653,9 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "aa4b60c849575f7dfeb1f6248599dfda",
+      "packageId": "9a7bcdb001315dbb125b4fd2ed3737e6",
       "name": "cca.sh Config",
-      "version": "0.0.11",
+      "version": "0.0.10",
       "versionNumber": 18,
       "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
@@ -1161,10 +1161,10 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "1f70789790b0a13bd198d27984214a35",
+      "packageId": "584b6574a6d693ab5635f350a6e8b361",
       "name": "cca.sh Wholesale",
-      "version": "0.2.2",
-      "versionNumber": 6,
+      "version": "0.2.3",
+      "versionNumber": 7,
       "shortDescription": "Institutional wholesale Pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
@@ -2021,9 +2021,9 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "CyberTeller",
-      "version": "0.1.13",
-      "versionNumber": 66,
-      "packageId": "afb433b7171cbe741adabaec2e522b18",
+      "version": "0.1.14",
+      "versionNumber": 67,
+      "packageId": "a8a805a53213eceb92bd549e5a3a23f2",
       "sha256": "afb433b7171cbe741adabaec2e522b183e28fde10d2254f1d08d1252e0832a6a",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
@@ -2576,9 +2576,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.23",
+      "version": "0.1.13",
       "versionNumber": 27,
-      "packageId": "616d7078ac82de13c5b53609b812a0fd",
+      "packageId": "199879d4e1354bfcc052e4de141df264",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2626,7 +2626,7 @@
       "name": "DueProcess v2 (option-b)",
       "version": "0.1.23",
       "versionNumber": 27,
-      "packageId": "e7e31ba8653388b7f5f1676c40edc054",
+      "packageId": "616d7078ac82de13c5b53609b812a0fd",
       "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
       "categories": [
         "Productivity"
@@ -3732,58 +3732,9 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "de002f2f9505a98214b668ac5b0e0198",
+      "packageId": "60f9e465b9831a76665272cbc237349a",
       "name": "popaye",
-      "version": "0.3.61",
-      "versionNumber": 50,
-      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
-      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": true,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1744848000000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "screenshots": [],
-      "tier": "regular",
-      "domains": [
-        "*"
-      ],
-      "marketingVersion": "0.3.61",
-      "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779781676333,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "e9a02b5552bd820840facdf3080d569e78bd9b0221bcec49315b84850b2dee3e",
-        "releaseHash": "673225be2d16ce263ba05ee3a63aa9d46eb368206e0ded10988f931fba8b5a91",
-        "releaseNonce": "da383b9724c3a02eaebb7e3677d9cdc6",
-        "releaseEntryPda": "BDPDVvGUwwnrGoSZzXMW9UKdoYyEW9twgWSxx53NKXEq",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779735411,
-        "authorSig": "tucc0s32OrobT8D+wBp8h4H+iv0V/rxGCTjytyOHyYvqXhSgLR24mS8mKKGVReeOZCrHzmKl+jxwaSzGNVhVDA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null
-    },
-    {
-      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "fcca23c27f8be6a185874b01419bf3c7",
-      "name": "popaye",
-      "version": "0.3.63",
+      "version": "0.3.62",
       "versionNumber": 52,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
@@ -4598,9 +4549,9 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": 9,
-      "versionNumber": 7,
-      "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
+      "version": "0.1.7",
+      "versionNumber": 8,
+      "packageId": "3d8b202eddbbf364a9b19ed043528cea",
       "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [

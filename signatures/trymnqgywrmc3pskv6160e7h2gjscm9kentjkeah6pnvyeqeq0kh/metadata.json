@@ -1,0 +1,29 @@
+{
+  "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
+  "packageId": "a0034f59644d5e0b7059b895b76a1234",
+  "name": "Contacts Bureau",
+  "version": "0.1.0",
+  "versionNumber": 6,
+  "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage \u2014 entirely self-hosted.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776836132448,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": []
+}

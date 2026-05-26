@@ -1,0 +1,27 @@
+{
+  "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
+  "name": "Melusina OpenClaw",
+  "version": "0.1.13",
+  "versionNumber": 15,
+  "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
+  "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776987130000,
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.11"
+}

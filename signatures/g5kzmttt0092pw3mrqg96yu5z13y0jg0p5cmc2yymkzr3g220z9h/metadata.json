@@ -1,0 +1,30 @@
+{
+  "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
+  "packageId": "45ad6f8e01fe22f126a78fb55f77cea1",
+  "name": "cca.sh Org Member",
+  "version": "0.1.2",
+  "versionNumber": 3,
+  "shortDescription": "Team collaboration for cca.sh — draft transactions, share contacts, track approvals.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_ccash_org_member_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776836094911,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "marketingVersion": "0.1.2"
+}

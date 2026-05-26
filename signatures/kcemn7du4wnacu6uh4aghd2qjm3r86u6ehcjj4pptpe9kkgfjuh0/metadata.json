@@ -1,0 +1,27 @@
+{
+  "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
+  "name": "clientspace",
+  "version": "0.1.3",
+  "versionNumber": 8,
+  "packageId": "f501f3a72d2500b6277fa0b919a2fb38",
+  "shortDescription": "Client portal \u2014 per-client Pearl isolation with pinned document snapshots and sturdyref handoff.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/clientspace",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776613609000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.1"
+}

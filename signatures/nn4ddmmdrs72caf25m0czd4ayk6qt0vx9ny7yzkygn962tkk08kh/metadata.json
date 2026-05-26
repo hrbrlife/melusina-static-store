@@ -1,0 +1,24 @@
+{
+  "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+  "name": "Shell Tester",
+  "version": "0.1.5",
+  "versionNumber": 9,
+  "packageId": "ecbe596ba91cb0abb96292b8dd3f9c84",
+  "shortDescription": "Melusina Shell Extension Tester",
+  "categories": [
+    "Developer Tools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/shell_tester",
+  "codeLink": "https://github.com/hrbrlife/shell_tester",
+  "upstreamAuthor": "Shell Tester",
+  "createdAt": 1776764702000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "marketingVersion": "0.1.5"
+}

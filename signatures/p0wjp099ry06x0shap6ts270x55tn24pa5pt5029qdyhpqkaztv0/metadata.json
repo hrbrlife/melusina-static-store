@@ -1,0 +1,30 @@
+{
+  "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
+  "packageId": "69f1a5a6b29bd6157a709a6fb1ff6086",
+  "name": "Cal Bureau",
+  "version": "0.1.2",
+  "versionNumber": 12,
+  "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop — self-hosted, per-calendar isolation.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_bureau_cal_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776835993646,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "marketingVersion": "0.1.2"
+}

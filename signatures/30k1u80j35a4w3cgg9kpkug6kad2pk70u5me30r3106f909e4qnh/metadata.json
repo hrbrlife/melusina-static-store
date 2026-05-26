@@ -1,0 +1,28 @@
+{
+  "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
+  "packageId": "75181d409aeccd93fef7eacab6146851",
+  "name": "CanBoard",
+  "version": "0.1.0",
+  "versionNumber": 6,
+  "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
+  "description": "",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776836028848,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": []
+}

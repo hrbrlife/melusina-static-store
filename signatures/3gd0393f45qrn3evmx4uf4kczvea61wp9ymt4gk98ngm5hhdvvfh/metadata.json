@@ -1,0 +1,31 @@
+{
+  "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
+  "name": "cca.sh Wholesale",
+  "version": "0.2.3",
+  "versionNumber": 7,
+  "packageId": "584b6574a6d693ab5635f350a6e8b361",
+  "shortDescription": "Fineract-talker wholesale institution grain for the ccash constellation",
+  "description": "The G-ccash wholesale grain is the institutional fineract-talker for the ccash constellation. It owns the four correspondent relationships (SWIFT, SEPA, crypto-custodian, crypto-exchange) and grants per-sub-account capabilities to G-organization grains over capnp.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ccash_wholesale",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1745366400000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "tier": "admin",
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "0.2.3",
+  "sha256": "584b6574a6d693ab5635f350a6e8b361f577b9d3bc53c2315731b4ba07abf38d"
+}

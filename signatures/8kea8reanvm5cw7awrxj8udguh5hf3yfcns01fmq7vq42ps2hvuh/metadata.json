@@ -1,0 +1,29 @@
+{
+  "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
+  "name": "NamedCoin",
+  "version": "0.1.2",
+  "versionNumber": 3,
+  "packageId": "b7ee317756fecb4e8d5655199ae436ef",
+  "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
+  "categories": [
+    "Productivity"
+  ],
+  "tier": "regular",
+  "domains": [
+    "*"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776300000000,
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "marketingVersion": "0.1.2"
+}

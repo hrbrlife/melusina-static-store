@@ -29,11 +29,6 @@
 	path = packages/hrbrlife/client_collection
 	url = https://github.com/hrbrlife/clientspace.git
 	branch = publish
-[submodule "packages/hrbrlife/ccash"]
-	path = packages/hrbrlife/ccash
-	url = https://github.com/hrbrlife/ccash_go_htmx.git
-	branch = publish
-	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/openclaw-main"]
 	path = packages/hrbrlife/openclaw-main
 	url = https://github.com/hrbrlife/openclaw-melusina.git

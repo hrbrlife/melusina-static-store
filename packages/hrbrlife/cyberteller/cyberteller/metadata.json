@@ -3,9 +3,9 @@
   "name": "CyberTeller",
   "version": "0.1.13",
   "versionNumber": 66,
-  "packageId": "afb433b7171cbe741adabaec2e522b18",
-  "sha256": "afb433b7171cbe741adabaec2e522b183e28fde10d2254f1d08d1252e0832a6a",
-  "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
+  "packageId": "caed7e7318cb32ad64ff4abc1fac1721",
+  "sha256": "caed7e7318cb32ad64ff4abc1fac1721c41a34bc9c1fececab07a269254d6143",
+  "shortDescription": "Multi-chain crypto payment processor — invoicing + address generation + settlement.",
   "categories": [
     "Productivity"
   ],

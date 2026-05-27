@@ -4,7 +4,7 @@
   "name": "TeleScreen Sidecar Configurator",
   "version": "0.4.0",
   "versionNumber": 5,
-  "shortDescription": "Cap-routed configurator Pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Powerbox cap.",
+  "shortDescription": "Cap-routed configurator Pearl for the TeleScreen companion sidecar — exposes config UI + Powerbox cap.",
   "categories": [
     "Productivity",
     "Developer Tools"
@@ -24,5 +24,6 @@
     "website": "https://hrbr.life"
   },
   "screenshots": [],
-  "license": "MIT"
+  "license": "MIT",
+  "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960"
 }

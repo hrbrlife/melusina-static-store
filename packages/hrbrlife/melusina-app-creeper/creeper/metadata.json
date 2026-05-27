@@ -6,7 +6,10 @@
   "versionNumber": 1,
   "shortDescription": "OSINT consumer grain — search/scrape/handle/contact lookup for the Melusina PSP.",
   "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Powerbox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
-  "categories": ["Productivity", "DeveloperTools"],
+  "categories": [
+    "Productivity",
+    "DeveloperTools"
+  ],
   "isOpenSource": false,
   "webLink": "https://hrbr.life",
   "codeLink": "https://github.com/hrbrlife/melusina-app-creeper",
@@ -21,6 +24,9 @@
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "domains": ["*"],
-  "marketingVersion": "0.1.0"
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "0.1.0",
+  "sha256": "fd2eace79bc3c2bc99cf5538d643090fef4080138095ba9f89001905e2ad640c"
 }

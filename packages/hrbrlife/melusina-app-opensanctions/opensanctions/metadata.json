@@ -26,5 +26,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.1.0"
+  "marketingVersion": "0.1.0",
+  "sha256": "b46872eb37a7a0065c4116b58cc3e812861bd1eba6bb105cef216c5b941da94a"
 }

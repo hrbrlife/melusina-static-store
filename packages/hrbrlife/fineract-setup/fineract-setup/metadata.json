@@ -4,7 +4,7 @@
   "version": "0.2.3",
   "versionNumber": 9,
   "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
-  "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
+  "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
   "description": "",
   "categories": [
     "Productivity",
@@ -24,11 +24,12 @@
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "license": "Proprietary \u2014 Internal development build",
+  "license": "Proprietary — Internal development build",
   "screenshots": [],
   "tier": "admin",
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.2.3"
+  "marketingVersion": "0.2.3",
+  "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc"
 }

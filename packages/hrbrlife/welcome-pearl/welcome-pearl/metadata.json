@@ -3,8 +3,8 @@
   "name": "Welcome Pearl",
   "version": 9,
   "versionNumber": 7,
-  "packageId": "2f3f2b62210b7c1112d7d47183e78d77",
-  "sha256": "2f3f2b62210b7c1112d7d47183e78d776fbd26c67b9866446f9a4d9163118e2d",
+  "packageId": "3d8b202eddbbf364a9b19ed043528cea",
+  "sha256": "3d8b202eddbbf364a9b19ed043528ceaeae8202bff1f9ed146e50f4a1663ffce",
   "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
   "categories": [
     "Productivity"

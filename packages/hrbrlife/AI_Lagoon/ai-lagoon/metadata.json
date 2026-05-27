@@ -1,9 +1,9 @@
 {
   "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-  "packageId": "d03080e8ac2b75e8b13079299e2cc53f",
+  "packageId": "64273ebea6de84de73716179ab026078",
   "name": "AiLagoon",
   "version": "0.7.12",
-  "versionNumber": 21,
+  "versionNumber": 20,
   "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
   "description": "",
   "categories": [
@@ -39,5 +39,5 @@
   ],
   "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
   "marketingVersion": "0.7.12",
-  "sha256": "d03080e8ac2b75e8b13079299e2cc53f3ef255f728fdd9577f6de5ec3c0a7cd8"
+  "sha256": "64273ebea6de84de73716179ab026078f7cd7187b66814e3469f4f240a060f8d"
 }

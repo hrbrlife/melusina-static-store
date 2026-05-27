@@ -1,9 +1,9 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "9804808f12672d9924a4c3428a7814fc",
+  "packageId": "5b371430b11045035cd5a16d2ba09966",
   "name": "cca.sh Config",
   "version": "0.0.11",
-  "versionNumber": 19,
+  "versionNumber": 18,
   "shortDescription": "Admin Pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
   "description": "Configure fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
   "categories": [
@@ -31,5 +31,5 @@
     "*"
   ],
   "marketingVersion": "0.0.11",
-  "sha256": "9804808f12672d9924a4c3428a7814fc3d0e07ed8162964629c638d3d2f10afe"
+  "sha256": "5b371430b11045035cd5a16d2ba09966b18a410a697c1a5a6ab27de517f10dfd"
 }

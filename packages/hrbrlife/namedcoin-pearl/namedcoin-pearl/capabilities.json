@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 2,
+  "appSlug": "namedcoin-pearl",
+  "appName": "NamedCoin — Identity Attestation",
+  "tier": "regular",
+  "pearls": [
+    {
+      "pearlId": "namedcoin-pearl",
+      "pearlName": "NamedCoin — Identity Attestation",
+      "pearlType": "user-pearl",
+      "purpose": "Biometric identity verification — tilt-to-capture liveness detection, document OCR, sanctions screening, and on-chain NFT attestation. Pass KYC once and receive a time-boxed attestation that every Melusina app can verify without accessing raw ID data.",
+      "sidecars": [
+        {
+          "name": "namedcoin-sidecar",
+          "port": 9100,
+          "endpoints": [
+            "/api/v1/health",
+            "/api/v1/image/standardize",
+            "/api/v1/kyc/sign",
+            "/api/v1/biometric/sign",
+            "/api/v1/biometric/verify",
+            "/api/v1/provenance/verify",
+            "/api/v1/merkle/probe",
+            "/api/v1/merkle/disclose",
+            "/api/v1/contact/email-otp/send",
+            "/api/v1/contact/email-otp/verify",
+            "/api/v1/contact/phone-otp/send",
+            "/api/v1/contact/phone-otp/verify",
+            "/api/v1/contact/status",
+            "/api/v1/cross-server/probe",
+            "/api/v1/nft/mint",
+            "/api/v1/nft/verify-claim",
+            "/api/v1/nft/freeze",
+            "/api/v1/nft/unfreeze",
+            "/api/v1/nft/link-wallet",
+            "/api/v1/nft/attestation"
+          ]
+        },
+        {
+          "name": "ailagoon-sidecar",
+          "port": 9101,
+          "endpoints": ["/api/v1/chat/completions", "/api/v1/embeddings"]
+        },
+        {
+          "name": "opensanctions-sidecar",
+          "port": 9102,
+          "endpoints": ["/api/screen/person", "/api/screen/entity", "/api/sanctions/lists", "/api/crypto/screen"]
+        },
+        {
+          "name": "mermail-sidecar",
+          "port": 9103,
+          "endpoints": ["/api/v1/email/send", "/api/v1/email/otp/send", "/api/v1/email/otp/verify"]
+        }
+      ],
+      "grapple": {
+        "offers": [
+          {
+            "name": "attestation-verify",
+            "interface": "NamedCoin.Attestation@1",
+            "purpose": "Verify a Merkle claim against the on-chain attestation root — individual claims (name, DOB, nationality, etc.) probeable without exposing the full KYC packet.",
+            "required": false
+          },
+          {
+            "name": "attestation-status",
+            "interface": "NamedCoin.AttestationStatus@1",
+            "purpose": "Check if a wallet holds a valid (non-expired, non-revoked) attestation NFT.",
+            "required": false
+          },
+          {
+            "name": "kyc-complete-hook",
+            "interface": "NamedCoin.KycComplete@1",
+            "purpose": "Notify subscribing grains when a KYC attestation is issued or revoked — enables reactive account opening, tier upgrade, etc.",
+            "required": false
+          }
+        ],
+        "requests": [
+          {
+            "name": "admin-gate",
+            "interface": "AdminGate.Capability@1",
+            "purpose": "Obtain admin capability from ccash admin grain for correspondent account creation and DueProcess case routing.",
+            "required": true
+          },
+          {
+            "name": "config-gate",
+            "interface": "ConfigGate.Capability@1",
+            "purpose": "Obtain config capability from cyberteller config grain for payment slip workflow integration.",
+            "required": false
+          }
+        ]
+      },
+      "encryption": {
+        "supported": true,
+        "scheme": "AES-256-GCM via Sandstorm grain-crypto-journal envelope",
+        "fields": [
+          "Raw ID document images",
+          "Biometric capture frames (selfie, document photo)",
+          "KYC questionnaire answers",
+          "Contact email/phone for OTP verification",
+          "Merkle leaf salts (never leave the grain)"
+        ]
+      },
+      "roles": {
+        "adminOnly": [
+          {
+            "name": "Issue attestation",
+            "purpose": "Approve KYC packet and mint the on-chain NFT attestation. Requires Owner role + OTP-gated."
+          },
+          {
+            "name": "Revoke attestation",
+            "purpose": "Freeze or revoke an existing attestation. Requires Owner role + OTP-gated."
+          },
+          {
+            "name": "Configure attestation policy",
+            "purpose": "Set attestation expiry duration (90/180/365 days), trusted jurisdiction list, and Merkle claim schema."
+          }
+        ],
+        "organizationOnly": [],
+        "anyMember": [
+          {
+            "name": "Start KYC process",
+            "purpose": "Begin the identity verification flow — upload ID documents, capture biometrics, fill questionnaire."
+          },
+          {
+            "name": "View own attestation status",
+            "purpose": "Check the status and expiry of your own attestation."
+          },
+          {
+            "name": "Selective disclosure",
+            "purpose": "Authorize individual claim probes by other grains."
+          }
+        ]
+      },
+      "authority": {
+        "requires": [
+          {
+            "type": "AdminGate",
+            "from": "melusina-ccashconfig-app",
+            "purpose": "Correspondent account creation on Fineract + DueProcess case routing"
+          }
+        ],
+        "grants": [
+          {
+            "type": "IdentityCap",
+            "to": "any-grain",
+            "purpose": "Merkle claim verification via namedcoin-sidecar HMAC-signed probe"
+          }
+        ]
+      },
+      "blockchains": [
+        {
+          "chain": "solana",
+          "cluster": "devnet",
+          "programs": [
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": [
+                "RegisterReleaseEntry"
+              ]
+            }
+          ],
+          "purpose": "Each attestation mints an NFT on Solana devnet. Merkle root stored on-chain; individual claims verified via selective-disclosure probe."
+        }
+      ],
+      "httpOut": {
+        "enabled": true,
+        "via": "namedcoin-sidecar",
+        "purpose": "All egress goes through the namedcoin-sidecar — HMAC-signed requests to ailagoon (LLM), opensanctions (screening), and mermail (email/OTP).",
+        "endpoints": {
+          "namedcoin-sidecar": "http://10.245.50.6:9100",
+          "ailagoon-sidecar": "http://10.245.50.5:9101",
+          "opensanctions-sidecar": "http://10.245.50.7:9102",
+          "mermail-sidecar": "http://10.245.50.8:9103"
+        }
+      },
+      "uiView": {
+        "tabs": [
+          {
+            "id": "biometric",
+            "title": "Biometric Capture",
+            "path": "/biometric",
+            "description": "Tilt-to-capture liveness detection, selfie, and document photo"
+          },
+          {
+            "id": "document",
+            "title": "Document Upload",
+            "path": "/ui/document_upload",
+            "description": "Upload and OCR ID documents"
+          },
+          {
+            "id": "contact",
+            "title": "Contact Verify",
+            "path": "/ui/contact_verify",
+            "description": "Email and phone OTP verification"
+          },
+          {
+            "id": "status",
+            "title": "Process Status",
+            "path": "/ui/process_status",
+            "description": "KYC verification status and attestation details"
+          },
+          {
+            "id": "result",
+            "title": "Result",
+            "path": "/ui/result",
+            "description": "Attestation result and Merkle claim summary"
+          }
+        ],
+        "defaultTab": "biometric"
+      },
+      "adminGate": {
+        "exports": [
+          {
+            "capability": "ProcessExecutor",
+            "interface": "AdminGate.ProcessExecutor@1",
+            "purpose": "Allows DueProcess to execute review procedures (kyc-refresh, sanctions-recheck, account-open, payment-block) on behalf of the NamedCoin grain."
+          }
+        ],
+        "imports": [
+          {
+            "capability": "AdminGate",
+            "from": "melusina-ccashconfig-app",
+            "purpose": "Required for correspondent account creation and DueProcess case routing."
+          }
+        ]
+      },
+      "powerboxManifest": {
+        "sidecarAccess": [
+          {
+            "label": "namedcoin-sidecar",
+            "ip": "10.245.50.6",
+            "port": 9100,
+            "protocol": "http",
+            "purpose": "KYC signing, Merkle probe/disclose, NFT mint/verify, biometric sign, contact OTP"
+          },
+          {
+            "label": "ailagoon-sidecar",
+            "ip": "10.245.50.5",
+            "port": 9101,
+            "protocol": "http",
+            "purpose": "LLM document-authenticity check and face-match"
+          },
+          {
+            "label": "opensanctions-sidecar",
+            "ip": "10.245.50.7",
+            "port": 9102,
+            "protocol": "http",
+            "purpose": "Sanctions screening against OFAC, UN, EU, UK, CH lists"
+          },
+          {
+            "label": "mermail-sidecar",
+            "ip": "10.245.50.8",
+            "port": 9103,
+            "protocol": "http",
+            "purpose": "Email and phone OTP delivery for contact verification"
+          }
+        ]
+      }
+    }
+  ]
+}

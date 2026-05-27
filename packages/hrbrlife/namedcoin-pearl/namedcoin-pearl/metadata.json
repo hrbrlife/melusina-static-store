@@ -1,0 +1,32 @@
+{
+  "appId": "nfb3k89r2am5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
+  "name": "NamedCoin — Identity Attestation",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "",
+  "shortDescription": "Biometric identity attestation — tilt-to-capture liveness, document OCR, on-chain NFT attestation",
+  "categories": [
+    "identity",
+    "kyc",
+    "attestation"
+  ],
+  "tier": "regular",
+  "domains": [
+    "*"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/namedcoin-pearl",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776300000000,
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "marketingVersion": "0.1.0",
+  "sha256": ""
+}

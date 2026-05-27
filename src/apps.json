@@ -2866,7 +2866,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.1",
+      "marketingVersion": "0.1.3",
       "sha256": "09c192b905beeff1a8bfdd69db049671abb9fdadaf03776a2927724244b34f73",
       "imageId": "716f4b5c4f22652a9ec42c1d6bcc3a43.png",
       "updatedAt": 1779777275676,
@@ -3007,7 +3007,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.11",
+      "marketingVersion": "0.1.13",
       "sha256": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
       "updatedAt": 1779777275916,
@@ -4596,8 +4596,8 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome Pearl",
-      "version": 9,
-      "versionNumber": 7,
+      "version": "0.1.7",
+      "versionNumber": 8,
       "packageId": "3d8b202eddbbf364a9b19ed043528cea",
       "sha256": "3d8b202eddbbf364a9b19ed043528ceaeae8202bff1f9ed146e50f4a1663ffce",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
@@ -4620,7 +4620,7 @@
       "description": "Welcome Pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "MIT",
-      "marketingVersion": "0.1.6-merchant-strip",
+      "marketingVersion": "0.1.7",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
       "updatedAt": 1779878350997,
       "attest": {

@@ -1,6 +1,6 @@
 {
   "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-  "packageId": "818b624ea11d15e7a970ae33ef979dde",
+  "packageId": "21ef256ef14d94f59c90cc953d88c20d",
   "name": "cca.sh Wholesale",
   "version": "0.2.3",
   "versionNumber": 7,
@@ -26,5 +26,5 @@
   "screenshots": [],
   "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
   "marketingVersion": "0.2.3",
-  "sha256": "818b624ea11d15e7a970ae33ef979dde627c7481b3e36179d75b7c3fcc9534dc"
+  "sha256": "21ef256ef14d94f59c90cc953d88c20d6ca21f8a7614f86333501442ae516afa"
 }

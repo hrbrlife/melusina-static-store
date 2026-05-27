@@ -2852,7 +2852,7 @@
       "categories": [
         "Productivity"
       ],
-      "isOpenSource": true,
+      "isOpenSource": false,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
       "upstreamAuthor": "hrbr.life",
@@ -2865,7 +2865,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "MIT",
+      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.1",
       "sha256": "09c192b905beeff1a8bfdd69db049671abb9fdadaf03776a2927724244b34f73",
       "imageId": "716f4b5c4f22652a9ec42c1d6bcc3a43.png",
@@ -3783,7 +3783,7 @@
         "Productivity",
         "Office"
       ],
-      "isOpenSource": true,
+      "isOpenSource": false,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
       "upstreamAuthor": "Alexei Karpov",

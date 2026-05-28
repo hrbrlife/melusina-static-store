@@ -13,7 +13,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
   │ APP_BUILD_STYLE := custom (legacy   │    13 │ clientspace, openclaw-melusina, instaco-app, namedcoin-app, 4× bureau (doc/sheets/paint/diagram),  │   
   │ retrofitted)                        │       │ MiniGit, AITX-Procedures, INSTASYS_MAIL, MELUSINA_BOTMOTHER, ccash_go_htmx                         │   
   ├─────────────────────────────────────┼───────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤ 
-  │ Direct-tracked in static_store (no  │     2 │ AiLagoon, CyberTeller — not applicable                                                             │   
+  │ Direct-tracked in static_store (no  │     2 │ AiLagoon, cyberteller — not applicable                                                             │   
   │ submodule repo)                     │       │                                                                                                    │   
   └─────────────────────────────────────┴───────┴────────────────────────────────────────────────────────────────────────────────────────────────────┘ 
                                                                                                                                                          
@@ -189,7 +189,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                          
   melusina-grain-sdk                                                                                                                                     
                                                                                                                                                        
-  MELUSINA_BOTMOTHER already has a substantial Go framework for building grains (capnp schemas, HTMX wire helpers, Pearl lifecycle hooks). It's currently
+  MELUSINA_BOTMOTHER already has a substantial Go framework for building grains (capnp schemas, HTMX wire helpers, pearl lifecycle hooks). It's currently
    bundled in that one app. Extract → every Go-based grain depends on it instead of inlining copies. Sizable undertaking — probably a couple of weeks to
   tease out cleanly.                                                                                                                                     
                                                                                                                                                        

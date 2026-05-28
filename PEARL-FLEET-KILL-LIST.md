@@ -1,4 +1,4 @@
-# Pearl Fleet Kill-List — MVP
+# pearl Fleet Kill-List — MVP
 
 Greenfield plan to put the full Melusina app + sidecar fleet through the
 Squads-cosigned ReleaseEntry ceremony, rebuild both stores, and publish
@@ -112,7 +112,7 @@ Pick **`cyberteller`** as the pilot (has current Makefile discipline, uses spkmo
 
 | # | Task | Done-when |
 |---|---|---|
-| 1.1 | `make bootstrap-author` in `cyberteller` repo | `.spkmodule-hooks/` contains the four Pearl hook samples |
+| 1.1 | `make bootstrap-author` in `cyberteller` repo | `.spkmodule-hooks/` contains the four pearl hook samples |
 | 1.2 | Set `APP_PEARL_ENABLED=yes` and `PEARL_*` vars in cyberteller `Makefile` | `make publish` phase-A enters propose-release without error |
 | 1.3 | Run `make publish` phase A | Squads proposal PDA stashed in `.melusina/release-ceremony/state.json` |
 | 1.4 | Squads cosigners approve 3-of-4 | `solana transaction-history` on the multisig shows Executed |

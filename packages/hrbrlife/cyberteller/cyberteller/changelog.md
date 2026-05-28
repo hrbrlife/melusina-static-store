@@ -18,13 +18,13 @@ sister grains shipped this session.
   from `git rev-parse --short HEAD` / `git rev-parse --abbrev-ref
   HEAD` / `date -u +%FT%TZ`. `runtime/debug.ReadBuildInfo` backfills
   commit + time when ldflags are absent.
-- Pearl-mode publish wiring in Makefile: `PEARL_LIVE_MASTER_NFT_MINT`,
+- pearl-mode publish wiring in Makefile: `PEARL_LIVE_MASTER_NFT_MINT`,
   `PEARL_LICENSE_MINT`, `PEARL_RELEASE_VERSION`, `PEARL_APP_ID`,
   `TEAM_LIVE_SQUADS`. Singleton-master pattern (license-registry
   v104 hard-codes the master mint). Matches the recipe proven by
   `melusina_ccashconfig_app` on 2026-05-18.
 - Spkmodule submodule bumped twice (`2ee80d2 → 579da4a → 048d11f`)
-  to pick up the greenfield Pearl pipeline + parse-time PEARL_*
+  to pick up the greenfield pearl pipeline + parse-time PEARL_*
   gating fix (so `APP_PEARL_ENABLED:=no` apps still pass check-drift).
 - Admin `/admin/config` UI honesty fix: the previous template's raw
   YAML textarea was unpopulated by the handler and the form POSTed

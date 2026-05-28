@@ -1,6 +1,6 @@
-CyberTeller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.
+cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.
 
-## Why CyberTeller
+## Why cyberteller
 
 - **Pinned invoice + settlement chains** — cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready
 - **Address non-reuse by HD-wallet derivation** — every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design

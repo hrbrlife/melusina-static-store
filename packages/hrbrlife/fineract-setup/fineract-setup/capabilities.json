@@ -8,7 +8,7 @@
       "pearlId": "fineract-setup",
       "pearlName": "fineract Setup",
       "pearlType": "infrastructure-pearl",
-      "purpose": "Setup + admin Pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
+      "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
       "sidecars": [],
       "grapple": {
         "offers": [

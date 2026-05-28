@@ -59,6 +59,13 @@ BUMP="patch"
 SKIP=""
 DRY_RUN=false
 
+# Pre-flight: probe tooling. spk is required by ceremony + stage steps;
+# melusina-pearl-tool gates on-chain signing.
+HAS_SPK=false
+HAS_PEARL_TOOL=false
+command -v spk >/dev/null 2>&1 && HAS_SPK=true
+command -v melusina-pearl-tool >/dev/null 2>&1 && HAS_PEARL_TOOL=true
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --bump)    BUMP="$2"; shift 2 ;;
@@ -252,8 +259,8 @@ except FileNotFoundError:
   else
     warn "  no $APP_DIR/app.spk — pack must have been skipped"
   fi
-elif ! command -v melusina-pearl-tool >/dev/null 2>&1; then
-  warn "  melusina-pearl-tool NOT on PATH — falling back to offline stub"
+elif ! $HAS_PEARL_TOOL; then
+  warn "  melusina-pearl-tool NOT on PATH — on-chain Squads ceremony SKIPPED; publishing with offline-stub RELEASE.json. Install melusina-pearl-tool for on-chain attestation."
   SKIP="${SKIP:+$SKIP,}ceremony"
 else
   # ──────────────────────────────────────────────────────────────────────
@@ -284,6 +291,9 @@ else
   if [[ -z "$CAT_PATH" ]]; then
     if [[ ! -f "$SPK_FOR_REL" ]]; then
       fail "  ceremony: no SPK found — run make pack first"
+    fi
+    if ! $HAS_SPK; then
+      fail "  ceremony: spk CLI not found on PATH — required to extract appId from SPK. Install sandstorm bin/spk."
     fi
     APP_ID_FROM_SPK="$(spk verify "$SPK_FOR_REL" 2>/dev/null | grep -oE '"appId": "[^"]*"' | head -1 | cut -d'"' -f4)"
     if [[ -z "$APP_ID_FROM_SPK" ]]; then

@@ -218,11 +218,11 @@
 ## v0.1.0 (2026-02-14)
 
 - Initial release
-- Single Pearl type: AI model hub
+- Single pearl type: AI model hub
 - Support for Ollama, ChatGPT (OpenAI), and OpenRouter providers
 - Explicit per-model connection management
 - Grapple HTTP-out for external API access
 - Grapple capability offering: ai-text, ai-vision, ai-generic
 - Model picker UI for Grapple request sessions
 - Built-in chat playground
-- Connection persistence across Pearl restarts
+- Connection persistence across pearl restarts

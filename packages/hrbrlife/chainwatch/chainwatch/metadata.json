@@ -4,7 +4,7 @@
   "version": "0.1.1",
   "versionNumber": 9,
   "packageId": "4f2caa3d99dad793d38b7b869e612a71",
-  "shortDescription": "Multi-chain RPC proxy sidecar for CyberTeller — stateless, no keys, talks to chain RPCs.",
+  "shortDescription": "Multi-chain RPC proxy sidecar for cyberteller — stateless, no keys, talks to chain RPCs.",
   "categories": [
     "Productivity",
     "DeveloperTools"

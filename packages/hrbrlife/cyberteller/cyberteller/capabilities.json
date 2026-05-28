@@ -1,26 +1,26 @@
 {
   "schemaVersion": 2,
   "appSlug": "cyberteller",
-  "appName": "CyberTeller",
+  "appName": "cyberteller",
   "tier": "regular",
   "pearls": [
     {
       "pearlId": "cyberteller",
       "pearlName": "Wallet",
       "pearlType": "user-pearl",
-      "purpose": "Personal Solana wallet Pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the Pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
+      "purpose": "Personal Solana wallet pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
       "sidecars": [],
       "grapple": {
         "offers": [
           {
             "name": "wallet-sign",
-            "interface": "CyberTeller.Sign@1",
+            "interface": "cyberteller.Sign@1",
             "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction."
           },
           {
             "name": "wallet-pubkey",
-            "interface": "CyberTeller.Pubkey@1",
-            "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification."
+            "interface": "cyberteller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification."
           }
         ],
         "requests": []
@@ -106,13 +106,13 @@
       "apis": {
         "capnp": [
           {
-            "name": "CyberTeller.Sign@1",
+            "name": "cyberteller.Sign@1",
             "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
             "roleGate": "anyMember"
           },
           {
-            "name": "CyberTeller.Pubkey@1",
-            "purpose": "Read-only: hand the wallet pubkey to a peer Pearl for verification.",
+            "name": "cyberteller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification.",
             "roleGate": "anyMember"
           }
         ],

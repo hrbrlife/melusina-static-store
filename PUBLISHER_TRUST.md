@@ -106,7 +106,7 @@ keyholder review) or `Full` (auto-approved with 1 keyholder).
 | Missing | Needed For |
 |---------|-----------|
 | `nft-app-license.js` | Server-side license check for paid apps |
-| License check in `newGrain()` | Hard gate at Pearl creation |
+| License check in `newGrain()` | Hard gate at pearl creation |
 | License banner in shell chrome | Soft warning for expired/missing licenses |
 | Wallet connection in store | Purchase flow |
 | pbay subscription gate | Managed hosting all-apps access |
@@ -127,7 +127,7 @@ keyholder review) or `Full` (auto-approved with 1 keyholder).
 | **Global** | > $100M | **$50,000** | 3 years |
 
 **Zero feature gating.** Every band gets the same code, the same apps,
-the same Pearl isolation, the same Grapple connections. The only
+the same pearl isolation, the same Grapple connections. The only
 difference is whether you need to pay.
 
 **All apps included.** One license covers the entire platform and
@@ -218,7 +218,7 @@ price via `update_listing` when SOL moves >10%.
 ### 4.1 How It Works (Starter – Global Bands)
 
 Server admin pays SOL in the store. On-chain receipt proves the server
-has a platform license. Server optionally checks receipt at Pearl creation.
+has a platform license. Server optionally checks receipt at pearl creation.
 
 ```
 STORE → ON-CHAIN → SERVER
@@ -306,9 +306,9 @@ PDA is derived deterministically and is immutable once created.
 
 | Point | Where | Gate | Action |
 |-------|-------|------|--------|
-| **New Pearl** | grain-server.js:316 | HARD | Block if paid app + no receipt |
-| **New Pearl (RPC)** | hack-session.js:createGrain | HARD | Same check |
-| **Open Pearl** | backend.js:110 | SOFT | Tag grain, never block |
+| **New pearl** | grain-server.js:316 | HARD | Block if paid app + no receipt |
+| **New pearl (RPC)** | hack-session.js:createGrain | HARD | Same check |
+| **Open pearl** | backend.js:110 | SOFT | Tag grain, never block |
 | **UI Session** | gateway-router.js / grainview.js | SOFT | Yellow banner |
 | **Periodic** | nft-app-license.js (1h interval) | SOFT | Update cache |
 
@@ -378,7 +378,7 @@ available — no per-app purchase needed.
 │  Shell checks subscription status                          │
 │       ↓                                                    │
 │  Active → all apps available, no license check             │
-│  Expired → new Pearl creation blocked for paid apps        │
+│  Expired → new pearl creation blocked for paid apps        │
 │            existing Pearls still accessible (banner)       │
 │                                                            │
 │  Subscription revenue goes to Foundation for hosting ops.  │
@@ -464,7 +464,7 @@ MONTHLY PBAY PAYOUT
     Free apps imputed at Q1 of ALL prices (including imputed):
       Sorted: [0.1, 0.1, 0.1, 0.1, 0.5, 0.5] → Q1 = 0.1 SOL
 
-  GRAIN-HOURS THIS MONTH:
+  grain-HOURS THIS MONTH:
     BLOOM (0.5 SOL):      200 grains, avg 8h  → weight = 200 × 0.5 × 8  = 800
     BotMother (0.1 SOL):  400 grains, avg 20h → weight = 400 × 0.1 × 20 = 800
     MerMail (0.1 SOL):    300 grains, avg 10h → weight = 300 × 0.1 × 10 = 300

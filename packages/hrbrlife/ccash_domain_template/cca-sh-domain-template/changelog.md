@@ -17,8 +17,8 @@ PSP-polish Pass-2 (audit `PSP_UX_AUDIT_2026_05_24.md` §C P0-1/2/3):
   `icon`, `version`, `digest` fields (omitempty — pre-V1.1 consumers
   unaffected). Wire compatibility tests in `api_domain_detail_test.go`
   preserved.
-- README documents that DueProcess / Popaye / CyberTeller / Welcome
-  Pearl require a launched Template Authority grain in the Sandstorm
+- README documents that DueProcess / popaye / cyberteller / Welcome
+  pearl require a launched Template Authority grain in the Sandstorm
   instance before their bind flows can succeed (no DTG ⇒ Powerbox
   returns "No token received from Powerbox" and the user is forced
   into a blank-builder fallback).

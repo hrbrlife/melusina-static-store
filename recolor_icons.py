@@ -29,7 +29,7 @@ APP_CATEGORY = {
     "ClientSpace":              "identity",
     "Consilium":                "office",
     "CrateLink":                "infra",
-    "CyberTeller":              "crypto",
+    "cyberteller":              "crypto",
     "Diagram Bureau":           "office",
     "Doc Bureau":               "office",
     "DueProcess":               "identity",

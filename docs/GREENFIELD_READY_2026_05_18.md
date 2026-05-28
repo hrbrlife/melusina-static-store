@@ -10,7 +10,7 @@ All 20 apps have `origin/main` updated with:
 
 - `.spkmodule-hooks/post-publish` (executable, 72-line dispatcher to `static_store/scripts/ship-changes.sh`)
 - `spkmodule` submodule pinned to `origin/greenfield` (`579da4a` as of this writing)
-- Pearl-mode placeholder block in `Makefile` (after `APP_SLUG`)
+- pearl-mode placeholder block in `Makefile` (after `APP_SLUG`)
 - Auto-bump pre-pack hook removed (in the 6 apps that had it)
 - Legacy `APP_PEARL_ENABLED := no` dead-line removed
 
@@ -153,5 +153,5 @@ Stream C is building the dev-store HTTP sidecar (POST `/team/<vault>/dev/package
 - `spkmodule/docs/pearl-ceremony-gotchas.md` — 4 known ceremony gotchas + v104 workaround
 - `spkmodule/docs/stream-c-dev-store-envelope-proposal.md` — DEV-lineage upload contract
 - `static_store/docs/PEARL_ONBOARDING_RUNBOOK.md` — developer-facing onboarding runbook
-- `static_store/SHIP-IT.md` — overall ship-loop runbook (with Greenfield Pearl-mode preview section)
+- `static_store/SHIP-IT.md` — overall ship-loop runbook (with Greenfield pearl-mode preview section)
 - Memory: `project_greenfield_publish_design.md`, `project_devpublish_spec_integration_2026_05_18.md`, `project_greenfield_cycle1..5_*.md`

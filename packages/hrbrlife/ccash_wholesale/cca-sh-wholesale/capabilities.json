@@ -20,7 +20,7 @@
           {
             "name": "sub-account-cap",
             "interface": "ccash.SubAccountCap@1",
-            "purpose": "Issue a scoped sub-account capability to an operator Pearl so it can settle through this wholesale install."
+            "purpose": "Issue a scoped sub-account capability to an operator pearl so it can settle through this wholesale install."
           }
         ],
         "requests": [
@@ -100,7 +100,7 @@
           },
           {
             "name": "ccash.SubAccountCap@1",
-            "purpose": "Issue a scoped sub-account capability to an operator Pearl so it can settle through this wholesale install.",
+            "purpose": "Issue a scoped sub-account capability to an operator pearl so it can settle through this wholesale install.",
             "roleGate": "anyMember"
           }
         ],

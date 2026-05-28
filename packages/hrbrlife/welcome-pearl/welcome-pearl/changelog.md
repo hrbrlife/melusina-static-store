@@ -28,5 +28,5 @@
 
 ## 0.1.0
 
-- Initial isolated Welcome Pearl binary.
+- Initial isolated Welcome pearl binary.
 - Adds profile-driven visitor intake, local submission storage, Station intake handoff, and WelcomeIntake capability surface.

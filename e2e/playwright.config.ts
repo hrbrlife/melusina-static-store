@@ -12,6 +12,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const STORE_BASE_URL = process.env.STORE_BASE_URL
   ?? 'https://hrbrlife.github.io/melusina-static-store/';
+// Sandstorm admin app URL for E2E install-loop tests.
+// Defaults to the live dev instance. Override via ADMIN_BASE_URL for local/prod.
 const ADMIN_BASE_URL = process.env.ADMIN_BASE_URL
   ?? 'https://dev.melusina-os.org/apps';
 

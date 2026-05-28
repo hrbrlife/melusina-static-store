@@ -28,7 +28,7 @@ Every Melusina app icon uses one of eight category tiles. The **background hex**
 | ClientSpace | Identity | `#A6C8F5` | `#355FA5` |
 | Consilium | Office | `#C8D0D8` | `#556170` |
 | CrateLink | Infrastructure | `#F5C8A6` | `#A56135` |
-| CyberTeller | Crypto | `#F5D47A` | `#B88616` |
+| cyberteller | Crypto | `#F5D47A` | `#B88616` |
 | Diagram Bureau | Office | `#C8D0D8` | `#556170` |
 | Doc Bureau | Office | `#C8D0D8` | `#556170` |
 | DueProcess | Identity | `#A6C8F5` | `#355FA5` |

@@ -31,8 +31,15 @@ if [[ -z "$STUB" ]]; then
     /home/user/Desktop/ccash_domain_template/spkmodule/bin/release-json-stub; do
     if [[ -x "$cand" ]]; then STUB="$cand"; break; fi
   done
+  # Recursive fallback: scan /home/user/Desktop for any spkmodule checkout
+  if [[ -z "$STUB" ]]; then
+    STUB="$(find /home/user/Desktop -maxdepth 5 -path '*/spkmodule/bin/release-json-stub' -executable -type f 2>/dev/null | head -1)"
+  fi
 fi
-[[ -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB + 5 canonical spkmodule paths. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+[[ -n "$STUB" && -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB, 5 canonical spkmodule paths, and recursive scan of /home/user/Desktop. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+
+# Pre-flight: spk CLI required for extracting package metadata
+command -v spk >/dev/null 2>&1 || { echo "FATAL: spk CLI not found on PATH — required by stage-into-catalog.sh. Install sandstorm bin/spk." >&2; exit 2; }
 
 ok()   { printf '\033[0;32m[OK]\033[0m   %s\n' "$*"; }
 warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }

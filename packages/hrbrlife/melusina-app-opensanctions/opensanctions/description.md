@@ -84,14 +84,14 @@ The three Hard Truths that bite this app most:
 - **HT12** — no Sandstorm bypass. SPK installs go through the canonical
   `static_store` → admin UI → install-from-market path. No direct Mongo
   `packages` inserts, no `loginDevAccountFast`, no JS bundle hot-patches.
-- **HT13** — any on-chain signing for Pearl onboarding goes through Squads
+- **HT13** — any on-chain signing for pearl onboarding goes through Squads
   / offline-wallet; no hardcoded keypairs.
 
-## Pearl Onboarding — TODO (task #94)
+## pearl Onboarding — TODO (task #94)
 
-This app is **not Pearl-onboarded** (no master-NFT mint, no Squads vault,
+This app is **not pearl-onboarded** (no master-NFT mint, no Squads vault,
 no signed on-chain ReleaseEntry). It currently publishes through the
-legacy static_store flow. The org-wide Pearl-only `make publish` migration
+legacy static_store flow. The org-wide pearl-only `make publish` migration
 is tracked centrally; until this app onboards, it cannot publish under
 the new model. Task #94 captures the master-NFT + Squads + ReleaseEntry
 work needed here.

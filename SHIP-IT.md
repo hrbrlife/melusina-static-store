@@ -6,7 +6,7 @@ done by `scripts/ship-changes.sh` — this doc explains what it does and why.
 
 ---
 
-## Greenfield Pearl-mode (in flight)
+## Greenfield pearl-mode (in flight)
 
 > **Status (2026-05-18):** the spkmodule canonical branch is still `main` in
 > offline-stub mode; `greenfield` is a parallel preview branch and the system
@@ -14,7 +14,7 @@ done by `scripts/ship-changes.sh` — this doc explains what it does and why.
 > current behavior.
 
 The spkmodule canonical branch will eventually move from `main` → `greenfield`
-(v0.7.0+). Greenfield requires **Pearl-mode**: every app must have a
+(v0.7.0+). Greenfield requires **pearl-mode**: every app must have a
 `PEARL_LIVE_MASTER_NFT_MINT` (or `PEARL_DEV_MASTER_NFT_MINT` on the dev
 lineage) and a **completed Squads ReleaseEntry ceremony** before
 `make publish` will succeed. Offline-stub publish goes away entirely.
@@ -27,7 +27,7 @@ mint into the source repo:
 bin/pearl-onboard --lineage=live <app-dir>
 ```
 
-After that, the app is greenfield-ready and the loop ships it through Pearl
+After that, the app is greenfield-ready and the loop ships it through pearl
 phase A → cosigner approval → phase B as today, just without the offline
 escape hatch.
 
@@ -44,7 +44,7 @@ escape hatch.
 
 **What gets deleted on greenfield activation:**
 
-- `APP_PEARL_ENABLED` (toggle goes away — Pearl always on).
+- `APP_PEARL_ENABLED` (toggle goes away — pearl always on).
 - `_publish-non-pearl` target in `core.mk`.
 - `manifest-check` target + `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT` env var.
 - `RELEASE.json` offline-stub generator (`release-json-stub`).
@@ -122,7 +122,7 @@ The cascade pattern (proven on 4 apps so far):
    cd $APP_SRC/spkmodule && git fetch origin main && git checkout origin/main
    cd .. && git add spkmodule && git commit -m "spkmodule: bump pin"
    ```
-2. If the Makefile lacks `APP_PEARL_ENABLED := no` (and the app isn't on-chain Pearl-onboarded), add it before `include spkmodule/mk/core.mk`. Without this, the Makefile errors at parse time on missing `PEARL_MASTER_NFT_MINT`.
+2. If the Makefile lacks `APP_PEARL_ENABLED := no` (and the app isn't on-chain pearl-onboarded), add it before `include spkmodule/mk/core.mk`. Without this, the Makefile errors at parse time on missing `PEARL_MASTER_NFT_MINT`.
 3. If the pkgdef lives at `.sandstorm/sandstorm-pkgdef.capnp` (not at root), add `PKGDEF := .sandstorm/sandstorm-pkgdef.capnp` to the Makefile before the include.
 4. Ensure the source repo has a `metadata.json` at root (copy from the publish-branch checkout if missing).
 5. Ensure `.spkmodule-hooks/.manifest` exists with `appSlug` matching `APP_SLUG`. Initialize from `spkmodule/hooks/.manifest.sample`.
@@ -151,7 +151,7 @@ spkmodule-using app). The script invokes only the public targets:
 | Target | What it does |
 |--------|--------------|
 | `make build` | Run the build backend (`noop` / `go` / `npm` / `custom`). Does NOT touch mounts or SPKs. |
-| `make pack`  | Acquire `/tmp/melusina-spk-mount.lock`, unmount any stale `/opt/app`, bind-mount `$APP_DIR → /opt/app`, verify inode match, run pre-pack hooks + capability check, `spk pack $SPK_OUT`, `spk verify` (strict on Pearl, plain otherwise), unmount on exit. |
+| `make pack`  | Acquire `/tmp/melusina-spk-mount.lock`, unmount any stale `/opt/app`, bind-mount `$APP_DIR → /opt/app`, verify inode match, run pre-pack hooks + capability check, `spk pack $SPK_OUT`, `spk verify` (strict on pearl, plain otherwise), unmount on exit. |
 | `make publish` | Branch on `APP_PEARL_ENABLED`. See below. |
 
 ### `make dev` is intentionally skipped
@@ -162,7 +162,7 @@ The mount discipline `make pack` needs is built into `pack` itself
 under a flock. So `dev` before `pack` is redundant for automation. Skipping
 it is the single biggest speed win in this loop.
 
-### Pearl vs offline-stub: `make publish` decides
+### pearl vs offline-stub: `make publish` decides
 
 ```
 APP_PEARL_ENABLED=yes  (default)
@@ -174,7 +174,7 @@ APP_PEARL_ENABLED=no
 └── verify deployer manifest pin → release-json-stub → push
 ```
 
-**Pearl two-phase ceremony.** First `make publish` submits a Squads
+**pearl two-phase ceremony.** First `make publish` submits a Squads
 `vaultTransactionCreate` + `proposalCreate` for the ReleaseEntry on Solana
 devnet, then exits. Cosigners approve via Squads UI (or `pearl-batch-submit.sh`
 which approves with `licensee-signer-1.json` + `licensee-signer-2.json`
@@ -192,9 +192,9 @@ catalog uses this lane.
 - Foundation release signer: `/home/user/Desktop/Melusina/test-wallets-NEW/foundation.json`
 - Squads multisig members: `/home/user/Desktop/Melusina/test-wallets/licensee-signer-{1..4}.json`
 - Squads multisig PDA: `9X5ECjTMTtjJNY3DZ7xKuuN2nRWasDbc6FqbmZG4iWse` (devnet, 2-of-4)
-- Pearl tool binary: `/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool`
+- pearl tool binary: `/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool`
 
-Pearl phase A and phase B work end-to-end on devnet — `pearl-onchain-submit.js`
+pearl phase A and phase B work end-to-end on devnet — `pearl-onchain-submit.js`
 is fully functional, not stubbed (lines 138-246 actually `sendTransaction`).
 
 ### What lands on each app's `origin/publish`
@@ -203,7 +203,7 @@ is fully functional, not stubbed (lines 138-246 actually `sendTransaction`).
 publish/<APP_SLUG>/
 ├── app.spk                  # the package
 ├── metadata.json            # bazaar catalog entry
-├── RELEASE.json             # attestation (real Pearl OR offline stub)
+├── RELEASE.json             # attestation (real pearl OR offline stub)
 ├── icon.png | icon.svg
 ├── description.md           # optional
 ├── capabilities.json        # optional
@@ -308,7 +308,7 @@ resolver picks it up first.
 |---------|---------|--------|
 | `[SKIP] foo: no source repo` | Source not on this host | None — by design |
 | `[SKIP] foo: HEAD == origin/publish` | Nothing committed to ship | None — quiet pass |
-| `[FAIL] foo: ship failed (see .build-tmp/ship-foo-*.log)` | `make build/pack/publish` non-zero | Read the log; common causes: stale mount (rerun fixes it), spk verify drift (re-pack), Pearl phase A network blip (next tick retries) |
+| `[FAIL] foo: ship failed (see .build-tmp/ship-foo-*.log)` | `make build/pack/publish` non-zero | Read the log; common causes: stale mount (rerun fixes it), spk verify drift (re-pack), pearl phase A network blip (next tick retries) |
 | Catalog rebuild fails on preflight shrink | Live catalog has more apps than local | Set `MELUSINA_PUBLISH_SHRINK_OK=1` only if intentional |
 
 Per-app failures don't stop other apps. The script returns non-zero only if
@@ -324,7 +324,7 @@ any app failed OR the catalog rebuild failed.
 - **No version bump** — operator does that in the source commit. The script
   ships what's committed.
 - **No icon QC pass on the source repo** — done globally in `make plan`.
-- **No automatic Squads approval** — Pearl phase A waits for cosigners. The
+- **No automatic Squads approval** — pearl phase A waits for cosigners. The
   script ships phase B on the next tick once approved.
 
 ---

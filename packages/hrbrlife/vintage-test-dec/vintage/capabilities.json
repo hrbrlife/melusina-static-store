@@ -8,7 +8,7 @@
       "pearlId": "vintage",
       "pearlName": "Vintage Desktop",
       "pearlType": "user-pearl",
-      "purpose": "Per-user vintage operating-system desktop Pearl — runs old-school environments inside a Pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the Pearl; outbound network is gated by the standard sidecars (none enabled by default — fully airgapped).",
+      "purpose": "Per-user vintage operating-system desktop pearl — runs old-school environments inside a pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the pearl; outbound network is gated by the standard sidecars (none enabled by default — fully airgapped).",
       "sidecars": [],
       "grapple": {
         "offers": [],

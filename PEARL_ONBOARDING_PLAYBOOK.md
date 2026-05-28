@@ -1,14 +1,14 @@
-# Pearl Onboarding Playbook
+# pearl Onboarding Playbook
 
 How to take an app from "shipped in static_store with no RELEASE.json"
-to "Pearl-onboarded with a Squads-quorum-signed on-chain ReleaseEntry."
+to "pearl-onboarded with a Squads-quorum-signed on-chain ReleaseEntry."
 
 This is the canonical recipe the static_store fleet follows. The pilot
-was Welcome Pearl (2026-05-18): see
+was Welcome pearl (2026-05-18): see
 `dist/welcome-pearl-pearl-onboarded/RELEASE.json` and the
 `RELEASE_ENTRY_TX_2026-05-18.txt` proof.
 
-The fleet is `packages/hrbrlife/*/<slug>/` — 0/16 Pearl-onboarded at
+The fleet is `packages/hrbrlife/*/<slug>/` — 0/16 pearl-onboarded at
 the start of 2026-05-18, 41/41 catalog entries onboarded by end of
 session (see §9 for the per-group summary).
 
@@ -31,7 +31,7 @@ commands in §0 before assuming.
 hardcodes `MASTER_NFT_MINT` at `constants.rs:6`. Every ReleaseEntry in
 the program is bound to this one mint. The per-app trust separation is
 the Squads quorum executing the ReleaseEntry, NOT a per-app NFT. This
-matches PEARL-FLEET-KILL-LIST §2's single-gate decision.
+matches pearl-FLEET-KILL-LIST §2's single-gate decision.
 
 ## 0. Pre-flight (10 seconds)
 
@@ -236,7 +236,7 @@ entries (the original 14-grain PSP-blocker inventory in
 
 | Group | Count | Notes |
 |---|---|---|
-| PSP-blocker grains | 14 | popaye, cyberteller, ccash admin, cyberteller config, DueProcess, ClientSpace, Domain Template, fineract setup, ccash Organization, Welcome Pearl, AiLagoon, Vintage, TeleScreen Hub, plus opensanctions/creeper packaged from source |
+| PSP-blocker grains | 14 | popaye, cyberteller, ccash admin, cyberteller config, DueProcess, ClientSpace, Domain Template, fineract setup, ccash Organization, Welcome pearl, AiLagoon, Vintage, TeleScreen Hub, plus opensanctions/creeper packaged from source |
 | Bureau family | 7 | bureau-cal, bureau-contacts, diagram-bureau, doc-bureau, bureau-notes, paint-bureau, sheets-bureau |
 | Wholesale + admin | 7 | mermail, MELUSINA_BOTMOTHER (botmother), MiniGit (×2 SPKs), instaco-app, jinn (×2 SPKs), canboard, melusina-openclaw |
 | Misc consumer grains | 11 | chainwatch, ccash-client, cratelink, consilium, namedcoin, shell-tester, etc. |
@@ -278,7 +278,7 @@ are NOT publishable grains — by design, no RELEASE.json.
   for the static_store agent itself on 2026-05-18 under the imperative
   to act tirelessly. Document the lift if you reach this branch state.
 
-## 10. Pearl-only `make publish` model — for upstream app repos
+## 10. pearl-only `make publish` model — for upstream app repos
 
 > Added 2026-05-18 (Riker tick164 THEN-NEXT). Documents the path apps
 > should follow when they want to ship a new version through the
@@ -300,7 +300,7 @@ hit the Phase 0.6 gap. Witnessed:
 - 2026-05-18 cybertellerconfig v0.1.3 attempt (idx 1943) — two
   License NFTs minted (`2iYNdL8RZtmGMAW…`, `J8zTpgkjzfDM…`),
   ~0.008 SOL sunk; could not submit propose-release live.
-- 2026-05-18 ccash_organization (Pearl-RED status flagged by Riker).
+- 2026-05-18 ccash_organization (pearl-RED status flagged by Riker).
 
 ### The static_store workaround
 
@@ -311,7 +311,7 @@ and submits as one outer v0 transaction. This is how all 41/41
 catalog entries were onboarded on 2026-05-18. It does NOT require
 the tool's Phase 0.6 config to exist.
 
-### App-side `make publish` contract (Pearl-only)
+### App-side `make publish` contract (pearl-only)
 
 The app repo's `make publish` target writes the **handoff bundle**:
 SPK + metadata.json + (provisional) RELEASE.json + capabilities.json.
@@ -379,7 +379,7 @@ on-chain RELEASE.json after running pearl-app-ceremony.sh.
   until the Phase 0.6 gap is fixed. Use the handoff pattern.
 - **STOP** writing OFFLINE-stub RELEASE.json into the static_store
   catalog directly. The static_store crew overwrites it anyway, and
-  shipping OFFLINE regresses the on-chain Pearl coverage.
+  shipping OFFLINE regresses the on-chain pearl coverage.
 - **STOP** minting License NFTs on the upstream side. The ceremony
   driver mints a fresh license-mint internally per app — any
   pre-minted NFT is wasted SOL.
@@ -478,7 +478,7 @@ Reasons for the policy:
 
 Witnessed 2026-05-18 with cybertellerconfig v0.1.3 (PDA 4vQuX1D5... was
 minted on-chain but the smuggled metadata.json was upstream-schema,
-build validation failed; stashed and rejected at chatroom idx 2114).
+build validation failed; stashed and rejected at agentchat idx 2114).
 
 ### ccash_organization unblock recipe (the THEN-NEXT case)
 
@@ -491,7 +491,7 @@ Same as above — ccash_organization's repo should:
    with the handoff message.
 
 static_store then runs pearl-app-ceremony.sh, mints the on-chain
-PDA, and ccash_organization joins the Pearl-onboarded fleet.
+PDA, and ccash_organization joins the pearl-onboarded fleet.
 
 ---
 

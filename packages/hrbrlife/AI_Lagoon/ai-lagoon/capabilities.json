@@ -8,14 +8,14 @@
       "pearlId": "ai-lagoon",
       "pearlName": "AiLagoon",
       "pearlType": "user-pearl",
-      "purpose": "AI model hub Pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The Pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
+      "purpose": "AI model hub pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
       "sidecars": [],
       "grapple": {
         "offers": [
           {
             "name": "ai-text",
             "interface": "AiLagoon.AiText@1",
-            "purpose": "Generic text / chat completion — the consuming Pearl picks model class; this Pearl picks provider."
+            "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider."
           },
           {
             "name": "ai-vision",
@@ -90,7 +90,7 @@
       "httpOut": {
         "enabled": true,
         "via": "sidecar:HTTP_COMPONENT",
-        "purpose": "All AI provider API calls — never directly from the Pearl, only through the HTTP_COMPONENT sidecar.",
+        "purpose": "All AI provider API calls — never directly from the pearl, only through the HTTP_COMPONENT sidecar.",
         "endpoints": [
           "https://api.openai.com/*",
           "https://openrouter.ai/api/*",
@@ -101,7 +101,7 @@
         "capnp": [
           {
             "name": "AiLagoon.AiText@1",
-            "purpose": "Generic text / chat completion — the consuming Pearl picks model class; this Pearl picks provider.",
+            "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider.",
             "roleGate": "anyMember"
           },
           {

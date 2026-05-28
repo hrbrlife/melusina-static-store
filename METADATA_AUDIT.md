@@ -49,7 +49,7 @@ push to that submodule's publish branch, bump catalog SHA.
 
 ### Terminology drift (PUBLISH_QC §1 L80)
 
-Spec: use **Pearl** not "grain", **Melusina** not "Sandstorm",
+Spec: use **pearl** not "grain", **Melusina** not "Sandstorm",
 **Grapple** not "powerbox" in user-facing strings. Found in
 `description` or `shortDescription`:
 
@@ -134,7 +134,7 @@ launch-day cut.
    the same per-submodule discipline as the `.asc` sweep, **announce
    per HT5 first**.
 
-2. **Terminology cleanup** (9 apps) — search-and-replace `grain`→`Pearl`,
+2. **Terminology cleanup** (9 apps) — search-and-replace `grain`→`pearl`,
    `Sandstorm`→`Melusina`, `powerbox`→`Grapple` in
    `description`/`shortDescription`/`description.md`. Per-app
    semantic touch; should be cross-checked by the app maintainer

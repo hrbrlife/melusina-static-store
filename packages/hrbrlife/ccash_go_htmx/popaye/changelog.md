@@ -239,7 +239,7 @@ discipline; `app.spk` packs cleanly. 14 commits on top of v0.7.0
   copy fallback on the approval signing page. `151b4d4`.
 - **Sandstorm scheduled tasks.** `pkg/scheduler` integration; 3 SLA
   jobs (KYC refresh, sanctions recheck, document expiry) visible in
-  Pearl Settings → Scheduled Tasks. `a0071a1`.
+  pearl Settings → Scheduled Tasks. `a0071a1`.
 - **18 DueProcess procedure templates** wired through ccash-side
   handlers (`f1ba0ab`); procedure staleness sweep (`151b4d4`).
 - **`pkg/aggregation`** for whitelabel dashboard metrics (deal

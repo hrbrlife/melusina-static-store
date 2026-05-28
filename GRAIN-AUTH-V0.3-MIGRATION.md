@@ -80,7 +80,7 @@ The four v0.2.1 cross-checks collapse into envelope.verify's semantics:
 | `response.LicenseNftMint == request.LicenseNft` | `expected_license_mint` option + `payload.license_mint == source.ref.license_mint` invariant in `validate_payload` |
 
 Plus envelope gives us for free:
-- source kind (reject if response isn't from a SIDECAR identity)
+- source kind (reject if response isn't from a sidecar identity)
 - destination binding (reject if envelope isn't addressed to me)
 - timestamp window (clock-skew handling)
 - chain evidence (sidecar identity PDA reachable from the envelope)

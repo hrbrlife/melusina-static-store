@@ -42,7 +42,7 @@ expectation per `Melusina/deployer/config/approval-manifests/global-apps-2026-04
 | App         | Manifest expects | Catalog had  |
 | ----------- | ---------------- | ------------ |
 | AiLagoon    | `6d7afdee…`      | `c48710e0…`  |
-| CyberTeller | `29ad66dc…`      | `2c2ccccf…`  |
+| cyberteller | `29ad66dc…`      | `2c2ccccf…`  |
 | DueProcess  | `8dc96f11…`      | `4ef562d4…`  |
 
 These hash drifts **pre-existed** in the local `packages/hrbrlife/<app>/<slug>/app.spk`
@@ -191,7 +191,7 @@ captured in `static_store/main` commit `a278e95` and remain valid.
    the local `.spk` files with bytes that hash to the manifest's
    expected values. Audit pass 2026-04-25 (preflight Gate 2 against
    `global-apps-2026-04-23.json`) shows **4 drifts**, not 3 as
-   originally listed: AiLagoon, CyberTeller, DueProcess, **plus
+   originally listed: AiLagoon, cyberteller, DueProcess, **plus
    popaye / `cca.sh Admin`** (manifest expects `8d724f86…`, local
    builds produce a different hash each session — re-run preflight
    for current value). The popaye/ccash drift was missed in the

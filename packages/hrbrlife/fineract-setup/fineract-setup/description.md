@@ -4,7 +4,7 @@ fineract Setup is the Melusina companion wizard for Apache Fineract integration.
 
 - **Cryptographically pinned configuration bundles** — anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance
 - **Dual-gate architecture** — configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently
-- **Grain-local setup isolation** — setup happens once per Pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage
+- **Grain-local setup isolation** — setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage
 
 ## Bootstrap Workflow
 

@@ -57,7 +57,7 @@ Anchored in iter-1 deep recon, 2026-04-23.
 
 | # | Component | Role |
 |---|---|---|
-| 1 | `melusina-attest` | Canonical Go reference. derive/sign/seal/verify/keycache/pda/lifecycle/transport. Pearl + Sidecar profiles. |
+| 1 | `melusina-attest` | Canonical Go reference. derive/sign/seal/verify/keycache/pda/lifecycle/transport. pearl + Sidecar profiles. |
 | 2 | `@hrbrlife/melusina-attest` | TS/npm port. verify + sign + envelope codec + pda readers. Browser-safe. |
 | 3 | `melusina-attest-py` | Python port. verify + sign + sidecar derive (for pr_ninja). |
 | 4 | `melusina-spkmodule-component` v0.2 | Adds `pre-pack-pearl`, `propose-release-pearl`, `finalize-release-pearl`, `post-publish-pearl` hooks. Removes `GPG_KEY` requirement. Two-phase `make publish`. |
@@ -554,7 +554,7 @@ New "Pending attestations" tab — shows apps whose SPK hashes don't have a `Rel
 
 ---
 
-## 7. Sidecar greenfield (PER SIDECAR)
+## 7. Sidecar greenfield (PER sidecar)
 
 Greenfield = full attestation from day 1. No legacy unsealed routes.
 
@@ -830,7 +830,7 @@ Per the user's directive: every sidecar and every app gets `melusina-attest` int
 | **spkmodule-component** | v0.3.0 pearl hooks | **GREENFIELD DEFAULT** locally at `_killlist_staging/melusina-spkmodule-component` (v0.3.0). `GPG_KEY` removed; `make publish` dispatches Squads `propose/finalize` and publish branches carry `RELEASE.json`. Zero apps consume it yet. |
 | **Sandstorm shell** | PGP deleted + ReleaseEntry lookup + envelope verify | PGP **IS** deleted. `grain-gate.js` **SHIPPED** as pre-launch gate checking `LocalAppApproval`. `ReleaseEntry` check + envelope verify on sidecar responses NOT done. |
 | **Static-store** | content-addressed by appHash + StoreReleaseListing + ReleaseEntry validation | **GREENFIELD validator patched.** `build-store.sh` now requires finalized `RELEASE.json`, rejects detached metadata signatures, verifies through `melusina-pearl-tool verify-release` unless `MELUSINA_ATTEST_OFFLINE=1`, copies manifests to `/attest/<appId>/RELEASE.json`, and emits `apps/index.json.attest` fields. Current publish submodules intentionally fail until republished through the Squads ceremony. |
-| **grain-auth** (first consumer) | v0.3.0 on attest envelope | Still on v0.2.1 bespoke wire. Migration plan documented at `GRAIN-AUTH-V0.3-MIGRATION.md`, **not implemented.** |
+| **grain-auth** (first consumer) | v0.3.0 on attest envelope | Still on v0.2.1 bespoke wire. Migration plan documented at `grain-AUTH-V0.3-MIGRATION.md`, **not implemented.** |
 
 ### 13.1 Sidecar coverage matrix (6 sidecars) — real state
 

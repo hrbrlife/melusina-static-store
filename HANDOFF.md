@@ -158,10 +158,10 @@ The "boots" claims from Pass 1 covered process startup. Pass 2 (per user's reque
 | App                       | Boots? | UI traffic (Pass 2) |
 |---------------------------|--------|---------------------|
 | AiLagoon                  | ✅      | **108 GETs / 8 POSTs** — `api/provider/ollama`, `api/provider/openrouter`, `POST connections/add`. SIDECARS REACHED. |
-| DueProcess (AITX)         | ✅      | **74 GETs / 3 POSTs** — `api/kanban`, `api/analytics`, `api/ai/status`, `api/client-hub/status`, `api/datasets/{agreement-aml-cft-policy,…}`, `POST api/hooks/drain`, `POST api/setup/blank`. WORKFLOW + SIDECAR PROBES ACTIVE. |
+| DueProcess (AITX)         | ✅      | **74 GETs / 3 POSTs** — `api/kanban`, `api/analytics`, `api/ai/status`, `api/client-hub/status`, `api/datasets/{agreement-aml-cft-policy,…}`, `POST api/hooks/drain`, `POST api/setup/blank`. WORKFLOW + sidecar PROBES ACTIVE. |
 | ccash (popaye) v0.3.2     | ✅      | 0 — boots to system_down state (no admin gate wired); UI not yet clicked through |
 | cca.sh Config             | ✅      | 0 — capnp ready, manifest loaded (id=popaye, 11 hooks); Powerbox claim flow not exercised |
-| CyberTeller               | ✅      | 0 — limited mode (sidecar env unset), `/api/payment/create-invoice` endpoint defined but not hit |
+| cyberteller               | ✅      | 0 — limited mode (sidecar env unset), `/api/payment/create-invoice` endpoint defined but not hit |
 | Cyberteller Config        | ✅      | 0 — boots `cca.sh Config v0.1.0 — raw capnp on FD 3` |
 | fineract Setup            | ✅      | 0 — workflow loaded (9 steps, 5 datasets) but UI not exercised |
 | BotMother                 | ✅      | 0 — workflow loaded, no UI hits |
@@ -285,13 +285,13 @@ Apps shipped this iteration:
 |---------------------------|-------------|--------------------------------|
 | Melusina OpenClaw         | 0.1.12      | Clawberg lobster (PNG)        |
 | cca.sh Config             | 0.0.6       | CcashAdmin (PNG)              |
-| Cyberteller Config        | 0.1.4       | CyberTeller (PNG)             |
+| Cyberteller Config        | 0.1.4       | cyberteller (PNG)             |
 | fineract Setup            | 0.2.2       | fineract Setup (PNG)          |
 | instaco                   | 0.1.2       | InstaCo.app (PNG)             |
 
 Remaining apps in user's screenshot that may still show generic icons
 (supervisor logs would reveal — to inspect via mongo or `spk unpack`):
-DueProcess, Doc Bureau, ClientSpace, cca.sh Wholesale, CyberTeller
+DueProcess, Doc Bureau, ClientSpace, cca.sh Wholesale, cyberteller
 (wallet, not config). Same fix recipe applies if pkgdef icons section
 is empty or references a copy-pasted ccash icon.
 
@@ -303,10 +303,10 @@ Continued audit + bulk fix. Fully shipped icon updates for:
 |------------------------------|---------------------|
 | Melusina OpenClaw            | Clawberg lobster    |
 | cca.sh Config                | CcashAdmin          |
-| Cyberteller Config           | CyberTeller         |
+| Cyberteller Config           | cyberteller         |
 | fineract Setup               | fineract Setup      |
 | instaco                      | InstaCo.app         |
-| CyberTeller (wallet)         | CyberTeller         |
+| cyberteller (wallet)         | cyberteller         |
 | cca.sh Client                | CcashClient         |
 | cca.sh Org Member            | CcashOrgMember      |
 | cca.sh Wholesale             | CashSurge           |
@@ -471,7 +471,7 @@ resolution and detail**. Verified end-to-end via Chrome MCP screenshots:
 - Row 1: popaye, AiLagoon, BotMother, Bureau Cal, Bureau Contacts, Bureau Notes
 - Row 2: CanBoard, cca.sh Client, cca.sh Config, cca.sh Domain Template,
   cca.sh Org Member, cca.sh Wholesale (cash register render now sharp)
-- Row 3: ChainWatch, ClientSpace, Consilium, CrateLink, CyberTeller, Cyberteller Config
+- Row 3: ChainWatch, ClientSpace, Consilium, CrateLink, cyberteller, Cyberteller Config
 - Row 4: Diagram Bureau, Doc Bureau, DueProcess, fineract Setup,
   InstaCo.app (LLC blue), Melusina OpenClaw
 - Row 5: MerMail, MiniGit, NamedCoin, Paint Bureau, Sheets Bureau,
@@ -504,7 +504,7 @@ across most existing grains. Now the grid shows proper icons for
 ChainWatch, MiniGit, popaye, Doc Bureau, OpenClaw, Teleport, Vintage
 Remote Desktop, CanBoard, ClientSpace, Bureau Contacts, NamedCoin,
 AiLagoon, cca.sh Config, TeleScreen Sidecar Configurator, fineract
-Setup, CyberTeller, Cyberteller Config, DueProcess. A few stale-cache
+Setup, cyberteller, Cyberteller Config, DueProcess. A few stale-cache
 diamond placeholders (`✦`) remain on individual older popaye grains —
 will refresh as user opens each.
 
@@ -662,7 +662,7 @@ iterations (tasks #6-22).
 
 ## 2026-05-06 15:24 — Grain-icon resolution fix (apps grid)
 
-**User report**: CanBoard, cca.sh Client, CyberTeller, Cyberteller Config,
+**User report**: CanBoard, cca.sh Client, cyberteller, Cyberteller Config,
 MiniGit, fineract Setup showed low-resolution icons in the apps grid.
 
 **Root cause** (found by inspecting al-card icon HTTP URLs in the live shell):

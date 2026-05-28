@@ -62,16 +62,16 @@ sidecar already runs as a systemd unit at `creeper.sidecar.host`.
 ## Governance
 
 - Multi-agent governance, Hard Truths, tick cadence, chain of
-  command, and v2 chatroom protocol: see
+  command, and v2 agentchat protocol: see
   `/home/user/Desktop/agentchat/CLAUDE.md`.
 - Full Hard Truths 1–13 and crew rules: see
   `/home/user/Desktop/agentchat/CHARTER.md`.
 
-## Pearl Onboarding — TODO (task #94)
+## pearl Onboarding — TODO (task #94)
 
-Not yet Pearl-onboarded. Needs (a) master-NFT-mint, (b) Squads
+Not yet pearl-onboarded. Needs (a) master-NFT-mint, (b) Squads
 vault, (c) signed on-chain `ReleaseEntry` verified against quorum
-before it can publish under the Pearl-only `make publish` model.
+before it can publish under the pearl-only `make publish` model.
 Until then, this app cannot ship through the migrated static_store
 catalog. Tracked org-wide as task #94.
 
@@ -81,7 +81,7 @@ catalog. Tracked org-wide as task #94.
   (placeholders today).
 - Wire `melusina-solana approve-local-sidecar --sidecar-id creeper`
   cascade (deployer Agent D scope, PLAN §5.3).
-- Pearl onboarding (above).
+- pearl onboarding (above).
 
 ## Hard Truths (Apply Here Verbatim)
 
@@ -98,7 +98,7 @@ catalog. Tracked org-wide as task #94.
   consumer-grain claim succeed. Local testing uses `sandstorm
   dev-shell` from `/home/user/Desktop/Melusina/sandstorm`.
 - **HT13 — Offline wallet signing.** Any `ReleaseEntry` mint for
-  this grain (Pearl onboarding) routes through the Squads /
+  this grain (pearl onboarding) routes through the Squads /
   offline-wallet path; no hardcoded keypairs, no devnet hot-key
   fallbacks.
 

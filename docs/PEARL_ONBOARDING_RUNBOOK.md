@@ -1,7 +1,7 @@
-# Pearl-Mode Onboarding Runbook
+# pearl-Mode Onboarding Runbook
 
 ## When to use this
-Your app currently uses `spkmodule` in offline-stub mode and you want to migrate to greenfield Pearl-mode (Squads-quorum signed releases).
+Your app currently uses `spkmodule` in offline-stub mode and you want to migrate to greenfield pearl-mode (Squads-quorum signed releases).
 
 ## Prerequisites
 - App is on canonical spkmodule submodule URL (see Stream B sweep — most apps already are)
@@ -20,7 +20,7 @@ git add spkmodule
 git commit -m "spkmodule: bump to greenfield"
 ```
 
-### 2. Declare Pearl vars in your Makefile
+### 2. Declare pearl vars in your Makefile
 After the existing `APP_SLUG := ...` line, add:
 ```makefile
 PEARL_LIVE_MASTER_NFT_MINT := <base58>

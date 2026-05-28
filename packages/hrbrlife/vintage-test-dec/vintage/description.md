@@ -1,4 +1,4 @@
-Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode — every change is ephemeral and wiped when the Pearl closes. Click Save to upgrade the Pearl to a persistent, Solana-backed workspace.
+Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode — every change is ephemeral and wiped when the pearl closes. Click Save to upgrade the pearl to a persistent, Solana-backed workspace.
 
 ## Why Vintage
 

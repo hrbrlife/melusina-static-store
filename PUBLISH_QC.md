@@ -76,8 +76,8 @@ Every field listed below must be present and correctly populated.
 - [ ] `shortDescription` is concise, compelling, ≤120 characters
 - [ ] `description` is either a full markdown string OR empty string `""` (which triggers fallback to `description.md`)
 - [ ] If using `description.md` fallback: that file exists alongside `metadata.json`
-- [ ] Description covers: what the app does, key features, Pearl types, how to get started
-- [ ] Description mentions **Pearl** (not "grain"), **Melusina** (not "Sandstorm"), **Grapple** (not "powerbox")
+- [ ] Description covers: what the app does, key features, pearl types, how to get started
+- [ ] Description mentions **pearl** (not "grain"), **Melusina** (not "Sandstorm"), **Grapple** (not "powerbox")
 
 ### Categories
 
@@ -208,9 +208,9 @@ All metadata text, descriptions, changelogs, and in-app strings **must** use Mel
 | ❌ Do NOT use | ✅ Use instead | Context |
 |---------------|---------------|---------|
 | Sandstorm | **Melusina** | Platform name |
-| grain | **Pearl** | Application instance / container |
-| Grain | **Pearl** | (capitalized form) |
-| powerbox | **Grapple** | Inter-Pearl capability exchange |
+| grain | **pearl** | Application instance / container |
+| Grain | **pearl** | (capitalized form) |
+| powerbox | **Grapple** | Inter-pearl capability exchange |
 | Powerbox | **Grapple** | (capitalized form) |
 | Legacy upstream platform domain | **melusina-os.org** | Platform website |
 | Oasis | _(removed)_ | Not applicable to Melusina |
@@ -235,7 +235,7 @@ grep -rniE '\bsandstorm\b|\bgrain\b|\bpowerbox\b|\boasis\b' \
 ```
 Matches from Sandstorm system binaries/paths (`sandstorm-http-bridge`, `sandstorm-manifest`,
 `sandstorm-pkgdef.capnp`) are acceptable — these are internal runtime components.
-User-visible text must use **Melusina**, **Pearl**, **Grapple** exclusively.
+User-visible text must use **Melusina**, **pearl**, **Grapple** exclusively.
 
 ---
 
@@ -270,8 +270,8 @@ User-visible text must use **Melusina**, **Pearl**, **Grapple** exclusively.
 
 ### Verification
 
-- [ ] App launches and is fully functional in development Pearl
-- [ ] All Pearl types instantiate correctly
+- [ ] App launches and is fully functional in development pearl
+- [ ] All pearl types instantiate correctly
 - [ ] Hot-reload is functional (file changes in mounted dir reflected in running app)
 - [ ] Mount persists after `Ctrl+C` / stopping `spk dev`
 - [ ] Running `make dev` again correctly cycles: unmount old → remount → `spk dev`
@@ -404,11 +404,11 @@ The capnp file in the **source repo** must be consistent with `metadata.json`.
 | `codeUrl` | `metadata.json → codeLink` |
 
 - [ ] All capnp metadata fields match their `metadata.json` counterparts
-- [ ] `actions` (Pearl types) have correct `title`, `nounPhrase`, `command`
+- [ ] `actions` (pearl types) have correct `title`, `nounPhrase`, `command`
 - [ ] `continueCommand` references a valid defined command
 - [ ] `sourceMap.searchPath` resolves all needed paths
 - [ ] `icons` (appGrid, grain, market, appMarket) are set
-- [ ] All text uses Melusina terminology (Pearl, Grapple — not grain, powerbox)
+- [ ] All text uses Melusina terminology (pearl, Grapple — not grain, powerbox)
 
 ---
 
@@ -450,7 +450,7 @@ make build
 
 # 2. Test in development (source repo)
 make dev
-# → verify app works in browser, all Pearl types, hot-reload
+# → verify app works in browser, all pearl types, hot-reload
 # → Ctrl+C to stop spk dev (mount persists)
 
 # 3. Package (source repo)
@@ -527,4 +527,4 @@ grep -rniE '\bsandstorm\b|\bgrain\b|\bpowerbox\b|\boasis\b' \
 
 Matches from Sandstorm system binaries/paths (`sandstorm-http-bridge`, `sandstorm-manifest`,
 `sandstorm-pkgdef.capnp`) are acceptable — these are internal runtime components.
-User-visible text must use **Melusina**, **Pearl**, **Grapple** exclusively.
+User-visible text must use **Melusina**, **pearl**, **Grapple** exclusively.

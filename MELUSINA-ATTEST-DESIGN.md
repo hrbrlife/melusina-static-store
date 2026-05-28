@@ -110,9 +110,9 @@ are what we generalize.
 ### 1.5 What BLOOM QUESTIONNAIRE does (naive MVP reference)
 
 Foundation Ed25519 key baked in at `/server/config/kycapp_private.pem_develop`,
-shared across all installs, plaintext PEM. Pearl subkey derivation:
+shared across all installs, plaintext PEM. pearl subkey derivation:
 `SHA-512("GRAIN_KEY_" + Date.now() || appPrivateKey)[0:32]` → Ed25519
-seed. Stored as plaintext in `/var/kyc-cases.db`. Pearl pubkey is NOT
+seed. Stored as plaintext in `/var/kyc-cases.db`. pearl pubkey is NOT
 signed by foundation. No on-chain anchoring. No Sandstorm-env binding.
 
 Skeleton of the right idea, nothing more. Greenfield replacement.
@@ -173,7 +173,7 @@ via the standard Curve25519 birational map (RFC 7748, libsodium's
 the on-chain `SidecarIdentityEntry.encrypt_pubkey: Option<Pubkey>` is
 populated (reserved for future HSM use).
 
-### 3.2 Pearl key construction — four shards
+### 3.2 pearl key construction — four shards
 
 ```
 A = authorShard            32B derived from RELEASE.json (signed by
@@ -384,7 +384,7 @@ any plaintext is produced.
 
 ### Approver chain for sensitive operations
 
-Pearl signs the envelope (envelope plane). For sensitive ops, one or
+pearl signs the envelope (envelope plane). For sensitive ops, one or
 more approver signatures stack on top. Each approver signs a canonical
 `approver-v1` payload committing to the initiator's pearl signature
 plus the approver's own PDA (wallet / OrganizationMember / InstallAdmin /
@@ -768,7 +768,7 @@ Bits 47..63 remain reserved. Existing bits 0..42 are undisturbed.
 
 ### 9.4 Discovery flow (pearl → sidecar, first call)
 
-Pearl knows: `license_mint`, `app_hash`, target `sidecar_id`, `master_nft_mint`.
+pearl knows: `license_mint`, `app_hash`, target `sidecar_id`, `master_nft_mint`.
 
 1. `GlobalSidecarApproval[master_nft_mint, sidecar_id]` — TTL 5 min
 2. `LocalSidecarApproval[license_mint, sidecar_id]` — TTL 2 min
@@ -973,7 +973,7 @@ type Identity struct {
     ed25519Priv    ed25519.PrivateKey       // RAM-only
 }
 
-// AsPearl derives a Pearl identity from the four shards.
+// AsPearl derives a pearl identity from the four shards.
 func AsPearl(cfg PearlConfig) (*Identity, error)
 
 // AsSidecar derives a Sidecar identity from three shards.

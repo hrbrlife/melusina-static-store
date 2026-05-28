@@ -92,7 +92,7 @@
               ]
             }
           ],
-          "purpose": "Solana programs invoked by the Pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime — recorded for catalog visibility into the app's on-chain release lineage."
+          "purpose": "Solana programs invoked by the pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime — recorded for catalog visibility into the app's on-chain release lineage."
         }
       ],
       "staticPublishing": {

@@ -8,7 +8,7 @@
       "pearlId": "telescreen",
       "pearlName": "TeleScreen",
       "pearlType": "user-pearl",
-      "purpose": "Public-relations / publication-ready surface — push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The Pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
+      "purpose": "Public-relations / publication-ready surface — push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
       "sidecars": [],
       "grapple": {
         "offers": [],
@@ -89,7 +89,7 @@
       "staticPublishing": {
         "enabled": true,
         "via": "melusina-static-publish",
-        "purpose": "Push the assembled, signed publish bundle to the operator-configured public CDN target. The static-publish sidecar handles the upload; this Pearl only assembles + signs."
+        "purpose": "Push the assembled, signed publish bundle to the operator-configured public CDN target. The static-publish sidecar handles the upload; this pearl only assembles + signs."
       },
       "httpOut": {
         "enabled": false,

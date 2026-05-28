@@ -1,11 +1,11 @@
 {
   "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
   "name": "Cyberteller Config",
-  "version": "0.1.3",
-  "versionNumber": 12,
-  "packageId": "90e216786a64ba5d5c034460b7e1accf",
+  "version": "0.1.7",
+  "versionNumber": 16,
+  "packageId": "7e679266e61b552f66b08710ede204a1",
   "shortDescription": "Cyberteller install-admin (boot env source)",
-  "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch — the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
+  "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
   "categories": [
     "Productivity"
   ],
@@ -25,7 +25,7 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.1.3",
+  "marketingVersion": "0.1.7",
   "appTitle": "Cyberteller Config",
-  "sha256": "90e216786a64ba5d5c034460b7e1accf12646755abc2a9319bb0408ddc94d351"
+  "sha256": "7e679266e61b552f66b08710ede204a126fda869667c2397a2f289acefed31d0"
 }

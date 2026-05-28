@@ -104,13 +104,13 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 cat > "$TMP/package.json" <<'JSON'
-{"type":"module","dependencies":{"@Solana/web3.js":"~1.98.0","@sqds/multisig":"~2.1.4"}}
+{"type":"module","dependencies":{"@solana/web3.js":"~1.98.0","@sqds/multisig":"~2.1.4"}}
 JSON
 echo "[ceremony:$APP_SLUG] installing @sqds/multisig…"
 npm install --prefix "$TMP" --silent
 
 cat > "$TMP/next-index.mjs" <<'JS'
-import { Connection, PublicKey } from "@Solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
 const [rpcUrl, multisigPdaRaw] = process.argv.slice(2);
@@ -129,7 +129,7 @@ import {
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
-} from "@Solana/web3.js";
+} from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
 const [statePath, rpcUrl, publisherPath, reviewer1Path, reviewer2Path, resultPath, memoLabel] = process.argv.slice(2);

@@ -7,7 +7,7 @@
       "version": "0.7.12",
       "versionNumber": 20,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
-      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At grain startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the grain picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the grain's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
+      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
       "categories": [
         "Productivity"
       ],
@@ -42,7 +42,7 @@
       "marketingVersion": "0.7.12",
       "sha256": "dace21490ca48d816b9ab2c36386f3813f7d88175d85489d3d2b32db88f7f394",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779878349641,
+      "updatedAt": 1779981642458,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "dace21490ca48d816b9ab2c36386f3813f7d88175d85489d3d2b32db88f7f394",
@@ -228,7 +228,7 @@
         }
       },
       "capabilities": null,
-      "description": "**BotMother** is a Telegram bot management pearl built on the gohtmx framework with native Cap'n Proto grain communication (no `sandstorm-http-bridge`).\n\nA single grain hosts a message hub plus agentchat and per-bot webhook handlers \u2014 each bot type runs as its own isolated pearl binary, so a token leak or runtime crash in one bot can't cascade across the fleet. Built-in grain types: a routing-rules message hub, Telegram webhook handlers, an auto-reply agentchat engine, and workflow instance + station pearls for longer-running flows.\n\nFor fleet operators who need routing, chatrooms, and isolated bot runtimes all in one Sandstorm grain. MIT-licensed.",
+      "description": "**BotMother** is a Telegram bot management pearl built on the gohtmx framework with native Cap'n Proto pearl communication (no `sandstorm-http-bridge`).\n\nA single pearl hosts a message hub plus agentchat and per-bot webhook handlers \u2014 each bot type runs as its own isolated pearl binary, so a token leak or runtime crash in one bot can't cascade across the fleet. Built-in pearl types: a routing-rules message hub, Telegram webhook handlers, an auto-reply agentchat engine, and workflow instance + station pearls for longer-running flows.\n\nFor fleet operators who need routing, chatrooms, and isolated bot runtimes all in one Sandstorm grain. MIT-licensed.",
       "screenshots": []
     },
     {
@@ -689,21 +689,21 @@
       "marketingVersion": "0.0.11",
       "sha256": "c86fe87998611f700e9e440402623927e32c2b8f0fdad11c9ddeefd060c17c3e",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1779878350065,
+      "updatedAt": 1779981642798,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c86fe87998611f700e9e440402623927e32c2b8f0fdad11c9ddeefd060c17c3e",
-        "releaseHash": "56ea4a29cbe1fad3ce234b4987481f5af9c720b0251e6d67e239348b3b6b229f",
-        "releaseNonce": "2e17933400a81ba3eb1451adb75085aafb735cff95a95286c9febe9bbd721bd0",
-        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "MasterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "signedAtUnix": 1779841290,
-        "authorSig": "dc3ae3ff187c8a3e680eef1d9a510bfc5e3a9cca4a3ae2d44f60843af10548e8",
+        "appHash": "0d9c61b9ffe076a7ddf9a60b9ee37b6841572e2e4abf3c4dc8dadc43f2f1c16b",
+        "releaseHash": "1413f51b770cae269aa10c5116fbf02376c85b1428c3d0e35cda47c1c75152d7",
+        "releaseNonce": "39b6693b97beaf08dabac428632aa17c",
+        "releaseEntryPda": "77MZBRPUYoTym1qruHkPoG2c9rA4teGWQVhp5VxCvXWq",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779981903,
+        "authorSig": "PX20c5NOfnzMgkpuZ9fKQBnt6lRFNu7MNSKFcRacT3QH3ZiyWIWEsd0i3cppAXf9c7vR2Vw0pSPX7Gafq+wQDg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -858,7 +858,7 @@
       "marketingVersion": "0.4.0",
       "sha256": "4efebbbd4f788ffa04f88079d034a251ad6f4720fac8e57f626f9352c56096db",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779878349661,
+      "updatedAt": 1779981642478,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "077624509239f8a9a001d172ee4b74f92c91e4d9a946a5cdee0becb1d4bd1439",
@@ -1144,7 +1144,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1779878349725,
+      "updatedAt": 1779981642514,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
@@ -1162,7 +1162,7 @@
         }
       },
       "capabilities": null,
-      "description": "Partner-admin relay grain for the cca.sh constellation. Adopts\nwholesale sub-account capabilities, records organization-local grant\nand member metadata, mints scoped operator and per-member capabilities,\nand forwards settlement escrows upstream after four-eyes capture.\nShips an admin web UI for member invite + role-change (CLAUDE.md\nTask #34) with the `client` role first-class."
+      "description": "Partner-admin relay pearl for the cca.sh constellation. Adopts\nwholesale sub-account capabilities, records organization-local grant\nand member metadata, mints scoped operator and per-member capabilities,\nand forwards settlement escrows upstream after four-eyes capture.\nShips an admin web UI for member invite + role-change (CLAUDE.md\nTask #34) with the `client` role first-class."
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
@@ -1193,7 +1193,7 @@
       "marketingVersion": "0.2.3",
       "sha256": "21ef256ef14d94f59c90cc953d88c20d6ca21f8a7614f86333501442ae516afa",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779878349745,
+      "updatedAt": 1779981642518,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "21ef256ef14d94f59c90cc953d88c20d6ca21f8a7614f86333501442ae516afa",
@@ -1347,13 +1347,13 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "description": "ChainWatch is the multi-chain RPC proxy sidecar for cyberteller. It exposes three HTTP endpoints \u2014 `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` \u2014 and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate grain\n\n- **Single chokepoint for outbound RPC.** cyberteller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs \u2014 nothing else. cyberteller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator grain or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.Solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot \u2014 there is no stub fallback (greenfield posture, fail loud).",
+      "description": "ChainWatch is the multi-chain RPC proxy sidecar for cyberteller. It exposes three HTTP endpoints \u2014 `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` \u2014 and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate pearl\n\n- **Single chokepoint for outbound RPC.** cyberteller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs \u2014 nothing else. cyberteller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator pearl or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.Solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot \u2014 there is no stub fallback (greenfield posture, fail loud).",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
       "sha256": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779878349825,
+      "updatedAt": 1779981642550,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -1522,7 +1522,7 @@
         }
       },
       "capabilities": null,
-      "description": "BLOOM Client Collection \u2014 a sturdyref-based container grain for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
+      "description": "BLOOM Client Collection \u2014 a sturdyref-based container pearl for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
       "screenshots": []
     },
     {
@@ -2010,7 +2010,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "fd2eace79bc3c2bc99cf5538d643090fef4080138095ba9f89001905e2ad640c",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779878349893,
+      "updatedAt": 1779981642666,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "54c5dceeacdc15d40dff841df1ad2a72efa92b122d6e91e10af73e4e0a975414",
@@ -2059,7 +2059,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.14",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779880123645,
+      "updatedAt": 1779981642622,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a8a805a53213eceb92bd549e5a3a23f23bd84de2de3fd1ba7c2474562722e643",
@@ -2230,7 +2230,7 @@
       "appTitle": "Cyberteller Config",
       "sha256": "90e216786a64ba5d5c034460b7e1accf12646755abc2a9319bb0408ddc94d351",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779878350109,
+      "updatedAt": 1779981642826,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "c6f7f2c046670feac2a3891d2f13c0b2a8b3dd35ed4cb579f916dd292eebd1f5",
@@ -2647,7 +2647,7 @@
         }
       },
       "capabilities": null,
-      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+      "description": "DueProcess is the Station pearl that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
       "screenshots": []
     },
     {
@@ -2677,7 +2677,7 @@
       "marketingVersion": "0.1.23",
       "sha256": "e7e31ba8653388b7f5f1676c40edc054470afb566ec311ff191ab45338d5966b",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779878349537,
+      "updatedAt": 1779981642426,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "7e11f2d87eb751b74907054be51384c858ea9eb789db645177a371cbaed99ff5",
@@ -2705,7 +2705,7 @@
       "versionNumber": 9,
       "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
       "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
-      "description": "Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why Fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
+      "description": "Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why Fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Pearl-local setup isolation** \u2014 setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
@@ -2732,7 +2732,7 @@
       "marketingVersion": "0.2.3",
       "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1779878349853,
+      "updatedAt": 1779981642630,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -2886,7 +2886,7 @@
         }
       },
       "capabilities": null,
-      "description": "**InstaCo** is the mobile-first app for a Montana series-LLC formation product. A global resident can form a real US company \u2014 a \"series\" sitting under a parent \"clan\" LLC operated by the platform \u2014 get a real US tax ID and address, and run the company entirely in-app, with named AI assistants drafting work and humans approving via Solana wallet or OTP.\n\n**One grain = one company.** Each grain hosts exactly one series LLC; multi-company workflows are a Sandstorm shell concern, not an InstaCo concern. Clans are real domains whose names become the legal name of the parent series LLC \u2014 v1 clans include `impex.direct` (importers / exporters / dropshippers), `ngneer.pro` (engineers), `codest.works` (developers), `adhaus.agency` (marketers), `porto.fund` (traders / angels), and `vellum.studio` (designers / fashion / brand). A customer's business lives as a subdomain under their clan, e.g. `wildhoney.impex.direct` is the website *and* part of the legal name *\"WILDHONEY, a series of IMPEX.DIRECT SERIES LLC\"*.\n\nBuilt in Go + TypeScript (lit-html + Vite) as a Sandstorm grain. Pairs with the sibling `ccash` grain over native Cap'n Proto for payment intents.",
+      "description": "**InstaCo** is the mobile-first app for a Montana series-LLC formation product. A global resident can form a real US company \u2014 a \"series\" sitting under a parent \"clan\" LLC operated by the platform \u2014 get a real US tax ID and address, and run the company entirely in-app, with named AI assistants drafting work and humans approving via Solana wallet or OTP.\n\n**One pearl = one company.** Each pearl hosts exactly one series LLC; multi-company workflows are a Sandstorm shell concern, not an InstaCo concern. Clans are real domains whose names become the legal name of the parent series LLC \u2014 v1 clans include `impex.direct` (importers / exporters / dropshippers), `ngneer.pro` (engineers), `codest.works` (developers), `adhaus.agency` (marketers), `porto.fund` (traders / angels), and `vellum.studio` (designers / fashion / brand). A customer's business lives as a subdomain under their clan, e.g. `wildhoney.impex.direct` is the website *and* part of the legal name *\"WILDHONEY, a series of IMPEX.DIRECT SERIES LLC\"*.\n\nBuilt in Go + TypeScript (lit-html + Vite) as a Sandstorm grain. Pairs with the sibling `ccash` pearl over native Cap'n Proto for payment intents.",
       "screenshots": []
     },
     {
@@ -3027,7 +3027,7 @@
         }
       },
       "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "description": "# OpenClaw\n\nA personal AI assistant pearl for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the pearl's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon pearl, and discovers\n  tools from any other Melusina pearl you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new pearl access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-pearl permission scoping** \u2014 each connected pearl decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a pearl's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two pearl types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo pearl registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {
@@ -3430,7 +3430,7 @@
         }
       },
       "capabilities": null,
-      "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-NamedCoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
+      "description": "**NamedCoin** is the KYC onboarding pearl for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin pearl: melusina-NamedCoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
     },
     {
@@ -3464,7 +3464,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1779958807802,
+      "updatedAt": 1779981642838,
       "attest": {
         "schema": "",
         "appHash": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
@@ -3750,7 +3750,7 @@
           }
         ]
       },
-      "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the NamedCoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm grain store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated OpenSanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Grain**: NamedCoin-pearl (Go + HTMX, Sandstorm grain)\n- **Sidecar**: NamedCoin-sidecar (Go, HTTP API on port 9100)\n- **Admin grain**: melusina-NamedCoin-admin-app (separate grain)\n- **Dependencies**: ailagoon-sidecar (LLM), OpenSanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the NamedCoin, ailagoon, OpenSanctions, and mermail sidecars.",
+      "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the NamedCoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm pearl store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated OpenSanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Pearl**: NamedCoin-pearl (Go + HTMX, Sandstorm pearl)\n- **Sidecar**: NamedCoin-sidecar (Go, HTTP API on port 9100)\n- **Admin pearl**: melusina-NamedCoin-admin-app (separate pearl)\n- **Dependencies**: ailagoon-sidecar (LLM), OpenSanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the NamedCoin, ailagoon, OpenSanctions, and mermail sidecars.",
       "screenshots": []
     },
     {
@@ -3917,7 +3917,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "b46872eb37a7a0065c4116b58cc3e812861bd1eba6bb105cef216c5b941da94a",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779878349933,
+      "updatedAt": 1779981642694,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ad71da2ebe796a6d8cec0a61c307e12c8155b7c2c36ca6dc89f883d30c23647f",
@@ -4120,7 +4120,7 @@
       "marketingVersion": "0.3.63",
       "sha256": "fcca23c27f8be6a185874b01419bf3c7bce03b6b94f41661d27c82d3cf12dab0",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1779878349693,
+      "updatedAt": 1779981642494,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fcca23c27f8be6a185874b01419bf3c7bce03b6b94f41661d27c82d3cf12dab0",
@@ -4345,7 +4345,7 @@
         }
       },
       "capabilities": null,
-      "description": "# Shell Tester\n\nA minimal Sandstorm grain for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** \u2014 Test wallet signing operations via Melusina shell capabilities\n- **OTP** \u2014 Verify one-time password generation and validation\n- **NFTs** \u2014 Test NFT-related operations through shell extensions\n- **Solana RPC** \u2014 Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis grain is intended for developers and testers working on Melusina platform integrations.",
+      "description": "# Shell Tester\n\nA minimal Sandstorm pearl for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** \u2014 Test wallet signing operations via Melusina shell capabilities\n- **OTP** \u2014 Verify one-time password generation and validation\n- **NFTs** \u2014 Test NFT-related operations through shell extensions\n- **Solana RPC** \u2014 Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis pearl is intended for developers and testers working on Melusina platform integrations.",
       "screenshots": []
     },
     {
@@ -4376,7 +4376,7 @@
       "marketingVersion": "2.1.2",
       "sha256": "9c5060f77122fced9176401e206d1dfd0b7eccd8231c66c21591dde5207d1a39",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1779878350885,
+      "updatedAt": 1779981643294,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4487,7 +4487,7 @@
           }
         ]
       },
-      "description": "Teleport is a Sandstorm-native chat grain with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-grain isolation** \u2014 each Teleport grain is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the grain\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-grain platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" grain action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
+      "description": "Teleport is a Sandstorm-native chat pearl with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-pearl isolation** \u2014 each Teleport pearl is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the pearl\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-pearl platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" pearl action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
     {
@@ -4519,7 +4519,7 @@
       "marketingVersion": "0.0.3",
       "sha256": "dbae586557389a60d6b4481ffb7baa17b6d069a120a451b2698503079d80c35f",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1779878350341,
+      "updatedAt": 1779981642998,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
@@ -4648,7 +4648,7 @@
           }
         ]
       },
-      "description": "TeleScreen is the Sandstorm-side screening sidecar plus admin core grain for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and grain-scoped isolation.\n\nA complete install is three Sandstorm grains that compose across two SPKs: the REST/JSON sidecar and the HTMX admin + member core grain (both in this SPK), plus the setup grain shipped separately as `telescreen-companion.spk`. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\nPackaging is `spk dev` / `spk pack`. Docker and direct system service deployment are not part of the polished MVP path.",
+      "description": "TeleScreen is the Sandstorm-side screening sidecar plus admin core pearl for the Melusina constellation.\n\nIt exposes compact sanctions, adverse-media, compliance, and blockchain-risk APIs through Sandstorm, with signed configuration, grant validation, and pearl-scoped isolation.\n\nA complete install is three Sandstorm grains that compose across two SPKs: the REST/JSON sidecar and the HTMX admin + member core pearl (both in this SPK), plus the setup pearl shipped separately as `telescreen-companion.spk`. Setup signs the trust bundle; core consumes it; sidecar verifies and serves.\n\nPackaging is `spk dev` / `spk pack`. Docker and direct system service deployment are not part of the polished MVP path.",
       "screenshots": []
     },
     {
@@ -4679,7 +4679,7 @@
       "license": "Proprietary",
       "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1779878349997,
+      "updatedAt": 1779981642762,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -4787,7 +4787,7 @@
           }
         ]
       },
-      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
+      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm pearl is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe pearl stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
@@ -4822,7 +4822,7 @@
       "marketingVersion": "1.2.1",
       "sha256": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1779878350965,
+      "updatedAt": 1779981643346,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -4935,12 +4935,12 @@
         "email": "support@processstation.app",
         "website": "https://processstation.app"
       },
-      "description": "Welcome pearl is a multi-tenant visitor intake grain for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account grain in a pending account-opening state until four-eyes review activates it.",
+      "description": "Welcome pearl is a multi-tenant visitor intake pearl for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account pearl in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "Proprietary",
       "marketingVersion": "0.1.6-merchant-strip",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1779878350997,
+      "updatedAt": 1779981643374,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "4a475eaa4e87e4babeb901c7a1bfbcd99ecddbf6df73edc9a328a786ea66691a",

@@ -143,7 +143,7 @@ Stream C is building the dev-store HTTP sidecar (POST `/team/<vault>/dev/package
 
 | Other-team contracts | Status |
 |---|---|
-| Stream A: lineage-as-PDA-seed (Option C, single instruction); team-only DEV mint; DevAppRegistry FCFS; remote-cosigner pattern (no in-grain custody) | Acknowledged + shipping |
+| Stream A: lineage-as-PDA-seed (Option C, single instruction); team-only DEV mint; DevAppRegistry FCFS; remote-cosigner pattern (no in-pearl custody) | Acknowledged + shipping |
 | Stream C: POST `/team/<vault>/dev/packages` multipart + canonical-envelope-JSON + Ed25519 sig + `X-Melusina-Idempotency-Key` + pending tier with auto-promotion on ReleaseEntry Active | Frozen |
 
 ---

@@ -12,7 +12,7 @@
 - Cross-server HMAC-signed probe subsystem
 - Admin review workflow (approve, revoke, freeze attestations)
 - AiLagoon integration for document-authenticity and face-match checks
-- Sandstorm grain with bridgeConfig (Owner/Applicant/Viewer roles)
+- Sandstorm pearl with bridgeConfig (Owner/Applicant/Viewer roles)
 - AdminGate.ProcessExecutor export for DueProcess case routing
-- PowerBox manifest for sidecar access (NamedCoin, ailagoon, OpenSanctions, mermail)
+- Grapple manifest for sidecar access (NamedCoin, ailagoon, OpenSanctions, mermail)
 - UiView tab configuration (Biometric, Document, Contact, Status, Result)

@@ -4,11 +4,11 @@
   the visitor submits the intake form, the success view now renders an
   inline "Open the client account workspace in popaye" block:
   - a `<a id="popaye-handoff-cta" data-handoff-cta data-handoff-intake>`
-    button that links to popaye's grain home carrying the intake_id +
+    button that links to popaye's pearl home carrying the intake_id +
     intent + referrer on the query, and
   - a `<button id="popaye-handoff-copy" data-handoff-copy>` chip that
-    copies the intake_id to clipboard for the Sandstorm-cross-grain
-    case where the popaye-side query doesn't ferry across grain
+    copies the intake_id to clipboard for the Sandstorm-cross-pearl
+    case where the popaye-side query doesn't ferry across pearl
     creation. `escapeAttr` keeps both data hooks safe.
 - Pairs with popaye 0.3.50-psp-welcome-handoff's `welcomeHandoff` parser
   + unlock-curtain banner (welcome_handoff.go + gate.go).

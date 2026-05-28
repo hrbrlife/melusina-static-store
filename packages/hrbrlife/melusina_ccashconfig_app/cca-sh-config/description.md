@@ -8,4 +8,4 @@ cca.sh Config is the admin pearl for the cca.sh / popaye operator console. One i
 
 ## Status
 
-**v0.0.10 — pearl-onboarded.** Live on Solana devnet, 3-of-4 Core App Team Squads quorum, canonical foundation master `B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe`. AdminGate Cap'n Proto offerable (`@0xa7c4d2e91b8f5634`) is served on FD 3 — sibling ccash Pearls (popaye + the cca-tc-* tradechain variants) PowerBox-claim it at first boot and import the bindings via `go.mod replace` for compile-time wire stability. See `RELEASE.json` and `changelog.md` for the on-chain attestation and per-release notes.
+**v0.0.10 — pearl-onboarded.** Live on Solana devnet, 3-of-4 Core App Team Squads quorum, canonical foundation master `B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe`. AdminGate Cap'n Proto offerable (`@0xa7c4d2e91b8f5634`) is served on FD 3 — sibling ccash Pearls (popaye + the cca-tc-* tradechain variants) Grapple-claim it at first boot and import the bindings via `go.mod replace` for compile-time wire stability. See `RELEASE.json` and `changelog.md` for the on-chain attestation and per-release notes.

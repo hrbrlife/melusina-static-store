@@ -20,13 +20,13 @@
 >   open + derive); TS + Python verify-side MVP ports; testvectors
 >   generator; Solana program state + instructions (engineer B);
 >   spkmodule-component v0.3.0 pearl hooks; Sandstorm shell's
->   pre-launch `grain-gate.js` + PGP deletion; static_store PGP
+>   pre-launch `pearl-gate.js` + PGP deletion; static_store PGP
 >   deletion; 4-wallet Core App Team generated on devnet.
 > - **NOT shipped:** any app migrated (0/21); any sidecar migrated
 >   (0/6); `melusina-pearl-tool` CLI; deployer `register-release-Squads`
 >   subcommand (still theatrical); `ReleaseEntry` / envelope verify
 >   in the shell; `StoreReleaseListing` + Solana RPC in the store;
->   grain-auth v0.3.0 (still on bespoke v0.2.1 wire).
+>   pearl-auth v0.3.0 (still on bespoke v0.2.1 wire).
 >
 > The sections below describe the TARGET. For what's genuinely in
 > production see KILL-LIST §13.
@@ -36,7 +36,7 @@
 ## 0. Problem statement
 
 Every message that crosses a Melusina trust boundary — pearl (Sandstorm
-grain) → sidecar, sidecar → pearl, pearl → pearl, PDF → end user, capnp
+pearl) → sidecar, sidecar → pearl, pearl → pearl, PDF → end user, capnp
 cap → cap — must carry **cryptographically irrefutable evidence** that
 it was produced by:
 
@@ -44,7 +44,7 @@ it was produced by:
 2. on the **right domain** (DomainClaim),
 3. running an **attested release** of an **attested app** (GlobalAppApproval
    + ReleaseEntry),
-4. and (for pearl-produced messages) by a specific **grain owned by a
+4. and (for pearl-produced messages) by a specific **pearl owned by a
    specific user**,
 
 such that any verifier holding only `(message, Solana RPC, release binary
@@ -93,16 +93,16 @@ Particularly relevant fields:
 
 ### 1.3 Key material
 
-- **`grain-crypto-journal/keybox`** seals DEKs with `HKDF(installTrustRoot
-  || operatorWalletPubkey, salt(kv), "melusina-grain-encryption-v2")`.
-  No grain-id, owner, or domain mixed in today.
+- **`pearl-crypto-journal/keybox`** seals DEKs with `HKDF(installTrustRoot
+  || operatorWalletPubkey, salt(kv), "melusina-pearl-encryption-v2")`.
+  No pearl-id, owner, or domain mixed in today.
 - **NaCl box** (X25519 + XSalsa20-Poly1305) is the canonical wrap primitive
-  used at `grain-crypto-journal/keybox/wrap.go` (`WrapSolana`, `NewNaClBoxWrap`)
-  and `grain-e2e-binding/core/service.go`.
+  used at `pearl-crypto-journal/keybox/wrap.go` (`WrapSolana`, `NewNaClBoxWrap`)
+  and `pearl-e2e-binding/core/service.go`.
 
 ### 1.4 Gold-standard pattern already in the tree
 
-`melusina-grain-auth` Unix-socket flow: sidecar returns Ed25519-signed
+`melusina-pearl-auth` Unix-socket flow: sidecar returns Ed25519-signed
 authorization decisions keyed by `LicenseEntry.authz_identity_pubkey`.
 The primitives (canonical payload, server-signed response, nonce cache)
 are what we generalize.
@@ -129,7 +129,7 @@ Skeleton of the right idea, nothing more. Greenfield replacement.
    primitives as pearls; a sidecar is "a peer without an owner shard".
 4. **/var-export resistance.** Copying `/var` off-host must not let an
    attacker sign as the pearl on a different host, or on a different
-   grain of the same app on the same host.
+   pearl of the same app on the same host.
 5. **Per-release binding.** A different release of the same app produces
    a different pearl identity; old signatures verify historically, new
    signatures under the new key.
@@ -141,7 +141,7 @@ Skeleton of the right idea, nothing more. Greenfield replacement.
    the signed release manifest, the publisher's public identity, a
    public shard, or an encrypted shard whose KEK is derivable only at
    runtime. The foundation's signing root stays in release-pipeline
-   custody and never ships in a grain binary.
+   custody and never ships in a pearl binary.
 
 ## 2.1 Three trust planes (keep them separate)
 
@@ -200,24 +200,24 @@ pearlPub  = derived                           // persisted; on-chain in PearlIde
 ```
 
 **Publisher key is NEVER baked into the SPK.** The SPK contains:
-- `RELEASE.json` — a manifest of `{appHash, releaseHash, version, signedAtUnix, MasterNftMint}` — signed by the foundation during the release ceremony, verified by the grain at startup against the on-chain `ReleaseEntry.author_sig`.
+- `RELEASE.json` — a manifest of `{appHash, releaseHash, version, signedAtUnix, MasterNftMint}` — signed by the foundation during the release ceremony, verified by the pearl at startup against the on-chain `ReleaseEntry.author_sig`.
 - The publisher's public identity (for verification only).
 - Optionally a public shard `A` derived from release metadata — no
   secrecy here.
 
 The foundation's signing root lives in release-pipeline custody (Squads
-multisig). Grains never hold it. Compromise of a grain binary cannot
+multisig). Grains never hold it. Compromise of a pearl binary cannot
 compromise the foundation's ability to sign future releases.
 
 The security of the pearl key rests on:
-- **`B`** (grain-observed, requires running in the correct Sandstorm
-  grain with the correct `/var` inode tree — cannot be reconstructed
+- **`B`** (pearl-observed, requires running in the correct Sandstorm
+  pearl with the correct `/var` inode tree — cannot be reconstructed
   offline or on a different host)
 - **`C`** (owner-sealed, requires the correct `B ‖ A ‖ D` KEK, which
-  is reconstructable only inside the legitimate grain)
+  is reconstructable only inside the legitimate pearl)
 
 **Sandstorm/deployer first-launch assignment.** Strongest pattern: the
-Sandstorm launcher (or a dedicated `melusina-grain-installer` hook)
+Sandstorm launcher (or a dedicated `melusina-pearl-installer` hook)
 supplies a first-launch attestation that is NOT stored naked in `/var`.
 This attestation is a `GrainAssignment` PDA pre-minted by the install
 admin pinning `{grain_id, expected_owner_user_id, license_mint, app_hash}`,
@@ -526,7 +526,7 @@ Every capnp RPC method crossing a trust boundary takes or returns
 `SignedSealedMessage` as its outermost argument. A small `sealedwrap`
 generator in `melusina-capnp/tools` emits `XxxSealed` wrapper interfaces
 from any interface tagged `$melusina.sealedBoundary = true`. Non-boundary
-(intra-grain) capnp calls are exempt.
+(intra-pearl) capnp calls are exempt.
 
 Existing in-production capnp schemas don't change — wrappers forward to
 the existing interface after unsealing.
@@ -538,7 +538,7 @@ the existing interface after unsealing.
 ### 8.1 Routine cadence
 
 Sidecar keys rotate quarterly; pearl keys rotate only on redeploy (pearls
-are ephemeral, grain lifecycle drives rotation). On suspected compromise,
+are ephemeral, pearl lifecycle drives rotation). On suspected compromise,
 rotate immediately.
 
 ### 8.2 Rotation ceremony (sidecar case, generalizes to pearls)
@@ -578,7 +578,7 @@ Accept in-flight request failures; retries pick up the new key via
 Add `authz_identity_pubkey_history: Vec<(Pubkey, valid_until_slot)>`
 with at most 2 entries. In-flight signatures verify against the pubkey
 active when they were signed. This is the existing field for
-`melusina-grain-auth`; rotation was previously destructive. Fix it
+`melusina-pearl-auth`; rotation was previously destructive. Fix it
 independently of pearl-identity landing.
 
 ---
@@ -615,7 +615,7 @@ Canonical release payload (what `author_sig` covers):
 `release_hash.len() == 32` (not a variable-length String label),
 ed25519-program-sysvar verification of `author_sig`.
 
-#### 9.1.2 `PearlIdentityEntry` — per-grain identity
+#### 9.1.2 `PearlIdentityEntry` — per-pearl identity
 
 ```rust
 // seeds: ["pearl_identity", license_nft_mint, grain_id_hash]
@@ -743,7 +743,7 @@ pub struct GrainAssignment {
 ```
 
 **Purpose**: defeats the first-launch ownership-race attack. Minted
-before the grain is launched; consumed atomically during PearlIdentityEntry
+before the pearl is launched; consumed atomically during PearlIdentityEntry
 registration. Without a matching GrainAssignment, pearl registration
 fails.
 
@@ -807,10 +807,10 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 
 ### 10.1 /var export
 
-- **Copy /var to a different host** → `B` (grain-observation shard) depends
+- **Copy /var to a different host** → `B` (pearl-observation shard) depends
   on `SANDSTORM_HOST_ID` + inode tree. Different host → different `B` →
   different master → pearl key unforgeable.
-- **Clone /var to a different grain of same app on same host** →
+- **Clone /var to a different pearl of same app on same host** →
   different `SANDSTORM_GRAIN_ID` → different `B` → different key.
 - **Clone /var across release boundary** → `D` (release shard = appHash)
   changes → different KEK for owner-shard unsealing → owner.sealed
@@ -821,7 +821,7 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 
 - SPK is public; `A` is recoverable by anyone with `MasterNftMint`. This
   is **by design** — `A`'s role is release-binding, not secrecy. Secrecy
-  rests on `B` (grain-observed) and `C` (owner-sealed).
+  rests on `B` (pearl-observed) and `C` (owner-sealed).
 - Foundation key compromise → `rotate_release_signer` instruction (new)
   re-seals future releases; past releases remain valid (they were valid
   when signed).
@@ -831,7 +831,7 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 - **Malicious first-launcher** → defeated by `GrainAssignment` PDA
   pre-minted by InstallAdmin pinning `expected_owner_user_id`.
 - **Sandstorm host compromise (operator malicious)** → operator can read
-  in-grain data (always true in Sandstorm), but CANNOT forge signatures
+  in-pearl data (always true in Sandstorm), but CANNOT forge signatures
   on a different host for an existing pearl.
 - **grainrestore across hosts** → intentional break. Migration ceremony:
   `PearlIdentityEntry::migrate_from(prior_pubkey)` signed by
@@ -861,7 +861,7 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 - V2 envelopes on `require_pearl: true` routes return HTTP 426. Canonical
   V3 starts with literal `v3\n`; Ed25519 over V2 bytes won't verify.
 
-### 10.7 Cross-app / cross-grain replay
+### 10.7 Cross-app / cross-pearl replay
 
 - Canonical V3 commits `AppHash`, `PearlPubkey`, `DestSidecarID`,
   `DestPubkeyFp`. Cross-contamination fails signature check.
@@ -875,7 +875,7 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 
 1. Long-term sidecar key compromise decrypts past captured ciphertext
    (no receiver-side forward secrecy). Mitigation: rotation (§8).
-2. Malicious Sandstorm operator can read in-grain plaintext. This is a
+2. Malicious Sandstorm operator can read in-pearl plaintext. This is a
    Sandstorm-model limit, not ours to fix.
 3. Master NFT custody: must be Squads multisig, not single wallet.
    Audit before any v0.1.0 ceremony.
@@ -1035,7 +1035,7 @@ Every port ships `verify` in v0.1.0 — any peer may receive sealed traffic.
 |---|---|---|
 | **v0.1.0** | identity/derive/seal/spkbake/canonical/envelope/sign/encrypt/verify/keycache/pda/lifecycle, pearl + sidecar profiles, HTTP transport. `PearlIdentityEntry`, `ReleaseEntry`, `SidecarIdentityEntry`, `SidecarReleaseEntry`, `AppSidecarAuthorization`, `GrainAssignment` PDAs land on-chain. | Wave 1 |
 | **v0.2.0** | capnp `SignedSealedMessage` schema + wrapper generator; `sealedBoundary` annotation; auto-wrap interfaces. | Wave 2 |
-| **v0.3.0** | PowerBox descriptor extension for expected-identity binding; PowerBox broker confusion attack closes. | Wave 3 |
+| **v0.3.0** | Grapple descriptor extension for expected-identity binding; Grapple broker confusion attack closes. | Wave 3 |
 
 ---
 
@@ -1090,19 +1090,19 @@ architecture is secure:
 
 1. **`ReleaseRecord.release_hash: String` → fixed-size `[u8; 32]`** —
    enforce SHA-256 hash, on-chain verify `author_sig`.
-2. **`melusina-grain-auth` response-replay** — sidecar Ed25519 signature
+2. **`melusina-pearl-auth` response-replay** — sidecar Ed25519 signature
    must commit `sha256(request_canonical_bytes)` + per-call nonce +
-   `sidecar_id` + `license_nft_mint`. Ship as `melusina-grain-auth v0.1.2`
+   `sidecar_id` + `license_nft_mint`. Ship as `melusina-pearl-auth v0.1.2`
    security patch.
 3. **Master NFT custody audit** — confirm Squads multisig, not
    single-wallet.
-4. **Pre-launch SPK approval gate** — new `melusina-grain-installer`
-   refuses to launch a grain whose SPK hash has no active
+4. **Pre-launch SPK approval gate** — new `melusina-pearl-installer`
+   refuses to launch a pearl whose SPK hash has no active
    `GlobalAppApproval`.
 
 ### 13.2 Wave 1 (v0.1.0) — reference consumer
 
-Target: **a new test-only grain** that does nothing but sign messages.
+Target: **a new test-only pearl** that does nothing but sign messages.
 Proves the full chain end-to-end in a low-blast-radius target.
 
 ### 13.3 Wave 1.5 — ccash
@@ -1125,7 +1125,7 @@ Each sidecar goes through three stages:
   still accepts both.
 - **Stage 3 (2 weeks)**: hard cut; legacy unsealed → HTTP 426.
 
-### 13.5 Wave 3 (v0.3.0) — all pearls + PowerBox
+### 13.5 Wave 3 (v0.3.0) — all pearls + Grapple
 
 - Remaining pearls (botmother, cyberteller, instaco, sailsto_system,
   teleport2, vintage-test-dec, worldmonitor): run
@@ -1133,7 +1133,7 @@ Each sidecar goes through three stages:
   outbound.
 - `melusina-notify-sandstorm` upgrades to include pearl attestation
   on every notify webhook body.
-- Sandstorm shell extension: PowerBox descriptor gains
+- Sandstorm shell extension: Grapple descriptor gains
   `melusina_attestation` JSON field.
 
 ---
@@ -1145,7 +1145,7 @@ Each sidecar goes through three stages:
    replacement (zero real consumers today per iter-1 recon).
 2. **`LicenseEntry.authz_identity_pubkey` vs. pearl key** — different
    keys, different purposes. `authz_identity_pubkey` is the sidecar-authz
-   service key (melusina-grain-auth); `pearl_pubkey` is the grain's own
+   service key (melusina-pearl-auth); `pearl_pubkey` is the pearl's own
    key. No field overlap.
 3. **Permission bits 43, 44, 45, 46** — occupy next free slots after 42.
    Regenerate `idl/MelusinaPermissions.capnp`; rerun
@@ -1186,7 +1186,7 @@ Each sidecar goes through three stages:
 - Per-pearl TLS cert override (defer to v0.2.0).
 - In-place pearl key rotation (revoke + re-register is the only path).
 - Quorum pearl keys (one Ed25519 per pearl).
-- Arbitrary grain↔grain capnp sealing (v0.3.0).
+- Arbitrary pearl↔pearl capnp sealing (v0.3.0).
 - Recovery from lost `owner.sealed` (resolves to "new pearl identity
   under new grain_id_hash").
 - Python port of pearl mode (no Python pearls today).
@@ -1209,7 +1209,7 @@ Each sidecar goes through three stages:
 
 ## Appendix B. Deferred sibling components
 
-- `melusina-grain-installer` — pre-launch SPK approval gate. Separate
+- `melusina-pearl-installer` — pre-launch SPK approval gate. Separate
   component; enforces `GlobalAppApproval.app_hash` check before first
   launch.
 - `melusina-attest-py` — Python port for sidecars (pr_ninja/TeleScreen).

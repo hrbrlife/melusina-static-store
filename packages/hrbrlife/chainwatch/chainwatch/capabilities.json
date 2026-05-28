@@ -23,7 +23,7 @@
         "adminOnly": [
           {
             "name": "Operator",
-            "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via PowerBox."
+            "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via Grapple."
           }
         ],
         "organizationOnly": [],

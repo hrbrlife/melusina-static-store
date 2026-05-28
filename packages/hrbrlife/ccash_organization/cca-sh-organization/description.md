@@ -1,4 +1,4 @@
-Partner-admin relay grain for the cca.sh constellation. Adopts
+Partner-admin relay pearl for the cca.sh constellation. Adopts
 wholesale sub-account capabilities, records organization-local grant
 and member metadata, mints scoped operator and per-member capabilities,
 and forwards settlement escrows upstream after four-eyes capture.

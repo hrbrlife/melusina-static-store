@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "versionNumber": 1,
   "shortDescription": "Sanctions consumer grain — KYC/AML screening for the Melusina PSP.",
-  "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via PowerBox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
+  "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
   "categories": [
     "Productivity"
   ],

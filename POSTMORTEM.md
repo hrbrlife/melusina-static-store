@@ -209,5 +209,5 @@ captured in `static_store/main` commit `a278e95` and remain valid.
    (done 2026-04-25 alongside #4). Until follow-up #1 is decided, no
    publish from this checkout proceeds without explicit operator
    intent. Banner added to `README.md`; full procedure for the
-   admin-grain v0.1.0 publication path documented at
+   admin-pearl v0.1.0 publication path documented at
    `docs/M1_CCASH_CONFIG_PUBLISH_PATH.md`.

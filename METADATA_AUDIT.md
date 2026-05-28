@@ -17,7 +17,7 @@
 | -------- | --------------------- | ----- | --------------------------------------------------------------- |
 | HARD     | `ZERO_AND_NO_DIR`     | 18    | `screenshots: []` AND `screenshots/` dir absent or empty        |
 | HARD     | `MISSING`             | 9     | required field absent, no documented fallback                   |
-| HARD     | `BAD_TERM`            | 9     | uses "grain"/"Sandstorm"/"PowerBox" — PUBLISH_QC §1 L80         |
+| HARD     | `BAD_TERM`            | 9     | uses "grain"/"Sandstorm"/"Grapple" — PUBLISH_QC §1 L80         |
 | HARD     | `SECONDS_NOT_MS`      | 4     | `createdAt` in seconds, spec wants ms (off by 1000)             |
 | SOFT     | `LESS_THAN_3`         | 2     | screenshots count < 3 but at least 1 (pre-launch acceptable)    |
 | **TOTAL**|                       | **42**|                                                                 |
@@ -50,20 +50,20 @@ push to that submodule's publish branch, bump catalog SHA.
 ### Terminology drift (PUBLISH_QC §1 L80)
 
 Spec: use **pearl** not "grain", **Melusina** not "Sandstorm",
-**Grapple** not "PowerBox" in user-facing strings. Found in
+**Grapple** not "Grapple" in user-facing strings. Found in
 `description` or `shortDescription`:
 
 | Repo / slug                              | Bad term    |
 | ---------------------------------------- | ----------- |
-| `AI_Lagoon/ai-lagoon`                    | `grain`     |
+| `AI_Lagoon/ai-lagoon`                    | `pearl`     |
 | `INSTASYS_MAIL/mermail`                  | `Sandstorm` |
-| `ccash/ccash`                            | `grain`     |
-| `client_collection/clientspace`          | `grain`     |
+| `ccash/ccash`                            | `pearl`     |
+| `client_collection/clientspace`          | `pearl`     |
 | `Fineract-setup/Fineract-setup`          | `Sandstorm` |
 | `melusina-bureau-notes-app/bureau-notes` | `Sandstorm` |
 | `melusina-ccash-client-app/ccash-client` | `Sandstorm` |
 | `melusina-ccash-org-member-app/ccash-org-member` | `Sandstorm` |
-| `vintage-test-dec/vintage`               | `grain`     |
+| `vintage-test-dec/vintage`               | `pearl`     |
 
 Fix per app: search-and-replace in `description` /
 `shortDescription` (or in `description.md` if that's the source),
@@ -134,8 +134,8 @@ launch-day cut.
    the same per-submodule discipline as the `.asc` sweep, **announce
    per HT5 first**.
 
-2. **Terminology cleanup** (9 apps) — search-and-replace `grain`→`pearl`,
-   `Sandstorm`→`Melusina`, `PowerBox`→`Grapple` in
+2. **Terminology cleanup** (9 apps) — search-and-replace `pearl`→`pearl`,
+   `Sandstorm`→`Melusina`, `Grapple`→`Grapple` in
    `description`/`shortDescription`/`description.md`. Per-app
    semantic touch; should be cross-checked by the app maintainer
    first since some descriptions may legitimately mention Sandstorm
@@ -167,7 +167,7 @@ REQUIRED_TYPES = {
 REQUIRED_AUTHOR = {"name", "githubUsername", "twitterUsername", "picture"}
 VALID_CATEGORIES = {"Productivity","Office","Social","Developer Tools",
                     "Communications","Finance","Media","Games","Other"}
-TERMS_BAD = ["grain", "Sandstorm", "PowerBox"]
+TERMS_BAD = ["grain", "Sandstorm", "Grapple"]
 SHORT_DESC_MAX = 120
 
 base = "packages/hrbrlife"

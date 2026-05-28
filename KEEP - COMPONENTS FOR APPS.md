@@ -153,12 +153,12 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                          
   Cost: ~1 day. Extracts directly from existing scripts.                                                                                                 
                                                                                                                                                          
-  melusina-grain-runtime-component                                                                                                                       
+  melusina-pearl-runtime-component                                                                                                                       
                                                                                                                                                          
-  Problem: I hand-bundled sandstorm-http-bridge + a custom Go staticserve into 8 SPKs. Every Coming Soon / static-grain reimplements the same runtime.   
+  Problem: I hand-bundled sandstorm-http-bridge + a custom Go staticserve into 8 SPKs. Every Coming Soon / static-pearl reimplements the same runtime.   
                                                                                                                                                        
   Interface:                                                                                                                                             
-  APP_BUILD_STYLE := grain-runtime                                                                                                                     
+  APP_BUILD_STYLE := pearl-runtime                                                                                                                     
   GRAIN_STATIC_DIR := www                                                                                                                              
   include spkmodule/mk/core.mk                                                                                                                           
   
@@ -187,10 +187,10 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                          
   Spin up as separate components (tier 2 — do when pain hits)                                                                                            
                                                                                                                                                          
-  melusina-grain-sdk                                                                                                                                     
+  melusina-pearl-sdk                                                                                                                                     
                                                                                                                                                        
   MELUSINA_BOTMOTHER already has a substantial Go framework for building grains (capnp schemas, HTMX wire helpers, pearl lifecycle hooks). It's currently
-   bundled in that one app. Extract → every Go-based grain depends on it instead of inlining copies. Sizable undertaking — probably a couple of weeks to
+   bundled in that one app. Extract → every Go-based pearl depends on it instead of inlining copies. Sizable undertaking — probably a couple of weeks to
   tease out cleanly.                                                                                                                                     
                                                                                                                                                        
   melusina-auth-component                                                                                                                              
@@ -206,8 +206,8 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                        
   melusina-e2e-harness-component                                                                                                                         
   
-  I just wrote playwright tests for the static store. Every app under pbay would want similar: "does the install flow from bazaar → pbay → grain actually
-   work?" Shared fixtures for: Sandstorm shell login, grain creation, pearl URL resolution. Deferred until you have ≥2 apps with real grains (so the   
+  I just wrote playwright tests for the static store. Every app under pbay would want similar: "does the install flow from bazaar → pbay → pearl actually
+   work?" Shared fixtures for: Sandstorm shell login, pearl creation, pearl URL resolution. Deferred until you have ≥2 apps with real grains (so the   
   abstractions reflect reality, not aspirations).                                                                                                        
                                                                                                                                                        
   melusina-license-component                                                                                                                             
@@ -236,16 +236,16 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                         │         │                                                                                                                      
                         │         └─── melusina-ci (workflow_call)
                         │                                                                                                                                
-          melusina-grain-runtime ◄─── Coming Soon apps                                                                                                 
+          melusina-pearl-runtime ◄─── Coming Soon apps                                                                                                 
                         ▲                                                                                                                                
                         │                                                                                                                                
-                melusina-grain-sdk ◄─── Go-based grains                                                                                                
+                melusina-pearl-sdk ◄─── Go-based grains                                                                                                
                                             │                                                                                                            
                                             └── melusina-auth                                                                                          
                                             └── melusina-ui-shell                                                                                        
   
-  Keep the arrows shallow. spkmodule shouldn't depend on grain-runtime — you can ship a grain without the runtime if it brings its own. grain-runtime    
-  shouldn't depend on grain-sdk — you can ship a minimal static-HTML grain without the Go framework. Each layer should be independently useful.        
+  Keep the arrows shallow. spkmodule shouldn't depend on pearl-runtime — you can ship a pearl without the runtime if it brings its own. pearl-runtime    
+  shouldn't depend on pearl-sdk — you can ship a minimal static-HTML pearl without the Go framework. Each layer should be independently useful.        
                                                                                                                                                          
   My concrete recommendation for the next cut                                                                                                            
                                                                                                                                                        
@@ -255,12 +255,12 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
   - Everything needed already exists in .build-tmp/*.py scripts                                                                                        
   - Clear per-app interface (one JSON config + one make target)                                                                                          
   - High ongoing ROI (icon changes happen often; right now they're painful)                                                                            
-  - Low coordination cost (icons are leaf artefacts; no grain runtime changes)                                                                           
+  - Low coordination cost (icons are leaf artefacts; no pearl runtime changes)                                                                           
                                                                                                                                                          
   If you want, I can extract it now — clone the pattern from melusina-spkmodule-component, move gen_pwa_variants.py + recolor_icons.py + ICON_TAXONOMY.md
    into it, and inject into the 8 new-app repos (which currently have icons baked in at SPK-build time, not driven by a component).                      
                                                                                                                                                          
-  The second-best extraction is melusina-grain-runtime-component — it would let us deprecate the hand-built Coming Soon grain from rebuild_grains.py and 
+  The second-best extraction is melusina-pearl-runtime-component — it would let us deprecate the hand-built Coming Soon pearl from rebuild_grains.py and 
   all 8 new apps would consume a versioned runtime instead of each shipping their own 9MB bundle.                                                      
                                                                                                                                                          
   Beyond that, I'd defer. Tier 2+ needs real pain signal before you guess wrong about the shared API shape. 

@@ -1,8 +1,8 @@
 **popaye** is a mobile-first operator console for an MSB / PSP / VASP
-back office, packaged as a single Sandstorm grain. One grain = one
+back office, packaged as a single Sandstorm grain. One pearl = one
 client account = one customer.
 
-## Three actors, one grain
+## Three actors, one pearl
 
 Every popaye install is shaped by three parties:
 
@@ -41,11 +41,11 @@ PII.
   the Fineract JVM, both verifying the same canonical payload
   against the same registered-pubkey registry.
 - **Encrypted SQLite at rest.** Single `/var/grain.db.enc`,
-  envelope-encrypted with a per-grain wallet-anchored keybox.
+  envelope-encrypted with a per-pearl wallet-anchored keybox.
 - **Compliance is somebody else's job.** KYC, sanctions screening,
   AML rules, SAR drafting, and Travel Rule marshalling live in
   sibling DueProcess Station grains reached over Cap'n Proto
-  PowerBox capabilities — never via HTTP, never inside this grain.
+  Grapple capabilities — never via HTTP, never inside this pearl.
 
 ## What's in the box
 
@@ -64,7 +64,7 @@ PII.
 Go 1.25 + HTMX, raw Cap'n Proto WebSession (no http-bridge), no
 JavaScript build step, no Tailwind, no Node. Single static binary,
 single `.spk`. Mobile-first responsive HTML/CSS — Sandstorm owns
-the PWA wrapper above the grain.
+the PWA wrapper above the pearl.
 
 ## Licensing
 

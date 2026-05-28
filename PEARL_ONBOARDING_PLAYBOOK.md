@@ -231,7 +231,7 @@ Solana transfer 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 2 \
 ## 9. 2026-05-18 session results — 41/41 catalog entries onboarded
 
 End-to-end fleet sweep on 2026-05-18 onboarded all 41 publishable catalog
-entries (the original 14-grain PSP-blocker inventory in
+entries (the original 14-pearl PSP-blocker inventory in
 `agentchat/CLAUDE.md` + every other SPK in `packages/hrbrlife/*/`):
 
 | Group | Count | Notes |

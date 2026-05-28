@@ -33,7 +33,7 @@ invalidates downstream phase gates.
 | Sidecars (`Melusina/sidecar/`) | 8 deployable, 0 with `RELEASE.json`, no `sidecar.mk` exists |
 | Public-store `build-store.sh` | ReleaseEntry-required, rejects `.asc`, delegates to `melusina-pearl-tool verify-release`; `./build-store.sh --dry-run` fails 23/23 until `RELEASE.json` exists and `.asc` is gone |
 | Admin-store `build-store.sh` | diverged 654-line fork, `validate_release_attestation` removed, no `.asc` rejection, no tool integration; `./build-store.sh --dry-run` currently passes 6/6 because it does not check ReleaseEntry attestations |
-| `acceptUnattestedSPKs` shell kill-switch | still live — removing it today bricks every currently-installed grain |
+| `acceptUnattestedSPKs` shell kill-switch | still live — removing it today bricks every currently-installed pearl |
 
 **Fleet total: 37 components. Fleet migrated: 0/37. Proposals executed: 0.**
 
@@ -60,9 +60,9 @@ invalidates downstream phase gates.
 - Deleting legacy `metadata.json.asc` from existing per-app publish branches (cosmetic; post-MVP).
 - Rewriting the 11 attestation PDAs or introducing new ones (`GlobalAppApproval` / `LocalAppApproval` are not in the program — see §2).
 - Backfilling real `slug` / `developer` fields into metadata (`N/A` is tolerated; catalog derives from dir paths).
-- npm / PyPI publishes of `notify-sandstorm`, `identity-gate-py`, `grain-auth` language ports.
-- Cross-machine `grain-restore` portability.
-- grain-auth v0.3 envelope migration unless a named sidecar depends on it (see §8 risks).
+- npm / PyPI publishes of `notify-sandstorm`, `identity-gate-py`, `pearl-auth` language ports.
+- Cross-machine `pearl-restore` portability.
+- pearl-auth v0.3 envelope migration unless a named sidecar depends on it (see §8 risks).
 - Creating new apps / minting Master NFTs for apps not already in the registry.
 
 ### Deferred apps honored by absence
@@ -145,7 +145,7 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 5. `finalize-sidecar-release` rewrites a sidecar-flavoured `RELEASE.json`.
 6. Push to per-sidecar `publish` branch.
 
-**grain-auth v0.3 check:** iterate each of the 8 sidecars; if any one's current auth envelope is v0.2 and it serves a pearl whose pearl.mk requires v0.3, that sidecar is blocked. Decision (record in the PR): either (a) cut v0.3 now, or (b) defer that specific sidecar from Phase 4 and name it in §7. **Default: (b) — defer named sidecars, ship the rest.**
+**pearl-auth v0.3 check:** iterate each of the 8 sidecars; if any one's current auth envelope is v0.2 and it serves a pearl whose pearl.mk requires v0.3, that sidecar is blocked. Decision (record in the PR): either (a) cut v0.3 now, or (b) defer that specific sidecar from Phase 4 and name it in §7. **Default: (b) — defer named sidecars, ship the rest.**
 
 **Phase 4 gate:** `melusina-spkmodule-component/mk/sidecar.mk` is in main; 8 sidecars each have a `publish` branch carrying a finalized sidecar `RELEASE.json` (or are explicitly named in §7 as deferred).
 
@@ -273,10 +273,10 @@ Anything below is **not** blocked by this plan and will be kept out of these pha
 - `GlobalAppApproval` / `LocalAppApproval` PDAs (not in code; would require separate Anchor design).
 - `StoreReleaseListing` PDA minting for each published release.
 - `SensitiveActionPolicy` / `CrossLicenseHopAuthorization` flows.
-- grain-auth v0.3 envelope cutover (gated on Phase 4 sidecar analysis; may defer named sidecars instead).
+- pearl-auth v0.3 envelope cutover (gated on Phase 4 sidecar analysis; may defer named sidecars instead).
 - melusina-attest Python / TS `pip` / `npm` publish.
 - Master-NFT minting ceremony for apps not already in the registry.
-- Cross-machine `grain-restore` portability.
+- Cross-machine `pearl-restore` portability.
 - CI auto-verify for the fleet (GitHub Actions across all 37 publish branches).
 - Re-running `make publish` for version bumps (first clean run must land; bumps follow).
 - Writing new apps or onboarding new app authors.

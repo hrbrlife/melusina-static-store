@@ -93,8 +93,8 @@ Three knobs, never touch the template:
 | Value | Uses | When |
 |---|---|---|
 | `noop` | `mk/build-noop.mk` | SPK contents are pre-built / static |
-| `go` | `mk/build-go.mk` | Grain binary compiled from Go |
-| `npm` | `mk/build-npm.mk` | Grain built via `npm ci && npm run build` |
+| `go` | `mk/build-go.mk` | Pearl binary compiled from Go |
+| `npm` | `mk/build-npm.mk` | Pearl built via `npm ci && npm run build` |
 | `custom` | — | The app Makefile writes its own `build-source` target |
 
 Go/npm backends accept additional knobs — see the individual `.mk` files.

@@ -86,17 +86,17 @@ This commit:
   pinning the live wire shape, the error-passthrough, and the
   back-compat hits[] fallback.
 
-## v0.3.44-caps-diag — 2026-05-18 — PowerBox-cap reception observability
+## v0.3.44-caps-diag — 2026-05-18 — Grapple-cap reception observability
 
 Adds an admin-only `/debug/caps` page that surfaces the live wiring
-state of the four outbound dependencies: the `AdminGate` PowerBox cap
+state of the four outbound dependencies: the `AdminGate` Grapple cap
 (sturdyref-token presence + boot-handshake state + partner +
 manifest digest + pinned-flow count), the OpenSanctions-sidecar
 (base URL + tenant user + license NFT mint + TLS-verify toggle), the
 Fineract-sidecar (signed + direct mode URLs), and the cyberteller
 endpoint (env-configured URL). JSON twin at `/debug/caps.json` for
 curl + observability scrapers. Closes the Riker tick-164 FINISH-TODAY
-for `ccash_go_htmx` (PowerBox-cap reception screenshots post-redeploy)
+for `ccash_go_htmx` (Grapple-cap reception screenshots post-redeploy)
 — one frame now captures the whole constellation-wiring picture.
 
 No new outbound traffic at request time: snapshot reads view-held
@@ -146,10 +146,10 @@ text. An unrecognised sidecar `risk_level` value also produces an
 
 Deletes pkg/cybertellerclient/cybertellerclient.go (the HTTP + Ed25519
 envelope transport) and its test file entirely. The Cap'n Proto
-CybertellerInbound capability — claimed via Sandstorm PowerBox — is now
+CybertellerInbound capability — claimed via Sandstorm Grapple — is now
 the ONLY supported ccash→cyberteller transport. Fixes the production
 nil-pointer panic in pkg/cybertellerclient/(*Client).post that fired
-whenever a popaye grain reached approval-sign with no claimed cap and
+whenever a popaye pearl reached approval-sign with no claimed cap and
 no CYBERTELLER_URL: main.go stored a typed-nil *Client in the Gateway
 interface field, so the runtime nil-receiver check `gw == nil` was
 false and the call dereferenced c.baseURL on a nil receiver.
@@ -158,8 +158,8 @@ Behavioural change: when the operator has NOT yet completed
 Settings → Constellation → Connect cyberteller (and no persisted
 sturdyref restores at boot), snapshotCyberteller() returns a true
 nil interface; callCybertellerM1 returns errCybertellerNotConfigured
-and postApprovalSign keeps stub settlement (single-grain POC mode).
-On a configured grain (sturdyref restored or PowerBox just claimed),
+and postApprovalSign keeps stub settlement (single-pearl POC mode).
+On a configured pearl (sturdyref restored or Grapple just claimed),
 CreateInvoice flows through *cybertellercapnp.CapnpClient.
 
 Surface deletions: pkg/cybertellerclient.Client, .LoadFromEnv,
@@ -187,7 +187,7 @@ from sandstorm-pkgdef.capnp and ship a new SPK.
 ## v0.3.19-smoke-otpbypass — 2026-05-15 — SMOKE-ONLY OTP bypass (Captain override)
 
 Adds CCASH_SMOKE_BYPASS_OTP env-gated bypass in pkg/approval/policy.go.
-When the popaye grain command environ sets this var to "1" (live on
+When the popaye pearl command environ sets this var to "1" (live on
 app.cca.sh per sandstorm-pkgdef.capnp), Evaluate force-clears
 RequireOtp on every Decision (TierHigh + TierMedium) so the PSP-live
 receive smoke can mint M1 envelopes without a Telegram credential on
@@ -313,7 +313,7 @@ discipline; `app.spk` packs cleanly. 14 commits on top of v0.7.0
 The headline: the full constellation now boots end-to-end on a laptop
 with one command (`make demo-up`), an operator can drive a Send wizard
 through to a settled transaction in the browser without Sandstorm, and
-every cross-grain hop carries an Ed25519-signed envelope. ~150 commits
+every cross-pearl hop carries an Ed25519-signed envelope. ~150 commits
 across this loop session, organized below by tier.
 
 ### Tier 1 — hard blockers closed (constellation could not demo without these)
@@ -347,7 +347,7 @@ across this loop session, organized below by tier.
   fallback. `d19e0e7` hydration + `b5b9549` audit (validator gate,
   status snapshot, stale-escalation, race test).
 - **GrainContext: per-claim identity.** Drop the startup singleton
-  sentinel; each PowerBox claim now carries its own caller identity
+  sentinel; each Grapple claim now carries its own caller identity
   end-to-end. `15f3171`.
 - **Typed `/receive/webhook` dispatcher.** Replaces the previous
   string-switch with a typed handler tree; `fa13143` follow-up adds
@@ -446,8 +446,8 @@ in a browser, including the multi-user approval loop.
   this branch; the .spk builds and the dev-mode loop works, but the
   production-spk smoke test on dev.pbay.app is still pinned to
   v0.6.x.
-- **Multi-grain Sandstorm test** (two ccash grains on the same host
-  exchanging PowerBox capabilities) is still single-grain only in
+- **Multi-pearl Sandstorm test** (two ccash grains on the same host
+  exchanging Grapple capabilities) is still single-pearl only in
   CI. The plumbing is in place; the test scenario isn't.
 - **Cyberteller HTTP retirement** is partial: M1/M6 have a
   Cap'n Proto opt-in path (`7b5d54a`), but the three remaining HTTP
@@ -521,7 +521,7 @@ now drives Sandstorm sign-in → pure-client bind → launch-unlock
 (canonical Ed25519 payload signed by the `BrowserWallet` shim, POSTed
 to `/e2e/admin` directly) → dashboard assertion. The old
 `window.Solana` + `/onboarding` assumption is gone. For automated
-runs against a ccash grain, the grain MUST be booted with
+runs against a ccash pearl, the pearl MUST be booted with
 `CCASH_QA_E2E_BYPASS_MELUSINA=1`; this short-circuits the Melusina
 shell-availability check in `canUseShellUnlock()` but leaves full
 Ed25519 signature verification intact, so an invalid or replayed
@@ -550,14 +550,14 @@ cyberteller's `/dev/deposit` simulate route, polls for
 `temp_credited`, then drives bob's Complete-settlement click and
 polls for `settled`.
 
-**Station ↔ ccash grain pairing.** New `pkg/casepairing` package:
-one-record-per-grain JSON-backed store on disk at
+**Station ↔ ccash pearl pairing.** New `pkg/casepairing` package:
+one-record-per-pearl JSON-backed store on disk at
 `$DATA_DIR/case-pairing.json`. `POST /api/v1/case` records the
 binding under the same Bearer auth as `/api/v1/activate`;
 `GET /api/v1/case` reads it back. `/api/v1/activate` now accepts
 `case_id` in the body and fails-closed on mismatch, or lazy-binds if
-the grain is unbound on first activation. Closes the known wire gap
-where Station had no way to know which ccash grain to target for an
+the pearl is unbound on first activation. Closes the known wire gap
+where Station had no way to know which ccash pearl to target for an
 intake-driven hook (CONSTELLATION_E2E_DESIGN.md §6.4, §13 rule 4).
 
 **Provider flow is end-to-end + observable.** `templates/provider_new.html`
@@ -572,14 +572,14 @@ detail page and list row render a visible chip (`✓ wired` /
 `✗ failed` / `… in progress` / `✗ unreachable`). Closes the §6.5
 gap where provider setup was opaque best-effort.
 
-**Bundle handoff + grain snapshot + activation-secret diff.**
+**Bundle handoff + pearl snapshot + activation-secret diff.**
 `qa/lib/bundle_handoff.py` parses A8's trust-bundle JSON export and
 exports `FINREACT_BUNDLE_ROOT_PUBKEY` for A5.
-`qa/lib/snapshot.py` wraps Sandstorm's grain backup API so scenarios
+`qa/lib/snapshot.py` wraps Sandstorm's pearl backup API so scenarios
 can restore fixture state instead of re-running the full predecessor
 chain. `qa/lib/activation_secret_check.py` diffs
 `STATION_ACTIVATION_SECRET` between the caller's env and the ccash
-grain's `/api/v1/case` so a bearer mismatch surfaces loudly.
+pearl's `/api/v1/case` so a bearer mismatch surfaces loudly.
 
 **CI browser lane.** `.github/workflows/ci.yml` grows a `qa` job
 that installs ffmpeg + Python + Playwright (Chromium) and runs the
@@ -605,7 +605,7 @@ and is called from the swap handler in `handlers_post.go` — direct
 with CLAUDE.md §7 / §10's "cache hint, not source of truth" rule.
 
 **Pending-account state machine:** `pkg/accountstatus` owns an
-eight-state grain-level DFA — `opening_pending → pending_four_eyes
+eight-state pearl-level DFA — `opening_pending → pending_four_eyes
 → approved_pending_activation → active`, plus `needs_more_info`,
 `rejected`, `failed`, `closed`. Persists to `$DATA_DIR/account-
 status.json`. Every POST handler checks `CanWrite()` before mutating;
@@ -631,7 +631,7 @@ guided UI lands separately. Unblocks the data layer for E2E
 scenarios A6/A7.
 
 **TemplateService skeleton:** `pkg/templateclient` holds a noop +
-HTTP skeleton for the DueProcess Template grain PowerBox
+HTTP skeleton for the DueProcess Template pearl Grapple
 token. `StatusProbe` returns nil when a token is mounted so health
 reporting can tell the two client kinds apart. Real wire protocol
 TBD — contract is not finalized.
@@ -659,7 +659,7 @@ welcome}/*.yaml` are all on disk.
 The permission model has been restructured from a four-role set
 (admin / operator / viewer / auditor) to a six-role model split
 explicitly across an **admin side** (the MSB staff running the
-grain) and a **client side** (the account owner and their
+pearl) and a **client side** (the account owner and their
 delegates). Auditors straddle both sides — they read everything
 and write nothing. See CLAUDE.md §8 for the full table and
 `pkg/users/users.go` for the predicates.
@@ -667,7 +667,7 @@ and write nothing. See CLAUDE.md §8 for the full table and
 **The six roles:**
 
 1. **Admin** — full access, including user management and
-   fundamental settings (fee schedule, pricing, grain-wide policy).
+   fundamental settings (fee schedule, pricing, pearl-wide policy).
 2. **Collaborator** — normal admin-side flow: initiate / draft /
    approve transactions, manage contacts and wallets. Cannot manage
    users; cannot change fundamental settings. MSB day-to-day staff
@@ -830,24 +830,24 @@ pre-Solana era was deleted outright: no `Legacy` fields, no
 
 ## 0.5.0 — GrainContext alignment with openclaw + instaco
 
-This pass lands the cross-grain integration surface that lets ccash
+This pass lands the cross-pearl integration surface that lets ccash
 receive transfer intents from instaco and publish status updates
-that any sibling grain (notably openclaw's agent runtime) can poll.
+that any sibling pearl (notably openclaw's agent runtime) can poll.
 Everything in this pass is implemented in Go in-process today;
 the Cap'n Proto wire attachment to fd3 is stubbed pending the
 upstream openclaw-bridge bindings work.
 
 ### The integration contract
 
-Rather than invent a ccash-specific cross-grain schema, v0.5.0 adopts
+Rather than invent a ccash-specific cross-pearl schema, v0.5.0 adopts
 **openclaw's universal `GrainContext` interface** verbatim. The same
 Cap'n Proto schema, the same Go type shapes, the same Adapter
 interface. openclaw's design decision — `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md`
 and `openclaw-main/capnp/graincontext.capnp:1-36` — is that every
-Melusina-ecosystem grain implements the same describe/invoke/poll
+Melusina-ecosystem pearl implements the same describe/invoke/poll
 surface. ccash borrowing this shape means:
 
-- **openclaw's runtime drives ccash with zero per-grain code.**
+- **openclaw's runtime drives ccash with zero per-pearl code.**
   Its agents hold a Cap'n Proto `GrainContext` capability and
   dispatch against the catalog ccash publishes in `describe()`.
 - **instaco's future Phase 4 backend pushes transfer intents via
@@ -912,7 +912,7 @@ schema and implements the interface. Key pieces:
   3. `cancel_transfer` — idempotent cancel from any non-terminal
      state.
   4. `settle_transfer` — transitions approved → settled. Called
-     by the sibling grain that actually moves the funds.
+     by the sibling pearl that actually moves the funds.
   5. `get_transfer_status` — read one transaction, including
      settlement block if present.
   6. `list_pending` — list transactions awaiting approval or
@@ -990,7 +990,7 @@ field. It's constructed once at startup in `main.go`:
 
 ```go
 gcAdapter, err := graincontext.NewCcashAdapter(graincontext.CcashAdapterConfig{
-    GrainID:          "ccash-grain",
+    GrainID:          "ccash-pearl",
     Title:            "ccash workspace",
     GrantedRoleTitle: "Operator",
     ActorID:          ids.ID("agent_sibling_grain"),
@@ -1005,7 +1005,7 @@ The synthetic `actor_id` on audit rows written by adapter-driven
 mutations is `agent_sibling_grain` so they're distinguishable from
 human-operator-driven mutations in the audit log. A production
 multi-tenant build would mint one actor_id per connected sibling
-grain via the PowerBox handshake.
+pearl via the Grapple handshake.
 
 ### Integration documentation
 
@@ -1013,7 +1013,7 @@ grain via the PowerBox handshake.
 round-trip end-to-end:
 
 - The picture (ASCII diagram showing instaco + openclaw + ccash)
-- Why one universal interface beats per-grain schemas
+- Why one universal interface beats per-pearl schemas
 - ccash's operation catalog in a single reference table
 - Lifecycle mapping between instaco's draft-centric states and
   ccash's awaiting_approval/approved/settled states
@@ -1022,10 +1022,10 @@ round-trip end-to-end:
   settlement instructions → instaco poll sees `statusChanged` →
   ledger update
 - The mock pattern: how openclaw's `bridge.Adapter` interface maps
-  1:1 onto ccash's `graincontext.Adapter`, so cross-grain scenario
+  1:1 onto ccash's `graincontext.Adapter`, so cross-pearl scenario
   tests can wire real ccash + fake instaco in one process
 - Deferred items: Cap'n Proto Go bindings, fd3 attachment,
-  callback capabilities, PowerBox UI for ccash to claim sibling
+  callback capabilities, Grapple UI for ccash to claim sibling
   capabilities
 - Invariants that must stay true: no stored payment instruments,
   every transaction through the approval gate, audit-before-persist,
@@ -1048,12 +1048,12 @@ up to 8.6 MB from 8.5 MB (the adapter package is ~1,600 LoC).
 - **No fd3 wire attachment** for an incoming `GrainContext`
   capability. ccash's current `MainView` slot serves the HTML UI.
   A future pass exposes GrainContext via a sibling `UiView` or
-  via a PowerBox-offered capability.
+  via a Grapple-offered capability.
 - **No callback capabilities** — ccash does not hold a capability
   on instaco to push status updates. Status flows via `poll()`
   from instaco's side, which keeps the v0.5.0 surface symmetric
   with openclaw's universal interface.
-- **No PowerBox claim UI** for ccash to request capabilities from
+- **No Grapple claim UI** for ccash to request capabilities from
   sibling grains. v0.5.0 is sink-only: ccash receives invokes,
   instaco polls.
 
@@ -1086,7 +1086,7 @@ are payment instruments — the architectural guard test in
 **Person-only:**
 - `DateOfBirth *time.Time` — HTML5 `<input type="date">`, optional,
   but flagged as "required downstream if you ever enable KYC via a
-  sibling grain" in the form helper text.
+  sibling pearl" in the form helper text.
 
 **Entity-only:**
 - `TradingName` — DBA / "trading as" name. Rendered in italics under
@@ -1473,7 +1473,7 @@ transaction, with a 48h expiry. The stub generator
 (`Transaction.IssueSettlementInstructions`) builds deterministic
 placeholder rail+address+reference based on the transaction's
 funding method — POC only; v0.5+ replaces it with a sibling
-Cap'n Proto PowerBox call into a real settlement grain. The legacy
+Cap'n Proto Grapple call into a real settlement grain. The legacy
 `pending` / `completed` / `scheduled` statuses are accepted on read
 for audit-log compat but no new code path emits them.
 
@@ -1544,7 +1544,7 @@ contact form, recorded to memory and the audit log only.
   `ContactInfo`, `MemStore` (concurrency-safe, newest-first ordering,
   defence-in-depth length caps at 80/2000 chars), and a hand-curated
   `DefaultFAQ()` of 9 entries covering send/receive, contacts, audit,
-  grain restart, roles, compliance scope, the no-chat decision, and
+  pearl restart, roles, compliance scope, the no-chat decision, and
   Sandstorm sharing. Full unit-test coverage in `support_test.go`.
 - **GET `/support`** wired in `handlers_get.go` as `serveSupport`.
   Admins see every workspace message; everyone else sees their own.
@@ -1588,23 +1588,23 @@ Static linux binary: 11.9 MB.
 
 A previous v0.4 spec pass explored a chat-with-personas surface
 fronting an openclaw HTTP bridge. **That entire direction has been
-removed.** ccash is back to a proof-of-concept, single-grain-per-client
-Sandstorm app that talks to nothing but itself. Sibling-grain
+removed.** ccash is back to a proof-of-concept, single-pearl-per-client
+Sandstorm app that talks to nothing but itself. Sibling-pearl
 integration is a v0.5+ aspiration and, when it ships, will go through
-**raw Cap'n Proto PowerBox capabilities only** — never HTTP, never a
+**raw Cap'n Proto Grapple capabilities only** — never HTTP, never a
 bridge, never a sidecar.
 
 What changed in this pass (no Go code touched):
 
 - **MONTANADAO.md** rewritten end-to-end. Removes openclaw, removes
   the persona cast (Clara / Spencer / John / Mira / Theo / Rashid),
-  re-frames the constellation as the POC reality (one grain per
+  re-frames the constellation as the POC reality (one pearl per
   client) plus a future v0.5+ aspiration. Locked decisions documented
   in §6. Names ai-lagoon as the reference pattern for raw Cap'n Proto
   WebSession.
 - **CLAUDE.md** unified. Tab bar locked at **5 items** (Home /
   Wallets / Send / Activity / More) — no 6th Chat tab. Persistence
-  claim corrected: `grain-crypto-journal` is **not** in `go.mod` and
+  claim corrected: `pearl-crypto-journal` is **not** in `go.mod` and
   is a v0.5+ target. `pkg/` tree updated to match the actual
   v0.3 packages (no `customers/`, no `accounts/`). Page list
   extended to 16 routes including the new `/support`.
@@ -1626,7 +1626,7 @@ What changed in this pass (no Go code touched):
 
 ## 0.3.0 — polished MVP, post-audit hardening
 
-- Stable identity at the grain boundary (UserInfo.IdentityId hex, not handle)
+- Stable identity at the pearl boundary (UserInfo.IdentityId hex, not handle)
 - Per-session mutex on wizard drafts (no torn writes on concurrent POSTs)
 - 3 permission bits → 3 roles in GetViewInfo, role-bit mapping locked
 - All POST routes gated on `User.CanWrite()`
@@ -1663,6 +1663,6 @@ What changed in this pass (no Go code touched):
 
 ## 0.1.0 — initial scaffold
 
-- Sandstorm grain skeleton (raw Cap'n Proto WebSession)
+- Sandstorm pearl skeleton (raw Cap'n Proto WebSession)
 - Locked design system (beige on soft brown, Fraunces + Inter)
 - Dashboard, send-money wizard step (mock data)

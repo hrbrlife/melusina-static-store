@@ -722,7 +722,7 @@
             "pearlId": "cca-sh-config",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over PowerBox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 PowerBox-claim only.",
+            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Grapple. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 Grapple-claim only.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -885,7 +885,7 @@
             "pearlId": "cca-sh-domain-template",
             "pearlName": "Domain Template",
             "pearlType": "infrastructure-pearl",
-            "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains PowerBox-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
+            "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Grapple-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -918,7 +918,7 @@
               "anyMember": [
                 {
                   "name": "Read templates",
-                  "purpose": "Anyone with a PowerBox claim can read."
+                  "purpose": "Anyone with a Grapple claim can read."
                 }
               ]
             },
@@ -1395,7 +1395,7 @@
               "adminOnly": [
                 {
                   "name": "Operator",
-                  "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via PowerBox."
+                  "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via Grapple."
                 }
               ],
               "organizationOnly": [],
@@ -1522,7 +1522,7 @@
         }
       },
       "capabilities": null,
-      "description": "BLOOM Client Collection \u2014 a sturdyref-based container grain for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm PowerBox. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
+      "description": "BLOOM Client Collection \u2014 a sturdyref-based container grain for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
       "screenshots": []
     },
     {
@@ -1986,7 +1986,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
-      "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via PowerBox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
+      "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
         "Productivity",
         "DeveloperTools"
@@ -2207,7 +2207,7 @@
       "versionNumber": 12,
       "packageId": "90e216786a64ba5d5c034460b7e1accf",
       "shortDescription": "Cyberteller install-admin (boot env source)",
-      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate PowerBox capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
+      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
         "Productivity"
       ],
@@ -2260,14 +2260,14 @@
             "pearlId": "cybertellerconfig",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate PowerBox capability every cyberteller grain claims at first launch \u2014 hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
+            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Grapple capability every cyberteller grain claims at first launch \u2014 hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "config-gate",
                   "interface": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
-                  "purpose": "Single PowerBox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
+                  "purpose": "Single Grapple cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
                 }
               ],
               "requests": []
@@ -2896,7 +2896,7 @@
       "versionNumber": 57,
       "packageId": "88aa425d78d78909eed83febbfdbf091",
       "shortDescription": "Deploy + manage a Solana DAO",
-      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a PowerBox-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
+      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a Grapple-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
       "categories": [
         "Productivity",
         "Office"
@@ -3027,7 +3027,7 @@
         }
       },
       "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles PowerBox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over PowerBox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use PowerBox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use PowerBox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  PowerBox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the PowerBox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {
@@ -3894,7 +3894,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
-      "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via PowerBox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
+      "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
         "Productivity"
       ],
@@ -4657,7 +4657,7 @@
       "name": "TeleScreen Sidecar Configurator",
       "version": "0.4.0",
       "versionNumber": 5,
-      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + PowerBox cap.",
+      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Grapple cap.",
       "categories": [
         "Productivity",
         "Developer Tools"
@@ -4706,7 +4706,7 @@
             "pearlId": "telescreen-sidecar-configurator",
             "pearlName": "TeleScreen Sidecar Configurator",
             "pearlType": "infrastructure-pearl",
-            "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm PowerBox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
+            "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm Grapple, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -4787,7 +4787,7 @@
           }
         ]
       },
-      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the PowerBox.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
+      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",

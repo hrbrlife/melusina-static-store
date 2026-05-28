@@ -26,9 +26,9 @@ Other pearls can request AI from AiLagoon via Grapple:
 
 All providers route through `https://ailagoon.sidecar.host`; the
 sidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per
-provider. At grain startup AiLagoon asks Sandstorm for a single
+provider. At pearl startup AiLagoon asks Sandstorm for a single
 HTTP-out permission to that host — the shell renders the
-address-selector popup (not the grain picker), and the operator grants
+address-selector popup (not the pearl picker), and the operator grants
 or denies the host once. Connections persist across pearl restarts via
 `SandstormApi.save()` / `restore()`.
 
@@ -53,6 +53,6 @@ ReleaseEntry that signs this SPK manifest itself (program
 `7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog
 `attest` block). Per-conversation transcript pinning to the user's
 Squads-controlled wallet is on the v0.8 roadmap; until then,
-transcripts live append-only in the grain's encrypted SQLite store
+transcripts live append-only in the pearl's encrypted SQLite store
 and surface in the audit log as metadata only (no prompt/response
 content retained, by design — see `pkg/audit/logger.go`).

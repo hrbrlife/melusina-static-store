@@ -94,7 +94,7 @@ keyholder review) or `Full` (auto-approved with 1 keyholder).
 | Module | What It Does |
 |--------|-------------|
 | **nft-license.js** (327 lines) | Server license: provenance walk, domain binding, 1h recheck, 24h grace |
-| **nft-shares.js** (779 lines) | On-chain grain sharing: GrainRegistry + GrainShareEntry PDAs |
+| **nft-shares.js** (779 lines) | On-chain pearl sharing: GrainRegistry + GrainShareEntry PDAs |
 | **nft-access-control.js** (426 lines) | Share enforcement: challenge-response, wallet check |
 | **nft-admin.js** (315 lines) | Admin NFT: InstallAdmin PDAs, permission levels |
 | **hack-session.js** (1912 lines) | requestWalletSign, getWalletNfts, solanaRpc, requestOtp, createGrain |
@@ -306,9 +306,9 @@ PDA is derived deterministically and is immutable once created.
 
 | Point | Where | Gate | Action |
 |-------|-------|------|--------|
-| **New pearl** | grain-server.js:316 | HARD | Block if paid app + no receipt |
+| **New pearl** | pearl-server.js:316 | HARD | Block if paid app + no receipt |
 | **New pearl (RPC)** | hack-session.js:createGrain | HARD | Same check |
-| **Open pearl** | backend.js:110 | SOFT | Tag grain, never block |
+| **Open pearl** | backend.js:110 | SOFT | Tag pearl, never block |
 | **UI Session** | gateway-router.js / grainview.js | SOFT | Yellow banner |
 | **Periodic** | nft-app-license.js (1h interval) | SOFT | Update cache |
 
@@ -318,7 +318,7 @@ Never lock users out of existing data. Banner for everything else.
 ### 4.5 newGrain Gate (Insert After Quota Check)
 
 ```javascript
-// grain-server.js — newGrain(), after quota check (~line 316)
+// pearl-server.js — newGrain(), after quota check (~line 316)
 const pkg = globalDb.collections.packages.findOne(packageId);
 const appId = pkg.appId;
 const licenseStatus = checkAppLicense(appId);  // from nft-app-license.js
@@ -430,18 +430,18 @@ self-hosted servers where the Foundation has no shell control.
 ### 5.4 Publisher Revenue from Pbay (Price-Weighted Share)
 
 Pbay subscription revenue is shared with publishers. The problem with
-raw usage-hours: a radio stream grain runs 24/7 but isn't more valuable
+raw usage-hours: a radio stream pearl runs 24/7 but isn't more valuable
 than an encrypted password vault opened twice a month. Hours punish
 high-value low-usage apps and reward idle background grains.
 
-**Solution: price-weighted grain-hours.**
+**Solution: price-weighted pearl-hours.**
 
 Each app's share of the payout pool is proportional to its store price
 × its number of active grains × hours used. The store price *is* the
 value multiplier — an app the publisher priced at 0.5 SOL earns 5× per
-grain-hour vs one at 0.1. Hours alone would let a radio stream dominate;
+pearl-hour vs one at 0.1. Hours alone would let a radio stream dominate;
 price alone would ignore usage. Together: a high-value vault used 2
-hours earns the same per-grain as a cheap radio stream used 10 hours,
+hours earns the same per-pearl as a cheap radio stream used 10 hours,
 if the vault is priced 5× higher.
 
 **Free apps** are included. For calculation purposes, free apps are
@@ -464,7 +464,7 @@ MONTHLY PBAY PAYOUT
     Free apps imputed at Q1 of ALL prices (including imputed):
       Sorted: [0.1, 0.1, 0.1, 0.1, 0.5, 0.5] → Q1 = 0.1 SOL
 
-  grain-HOURS THIS MONTH:
+  pearl-HOURS THIS MONTH:
     BLOOM (0.5 SOL):      200 grains, avg 8h  → weight = 200 × 0.5 × 8  = 800
     BotMother (0.1 SOL):  400 grains, avg 20h → weight = 400 × 0.1 × 20 = 800
     MerMail (0.1 SOL):    300 grains, avg 10h → weight = 300 × 0.1 × 10 = 300
@@ -482,7 +482,7 @@ MONTHLY PBAY PAYOUT
 ```
 
 **Why this works:**
-- BLOOM costs 5× BotMother → earns 5× per grain-hour
+- BLOOM costs 5× BotMother → earns 5× per pearl-hour
 - But BotMother has 2× the grains and 2.5× the hours → equal total weight
 - Password vault (high price, few grains, few hours) earns proportional to value × actual use
 - Radio stream (low price, many grains, many hours) earns proportional too, but price caps it
@@ -825,7 +825,7 @@ Without ?ref parameter:
 Everything needed already exists on-chain. This phase connects it.
 
 1. Create `nft-app-license.js` (~80 lines, modeled on `nft-license.js`)
-2. Add license check in `newGrain()` — grain-server.js:316
+2. Add license check in `newGrain()` — pearl-server.js:316
 3. Add license check in `createGrain()` — hack-session.js
 4. Add soft tagging in `continueGrain()` — backend.js:110
 5. Add yellow banner in grainview.js (shell chrome)
@@ -855,7 +855,7 @@ Everything needed already exists on-chain. This phase connects it.
 2. Add `isPbayServer()` detection (env flag or domain check)
 3. Wire subscription check into `newGrain()` (pbay path)
 4. Set up Stripe integration for pbay.app billing
-5. Implement active-grain tracking per app per billing period
+5. Implement active-pearl tracking per app per billing period
 6. Implement price-weighted payout calculation
 7. Test: active sub → all apps, expired sub → block new Pearls (paid)
 
@@ -916,7 +916,7 @@ Everything needed already exists on-chain. This phase connects it.
 | File | Lines | What |
 |------|-------|------|
 | `nft-app-license.js` | ~80 | License check module (fetch receipt PDA) |
-| grain-server.js patch | ~15 | Hard gate in `newGrain()` |
+| pearl-server.js patch | ~15 | Hard gate in `newGrain()` |
 | hack-session.js patch | ~15 | Hard gate in `createGrain()` |
 | backend.js patch | ~10 | Soft tag in `continueGrain()` |
 | grainview.js patch | ~20 | Yellow banner for license issues |

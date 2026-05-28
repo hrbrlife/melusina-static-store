@@ -1,53 +1,53 @@
-# melusina-app-OpenSanctions — Sanctions Consumer Grain
+# melusina-app-OpenSanctions — Sanctions Consumer Pearl
 
-**App**: `melusina-app-OpenSanctions` (consumer grain)
-# melusina-app-OpenSanctions — Sanctions Consumer Grain
+**App**: `melusina-app-OpenSanctions` (consumer pearl)
+# melusina-app-OpenSanctions — Sanctions Consumer Pearl
 
-**App**: `melusina-app-OpenSanctions` (consumer grain)
+**App**: `melusina-app-OpenSanctions` (consumer pearl)
 **appId**: `msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh`
 **Version**: v1 (marketing `0.1.0`)
-**Language / runtime**: Go 1.22, Sandstorm grain (capnp + go-sandstorm bridge)
+**Language / runtime**: Go 1.22, Sandstorm pearl (capnp + go-sandstorm bridge)
 **Catalog**: `https://hrbrlife.github.io/melusina-static_store/cca.sh/apps/index.json`
 
 ## PSP Role
 
-This grain is the **sanctions consumer front** in the Melusina PSP lifecycle.
+This pearl is the **sanctions consumer front** in the Melusina PSP lifecycle.
 It is one of two SPKs that replaced the old monolithic **telescreen-pearl**
 per PLAN §0 — the sibling is `melusina-app-creeper` for the search / scrape
 / handle / contact OSINT half. (`pr_ninja` is a separate sibling-successor
-TeleScreen Hub, not the predecessor.) The grain itself does no
+TeleScreen Hub, not the predecessor.) The pearl itself does no
 screening logic; it is a UI surface + per-tenant capability broker over the
 `OpenSanctions-sidecar` LXC (192.168.122.250, systemd unit, nginx 443 → uvicorn
 127.0.0.1:8000). It complements popaye's **direct** sidecar HTTP call wired in
 `pkg/sanctionsclient/` — that direct path is the v1.0 happy-path for the
 account-opening + receive screening leg of the PSP cycle (see
 `/home/user/Desktop/agentchat/CLAUDE.md` step 2). The cap-routed
-`SanctionsSubCap` this grain exports is the **v1.1 migration target** that
-popaye and any other consumer can claim once PowerBox-out is the preferred
+`SanctionsSubCap` this pearl exports is the **v1.1 migration target** that
+popaye and any other consumer can claim once Grapple-out is the preferred
 transport.
 
 ## Architecture (Brief)
 
-- **Grain**: `cmd/grain/main.go` → `grain/*.go`. Owns SQLite at
-  `/var/melusina-app-OpenSanctions/grain.db`, grain ed25519 identity key,
+- **Pearl**: `cmd/grain/main.go` → `pearl/*.go`. Owns SQLite at
+  `/var/melusina-app-OpenSanctions/grain.db`, pearl ed25519 identity key,
   caps / claims dirs.
 - **Outbound HTTP**: cap-routed via `melusina-http-component` (vendored at
   `third_party/melusina-http-component/go`). No stdlib `http.Get` — every
-  egress is fail-closed until the operator claims the PowerBox cap
+  egress is fail-closed until the operator claims the Grapple cap
   (CLAUDE.md §2.13).
 - **Sidecar URL**: pinned in `sandstorm-pkgdef.capnp` env
   `OPENSANCTIONS_SIDECAR_URL=https://OpenSanctions.sidecar.host`. The
-  hostname resolves inside the Sandstorm grain via the cap-routed
+  hostname resolves inside the Sandstorm pearl via the cap-routed
   transport; outside, it's the same nginx 443 LXC entry.
 - **Capnp schema**: `capnp/OpenSanctions/OpenSanctions.capnp` defines
   `SanctionsService` with `screenPerson` / `screenEntity` / `screenWallet` /
   `lookupCompany` / `getResult` / `listHistory`. TypeIDs are placeholders
   pending `capnp id` rotation before merge (PLAN §2.2).
-- **Persistence**: SQLite + grain-crypto-journal pattern (`claim_store.go`,
+- **Persistence**: SQLite + pearl-crypto-journal pattern (`claim_store.go`,
   `cap_token_store.go`, `core_db.go`, `state.go`).
-- **Admin function-tester UI**: `grain/static/` + `grain/templates/` +
+- **Admin function-tester UI**: `pearl/static/` + `pearl/templates/` +
   `admin_*.go` — a debug shell for invoking `SanctionsService` methods
-  directly inside the grain.
+  directly inside the pearl.
 
 ## Deps + Exports
 
@@ -62,7 +62,7 @@ transport.
 
 **Exports**:
 
-- `SanctionsService` Cap'n Proto capability via PowerBox-out
+- `SanctionsService` Cap'n Proto capability via Grapple-out
   (`main_capnp.go` `GetViewInfo.matchRequests`).
 - `SanctionsSubCap` — per-tenant sub-capability (`sanctions_subcap.go`,
   mirrors the old TelescreenSubCap pattern). This is the v1.1 cap-routed
@@ -79,7 +79,7 @@ transport.
 
 The three Hard Truths that bite this app most:
 
-- **HT5** — announce destructive grain / SPK / schema changes in
+- **HT5** — announce destructive pearl / SPK / schema changes in
   `agentchat` before doing them. Names + paths.
 - **HT12** — no Sandstorm bypass. SPK installs go through the canonical
   `static_store` → admin UI → install-from-market path. No direct Mongo

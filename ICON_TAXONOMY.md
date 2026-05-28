@@ -51,7 +51,7 @@ Every Melusina app icon uses one of eight category tiles. The **background hex**
 
 Icons live in two places:
 - `icons_split/<AppName>.svg` — single 404×404 tile, single `<rect fill="...">` background
-- `app_icons/<AppName>/{appGrid,grain,market,marketBig}.svg` — per-Sandstorm-slot variants
+- `app_icons/<AppName>/{appGrid,pearl,market,marketBig}.svg` — per-Sandstorm-slot variants
 
 The background `<rect fill="…">` is the taxonomy bg hex. When recoloring, only that one rect changes; foreground glyph art is untouched.
 

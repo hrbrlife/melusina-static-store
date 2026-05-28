@@ -16,7 +16,7 @@ Static app store and update host for Melusina. Hosted on GitHub Pages from the `
 > (gh-pages 2026-04-25 catalog-shrink regression) for context and
 > [`docs/M1_CCASH_CONFIG_PUBLISH_PATH.md`](docs/M1_CCASH_CONFIG_PUBLISH_PATH.md)
 > for the publication procedure when ccash kill-list task **A1** lands
-> the admin-grain v0.1.0.
+> the admin-pearl v0.1.0.
 
 ---
 

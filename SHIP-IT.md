@@ -156,7 +156,7 @@ spkmodule-using app). The script invokes only the public targets:
 
 ### `make dev` is intentionally skipped
 
-`make dev` runs `spk dev` interactively and is meant for human grain-testing.
+`make dev` runs `spk dev` interactively and is meant for human pearl-testing.
 The mount discipline `make pack` needs is built into `pack` itself
 (core.mk:148-190) — it does its own `_unmount → mount → spk pack → unmount`
 under a flock. So `dev` before `pack` is redundant for automation. Skipping

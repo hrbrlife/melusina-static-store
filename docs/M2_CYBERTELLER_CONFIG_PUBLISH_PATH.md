@@ -1,4 +1,4 @@
-# M2 — `Cyberteller Config` (admin companion grain) catalog publication path
+# M2 — `Cyberteller Config` (admin companion pearl) catalog publication path
 
 > **Status:** SPK rebuilt + manifest re-pinned 2026-04-26 by ccash_go_htmx
 > per Captain directive on kill-list §10.2. Sibling of M1 (cca.sh

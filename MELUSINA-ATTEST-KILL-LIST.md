@@ -36,16 +36,16 @@ Anchored in iter-1 deep recon, 2026-04-23.
    - `static_store/build-store.sh` — `gpg --verify metadata.json.asc` validation
 7. **What is NOT touched.** Sandstorm distro update channel (`install.sh:1325-1363`, `release.sh:85`, `make-bundle.sh:170`) keeps its PGP — that's signing the Sandstorm binaries themselves, not Melusina app attestation. Out of scope.
 8. **Apps in scope** for greenfield migration (per per-app roster, KILL-LIST.md §2.2):
-   - **Tier 1 (active grain apps):** `ccash_go_htmx`, `melusina_botmother`, `cyberteller`, `ai-lagoon`, `instaco.app`, `melusina-NamedCoin-app`, `melusina-NamedCoin-admin-app`, `AITX Procedures`, `BLOOM_QUESTIONNAIRE` (replacement of its naive foundation-key pattern), `vintage-test-dec`, `sailsto_system`, `client_collection`, `openclaw-main`, `MiniGit`
+   - **Tier 1 (active pearl apps):** `ccash_go_htmx`, `melusina_botmother`, `cyberteller`, `ai-lagoon`, `instaco.app`, `melusina-NamedCoin-app`, `melusina-NamedCoin-admin-app`, `AITX Procedures`, `BLOOM_QUESTIONNAIRE` (replacement of its naive foundation-key pattern), `vintage-test-dec`, `sailsto_system`, `client_collection`, `openclaw-main`, `MiniGit`
    - **Tier 1.5 (bureau apps):** `melusina-bureau-doc-app`, `melusina-bureau-sheets-app`, `melusina-bureau-paint-app`, `melusina-bureau-diagram-app`, `melusina-bureau-shell-component`
    - **Tier 1.7 (mail/station):** `melusina-mermail-station-app`
-   - **Tier 2 (templates/scaffolds):** `melusina_teleport2`, `grain-botmother` template, `grain-instance` template, `grain-desktop` template
+   - **Tier 2 (templates/scaffolds):** `melusina_teleport2`, `pearl-botmother` template, `pearl-instance` template, `pearl-desktop` template
    - **Deferred (per memory):** `INSTASYS_CHAT`, `Teleport`, `waikiki`, BLOOM.Community KYC (hard-NO)
 9. **Sidecars in scope** for greenfield:
    - `Fineract-sidecar` (Go, in ccash repo + standalone copy)
    - `mermail-sidecar` (Go)
    - `pr_ninja` / TeleScreen (Python, FastAPI)
-   - `melusina-grain-auth` sidecar (already partially attested; needs `request_hash` commit fix per residual risk #1)
+   - `melusina-pearl-auth` sidecar (already partially attested; needs `request_hash` commit fix per residual risk #1)
    - `melusina-sidecar-proxy` (mTLS terminator; needs upgrade to seal pass-through)
    - `aitx-screening` sidecar (the `https://aitx.sidecar.local:8091` endpoint ccash calls today with `X-API-Key` only — full upgrade)
 
@@ -61,18 +61,18 @@ Anchored in iter-1 deep recon, 2026-04-23.
 | 2 | `@hrbrlife/melusina-attest` | TS/npm port. verify + sign + envelope codec + pda readers. Browser-safe. |
 | 3 | `melusina-attest-py` | Python port. verify + sign + sidecar derive (for pr_ninja). |
 | 4 | `melusina-spkmodule-component` v0.2 | Adds `pre-pack-pearl`, `propose-release-pearl`, `finalize-release-pearl`, `post-publish-pearl` hooks. Removes `GPG_KEY` requirement. Two-phase `make publish`. |
-| 5 | `melusina-grain-installer` | NEW. Pre-launch SPK approval gate. Refuses to launch a grain whose SPK hash has no active `LocalAppApproval`. Runs at start of every `continueGrain` / `createGrain`. |
-| 6 | `melusina-attest-deployer` (extension to `melusina-deployer`) | New CLI subcommands: `register-release-Squads`, `register-pearl-identity`, `register-sidecar-identity`, `register-sidecar-release`, `authorize-app-sidecar`, `authorize-app-capnp`, `authorize-cross-license-hop`, `mint-grain-assignment`, `record-sensitive-action`. |
+| 5 | `melusina-pearl-installer` | NEW. Pre-launch SPK approval gate. Refuses to launch a pearl whose SPK hash has no active `LocalAppApproval`. Runs at start of every `continueGrain` / `createGrain`. |
+| 6 | `melusina-attest-deployer` (extension to `melusina-deployer`) | New CLI subcommands: `register-release-Squads`, `register-pearl-identity`, `register-sidecar-identity`, `register-sidecar-release`, `authorize-app-sidecar`, `authorize-app-capnp`, `authorize-cross-license-hop`, `mint-pearl-assignment`, `record-sensitive-action`. |
 | 7 | `melusina-attest-store` (extension to `static_store`) | Drops PGP, mints `StoreReleaseListing` per release, validates SPKs against `ReleaseEntry` + `GlobalAppApproval` before publishing. |
 | 8 | `melusina-attest-shell` (extension to Sandstorm `shell/`) | Replaces PGP install flow with `download → verify → attest → approve → unpack → analyze → ready`. Mints `LocalAppApproval` at install time. |
 | 9 | `license-registry v0.2` | Solana program with all new PDAs + permission bits 43..49 + on-chain Ed25519 release-sig verification. |
-| 10 | `melusina-grain-restore v0.2` | New `RegisterPearlIdentityHook(PearlIdentityHook)` API; `MasterKeyContext` extended with `PearlIdentityPDA + GrainIDHash`. |
+| 10 | `melusina-pearl-restore v0.2` | New `RegisterPearlIdentityHook(PearlIdentityHook)` API; `MasterKeyContext` extended with `PearlIdentityPDA + GrainIDHash`. |
 | 11 | `melusina-identity-gate v0.2` | Verifier interface gains `VerifyPearlIdentityActive`, `VerifySidecarIdentityActive`. NonceCache reused by attest. |
 | 12 | `melusina-capnp v0.3` | Adds `interfaces/sealed.capnp` + `interfaces/attestation.capnp`. Annotates 8 trust-boundary interfaces with `$melusina.sealedBoundary = true`. |
 | 13 | `melusina-pdf v0.2` | Adds `SignWithIdentity(digest, *attest.Identity)`. Embeds `ChainEvidence` in canonical JSON. |
 | 14 | `melusina-static-publish v0.2` | Adds `PublishWithAttestation` (sidecar `.attest.json` per published file). |
 | 15 | `melusina-notify-sandstorm v0.2` | Adds `Options.Attestation *attest.Identity`. Webhook bodies wrapped as `attest.Envelope{Kind: "artifact"}`. |
-| 16 | `melusina-grain-auth v0.2` | Sidecar response signature commits `request_hash + nonce + sidecar_id + license_nft_mint`. Closes residual risk #1. |
+| 16 | `melusina-pearl-auth v0.2` | Sidecar response signature commits `request_hash + nonce + sidecar_id + license_nft_mint`. Closes residual risk #1. |
 
 ---
 
@@ -113,7 +113,7 @@ pub enum ApprovalStatus {
 
 ### 2.4 New PDAs (full schemas in DESIGN.md §9)
 
-- `PearlIdentityEntry` — per-grain pearl identity. Mint requires `GrainAssignment` consumption.
+- `PearlIdentityEntry` — per-pearl pearl identity. Mint requires `GrainAssignment` consumption.
 - `SidecarIdentityEntry` — per-sidecar-instance identity (separate from class approval).
 - `SidecarReleaseEntry` — per-sidecar-binary release.
 - `AppSidecarAuthorization` — explicit pearl ↔ sidecar edge per install.
@@ -123,7 +123,7 @@ pub enum ApprovalStatus {
 - `HopAttestationProof` — optional on-chain receipt for high-audit hop chains.
 - `SensitiveActionPolicy` — per `(license, app, action_kind)` quorum policy.
 - `SensitiveActionRecord` — append-only audit for Mode-B sensitive actions (above-threshold transfers).
-- `InstallerReleaseEntry` — attests the `melusina-grain-installer` binary itself (pinned by `LicenseEntry.installer_release`).
+- `InstallerReleaseEntry` — attests the `melusina-pearl-installer` binary itself (pinned by `LicenseEntry.installer_release`).
 - `StoreReleaseListing` — store-side "this store carries this release" marker.
 
 ### 2.5 Extensions to existing PDAs
@@ -149,7 +149,7 @@ register_release            (rewritten, ed25519 sysvar verify, Squads-vault-sign
 revoke_release
 register_pearl_identity     (consumes GrainAssignment)
 revoke_pearl_identity
-supersede_pearl_identity    (for grain-restore migration ceremony)
+supersede_pearl_identity    (for pearl-restore migration ceremony)
 register_sidecar_identity
 supersede_sidecar_identity  (for sidecar key rotation)
 register_sidecar_release
@@ -420,7 +420,7 @@ PEARL_RELEASE_VERSION   := 0.2.0        # semver
 
 ---
 
-## 5. Sandstorm shell + grain-installer (`melusina-attest-shell`)
+## 5. Sandstorm shell + pearl-installer (`melusina-attest-shell`)
 
 ### 5.1 Shell install flow rewrite
 
@@ -445,7 +445,7 @@ download → verify → attest → approve → unpack → analyze → ready
 2. If absent: prompt install admin to mint via wallet
 3. Persist `localAppApprovalPda` in packages collection
 
-### 5.2 Pre-launch gate (`melusina-grain-installer`)
+### 5.2 Pre-launch gate (`melusina-pearl-installer`)
 
 NEW component. Hooks `shell/imports/server/backend.js:continueGrain()` and `hack-session.js:createGrain()`. Replaces existing `checkAppLicense` soft-tag with `checkAppAttestation` hard-fail:
 
@@ -495,7 +495,7 @@ Replace Keybase profile panel with on-chain publisher block:
 
 - shell installer.js rewrite + new attest/approve states: 5 days
 - backend.capnp signature change + spk.c++ cleanup: 3 days
-- Grain-installer pre-launch gate (new component): 4 days
+- Pearl-installer pre-launch gate (new component): 4 days
 - TLS pinning hook: 2 days
 - Keybase UI replacement → on-chain publisher block: 2 days
 - Tests (Meteor mocha + Sandstorm e2e): 4 days
@@ -562,7 +562,7 @@ Greenfield = full attestation from day 1. No legacy unsealed routes.
 
 | Sidecar | Lang | Lines today | Effort | Notes |
 |---|---|---|---|---|
-| `melusina-grain-auth` | Go | ~800 | 4 days | Already partially attested. Fix request_hash commit + add SidecarIdentityEntry registration + V1 envelope. |
+| `melusina-pearl-auth` | Go | ~800 | 4 days | Already partially attested. Fix request_hash commit + add SidecarIdentityEntry registration + V1 envelope. |
 | `Fineract-sidecar` | Go | ~3000 | 6 days | Largest. Webhook receiver already has Ed25519 over PayloadContextV2 — repurpose. New: outbound seal, sidecar identity registration. |
 | `mermail-sidecar` | Go | ~1500 | 5 days | Public-internet-facing inbound stays unsealed (mail provider callbacks). Partition `/webhook/external/*` (untrusted) from `/webhook/melusina/*` (sealed). |
 | `pr_ninja` / TeleScreen | Python | ~900 | 8 days | Python port of attest needed (or wait for `melusina-attest-py`). |
@@ -626,10 +626,10 @@ Each app gets the same recipe. Full migration from PGP-attested SPKs to attest-a
 | App | Lang | LOC | Effort | Risk |
 |---|---|---|---|---|
 | `ccash_go_htmx` | Go | ~50K | 6 days | Highest — many integration points (PDFs, webhooks, sidecars). |
-| `melusina_botmother` | Go | ~30K | 5 days | grain-botmother + grain-instance templates affected. |
+| `melusina_botmother` | Go | ~30K | 5 days | pearl-botmother + pearl-instance templates affected. |
 | `cyberteller` | Go | ~15K | 4 days | Already on attest-PDF; medium. |
 | `ai-lagoon` | Go | ~10K | 4 days | Similar to cyberteller. |
-| `instaco.app` | Go | ~8K | 4 days | grain-e2e-binding API drift to address. |
+| `instaco.app` | Go | ~8K | 4 days | pearl-e2e-binding API drift to address. |
 | `melusina-NamedCoin-app` | Go | ~8K | 4 days | KYC integration. |
 | `melusina-NamedCoin-admin-app` | Go | ~5K | 3 days | Twin of NamedCoin-app. |
 | `AITX Procedures` | Go | ~12K | 4 days | KYC + e2e attestation. |
@@ -653,7 +653,7 @@ Each app gets the same recipe. Full migration from PGP-attested SPKs to attest-a
 
 ## 9. Component integration (consume + adapt)
 
-### 9.1 `melusina-grain-restore v0.2`
+### 9.1 `melusina-pearl-restore v0.2`
 
 - Add `MasterKeyContext.PearlIdentityPDA []byte` + `GrainIDHash [32]byte`
 - Add `RegisterPearlIdentityHook(PearlIdentityHook)` API
@@ -703,7 +703,7 @@ Each app gets the same recipe. Full migration from PGP-attested SPKs to attest-a
 
 **Effort: 3 days.**
 
-### 9.7 `melusina-grain-auth v0.2` (security patch)
+### 9.7 `melusina-pearl-auth v0.2` (security patch)
 
 - Sidecar response signature commits `request_hash + nonce + sidecar_id + license_nft_mint`
 - **Independent track** — can ship before attest v0.1.0
@@ -719,13 +719,13 @@ New CLI subcommands (Python, in `deployer/blockchain/Solana/`):
 
 ```
 melusina-Solana register-release-Squads --master-mint X --app-hash Y --version V
-melusina-Solana register-pearl-identity --license L --grain-id G ...
+melusina-Solana register-pearl-identity --license L --pearl-id G ...
 melusina-Solana register-sidecar-identity --master-mint X --sidecar-id S ...
 melusina-Solana register-sidecar-release --sidecar-id S --version V --binary-hash H ...
 melusina-Solana authorize-app-sidecar --license L --app-hash A --sidecar-id S [--scope MASK]
 melusina-Solana authorize-app-capnp --license L --src-app A --dst-app B [--methods M]
 melusina-Solana authorize-cross-license-hop --src-license L1 --dst-license L2 --src-app A --dst-app B
-melusina-Solana mint-grain-assignment --license L --grain-id G --owner-user U --owner-wallet W
+melusina-Solana mint-pearl-assignment --license L --pearl-id G --owner-user U --owner-wallet W
 melusina-Solana record-sensitive-action --license L --action-id A --bundle BUNDLE_FILE
 ```
 
@@ -744,12 +744,12 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 | `melusina-attest` TS port | 10 | Yes (after Go schema stable) |
 | `melusina-attest` Python port | 12 | Yes (after Go schema stable) |
 | Publish ceremony (spkmodule v0.2) | 11 | Yes (after attest API stable) |
-| Sandstorm shell + grain-installer | 20 | Yes |
+| Sandstorm shell + pearl-installer | 20 | Yes |
 | Static-store cutover | 8 | Yes |
 | Sidecar greenfield (6 sidecars) | 32 | Yes (per-sidecar) |
 | App greenfield (21 apps) | 82 | Yes (per-app) |
-| Component integration (grain-restore, identity-gate, capnp, pdf, static-publish, notify-sandstorm) | 17 | Yes |
-| `melusina-grain-auth` v0.2 security patch | 2 | Independent track |
+| Component integration (pearl-restore, identity-gate, capnp, pdf, static-publish, notify-sandstorm) | 17 | Yes |
+| `melusina-pearl-auth` v0.2 security patch | 2 | Independent track |
 | Deployer CLI extension | 8 | Yes |
 
 **Serial critical path:** Solana program (22) → attest Go (27) → attest TS+Py (12 max parallel) → spkmodule v0.2 (11) → first app + first sidecar (8 max parallel) = **78 days serial critical path**.
@@ -764,7 +764,7 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 
 ### Wave 0: pre-requisite security patch (week 0)
 
-- `melusina-grain-auth v0.2` — fix response replay (residual risk #1, ships independently).
+- `melusina-pearl-auth v0.2` — fix response replay (residual risk #1, ships independently).
 - `ReleaseRecord.release_hash: String` → `[u8; 32]` (just the type fix, no full ReleaseEntry yet).
 - Master NFT custody audit confirms Squads multisig.
 
@@ -775,9 +775,9 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 - Solana program v0.2 (all PDAs, instructions, permission bits, on-chain Ed25519 verify).
 - `melusina-attest` Go v0.1.0.
 - `melusina-spkmodule-component v0.2` (publish ceremony).
-- `melusina-grain-installer` (pre-launch gate).
+- `melusina-pearl-installer` (pre-launch gate).
 - Deployer extensions.
-- 1 reference app (test-only grain) end-to-end.
+- 1 reference app (test-only pearl) end-to-end.
 
 **6 weeks. 70 engineer-days. Critical path.**
 
@@ -786,9 +786,9 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 - Sandstorm shell rewrite (`melusina-attest-shell`).
 - Static-store rewrite (`melusina-attest-store`).
 - TS + Python ports of attest.
-- Component integration: capnp v0.3, pdf v0.2, static-publish v0.2, notify-sandstorm v0.2, identity-gate v0.2, grain-restore v0.2.
+- Component integration: capnp v0.3, pdf v0.2, static-publish v0.2, notify-sandstorm v0.2, identity-gate v0.2, pearl-restore v0.2.
 - First wave of apps: `ccash`, `cyberteller`, `ai-lagoon` (3 highest-value).
-- First wave of sidecars: `Fineract-sidecar`, `melusina-grain-auth` v0.3 (full attestation).
+- First wave of sidecars: `Fineract-sidecar`, `melusina-pearl-auth` v0.3 (full attestation).
 
 **5 weeks. 80 engineer-days. 4-engineer parallel.**
 
@@ -828,22 +828,22 @@ Per the user's directive: every sidecar and every app gets `melusina-attest` int
 | **Deployer** (`melusina-Solana.py`) | `register-release-Squads`, `register-pearl-identity`, 7 more | `register-release` exists but is **theatrical** (stores an unverified fake signature). `Squads-propose`/`Squads-wait-for-execute` are **stubs** ("NOT IMPLEMENTED"). |
 | **melusina-pearl-tool** | binary that bridges `make publish` ↔ Squads proposal | **DOES NOT EXIST.** Hooks in spkmodule v0.3.0 reference it, but no source, no binary. |
 | **spkmodule-component** | v0.3.0 pearl hooks | **GREENFIELD DEFAULT** locally at `_killlist_staging/melusina-spkmodule-component` (v0.3.0). `GPG_KEY` removed; `make publish` dispatches Squads `propose/finalize` and publish branches carry `RELEASE.json`. Zero apps consume it yet. |
-| **Sandstorm shell** | PGP deleted + ReleaseEntry lookup + envelope verify | PGP **IS** deleted. `grain-gate.js` **SHIPPED** as pre-launch gate checking `LocalAppApproval`. `ReleaseEntry` check + envelope verify on sidecar responses NOT done. |
+| **Sandstorm shell** | PGP deleted + ReleaseEntry lookup + envelope verify | PGP **IS** deleted. `pearl-gate.js` **SHIPPED** as pre-launch gate checking `LocalAppApproval`. `ReleaseEntry` check + envelope verify on sidecar responses NOT done. |
 | **Static-store** | content-addressed by appHash + StoreReleaseListing + ReleaseEntry validation | **GREENFIELD validator patched.** `build-store.sh` now requires finalized `RELEASE.json`, rejects detached metadata signatures, verifies through `melusina-pearl-tool verify-release` unless `MELUSINA_ATTEST_OFFLINE=1`, copies manifests to `/attest/<appId>/RELEASE.json`, and emits `apps/index.json.attest` fields. Current publish submodules intentionally fail until republished through the Squads ceremony. |
-| **grain-auth** (first consumer) | v0.3.0 on attest envelope | Still on v0.2.1 bespoke wire. Migration plan documented at `grain-AUTH-V0.3-MIGRATION.md`, **not implemented.** |
+| **pearl-auth** (first consumer) | v0.3.0 on attest envelope | Still on v0.2.1 bespoke wire. Migration plan documented at `pearl-AUTH-V0.3-MIGRATION.md`, **not implemented.** |
 
 ### 13.1 Sidecar coverage matrix (6 sidecars) — real state
 
 | Sidecar | Lang | Imports attest? | Has SidecarIdentity derivation? | Wire | Status |
 |---|---|---|---|---|---|
-| `melusina-grain-auth` | Go/TS/Py | no | no | bespoke v0.2.1 (magic+version+replay cross-checks) | shipped with its own wire, awaiting v0.3.0 attest migration |
+| `melusina-pearl-auth` | Go/TS/Py | no | no | bespoke v0.2.1 (magic+version+replay cross-checks) | shipped with its own wire, awaiting v0.3.0 attest migration |
 | `Fineract-sidecar` | Go + Java | no | no | direct Solana Ed25519 verify on inbound; no response signing | pre-attest |
 | `mermail-sidecar` | Go | no | no | REST/JSON; **no auth on HTTP handlers** (per code comment, Bearer check was deleted) | pre-attest |
 | `pr_ninja` (TeleScreen) | Python | no | no | REST/JSON; no auth | pre-attest |
 | `aitx-screening` | ? | ? | ? | ? | **could not locate path** — possibly renamed, deleted, or in a submodule |
 | `melusina-sidecar-proxy` | Go | no | n/a | TLS SNI reverse proxy — no app-layer auth | infrastructure layer, not an attestation consumer |
 
-**0/6 sidecars integrated with melusina-attest.** The closest is `grain-auth` which has a solid v0.2.1 wire that defends response-replay; the migration to the universal envelope is the architectural goal but not scheduled yet.
+**0/6 sidecars integrated with melusina-attest.** The closest is `pearl-auth` which has a solid v0.2.1 wire that defends response-replay; the migration to the universal envelope is the architectural goal but not scheduled yet.
 
 ### 13.2 App coverage matrix (21 apps) — real state
 
@@ -914,7 +914,7 @@ Previous §13.x content (aspirational coverage matrix) — superseded by this au
 
 | Sidecar | Wave | Status |
 |---|---|---|
-| `melusina-grain-auth` | 2 | Already partially attested; full upgrade |
+| `melusina-pearl-auth` | 2 | Already partially attested; full upgrade |
 | `Fineract-sidecar` | 2 | Largest; reference impl |
 | `mermail-sidecar` | 3 | External-webhook partition |
 | `pr_ninja` / TeleScreen | 3 | Needs Python port |
@@ -967,7 +967,7 @@ The `attest.HTTPClient` and `attest.HTTPHandler` middlewares hide the cryptograp
 
 ### 14.1 Single canonical envelope across the ecosystem
 
-Every cross-trust-boundary message in every Melusina component routes through `melusina-attest.Envelope`. Today there are at least 4 envelope formats (identity-gate V2, melusina-grain-auth response, melusina-pdf canonical JSON, ad-hoc HTTP+HMAC for various sidecars). Post-attest: ONE format.
+Every cross-trust-boundary message in every Melusina component routes through `melusina-attest.Envelope`. Today there are at least 4 envelope formats (identity-gate V2, melusina-pearl-auth response, melusina-pdf canonical JSON, ad-hoc HTTP+HMAC for various sidecars). Post-attest: ONE format.
 
 ### 14.2 Single nonce cache discipline
 
@@ -1022,7 +1022,7 @@ Every component participates in all five.
 | Sandstorm shell PGP-touch surfaces miss one | Medium | High | Exhaustive grep table in §0 item 6; CI grep-fail if any reintroduced |
 | BLOOM QUESTIONNAIRE backwards-compat with naive key | Low | Low | Explicitly greenfield; old artifacts lose verifiability; users notified |
 | Cosigner unavailability blocks release | Medium | Medium | License Squads m-of-n threshold tuned; foundation backup co-signers as fallback role |
-| `grain-restore` re-attestation requires GrainAssignment pre-mint | Medium | Medium | Restore tooling prompts admin; failure mode is loud + recoverable |
+| `pearl-restore` re-attestation requires GrainAssignment pre-mint | Medium | Medium | Restore tooling prompts admin; failure mode is loud + recoverable |
 
 ---
 

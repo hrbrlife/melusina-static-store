@@ -17,7 +17,7 @@
   and `sealed`** so the client can render the provenance card without
   a second round-trip.
 - **Honest retraction of "Solana-pinned inference transcripts"
-  overclaim** in `description.md` and `changelog.md`. The grain has
+  overclaim** in `description.md` and `changelog.md`. The pearl has
   never implemented per-conversation transcript anchoring; the
   on-chain `RegisterReleaseEntry` PDA referenced in the catalog
   `attest` block signs the SPK publish manifest, not per-call LLM
@@ -47,7 +47,7 @@
 ## v0.7.7 (2026-05-07) — D3 discovery: AILAGOON_X25519_PUBLIC_KEY env var
 
 - Documented the recipient-pubkey discovery contract for Phase D3
-  sealedchat. Consumers (DueProcess Process grain in particular) read
+  sealedchat. Consumers (DueProcess Process pearl in particular) read
   the long-lived x25519 pubkey from the `AILAGOON_X25519_PUBLIC_KEY`
   env var at boot, cache it on `AIBundleClient`, and auto-engage
   NaCl-box encryption on every PII-bearing call. Companion var
@@ -58,28 +58,28 @@
   caller-side parser; `ai-lagoon/pkg/sealedchat` is unchanged. See
   DueProcess `docs/TEST_ENV_SETUP.md` for the consumer-side env table.
 
-## v0.7.6 (2026-05-07) — PowerBox: actually wire owner-bypass
+## v0.7.6 (2026-05-07) — Grapple: actually wire owner-bypass
 
 - v0.7.5 added the `if !s.isAdmin { requireAuth(...) }` owner-bypass on
   `handlePowerboxSelect` but `NewRequestSession` was hardcoding
-  `isAdmin: false` for *every* PowerBox-request session, so the
-  bypass never fired and grain owners still hit a grainauth deny on
+  `isAdmin: false` for *every* Grapple-request session, so the
+  bypass never fired and pearl owners still hit a grainauth deny on
   bundle fulfillment. `NewRequestSession` now reads
   `userInfo.Permissions()` and computes `isOwner`/`isAdmin` the same
   way `NewSession` does, matching Sandstorm's owner convention
   (zero-length permissions list ⇒ owner ⇒ admin). External / shared
   sessions remain license-gated unchanged.
 
-## v0.7.5 (2026-05-07) — PowerBox: owner bypass for grant gate
+## v0.7.5 (2026-05-07) — Grapple: owner bypass for grant gate
 
 - `handlePowerboxSelect` no longer fails closed on `forbidden: not-admin`
-  for the grain owner. The grainauth license check ran on every consumer
+  for the pearl owner. The grainauth license check ran on every consumer
   who tried to claim an `AICapBundle` / `AIText` / `AIVision` /
   `AIGeneric` / `AIAgent` capability via the Sandstorm picker, which
   forced every user to first link a Solana wallet — wrong product
   shape for "open AiLagoon, attach it to my Clawberg assistant". The
-  fix: when the calling Sandstorm session holds the grain's `admin`
-  permission bit (`isAdmin`), PowerBox grants pass through; external /
+  fix: when the calling Sandstorm session holds the pearl's `admin`
+  permission bit (`isAdmin`), Grapple grants pass through; external /
   shared sessions still go through the license-gated path. Admin-tier
   changes (add/remove provider connection, edit billing) remain
   license-gated unchanged.
@@ -87,51 +87,51 @@
 ## v0.7.4 (2026-05-06) — icon hi-res
 
 - High-resolution catalog and apps-grid icons. The pkgdef now embeds
-  128/256-px PNGs in both the `appGrid` and `grain` slots so the
-  Melusina shell stops upscaling a 48-px asset onto its 132-px grain
+  128/256-px PNGs in both the `appGrid` and `pearl` slots so the
+  Melusina shell stops upscaling a 48-px asset onto its 132-px pearl
   card. No application-logic changes since v0.7.3.
 
 ## v0.7.0 (2026-04-20)
 
 - **Harmonise the stack on `melusina-http-component` + SQLite.** All
   Melusina grains are converging on ccash's encrypted-SQLite persistence
-  stack (`grain-crypto-journal/sqlitestore`, pure-Go `modernc.org/sqlite`,
+  stack (`pearl-crypto-journal/sqlitestore`, pure-Go `modernc.org/sqlite`,
   AES-256-GCM at rest, idempotent migrations). AiLagoon is the first
   consumer of the new shared `melusina-http-component` module, which
   owns the Cap'n Proto `PowerboxDescriptor` builder, the 4-variant
-  sidecar selector, and the PowerBox sturdyref lifecycle (Claim / Save
-  / Restore / Release) for every grain going forward. Single source of
+  sidecar selector, and the Grapple sturdyref lifecycle (Claim / Save
+  / Restore / Release) for every pearl going forward. Single source of
   truth replaces the three byte-identical copies that previously shipped
   across ai-lagoon, cyberteller, and the Melusina lab grains.
 - **Sturdyref destruction on connection delete.** Deleting a connection
   now calls `SandstormApi.drop(token)` before removing the local row.
-  Every prior Melusina grain leaked these persistent references — the
-  shell kept the capability alive after the grain believed the
+  Every prior Melusina pearl leaked these persistent references — the
+  shell kept the capability alive after the pearl believed the
   connection was gone. This is a silent fix but a real capability-leak
   plug.
 - **No more `/var/connections.json` and no more `/var/httpout_*`.**
-  Connection records and PowerBox tokens both live in the grain's
+  Connection records and Grapple tokens both live in the pearl's
   SQLite database at `/var/ailagoon.db`. The database schema is
-  encryption-ready (the shared `grain-crypto-journal/sqlitestore`
+  encryption-ready (the shared `pearl-crypto-journal/sqlitestore`
   supports AES-256-GCM at rest via a keybox-wrapped DEK), but the
   Encryptor is intentionally unwired in v0.7.0 — the master-key
   derivation flow is being ported from ccash and will land in v0.8.
-  Until then, `/var/ailagoon.db` is plaintext inside the grain's
+  Until then, `/var/ailagoon.db` is plaintext inside the pearl's
   Sandstorm sandbox boundary. There is no migration path from the
   old JSON/file-token shape — fresh install on every upgrade.
   Pre-existing grains will present an empty connections list and a
   clean slate.
-- Removed the `pkg/httpout/` in-grain copy and the `*.PowerboxToken`
+- Removed the `pkg/httpout/` in-pearl copy and the `*.PowerboxToken`
   field on `connections.Connection`; both shifted into the shared module.
 - `connections.Store` keeps the same public API (`Add` / `Get` / `List`
   / `Update` / `Delete`) but is now a thin facade over the shared SQLite
   repo; every caller in AiLagoon compiles unchanged.
 - **Fail-closed authorization on every mutating handler via
-  `melusina-grain-auth`.** Every POST endpoint (`connections/add`,
+  `melusina-pearl-auth`.** Every POST endpoint (`connections/add`,
   `/update`, `/delete`, `/toggle`, `/reconnect`, `claim`, `api/chat`,
   `api/vision`, `routing/save`, `engine-config/save`, `ollama/pull`)
   and every sensitive GET (`connections`, `audit/*`) now enters through
-  `requireAuth(ctx, action, perm)` → `grainauth.Require`. The grain
+  `requireAuth(ctx, action, perm)` → `grainauth.Require`. The pearl
   refuses to start if it cannot construct the authz client; per-request
   denial surfaces as a Sandstorm 403 with a JSON reason. No session-
   cached "isAdmin" shortcut — each request re-checks. A new AST-scan
@@ -154,8 +154,8 @@
 - **Silent reconnect before shell round-trip.** New endpoint
   `POST /connections/<id>/reconnect` tries to re-hydrate a disconnected
   connection from the saved sturdyref (or an in-memory live cap) before
-  popping the PowerBox dialog. For connections that were granted once
-  and later disconnected (grain toggle, restart, or idle release), the
+  popping the Grapple dialog. For connections that were granted once
+  and later disconnected (pearl toggle, restart, or idle release), the
   Grant Access button now reactivates them silently via
   `SandstormApi.Restore` — no shell popup, no user prompt. Only when
   both the in-memory cap and the saved token are gone does the UI fall
@@ -172,7 +172,7 @@
   Cap'n Proto PowerboxDescriptor — the Sandstorm shell opens the
   address-selector popup scoped to exactly the URL the operator
   picked, not a generic fallback.
-- **Pre-save reachability probe.** After the PowerBox grant lands
+- **Pre-save reachability probe.** After the Grapple grant lands
   but BEFORE the claim is persisted onto the Connection record,
   AiLagoon issues a GET through the just-claimed capability to
   confirm the chosen sidecar URL actually answers. Any response
@@ -187,20 +187,20 @@
 
 - Switch the sidecar host from `ailagoon.sidecar.local` to
   `ailagoon.sidecar.host`. The Sandstorm gateway routes `*.sidecar.host`
-  to the out-of-grain sidecar service with a real TLS cert trusted by
+  to the out-of-pearl sidecar service with a real TLS cert trusted by
   the shell, which fixes the TLS verification error operators saw in
   v0.5.0 when the shell tried to proxy to the `.local` hostname.
   All refs updated in handlers, templates, provider URL defaults, JS,
-  PowerBox descriptor, and the description.
+  Grapple descriptor, and the description.
 
 ## v0.5.0 (2026-04-15)
 
 - **HTTP-out descriptor fix (load-bearing).** The v0.4.1 "corrected
   descriptor" landed as hand-assembled base64 in `static/js/lagoon.js`
-  with the PowerBox tag's `value` pointer set to a raw Text instead of
+  with the Grapple tag's `value` pointer set to a raw Text instead of
   a `PowerboxTag` STRUCT. The Sandstorm shell's descriptor parser read
-  that as garbage and silently fell back to the grain-picker dialog —
-  the exact symptom operators reported as "AiLagoon asks for a grain
+  that as garbage and silently fell back to the pearl-picker dialog —
+  the exact symptom operators reported as "AiLagoon asks for a pearl
   permission when it should be asking for URL permission." v0.5.0
   builds the descriptor server-side in `pkg/httpout.BuildHTTPOutDescriptor`
   using the capnp Go library (mirroring finreact-setup's approach),
@@ -212,7 +212,7 @@
 ## v0.4.1 (2026-03-29)
 
 - Fixed Grapple HTTP-out claim flow to restore tokens safely before falling back to `claimRequest()`
-- Corrected the canonical HTTP-out PowerBox descriptor for `https://ailagoon.sidecar.host`
+- Corrected the canonical HTTP-out Grapple descriptor for `https://ailagoon.sidecar.host`
 - Prepared the reusable AI-Lagoon pearl upgrade for shared Sandstorm testing
 
 ## v0.1.0 (2026-02-14)

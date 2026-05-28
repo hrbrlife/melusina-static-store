@@ -1,13 +1,13 @@
-# grain-auth v0.3.0 — migration to `melusina-attest`
+# pearl-auth v0.3.0 — migration to `melusina-attest`
 
 > **Status:** plan. Implementation deferred; the mechanical changes
 > below are the next cut.
 >
-> **Rationale:** grain-auth v0.2.1 closes the response-replay bug with
+> **Rationale:** pearl-auth v0.2.1 closes the response-replay bug with
 > a bespoke wire format (magic + version + four cross-bound fields).
 > The architecture goal is ONE canonical envelope across the ecosystem.
 > v0.3.0 replaces the bespoke wire with `melusina-attest.envelope` so
-> grain-auth becomes the first concrete consumer of the universal
+> pearl-auth becomes the first concrete consumer of the universal
 > envelope — and the response-replay cross-check logic becomes "free"
 > (it falls out of `envelope.verify`).
 
@@ -15,7 +15,7 @@
 
 ## Deliverable
 
-- `melusina-grain-auth v0.3.0` across Go / TS / Python.
+- `melusina-pearl-auth v0.3.0` across Go / TS / Python.
 - Wire format: `envelope.Signed` with envelope kind `sidecar-response`.
 - Client side: `envelope.verify` with `expected_source_kind=sidecar`,
   `expected_sidecar_id`, `expected_license_mint`, `expected_request_hash`.
@@ -57,16 +57,16 @@ Body = canonical JSON of an `envelope.Signed` whose `payload` has:
 - `destination = <the pearl's identity.Public from the request>`
 - `request_hash_hex = sha256(canonical_request_bytes)`
 - `body_hash_hex = sha256(response_json_bytes)` where `response_json`
-  carries the grain-auth-specific `{ decision, permissions, expires_at, reason }`
+  carries the pearl-auth-specific `{ decision, permissions, expires_at, reason }`
 - `license_mint = request.license_nft`
-- `sidecar_id = "melusina-grain-auth"` (or whatever the sidecar declares)
+- `sidecar_id = "melusina-pearl-auth"` (or whatever the sidecar declares)
 - `chain_evidence = { chain_id, program_id, verified_slot, sidecar_identity_pda }`
 
 The response JSON format is `{ envelope: Signed, response: { decision, permissions, expires_at, reason } }`. The client:
 
 1. Parses.
 2. Computes `request_hash = sha256(request_canonical_bytes)`.
-3. Calls `envelope.verify(envelope, { expected_source_kind: "sidecar", expected_sidecar_id: "melusina-grain-auth", expected_license_mint: request.license_nft, expected_request_hash: request_hash, nonce_cache })`.
+3. Calls `envelope.verify(envelope, { expected_source_kind: "sidecar", expected_sidecar_id: "melusina-pearl-auth", expected_license_mint: request.license_nft, expected_request_hash: request_hash, nonce_cache })`.
 4. Confirms `sha256(response_json_bytes) == envelope.payload.body_hash_hex`.
 5. Returns `response.decision` etc. to the caller.
 
@@ -104,7 +104,7 @@ priv, err := derive.DeriveSidecar(identity.Ref{
     LicenseMint: cfg.LicenseMint,
     Domain:      cfg.Domain,
     PDA:         pda_string,             // SidecarIdentityEntry PDA for this instance
-    SidecarID:   "melusina-grain-auth",
+    SidecarID:   "melusina-pearl-auth",
     KeyVersion:  cfg.KeyVersion,
 }, derive.SidecarShards{
     AuthorShard:          cfg.AuthorShard,
@@ -127,7 +127,7 @@ change below is mechanical.
 
 ## Deletions in v0.3.0
 
-Everything in grain-auth's bespoke wire path disappears:
+Everything in pearl-auth's bespoke wire path disappears:
 
 - `go/wire.go` — gone. All encoding/decoding goes through
   `attest.envelope.CanonicalPayload` + stdlib `encoding/json`.
@@ -147,7 +147,7 @@ Everything in grain-auth's bespoke wire path disappears:
 - `dependencies`: `github.com/hrbrlife/melusina-attest@v0.1.0+`
   (Go / TS via npm / Python via PyPI once ports publish).
 - Client `ConnectOpts` grows:
-  - `SidecarID` (defaults to `"melusina-grain-auth"`)
+  - `SidecarID` (defaults to `"melusina-pearl-auth"`)
   - `ChainEvidenceResolver` — callback that returns `ChainEvidence`
     for the sidecar (read from `keycache.Resolver`).
   - `PearlIdentity` — the calling pearl's `identity.Public`, included
@@ -179,7 +179,7 @@ get rewritten to exercise `envelope.verify` mismatches:
 | TestWire_OversizedNonce | drops (nonce is now base64-encoded 24B fixed; irrelevant) |
 
 Plus at least one new happy-path vector driven by the Go testvectors
-harness — confirms the grain-auth client agrees with the TS + Python
+harness — confirms the pearl-auth client agrees with the TS + Python
 clients on wire byte-equality.
 
 ---
@@ -188,9 +188,9 @@ clients on wire byte-equality.
 
 - Sidecar identity derivation wiring: 1 engineer-day (once the shards
   are defined and SidecarIdentityEntry PDA is minted on devnet).
-- grain-auth Go v0.3.0: 2 engineer-days (wire deletion + client/server
+- pearl-auth Go v0.3.0: 2 engineer-days (wire deletion + client/server
   rewrite against envelope + test rewrite).
-- TS + Python grain-auth v0.3.0: each 1 engineer-day once the attest
+- TS + Python pearl-auth v0.3.0: each 1 engineer-day once the attest
   TS + Python ports gain signing-side APIs.
 - Total: ~5 engineer-days plus the PDA minting infrastructure work.
 
@@ -201,13 +201,13 @@ clients on wire byte-equality.
 1. ✓ **v0.2.1 shipped** — closes the response-replay bug with the
    bespoke wire. Safe, production-ready.
 2. **melusina-attest TS + Python signing ports** — required before any
-   non-Go grain-auth client can produce envelopes.
+   non-Go pearl-auth client can produce envelopes.
 3. **Sidecar identity infrastructure** — define AuthorShard source
    (SPK bake), HostObservationShard computation, ReleaseShard source
    (SidecarReleaseEntry PDA); mint a test SidecarIdentityEntry on
    devnet.
-4. **grain-auth v0.3.0 Go** — deletes bespoke wire; ships first as the
+4. **pearl-auth v0.3.0 Go** — deletes bespoke wire; ships first as the
    reference consumer.
-5. **grain-auth v0.3.0 TS + Python** — ports mirror the Go changes.
+5. **pearl-auth v0.3.0 TS + Python** — ports mirror the Go changes.
 6. **v0.2.1 deprecation** — mark 0.2.x end-of-life once 0.3.x is in
    production across the fleet.

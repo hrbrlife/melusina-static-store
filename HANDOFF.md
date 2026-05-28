@@ -76,7 +76,7 @@ mode at runtime. They've been booting fine for weeks.
 The ninth — TeleScreen Hub — has an active `bridgeConfig` block (line
 118 of pkgdef) which does generate the config, but `fileList` was
 pinning the package contents and missing the `sandstorm-http-bridge-config`
-entry. The grain would crash on first boot with
+entry. The pearl would crash on first boot with
 `open(/sandstorm-http-bridge-config): No such file or directory` (the
 same family as the ChainWatch fix from 2026-05-05).
 
@@ -94,7 +94,7 @@ to sandstorm-files.list, re-packed, re-published.
   - appId rotation: `w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0` → `55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60`
     (intentional — pkgdef noted "Imperative #22 reset" months ago; the catalog metadata was still pinning the old key)
   - packageId 83695a91 → 64181be6
-  - Pkgdef icons: SVG (~430 bytes) → 128/256 PNG embeds (`23488/70650` for grain+appGrid, `30075/92969` for market)
+  - Pkgdef icons: SVG (~430 bytes) → 128/256 PNG embeds (`23488/70650` for pearl+appGrid, `30075/92969` for market)
   - Source: hrbrlife/pr_ninja @ 0230253 on feat/imp22-hub-cap-routed
   - Catalog: packages/hrbrlife/pr_ninja/telescreen/ (regular dir, not submodule) updated in place
   - Patched Makefile stage_sandstorm to copy icons/icon-*.png alongside SVGs
@@ -139,9 +139,9 @@ Resigned + repacked + published via the catalog plan/apply lane:
 
 ### ccash_go_htmx (branch=`feat/killlist-audit-20260501T114701Z`, pushed to origin)
 - `cca7e31` pkgdef adds `MELUSINA_INSTALL_TRUST_ROOT` + `MELUSINA_OPERATOR_WALLET_PUBKEY` deterministic dev-defaults. Per kill-list §10.1 fix-shape A. Production deployers MUST override.
-- `170c8c0` registers `modernc.org/sqlite` as `sqlite3` driver alias so `melusina-grain-restore`'s `sql.Open("sqlite3", ...)` works without CGO. Avoids the CGO×Sandstorm signal-handler crash that hit at `os/signal.Notify` right after `Cap'n Proto RPC server started on FD 3`.
+- `170c8c0` registers `modernc.org/sqlite` as `sqlite3` driver alias so `melusina-pearl-restore`'s `sql.Open("sqlite3", ...)` works without CGO. Avoids the CGO×Sandstorm signal-handler crash that hit at `os/signal.Notify` right after `Cap'n Proto RPC server started on FD 3`.
 - Both audited by two critical-auditor agents (PASS verdicts), shipped to ccash_go_htmx publish branch, then to static_store gh-pages.
-- **VERIFIED LIVE on dev.pbay.app**: ccash v0.3.2 grain boots all the way through "Cap'n Proto RPC server started on FD 3" + "SandstormApi captured" + admin-role session → "system_down: admin gate hello failed" soft-fault (correct for catalog install with no admin grain wired).
+- **VERIFIED LIVE on dev.pbay.app**: ccash v0.3.2 pearl boots all the way through "Cap'n Proto RPC server started on FD 3" + "SandstormApi captured" + admin-role session → "system_down: admin gate hello failed" soft-fault (correct for catalog install with no admin pearl wired).
 
 ### openclaw-main (uncommitted, but staged)
 - Project-root `sandstorm-pkgdef.capnp` + `.sandstorm/sandstorm-pkgdef.capnp` both updated: `bundled-node/bin/node` added to `alwaysInclude` + sourceMap `packagePath="bundled-node" sourcePath="bundled-node"`. Discovered mid-session that `spk pack` reads the project-root pkgdef, NOT the `.sandstorm/` one — the two were drifted, now in sync.
@@ -153,14 +153,14 @@ Resigned + repacked + published via the catalog plan/apply lane:
 
 ## Pass-2 verification truth table
 
-The "boots" claims from Pass 1 covered process startup. Pass 2 (per user's request) checked actual UI/feature traffic via supervisor logs. Reading `/opt/sandstorm/var/sandstorm/grains/<id>/log` for `WebSession.Get/Post` counts after the latest grain start:
+The "boots" claims from Pass 1 covered process startup. Pass 2 (per user's request) checked actual UI/feature traffic via supervisor logs. Reading `/opt/sandstorm/var/sandstorm/grains/<id>/log` for `WebSession.Get/Post` counts after the latest pearl start:
 
 | App                       | Boots? | UI traffic (Pass 2) |
 |---------------------------|--------|---------------------|
 | AiLagoon                  | ✅      | **108 GETs / 8 POSTs** — `api/provider/ollama`, `api/provider/openrouter`, `POST connections/add`. SIDECARS REACHED. |
 | DueProcess (AITX)         | ✅      | **74 GETs / 3 POSTs** — `api/kanban`, `api/analytics`, `api/ai/status`, `api/client-hub/status`, `api/datasets/{agreement-aml-cft-policy,…}`, `POST api/hooks/drain`, `POST api/setup/blank`. WORKFLOW + sidecar PROBES ACTIVE. |
 | ccash (popaye) v0.3.2     | ✅      | 0 — boots to system_down state (no admin gate wired); UI not yet clicked through |
-| cca.sh Config             | ✅      | 0 — capnp ready, manifest loaded (id=popaye, 11 hooks); PowerBox claim flow not exercised |
+| cca.sh Config             | ✅      | 0 — capnp ready, manifest loaded (id=popaye, 11 hooks); Grapple claim flow not exercised |
 | cyberteller               | ✅      | 0 — limited mode (sidecar env unset), `/api/payment/create-invoice` endpoint defined but not hit |
 | Cyberteller Config        | ✅      | 0 — boots `cca.sh Config v0.1.0 — raw capnp on FD 3` |
 | Fineract Setup            | ✅      | 0 — workflow loaded (9 steps, 5 datasets) but UI not exercised |
@@ -381,7 +381,7 @@ Triggered new-SPK installs via Sandstorm `/install/<pkgId>?url=<gh>/packages/<pk
 
 **Fix**: `fix_app_icon_v2.py` ships REAL PNG files (icon-24/48/128/256/150/300.png) and embeds them directly via `(png = (dpi1x = embed "icons/icon-24.png", dpi2x = embed "icons/icon-48.png"))` shape. Sandstorm renders these reliably.
 
-**Live-verified**: After upgrade, popaye pearl thumbnails on the Sandstorm shell grain dashboard show the canonical green-dollar-sign icon — not the previous blue-diamond fallback.
+**Live-verified**: After upgrade, popaye pearl thumbnails on the Sandstorm shell pearl dashboard show the canonical green-dollar-sign icon — not the previous blue-diamond fallback.
 
 **Commits**:
 - main: source repos updated with `fix_app_icon_v2.py` PNG variants + pkgdef PNG-embed blocks
@@ -410,7 +410,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 
 **Fix shipped**:
 - Patched `.icon-fix-2026-05-06/fix_app_icon_v2.py`: `appGrid` now uses
-  128/256 PNGs; `grain` keeps 24/48; `market` keeps 150/300 (Sandstorm spec).
+  128/256 PNGs; `pearl` keeps 24/48; `market` keeps 150/300 (Sandstorm spec).
 - Updated `.icon-fix-2026-05-06/icon_map.json`: switched 4 low-res 128x128
   canonical sources to higher-res alternatives:
     - instaco          → `instaco.png` (512x512, was `InstaCo.app.png` 128)
@@ -447,7 +447,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 1. Verify catalog UI shows new icons at `https://hrbrlife.github.io/melusina-static_store/`
 2. Bulk-upgrade installed grains in Sandstorm shell:
    `dev.pbay.app/install/<NEW_PKG>?url=https://hrbrlife.github.io/melusina-static_store/packages/<NEW_PKG>`
-3. Verify grain dashboard shows correct icons after each upgrade
+3. Verify pearl dashboard shows correct icons after each upgrade
 4. **TeleScreen Hub still blocked** — cannot ship new icon SPK due to 1 GiB limit
 
 **New packageIds to upgrade in Sandstorm shell**:
@@ -486,7 +486,7 @@ resolution and detail**. Verified end-to-end via Chrome MCP screenshots:
 - TeleScreen Hub still cannot pack new SPK (>1 GiB uncompressed limit
   from Python .venv). Catalog falls back to whatever last shipped — icon
   is fine; SPK refresh blocked until venv slimmed.
-- Tasks #23 (drive each booted grain through one feature) and #30 (boot
+- Tasks #23 (drive each booted pearl through one feature) and #30 (boot
   status audit across all catalog apps) remain pending.
 
 ---
@@ -494,12 +494,12 @@ resolution and detail**. Verified end-to-end via Chrome MCP screenshots:
 ## 2026-05-06 12:43 — Shell Tester fresh-boot verified
 
 Created a fresh Shell Tester pearl from the new SPK (`d61ed8a5...`).
-Grain opens cleanly — title bar shows "Untitled Shell Tester test
+Pearl opens cleanly — title bar shows "Untitled Shell Tester test
 (6.14kB)" and body returns "didn't send any data" at root path
 (expected for a shell-extension app that only handles UI hooks).
 
 Also verified the **Pearls Desktop view** at `dev.pbay.app/grain` —
-opening one popaye grain triggered Sandstorm to refresh icon caches
+opening one popaye pearl triggered Sandstorm to refresh icon caches
 across most existing grains. Now the grid shows proper icons for
 ChainWatch, MiniGit, popaye, Doc Bureau, OpenClaw, Teleport, Vintage
 Remote Desktop, CanBoard, ClientSpace, Bureau Contacts, NamedCoin,
@@ -511,7 +511,7 @@ will refresh as user opens each.
 End-state: catalog ✓ apps grid ✓ pearls desktop ✓ fresh boots ✓
 
 Open work for next pass:
-- Tasks #23 (drive each booted grain through one feature) + #30 (boot
+- Tasks #23 (drive each booted pearl through one feature) + #30 (boot
   status audit) — behavioral, not packaging
 - TeleScreen Hub SPK >1 GiB unfixable without slimming `.venv`
 
@@ -519,7 +519,7 @@ Open work for next pass:
 
 ## 2026-05-06 13:02 — Boot audit: 4 apps verified fresh-boot
 
-Spot-checked fresh-grain creation across the most-recently-changed apps
+Spot-checked fresh-pearl creation across the most-recently-changed apps
 in this round:
 
 | App | Boot result |
@@ -527,7 +527,7 @@ in this round:
 | popaye          | ✓ PIN-unlock UI renders, sidebar green-E icon |
 | DueProcess      | ✓ "Configure Station" UI with Apply Templates / Build Scratch |
 | Fineract Setup  | ✓ 9-stage wizard, Connectivity Check first stage |
-| Shell Tester    | ✓ Grain opens (404 at root expected for shell-only app) |
+| Shell Tester    | ✓ Pearl opens (404 at root expected for shell-only app) |
 | cca.sh Config   | ✓ Upgraded to v0.0.5, app-page icon renders |
 
 These four cover the four packaging fixes done in this round:
@@ -546,9 +546,9 @@ prior iterations, see tasks #6-22).
 
 ## 2026-05-06 13:39 — NamedCoin sqlite-driver root-fix
 
-**Symptom**: Fresh NamedCoin grain returned "didn't send any data" at root.
+**Symptom**: Fresh NamedCoin pearl returned "didn't send any data" at root.
 
-**Root cause** (found via grain log at `/opt/sandstorm/var/sandstorm/grains/<id>/log`):
+**Root cause** (found via pearl log at `/opt/sandstorm/var/sandstorm/grains/<id>/log`):
 ```
 panic: sql: Register called twice for driver sqlite3
 goroutine 1 [running]:
@@ -557,29 +557,29 @@ main.init.1()
     NamedCoin/sqlite_driver_alias.go:17 +0x35
 ```
 
-`mattn/go-sqlite3` was being pulled in transitively by `melusina-grain-restore@v0.1.1/personas.go` via blank import. `mattn` registers itself as `"sqlite3"`, then `sqlite_driver_alias.go` tried to register `modernc.org/sqlite` as `"sqlite3"` too → panic.
+`mattn/go-sqlite3` was being pulled in transitively by `melusina-pearl-restore@v0.1.1/personas.go` via blank import. `mattn` registers itself as `"sqlite3"`, then `sqlite_driver_alias.go` tried to register `modernc.org/sqlite` as `"sqlite3"` too → panic.
 
 **Two-layer fix** (defensive check exposed second issue: when `mattn` runs as
 CGO=0 stub it still registers as `sqlite3`, so the defensive skip means
 sql.Open returns the stub-driver error "go-sqlite3 requires cgo to work").
 
 **Solution shipped**:
-1. Forked grain-restore locally at `/home/user/Desktop/NamedCoin-work/_local-grain-restore/`
+1. Forked pearl-restore locally at `/home/user/Desktop/NamedCoin-work/_local-pearl-restore/`
 2. Patched `personas.go` to use `sql.Open("sqlite", ...)` (modernc's native name)
 3. Removed `_ "github.com/mattn/go-sqlite3"` blank import
 4. Added `sqlite_register.go` blank-importing `modernc.org/sqlite` for auto-registration
-5. Wired `replace github.com/hrbrlife/melusina-grain-restore => /home/user/Desktop/NamedCoin-work/_local-grain-restore` in NamedCoin's go.mod
+5. Wired `replace github.com/hrbrlife/melusina-pearl-restore => /home/user/Desktop/NamedCoin-work/_local-pearl-restore` in NamedCoin's go.mod
 6. Removed `sqlite_driver_alias.go` from NamedCoin (no longer needed — fork uses "sqlite" name natively)
 7. Built CGO_ENABLED=0 → 30MB statically linked binary
 8. Packed pkg `45e5d2f87cac5eae7f75ff41984b57b9` (v6, 13MB)
 9. Aggregated dist-publish + force-pushed publish branch (incremental, fast: `49355da..f1edcfc`)
 10. Pages rebuild + upgrade-install in Sandstorm shell
 
-**Verified**: Fresh NamedCoin grain at `/grain/HpBuSxb2usAcYLkhTZbFu4` boots
+**Verified**: Fresh NamedCoin pearl at `/grain/HpBuSxb2usAcYLkhTZbFu4` boots
 to "Melusina shell required" ccash unlock UI. No panic, no stub error.
 
-**Note**: The fork should be upstreamed to `melusina-grain-restore` proper
-in a follow-up so other grain-restore consumers (ccash, etc.) can drop
+**Note**: The fork should be upstreamed to `melusina-pearl-restore` proper
+in a follow-up so other pearl-restore consumers (ccash, etc.) can drop
 their own `sqlite_driver_alias.go` shims too. The "sqlite3" vs "sqlite"
 driver-name discrepancy is the real wound; everyone shimming it is
 papering over a transitive CGO dep that should not be there in the first
@@ -589,9 +589,9 @@ place.
 
 ## 2026-05-06 14:00 — ChainWatch bridge-config root-fix
 
-**Symptom**: Fresh ChainWatch grain returned "didn't send any data".
+**Symptom**: Fresh ChainWatch pearl returned "didn't send any data".
 
-**Root cause** (grain log):
+**Root cause** (pearl log):
 ```
 sandstorm/util.c++:46: failed: open(name.cStr(), flags, mode):
 No such file or directory; name = /sandstorm-http-bridge-config
@@ -613,9 +613,9 @@ branch.)
 2. Repacked pkg `eb35f77260f352f262f219b1aed886a1` (vn 7, 13MB)
 3. Aggregated + force-pushed publish branch (incremental: `f1edcfc..adca141`)
 4. Pages rebuilt
-5. Upgraded in Sandstorm shell, created fresh grain
+5. Upgraded in Sandstorm shell, created fresh pearl
 
-**Verified**: Fresh ChainWatch grain returns HTTP 404 at `/` (expected — Go
+**Verified**: Fresh ChainWatch pearl returns HTTP 404 at `/` (expected — Go
 server only registers `/api/check`, `/api/broadcast`, `/healthz`). No more
 supervisor crash loop, no "didn't send any data". Bridge wires up correctly.
 
@@ -639,13 +639,13 @@ omit `sandstorm-http-bridge-config` from `sandstorm-files.list`):
 
 8 other apps declare `bridgeConfig` blocks (botmother, Teleport,
 bureaus paint/sheets/doc/diagram, mermail, NamedCoin) but use their
-own launchers — the `bridgeConfig` is metadata-only (PowerBox claim
+own launchers — the `bridgeConfig` is metadata-only (Grapple claim
 handlers, viewInfo) and Sandstorm reads it from the manifest via
 PackageDefinition.bridgeConfig, not the standalone config file.
 These don't need the fix.
 
 MiniGit is known-blocked by separate Sandstorm shell issue
-(`openWebSocket missing` per prior memory) — its grain shows blank
+(`openWebSocket missing` per prior memory) — its pearl shows blank
 white because Gogs UI uses websockets which fail in catalog mode.
 Boot itself is fine; UI is the problem and that's a Sandstorm shell
 gateway-router gap, not an SPK issue.
@@ -660,25 +660,25 @@ iterations (tasks #6-22).
 
 ---
 
-## 2026-05-06 15:24 — Grain-icon resolution fix (apps grid)
+## 2026-05-06 15:24 — Pearl-icon resolution fix (apps grid)
 
 **User report**: CanBoard, cca.sh Client, cyberteller, Cyberteller Config,
 MiniGit, Fineract Setup showed low-resolution icons in the apps grid.
 
 **Root cause** (found by inspecting al-card icon HTTP URLs in the live shell):
 the Melusina apps grid (`.al-card .al-card-icon` at 132×132 CSS px = 264 native
-on 2x retina) renders the **`grain`** icon, NOT `appGrid`. We were embedding
-24×24 (dpi1x) and 48×48 (dpi2x) PNGs into the grain slot per Sandstorm
+on 2x retina) renders the **`pearl`** icon, NOT `appGrid`. We were embedding
+24×24 (dpi1x) and 48×48 (dpi2x) PNGs into the pearl slot per Sandstorm
 spec — Sandstorm's standard /apps page uses appGrid, but Melusina's
 custom shell `.al-card` extension uses grain. So the 48px PNG got
 upscaled 5× to 264px → blurry.
 
 Verified by fetching `https://static.dev.pbay.app/<id>` for CanBoard:
-returned 5KB 48×48 PNG (matches grain dpi2x).
+returned 5KB 48×48 PNG (matches pearl dpi2x).
 
 **Fix shipped**:
-- Updated `fix_app_icon_v2.py`: embed 128/256 PNGs in BOTH grain and
-  appGrid slots (was 24/48 for grain).
+- Updated `fix_app_icon_v2.py`: embed 128/256 PNGs in BOTH pearl and
+  appGrid slots (was 24/48 for pearl).
 - Re-ran `batch_fix_v2.py` → 34/34 OK
 - Re-ran `repack_all_v2.sh` → 31 SPKs repacked. DueProcess fixed up
   separately (script's hardcoded path doesn't match the workdir).
@@ -699,7 +699,7 @@ To verify visually: open https://dev.pbay.app/apps after Sandstorm refreshes
 icons for the 6 listed apps should now be sharp at 132×132 / 264×264.
 
 **Note**: Existing app installs need to be upgraded (via `/install/<new-pkg>?url=…`)
-to pick up the new grain icon, since Sandstorm caches per-package icons.
+to pick up the new pearl icon, since Sandstorm caches per-package icons.
 The catalog UI itself uses `imageId` (not the SPK), so the app store already
 shows sharp 256x256 icons — only the apps grid (which queries installed
 SPKs) needed this fix.

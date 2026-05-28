@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "appId": "ny0kpatkzkcq4qsep22pamvhhvp7gm2stcsgc3e1htarkx5nyhuh",
+  "appName": "NamedCoin — Identity Attestation",
+  "appHash": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
+  "packageId": "543b5847612de0c7ed8e42d18f5bba39",
+  "marketingVersion": "0.1.0",
+  "versionNumber": 1,
+  "mode": "offline",
+  "signedAtUnix": 1748427800
+}

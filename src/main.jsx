@@ -19,7 +19,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 
-const APP_INDEX_BASE = "https://hrbrlife.github.io/melusina-static_store";
+const APP_INDEX_BASE = "https://hrbrlife.github.io/melusina-static-store";
 const LOGO_URL = `${APP_INDEX_BASE}/icons/melulogo-cyan.svg`;
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */

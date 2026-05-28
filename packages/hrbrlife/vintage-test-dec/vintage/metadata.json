@@ -9,7 +9,7 @@
   "categories": [
     "Productivity"
   ],
-  "isOpenSource": true,
+  "isOpenSource": false,
   "webLink": "https://github.com/hrbrlife/vintage-test-dec",
   "codeLink": "https://github.com/hrbrlife/vintage-test-dec",
   "upstreamAuthor": "hrbr.life",
@@ -23,7 +23,7 @@
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "license": "MIT",
+  "license": "Proprietary",
   "screenshots": [],
   "tier": "regular",
   "domains": [

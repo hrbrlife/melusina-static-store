@@ -9,7 +9,7 @@
   "categories": [
     "Productivity"
   ],
-  "isOpenSource": true,
+  "isOpenSource": false,
   "webLink": "https://processstation.app",
   "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
   "upstreamAuthor": "ProcessStation",
@@ -24,6 +24,6 @@
   },
   "description": "",
   "screenshots": [],
-  "license": "MIT",
+  "license": "Proprietary",
   "marketingVersion": "0.1.6-merchant-strip"
 }

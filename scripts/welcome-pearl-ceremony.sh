@@ -25,10 +25,10 @@
 # feedback_static_store_ownership.md.
 #
 # Env overrides (sensible defaults):
-#   MELUSINA_RPC_URL                       https://api.devnet.solana.com
+#   MELUSINA_RPC_URL                       https://api.devnet.Solana.com
 #   MELUSINA_MASTER_NFT_MINT               B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe
-#   MELUSINA_SQUADS_CONFIG                 .../config/core-app-team-squads.json
-#   MELUSINA_RELEASE_AUTHOR_KEYPAIR        /home/user/.config/solana/id.json
+#   MELUSINA_SQUADS_CONFIG                 .../config/core-app-team-Squads.json
+#   MELUSINA_RELEASE_AUTHOR_KEYPAIR        /home/user/.config/Solana/id.json
 #   MELUSINA_PUBLISHER_KEYPAIR             test-wallets/core-app-team/publisher.json
 #   MELUSINA_REVIEWER1_KEYPAIR             test-wallets/core-app-team/reviewer-1.json
 #   MELUSINA_REVIEWER2_KEYPAIR             test-wallets/core-app-team/reviewer-2.json
@@ -41,10 +41,10 @@ set -euo pipefail
 ATTEST_REPO="${ATTEST_REPO:-/home/user/Desktop/melusina-attestdeployer-tool}"
 PEARL_TOOL="$ATTEST_REPO/melusina-pearl-tool"
 
-RPC_URL="${MELUSINA_RPC_URL:-https://api.devnet.solana.com}"
+RPC_URL="${MELUSINA_RPC_URL:-https://api.devnet.Solana.com}"
 MASTER_MINT="${MELUSINA_MASTER_NFT_MINT:-B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe}"
-SQUADS_CONFIG="${MELUSINA_SQUADS_CONFIG:-$ATTEST_REPO/config/core-app-team-squads.json}"
-AUTHOR_KEYPAIR="${MELUSINA_RELEASE_AUTHOR_KEYPAIR:-/home/user/.config/solana/id.json}"
+SQUADS_CONFIG="${MELUSINA_SQUADS_CONFIG:-$ATTEST_REPO/config/core-app-team-Squads.json}"
+AUTHOR_KEYPAIR="${MELUSINA_RELEASE_AUTHOR_KEYPAIR:-/home/user/.config/Solana/id.json}"
 PUBLISHER_KEYPAIR="${MELUSINA_PUBLISHER_KEYPAIR:-/home/user/Desktop/Melusina/test-wallets/core-app-team/publisher.json}"
 REVIEWER1_KEYPAIR="${MELUSINA_REVIEWER1_KEYPAIR:-/home/user/Desktop/Melusina/test-wallets/core-app-team/reviewer-1.json}"
 REVIEWER2_KEYPAIR="${MELUSINA_REVIEWER2_KEYPAIR:-/home/user/Desktop/Melusina/test-wallets/core-app-team/reviewer-2.json}"
@@ -97,13 +97,13 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 cat > "$TMP/package.json" <<'JSON'
-{"type":"module","dependencies":{"@solana/web3.js":"~1.98.0","@sqds/multisig":"~2.1.4"}}
+{"type":"module","dependencies":{"@Solana/web3.js":"~1.98.0","@sqds/multisig":"~2.1.4"}}
 JSON
 echo "[ceremony] installing @sqds/multisig…"
 npm install --prefix "$TMP" --silent
 
 cat > "$TMP/next-index.mjs" <<'JS'
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@Solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
 const [rpcUrl, multisigPdaRaw] = process.argv.slice(2);
@@ -122,7 +122,7 @@ import {
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
-} from "@solana/web3.js";
+} from "@Solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
 const [statePath, rpcUrl, publisherPath, reviewer1Path, reviewer2Path, resultPath] = process.argv.slice(2);
@@ -265,7 +265,7 @@ cat > "$APP_DIR/RELEASE.json" <<JSON
   "releaseHash": "$RELEASE_HASH",
   "version": "$VERSION",
   "signedAtUnix": 0,
-  "masterNftMint": "$MASTER_MINT",
+  "MasterNftMint": "$MASTER_MINT",
   "licenseSquadsVault": "",
   "releaseEntryPda": "",
   "authorSig": "",

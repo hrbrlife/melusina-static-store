@@ -236,7 +236,7 @@ MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish        # refresh + build + plan + 
    and writes a marker. Aborts on catalog shrink unless
    `MELUSINA_PUBLISH_SHRINK_OK=1`.
 4. **apply** — orphan commit on `publish` branch, force-push. gh-pages serves
-   the new tree at `https://hrbrlife.github.io/melusina-static-store/` within
+   the new tree at `https://hrbrlife.github.io/melusina-static_store/` within
    a minute.
 
 ### Env vars
@@ -271,7 +271,7 @@ ones with no source on disk; flagged here so you know not to wait for them.
 - `ccash` → `/home/user/Desktop/ccash_go_htmx`
 - `openclaw-main` → `/home/user/Desktop/Clawberg`
 - `instaco-app` → `/home/user/Desktop/instaco.app`
-- `melusina-namedcoin-app` → `/home/user/Desktop/namedcoin-work/melusina-namedcoin-app`
+- `melusina-NamedCoin-app` → `/home/user/Desktop/NamedCoin-work/melusina-NamedCoin-app`
 - `pr_ninja` → `/home/user/Desktop/pr_ninja`
 
 **Has source, bespoke Makefile (no spkmodule, but still ships via `make publish`, 4 apps):**

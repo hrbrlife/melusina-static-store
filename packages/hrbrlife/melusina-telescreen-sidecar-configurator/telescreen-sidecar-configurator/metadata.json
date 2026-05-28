@@ -4,7 +4,7 @@
   "name": "TeleScreen Sidecar Configurator",
   "version": "0.4.0",
   "versionNumber": 5,
-  "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar — exposes config UI + Powerbox cap.",
+  "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar — exposes config UI + PowerBox cap.",
   "categories": [
     "Productivity",
     "Developer Tools"

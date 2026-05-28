@@ -62,7 +62,7 @@ for repo_dir in "$ROOT"/*/; do
   "releaseHash": "$rel_hash",
   "releaseNonce": "$nonce",
   "releaseEntryPda": "pending-finalize",
-  "masterNftMint": "$MINT",
+  "MasterNftMint": "$MINT",
   "licenseSquadsVault": "$VAULT",
   "authorSig": "pending-finalize",
   "signedAtUnix": 0,
@@ -108,7 +108,7 @@ rel = json.load(open(rel_path))
 rel['authorSig']        = state['authorSig']
 rel['releaseEntryPda']  = state['releaseEntryPda']
 rel['signedAtUnix']     = state['createdAtUnix']
-rel['masterNftMint']    = state['masterNftMint']
+rel['MasterNftMint']    = state['MasterNftMint']
 rel['licenseSquadsVault']= state['licenseSquadsVault']
 rel['quorumPolicy']['multisigPda'] = state['multisigPda']
 

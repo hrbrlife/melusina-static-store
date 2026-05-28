@@ -8,7 +8,7 @@
       "pearlId": "cca-sh-domain-template",
       "pearlName": "Domain Template",
       "pearlType": "infrastructure-pearl",
-      "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Powerbox-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
+      "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains PowerBox-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
       "sidecars": [],
       "grapple": {
         "offers": [
@@ -41,7 +41,7 @@
         "anyMember": [
           {
             "name": "Read templates",
-            "purpose": "Anyone with a Powerbox claim can read."
+            "purpose": "Anyone with a PowerBox claim can read."
           }
         ]
       },
@@ -51,7 +51,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {

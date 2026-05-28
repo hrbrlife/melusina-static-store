@@ -10,7 +10,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
   │ APP_BUILD_STYLE := noop (Coming     │     8 │ bureau-notes, bureau-cal, bureau-contacts, canboard, consilium, cratelink, ccash-client,           │   
   │ Soon stubs, already thin)           │       │ ccash-org-member                                                                                   │   
   ├─────────────────────────────────────┼───────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤   
-  │ APP_BUILD_STYLE := custom (legacy   │    13 │ clientspace, openclaw-melusina, instaco-app, namedcoin-app, 4× bureau (doc/sheets/paint/diagram),  │   
+  │ APP_BUILD_STYLE := custom (legacy   │    13 │ clientspace, openclaw-melusina, instaco-app, NamedCoin-app, 4× bureau (doc/sheets/paint/diagram),  │   
   │ retrofitted)                        │       │ MiniGit, AITX-Procedures, INSTASYS_MAIL, MELUSINA_BOTMOTHER, ccash_go_htmx                         │   
   ├─────────────────────────────────────┼───────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤ 
   │ Direct-tracked in static_store (no  │     2 │ AiLagoon, cyberteller — not applicable                                                             │   
@@ -71,8 +71,8 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                        
 ✻ Baked for 49m 19s · 1 shell still running                                                                                                            
                                                                              
-※ recap: Goal was to greenfield the Melusina static-store bazaar and standardize every per-app build pipeline. All 21 apps are now live at               
-  `hrbrlife.github.io/melusina-static-store/`, and every submodule-backed app uses the shared `melusina-spkmodule-component`. Next: you choose what to   
+※ recap: Goal was to greenfield the Melusina static_store bazaar and standardize every per-app build pipeline. All 21 apps are now live at               
+  `hrbrlife.github.io/melusina-static_store/`, and every submodule-backed app uses the shared `melusina-spkmodule-component`. Next: you choose what to   
   tackle — bump submodule pointers in static_store, or move on.                                                                                          
                                                                                                                                                          
 ❯ what other melusina components as such should we have to standardize operations or how can we expand the current one from a devops perspective?        

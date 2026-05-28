@@ -14,7 +14,7 @@
       "pearlId": "cca-sh-config",
       "pearlName": "Configuration",
       "pearlType": "admin-pearl",
-      "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Powerbox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Powerbox-claim only.",
+      "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over PowerBox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — PowerBox-claim only.",
       "sidecars": [],
       "grapple": {
         "offers": [
@@ -72,7 +72,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {

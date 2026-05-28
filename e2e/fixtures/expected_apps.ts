@@ -1,5 +1,5 @@
 /* Single source of truth for what the catalog should ship. Loaded by the
- * static-store + all-apps suites and asserted against what the page renders.
+ * static_store + all-apps suites and asserted against what the page renders.
  *
  * To regenerate: `node fixtures/refresh.mjs`
  */

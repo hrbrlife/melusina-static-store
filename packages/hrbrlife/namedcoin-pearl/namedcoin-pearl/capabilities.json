@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "appSlug": "namedcoin-pearl",
+  "appSlug": "NamedCoin-pearl",
   "appName": "NamedCoin — Identity Attestation",
   "tier": "regular",
   "pearls": [
     {
-      "pearlId": "namedcoin-pearl",
+      "pearlId": "NamedCoin-pearl",
       "pearlName": "NamedCoin — Identity Attestation",
       "pearlType": "user-pearl",
       "purpose": "Biometric identity verification — tilt-to-capture liveness detection, document OCR, sanctions screening, and on-chain NFT attestation. Pass KYC once and receive a time-boxed attestation that every Melusina app can verify without accessing raw ID data.",
       "sidecars": [
         {
-          "name": "namedcoin-sidecar",
+          "name": "NamedCoin-sidecar",
           "port": 9100,
           "endpoints": [
             "/api/v1/health",
@@ -42,7 +42,7 @@
           "endpoints": ["/api/v1/chat/completions", "/api/v1/embeddings"]
         },
         {
-          "name": "opensanctions-sidecar",
+          "name": "OpenSanctions-sidecar",
           "port": 9102,
           "endpoints": ["/api/screen/person", "/api/screen/entity", "/api/sanctions/lists", "/api/crypto/screen"]
         },
@@ -142,13 +142,13 @@
           {
             "type": "IdentityCap",
             "to": "any-grain",
-            "purpose": "Merkle claim verification via namedcoin-sidecar HMAC-signed probe"
+            "purpose": "Merkle claim verification via NamedCoin-sidecar HMAC-signed probe"
           }
         ]
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {
@@ -164,12 +164,12 @@
       ],
       "httpOut": {
         "enabled": true,
-        "via": "namedcoin-sidecar",
-        "purpose": "All egress goes through the namedcoin-sidecar — HMAC-signed requests to ailagoon (LLM), opensanctions (screening), and mermail (email/OTP).",
+        "via": "NamedCoin-sidecar",
+        "purpose": "All egress goes through the NamedCoin-sidecar — HMAC-signed requests to ailagoon (LLM), OpenSanctions (screening), and mermail (email/OTP).",
         "endpoints": {
-          "namedcoin-sidecar": "http://10.245.50.6:9100",
+          "NamedCoin-sidecar": "http://10.245.50.6:9100",
           "ailagoon-sidecar": "http://10.245.50.5:9101",
-          "opensanctions-sidecar": "http://10.245.50.7:9102",
+          "OpenSanctions-sidecar": "http://10.245.50.7:9102",
           "mermail-sidecar": "http://10.245.50.8:9103"
         }
       },
@@ -208,7 +208,7 @@
         ],
         "defaultTab": "biometric"
       },
-      "adminGate": {
+      "AdminGate": {
         "exports": [
           {
             "capability": "ProcessExecutor",
@@ -227,7 +227,7 @@
       "powerboxManifest": {
         "sidecarAccess": [
           {
-            "label": "namedcoin-sidecar",
+            "label": "NamedCoin-sidecar",
             "ip": "10.245.50.6",
             "port": 9100,
             "protocol": "http",
@@ -241,7 +241,7 @@
             "purpose": "LLM document-authenticity check and face-match"
           },
           {
-            "label": "opensanctions-sidecar",
+            "label": "OpenSanctions-sidecar",
             "ip": "10.245.50.7",
             "port": 9102,
             "protocol": "http",

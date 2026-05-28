@@ -58,11 +58,11 @@
   caller-side parser; `ai-lagoon/pkg/sealedchat` is unchanged. See
   DueProcess `docs/TEST_ENV_SETUP.md` for the consumer-side env table.
 
-## v0.7.6 (2026-05-07) — Powerbox: actually wire owner-bypass
+## v0.7.6 (2026-05-07) — PowerBox: actually wire owner-bypass
 
 - v0.7.5 added the `if !s.isAdmin { requireAuth(...) }` owner-bypass on
   `handlePowerboxSelect` but `NewRequestSession` was hardcoding
-  `isAdmin: false` for *every* powerbox-request session, so the
+  `isAdmin: false` for *every* PowerBox-request session, so the
   bypass never fired and grain owners still hit a grainauth deny on
   bundle fulfillment. `NewRequestSession` now reads
   `userInfo.Permissions()` and computes `isOwner`/`isAdmin` the same
@@ -70,7 +70,7 @@
   (zero-length permissions list ⇒ owner ⇒ admin). External / shared
   sessions remain license-gated unchanged.
 
-## v0.7.5 (2026-05-07) — Powerbox: owner bypass for grant gate
+## v0.7.5 (2026-05-07) — PowerBox: owner bypass for grant gate
 
 - `handlePowerboxSelect` no longer fails closed on `forbidden: not-admin`
   for the grain owner. The grainauth license check ran on every consumer
@@ -79,7 +79,7 @@
   forced every user to first link a Solana wallet — wrong product
   shape for "open AiLagoon, attach it to my Clawberg assistant". The
   fix: when the calling Sandstorm session holds the grain's `admin`
-  permission bit (`isAdmin`), Powerbox grants pass through; external /
+  permission bit (`isAdmin`), PowerBox grants pass through; external /
   shared sessions still go through the license-gated path. Admin-tier
   changes (add/remove provider connection, edit billing) remain
   license-gated unchanged.
@@ -99,7 +99,7 @@
   AES-256-GCM at rest, idempotent migrations). AiLagoon is the first
   consumer of the new shared `melusina-http-component` module, which
   owns the Cap'n Proto `PowerboxDescriptor` builder, the 4-variant
-  sidecar selector, and the Powerbox sturdyref lifecycle (Claim / Save
+  sidecar selector, and the PowerBox sturdyref lifecycle (Claim / Save
   / Restore / Release) for every grain going forward. Single source of
   truth replaces the three byte-identical copies that previously shipped
   across ai-lagoon, cyberteller, and the Melusina lab grains.
@@ -110,7 +110,7 @@
   connection was gone. This is a silent fix but a real capability-leak
   plug.
 - **No more `/var/connections.json` and no more `/var/httpout_*`.**
-  Connection records and Powerbox tokens both live in the grain's
+  Connection records and PowerBox tokens both live in the grain's
   SQLite database at `/var/ailagoon.db`. The database schema is
   encryption-ready (the shared `grain-crypto-journal/sqlitestore`
   supports AES-256-GCM at rest via a keybox-wrapped DEK), but the
@@ -154,7 +154,7 @@
 - **Silent reconnect before shell round-trip.** New endpoint
   `POST /connections/<id>/reconnect` tries to re-hydrate a disconnected
   connection from the saved sturdyref (or an in-memory live cap) before
-  popping the Powerbox dialog. For connections that were granted once
+  popping the PowerBox dialog. For connections that were granted once
   and later disconnected (grain toggle, restart, or idle release), the
   Grant Access button now reactivates them silently via
   `SandstormApi.Restore` — no shell popup, no user prompt. Only when
@@ -172,7 +172,7 @@
   Cap'n Proto PowerboxDescriptor — the Sandstorm shell opens the
   address-selector popup scoped to exactly the URL the operator
   picked, not a generic fallback.
-- **Pre-save reachability probe.** After the Powerbox grant lands
+- **Pre-save reachability probe.** After the PowerBox grant lands
   but BEFORE the claim is persisted onto the Connection record,
   AiLagoon issues a GET through the just-claimed capability to
   confirm the chosen sidecar URL actually answers. Any response
@@ -191,13 +191,13 @@
   the shell, which fixes the TLS verification error operators saw in
   v0.5.0 when the shell tried to proxy to the `.local` hostname.
   All refs updated in handlers, templates, provider URL defaults, JS,
-  Powerbox descriptor, and the description.
+  PowerBox descriptor, and the description.
 
 ## v0.5.0 (2026-04-15)
 
 - **HTTP-out descriptor fix (load-bearing).** The v0.4.1 "corrected
   descriptor" landed as hand-assembled base64 in `static/js/lagoon.js`
-  with the Powerbox tag's `value` pointer set to a raw Text instead of
+  with the PowerBox tag's `value` pointer set to a raw Text instead of
   a `PowerboxTag` STRUCT. The Sandstorm shell's descriptor parser read
   that as garbage and silently fell back to the grain-picker dialog —
   the exact symptom operators reported as "AiLagoon asks for a grain
@@ -212,7 +212,7 @@
 ## v0.4.1 (2026-03-29)
 
 - Fixed Grapple HTTP-out claim flow to restore tokens safely before falling back to `claimRequest()`
-- Corrected the canonical HTTP-out Powerbox descriptor for `https://ailagoon.sidecar.host`
+- Corrected the canonical HTTP-out PowerBox descriptor for `https://ailagoon.sidecar.host`
 - Prepared the reusable AI-Lagoon pearl upgrade for shared Sandstorm testing
 
 ## v0.1.0 (2026-02-14)

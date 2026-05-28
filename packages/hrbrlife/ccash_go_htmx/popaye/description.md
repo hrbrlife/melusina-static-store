@@ -45,7 +45,7 @@ PII.
 - **Compliance is somebody else's job.** KYC, sanctions screening,
   AML rules, SAR drafting, and Travel Rule marshalling live in
   sibling DueProcess Station grains reached over Cap'n Proto
-  Powerbox capabilities — never via HTTP, never inside this grain.
+  PowerBox capabilities — never via HTTP, never inside this grain.
 
 ## What's in the box
 

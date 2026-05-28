@@ -151,7 +151,7 @@ from collections import Counter
 index_path, attest_root = sys.argv[1], sys.argv[2]
 apps = json.load(open(index_path)).get('apps', [])
 EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
-                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'MasterNftMint', 'licenseSquadsVault', 'signedAtUnix',
                  'authorSig', 'quorumPolicy']
 
 id_counts = Counter(a.get('appId', '') for a in apps if a.get('appId'))

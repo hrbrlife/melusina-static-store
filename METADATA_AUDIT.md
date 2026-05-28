@@ -17,7 +17,7 @@
 | -------- | --------------------- | ----- | --------------------------------------------------------------- |
 | HARD     | `ZERO_AND_NO_DIR`     | 18    | `screenshots: []` AND `screenshots/` dir absent or empty        |
 | HARD     | `MISSING`             | 9     | required field absent, no documented fallback                   |
-| HARD     | `BAD_TERM`            | 9     | uses "grain"/"Sandstorm"/"powerbox" — PUBLISH_QC §1 L80         |
+| HARD     | `BAD_TERM`            | 9     | uses "grain"/"Sandstorm"/"PowerBox" — PUBLISH_QC §1 L80         |
 | HARD     | `SECONDS_NOT_MS`      | 4     | `createdAt` in seconds, spec wants ms (off by 1000)             |
 | SOFT     | `LESS_THAN_3`         | 2     | screenshots count < 3 but at least 1 (pre-launch acceptable)    |
 | **TOTAL**|                       | **42**|                                                                 |
@@ -50,7 +50,7 @@ push to that submodule's publish branch, bump catalog SHA.
 ### Terminology drift (PUBLISH_QC §1 L80)
 
 Spec: use **pearl** not "grain", **Melusina** not "Sandstorm",
-**Grapple** not "powerbox" in user-facing strings. Found in
+**Grapple** not "PowerBox" in user-facing strings. Found in
 `description` or `shortDescription`:
 
 | Repo / slug                              | Bad term    |
@@ -59,7 +59,7 @@ Spec: use **pearl** not "grain", **Melusina** not "Sandstorm",
 | `INSTASYS_MAIL/mermail`                  | `Sandstorm` |
 | `ccash/ccash`                            | `grain`     |
 | `client_collection/clientspace`          | `grain`     |
-| `fineract-setup/fineract-setup`          | `Sandstorm` |
+| `Fineract-setup/Fineract-setup`          | `Sandstorm` |
 | `melusina-bureau-notes-app/bureau-notes` | `Sandstorm` |
 | `melusina-ccash-client-app/ccash-client` | `Sandstorm` |
 | `melusina-ccash-org-member-app/ccash-org-member` | `Sandstorm` |
@@ -81,7 +81,7 @@ publishability gap.
 Affected (18):
 `AITX-Procedures/dueprocess`, `MELUSINA_BOTMOTHER/botmother`,
 `ccash/ccash`, `client_collection/clientspace`,
-`cyberteller/cyberteller`, `fineract-setup/fineract-setup`,
+`cyberteller/cyberteller`, `Fineract-setup/Fineract-setup`,
 `instaco-app/instaco-app`, `melusina-bureau-cal-app/bureau-cal`,
 `melusina-bureau-contacts-app/bureau-contacts`,
 `melusina-bureau-notes-app/bureau-notes`,
@@ -90,7 +90,7 @@ Affected (18):
 `melusina-ccash-org-member-app/ccash-org-member`,
 `melusina-consilium-app/consilium`,
 `melusina-cratelink-app/cratelink`,
-`melusina-namedcoin-app/namedcoin`,
+`melusina-NamedCoin-app/NamedCoin`,
 `openclaw-main/melusina-openclaw`, `vintage-test-dec/vintage`.
 
 ### MISSING fields (no fallback satisfied)
@@ -135,7 +135,7 @@ launch-day cut.
    per HT5 first**.
 
 2. **Terminology cleanup** (9 apps) — search-and-replace `grain`→`pearl`,
-   `Sandstorm`→`Melusina`, `powerbox`→`Grapple` in
+   `Sandstorm`→`Melusina`, `PowerBox`→`Grapple` in
    `description`/`shortDescription`/`description.md`. Per-app
    semantic touch; should be cross-checked by the app maintainer
    first since some descriptions may legitimately mention Sandstorm
@@ -167,7 +167,7 @@ REQUIRED_TYPES = {
 REQUIRED_AUTHOR = {"name", "githubUsername", "twitterUsername", "picture"}
 VALID_CATEGORIES = {"Productivity","Office","Social","Developer Tools",
                     "Communications","Finance","Media","Games","Other"}
-TERMS_BAD = ["grain", "Sandstorm", "powerbox"]
+TERMS_BAD = ["grain", "Sandstorm", "PowerBox"]
 SHORT_DESC_MAX = 120
 
 base = "packages/hrbrlife"

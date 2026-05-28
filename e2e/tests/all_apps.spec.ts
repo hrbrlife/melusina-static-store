@@ -9,7 +9,7 @@ import { EXPECTED_APPS } from '../fixtures/expected_apps';
  */
 
 const STORE = process.env.STORE_BASE_URL
-  ?? 'https://hrbrlife.github.io/melusina-static-store/';
+  ?? 'https://hrbrlife.github.io/melusina-static_store/';
 const norm = (s: string) => s.replace(/\/+$/, '');
 const STORE_NORM = norm(STORE);
 
@@ -51,7 +51,7 @@ for (const app of EXPECTED_APPS) {
       expect(entry.attest.appHash).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.attest.releaseHash).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.attest.releaseEntryPda).toBeTruthy();
-      expect(entry.attest.masterNftMint).toBeTruthy();
+      expect(entry.attest.MasterNftMint).toBeTruthy();
       expect(entry.attest.licenseSquadsVault).toBeTruthy();
       expect(entry.attest.signedAtUnix).toBeGreaterThan(0);
 
@@ -64,7 +64,7 @@ for (const app of EXPECTED_APPS) {
       expect(release.appHash).toBe(entry.attest.appHash);
       expect(release.releaseHash).toBe(entry.attest.releaseHash);
       expect(release.releaseEntryPda).toBe(entry.attest.releaseEntryPda);
-      expect(release.masterNftMint).toBe(entry.attest.masterNftMint);
+      expect(release.MasterNftMint).toBe(entry.attest.MasterNftMint);
       expect(release.licenseSquadsVault).toBe(entry.attest.licenseSquadsVault);
       expect(release.signedAtUnix).toBe(entry.attest.signedAtUnix);
     });

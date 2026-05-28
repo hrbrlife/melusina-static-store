@@ -5,7 +5,7 @@
   "releaseHash": "fe6646ec229b310d11690440fb4d3543b096cf3b31dcbada9fe0c4dc5ac023e8",
   "releaseNonce": "a1e873fc98b7ce1b5eda19cc3f86fce8fa66461d768b8dde5c7b0a777b9b9b0c",
   "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-  "masterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+  "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
   "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
   "authorSig": "7842845c1f60ef4a5265803d481b2ef9630dba8c74ad0d1bdf89c4deb9ddbfa3",
   "signedAtUnix": 1779812777,

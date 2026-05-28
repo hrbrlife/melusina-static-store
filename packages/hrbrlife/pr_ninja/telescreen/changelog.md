@@ -11,7 +11,7 @@
   v0.1.1 (sidecar + core) collapses into a single Hub grain that
   supervises the Python sidecar internally on localhost:8001 and
   serves the Go grain on the Sandstorm port. Foreign Sandstorm apps
-  can claim a `ScreeningService` capability via Powerbox to consume
+  can claim a `ScreeningService` capability via PowerBox to consume
   Hub screening as a service.
 - Outbound `ScreeningService` capnp interface
   (`@0xc0d0e0f000111213`): typed `screenPerson` / `screenEntity` /
@@ -52,6 +52,6 @@ shipped as a separate SPK from
 - Declare the three-grain composition explicitly: `telescreen.spk` ships
   Sidecar + Core actions; the Setup grain ships separately as
   `telescreen-companion.spk` (built from the Melusina scaffold),
-  mirroring the way `fineract-sidecar` ships `fineract-setup.spk`.
+  mirroring the way `Fineract-sidecar` ships `Fineract-setup.spk`.
 - Retire the legacy Bootstrap SPA at `src/telescreen/web/`; the sidecar
   is REST/JSON only (no HTML surface) and the core grain owns all UI.

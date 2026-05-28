@@ -87,7 +87,7 @@ declare -A ALIAS_MAP=(
   [melusina-bureau-diagram-app]="store-rebuild/melusina-bureau-diagram-app"
   [melusina-bureau-paint-app]="store-rebuild/melusina-bureau-paint-app"
   [melusina-bureau-sheets-app]="store-rebuild/melusina-bureau-sheets-app"
-  [melusina-namedcoin-app]="namedcoin-work/melusina-namedcoin-app"
+  [melusina-NamedCoin-app]="NamedCoin-work/melusina-NamedCoin-app"
   [AI_Lagoon]="ai-lagoon"
 )
 

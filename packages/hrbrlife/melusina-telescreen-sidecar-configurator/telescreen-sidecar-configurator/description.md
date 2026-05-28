@@ -8,7 +8,7 @@ through the browser, with no SSH-into-container required.
 
 The grain stores its configuration inside its own Sandstorm sandbox
 (`/var`) and pushes the merged config to the live sidecar via an
-authenticated HTTP-out capability claimed once through the Powerbox.
+authenticated HTTP-out capability claimed once through the PowerBox.
 Secrets never touch the sidecar's disk: the sidecar holds them in
 process memory, where they are flushed on restart.
 

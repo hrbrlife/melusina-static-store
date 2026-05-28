@@ -10,7 +10,7 @@
  *
  *   - The Squads vault transaction wraps ONLY register_release_entry.
  *   - At execute time, the OUTER transaction contains:
- *         [ ed25519 sigverify, squads.vaultTransactionExecute ]
+ *         [ ed25519 sigverify, Squads.vaultTransactionExecute ]
  *     so the register_release_entry handler — running as a CPI from the
  *     Squads program — sees the sigverify in the outer tx's Instructions
  *     sysvar and validates the author signature there.
@@ -40,7 +40,7 @@ const fs = require("fs");
 const Module = require("module");
 
 // Resolve @solana/web3.js + @sqds/multisig from the existing license104
-// node_modules tree (same trick as squads-vault-exec.js).
+// node_modules tree (same trick as Squads-vault-exec.js).
 const MODULE_SEARCH_DIRS = [
   path.join("/home/user/Desktop/Melusina/melusina_solana_dev-license104/node_modules"),
   path.join("/home/user/Desktop/Melusina/melusina_solana_dev-license104/frontend-vite/node_modules"),

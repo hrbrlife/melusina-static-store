@@ -28,9 +28,9 @@ ATTEST_OUT="$OUTPUT_DIR/attest"
 MAX_SPK_SIZE=$((100 * 1024 * 1024))  # 100 MiB. Keep SPKs in the gh-pages catalog whenever possible — Sandstorm's /install endpoint does NOT follow GitHub's 302 redirect to release-assets.githubusercontent.com SAS URLs (verified 2026-05-05: Teleport at packages-v1 returns "Package download returned error: 404"). The Releases path is reserved for SPKs that physically cannot push to gh-pages (>100 MiB git limit).
 GH_HARD_LIMIT_BYTES=104857600  # GitHub's documented push rejection limit (100 MiB; the empirical reject message says "100.00 MB" but actual cutoff is 100 * 1024 * 1024 bytes — confirmed via Clawberg push at 104528748 bytes succeeding 2026-05-07)
 RELEASES_TAG="packages-v1"
-RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
+RELEASES_BASE="https://github.com/hrbrlife/melusina-static_store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
-BASE_URL="https://hrbrlife.github.io/melusina-static-store"
+BASE_URL="https://hrbrlife.github.io/melusina-static_store"
 
 # Melusina binary update hosting
 SANDSTORM_SRC="../sandstorm"
@@ -470,7 +470,7 @@ m['attest'] = {
     'releaseHash': release.get('releaseHash', ''),
     'releaseNonce': release.get('releaseNonce', ''),
     'releaseEntryPda': release.get('releaseEntryPda', ''),
-    'masterNftMint': release.get('masterNftMint', ''),
+    'MasterNftMint': release.get('MasterNftMint', ''),
     'licenseSquadsVault': release.get('licenseSquadsVault', ''),
     'signedAtUnix': release.get('signedAtUnix', 0),
     'authorSig': release.get('authorSig', ''),
@@ -657,7 +657,7 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
             # Upload (--clobber overwrites if already present)
             info "Uploading $pkg_id ($(( spk_size / 1024 / 1024 ))MB) to release $RELEASES_TAG"
             cp "$app_dir/app.spk" "/tmp/$pkg_id"
-            gh release upload "$RELEASES_TAG" "/tmp/$pkg_id" --clobber -R hrbrlife/melusina-static-store
+            gh release upload "$RELEASES_TAG" "/tmp/$pkg_id" --clobber -R hrbrlife/melusina-static_store
             rm -f "/tmp/$pkg_id"
           elif ! command -v gh &>/dev/null; then
             fail "gh CLI not found — cannot upload $(( spk_size / 1024 / 1024 ))MB SPK to GitHub Releases. Install gh or shrink SPK under ${MAX_SPK_SIZE} bytes."
@@ -755,7 +755,7 @@ index_path, attest_root = sys.argv[1], sys.argv[2]
 index = json.load(open(index_path))
 apps = index.get('apps', [])
 EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
-                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'MasterNftMint', 'licenseSquadsVault', 'signedAtUnix',
                  'authorSig', 'quorumPolicy']
 
 # Pre-pass: find duplicate appIds (warn-only).
@@ -822,7 +822,7 @@ PY
 #   • static_store ships the SPK at /packages/<stale-pkgid>
 #   • index.json says packageId = <stale-pkgid>
 #   • Consumer (Sandstorm shell) fetches /packages/<stale-pkgid>, gets the
-#     SPK file, runs `spk verify` which returns the REAL internal
+#     spk, runs `spk verify` which returns the REAL internal
 #     packageId = sha256(spk)[:32]. If Sandstorm cross-checks, install fails.
 # Surface the drift here as WARN-only (don't block deploys — currently
 # 20/39 apps in the catalog are affected fleet-wide, blocking would brick
@@ -882,7 +882,7 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   # dev/stable/latest.json/manifest.json/install.sh/sandstorm-N.tar.xz.update-sig.
   # SKIP=1 means "don't change the bundle channel" — without this fetch it
   # would mean "delete the bundle channel", which is the bug this guards.
-  LIVE_BASE="https://hrbrlife.github.io/melusina-static-store/update"
+  LIVE_BASE="https://hrbrlife.github.io/melusina-static_store/update"
   for f in dev stable latest.json manifest.json install.sh; do
     if curl -fsS --max-time 12 -o "$UPDATE_OUT/$f" "$LIVE_BASE/$f"; then
       ok "Preserved live update/$f"
@@ -923,7 +923,7 @@ elif [[ -d "$SANDSTORM_SRC" ]]; then
     # client's Sandstorm binary on next self-update poll. Hit once 2026-05-19:
     # local source dir held only builds 0+1 while live was build=4.
     LIVE_BUILD="$(curl -sf --max-time 8 \
-      "https://hrbrlife.github.io/melusina-static-store/update/manifest.json" \
+      "https://hrbrlife.github.io/melusina-static_store/update/manifest.json" \
       2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("build",-1))' \
       2>/dev/null || echo -1)"
     if [[ "$LIVE_BUILD" =~ ^[0-9]+$ ]] && [[ "$SANDSTORM_BUILD_NUM" -lt "$LIVE_BUILD" ]]; then

@@ -77,7 +77,7 @@ Every field listed below must be present and correctly populated.
 - [ ] `description` is either a full markdown string OR empty string `""` (which triggers fallback to `description.md`)
 - [ ] If using `description.md` fallback: that file exists alongside `metadata.json`
 - [ ] Description covers: what the app does, key features, pearl types, how to get started
-- [ ] Description mentions **pearl** (not "grain"), **Melusina** (not "Sandstorm"), **Grapple** (not "powerbox")
+- [ ] Description mentions **pearl** (not "grain"), **Melusina** (not "Sandstorm"), **Grapple** (not "PowerBox")
 
 ### Categories
 
@@ -210,8 +210,8 @@ All metadata text, descriptions, changelogs, and in-app strings **must** use Mel
 | Sandstorm | **Melusina** | Platform name |
 | grain | **pearl** | Application instance / container |
 | Grain | **pearl** | (capitalized form) |
-| powerbox | **Grapple** | Inter-pearl capability exchange |
-| Powerbox | **Grapple** | (capitalized form) |
+| PowerBox | **Grapple** | Inter-pearl capability exchange |
+| PowerBox | **Grapple** | (capitalized form) |
 | Legacy upstream platform domain | **melusina-os.org** | Platform website |
 | Oasis | _(removed)_ | Not applicable to Melusina |
 | Legacy upstream app-index domain | **App Bazaar** | App store reference |
@@ -408,7 +408,7 @@ The capnp file in the **source repo** must be consistent with `metadata.json`.
 - [ ] `continueCommand` references a valid defined command
 - [ ] `sourceMap.searchPath` resolves all needed paths
 - [ ] `icons` (appGrid, grain, market, appMarket) are set
-- [ ] All text uses Melusina terminology (pearl, Grapple — not grain, powerbox)
+- [ ] All text uses Melusina terminology (pearl, Grapple — not grain, PowerBox)
 
 ---
 
@@ -470,7 +470,7 @@ cd static_store && make publish
 # → Detail page loads all tabs
 # → Screenshots render
 # → Install URL returns HTTP 200
-# → Terminology is correct (no Sandstorm/grain/powerbox references)
+# → Terminology is correct (no Sandstorm/grain/PowerBox references)
 ```
 
 - [ ] All 6 steps complete without errors

@@ -32,7 +32,7 @@ Every Melusina app icon uses one of eight category tiles. The **background hex**
 | Diagram Bureau | Office | `#C8D0D8` | `#556170` |
 | Doc Bureau | Office | `#C8D0D8` | `#556170` |
 | DueProcess | Identity | `#A6C8F5` | `#355FA5` |
-| fineract Setup | Finance | `#BDEBCD` | `#35A56A` |
+| Fineract Setup | Finance | `#BDEBCD` | `#35A56A` |
 | InstaCo.app | Identity | `#A6C8F5` | `#355FA5` |
 | Melusina OpenClaw | AI | `#D4A6F5` | `#6E35A5` |
 | MerMail | Communications | `#F5A6C8` | `#A5355F` |

@@ -11,14 +11,14 @@
       "pearlId": "cybertellerconfig",
       "pearlName": "Configuration",
       "pearlType": "admin-pearl",
-      "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Powerbox capability every cyberteller grain claims at first launch — hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
+      "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate PowerBox capability every cyberteller grain claims at first launch — hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
       "sidecars": [],
       "grapple": {
         "offers": [
           {
             "name": "config-gate",
             "interface": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
-            "purpose": "Single Powerbox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
+            "purpose": "Single PowerBox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
           }
         ],
         "requests": []
@@ -69,7 +69,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {

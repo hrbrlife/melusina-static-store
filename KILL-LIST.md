@@ -16,9 +16,9 @@ Anchored in a two-iteration audit at 2026-04-22.
 2. **`grainrestore` has two production-blocking bugs** (Sec. 4): `RegisterKeyRewrap` is registered but never invoked at restore; `ResignDecision` modes (Keep/Replace/Migrate/Drop) are inert — the hook is called with empty args and its return is discarded.
 3. **`grain-crypto-journal`** is already under the correct namespace (`github.com/hrbrlife/grain-crypto-journal`). Canonical working copy: `/home/user/Desktop/Melusina/shared/grain-crypto-journal/`. Vendored into 27+ apps via submodule + in-tree copies that must be deleted.
 4. **`grain-e2e-binding`** is at `/home/user/Desktop/Melusina/shared/grain-e2e-binding/` as `github.com/melusina-os/grain-e2e-binding` — a **different wrong namespace** from grainrestore's `melusina/`. Both must move to `hrbrlife/`.
-5. **`melusina-solana-primitives` and `melusina-identity-gate`** live at `melusina-os/` namespace inside `/home/user/Desktop/Melusina/shared/`. **Zero consumers today.** Both must either be promoted to hrbrlife repos (if we actually use them) or archived (see Sec. 8 decisions).
+5. **`melusina-Solana-primitives` and `melusina-identity-gate`** live at `melusina-os/` namespace inside `/home/user/Desktop/Melusina/shared/`. **Zero consumers today.** Both must either be promoted to hrbrlife repos (if we actually use them) or archived (see Sec. 8 decisions).
 6. **`melusina-spkmodule-component`** already exists as `github.com/hrbrlife/melusina-spkmodule-component`; apps mount it as a submodule at `./spkmodule/`.
-7. **Real current consumers of grainrestore** (go.mod grep): `ccash_go_htmx`, `melusina-namedcoin-admin-app`, `melusina-namedcoin-app`. That is the entire set. PHASE-STATUS.md claims five; wrong.
+7. **Real current consumers of grainrestore** (go.mod grep): `ccash_go_htmx`, `melusina-NamedCoin-admin-app`, `melusina-NamedCoin-app`. That is the entire set. PHASE-STATUS.md claims five; wrong.
 8. **Sandstorm restore mechanics:** backup is an unencrypted ZIP of `/var` + `GrainInfo`; restore mints a new grainId; no restore hook. GrainId is read from `/var/grainid` (and `SANDSTORM_GRAIN_ID` env fallback). `X-Sandstorm-Grain-Id` HTTP header does **not** exist.
 
 ---
@@ -32,17 +32,17 @@ Anchored in a two-iteration audit at 2026-04-22.
 | 1 | `melusina-spkmodule-component` | (submodule; not a module) | Canonical Makefile discipline: `mount → verify inodes → spk pack → spk verify → publish-to-branch`. `.spkmodule-hooks/` API. Icon/manifest scaffolding. Pre-pack capability static check. | — |
 | 2 | `melusina-capnp` | `github.com/hrbrlife/melusina-capnp` | Single source of truth for every `.capnp` schema: `grain-authz`, `botmother`, `agentchat`, `payment`, `wallet`, `audit`, `ai`, `kyc`, `notification`, `storage`, `identity`, `station`, `supervisor`, `telegram`, `static-publish`, `document`, `workflow`, `instance`, `testcap`, `gohtmx`, `casemeta` (21 schemas). Auto-generated Go/TS/Py bindings via CI. | — |
 | 3 | `melusina-grain-crypto-journal-component` | `github.com/hrbrlife/grain-crypto-journal` | `keybox.Manager` (Rewrap/ClearAuthorizedKeys/ResetBinding/UnsealPathB), `sqlitestore.Store` (AES-256-GCM + hash-chained `Audit`), binding state machine, JS twin. | — |
-| 4 | `melusina-solana-primitives-component` | `github.com/hrbrlife/melusina-solana-primitives` | **Canonical PDA seed lock** — InstallAdminEntry, OrganizationMemberEntry, LicenseEntry, GlobalAppApproval, ResellerAppApproval, LocalAppApproval, GlobalSidecarApproval, ResellerSidecarApproval, LocalSidecarApproval, ContractWhitelist, AppContractPair, DomainClaim. Plus base58, PDA derivation, Ed25519 helpers. Single source of truth prevents silent auth bypass from seed drift. | `filippo.io/edwards25519` |
+| 4 | `melusina-Solana-primitives-component` | `github.com/hrbrlife/melusina-Solana-primitives` | **Canonical PDA seed lock** — InstallAdminEntry, OrganizationMemberEntry, LicenseEntry, GlobalAppApproval, ResellerAppApproval, LocalAppApproval, GlobalSidecarApproval, ResellerSidecarApproval, LocalSidecarApproval, ContractWhitelist, AppContractPair, DomainClaim. Plus base58, PDA derivation, Ed25519 helpers. Single source of truth prevents silent auth bypass from seed drift. | `filippo.io/edwards25519` |
 | 5 | `melusina-identity-gate-component` (+ `-py` sibling) | `github.com/hrbrlife/melusina-identity-gate` | Canonical envelope v1/v2 parser, Ed25519 verification, on-chain PDA checks (InstallAdminEntry / OrganizationMemberEntry / app-cascade / sidecar-cascade), policy engine (route → resource-policy → signer quorum), nonce cache (10 min TTL, claim-once). The four-app cross-app authorization contract is pinned against this module. | #4 |
 | 6 | `melusina-grain-auth-component` | `github.com/hrbrlife/melusina-grain-auth/go` + npm `@melusina/grain-auth` + PyPI `melusina-grain-auth` | Three-language Cap'n Proto admin authz sidecar client. Fail-closed middleware. ≤500 ms UI perms TTL. Ed25519 verification. Schema-coherence CI. | #2, #3, #4, #5 |
-| 7 | `melusina-http-component` | `github.com/hrbrlife/melusina-http-component/go` | Canonical Sandstorm HTTP-out + Powerbox. `BuildHTTPOutDescriptor`, 4-variant sidecar selector, `PowerboxManager` with mandatory `SandstormApi.drop(token)`. | #3 |
+| 7 | `melusina-http-component` | `github.com/hrbrlife/melusina-http-component/go` | Canonical Sandstorm HTTP-out + PowerBox. `BuildHTTPOutDescriptor`, 4-variant sidecar selector, `PowerboxManager` with mandatory `SandstormApi.drop(token)`. | #3 |
 | 8 | `melusina-grain-e2e-binding-component` | `github.com/hrbrlife/grain-e2e-binding` | E2E wallet-binding protocol: keybox ↔ wallet for Path-B recovery, binding/migration state, authorized-key sync. | #3, #4 |
 | 9 | `melusina-grain-restore-component` | `github.com/hrbrlife/melusina-grain-restore` | **v0.1.0 scope: same-machine restore only** (persona remap). `Open/Register*/Mount/CaptureOnBackup/RewriteOnRestore`, dispatch matrix, manifest. **Both current bugs fixed** (Sec. 4). Cross-machine migration deferred to v1.0.0 per Sec. 4.6. | #3, #8, #6 |
 | 10 | `melusina-e2e-test-component` | PyPI `melusina-e2e` | Browser-driven E2E harness, screenshot store, Sandstorm shell helpers. Orchestrates 23-scenario constellation tests including TeleScreen C4. | `melusina-grain-auth-py` |
 | 11 | `melusina-bureau-shell-component` | npm `@hrbrlife/bureau-shell` | Shared Bureau chrome, document-picker, zip export, **snapshot API** (CRUD + Ed25519 signature column reserved for v0.2.0 Solana-tied signing). Content-addressed blob storage at `/var/snapshots/<first2>/<hash>.blob`. | #3, #7, #6 |
 
 **Out-of-scope of this kill list but documented in Sec. 12 / 13:**
-- `melusina-fineract-sidecar` — already correct namespace, unrelated to standardization.
+- `melusina-Fineract-sidecar` — already correct namespace, unrelated to standardization.
 - `mermail-sidecar` — dedicated to mermail-station-app; stays app-local unless a 2nd consumer appears.
 - `pr_ninja` / TeleScreen — **core sidecar, operational** (897 LOC Python, FastAPI, 12+ OSINT providers, 364 tests). Infrastructure-adjacent; not a Bucket 3 target. Consumes #5 identity-gate. See Sec. 13.
 - `miniapp-static` — shared static JS scaffolding for clientspace-style apps. Kept as a utility submodule, not a numbered component.
@@ -71,9 +71,9 @@ Extracted after the original 11 planned above. Both under `hrbrlife/`; each tagg
 | Component | Current path | Current module | Correct? | Action |
 |---|---|---|---|---|
 | grain-crypto-journal | `Melusina/shared/grain-crypto-journal/` | `github.com/hrbrlife/grain-crypto-journal` | ✓ | **SHIPPED** — v0.1.0 + v0.1.1 tagged and pushed. 15+ consumers still use `v0.0.0 + local replace`; bumping each is consumer-by-consumer port work (see instaco.app / vintage-test-dec below), not a mass task. |
-| grainrestore | `/grainrestore/` → now `hrbrlife/melusina-grain-restore` | `github.com/hrbrlife/melusina-grain-restore` | ✓ | **SHIPPED** — v0.1.0 + v0.1.1 tagged. Consumers: ccash + 2 namedcoin apps. |
+| grainrestore | `/grainrestore/` → now `hrbrlife/melusina-grain-restore` | `github.com/hrbrlife/melusina-grain-restore` | ✓ | **SHIPPED** — v0.1.0 + v0.1.1 tagged. Consumers: ccash + 2 NamedCoin apps. |
 | grain-e2e-binding | `Melusina/shared/grain-e2e-binding/` (monorepo copy) + standalone at `hrbrlife/grain-e2e-binding` | `github.com/hrbrlife/grain-e2e-binding` (standalone) | ✓ | **SHIPPED** — standalone v0.1.0 live. Monorepo copy still declares `melusina-os/` but is effectively legacy; `hrbrlife/` is canonical. 3 consumers (instaco.app, vintage-test-dec, store-rebuild duplicate) still pin `melusina-os/ v0.0.0 + replace` — consumer port jobs, not a tag op (API diverged: `UserContext.WalletChain`, `HasLegacyPIN`, `WalletPubkey`, `keybox.GetUserKey`, `RegisterWalletUser` all removed before v0.1.0). |
-| melusina-solana-primitives | `_killlist_staging/melusina-solana-primitives/` (canonical); `Melusina/shared/melusina-solana-primitives/` (stale source copy, delete) | `github.com/hrbrlife/melusina-solana-primitives` | ✓ | **SHIPPED** — v0.1.0 tagged and pushed; Go proxy resolves. Zero consumers today. The `melusina-os/` GitHub repo never existed (404). |
+| melusina-Solana-primitives | `_killlist_staging/melusina-Solana-primitives/` (canonical); `Melusina/shared/melusina-Solana-primitives/` (stale source copy, delete) | `github.com/hrbrlife/melusina-Solana-primitives` | ✓ | **SHIPPED** — v0.1.0 tagged and pushed; Go proxy resolves. Zero consumers today. The `melusina-os/` GitHub repo never existed (404). |
 | melusina-identity-gate (+ `-py` sibling) | `_killlist_staging/melusina-identity-gate/` (Go) + `_killlist_staging/melusina-identity-gate-py/` (Python) | `github.com/hrbrlife/melusina-identity-gate` (Go) + `github.com/hrbrlife/melusina-identity-gate-py` (Py) | ✓ | **SHIPPED (Go)** — v0.1.0 tagged, ccash consumes it directly on the tag (no replace). **Py side:** repo + v0.1.0 + v0.1.1 tagged; wheel+sdist built at `dist/melusina_identity_gate-0.1.1-*`. **PyPI publish pending** user auth. |
 | melusina-grain-auth | `/melusina-grain-auth/` | `github.com/hrbrlife/melusina-grain-auth/go` + `@hrbrlife/grain-auth` (npm, package.json 0.1.1) + `melusina-grain-auth` (PyPI, pyproject 0.1.1) | ✓ | **SHIPPED (Go)** — `go/v0.1.0` + `go/v0.1.1` Git tags live; Go proxy resolves. Consumers: cyberteller + ai-lagoon pinned at v0.1.1. **npm publish pending** user auth (dry-run `npm pack` green — 16 files, 7.7 kB). **PyPI publish pending** user auth (wheel+sdist built at `py/dist/`). |
 | melusina-http-component | `/melusina-http-component/` | `github.com/hrbrlife/melusina-http-component/go` | ✓ | **SHIPPED** — v0.1.0 tagged (`v0.1.0` + `go/v0.1.0`); Go proxy resolves; `grain-crypto-journal` pinned at v0.1.0 (no sibling replace). Consumers: cyberteller + ai-lagoon pinned at v0.1.0. |
@@ -91,8 +91,8 @@ Adoption targets (Bucket 3): 13 apps. Deferred / out-of-scope: 5 apps (Sec. 12).
 | App path | Git remote | Branch | grainrestore | grain-crypto-journal | Other shared | Status |
 |---|---|---|---|---|---|---|
 | `/Desktop/ccash_go_htmx` | hrbrlife/ccash_go_htmx | main | ✓ (local replace) | ✓ submodule | — | **CONSUMING** (3 dirty) |
-| `/Desktop/namedcoin-work/melusina-namedcoin-admin-app` | hrbrlife/melusina-namedcoin-admin-app | feat/namedcoin-audit | ✓ (local replace) | ✓ submodule | — | **CONSUMING** (2 dirty) |
-| `/Desktop/namedcoin-work/melusina-namedcoin-app` | hrbrlife/melusina-namedcoin-app | feat/namedcoin-audit | ✓ (local replace) | ✓ submodule | — | **CONSUMING** (5 dirty) |
+| `/Desktop/NamedCoin-work/melusina-NamedCoin-admin-app` | hrbrlife/melusina-NamedCoin-admin-app | feat/NamedCoin-audit | ✓ (local replace) | ✓ submodule | — | **CONSUMING** (2 dirty) |
+| `/Desktop/NamedCoin-work/melusina-NamedCoin-app` | hrbrlife/melusina-NamedCoin-app | feat/NamedCoin-audit | ✓ (local replace) | ✓ submodule | — | **CONSUMING** (5 dirty) |
 | `/Desktop/cyberteller` | hrbrlife/cyberteller | feat/admin-auth-harmonize | ✗ | ✓ (indirect via http-component) | melusina-grain-auth, melusina-http-component | **PARTIAL** |
 | `/Desktop/ai-lagoon` | hrbrlife/ai-lagoon | feat/admin-auth-harmonize | ✗ | ✓ (indirect via http-component) | melusina-grain-auth, melusina-http-component | **PARTIAL** |
 | `/Desktop/instaco.app` | hrbrlife/melusina-instaco-app | main | ✗ | ✓ direct | — | **PARTIAL** |
@@ -139,13 +139,13 @@ User declaration: zero legacy data, zero prior users, zero migration support. Pu
 **ccash_go_htmx**
 - `grain-crypto-journal/keybox/fields.go` lines 13, 57–60: "ENC1:" plaintext-fallback prefix + `DecryptEventData` compat branch. **Strip** — greenfield keybox is always ciphertext.
 - `grain-crypto-journal/keybox/binding_test.go`: `MigrationState`/`MigrationComplete` assertions. **Strip** — no migration state in greenfield.
-- `fineract-sidecar/upstream/mifos-web-app/`: **DELETE** — was an example reference, not load-bearing.
+- `Fineract-sidecar/upstream/mifos-web-app/`: **DELETE** — was an example reference, not load-bearing.
 - **Delete `internal/httpout/`** if present — ccash now adopts `melusina-http-component` #7 (no exemption).
 - Regenerate `.capnp.go` bindings from `melusina-capnp` at build time; remove generated files from version control.
 
-**namedcoin admin + app**
-- Audit `namedcoin/` subdir for v0 artifacts; drop if unused.
-- Both on `feat/namedcoin-audit` — finish standardization on the branch, then merge (Sec. 5 branch-order rationale).
+**NamedCoin admin + app**
+- Audit `NamedCoin/` subdir for v0 artifacts; drop if unused.
+- Both on `feat/NamedCoin-audit` — finish standardization on the branch, then merge (Sec. 5 branch-order rationale).
 
 **AITX Procedures**
 - Regenerate `capnp/*.capnp.go` at build time; remove generated files from VC.
@@ -226,8 +226,8 @@ type grainManifest struct {
 Decision locked: **app supplies `NewRow` via the Resign hook** — the library never synthesizes domain-specific audit rows.
 
 - `ccash_go_htmx/pkg/grainrestoreadapter/adapter.go:124-129` returns `ResignDecision{Mode: Migrate, AuditNote: ...}` but `NewRow` is empty. Populate with a forward-anchor row (entry_type="restore_boundary", prev_hash=old_tail, signer_pubkey=new-signer, payload=resigning-context) before the component bug-fix lands.
-- `namedcoin-app/pkg/grainrestoreadapter/adapter.go` — same pattern; same fix.
-- `namedcoin-admin-app` — no resign hook needed (admin app doesn't hold grain keys).
+- `NamedCoin-app/pkg/grainrestoreadapter/adapter.go` — same pattern; same fix.
+- `NamedCoin-admin-app` — no resign hook needed (admin app doesn't hold grain keys).
 
 ### 4.5 Row-iteration scope (bounded)
 
@@ -278,7 +278,7 @@ Critical-path ordering (serial): **Sec. 8 decisions #1–#5 → 1.1 → 1.4 → 
 | 1.1b | Create `github.com/hrbrlife/melusina-grain-restore-component` repo; `git mv` source; `gofmt -r 'github.com/melusina/grainrestore -> github.com/hrbrlife/melusina-grain-restore' -w ./...`; `go mod tidy`; update 3 consumer `replace` directives | 0.5 |
 | 1.1c | Tag v0.1.0 (see Sec. 6 "first-tag workflow") | — |
 | 1.2 | Promote `grain-crypto-journal` out of `Melusina/shared/` → `hrbrlife/melusina-grain-crypto-journal-component`; preserve import path `github.com/hrbrlife/grain-crypto-journal` (rename the repo, not the module); tag v0.1.0 | 0.5 |
-| 1.3 | **PROMOTE** `melusina-solana-primitives` → `hrbrlife/melusina-solana-primitives-component`. Change module path `github.com/melusina-os/melusina-solana-primitives` → `github.com/hrbrlife/melusina-solana-primitives` via `gofmt -r` across consumers; tag v0.1.0 | 0.5 |
+| 1.3 | **PROMOTE** `melusina-Solana-primitives` → `hrbrlife/melusina-Solana-primitives-component`. Change module path `github.com/melusina-os/melusina-Solana-primitives` → `github.com/hrbrlife/melusina-Solana-primitives` via `gofmt -r` across consumers; tag v0.1.0 | 0.5 |
 | 1.4 | `melusina-spkmodule-component` v0.2.0: formalize `.spkmodule-hooks/.manifest` schema (Sec. 6.1); add pre-pack capability static check; include Bucket 0 artifacts | 1.0 |
 | 1.5 | **PROMOTE** `melusina-identity-gate` → `hrbrlife/melusina-identity-gate-component`. Change module path; `gofmt -r` across consumers; tag v0.1.0. Also publish `-py` sibling `hrbrlife/melusina-identity-gate-py` (PyPI: `melusina-identity-gate`) | 0.75 |
 | 1.6 | Enable CI workflows on all Bucket 1 repos: test, vet, lint, tag-gate, consumer-canary stub | 1.25 |
@@ -304,8 +304,8 @@ Apps cluster by shared feature branches or shared component dependencies. **Not 
 
 | Lane | Apps | Special | Days |
 |---|---|---|---|
-| 3.A | ccash_go_htmx | **Adopt `melusina-http-component` #7 — no exemption.** Delete `internal/httpout/` if present; migrate Powerbox + HTTP-out to the shared component. Consumer side of Bug A/B fixes from Sec. 4.4. Delete `fineract-sidecar/upstream/mifos-web-app/`. | 1.5 |
-| 3.B | namedcoin admin + app (share `feat/namedcoin-audit`) | **Standardize on the feature branch**, run full test suite + `make pack` + `make verify`, then merge to `main` in one wave. Rationale: unmerged audit work in the branch must survive standardization; merge-first loses audit context in the squash | 1.5 |
+| 3.A | ccash_go_htmx | **Adopt `melusina-http-component` #7 — no exemption.** Delete `internal/httpout/` if present; migrate PowerBox + HTTP-out to the shared component. Consumer side of Bug A/B fixes from Sec. 4.4. Delete `Fineract-sidecar/upstream/mifos-web-app/`. | 1.5 |
+| 3.B | NamedCoin admin + app (share `feat/NamedCoin-audit`) | **Standardize on the feature branch**, run full test suite + `make pack` + `make verify`, then merge to `main` in one wave. Rationale: unmerged audit work in the branch must survive standardization; merge-first loses audit context in the squash | 1.5 |
 | 3.C | cyberteller + ai-lagoon (share `feat/admin-auth-harmonize`) | Same pattern as 3.B. cyberteller: **delete `internal/httpout/`**, replaced by #7. ai-lagoon: drop three sibling `replace`s. Both: adopt identity-gate (#5). | 2.25 |
 | 3.D | instaco.app + melusina_botmother | Stubs today; drop sibling `replace`s; pin tags; verify boot + empty-keybox flow (Sec. 6.11). Adopt identity-gate. Both pull capnp from #2 `melusina-capnp`. | 1.0 |
 | 3.E | sailsto_system + AITX Procedures (+ clientspace, telescreen-pearl) | sailsto: reconcile 3 dirty + 1 unpushed first. AITX: telescreen-pearl is Python → adopts `melusina-grain-auth-py` + `melusina-identity-gate-py` | 2.0 |
@@ -330,7 +330,7 @@ Apps cluster by shared feature branches or shared component dependencies. **Not 
 | 4.4 | Fleet audit: `grep -rE "^replace .*=>" --include=go.mod . 2>/dev/null` returns zero hits (documented exemptions allowed) | 0.25 |
 | 4.5 | Archive old-namespace GitHub repos (`melusina/grainrestore`, `melusina-os/grain-e2e-binding`, etc.). **No `retract` directives needed** — greenfield has no external consumers | 0.25 |
 | 4.6 | Bazaar republish: refresh `static_store` pointers against tagged component versions; run `build-store.sh`; publish `static_store/publish` | 0.5 |
-| 4.7 | Update auto-memory: [`project_grainrestore_repo.md`](../../../.claude/projects/-home-user-Desktop-static-store/memory/project_grainrestore_repo.md) to reflect new hrbrlife paths and API | — |
+| 4.7 | Update auto-memory: [`project_grainrestore_repo.md`](../../../.claude/projects/-home-user-Desktop-static_store/memory/project_grainrestore_repo.md) to reflect new hrbrlife paths and API | — |
 
 **Exit gate:** `grep -rE "^replace " --include=go.mod /home/user/Desktop /home/user 2>/dev/null` returns zero hits outside documented exemptions.
 
@@ -375,7 +375,7 @@ IDENTITY_GATE=none
 BUREAU_SHELL=required
 ```
 ```ini
-# namedcoin admin app/.spkmodule-hooks/.manifest
+# NamedCoin admin app/.spkmodule-hooks/.manifest
 GRAIN_CRYPTO=required
 GRAIN_RESTORE=required
 HTTP_COMPONENT=required
@@ -413,7 +413,7 @@ No external consumers → no deprecation window. Procedure:
 **Fork (forbidden, PR-blocker):**
 - Copying a component's code into an app's tree.
 - Adding a `replace` to a fork.
-- Re-implementing keybox, sqlitestore, Powerbox persistence, authz client, envelope verification, restore driver, HTTP-out in-app.
+- Re-implementing keybox, sqlitestore, PowerBox persistence, authz client, envelope verification, restore driver, HTTP-out in-app.
 - Deviating from the capnp schema in any language binding.
 - Bypassing `Require` / `fail_closed` on destructive ops.
 
@@ -496,7 +496,7 @@ After Bucket 4, these paths MUST NOT exist (take snapshots first):
 Leave untouched:
 - `/home/user/Desktop/static_store/` — bazaar repo itself
 - `/home/user/Desktop/go-sandstorm/`, `/home/user/Desktop/go-util/` — third-party zenhack forks
-- `/home/user/Desktop/melusina-fineract-sidecar/` — already correct namespace; separate scope
+- `/home/user/Desktop/melusina-Fineract-sidecar/` — already correct namespace; separate scope
 - `/home/user/Desktop/miniapp-static/` — kept as utility submodule
 - `/home/user/Desktop/store-rebuild/melusina-bureau-*-app/` — Bucket 3 Lane 3.G consumers
 
@@ -508,14 +508,14 @@ All 12 blockers resolved 2026-04-22. Proceed to Bucket 0.
 
 | # | Decision | Resolution |
 |---|---|---|
-| 1 | `melusina-solana-primitives` promote/archive | **PROMOTE** → `hrbrlife/melusina-solana-primitives-component` (Component #4). Rationale: PDA seed lock prevents silent auth bypass. |
+| 1 | `melusina-Solana-primitives` promote/archive | **PROMOTE** → `hrbrlife/melusina-Solana-primitives-component` (Component #4). Rationale: PDA seed lock prevents silent auth bypass. |
 | 2 | `melusina-identity-gate` promote/archive | **PROMOTE** → `hrbrlife/melusina-identity-gate-component` (Component #5) + `-py` sibling. Rationale: four-app cross-app auth contract is pinned against this module. |
 | 3 | Row iteration scope for resign hook | **Only sidMap-referenced rows** — bounded work (Sec. 4.5). |
 | 4 | Forward-anchor row source | **App supplies `NewRow`** — library stays domain-agnostic (Sec. 4.4). |
 | 5 | KeyRewrap failure semantics | **Abort restore** — consumer shows re-enroll UI (Sec. 4.6). |
 | 6 | `melusina_teleport2` archive/adopt | **Out of scope** for this kill list — do not touch. |
 | 7 | `pr_ninja` / TeleScreen classification | **Core operational sidecar** (not a stub — 897 LOC Python, 12+ OSINT providers, 364 tests). Infrastructure-adjacent; not a Bucket 3 adoption target. Consumes Component #5. See Sec. 13. |
-| 8 | ccash `fineract-sidecar/upstream/mifos-web-app/` | **DELETE** — was reference example, not load-bearing. |
+| 8 | ccash `Fineract-sidecar/upstream/mifos-web-app/` | **DELETE** — was reference example, not load-bearing. |
 | 9 | INSTASYS_MAIL vs. mermail-station-app | **`mermail-station-app` is canonical** (47 commits ahead, designed as sidecar-consumer). Archive INSTASYS_MAIL after migrating `htmx_uiview_mail/`, `real_example/`, novel tests. |
 | 10 | Bureau-shell v0.1.0 scope | **MVP = chrome + document-picker + zip export + snapshot API (CRUD + signature column reserved for v0.2.0 Solana signing)**. Full spec in Sec. 11 (new). |
 | 11 | Canonical `.capnp` schema root | **CREATE `hrbrlife/melusina-capnp` as new Component #2.** Migrate 21 schemas from `melusina_botmother/capnp/` (20) + `melusina-grain-auth/capnp/` (1). Delete duplicate in `melusina_teleport2/capnp/`. Task 1.7. |
@@ -525,7 +525,7 @@ All 12 blockers resolved 2026-04-22. Proceed to Bucket 0.
 
 ## 9. Critical path & realistic parallelism
 
-Total serial work: ~27 engineer-days (up ~2d from prior estimate due to new Task 1.7 capnp migration + promote-both on solana/identity-gate + ccash losing exemption). **Critical path (single-engineer serial):**
+Total serial work: ~27 engineer-days (up ~2d from prior estimate due to new Task 1.7 capnp migration + promote-both on Solana/identity-gate + ccash losing exemption). **Critical path (single-engineer serial):**
 
 ```
 Day 0:    Sec. 8 decisions all RESOLVED (see Sec. 8 table)
@@ -545,7 +545,7 @@ Critical path: ~10 calendar days if decisions stay resolved.
 ```
 
 **Parallelizable branches** off the critical path:
-- **Lane P1:** Tasks 1.3 (solana-primitives), 1.5 (identity-gate), 1.6 (CI scaffolding) — 2.25d, runs in parallel with 1.1.
+- **Lane P1:** Tasks 1.3 (Solana-primitives), 1.5 (identity-gate), 1.6 (CI scaffolding) — 2.25d, runs in parallel with 1.1.
 - **Lane P2:** Task 2.1 (grain-e2e-binding rename), 2.2 (http-component finalize), 2.4 (bureau-shell extraction), 2.5 (e2e-test tag) — 3.5d, starts after 1.2+1.3 land.
 - **Lane P3:** Bucket 3 lanes 3.B–3.G — 10–12d, each cluster has one-engineer shape.
 
@@ -661,7 +661,7 @@ snapshots.sign(id, walletPrivateKey)
   → UPDATE snapshots SET signature_ed25519=?, signer_pubkey=? WHERE id=?
 ```
 
-The Ed25519 curve is native to Solana (signer_pubkey == wallet address), so v0.2.0 integration with `melusina-solana-primitives` (#4) is a direct wiring job — no schema migration needed because the signature columns are already in v0.1.0.
+The Ed25519 curve is native to Solana (signer_pubkey == wallet address), so v0.2.0 integration with `melusina-Solana-primitives` (#4) is a direct wiring job — no schema migration needed because the signature columns are already in v0.1.0.
 
 ### 11.4 Per-app adapter (what each bureau app must ship)
 
@@ -691,14 +691,14 @@ Each app also: declares `mime`, implements `getState/setState` against its live 
 
 ## 11a. Sidecar lifecycle (reference)
 
-Sidecars today: `fineract-sidecar` (ccash), `mermail-sidecar` (mermail-station), `openclaw-bridge` (hybrid within openclaw), TeleScreen (`pr_ninja`).
+Sidecars today: `Fineract-sidecar` (ccash), `mermail-sidecar` (mermail-station), `openclaw-bridge` (hybrid within openclaw), TeleScreen (`pr_ninja`).
 
 Standard pattern (no kill-list task; reference for future sidecars in `melusina-spkmodule-component/templates/sidecar.mk`):
 - Sidecar binary under `./sidecar/<name>/`
 - Communication: Cap'n Proto over UDS at `/var/sidecar/<name>.sock` — schemas live in #2 `melusina-capnp`
 - Lifecycle: grain launches sidecar on boot (`exec` or goroutine); sidecar terminates on grain SIGTERM
 - Restart: sidecar crash does NOT restart grain; grain auth client retries with exponential backoff
-- Capability forwarding: Sandstorm caps (HTTP-out, Powerbox tokens) pass via capnp to sidecar; sidecar never calls Sandstorm APIs directly
+- Capability forwarding: Sandstorm caps (HTTP-out, PowerBox tokens) pass via capnp to sidecar; sidecar never calls Sandstorm APIs directly
 
 No kill-list task promotes existing sidecars to component repos — out of scope.
 
@@ -713,7 +713,7 @@ After Bucket 3 completes and before Bucket 4 cleanup, run `bin/fleet-smoke.sh`:
    a. `make pack` → produce `.spk`.
    b. Install into a fresh local Sandstorm shell.
    c. Boot grain to empty state.
-   d. Run app-specific write: e.g., ccash creates one credit transfer; namedcoin creates one name registration; bureau-doc creates one document.
+   d. Run app-specific write: e.g., ccash creates one credit transfer; NamedCoin creates one name registration; bureau-doc creates one document.
    e. Restart the grain.
    f. Verify: app boots cleanly; journal intact; hash chain verifies; keybox unlocks via wallet.
    g. Trigger `CaptureOnBackup` → `/grainrestore/pre-backup`; download ZIP.
@@ -761,7 +761,7 @@ Per auto-memory and 2026-04-22 audit:
 | `INSTASYS_MAIL` | `/home/user/INSTASYS_MAIL/` | **ARCHIVE** | Superseded by `mermail-station-app` (47 commits ahead). Archive after content migration in Lane 3.G |
 | `pr_ninja` = **TeleScreen** | `/Desktop/pr_ninja/` | **INFRASTRUCTURE sidecar — OPERATIONAL** | 897 LOC Python, FastAPI, QueueManager, 12+ OSINT providers, 364 passing tests. Core sidecar consumed by ccash C4 screening. Consumes Component #5 (`melusina-identity-gate`). Not a Bucket 3 target; listed here for reference. Its existing `melusina-identity-gate` usage is already aligned with post-standardization state. |
 | `telescreen-companion-app` | `/Desktop/Melusina/sidecar/telescreen-companion-app/` | **ADJACENT** | Companion setup grain for TeleScreen config distribution. No adoption work — already aligned. |
-| `melusina-fineract-sidecar` | `/Desktop/melusina-fineract-sidecar/` OR `/Desktop/store-rebuild/melusina-fineract-sidecar/` | **OUT OF SCOPE** | Already correct namespace; sidecar lifecycle is separate kill-list scope |
+| `melusina-Fineract-sidecar` | `/Desktop/melusina-Fineract-sidecar/` OR `/Desktop/store-rebuild/melusina-Fineract-sidecar/` | **OUT OF SCOPE** | Already correct namespace; sidecar lifecycle is separate kill-list scope |
 
 Deferred apps are not migrated in this kill list. If any becomes active, add it to Bucket 3 as a new lane.
 
@@ -781,7 +781,7 @@ Days 1.5–7 — Bucket 1 (foundations, 11-component roster)
   1.1b rename → hrbrlife/melusina-grain-restore    [0.5d]
   1.1c tag v0.1.0
   1.2  grain-crypto-journal promote (#3)            [0.5d]
-  1.3  PROMOTE solana-primitives (#4)               [0.5d, parallel]
+  1.3  PROMOTE Solana-primitives (#4)               [0.5d, parallel]
   1.4  spkmodule v0.2.0 + .manifest schema          [1.0d, parallel]
   1.5  PROMOTE identity-gate Go+Py (#5)             [0.75d, parallel]
   1.6  CI scaffolding across Bucket 1               [1.25d, parallel]
@@ -799,7 +799,7 @@ Days 7–12 — Bucket 2 (wrappers)
 Days 12–25 — Bucket 3 (app adoption, 7 clustered lanes)
   3.A ccash_go_htmx (delete internal/httpout +
       mifos-web-app; consumer side of 4.4)          [1.5d]
-  3.B namedcoin admin + app (feat branch)           [1.5d]
+  3.B NamedCoin admin + app (feat branch)           [1.5d]
   3.C cyberteller + ai-lagoon (feat branch;
       cyberteller deletes internal/httpout)         [2.25d]
   3.D instaco.app + botmother                       [1.0d]
@@ -841,4 +841,4 @@ Scope locked:
 **Related documents (already on filesystem):**
 - `/home/user/Desktop/static_store/KEEP - COMPONENTS FOR APPS.md` — canonical spkmodule discipline reference
 - `/home/user/Desktop/grainrestore/PHASE-STATUS.md` — component's own phase tracking (stale re: bugs Sec. 4; will be rewritten at v0.1.0 tag)
-- `/home/user/.claude/projects/-home-user-Desktop-static-store/memory/project_grainrestore_repo.md` — auto-memory anchor; update in Task 4.7
+- `/home/user/.claude/projects/-home-user-Desktop-static_store/memory/project_grainrestore_repo.md` — auto-memory anchor; update in Task 4.7

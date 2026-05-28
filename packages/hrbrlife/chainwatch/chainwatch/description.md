@@ -13,7 +13,7 @@ Set per-deploy via environment (the configurator grain or operator UI):
 | Env var       | Default                                          | Purpose                                  |
 |---------------|--------------------------------------------------|------------------------------------------|
 | `PORT`        | `8091`                                           | HTTP listen port                         |
-| `SOL_RPC_URL` | `https://api.devnet.solana.com`                  | Solana JSON-RPC endpoint                 |
+| `SOL_RPC_URL` | `https://api.devnet.Solana.com`                  | Solana JSON-RPC endpoint                 |
 | `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |
 
 Both URLs are required at boot — there is no stub fallback (greenfield posture, fail loud).

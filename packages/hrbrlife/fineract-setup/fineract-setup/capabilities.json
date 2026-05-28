@@ -1,19 +1,19 @@
 {
   "schemaVersion": 2,
-  "appSlug": "fineract-setup",
-  "appName": "fineract Setup",
+  "appSlug": "Fineract-setup",
+  "appName": "Fineract Setup",
   "tier": "infrastructure",
   "pearls": [
     {
-      "pearlId": "fineract-setup",
-      "pearlName": "fineract Setup",
+      "pearlId": "Fineract-setup",
+      "pearlName": "Fineract Setup",
       "pearlType": "infrastructure-pearl",
-      "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
+      "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the Fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
       "sidecars": [],
       "grapple": {
         "offers": [
           {
-            "name": "fineract-admin",
+            "name": "Fineract-admin",
             "interface": "Fineract.Admin@1",
             "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions."
           }
@@ -49,7 +49,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {

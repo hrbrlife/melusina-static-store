@@ -86,7 +86,7 @@ is no merge or fall-back.
 ## What I should have caught pre-deploy
 
 1. **Diff against the live catalog.** A simple `curl
-   https://hrbrlife.github.io/melusina-static-store/apps/index.json`
+   https://hrbrlife.github.io/melusina-static_store/apps/index.json`
    before push would have shown 29 apps; my local build produced 25.
    The 4-app gap should have stopped the deploy.
 2. **Cross-reference the deployer manifest.** The file

@@ -16,7 +16,7 @@ invalidates downstream phase gates.
 | Item | Value |
 |---|---|
 | License-registry program source | patched (attestation.rs line 586–609 still enforces `master_nft_ata.owner == authority` — blocks Squads custody) |
-| License-registry deployed program ID (devnet) | `BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix` — `solana program show -u devnet` verifies ProgramData `FzWmii4kH7Qqe4UjsFFyaN23pkBxTHdWkWM1TZbCZTpX`, last deployed slot `456342456`; this is **pre-Phase-0.1 source** until redeployed |
+| License-registry deployed program ID (devnet) | `BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix` — `Solana program show -u devnet` verifies ProgramData `FzWmii4kH7Qqe4UjsFFyaN23pkBxTHdWkWM1TZbCZTpX`, last deployed slot `456342456`; this is **pre-Phase-0.1 source** until redeployed |
 | Squads multisig (Core App Team) | **not minted**; `melusina-attestdeployer-tool/docs/devnet-state.md` is absent |
 | Core App Team wallets | 4 keypairs under `Melusina/test-wallets/core-app-team/`, all **0 SOL devnet** |
 | `melusina-pearl-tool` | v0.1.0-scaffold (commit `05a56a6`, private repo `hrbrlife/melusina-attestdeployer-tool`); **not installed on PATH** (`go run ./cmd/melusina-pearl-tool version` prints `0.1.0-scaffold`) |
@@ -94,12 +94,12 @@ Six phases. Each has a single gating acceptance criterion; no phase starts until
 | # | Task | Where | Done-when |
 |---|---|---|---|
 | 0.1 | Relax `master_nft_ata.owner` check in `RegisterReleaseEntry` to accept Squads-vault custody (vault PDA owns the ATA; `authority` is the Squads-executed proxy) | `license-registry/src/instructions/attestation.rs:586–609` | `cargo check -p license-registry` passes; unit test covers both legacy-author-owner-reject and Squads-vault-accept |
-| 0.2 | Deploy patched program to devnet | `melusina_solana_dev-license104/` | program ID recorded in `docs/devnet.md`; `solana program show <id>` returns the new hash |
+| 0.2 | Deploy patched program to devnet | `melusina_solana_dev-license104/` | program ID recorded in `docs/devnet.md`; `Solana program show <id>` returns the new hash |
 | 0.3 | Implement `propose-release` in pearl-tool | `melusina-attestdeployer-tool/internal/commands/proposerelease.go` | dry-run against devnet produces a proposal PDA; `go test ./...` includes a happy-path integration test marked `short` skippable |
 | 0.4 | Implement `finalize-release` in pearl-tool | `.../finalizerelease.go` | polls proposal; on Executed, reads ReleaseEntry and rewrites `RELEASE.json`; reruns `apphash.Compute` and aborts `RELEASE_BINDING_DRIFT` on mismatch; unit test asserts both happy-path and drift-reject |
 | 0.5 | Implement `verify-release` in pearl-tool | `.../verifyrelease.go` | given a finalized `RELEASE.json`, fetches the PDA, verifies appHash + authorSig; returns 0/non-zero; unit test covers both cases |
 | 0.6 | Mint Core App Team Squads multisig on devnet | script in `melusina-attestdeployer-tool/scripts/mint-multisig.sh` (new) | multisig PDA + vault address committed to `hrbrlife/melusina-attestdeployer-tool` config; quorum 3-of-4 recorded |
-| 0.7 | Fund all four Core App Team wallets | `solana airdrop` against devnet (or Helius airdrop if 429) | each wallet ≥ 2 SOL; `solana balance` output logged |
+| 0.7 | Fund all four Core App Team wallets | `Solana airdrop` against devnet (or Helius airdrop if 429) | each wallet ≥ 2 SOL; `Solana balance` output logged |
 | 0.8 | Greenfield port of admin-store `build-store.sh` | `melusina-admin-store/build-store.sh` | diff of new vs public `build-store.sh` is pure path/branding; both call `validate_release_attestation` identically; both reject `.asc`; both delegate on-chain verify to pearl-tool |
 | 0.9 | Author `mk/sidecar.mk` in spkmodule-component | `melusina-spkmodule-component/mk/sidecar.mk` (new) | defines `APP_PEARL_ENABLED=no` by default, `PEARL_SIDECAR_ENABLED=yes`; hooks compute container-image digest as `binaryHash`; `register_sidecar_identity` + `register_sidecar_release` (whichever maps) invoked via pearl-tool sidecar subcommands (design note: extend CLI with `compute-binary-hash`, `propose-sidecar-release`, `finalize-sidecar-release`) |
 | 0.10 | Extend pearl-tool with sidecar subcommand trio | `melusina-attestdeployer-tool` | three sidecar-flavoured subcommands land with same stub-then-implement pattern as the app trio |
@@ -115,7 +115,7 @@ Pick **`cyberteller`** as the pilot (has current Makefile discipline, uses spkmo
 | 1.1 | `make bootstrap-author` in `cyberteller` repo | `.spkmodule-hooks/` contains the four pearl hook samples |
 | 1.2 | Set `APP_PEARL_ENABLED=yes` and `PEARL_*` vars in cyberteller `Makefile` | `make publish` phase-A enters propose-release without error |
 | 1.3 | Run `make publish` phase A | Squads proposal PDA stashed in `.melusina/release-ceremony/state.json` |
-| 1.4 | Squads cosigners approve 3-of-4 | `solana transaction-history` on the multisig shows Executed |
+| 1.4 | Squads cosigners approve 3-of-4 | `Solana transaction-history` on the multisig shows Executed |
 | 1.5 | Run `make publish` phase B | `RELEASE.json` finalized (authorSig, releaseEntryPda, signedAtUnix>0, quorumPolicy populated); `appHash` matches on-chain ReleaseEntry |
 | 1.6 | `publish-to-branch` pushes `app.spk + metadata.json + RELEASE.json` to `cyberteller/publish` | remote branch has expected three artifacts |
 | 1.7 | Public-store `build-store.sh` accepts cyberteller | dry-run on just cyberteller completes with `verify-release` returning 0 |
@@ -155,7 +155,7 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 |---|---|---|
 | 5.1 | `make rebuild` on `static_store/` | `dist-publish/` reflects all 23 apps; catalog index schema-validates |
 | 5.2 | `make rebuild` on `melusina-admin-store/` | admin `dist-publish/` reflects all 6 apps |
-| 5.3 | Deploy public store to GitHub Pages | `https://hrbrlife.github.io/melusina-static-store/` serves new `apps/index.json` with all 23 `attest` blobs |
+| 5.3 | Deploy public store to GitHub Pages | `https://hrbrlife.github.io/melusina-static_store/` serves new `apps/index.json` with all 23 `attest` blobs |
 | 5.4 | Deploy admin store to private deploy target | admin catalog URL (record in `melusina-admin-store/README.md`) serves new index; reachable under whatever auth the admin panel uses today |
 | 5.5 | e2e spec `all_apps.spec.ts` | Playwright asserts every app's `/attest/<appId>/RELEASE.json` is 200 and its on-chain `releaseEntryPda` resolves |
 
@@ -189,7 +189,7 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 | 18 | melusina-ccash-org-member-app | ccash-org-member | check |
 | 19 | melusina-consilium-app | consilium | check |
 | 20 | melusina-cratelink-app | cratelink | check |
-| 21 | melusina-namedcoin-app | namedcoin | check |
+| 21 | melusina-NamedCoin-app | NamedCoin | check |
 | 22 | MiniGit | minigit | check |
 | 23 | openclaw-main | melusina-openclaw | Y |
 
@@ -199,9 +199,9 @@ State audit reported 11/23 with Makefiles; the other 12 need bootstrap. Phase 2 
 
 | # | Repo dir | Slug | appId |
 |---|---|---|---|
-| 1 | fineract-setup | fineract-setup | s9zjkgngzmpvhcdh70m8smwhz3xg74f1xwceztpyp9c70xdvwwk0 |
+| 1 | Fineract-setup | Fineract-setup | s9zjkgngzmpvhcdh70m8smwhz3xg74f1xwceztpyp9c70xdvwwk0 |
 | 2 | melusina-mermail-station-app | mermail-station | 501eh4yhmjg7me2jxzc3z108cvd1yqx2ysv4s4j8wtq1cf91vguh |
-| 3 | melusina-namedcoin-admin-app | namedcoin-admin | zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0 |
+| 3 | melusina-NamedCoin-admin-app | NamedCoin-admin | zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0 |
 | 4 | pr_ninja | telescreen | w1wq63jy7jtuwhxmf0y36w8egmpyej0vn8x8zqtrrfurtne23xq0 |
 | 5 | shell_tester | shell-tester | nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh |
 | 6 | telescreen-companion | telescreen-companion | 7csqt2uwjeh7f1jkvcg1wtr5axmrtqajr7d8u4w0j28pc4yxg29h |
@@ -251,7 +251,7 @@ Ordered by (likelihood × severity). Mitigations are **specific** — a pointer,
 | # | Risk | Mitigation |
 |---|---|---|
 | R1 | `RELEASE_BINDING_DRIFT` between phase A and phase B on the same machine | Already handled — `finalize-release` re-runs `apphash.Compute` + aborts on mismatch. Document `make pearl-clean` + re-propose as the only recovery. |
-| R2 | Squads proposal zombie when a cosigner loses their key | Add `make abort-release` target that closes the vault-tx; add TTL check in `finalize-release` that emits warning after N hours. MVP: document the manual `squads tx close` path; automate later. |
+| R2 | Squads proposal zombie when a cosigner loses their key | Add `make abort-release` target that closes the vault-tx; add TTL check in `finalize-release` that emits warning after N hours. MVP: document the manual `Squads tx close` path; automate later. |
 | R3 | `melusina-pearl-tool` version drift between developer laptops and the store-build host | Pin tool version in a `.tool-version` file at each consumer repo root; `build-store.sh` asserts version on startup; fail-closed. |
 | R4 | Solana devnet RPC 429s under burst of 37 proposals | Use a paid / dedicated RPC endpoint; configure in `melusina-attestdeployer-tool/config.toml`. Document fallback: serialize proposals one-at-a-time with backoff. |
 | R5 | Squads v4 devnet UI intermittent availability | Ship CLI-only ceremony driver as fallback (existing `pearl-tool propose-release` must not require UI to function). |
@@ -338,7 +338,7 @@ Before executing any task below 0.1, re-run the §0 State Snapshot queries. If a
 
 ```
 # Phase 0 snapshot re-verification commands
-solana program show <license-registry devnet id>            # row: deployed program ID
+Solana program show <license-registry devnet id>            # row: deployed program ID
 cat melusina-attestdeployer-tool/docs/devnet-state.md       # rows: multisig PDA + wallet balances
 melusina-pearl-tool version                                 # row: tool version
 (cd melusina-attestdeployer-tool && go test ./...)          # tool health

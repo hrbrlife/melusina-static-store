@@ -23,7 +23,7 @@
 #   - sha256 hex
 #   - Path to captured `spk verify` text
 #
-# Side effects: creates /tmp/static-store-build-<slug>-<short-sha>/ with the
+# Side effects: creates /tmp/static_store-build-<slug>-<short-sha>/ with the
 # clone + build artifacts. Re-running with the same slug+sha cleans the dir
 # first.
 
@@ -70,7 +70,7 @@ if [ ! -f "$SCHEMA_INCLUDE/sandstorm/package.capnp" ]; then
 fi
 
 SHORT_SHA="${SHA:0:8}"
-SCRATCH=/tmp/static-store-build-"$SLUG"-"$SHORT_SHA"
+SCRATCH=/tmp/static_store-build-"$SLUG"-"$SHORT_SHA"
 echo "=== build-from-source: $SLUG @ $SHA ==="
 echo "    repo:      $REPO"
 echo "    branch:    $BRANCH"

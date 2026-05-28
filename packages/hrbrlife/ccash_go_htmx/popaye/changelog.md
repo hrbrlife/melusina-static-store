@@ -41,7 +41,7 @@ PaymentWebhookEvent only declared `screening_ref` and
 the JSON decode and lost.
 
 Impact: the txn detail UI rendered MLRO's verdict bucket from
-popaye's OWN opensanctions verdict only (which screens the SENDER
+popaye's OWN OpenSanctions verdict only (which screens the SENDER
 wallet only). cyberteller's broader DueProcess / telescreen
 verdict — the one that decides cleared vs held vs rejected at the
 constellation layer — never made it onto the meta. Auditors also
@@ -61,12 +61,12 @@ This commit:
 - Adds TestScreeningClearedEvent_PersistsCybertellerVerdictContext
   pinning the new field flow.
 
-## v0.3.45-opensanctions-wire-fix — 2026-05-18 — sanctionsclient wire shape drift fix
+## v0.3.45-OpenSanctions-wire-fix — 2026-05-18 — sanctionsclient wire shape drift fix
 
 Fixes a HIGH-severity cross-compat drift uncovered by the Riker
 tick-164 audit (idx 2059): popaye's sanctionsclient read response
 fields `hits[]` and expected `entity_id` / `caption` nested under
-the first hit. The live opensanctions sidecar (routes_crypto.py:87)
+the first hit. The live OpenSanctions-sidecar (routes_crypto.py:87)
 emits `threats[]` and exposes `entity_id` / `caption` as TOP-LEVEL
 fields. Pre-fix the held-verdict UI pill and the spawned DueProcess
 case both silently lost the entity match — "Lazarus Group" showed
@@ -86,17 +86,17 @@ This commit:
   pinning the live wire shape, the error-passthrough, and the
   back-compat hits[] fallback.
 
-## v0.3.44-caps-diag — 2026-05-18 — Powerbox-cap reception observability
+## v0.3.44-caps-diag — 2026-05-18 — PowerBox-cap reception observability
 
 Adds an admin-only `/debug/caps` page that surfaces the live wiring
-state of the four outbound dependencies: the `AdminGate` Powerbox cap
+state of the four outbound dependencies: the `AdminGate` PowerBox cap
 (sturdyref-token presence + boot-handshake state + partner +
-manifest digest + pinned-flow count), the opensanctions sidecar
+manifest digest + pinned-flow count), the OpenSanctions-sidecar
 (base URL + tenant user + license NFT mint + TLS-verify toggle), the
-fineract-sidecar (signed + direct mode URLs), and the cyberteller
+Fineract-sidecar (signed + direct mode URLs), and the cyberteller
 endpoint (env-configured URL). JSON twin at `/debug/caps.json` for
 curl + observability scrapers. Closes the Riker tick-164 FINISH-TODAY
-for `ccash_go_htmx` (Powerbox-cap reception screenshots post-redeploy)
+for `ccash_go_htmx` (PowerBox-cap reception screenshots post-redeploy)
 — one frame now captures the whole constellation-wiring picture.
 
 No new outbound traffic at request time: snapshot reads view-held
@@ -108,7 +108,7 @@ pays a sidecar round-trip.
 Wires the previously-empty receive path into a real PSP compliance loop.
 
 When cyberteller's `payment_detected` webhook lands with a sender
-wallet address, popaye now calls the opensanctions sidecar at
+wallet address, popaye now calls the OpenSanctions-sidecar at
 `OPENSANCTIONS_BASE_URL/api/crypto/screen` with the single-install
 tenant headers (`X-Sandstorm-User-Id`, `X-Melusina-License-Nft`). The
 verdict — `clear`, `medium`, `high`, `critical`, plus the honest
@@ -146,7 +146,7 @@ text. An unrecognised sidecar `risk_level` value also produces an
 
 Deletes pkg/cybertellerclient/cybertellerclient.go (the HTTP + Ed25519
 envelope transport) and its test file entirely. The Cap'n Proto
-CybertellerInbound capability — claimed via Sandstorm Powerbox — is now
+CybertellerInbound capability — claimed via Sandstorm PowerBox — is now
 the ONLY supported ccash→cyberteller transport. Fixes the production
 nil-pointer panic in pkg/cybertellerclient/(*Client).post that fired
 whenever a popaye grain reached approval-sign with no claimed cap and
@@ -159,7 +159,7 @@ Settings → Constellation → Connect cyberteller (and no persisted
 sturdyref restores at boot), snapshotCyberteller() returns a true
 nil interface; callCybertellerM1 returns errCybertellerNotConfigured
 and postApprovalSign keeps stub settlement (single-grain POC mode).
-On a configured grain (sturdyref restored or Powerbox just claimed),
+On a configured grain (sturdyref restored or PowerBox just claimed),
 CreateInvoice flows through *cybertellercapnp.CapnpClient.
 
 Surface deletions: pkg/cybertellerclient.Client, .LoadFromEnv,
@@ -321,7 +321,7 @@ across this loop session, organized below by tier.
 - **Sisko host-side settlement worker.** New `sisko/` daemon polls
   `finreact-sidecar-handoffs/settlement-*.json` artifacts produced by
   the ccash approval gate, posts the move-to-nostro payload to the
-  fineract-sidecar, then calls back to ccash on
+  Fineract-sidecar, then calls back to ccash on
   `/api/settlements/{id}/posted|failed`. `f32d49f` Sisko +
   `46c4393` audit hardening (env wiring, dry-run guards, port
   conflict detection, status-false-OK fix).
@@ -347,7 +347,7 @@ across this loop session, organized below by tier.
   fallback. `d19e0e7` hydration + `b5b9549` audit (validator gate,
   status snapshot, stale-escalation, race test).
 - **GrainContext: per-claim identity.** Drop the startup singleton
-  sentinel; each Powerbox claim now carries its own caller identity
+  sentinel; each PowerBox claim now carries its own caller identity
   end-to-end. `15f3171`.
 - **Typed `/receive/webhook` dispatcher.** Replaces the previous
   string-switch with a typed handler tree; `fa13143` follow-up adds
@@ -447,7 +447,7 @@ in a browser, including the multi-user approval loop.
   production-spk smoke test on dev.pbay.app is still pinned to
   v0.6.x.
 - **Multi-grain Sandstorm test** (two ccash grains on the same host
-  exchanging Powerbox capabilities) is still single-grain only in
+  exchanging PowerBox capabilities) is still single-grain only in
   CI. The plumbing is in place; the test scenario isn't.
 - **Cyberteller HTTP retirement** is partial: M1/M6 have a
   Cap'n Proto opt-in path (`7b5d54a`), but the three remaining HTTP
@@ -520,7 +520,7 @@ rule in §4.
 now drives Sandstorm sign-in → pure-client bind → launch-unlock
 (canonical Ed25519 payload signed by the `BrowserWallet` shim, POSTed
 to `/e2e/admin` directly) → dashboard assertion. The old
-`window.solana` + `/onboarding` assumption is gone. For automated
+`window.Solana` + `/onboarding` assumption is gone. For automated
 runs against a ccash grain, the grain MUST be booted with
 `CCASH_QA_E2E_BYPASS_MELUSINA=1`; this short-circuits the Melusina
 shell-availability check in `canUseShellUnlock()` but leaves full
@@ -590,7 +590,7 @@ from GitHub secrets.
 
 ## v0.1.0 — MVP polish toward ready-to-test
 
-Landed a focused pass of work to get ccash + fineract-sidecar to a
+Landed a focused pass of work to get ccash + Fineract-sidecar to a
 polished, ready-to-test MVP per the constellation E2E design doc
 (`docs/e2e/CONSTELLATION_E2E_DESIGN.md`).
 
@@ -631,7 +631,7 @@ guided UI lands separately. Unblocks the data layer for E2E
 scenarios A6/A7.
 
 **TemplateService skeleton:** `pkg/templateclient` holds a noop +
-HTTP skeleton for the DueProcess Template grain Powerbox
+HTTP skeleton for the DueProcess Template grain PowerBox
 token. `StatusProbe` returns nil when a token is mounted so health
 reporting can tell the two client kinds apart. Real wire protocol
 TBD — contract is not finalized.
@@ -644,7 +644,7 @@ already locked in DueProcess. R1/R2 remain Playwright-side and
 wait for the QA harness port.
 
 **CI:** `.github/workflows/ci.yml` runs vet + test + static build
-for ccash, fineract-sidecar, and fineract-setup on every push and PR.
+for ccash, Fineract-sidecar, and Fineract-setup on every push and PR.
 
 **Documentation:** CLAUDE.md §12 "Still deferred" corrected —
 `/receive/webhook` and M1 caller are both wired (env-gated on
@@ -766,7 +766,7 @@ redirects to the standard approval page.
   decision, reason, risk level, Fineract credit/nostro command ids,
   timestamps). Nine screening-state constants from `address_pending`
   through `nostro_moved`.
-- **`pkg/solana` v2 primitives** — `PayloadContextV2` struct (trust
+- **`pkg/Solana` v2 primitives** — `PayloadContextV2` struct (trust
   bundle digest, install id, app hash, license entry id),
   `CanonicalPayloadV2`, `EnvelopeV2` type, `VerifyEnvelopeV2`,
   `SignEnvelopeV2`. Byte-aligned with the sidecar and cyberteller so
@@ -1005,7 +1005,7 @@ The synthetic `actor_id` on audit rows written by adapter-driven
 mutations is `agent_sibling_grain` so they're distinguishable from
 human-operator-driven mutations in the audit log. A production
 multi-tenant build would mint one actor_id per connected sibling
-grain via the Powerbox handshake.
+grain via the PowerBox handshake.
 
 ### Integration documentation
 
@@ -1025,7 +1025,7 @@ round-trip end-to-end:
   1:1 onto ccash's `graincontext.Adapter`, so cross-grain scenario
   tests can wire real ccash + fake instaco in one process
 - Deferred items: Cap'n Proto Go bindings, fd3 attachment,
-  callback capabilities, Powerbox UI for ccash to claim sibling
+  callback capabilities, PowerBox UI for ccash to claim sibling
   capabilities
 - Invariants that must stay true: no stored payment instruments,
   every transaction through the approval gate, audit-before-persist,
@@ -1048,12 +1048,12 @@ up to 8.6 MB from 8.5 MB (the adapter package is ~1,600 LoC).
 - **No fd3 wire attachment** for an incoming `GrainContext`
   capability. ccash's current `MainView` slot serves the HTML UI.
   A future pass exposes GrainContext via a sibling `UiView` or
-  via a Powerbox-offered capability.
+  via a PowerBox-offered capability.
 - **No callback capabilities** — ccash does not hold a capability
   on instaco to push status updates. Status flows via `poll()`
   from instaco's side, which keeps the v0.5.0 surface symmetric
   with openclaw's universal interface.
-- **No Powerbox claim UI** for ccash to request capabilities from
+- **No PowerBox claim UI** for ccash to request capabilities from
   sibling grains. v0.5.0 is sink-only: ccash receives invokes,
   instaco polls.
 
@@ -1473,7 +1473,7 @@ transaction, with a 48h expiry. The stub generator
 (`Transaction.IssueSettlementInstructions`) builds deterministic
 placeholder rail+address+reference based on the transaction's
 funding method — POC only; v0.5+ replaces it with a sibling
-Cap'n Proto Powerbox call into a real settlement grain. The legacy
+Cap'n Proto PowerBox call into a real settlement grain. The legacy
 `pending` / `completed` / `scheduled` statuses are accepted on read
 for audit-log compat but no new code path emits them.
 
@@ -1591,7 +1591,7 @@ fronting an openclaw HTTP bridge. **That entire direction has been
 removed.** ccash is back to a proof-of-concept, single-grain-per-client
 Sandstorm app that talks to nothing but itself. Sibling-grain
 integration is a v0.5+ aspiration and, when it ships, will go through
-**raw Cap'n Proto Powerbox capabilities only** — never HTTP, never a
+**raw Cap'n Proto PowerBox capabilities only** — never HTTP, never a
 bridge, never a sidecar.
 
 What changed in this pass (no Go code touched):

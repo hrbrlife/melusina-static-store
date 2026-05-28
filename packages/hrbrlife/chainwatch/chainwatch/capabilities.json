@@ -23,7 +23,7 @@
         "adminOnly": [
           {
             "name": "Operator",
-            "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via Powerbox."
+            "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via PowerBox."
           }
         ],
         "organizationOnly": [],
@@ -35,7 +35,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {
@@ -77,7 +77,7 @@
         "via": "sandbox-default",
         "purpose": "JSON-RPC against the configured chain endpoints. URLs are operator-set via env vars (SOL_RPC_URL, ETH_RPC_URL); defaults point at Solana devnet + Ethereum sepolia public nodes.",
         "endpoints": [
-          "https://api.devnet.solana.com",
+          "https://api.devnet.Solana.com",
           "https://ethereum-sepolia-rpc.publicnode.com"
         ]
       },

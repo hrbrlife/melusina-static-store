@@ -19,7 +19,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 
-const APP_INDEX_BASE = "https://hrbrlife.github.io/melusina-static-store";
+const APP_INDEX_BASE = "https://hrbrlife.github.io/melusina-static_store";
 const LOGO_URL = `${APP_INDEX_BASE}/icons/melulogo-cyan.svg`;
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
@@ -1775,7 +1775,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                 }}>{p.pearlType.replace('-pearl','')}: {p.pearlName}</span>
               ))}
               {A.releaseEntryPda && (
-                <a href={explorer(A.releaseEntryPda)} target="_blank" rel="noopener noreferrer" title={`Release seat ${A.releaseEntryPda}\nSigned ${A.signedAtUnix ? new Date(A.signedAtUnix*1000).toISOString().slice(0,19).replace('T',' ') + ' UTC' : '(no time)'}\nMaster NFT ${A.masterNftMint || ''}`} style={{
+                <a href={explorer(A.releaseEntryPda)} target="_blank" rel="noopener noreferrer" title={`Release seat ${A.releaseEntryPda}\nSigned ${A.signedAtUnix ? new Date(A.signedAtUnix*1000).toISOString().slice(0,19).replace('T',' ') + ' UTC' : '(no time)'}\nMaster NFT ${A.MasterNftMint || ''}`} style={{
                   fontSize: 10, padding: '3px 10px', borderRadius: 3,
                   border: `1px solid ${T.green}66`, color: T.green, background: T.green + '11',
                   fontFamily: "'JetBrains Mono', monospace", textDecoration: 'none',
@@ -2013,7 +2013,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                       <div>seat: <a href={explorer(A.releaseEntryPda)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.releaseEntryPda}</a></div>
                       {A.appHash && <div>appHash: <code style={{ color: T.textDim }}>{A.appHash}</code></div>}
                       {A.releaseHash && <div>releaseHash: <code style={{ color: T.textDim }}>{A.releaseHash}</code></div>}
-                      {A.masterNftMint && <div>master NFT: <a href={explorer(A.masterNftMint)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.masterNftMint}</a></div>}
+                      {A.MasterNftMint && <div>master NFT: <a href={explorer(A.MasterNftMint)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.MasterNftMint}</a></div>}
                       {A.licenseSquadsVault && <div>Squads vault: <a href={explorer(A.licenseSquadsVault)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.licenseSquadsVault}</a></div>}
                       {A.quorumPolicy && A.quorumPolicy.multisigPda && <div>multisig ({A.quorumPolicy.threshold || '?'}-of-{A.quorumPolicy.memberCount || '?'}): <a href={explorer(A.quorumPolicy.multisigPda)} target="_blank" rel="noopener noreferrer" style={{ color: T.cyan }}>{A.quorumPolicy.multisigPda}</a></div>}
                       {A.signedAtUnix && <div>signed: {new Date(A.signedAtUnix*1000).toISOString().replace('T',' ').slice(0,19)} UTC</div>}

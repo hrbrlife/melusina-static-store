@@ -19,13 +19,13 @@ commands in §0 before assuming.
 
 | Component | Value | How to re-verify |
 |---|---|---|
-| license-registry program | `7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb` | `solana program show -u devnet 7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb` |
+| license-registry program | `7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb` | `Solana program show -u devnet 7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb` |
 | Master NFT mint (foundation) | `B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe` | grep `MASTER_NFT_MINT` in `melusina_solana_dev-license104/programs/license-registry/src/constants.rs` |
-| Squads multisig PDA | `4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V` | `melusina-attestdeployer-tool/config/core-app-team-squads.json` |
+| Squads multisig PDA | `4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V` | `melusina-attestdeployer-tool/config/core-app-team-Squads.json` |
 | Squads vault PDA | `3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3` | same config; vault holds the master NFT (1 token) |
 | Threshold | 3-of-4 | decode `multisig.threshold` byte at offset 72 |
 | pearl-tool binary | `melusina-attestdeployer-tool/melusina-pearl-tool` (v0.2.0+) | `./melusina-pearl-tool version` |
-| Author keypair | `/home/user/.config/solana/id.json` = `ANaEQo267D4Q…` | `solana-keygen pubkey` |
+| Author keypair | `/home/user/.config/Solana/id.json` = `ANaEQo267D4Q…` | `Solana-keygen pubkey` |
 
 **Important — the master NFT is a singleton.** The license-registry
 hardcodes `MASTER_NFT_MINT` at `constants.rs:6`. Every ReleaseEntry in
@@ -37,7 +37,7 @@ matches pearl-FLEET-KILL-LIST §2's single-gate decision.
 
 ```bash
 # 0.1 program is deployed and recent
-solana program show -u devnet 7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb | head -3
+Solana program show -u devnet 7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb | head -3
 
 # 0.2 vault still holds the master NFT
 spl-token accounts --owner 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 -u devnet \
@@ -45,13 +45,13 @@ spl-token accounts --owner 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 -u devne
 
 # 0.3 quorum signers funded
 for k in publisher reviewer-1 reviewer-2 witness; do
-  solana balance -u devnet "$(solana-keygen pubkey \
+  Solana balance -u devnet "$(Solana-keygen pubkey \
     /home/user/Desktop/Melusina/test-wallets/core-app-team/$k.json)"
 done
 # Need ≥ 0.05 SOL each on publisher + reviewer-1 + reviewer-2.
 
 # 0.4 vault rent
-solana balance 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 -u devnet
+Solana balance 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 -u devnet
 # Need ≥ 0.01 SOL for ReleaseEntry rent.
 ```
 
@@ -92,7 +92,7 @@ cat > "$APP/RELEASE.json" <<JSON
   "releaseHash": "$RELEASE_HASH",
   "version": "$VERSION",
   "signedAtUnix": 0,
-  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "",
   "releaseEntryPda": "",
   "authorSig": "",
@@ -110,9 +110,9 @@ is sent on-chain yet.
 
 ```bash
 TX_INDEX=$(node -e '
-const w = require("@sqds/multisig"); const {Connection, PublicKey} = require("@solana/web3.js");
+const w = require("@sqds/multisig"); const {Connection, PublicKey} = require("@Solana/web3.js");
 (async () => {
-  const c = new Connection("https://api.devnet.solana.com", "confirmed");
+  const c = new Connection("https://api.devnet.Solana.com", "confirmed");
   const ms = await w.accounts.Multisig.fromAccountAddress(c,
     new PublicKey("4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"));
   console.log(String(BigInt(ms.transactionIndex) + 1n));
@@ -129,7 +129,7 @@ const w = require("@sqds/multisig"); const {Connection, PublicKey} = require("@s
   --multisig   4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V \
   --vault      3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 \
   --quorum-threshold 3 --quorum-member-count 4 \
-  --author-keypair /home/user/.config/solana/id.json \
+  --author-keypair /home/user/.config/Solana/id.json \
   --transaction-index "$TX_INDEX"
 ```
 
@@ -223,8 +223,8 @@ fees. The vault `3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3` runs out
 after ~20 ceremonies — top up via:
 
 ```bash
-solana transfer 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 2 \
-  --from ~/.config/solana/id.json --keypair ~/.config/solana/id.json \
+Solana transfer 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3 2 \
+  --from ~/.config/Solana/id.json --keypair ~/.config/Solana/id.json \
   --url devnet --allow-unfunded-recipient
 ```
 
@@ -236,10 +236,10 @@ entries (the original 14-grain PSP-blocker inventory in
 
 | Group | Count | Notes |
 |---|---|---|
-| PSP-blocker grains | 14 | popaye, cyberteller, ccash admin, cyberteller config, DueProcess, ClientSpace, Domain Template, fineract setup, ccash Organization, Welcome pearl, AiLagoon, Vintage, TeleScreen Hub, plus opensanctions/creeper packaged from source |
+| PSP-blocker grains | 14 | popaye, cyberteller, ccash admin, cyberteller config, DueProcess, ClientSpace, Domain Template, Fineract setup, ccash Organization, Welcome pearl, AiLagoon, Vintage, TeleScreen Hub, plus OpenSanctions/creeper packaged from source |
 | Bureau family | 7 | bureau-cal, bureau-contacts, diagram-bureau, doc-bureau, bureau-notes, paint-bureau, sheets-bureau |
 | Wholesale + admin | 7 | mermail, MELUSINA_BOTMOTHER (botmother), MiniGit (×2 SPKs), instaco-app, jinn (×2 SPKs), canboard, melusina-openclaw |
-| Misc consumer grains | 11 | chainwatch, ccash-client, cratelink, consilium, namedcoin, shell-tester, etc. |
+| Misc consumer grains | 11 | chainwatch, ccash-client, cratelink, consilium, NamedCoin, shell-tester, etc. |
 | Pre-existing legacy | 2 | teleport, melusina-telescreen-sidecar-configurator (under Foundation 9X5… multisig, May-2 batch) |
 
 The remaining `packages/hrbrlife/Melusina/` and
@@ -265,7 +265,7 @@ are NOT publishable grains — by design, no RELEASE.json.
   `app_hash` PDA seed disambiguates.
 - **catalog index reflects the change.** `build-store.sh --aggregate`
   reads each `RELEASE.json` and embeds `attest.releaseEntryPda` +
-  `attest.masterNftMint` + `attest.quorumPolicy` per app in
+  `attest.MasterNftMint` + `attest.quorumPolicy` per app in
   `dist-publish/apps/index.json`; full RELEASE.json copies are also
   emitted to `dist-publish/attest/<appId>/RELEASE.json`. Confirm
   before `make publish` to gh-pages.
@@ -410,7 +410,7 @@ on-chain RELEASE.json after running pearl-app-ceremony.sh.
   ```
   build-store.sh step 5c (commit `cfada055`) WARNs on this drift
   fleet-wide; catalog side stays absorbed by /packages/<packageId>
-  rename (the served SPK file is named by metadata.packageId, not
+  rename (the served spk is named by metadata.packageId, not
   index field — so a fixed metadata.json relocates the served file).
 
 ### What pearl-app-ceremony.sh expects from the handoff bundle
@@ -460,7 +460,7 @@ directly into `packages/hrbrlife/<repo>/<slug>/` (bypassing the §10
 handoff `/msg` request), static_store crew:
 
 1. Identifies the write via `git status` showing `M packages/.../{spk,metadata,RELEASE}.json`.
-2. Verifies the claimed PDA on-chain (`solana account <pda> --url devnet`).
+2. Verifies the claimed PDA on-chain (`Solana account <pda> --url devnet`).
 3. Inspects metadata.json schema — upstream schema (`authorName`,
    `codeUrl`, etc.) is the smoking gun.
 4. `git stash push` the writes with descriptive message

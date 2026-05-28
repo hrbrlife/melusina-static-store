@@ -100,7 +100,7 @@ class AdminHandler(BaseHTTPRequestHandler):
                 "status": "ok",
                 "service": "melusina-admin-api",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "catalog": "melusina-static-store"
+                "catalog": "melusina-static_store"
             })
 
         elif self.path.startswith("/admin/rollback/versions/"):

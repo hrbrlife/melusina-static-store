@@ -1,5 +1,5 @@
 const CACHE_NAME = 'melusina-market-v3';
-const BASE = '/melusina-static-store/';
+const BASE = '/melusina-static_store/';
 
 /* Precache only the shell files needed to boot the app offline.
  * Hashed bundle chunks (assets/*) are cached on-demand via the fetch handler.

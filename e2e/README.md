@@ -1,4 +1,4 @@
-# Melusina static-store e2e tests
+# Melusina static_store e2e tests
 
 Playwright suite covering the public bazaar, the per-app integration
 contract (icon + SPK + ReleaseEntry attestation all reachable), the mobile
@@ -22,7 +22,7 @@ npx playwright test --project=admin
 ## Environment
 
 ```
-STORE_BASE_URL  default: https://hrbrlife.github.io/melusina-static-store/
+STORE_BASE_URL  default: https://hrbrlife.github.io/melusina-static_store/
 ADMIN_BASE_URL  default: https://dev.melusina-os.org/apps
 ```
 

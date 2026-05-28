@@ -87,7 +87,7 @@
       <p class="lede">Every app in this catalog ships with a Solana on-chain ReleaseEntry attesting its binary. Independent verification needs no trust in this static site &mdash; the catalog publishes everything required to re-check the chain yourself.</p>
 
       <h2>Trust model</h2>
-      <p>Each Melusina release is signed by a <strong>Squads multisig vault</strong> (the partner's quorum). The signature lands in a <strong>ReleaseEntry program-derived account</strong> on Solana mainnet, indexed by <code>masterNftMint</code> + <code>releaseNonce</code>. The entry pins three hashes: <code>appHash</code> (the .spk content), <code>releaseHash</code> (the canonical signing payload), and the <code>authorSig</code> (ed25519 signature over <code>releaseHash</code> by a quorum member).</p>
+      <p>Each Melusina release is signed by a <strong>Squads multisig vault</strong> (the partner's quorum). The signature lands in a <strong>ReleaseEntry program-derived account</strong> on Solana mainnet, indexed by <code>MasterNftMint</code> + <code>releaseNonce</code>. The entry pins three hashes: <code>appHash</code> (the .spk content), <code>releaseHash</code> (the canonical signing payload), and the <code>authorSig</code> (ed25519 signature over <code>releaseHash</code> by a quorum member).</p>
       <p>This is the <em>only</em> trust root. There are no PGP keys, no detached metadata signatures, no out-of-band approvals &mdash; legacy <code>.asc</code> files are explicitly rejected at publish time.</p>
 
       <h2>What the catalog publishes per app</h2>
@@ -97,10 +97,10 @@
         <tbody>
           <tr><td><code>schema</code></td><td>Always <code>melusina-release-v1</code>.</td></tr>
           <tr><td><code>appHash</code></td><td>SHA-256 of the .spk bytes. The installer recomputes this and refuses to install on mismatch.</td></tr>
-          <tr><td><code>releaseHash</code></td><td>SHA-256 of the canonical signing payload (appHash + masterNftMint + releaseNonce + manifest digest). The signed message.</td></tr>
+          <tr><td><code>releaseHash</code></td><td>SHA-256 of the canonical signing payload (appHash + MasterNftMint + releaseNonce + manifest digest). The signed message.</td></tr>
           <tr><td><code>releaseNonce</code></td><td>Monotonic counter per app. Replay-resistance for the ReleaseEntry PDA.</td></tr>
           <tr><td><code>releaseEntryPda</code></td><td>The Solana account address that holds this release on-chain. Look it up on any explorer.</td></tr>
-          <tr><td><code>masterNftMint</code></td><td>The license NFT that gates this app. Owner = current rights-holder.</td></tr>
+          <tr><td><code>MasterNftMint</code></td><td>The license NFT that gates this app. Owner = current rights-holder.</td></tr>
           <tr><td><code>licenseSquadsVault</code></td><td>Squads multisig vault PDA whose members co-signed this release.</td></tr>
           <tr><td><code>signedAtUnix</code></td><td>Unix timestamp the multisig finalized the release.</td></tr>
           <tr><td><code>authorSig</code></td><td>ed25519(releaseHash) by a quorum member. The signature you verify.</td></tr>
@@ -111,11 +111,11 @@
       <h2>Verify with the CLI</h2>
       <p>The reference verifier is <code>melusina-pearl-tool</code>. Build from <a href="https://github.com/hrbrlife/melusina-attestdeployer-tool">hrbrlife/melusina-attestdeployer-tool</a> or grab a release binary, then:</p>
       <pre><code># Pull the app's RELEASE.json + the .spk
-curl -sLO https://hrbrlife.github.io/melusina-static-store/attest/&lt;appId&gt;/RELEASE.json
-curl -sLO https://hrbrlife.github.io/melusina-static-store/packages/&lt;packageId&gt;.spk
+curl -sLO https://hrbrlife.github.io/melusina-static_store/attest/&lt;appId&gt;/RELEASE.json
+curl -sLO https://hrbrlife.github.io/melusina-static_store/packages/&lt;packageId&gt;.spk
 
 # Save the matching metadata.json from /signatures/&lt;appId&gt;/metadata.json
-curl -sLO https://hrbrlife.github.io/melusina-static-store/signatures/&lt;appId&gt;/metadata.json
+curl -sLO https://hrbrlife.github.io/melusina-static_store/signatures/&lt;appId&gt;/metadata.json
 
 # Verify against the on-chain ReleaseEntry
 melusina-pearl-tool verify-release \

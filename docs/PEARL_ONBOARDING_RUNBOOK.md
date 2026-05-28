@@ -6,7 +6,7 @@ Your app currently uses `spkmodule` in offline-stub mode and you want to migrate
 ## Prerequisites
 - App is on canonical spkmodule submodule URL (see Stream B sweep — most apps already are)
 - You have `melusina-pearl-tool` v0.3.0+ on PATH (`melusina-pearl-tool --version`)
-- Solana CLI installed; `~/.config/solana/id.json` keypair has >=0.5 SOL on devnet (`solana balance --url devnet`)
+- Solana CLI installed; `~/.config/Solana/id.json` keypair has >=0.5 SOL on devnet (`Solana balance --url devnet`)
 - Access to Core App Team Squads cosigners (publisher + reviewer-1 + reviewer-2 must approve)
 - Awareness of license-registry v104 master-NFT gate (see "Workaround until v105" below)
 

@@ -1,6 +1,6 @@
-fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.
+Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.
 
-## Why fineract Setup
+## Why Fineract Setup
 
 - **Cryptographically pinned configuration bundles** — anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance
 - **Dual-gate architecture** — configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently

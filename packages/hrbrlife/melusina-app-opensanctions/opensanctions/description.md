@@ -1,13 +1,13 @@
-# melusina-app-opensanctions — Sanctions Consumer Grain
+# melusina-app-OpenSanctions — Sanctions Consumer Grain
 
-**App**: `melusina-app-opensanctions` (consumer grain)
-# melusina-app-opensanctions — Sanctions Consumer Grain
+**App**: `melusina-app-OpenSanctions` (consumer grain)
+# melusina-app-OpenSanctions — Sanctions Consumer Grain
 
-**App**: `melusina-app-opensanctions` (consumer grain)
+**App**: `melusina-app-OpenSanctions` (consumer grain)
 **appId**: `msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh`
 **Version**: v1 (marketing `0.1.0`)
 **Language / runtime**: Go 1.22, Sandstorm grain (capnp + go-sandstorm bridge)
-**Catalog**: `https://hrbrlife.github.io/melusina-static-store/cca.sh/apps/index.json`
+**Catalog**: `https://hrbrlife.github.io/melusina-static_store/cca.sh/apps/index.json`
 
 ## PSP Role
 
@@ -17,29 +17,29 @@ per PLAN §0 — the sibling is `melusina-app-creeper` for the search / scrape
 / handle / contact OSINT half. (`pr_ninja` is a separate sibling-successor
 TeleScreen Hub, not the predecessor.) The grain itself does no
 screening logic; it is a UI surface + per-tenant capability broker over the
-`opensanctions-sidecar` LXC (192.168.122.250, systemd unit, nginx 443 → uvicorn
+`OpenSanctions-sidecar` LXC (192.168.122.250, systemd unit, nginx 443 → uvicorn
 127.0.0.1:8000). It complements popaye's **direct** sidecar HTTP call wired in
 `pkg/sanctionsclient/` — that direct path is the v1.0 happy-path for the
 account-opening + receive screening leg of the PSP cycle (see
 `/home/user/Desktop/agentchat/CLAUDE.md` step 2). The cap-routed
 `SanctionsSubCap` this grain exports is the **v1.1 migration target** that
-popaye and any other consumer can claim once Powerbox-out is the preferred
+popaye and any other consumer can claim once PowerBox-out is the preferred
 transport.
 
 ## Architecture (Brief)
 
 - **Grain**: `cmd/grain/main.go` → `grain/*.go`. Owns SQLite at
-  `/var/melusina-app-opensanctions/grain.db`, grain ed25519 identity key,
+  `/var/melusina-app-OpenSanctions/grain.db`, grain ed25519 identity key,
   caps / claims dirs.
 - **Outbound HTTP**: cap-routed via `melusina-http-component` (vendored at
   `third_party/melusina-http-component/go`). No stdlib `http.Get` — every
-  egress is fail-closed until the operator claims the Powerbox cap
+  egress is fail-closed until the operator claims the PowerBox cap
   (CLAUDE.md §2.13).
 - **Sidecar URL**: pinned in `sandstorm-pkgdef.capnp` env
-  `OPENSANCTIONS_SIDECAR_URL=https://opensanctions.sidecar.host`. The
+  `OPENSANCTIONS_SIDECAR_URL=https://OpenSanctions.sidecar.host`. The
   hostname resolves inside the Sandstorm grain via the cap-routed
   transport; outside, it's the same nginx 443 LXC entry.
-- **Capnp schema**: `capnp/opensanctions/opensanctions.capnp` defines
+- **Capnp schema**: `capnp/OpenSanctions/OpenSanctions.capnp` defines
   `SanctionsService` with `screenPerson` / `screenEntity` / `screenWallet` /
   `lookupCompany` / `getResult` / `listHistory`. TypeIDs are placeholders
   pending `capnp id` rotation before merge (PLAN §2.2).
@@ -53,7 +53,7 @@ transport.
 
 **Depends on**:
 
-- `opensanctions-sidecar` over HTTPS (cap-routed). Sidecar provides
+- `OpenSanctions-sidecar` over HTTPS (cap-routed). Sidecar provides
   `/api/screen/{person,entity}`, `/api/sanctions/*`,
   `/api/crypto/{screen,trace}`, `/api/{eth,btc,sol,tron}/reputation`.
 - `melusina-http-component` (vendored) — cap-routed HTTP-out transport;
@@ -62,7 +62,7 @@ transport.
 
 **Exports**:
 
-- `SanctionsService` Cap'n Proto capability via Powerbox-out
+- `SanctionsService` Cap'n Proto capability via PowerBox-out
   (`main_capnp.go` `GetViewInfo.matchRequests`).
 - `SanctionsSubCap` — per-tenant sub-capability (`sanctions_subcap.go`,
   mirrors the old TelescreenSubCap pattern). This is the v1.1 cap-routed
@@ -113,7 +113,7 @@ work needed here.
 - Do NOT write into `static_store/packages/*` directly when publishing
   this SPK — concurrent writes wedge stubs. Notify the `static_store`
   crew member via `/msg` instead.
-- Do NOT restart the live `opensanctions-sidecar` LXC without Riker's
+- Do NOT restart the live `OpenSanctions-sidecar` LXC without Riker's
   say-so; popaye's direct screening path depends on it for the PSP
   account-open / receive demo.
 
@@ -123,5 +123,5 @@ work needed here.
 make dev    # plain build
 make test   # unit tests
 make pkg    # spk pack
-make capnp  # regenerate capnp/opensanctions/opensanctions.capnp.go
+make capnp  # regenerate capnp/OpenSanctions/OpenSanctions.capnp.go
 ```

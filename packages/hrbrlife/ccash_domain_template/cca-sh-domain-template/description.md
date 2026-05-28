@@ -6,7 +6,7 @@ profiles, portal layouts, datasets, hook recipes, welcome/intake questionnaires,
 and static assets.
 
 Runtime grains (Station, Process, Account, Clientspace) start virgin and
-hydrate their configuration from the Template grain via Powerbox capability
+hydrate their configuration from the Template grain via PowerBox capability
 offer. No domain logic lives in Go code — it lives in domain packs served by
 this grain.
 
@@ -24,4 +24,4 @@ into writable storage on first boot; operators can edit them from the admin UI.
 - **DomainSelection** — scoped to one domain.
 - **StationTemplateSelection** — scoped to a (domain, stationProfile) pair.
 
-All three are durable (AppPersistent) and offered over Powerbox.
+All three are durable (AppPersistent) and offered over PowerBox.

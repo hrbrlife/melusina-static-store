@@ -26,7 +26,7 @@ Anchored in iter-1 deep recon, 2026-04-23.
    - `ccash_go_htmx/Makefile:99` — `gpg --local-user $(PGP_IDENTITY) --detach-sign --armor`
    - `programs/license-registry/state/foundation.rs:48` — `FoundationAppEntry.pgp_fingerprint: [u8; 20]`
    - `programs/license-registry/instructions/foundation.rs:17,34,132` — `pgp_fingerprint` argument
-   - `deployer/blockchain/solana/melusina-solana.py:757` — fake `MELUSINA_RELEASE:` signed-message
+   - `deployer/blockchain/Solana/melusina-Solana.py:757` — fake `MELUSINA_RELEASE:` signed-message
    - `sandstorm/src/sandstorm/spk.c++:1559-1679` — `checkPgpSignature` function
    - `sandstorm/src/sandstorm/package.capnp:455 / :474 / :606` — `pgpSignature`, `pgpKeyring`, `authorPgpKeyFingerprint`
    - `sandstorm/src/sandstorm/backend.capnp:51,57` — `authorPgpKeyFingerprint :Text`
@@ -36,13 +36,13 @@ Anchored in iter-1 deep recon, 2026-04-23.
    - `static_store/build-store.sh` — `gpg --verify metadata.json.asc` validation
 7. **What is NOT touched.** Sandstorm distro update channel (`install.sh:1325-1363`, `release.sh:85`, `make-bundle.sh:170`) keeps its PGP — that's signing the Sandstorm binaries themselves, not Melusina app attestation. Out of scope.
 8. **Apps in scope** for greenfield migration (per per-app roster, KILL-LIST.md §2.2):
-   - **Tier 1 (active grain apps):** `ccash_go_htmx`, `melusina_botmother`, `cyberteller`, `ai-lagoon`, `instaco.app`, `melusina-namedcoin-app`, `melusina-namedcoin-admin-app`, `AITX Procedures`, `BLOOM_QUESTIONNAIRE` (replacement of its naive foundation-key pattern), `vintage-test-dec`, `sailsto_system`, `client_collection`, `openclaw-main`, `MiniGit`
+   - **Tier 1 (active grain apps):** `ccash_go_htmx`, `melusina_botmother`, `cyberteller`, `ai-lagoon`, `instaco.app`, `melusina-NamedCoin-app`, `melusina-NamedCoin-admin-app`, `AITX Procedures`, `BLOOM_QUESTIONNAIRE` (replacement of its naive foundation-key pattern), `vintage-test-dec`, `sailsto_system`, `client_collection`, `openclaw-main`, `MiniGit`
    - **Tier 1.5 (bureau apps):** `melusina-bureau-doc-app`, `melusina-bureau-sheets-app`, `melusina-bureau-paint-app`, `melusina-bureau-diagram-app`, `melusina-bureau-shell-component`
    - **Tier 1.7 (mail/station):** `melusina-mermail-station-app`
    - **Tier 2 (templates/scaffolds):** `melusina_teleport2`, `grain-botmother` template, `grain-instance` template, `grain-desktop` template
    - **Deferred (per memory):** `INSTASYS_CHAT`, `Teleport`, `waikiki`, BLOOM.Community KYC (hard-NO)
 9. **Sidecars in scope** for greenfield:
-   - `fineract-sidecar` (Go, in ccash repo + standalone copy)
+   - `Fineract-sidecar` (Go, in ccash repo + standalone copy)
    - `mermail-sidecar` (Go)
    - `pr_ninja` / TeleScreen (Python, FastAPI)
    - `melusina-grain-auth` sidecar (already partially attested; needs `request_hash` commit fix per residual risk #1)
@@ -62,7 +62,7 @@ Anchored in iter-1 deep recon, 2026-04-23.
 | 3 | `melusina-attest-py` | Python port. verify + sign + sidecar derive (for pr_ninja). |
 | 4 | `melusina-spkmodule-component` v0.2 | Adds `pre-pack-pearl`, `propose-release-pearl`, `finalize-release-pearl`, `post-publish-pearl` hooks. Removes `GPG_KEY` requirement. Two-phase `make publish`. |
 | 5 | `melusina-grain-installer` | NEW. Pre-launch SPK approval gate. Refuses to launch a grain whose SPK hash has no active `LocalAppApproval`. Runs at start of every `continueGrain` / `createGrain`. |
-| 6 | `melusina-attest-deployer` (extension to `melusina-deployer`) | New CLI subcommands: `register-release-squads`, `register-pearl-identity`, `register-sidecar-identity`, `register-sidecar-release`, `authorize-app-sidecar`, `authorize-app-capnp`, `authorize-cross-license-hop`, `mint-grain-assignment`, `record-sensitive-action`. |
+| 6 | `melusina-attest-deployer` (extension to `melusina-deployer`) | New CLI subcommands: `register-release-Squads`, `register-pearl-identity`, `register-sidecar-identity`, `register-sidecar-release`, `authorize-app-sidecar`, `authorize-app-capnp`, `authorize-cross-license-hop`, `mint-grain-assignment`, `record-sensitive-action`. |
 | 7 | `melusina-attest-store` (extension to `static_store`) | Drops PGP, mints `StoreReleaseListing` per release, validates SPKs against `ReleaseEntry` + `GlobalAppApproval` before publishing. |
 | 8 | `melusina-attest-shell` (extension to Sandstorm `shell/`) | Replaces PGP install flow with `download → verify → attest → approve → unpack → analyze → ready`. Mints `LocalAppApproval` at install time. |
 | 9 | `license-registry v0.2` | Solana program with all new PDAs + permission bits 43..49 + on-chain Ed25519 release-sig verification. |
@@ -107,7 +107,7 @@ pub enum ApprovalStatus {
 
 ### 2.3 Replaced PDAs (greenfield)
 
-- **`ReleaseEntry`** — replaces broken `ReleaseRecord`. Seeds `["release", master_nft_mint, app_hash[32]]`. `release_hash: [u8; 32]` (was String). On-chain Ed25519 verify of `author_sig` via `ed25519_program` sysvar precompile. Squads-vault-required signing per `LicenseEntry.release_quorum_policy`. Per-release `ReleaseSignerPolicy` on `GlobalAppApproval`.
+- **`ReleaseEntry`** — replaces broken `ReleaseRecord`. Seeds `["release", MasterNftMint, app_hash[32]]`. `release_hash: [u8; 32]` (was String). On-chain Ed25519 verify of `author_sig` via `ed25519_program` sysvar precompile. Squads-vault-required signing per `LicenseEntry.release_quorum_policy`. Per-release `ReleaseSignerPolicy` on `GlobalAppApproval`.
 
 - **`FoundationAppEntry`** — drop `pgp_fingerprint: [u8; 20]`. Add `publisher_squads_vault: Pubkey` + `publisher_ed25519_pubkey: Pubkey`.
 
@@ -395,7 +395,7 @@ PEARL_RELEASE_VERSION   := 0.2.0        # semver
   "releaseHash":       "<hex 32B>",
   "version":           "0.2.0",
   "signedAtUnix":      1745380000,
-  "masterNftMint":     "<base58>",
+  "MasterNftMint":     "<base58>",
   "licenseSquadsVault":"<base58>",
   "releaseEntryPda":   "<base58>",
   "authorSig":         "<base64 64B>",
@@ -455,10 +455,10 @@ async function checkAppAttestation({packageId, userId, licenseMint}) {
   const pkg = Packages.findOne({_id: packageId});
   const {appHash, releaseEntryPda, masterMint} = pkg;
 
-  const release = await solana.fetchReleaseEntry(releaseEntryPda);
+  const release = await Solana.fetchReleaseEntry(releaseEntryPda);
   if (release.status !== 'Active') throw new Meteor.Error(403, 'Release revoked');
 
-  const local = await solana.fetchLocalAppApproval(licenseMint, appHash);
+  const local = await Solana.fetchLocalAppApproval(licenseMint, appHash);
   if (!local || local.status !== 'Active') throw new Meteor.Error(403, 'Local approval missing');
 
   return 'active';
@@ -515,7 +515,7 @@ for app in apps/*; do
   appHash=$(sha256sum app/app.spk | cut -d' ' -f1)
   release_json=$(extract_release_json app/app.spk)
   jq -r '.appHash' <<< "$release_json" | check_eq $appHash || die "appHash mismatch"
-  master_mint=$(jq -r '.masterNftMint' <<< "$release_json")
+  master_mint=$(jq -r '.MasterNftMint' <<< "$release_json")
   release_entry_pda=$(derive_release_pda $master_mint $appHash)
   solana_rpc fetch $release_entry_pda --commitment finalized | check_active || die
   solana_rpc fetch $(derive_global_app_pda $master_mint $appHash) --commitment finalized | check_active || die
@@ -529,7 +529,7 @@ done
 ```json
 {
   "appHash":              "<hex>",
-  "masterNftMint":        "<base58>",
+  "MasterNftMint":        "<base58>",
   "releaseEntryPda":      "<base58>",
   "globalAppApprovalPda": "<base58>",
   "storeReleaseListingPda":"<base58>",
@@ -563,7 +563,7 @@ Greenfield = full attestation from day 1. No legacy unsealed routes.
 | Sidecar | Lang | Lines today | Effort | Notes |
 |---|---|---|---|---|
 | `melusina-grain-auth` | Go | ~800 | 4 days | Already partially attested. Fix request_hash commit + add SidecarIdentityEntry registration + V1 envelope. |
-| `fineract-sidecar` | Go | ~3000 | 6 days | Largest. Webhook receiver already has Ed25519 over PayloadContextV2 — repurpose. New: outbound seal, sidecar identity registration. |
+| `Fineract-sidecar` | Go | ~3000 | 6 days | Largest. Webhook receiver already has Ed25519 over PayloadContextV2 — repurpose. New: outbound seal, sidecar identity registration. |
 | `mermail-sidecar` | Go | ~1500 | 5 days | Public-internet-facing inbound stays unsealed (mail provider callbacks). Partition `/webhook/external/*` (untrusted) from `/webhook/melusina/*` (sealed). |
 | `pr_ninja` / TeleScreen | Python | ~900 | 8 days | Python port of attest needed (or wait for `melusina-attest-py`). |
 | `aitx-screening` | Go | ~unknown | 5 days | Today: `X-API-Key` only. Full upgrade to sealed envelope. |
@@ -577,7 +577,7 @@ Each sidecar `main.go`:
 
 ```go
 identity, err := attest.AsSidecar(attest.SidecarConfig{
-    SidecarID:           "fineract-sidecar",
+    SidecarID:           "Fineract-sidecar",
     HostMachineID:       hostshard.MustReadMachineID(),
     BinaryPath:          os.Args[0],
     SolanaRPC:           os.Getenv("MELUSINA_SOLANA_RPC"),
@@ -630,8 +630,8 @@ Each app gets the same recipe. Full migration from PGP-attested SPKs to attest-a
 | `cyberteller` | Go | ~15K | 4 days | Already on attest-PDF; medium. |
 | `ai-lagoon` | Go | ~10K | 4 days | Similar to cyberteller. |
 | `instaco.app` | Go | ~8K | 4 days | grain-e2e-binding API drift to address. |
-| `melusina-namedcoin-app` | Go | ~8K | 4 days | KYC integration. |
-| `melusina-namedcoin-admin-app` | Go | ~5K | 3 days | Twin of namedcoin-app. |
+| `melusina-NamedCoin-app` | Go | ~8K | 4 days | KYC integration. |
+| `melusina-NamedCoin-admin-app` | Go | ~5K | 3 days | Twin of NamedCoin-app. |
 | `AITX Procedures` | Go | ~12K | 4 days | KYC + e2e attestation. |
 | `BLOOM_QUESTIONNAIRE` | JS (Node) | ~5K | 5 days | Greenfield-replaces naive foundation-key pattern. |
 | `vintage-test-dec` | Go | ~10K | 3 days | Embedded TLS pattern good baseline. |
@@ -715,18 +715,18 @@ Each app gets the same recipe. Full migration from PGP-attested SPKs to attest-a
 
 ## 10. Deployer extension (`melusina-deployer`)
 
-New CLI subcommands (Python, in `deployer/blockchain/solana/`):
+New CLI subcommands (Python, in `deployer/blockchain/Solana/`):
 
 ```
-melusina-solana register-release-squads --master-mint X --app-hash Y --version V
-melusina-solana register-pearl-identity --license L --grain-id G ...
-melusina-solana register-sidecar-identity --master-mint X --sidecar-id S ...
-melusina-solana register-sidecar-release --sidecar-id S --version V --binary-hash H ...
-melusina-solana authorize-app-sidecar --license L --app-hash A --sidecar-id S [--scope MASK]
-melusina-solana authorize-app-capnp --license L --src-app A --dst-app B [--methods M]
-melusina-solana authorize-cross-license-hop --src-license L1 --dst-license L2 --src-app A --dst-app B
-melusina-solana mint-grain-assignment --license L --grain-id G --owner-user U --owner-wallet W
-melusina-solana record-sensitive-action --license L --action-id A --bundle BUNDLE_FILE
+melusina-Solana register-release-Squads --master-mint X --app-hash Y --version V
+melusina-Solana register-pearl-identity --license L --grain-id G ...
+melusina-Solana register-sidecar-identity --master-mint X --sidecar-id S ...
+melusina-Solana register-sidecar-release --sidecar-id S --version V --binary-hash H ...
+melusina-Solana authorize-app-sidecar --license L --app-hash A --sidecar-id S [--scope MASK]
+melusina-Solana authorize-app-capnp --license L --src-app A --dst-app B [--methods M]
+melusina-Solana authorize-cross-license-hop --src-license L1 --dst-license L2 --src-app A --dst-app B
+melusina-Solana mint-grain-assignment --license L --grain-id G --owner-user U --owner-wallet W
+melusina-Solana record-sensitive-action --license L --action-id A --bundle BUNDLE_FILE
 ```
 
 Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidecar`, `handleAuthorizeAppCapnp`, `handleAuthorizeCrossLicenseHop`.
@@ -788,7 +788,7 @@ Squads-watcher gains handlers: `handleRegisterRelease`, `handleAuthorizeAppSidec
 - TS + Python ports of attest.
 - Component integration: capnp v0.3, pdf v0.2, static-publish v0.2, notify-sandstorm v0.2, identity-gate v0.2, grain-restore v0.2.
 - First wave of apps: `ccash`, `cyberteller`, `ai-lagoon` (3 highest-value).
-- First wave of sidecars: `fineract-sidecar`, `melusina-grain-auth` v0.3 (full attestation).
+- First wave of sidecars: `Fineract-sidecar`, `melusina-grain-auth` v0.3 (full attestation).
 
 **5 weeks. 80 engineer-days. 4-engineer parallel.**
 
@@ -825,7 +825,7 @@ Per the user's directive: every sidecar and every app gets `melusina-attest` int
 | **TS port** (`@hrbrlife/melusina-attest`) | full | **v0.1.0 = verify-side MVP** (identity.Public + envelope.canonicalPayload + envelope.verify + base58). Signing + derivation + seal NOT ported. 4/4 vector tests pass. |
 | **Python port** (`melusina-attest-py`) | full | **v0.1.0 = verify-side MVP** — same scope as TS. 4/4 vector tests pass. |
 | **Solana program** (license-registry) | all new PDAs + instructions | State + instruction scaffolding committed by engineer B. `register_release_entry` exists; on-chain Ed25519 check is present. Client-side RPC submission NOT wired. |
-| **Deployer** (`melusina-solana.py`) | `register-release-squads`, `register-pearl-identity`, 7 more | `register-release` exists but is **theatrical** (stores an unverified fake signature). `squads-propose`/`squads-wait-for-execute` are **stubs** ("NOT IMPLEMENTED"). |
+| **Deployer** (`melusina-Solana.py`) | `register-release-Squads`, `register-pearl-identity`, 7 more | `register-release` exists but is **theatrical** (stores an unverified fake signature). `Squads-propose`/`Squads-wait-for-execute` are **stubs** ("NOT IMPLEMENTED"). |
 | **melusina-pearl-tool** | binary that bridges `make publish` ↔ Squads proposal | **DOES NOT EXIST.** Hooks in spkmodule v0.3.0 reference it, but no source, no binary. |
 | **spkmodule-component** | v0.3.0 pearl hooks | **GREENFIELD DEFAULT** locally at `_killlist_staging/melusina-spkmodule-component` (v0.3.0). `GPG_KEY` removed; `make publish` dispatches Squads `propose/finalize` and publish branches carry `RELEASE.json`. Zero apps consume it yet. |
 | **Sandstorm shell** | PGP deleted + ReleaseEntry lookup + envelope verify | PGP **IS** deleted. `grain-gate.js` **SHIPPED** as pre-launch gate checking `LocalAppApproval`. `ReleaseEntry` check + envelope verify on sidecar responses NOT done. |
@@ -837,7 +837,7 @@ Per the user's directive: every sidecar and every app gets `melusina-attest` int
 | Sidecar | Lang | Imports attest? | Has SidecarIdentity derivation? | Wire | Status |
 |---|---|---|---|---|---|
 | `melusina-grain-auth` | Go/TS/Py | no | no | bespoke v0.2.1 (magic+version+replay cross-checks) | shipped with its own wire, awaiting v0.3.0 attest migration |
-| `fineract-sidecar` | Go + Java | no | no | direct Solana Ed25519 verify on inbound; no response signing | pre-attest |
+| `Fineract-sidecar` | Go + Java | no | no | direct Solana Ed25519 verify on inbound; no response signing | pre-attest |
 | `mermail-sidecar` | Go | no | no | REST/JSON; **no auth on HTTP handlers** (per code comment, Bearer check was deleted) | pre-attest |
 | `pr_ninja` (TeleScreen) | Python | no | no | REST/JSON; no auth | pre-attest |
 | `aitx-screening` | ? | ? | ? | ? | **could not locate path** — possibly renamed, deleted, or in a submodule |
@@ -854,8 +854,8 @@ Per the user's directive: every sidecar and every app gets `melusina-attest` int
 | `ai-lagoon` | ✓ | ✗ | ✗ | ✗ | ✗ |
 | `melusina_botmother` | ✓ | v0.2.1 pinned | ✗ | ✗ | ✗ |
 | `instaco.app` | ✓ | ✗ | ✗ | ✗ | ✗ |
-| `melusina-namedcoin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
-| `melusina-namedcoin-admin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-NamedCoin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `melusina-NamedCoin-admin-app` | ✓ | ✗ | ✗ | ✗ | ✗ |
 | `AITX Procedures` | ✓ | ✗ | ✗ | ✗ | ✗ |
 | `BLOOM_QUESTIONNAIRE` | ✓ | ✗ | ✗ | ✗ | ✗ |
 | `vintage-test-dec` | ✓ | ✗ | ✗ | ✗ | ✗ |
@@ -899,7 +899,7 @@ Intended as members of a 2-of-4 Squads v4 multisig for driving test release cere
 The infrastructure below is what unblocks using the Core App Team wallets to sign a real `register_release_entry` for one app on devnet. This is the honest "what would it take" list, derived from the audit — not a commit log.
 
 1. **`melusina-pearl-tool` CLI** — the spkmodule hooks reference it; does not exist. Scope: a Go or Node binary that (a) canonicalizes `RELEASE.json`, (b) crafts the `register_release_entry` instruction payload, (c) submits a Squads `vault_transaction_create` proposal, (d) polls `vault_transaction_execute` status. Estimate 1-2 weeks.
-2. **Deployer `squads-propose` / `squads-wait-for-execute` stubs** — currently "NOT IMPLEMENTED" in `melusina-solana.py`. Scope: Python wrappers around `@sqds/sdk` or direct instruction building. 3-5 days.
+2. **Deployer `Squads-propose` / `Squads-wait-for-execute` stubs** — currently "NOT IMPLEMENTED" in `melusina-Solana.py`. Scope: Python wrappers around `@sqds/sdk` or direct instruction building. 3-5 days.
 3. **`register_release_entry` client-side wrapper** — on-chain instruction exists, deployer has no subcommand that builds + signs + sends it. 2-3 days.
 4. **First consumer migrated** — pick `ccash_go_htmx`; run `make bootstrap-author`; validate the hooks work end-to-end. Flush out every "the design said X but reality is Y" bug.
 5. **Squads multisig for Core App Team** — create the 2-of-4 multisig PDA; write its address into `core-app-team-config.json`. Requires Squads CLI or a TS script using `@sqds/multisig`.
@@ -915,7 +915,7 @@ Previous §13.x content (aspirational coverage matrix) — superseded by this au
 | Sidecar | Wave | Status |
 |---|---|---|
 | `melusina-grain-auth` | 2 | Already partially attested; full upgrade |
-| `fineract-sidecar` | 2 | Largest; reference impl |
+| `Fineract-sidecar` | 2 | Largest; reference impl |
 | `mermail-sidecar` | 3 | External-webhook partition |
 | `pr_ninja` / TeleScreen | 3 | Needs Python port |
 | `aitx-screening` | 3 | Replace `X-API-Key` |
@@ -930,8 +930,8 @@ Previous §13.x content (aspirational coverage matrix) — superseded by this au
 | `ai-lagoon` | 2 | 1 |
 | `melusina_botmother` | 3 | 1 |
 | `instaco.app` | 3 | 1 |
-| `melusina-namedcoin-app` | 3 | 1 |
-| `melusina-namedcoin-admin-app` | 3 | 1 |
+| `melusina-NamedCoin-app` | 3 | 1 |
+| `melusina-NamedCoin-admin-app` | 3 | 1 |
 | `AITX Procedures` | 3 | 1 |
 | `BLOOM_QUESTIONNAIRE` | 3 | 1 (greenfield rewrite) |
 | `vintage-test-dec` | 3 | 1 |
@@ -975,11 +975,11 @@ Every cross-trust-boundary message in every Melusina component routes through `m
 
 ### 14.3 Single PDA reader interface
 
-`melusina-attest.keycache.Resolver` is the only way to fetch on-chain authorization state. Backed by `melusina-solana-primitives` for derivation and a Solana RPC client (with allowlist + dual-RPC + finalized commitment).
+`melusina-attest.keycache.Resolver` is the only way to fetch on-chain authorization state. Backed by `melusina-Solana-primitives` for derivation and a Solana RPC client (with allowlist + dual-RPC + finalized commitment).
 
 ### 14.4 Single approver-chain canonical form
 
-`identity-gate.envelope.CanonicalPayloadV2Approver` shape generalized to N-of-N role-quorum. All sensitive-action bundles use this; ccash, namedcoin, AITX, fineract all converge.
+`identity-gate.envelope.CanonicalPayloadV2Approver` shape generalized to N-of-N role-quorum. All sensitive-action bundles use this; ccash, NamedCoin, AITX, Fineract all converge.
 
 ### 14.5 Single TLS pinning location
 
@@ -987,7 +987,7 @@ Every cross-trust-boundary message in every Melusina component routes through `m
 
 ### 14.6 Single Squads ceremony pattern
 
-`make publish` for apps; `melusina-solana register-sidecar-release` for sidecars; `melusina-solana register-installer-release` for the shell installer. All use identical Squads propose → wait → execute pattern via the same deployer code path.
+`make publish` for apps; `melusina-Solana register-sidecar-release` for sidecars; `melusina-Solana register-installer-release` for the shell installer. All use identical Squads propose → wait → execute pattern via the same deployer code path.
 
 ### 14.7 Three independent version counters everywhere
 
@@ -1048,7 +1048,7 @@ Every component participates in all five.
 - [ ] All 21 apps mint `PearlIdentityEntry` on first launch.
 - [ ] All app↔sidecar edges have `AppSidecarAuthorization` PDAs minted.
 - [ ] Cross-licensee hop chain demo: ccash@L1 → ailagoon@L2 → docs-archive@L3 verifiable end-to-end.
-- [ ] Sensitive-action 4-approver bundle demo: ccash $100K transfer with owner+admin+admin+squads signatures.
+- [ ] Sensitive-action 4-approver bundle demo: ccash $100K transfer with owner+admin+admin+Squads signatures.
 - [ ] Cross-language testvectors green in Go + TS + Python CI.
 - [ ] BLOOM QUESTIONNAIRE migrated to attest (replaces naive foundation key).
 - [ ] All `metadata.json.asc` files deleted from all publish branches.

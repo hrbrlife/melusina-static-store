@@ -8,7 +8,7 @@
       "pearlId": "telescreen-sidecar-configurator",
       "pearlName": "TeleScreen Sidecar Configurator",
       "pearlType": "infrastructure-pearl",
-      "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm Powerbox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
+      "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm PowerBox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
       "sidecars": [],
       "grapple": {
         "offers": [],
@@ -42,7 +42,7 @@
       },
       "blockchains": [
         {
-          "chain": "solana",
+          "chain": "Solana",
           "cluster": "devnet",
           "programs": [
             {

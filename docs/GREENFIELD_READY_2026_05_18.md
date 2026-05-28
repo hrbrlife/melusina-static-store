@@ -25,7 +25,7 @@ All 20 apps have `origin/main` updated with:
 | 7 | melusina_cybertellerconfig_app | `/home/user/Desktop/melusina_cybertellerconfig_app` |
 | 8 | melusina_ccashconfig_app | `/home/user/Desktop/melusina_ccashconfig_app` |
 | 9 | instaco.app | `/home/user/Desktop/instaco.app` |
-| 10 | melusina-namedcoin-app | `/home/user/Desktop/namedcoin-work/melusina-namedcoin-app` |
+| 10 | melusina-NamedCoin-app | `/home/user/Desktop/NamedCoin-work/melusina-NamedCoin-app` |
 | 11 | client_collection | `/home/user/Desktop/client_collection` |
 | 12 | shell_tester | `/home/user/Desktop/store-rebuild/shell_tester` |
 | 13 | INSTASYS_MAIL | `/home/user/Desktop/store-rebuild/INSTASYS_MAIL` |

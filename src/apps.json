@@ -49,7 +49,7 @@
         "releaseHash": "85fcd38a9a6f1c1281af27dac7f145845438a1d2d09b30f04507516e3950a6a9",
         "releaseNonce": "845ae8cd8bb11319448c818ebc7b39234d325171a78a49cf9f998055b11ac42b",
         "releaseEntryPda": "offline-release-entry-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
-        "masterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
+        "MasterNftMint": "offline-master-nft-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "licenseSquadsVault": "offline-license-vault-v4ywsgcuc6wgqvjre99k9j4js21rxt0h",
         "signedAtUnix": 1779841291,
         "authorSig": "cbc82d848005aa229f8fd089fc090c49caf6847774a12715609d3f51ee3155f1",
@@ -129,7 +129,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -217,7 +217,7 @@
         "releaseHash": "a22465f26c3aee2ade2ddf8af514d76bd061b48aeaea02d073d618222141bacb",
         "releaseNonce": "f445b83a967c9ab2a0a28813db65ee62",
         "releaseEntryPda": "ANGuYJd779DEujTF22rj33wD2Mz8G768SXUXWDV51JiX",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092626,
         "authorSig": "UjYbUJlO8UTtlh3RxJ0Grxo2+73BmeaXrEF+s3Qs6yxLlzLQl9/GtDIiwntEP0md1wTfwZswWa2o68ZAlwH4CQ==",
@@ -268,7 +268,7 @@
         "releaseHash": "a7e5856e73258256df3b9256f59551c8541684edf41c3bdd0b37f16362e32b93",
         "releaseNonce": "f6a2b48c675316b2675c77ef24ca1f03",
         "releaseEntryPda": "HNNK2krV58UrjRXkTkNAU8sYSc4xzXd6ydWcr3j4Jz47",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094725,
         "authorSig": "V60j134u54Kw0wA2WAMgUQLWlNmZRLuiK0uTV6txq57tuKmA8sA0UbSedWRe+F9cTLZvvN7MIb3mzWEaxpcADw==",
@@ -404,7 +404,7 @@
         "releaseHash": "d1b0a809fb0e2c2aab504fbc6347b81ec74dce2009f2aff015eeff33a04ef1b6",
         "releaseNonce": "e0b597edf818a2736ea100ce96ef009e",
         "releaseEntryPda": "GKhF31XwAPzCjgCXVom89p6FCgFbHut7nHsYu5tZrxP3",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094956,
         "authorSig": "fGNeQU0smFKddyp+aslg2CSNX5s3t5pjoxsTWU8+T6+72jspq67DOB2VM7OSZvw1GuEi/yfdvvn0zINQn7O7BA==",
@@ -470,7 +470,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -550,7 +550,7 @@
         "releaseHash": "647c76f6d7c8feb2d46c4954efc962c832eee0c7409de5cb0fac4ed06a7fef11",
         "releaseNonce": "1732ee3873fa8bc4eb9e7e74e0140d13",
         "releaseEntryPda": "6PvP9D1FSssE4mZankbTFhrWHusyYEN7KXfGYXW8rVVT",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094988,
         "authorSig": "RjEc99rRBh8RTuD+PTVBIEBTsyZ5JLQcqLvpTCG52b7xAAHx2PROZ08tPytjVK4kgboxrxkNLmQCWxaqNS39BQ==",
@@ -616,7 +616,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -662,7 +662,7 @@
       "version": "0.0.11",
       "versionNumber": 18,
       "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
-      "description": "Configure fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
+      "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
       "categories": [
         "Productivity",
         "Office"
@@ -696,7 +696,7 @@
         "releaseHash": "56ea4a29cbe1fad3ce234b4987481f5af9c720b0251e6d67e239348b3b6b229f",
         "releaseNonce": "2e17933400a81ba3eb1451adb75085aafb735cff95a95286c9febe9bbd721bd0",
         "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "masterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "MasterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
         "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
         "signedAtUnix": 1779841290,
         "authorSig": "dc3ae3ff187c8a3e680eef1d9a510bfc5e3a9cca4a3ae2d44f60843af10548e8",
@@ -722,7 +722,7 @@
             "pearlId": "cca-sh-config",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Powerbox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 Powerbox-claim only.",
+            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over PowerBox. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 PowerBox-claim only.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -780,7 +780,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -865,7 +865,7 @@
         "releaseHash": "e7d5f1b8c27e169b334be504a5acc55d425c2fd13c13cc6a999709cb6725f88e",
         "releaseNonce": "d6c15df8bbcd0301293471446ec440bf",
         "releaseEntryPda": "7Fh1Nj77qb8xnxbR4rxpoKuYUoE5QEGze72UMz7gUJep",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779718705,
         "authorSig": "tl/xojUXGFY/vEnry11C1x0lG85PpLMa1Uc5fWz6Dt00BoDYddQSN5P3SL3MIk4a7uvOGgU5TK3hS+ApC9nwAg==",
@@ -885,7 +885,7 @@
             "pearlId": "cca-sh-domain-template",
             "pearlName": "Domain Template",
             "pearlType": "infrastructure-pearl",
-            "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Powerbox-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
+            "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains PowerBox-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -918,7 +918,7 @@
               "anyMember": [
                 {
                   "name": "Read templates",
-                  "purpose": "Anyone with a Powerbox claim can read."
+                  "purpose": "Anyone with a PowerBox claim can read."
                 }
               ]
             },
@@ -928,7 +928,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1010,7 +1010,7 @@
         "releaseHash": "324ba8a3b1192162b5d41e51a85d0325a8c083967eac6e9f8a4f3e0b4f9ce4d9",
         "releaseNonce": "c5abcfb205bc22b5373d42039bf16885",
         "releaseEntryPda": "FfqEyHd6DCRUdFwWJ1GAxNZ9uTUZEF7ADcSXde3bTf6g",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779090891,
         "authorSig": "cmBT9m7+D1pkz6r/0qC33TIFFgVhCGOiOi78+dYOiKq3yE+ajsbJCBd0sRQTnus5fXHx9vCWdSCBwjsigWjCAA==",
@@ -1076,7 +1076,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1151,7 +1151,7 @@
         "releaseHash": "0a1f3b2fbb92b42ae2c31bfb17ff20f3675efb181253d774ac4f12bf61513c46",
         "releaseNonce": "e905a6c618944ad37117abf11b25fc75aa07b48f381f5d82d4422999b4e98535",
         "releaseEntryPda": "offline-release-entry-gyxwadv96vyss1qt05epahsgyn2993y8",
-        "masterNftMint": "offline-master-nft-gyxwadv96vyss1qt05epahsgyn2993y8",
+        "MasterNftMint": "offline-master-nft-gyxwadv96vyss1qt05epahsgyn2993y8",
         "licenseSquadsVault": "offline-license-vault-gyxwadv96vyss1qt05epahsgyn2993y8",
         "signedAtUnix": 1779190473,
         "authorSig": "e955c34a8475fe1144109ee3a61e1afd8a81698ad5da23db7d624f4fb5b9e85f",
@@ -1200,7 +1200,7 @@
         "releaseHash": "7b6855990d7a1cfd9ffee317ad34faa38daa074f039c943c3b4d7e35781b8159",
         "releaseNonce": "5ec8d461e49fe32f26b7909cda3d398d75d4b5f4156fb56184e8842701a6bcfc",
         "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "masterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
+        "MasterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
         "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
         "signedAtUnix": 1779841290,
         "authorSig": "f8853d16e6dbdd98628ad805bb10fe4b5b3b9f88d60cc9778e3a344dfe9e0627",
@@ -1269,7 +1269,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1347,7 +1347,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "description": "ChainWatch is the multi-chain RPC proxy sidecar for cyberteller. It exposes three HTTP endpoints \u2014 `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` \u2014 and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate grain\n\n- **Single chokepoint for outbound RPC.** cyberteller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs \u2014 nothing else. cyberteller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator grain or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot \u2014 there is no stub fallback (greenfield posture, fail loud).",
+      "description": "ChainWatch is the multi-chain RPC proxy sidecar for cyberteller. It exposes three HTTP endpoints \u2014 `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` \u2014 and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate grain\n\n- **Single chokepoint for outbound RPC.** cyberteller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs \u2014 nothing else. cyberteller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator grain or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.Solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot \u2014 there is no stub fallback (greenfield posture, fail loud).",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.1",
@@ -1360,7 +1360,7 @@
         "releaseHash": "9f14eca59c85ebcf341d85bff2916a31571e16c207a4d4dfc31d885581256fa5",
         "releaseNonce": "28c803a97f2a1a4995cc3834693fd11d",
         "releaseEntryPda": "GnpJvP3KozNAincttAtrmDPWHbPwjcLEiQW4kj9TsuGy",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092731,
         "authorSig": "9mpUIxxGhGbCLWHuwIKLAYgUDiKZ3/VD4joRGQhdy0DsmzRBsZqDI0jDyASlKopxRTy6zyxBf5M/Y1/muQ32DA==",
@@ -1395,7 +1395,7 @@
               "adminOnly": [
                 {
                   "name": "Operator",
-                  "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via Powerbox."
+                  "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via PowerBox."
                 }
               ],
               "organizationOnly": [],
@@ -1407,7 +1407,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1449,7 +1449,7 @@
               "via": "sandbox-default",
               "purpose": "JSON-RPC against the configured chain endpoints. URLs are operator-set via env vars (SOL_RPC_URL, ETH_RPC_URL); defaults point at Solana devnet + Ethereum sepolia public nodes.",
               "endpoints": [
-                "https://api.devnet.solana.com",
+                "https://api.devnet.Solana.com",
                 "https://ethereum-sepolia-rpc.publicnode.com"
               ]
             },
@@ -1511,7 +1511,7 @@
         "releaseHash": "1ac16b37c67f1e9d3944402ab0e086d06ccd0a63a0ca6f9e3031a5f6601aca1f",
         "releaseNonce": "0680776563111d1327c6c85857c05445",
         "releaseEntryPda": "78ddUEyjnSoD6YToQWxuDfgj3383iJ25SyE2ucg8ur1H",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779091445,
         "authorSig": "wHEmIVdMHwTU2SSu1j1uzjudi6SUovBWcBYxu2JwHT6Khv1ggvre7dc9Lfs2+YKXjUl83uB0dr4i0/aNUWkcAg==",
@@ -1522,7 +1522,7 @@
         }
       },
       "capabilities": null,
-      "description": "BLOOM Client Collection \u2014 a sturdyref-based container grain for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Powerbox. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
+      "description": "BLOOM Client Collection \u2014 a sturdyref-based container grain for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm PowerBox. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
       "screenshots": []
     },
     {
@@ -1561,7 +1561,7 @@
         "releaseHash": "13f6a01b1851a2bdd06f6809eeff9a40eb6ca34558d58dee6f95602294205b9d",
         "releaseNonce": "7b397d00378f61146d193edaa0324992",
         "releaseEntryPda": "2VF6w4dUY734oQQL3J6nuYvxy8Hcsvv7wCvingEBb8fX",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095033,
         "authorSig": "wrlFPpGspeRD8wpEXz6TjjuJMzwUggoc+0PxnJhWUR7Wf67s4G46zZ9XnGMmPS9cGkj57CMiZLGSH28hujMoBw==",
@@ -1637,7 +1637,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1717,7 +1717,7 @@
         "releaseHash": "f3a8b76f2a820d12341f89a636d2b41d08d8174a617401838699b1045a58df2e",
         "releaseNonce": "cfa5cb6c4d35ee1acff6ca1d4be2b4d7",
         "releaseEntryPda": "Dqu43rjw58nqJsCk4sKYcDTE52gE3RWf8ZSpKhqhwCDP",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094758,
         "authorSig": "ank+TSxdyabPJZrqWDPwoCknumnqCyVXygiTy/CHUw6TnDELHVFNlFL7yXMZTV0+NeY6lk3jHOFmeWmGtPMKDg==",
@@ -1855,7 +1855,7 @@
         "releaseHash": "7f9b0a87af38b0aea438344c5b6ca1f5058c1638833366bbdc83c86d71c441c3",
         "releaseNonce": "09f3f1a83e31b28e0825526a2cd97de1",
         "releaseEntryPda": "5w8QaBWQjnr35cdekNbUd1rLhdChwE4eKiQ8BCNrcRWb",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095061,
         "authorSig": "xjv62Mzo7rZ0Il2DxgwQQv6GZ9yyaBlGAqNXBVKH83tAsDfGp29nrIN7TP/gilxB41mlmo+WF95EuaPjLN9pDg==",
@@ -1935,7 +1935,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -1986,7 +1986,7 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
-      "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Powerbox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
+      "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via PowerBox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
         "Productivity",
         "DeveloperTools"
@@ -2017,7 +2017,7 @@
         "releaseHash": "0982d8d087dafc266fed5bce7672f44b68febe0f4534a32d2193dcecb80b59cb",
         "releaseNonce": "3c01dd217e7ea3a2ad5d0da07fa9183b",
         "releaseEntryPda": "WJAsR119W8DfDfVufDmUFUZgb2wKCmHof47JjtHuGg6",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092236,
         "authorSig": "k+eF/mnnFP5s7S2f1znHltDQfTN1RjaVLR3KsqlbL8R0me/L0izRDumLGLZ2omuNlEyJbEXlbuce9z/Z7pMLAg==",
@@ -2066,7 +2066,7 @@
         "releaseHash": "48a8799d91eedbf4540b7393d1969f26dcb814982df4a434bf81e3175c50df74",
         "releaseNonce": "4bd856a18f332e613fa200b9bcdaa0c53987e9ddbfc22b203d9c4fd5c4295eea",
         "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "masterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "MasterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
         "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
         "signedAtUnix": 1779880123,
         "authorSig": "a8a125562e6fbf6a168569008996a9a43b554cd4e8cb51d248ecfcf4bc759da7",
@@ -2141,7 +2141,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -2207,7 +2207,7 @@
       "versionNumber": 12,
       "packageId": "90e216786a64ba5d5c034460b7e1accf",
       "shortDescription": "Cyberteller install-admin (boot env source)",
-      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Powerbox capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
+      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate PowerBox capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
         "Productivity"
       ],
@@ -2237,7 +2237,7 @@
         "releaseHash": "ec9f02d853d3fd98744ed75b947bed44ce16f14294ef329c114ff4c98c907243",
         "releaseNonce": "0f124cf77f8b57bc4b175b74716e5d41",
         "releaseEntryPda": "3vKiS55sYcnw6q9tUaCcEJMXTYiYoPP25fzQi8HvTzAB",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779102710,
         "authorSig": "EiXChfpRwS9Q2FqZR8ke+UhQqjCPia/HQIrRv5RbD67GgcQFwRf6zaGUlGrL/LS1aqhd5k3fMJMcsmqqhDi6CQ==",
@@ -2260,14 +2260,14 @@
             "pearlId": "cybertellerconfig",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Powerbox capability every cyberteller grain claims at first launch \u2014 hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
+            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate PowerBox capability every cyberteller grain claims at first launch \u2014 hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "config-gate",
                   "interface": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
-                  "purpose": "Single Powerbox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
+                  "purpose": "Single PowerBox cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
                 }
               ],
               "requests": []
@@ -2318,7 +2318,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -2421,7 +2421,7 @@
         "releaseHash": "068ab50c43ebf37df54df72c66d507050cb4d55bf520563914efbec554c4b6b0",
         "releaseNonce": "6823fe4f4f430d78d708e9196cbcb773",
         "releaseEntryPda": "Hvi1kSAcPV1J1kNwEwkrfwZiK4cg2oF2wb1Lrxib5FDd",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094793,
         "authorSig": "R7swpE23F6F8BE3VSvSdkbdccLxyXIqgRBRHi6NEcTXth37fl4ZBcOWuIc2WoeoGYMMWfOFTj7LV2sW4J+dhAA==",
@@ -2574,7 +2574,7 @@
         "releaseHash": "441def63d0b444344492b8c1e3709a68f14467ce6cbff164d8b27e7e078fed49",
         "releaseNonce": "2439c0e49376f52a4f82baba98c965bb",
         "releaseEntryPda": "B4yYbaxgGGcnYFrTDAKs1pDUL3xt5BcamfPYBxJ5NLLs",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094826,
         "authorSig": "mqW+FCOqoePNFZQvqUJKFBuV72+jWWayih2sZbs6KaDJ8jL4/6Nvav6EcDLIc7DLQsxSlXevh2IvrYc7OpgtCw==",
@@ -2621,7 +2621,7 @@
         "releaseHash": "82e73fb900911e919be8765b9887dcf1694ca0276e91291c40425f9ddee00bbc",
         "releaseNonce": "fa3afd7fc36f64eac8a18af970da325c0d877f3f2577a924bfa05fd78a0f09e8",
         "releaseEntryPda": "A6kZcGDXu7FwBQ33JtJK52zY8cPWa3qi1XUGJyDwQaMa",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779587277,
         "authorSig": "YuSFNFDHeM1vI+uBnKec9DKcxeP8gudYkdU+Fq2lhycUAgnHKW7sTTiuFSgjRMmPYXU9hUlIQ9RpbYlEWBr1Dw==",
@@ -2684,7 +2684,7 @@
         "releaseHash": "0d0486071d3bf4641bccc0e6944c2450baf1cb4ad831a595a532b6662376fe2f",
         "releaseNonce": "d7200921e18fb8d35233ba7c7d582721",
         "releaseEntryPda": "AeZyfFcLppGTC2YTwPHfm9zUpumxcmgMuJMoGci7Qq1h",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779790445,
         "authorSig": "h69Hwr5W6G0GCzHkZ5AaGJoAtJs8Xkfu8TspNOIrfyEK2HkPEkUQhdJX0sLp0nspWB6M6rozCxkOI+b9CARvDQ==",
@@ -2695,24 +2695,24 @@
         }
       },
       "capabilities": null,
-      "description": "DueProcess v2 is the next-generation compliance casework engine for the cca.sh constellation. It drives Reg E error resolution, CFPB complaint tracking, and an audit hash-chain that makes every case state transition non-repudiable. Cases are routed through configurable procedure templates; outcomes are signed and time-stamped. Multi-role sign-off (maker/checker/reviewer) with per-template quorum policies. Integrates with ccash (operator console), cyberteller (payment slips), and opensanctions (screening sidecar) via Grapple capability claims.",
+      "description": "DueProcess v2 is the next-generation compliance casework engine for the cca.sh constellation. It drives Reg E error resolution, CFPB complaint tracking, and an audit hash-chain that makes every case state transition non-repudiable. Cases are routed through configurable procedure templates; outcomes are signed and time-stamped. Multi-role sign-off (maker/checker/reviewer) with per-template quorum policies. Integrates with ccash (operator console), cyberteller (payment slips), and OpenSanctions (screening sidecar) via Grapple capability claims.",
       "screenshots": []
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-      "name": "fineract Setup",
+      "name": "Fineract Setup",
       "version": "0.2.3",
       "versionNumber": 9,
       "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
       "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
-      "description": "fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
+      "description": "Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why Fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Grain-local setup isolation** \u2014 setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
       "webLink": "https://ccash.services",
-      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx/tree/main/fineract-sidecar",
+      "codeLink": "https://github.com/hrbrlife/ccash_go_htmx/tree/main/Fineract-sidecar",
       "upstreamAuthor": "ccash",
       "createdAt": 1776299121003,
       "author": {
@@ -2739,7 +2739,7 @@
         "releaseHash": "4eadbc78f8d22ae8c280443b7f88c50dfe1e37c44c827bfd0eff22b2b721eb05",
         "releaseNonce": "8ef59efd0cdaabf048ab70573a4fcfcb",
         "releaseEntryPda": "3qst5KwtBqHuikLstuzjLxNzdoxDrtmHtNm17UaKDGaq",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779088633,
         "authorSig": "6fqQuykNVqvfB1HVz+bTuUj2X7IOV5rvUAq/dycjK3STSXbkx2LU56Ymok8rE44zcuhc4KZT/kERE5TCMKtUAw==",
@@ -2751,20 +2751,20 @@
       },
       "capabilities": {
         "schemaVersion": 2,
-        "appSlug": "fineract-setup",
-        "appName": "fineract Setup",
+        "appSlug": "Fineract-setup",
+        "appName": "Fineract Setup",
         "tier": "infrastructure",
         "pearls": [
           {
-            "pearlId": "fineract-setup",
-            "pearlName": "fineract Setup",
+            "pearlId": "Fineract-setup",
+            "pearlName": "Fineract Setup",
             "pearlType": "infrastructure-pearl",
-            "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
+            "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the Fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
-                  "name": "fineract-admin",
+                  "name": "Fineract-admin",
                   "interface": "Fineract.Admin@1",
                   "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions."
                 }
@@ -2800,7 +2800,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -2875,7 +2875,7 @@
         "releaseHash": "9dcd4e2d8f8f8f6c4bdfafe258471d41b58b75b07d9d54228606a0a4dc14161e",
         "releaseNonce": "41a2c00d63411e77635bf8a4cddcf82a",
         "releaseEntryPda": "4HMzsuuaU65xmdxtBBMgtzyNMzTBS28Qmm7YUd9jV4Mq",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094673,
         "authorSig": "iFd49nuGmKSFD5zsIWvd8/1yH09SoANJfnSStM6IfyiPR8NVoA0RiW0IBktmFEOZ1r5K/eQo54zCp1PZ0WpDAg==",
@@ -2896,14 +2896,14 @@
       "versionNumber": 57,
       "packageId": "88aa425d78d78909eed83febbfdbf091",
       "shortDescription": "Deploy + manage a Solana DAO",
-      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a Powerbox-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
+      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a PowerBox-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/MLSNA_token",
-      "codeLink": "https://github.com/hrbrlife/MLSNA_token",
+      "webLink": "https://github.com/hrbrlife/MELUSINA_token",
+      "codeLink": "https://github.com/hrbrlife/MELUSINA_token",
       "upstreamAuthor": "Melusina Services US LLC",
       "createdAt": 1779408000000,
       "updatedAt": 1779780580553,
@@ -2922,7 +2922,7 @@
         "releaseHash": "88aa425d78d78909eed83febbfdbf0913c6fa85bb88644f1a3b92a39dd2613dd",
         "releaseNonce": "88aa425d78d78909eed83febbfdbf091",
         "releaseEntryPda": "11111111111111111111111111111111",
-        "masterNftMint": "11111111111111111111111111111111",
+        "MasterNftMint": "11111111111111111111111111111111",
         "licenseSquadsVault": "HtabU1Wh3UfFfEyq4Yub7B5dPHPo7QDYSRRs1DX2xgFe",
         "signedAtUnix": 1779573594,
         "authorSig": "",
@@ -2969,7 +2969,7 @@
         "releaseHash": "10417bdc7b5d9d8acd32b18b6d5425c6a57372541ba103fcbe36e147c98774af",
         "releaseNonce": "ba0f1eaa009e3d453bbfcbe4b6a9318a",
         "releaseEntryPda": "FtLX6n58BLRoBPHFAjhtV2qzVgdskaWwYzpF5SynsVVB",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095892,
         "authorSig": "eOva/aoSzSuaT6n1X0HlIjv0CM0nytOv4RwZih8eXDhpjtq8sbrXx2R0FWxUjOC0jBFZlZ3oR+rQpPkJ51L6Cg==",
@@ -3016,7 +3016,7 @@
         "releaseHash": "73362483812df782ffa27f46686b311baa99f27d133aba364694acb581e6c692",
         "releaseNonce": "adfb7c9c432812e86d4e89500dfe93da",
         "releaseEntryPda": "6pnrY6Aa2j5xtyjeNKSjFFZoiRA9o8DKautMUGeisdCW",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095121,
         "authorSig": "pfBKrrEilLUd+6UljWAOQWkQRJg7lE7fz+i/0fttHEg4Wk/9c0YZsmZLWJRBpJVlPIh65XhKnm6T0Wdl2x6aAw==",
@@ -3027,7 +3027,7 @@
         }
       },
       "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles Powerbox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over Powerbox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Powerbox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Powerbox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Powerbox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the Powerbox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "description": "# OpenClaw\n\nA personal AI assistant grain for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the grain's\n  Cap'n Proto control socket, handles PowerBox grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon grain, and discovers\n  tools from any other Melusina grain you connect over PowerBox.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use PowerBox to grant the new grain access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use PowerBox to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  PowerBox-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-grain permission scoping** \u2014 each connected grain decides what\n  the agent can see and do, based on the scope of the PowerBox grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a grain's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two grain types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo grain registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {
@@ -3069,7 +3069,7 @@
         "releaseHash": "23789b2a224cf9fa159b538cc67e46780aec707357d61da4f00c69c8367a868b",
         "releaseNonce": "1ee50cb99457df8d2fd0adbfcbe0da86",
         "releaseEntryPda": "Bq1ApWXsfCVcWMTth9WZTtz3CxUnXEjtZVZQEBBQFANJ",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092495,
         "authorSig": "ado5Af+2hE/feVr+LZ3usBVdSPafAKixNpR+fZnxygIwofm6byRY4g4iqO/wYIs8fDd15KOnZKKRBHeT7zppDQ==",
@@ -3136,7 +3136,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3276,7 +3276,7 @@
         "releaseHash": "837f557a1da4f5892a88001c8083249e8c58a58cc47bb223deff5f227e8ee325",
         "releaseNonce": "4609cd98b8c187a9b7bd8fb894ffb4f3",
         "releaseEntryPda": "DCaZ3fjBqVNV487SivctWQYmFVvfqZUos213kpnGHvQa",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095954,
         "authorSig": "sqQDLlZtMcpLH0FUz4RQ+RV1sloxYlZB3Wkm1CYfPo2qZ4T8g+wdLpdTbdXmZSLLGY4iCXpGbfEQZ96M6Iw6Dg==",
@@ -3339,7 +3339,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3400,7 +3400,7 @@
       "isOpenSource": false,
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
+      "codeLink": "https://github.com/hrbrlife/melusina-NamedCoin-app",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
       "author": {
@@ -3419,7 +3419,7 @@
         "releaseHash": "02a9f1d44341d8d09c56b7b2a106b9dabd390e716b23778c14dd9abb6191b8f8",
         "releaseNonce": "440077f1642995f3eb0e76f7c836f628",
         "releaseEntryPda": "8DKnCXpjzgmXJAJ2ML5xvPBQcGaNkJehiXVFERryQrYL",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779102529,
         "authorSig": "wZhhO4DMJS7PygTDeHWuuhq8N9V7T7paj0jctv1hzaPk2+57GK2dV40X/ws5DFhLXYlpd0LxLjuwKEHulDnhAw==",
@@ -3430,7 +3430,7 @@
         }
       },
       "capabilities": null,
-      "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-namedcoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
+      "description": "**NamedCoin** is the KYC onboarding grain for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin grain: melusina-NamedCoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
     },
     {
@@ -3452,7 +3452,7 @@
       "isOpenSource": false,
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/namedcoin-pearl",
+      "codeLink": "https://github.com/hrbrlife/NamedCoin-pearl",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
       "author": {
@@ -3471,7 +3471,7 @@
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "",
-        "masterNftMint": "",
+        "MasterNftMint": "",
         "licenseSquadsVault": "",
         "signedAtUnix": 1748427800,
         "authorSig": "",
@@ -3479,18 +3479,18 @@
       },
       "capabilities": {
         "schemaVersion": 2,
-        "appSlug": "namedcoin-pearl",
+        "appSlug": "NamedCoin-pearl",
         "appName": "NamedCoin \u2014 Identity Attestation",
         "tier": "regular",
         "pearls": [
           {
-            "pearlId": "namedcoin-pearl",
+            "pearlId": "NamedCoin-pearl",
             "pearlName": "NamedCoin \u2014 Identity Attestation",
             "pearlType": "user-pearl",
             "purpose": "Biometric identity verification \u2014 tilt-to-capture liveness detection, document OCR, sanctions screening, and on-chain NFT attestation. Pass KYC once and receive a time-boxed attestation that every Melusina app can verify without accessing raw ID data.",
             "sidecars": [
               {
-                "name": "namedcoin-sidecar",
+                "name": "NamedCoin-sidecar",
                 "port": 9100,
                 "endpoints": [
                   "/api/v1/health",
@@ -3524,7 +3524,7 @@
                 ]
               },
               {
-                "name": "opensanctions-sidecar",
+                "name": "OpenSanctions-sidecar",
                 "port": 9102,
                 "endpoints": [
                   "/api/screen/person",
@@ -3633,13 +3633,13 @@
                 {
                   "type": "IdentityCap",
                   "to": "any-grain",
-                  "purpose": "Merkle claim verification via namedcoin-sidecar HMAC-signed probe"
+                  "purpose": "Merkle claim verification via NamedCoin-sidecar HMAC-signed probe"
                 }
               ]
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3655,12 +3655,12 @@
             ],
             "httpOut": {
               "enabled": true,
-              "via": "namedcoin-sidecar",
-              "purpose": "All egress goes through the namedcoin-sidecar \u2014 HMAC-signed requests to ailagoon (LLM), opensanctions (screening), and mermail (email/OTP).",
+              "via": "NamedCoin-sidecar",
+              "purpose": "All egress goes through the NamedCoin-sidecar \u2014 HMAC-signed requests to ailagoon (LLM), OpenSanctions (screening), and mermail (email/OTP).",
               "endpoints": {
-                "namedcoin-sidecar": "http://10.245.50.6:9100",
+                "NamedCoin-sidecar": "http://10.245.50.6:9100",
                 "ailagoon-sidecar": "http://10.245.50.5:9101",
-                "opensanctions-sidecar": "http://10.245.50.7:9102",
+                "OpenSanctions-sidecar": "http://10.245.50.7:9102",
                 "mermail-sidecar": "http://10.245.50.8:9103"
               }
             },
@@ -3699,7 +3699,7 @@
               ],
               "defaultTab": "biometric"
             },
-            "adminGate": {
+            "AdminGate": {
               "exports": [
                 {
                   "capability": "ProcessExecutor",
@@ -3718,7 +3718,7 @@
             "powerboxManifest": {
               "sidecarAccess": [
                 {
-                  "label": "namedcoin-sidecar",
+                  "label": "NamedCoin-sidecar",
                   "ip": "10.245.50.6",
                   "port": 9100,
                   "protocol": "http",
@@ -3732,7 +3732,7 @@
                   "purpose": "LLM document-authenticity check and face-match"
                 },
                 {
-                  "label": "opensanctions-sidecar",
+                  "label": "OpenSanctions-sidecar",
                   "ip": "10.245.50.7",
                   "port": 9102,
                   "protocol": "http",
@@ -3750,7 +3750,7 @@
           }
         ]
       },
-      "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the namedcoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm grain store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated opensanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Grain**: namedcoin-pearl (Go + HTMX, Sandstorm grain)\n- **Sidecar**: namedcoin-sidecar (Go, HTTP API on port 9100)\n- **Admin grain**: melusina-namedcoin-admin-app (separate grain)\n- **Dependencies**: ailagoon-sidecar (LLM), opensanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the namedcoin, ailagoon, opensanctions, and mermail sidecars.",
+      "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the NamedCoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm grain store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated OpenSanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Grain**: NamedCoin-pearl (Go + HTMX, Sandstorm grain)\n- **Sidecar**: NamedCoin-sidecar (Go, HTTP API on port 9100)\n- **Admin grain**: melusina-NamedCoin-admin-app (separate grain)\n- **Dependencies**: ailagoon-sidecar (LLM), OpenSanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm grain with HTTP-out to the NamedCoin, ailagoon, OpenSanctions, and mermail sidecars.",
       "screenshots": []
     },
     {
@@ -3790,7 +3790,7 @@
         "releaseHash": "713fb525dce55e828ea3e60283a9184eb9edf9fe6ce5cae116629ded1bf88f2d",
         "releaseNonce": "28c3ef585b60661dee78ef381dc97381",
         "releaseEntryPda": "Go4MY5nm9zXh5rxVnw7DFwyew6LFyqxBGmbAQ9edbSwG",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094858,
         "authorSig": "6q8EHjs3y2A56nxXOUfZEIddmoqDpXQD2nCTsnQuXlQub7aug3tSNCsx/xcZ6RIvO79Sq7ZMem+AJ7QcBNwWAA==",
@@ -3894,13 +3894,13 @@
       "version": "0.1.0",
       "versionNumber": 1,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
-      "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Powerbox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the opensanctions-sidecar (LXC) for the actual API calls.",
+      "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via PowerBox; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
         "Productivity"
       ],
       "isOpenSource": false,
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-app-opensanctions",
+      "codeLink": "https://github.com/hrbrlife/melusina-app-OpenSanctions",
       "upstreamAuthor": "Alexei Karpov",
       "createdAt": 1779088600000,
       "author": {
@@ -3924,7 +3924,7 @@
         "releaseHash": "99775013dacaac55405d3663366afc695e40b0d9c363df1d8fefc90ac987517b",
         "releaseNonce": "621a5e6200b73034311e4e7d60938e77",
         "releaseEntryPda": "BbAiiz83ro4SBc8kyUY4MHkXfeEd5ZKsgUg4RbStNrv7",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779091846,
         "authorSig": "23uivq3TPGw1WhKfma7VrAAa+CL4q4uEcP6QZIPJlJlSojHyEWD4x863/kxdRTCa8lHeK+C4yLkUPpSmAzwcAQ==",
@@ -3991,7 +3991,7 @@
         "releaseHash": "8af6fa011fe6389be887054f3fa9eb1f586002eb8b61b43f11c3a531aeb0f14e",
         "releaseNonce": "1ece8661fb8274a199420cefbb6132bf",
         "releaseEntryPda": "Csbjegd3Z4L4EEuNDzQvqiB1VyT4djxqFmp5ekqiZHwF",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779094891,
         "authorSig": "4wyiuBhtDeYiILL2RbSFdw/pU4jVmIjiAotazhG/DWfjnkWUx12SCFV+qFxJXdMMqMeIUK23kuLtPjZTwQTSAQ==",
@@ -4127,7 +4127,7 @@
         "releaseHash": "fe6646ec229b310d11690440fb4d3543b096cf3b31dcbada9fe0c4dc5ac023e8",
         "releaseNonce": "a1e873fc98b7ce1b5eda19cc3f86fce8fa66461d768b8dde5c7b0a777b9b9b0c",
         "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "masterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "signedAtUnix": 1779812777,
         "authorSig": "7842845c1f60ef4a5265803d481b2ef9630dba8c74ad0d1bdf89c4deb9ddbfa3",
@@ -4195,7 +4195,7 @@
         "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
         "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
         "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "masterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "MasterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "signedAtUnix": 1778142421,
         "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
@@ -4334,7 +4334,7 @@
         "releaseHash": "f6571bc14fbbb9a44fe763315fceb23ee6cbb7399a5a0ea7a2aa0da7cc0e3712",
         "releaseNonce": "4724f8ab640e91e5f3a088f49113402f",
         "releaseEntryPda": "H7g3awdAMYWELkXxffWAayQ2oHYNj2DkELno3N8Zz6oS",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095148,
         "authorSig": "EXx9ZbTgbUihv+p79l2zn3svK/o4Altsp3I9znj7j2H2Wd7HX09XgZKXGCXSfCzY6SQy+V9c59RnB0GaLLUICA==",
@@ -4383,7 +4383,7 @@
         "releaseHash": "97d8e44471c168863b09b9a0232d76b21190effdf9e54645502ce2ee4a8fc1a3",
         "releaseNonce": "e57686dddfa77b1c152a540f300e1320c3ae0d8112208bba63243122c7164f3b",
         "releaseEntryPda": "54f1X8dibNxmqfGySndZeo8MBT3xc9FKerMZjDCku34m",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
         "signedAtUnix": 1777787082,
         "authorSig": "fwHUzKji/9yYLsaQ3CfhJyyl1Zv26CUsyLAb6YGIVtId/y5g78S33XByvs4z/WZ6ovleuy6hJ1L9oFmXodGjAw==",
@@ -4442,7 +4442,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -4526,7 +4526,7 @@
         "releaseHash": "909ce1aa422553047586a7b7a7b9dce8547c5ef88e10c63c0d28f2b7a5bf36c0",
         "releaseNonce": "23a4c30f2d9ba2aa6a03f6dfe8fdb7aa",
         "releaseEntryPda": "B5jue6h1sMtKpZLibroyKkh4X4hGkxUcqxji73aTAVVp",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779125770,
         "authorSig": "nDMcYN7D95TzI7cmT+OwJCPSbQEGUHqQGWTbxp8OQLwA1XtDmo2fRFfCg0WgikKfOdAzrId4YBPi1VyRM4UQBA==",
@@ -4610,7 +4610,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -4657,7 +4657,7 @@
       "name": "TeleScreen Sidecar Configurator",
       "version": "0.4.0",
       "versionNumber": 5,
-      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Powerbox cap.",
+      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + PowerBox cap.",
       "categories": [
         "Productivity",
         "Developer Tools"
@@ -4686,7 +4686,7 @@
         "releaseHash": "9d5833da81b3c3bee6122af3ab3209623f7f9ed8fb45229a82467015ddbd2004",
         "releaseNonce": "69831972bc70df8b6af3b17195132dc6c928194f35642701c16b5f6a4fbdd360",
         "releaseEntryPda": "8YVJ1Mcow17Wy9mdP2kaqw7tjhH8EV1CWhNBmWmp64hs",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "5SmcSBsuaa21ZEhbj71ME2FpCKeshvjUpmDymbF7nupk",
         "signedAtUnix": 1777787080,
         "authorSig": "Ac92e1eCYU0oEH7WsojrYQt7jDYaxT/D/xnevnKjYbySnVtwOGjmXBjCJBKwIqsV9nH7CTIRO0DuQsr1wuRtDg==",
@@ -4706,7 +4706,7 @@
             "pearlId": "telescreen-sidecar-configurator",
             "pearlName": "TeleScreen Sidecar Configurator",
             "pearlType": "infrastructure-pearl",
-            "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm Powerbox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
+            "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm PowerBox, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -4740,7 +4740,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -4787,7 +4787,7 @@
           }
         ]
       },
-      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Powerbox.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
+      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm grain is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe grain stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the PowerBox.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
@@ -4829,7 +4829,7 @@
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "",
-        "masterNftMint": "",
+        "MasterNftMint": "",
         "licenseSquadsVault": "",
         "signedAtUnix": 1778880636,
         "authorSig": "",
@@ -4872,7 +4872,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -4947,7 +4947,7 @@
         "releaseHash": "68f31ab050d5441b0cc21d10c470271c21f0faee0111bf2848ad32a33c40c160",
         "releaseNonce": "21f64d8798ebe3874cb69df7c17f91f7",
         "releaseEntryPda": "5rWNrXTErvp9xc7Qqh8nFv663Vju3cyFmRQiLdzWc8gk",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779792320,
         "authorSig": "dD1JBej/gTZAvQh4QeQB58IdatZRg8x9BcMnSHMeJBB/XP29TG5SMZV9eHcdCcmPB5pMbtTXyxsLoFufApckBw==",

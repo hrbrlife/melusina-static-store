@@ -48,7 +48,7 @@ The kill-list §10.2 closure shipped:
   `packages/hrbrlife/melusina_cybertellerconfig_app/cybertellerconfig/`
   with `{app.spk, metadata.json, RELEASE.json, capabilities.json,
   description.md, icon.svg}`. Live at
-  `https://hrbrlife.github.io/melusina-static-store/` — index.json
+  `https://hrbrlife.github.io/melusina-static_store/` — index.json
   carries the entry; SPK URL `packages/ec0a4ddcc0944c919c662838be9bcd54`
   serves the binary byte-identical to the manifest pin.
 
@@ -74,16 +74,16 @@ itself is closed.
 ## ⚠ Operator note on `cmd_approve_global_app`
 
 The Python CLI's `cmd_approve_global_app`
-(`deployer/blockchain/solana/melusina-solana.py:2452+`) **still
+(`deployer/blockchain/Solana/melusina-Solana.py:2452+`) **still
 signs with a hot keypair** (`load_keypair_from_args(...)` followed
-by `tx.sign(...)`) — the kill-list §10.4 squads-emit work
+by `tx.sign(...)`) — the kill-list §10.4 Squads-emit work
 addressed `update-tls-fingerprint` and `update-install-url` but
-did not yet propagate the same `--squads-emit` flag to
+did not yet propagate the same `--Squads-emit` flag to
 `approve_global_app`. **DO NOT use `cmd_approve_global_app`
 directly for the re-seat** — it would re-introduce the HT13
 violation §10.4 just closed. Use the hand-rolled JSON path of §3.1
-+ `scripts/squads-vault-exec.js` until the v1.1 follow-up
-(adding `--squads-emit` to `cmd_approve_global_app` /
++ `scripts/Squads-vault-exec.js` until the v1.1 follow-up
+(adding `--Squads-emit` to `cmd_approve_global_app` /
 `cmd_revoke_global_app`) lands.
 
 ## 1. Drift cause + the kill-list §10.2 fix
@@ -113,7 +113,7 @@ Cyberteller Config itself was required** — `main.go` is unchanged.
    has been updated** to the new `app_hash`. (Done in this commit.)
 3. **Squads cosigner keypairs available** — the re-seat tx is signed
    by the master-NFT-holder vault per Charter HT13. Operator runs
-   `scripts/squads-vault-exec.js` with ≥ multisig.threshold member
+   `scripts/Squads-vault-exec.js` with ≥ multisig.threshold member
    keypairs.
 
 ---
@@ -122,10 +122,10 @@ Cyberteller Config itself was required** — `main.go` is unchanged.
 
 ### 3.1 Generate the inner Anchor instruction JSON
 
-The deployer CLI (`deployer/blockchain/solana/melusina-solana.py`)
+The deployer CLI (`deployer/blockchain/Solana/melusina-Solana.py`)
 already exposes `cmd_approve_global_app` for this. Today it signs
 with a hot keypair (`load_keypair_from_args`); the kill-list §10.4
-parallel work added a `--squads-emit <path>` mode for
+parallel work added a `--Squads-emit <path>` mode for
 `update-tls-fingerprint` and `update-install-url` that emits the
 inner instruction JSON instead of signing. **Cyberteller Config
 re-seat needs the same flag added to `cmd_approve_global_app` (and
@@ -133,13 +133,13 @@ its sibling `revoke_global_app` for the OLD hash) — that change is
 the v1.1 follow-up.**
 
 In the meantime, the operator hand-crafts the instruction JSON for
-`scripts/squads-vault-exec.js`:
+`scripts/Squads-vault-exec.js`:
 
 ```json
 {
   "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "accounts": [
-    {"pubkey": "<derive: PDA seeds=[b'global_app', master_nft_mint, ec0a4ddc...]>",
+    {"pubkey": "<derive: PDA seeds=[b'global_app', MasterNftMint, ec0a4ddc...]>",
      "isSigner": false, "isWritable": true},
     {"pubkey": "<Squads vault PDA>", "isSigner": true, "isWritable": true},
     {"pubkey": "<master NFT mint>", "isSigner": false, "isWritable": false},
@@ -156,7 +156,7 @@ In the meantime, the operator hand-crafts the instruction JSON for
 ```bash
 SQUADS_VAULT="<vault-pda>" \
 SQUADS_MEMBER_KEYPAIRS="member-1.json,member-2.json" \
-node /home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js \
+node /home/user/Desktop/Melusina/deployer/scripts/Squads-vault-exec.js \
   /tmp/cybertellerconfig-reseat.json \
   --member member-1.json --member member-2.json
 ```
@@ -197,7 +197,7 @@ src/lib.rs:675-693` (handler at
 `:413-435`). The Python CLI does NOT yet expose `cmd_revoke_global_app`
 (audit-1 P1-6 finding) — until that v1.1 follow-up lands, the
 operator hand-rolls the inner instruction JSON in the
-`scripts/squads-vault-exec.js` format. **Audit-2 P0 fix**: the
+`scripts/Squads-vault-exec.js` format. **Audit-2 P0 fix**: the
 template below carries (a) the 5th `token_program` account
 required by the Anchor `RevokeGlobalApp` context, (b) the
 correct `isWritable: true` flag on the vault authority (the
@@ -209,7 +209,7 @@ LE length prefix + UTF-8 bytes).
 {
   "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "accounts": [
-    {"pubkey": "<derive: PDA seeds=[b'global_app', master_nft_mint, d78349f6...]>",
+    {"pubkey": "<derive: PDA seeds=[b'global_app', MasterNftMint, d78349f6...]>",
      "isSigner": false, "isWritable": true},
     {"pubkey": "<Squads vault PDA>", "isSigner": true, "isWritable": true},
     {"pubkey": "<master NFT mint>", "isSigner": false, "isWritable": false},
@@ -224,14 +224,14 @@ The reason String is operator-readable + on-chain immutable, so
 make it descriptive (the Anchor handler at
 `app_approval.rs:96-166` records it on the PDA).
 
-Then run `scripts/squads-vault-exec.js` with cosigner keypairs as
+Then run `scripts/Squads-vault-exec.js` with cosigner keypairs as
 in §3.2.
 
 ---
 
 ## 4. Post-condition checks
 
-1. **On-chain seat** — `solana account <new-pda> --output json` shows
+1. **On-chain seat** — `Solana account <new-pda> --output json` shows
    `Active` status with the new `ec0a4ddc…` hash.
 2. **Manifest parity** — `global-apps-2026-04-23.json:55` matches the
    new hash. (Done in this commit.)
@@ -248,7 +248,7 @@ in §3.2.
 
 The hot-key signing path for `cmd_approve_global_app` is the
 remaining HT13 violation in the catalog publish flow. Mirror the
-kill-list §10.4 pattern: add `--squads-emit <path>` to
+kill-list §10.4 pattern: add `--Squads-emit <path>` to
 `cmd_approve_global_app` (and `revoke_global_app`) so the operator
 ceremony fully removes runtime keypair use. Tracked outside this
 doc per the kill-list M2 cadence.

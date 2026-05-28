@@ -11,7 +11,7 @@ import { defineConfig, devices } from '@playwright/test';
  *                     skipped automatically if unreachable)
  */
 const STORE_BASE_URL = process.env.STORE_BASE_URL
-  ?? 'https://hrbrlife.github.io/melusina-static-store/';
+  ?? 'https://hrbrlife.github.io/melusina-static_store/';
 // Sandstorm admin app URL for E2E install-loop tests.
 // REQUIRED: Set ADMIN_BASE_URL to a Melusina/Sandstorm admin app market URL.
 // No default — fail closed so misconfigured CI runs fail immediately.

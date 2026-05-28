@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { EXPECTED_APPS, TOTAL_APPS } from '../fixtures/expected_apps';
 
-/* Top-level static-store flow:
+/* Top-level static_store flow:
  *  - landing renders
  *  - 21 apps appear (not 0, not 22)
  *  - search narrows results
@@ -127,7 +127,7 @@ test.describe('Static store — public surface', () => {
       return regs.map(r => r.scope);
     });
     expect(swRegs.length).toBeGreaterThan(0);
-    expect(swRegs.some(s => s.includes('melusina-static-store'))).toBe(true);
+    expect(swRegs.some(s => s.includes('melusina-static_store'))).toBe(true);
   });
 
   test('No deferred-tools community surfaces visible', async ({ page }) => {

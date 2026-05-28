@@ -20,10 +20,10 @@
 >   open + derive); TS + Python verify-side MVP ports; testvectors
 >   generator; Solana program state + instructions (engineer B);
 >   spkmodule-component v0.3.0 pearl hooks; Sandstorm shell's
->   pre-launch `grain-gate.js` + PGP deletion; static-store PGP
+>   pre-launch `grain-gate.js` + PGP deletion; static_store PGP
 >   deletion; 4-wallet Core App Team generated on devnet.
 > - **NOT shipped:** any app migrated (0/21); any sidecar migrated
->   (0/6); `melusina-pearl-tool` CLI; deployer `register-release-squads`
+>   (0/6); `melusina-pearl-tool` CLI; deployer `register-release-Squads`
 >   subcommand (still theatrical); `ReleaseEntry` / envelope verify
 >   in the shell; `StoreReleaseListing` + Solana RPC in the store;
 >   grain-auth v0.3.0 (still on bespoke v0.2.1 wire).
@@ -78,7 +78,7 @@ Particularly relevant fields:
   `LicenseEntry.authz_identity_pubkey`
 - `GlobalSidecarApproval.binary_hash`, `GlobalSidecarApproval.san_list`
   (up to 10 × 64-byte mTLS SANs), `GlobalSidecarApproval.required_permissions`
-- Client SDK: `melusina-solana-primitives` v0.1.0 (pure Go PDA derivation,
+- Client SDK: `melusina-Solana-primitives` v0.1.0 (pure Go PDA derivation,
   no RPC).
 
 ### 1.2 Envelopes
@@ -177,7 +177,7 @@ populated (reserved for future HSM use).
 
 ```
 A = authorShard            32B derived from RELEASE.json (signed by
-                           foundation out-of-band) + masterNftMint.
+                           foundation out-of-band) + MasterNftMint.
                            NOT the foundation private key, never the
                            foundation private key. Publicly recoverable
                            from the SPK — its role is release-binding.
@@ -200,7 +200,7 @@ pearlPub  = derived                           // persisted; on-chain in PearlIde
 ```
 
 **Publisher key is NEVER baked into the SPK.** The SPK contains:
-- `RELEASE.json` — a manifest of `{appHash, releaseHash, version, signedAtUnix, masterNftMint}` — signed by the foundation during the release ceremony, verified by the grain at startup against the on-chain `ReleaseEntry.author_sig`.
+- `RELEASE.json` — a manifest of `{appHash, releaseHash, version, signedAtUnix, MasterNftMint}` — signed by the foundation during the release ceremony, verified by the grain at startup against the on-chain `ReleaseEntry.author_sig`.
 - The publisher's public identity (for verification only).
 - Optionally a public shard `A` derived from release metadata — no
   secrecy here.
@@ -350,7 +350,7 @@ type IdentityDocument struct {
 }
 
 type ChainEvidence struct {
-    ChainID           string           // "solana-mainnet-beta" | "solana-devnet"
+    ChainID           string           // "Solana-mainnet-beta" | "Solana-devnet"
     ProgramID         string           // base58 license-registry program
     VerifiedSlot      uint64
     RecentBlockhash   string           // base58, hint for re-check
@@ -590,9 +590,9 @@ independently of pearl-identity landing.
 #### 9.1.1 `ReleaseEntry` — promoted from authority-signed record to PDA
 
 ```rust
-// seeds: ["release", master_nft_mint, app_hash (32B)]
+// seeds: ["release", MasterNftMint, app_hash (32B)]
 pub struct ReleaseEntry {
-    pub master_nft_mint: Pubkey,
+    pub MasterNftMint: Pubkey,
     pub app_hash:        [u8; 32],
     pub version:         String,          // semver, ≤ 24 B
     pub release_hash:    [u8; 32],        // sha256 of (app_hash || release_nonce || version)
@@ -607,7 +607,7 @@ pub struct ReleaseEntry {
 
 Canonical release payload (what `author_sig` covers):
 ```
-"melusina-release-v1\n" + hex(master_nft_mint) + "\n" + hex(app_hash)
+"melusina-release-v1\n" + hex(MasterNftMint) + "\n" + hex(app_hash)
   + "\n" + version + "\n" + hex(release_hash) + "\n" + signed_at_unix
 ```
 
@@ -644,7 +644,7 @@ InstallAdmin bearing `PERM_PEARL_REGISTER` (new bit 43). Must consume a
 #### 9.1.3 `SidecarIdentityEntry` — per-sidecar-instance identity
 
 ```rust
-// seeds: ["sidecar_identity", master_nft_mint, sidecar_id_bytes, key_version_le]
+// seeds: ["sidecar_identity", MasterNftMint, sidecar_id_bytes, key_version_le]
 pub struct SidecarIdentityEntry {
     pub sidecar_id:           String,                    // ≤ 32 B
     pub sidecar_pubkey:       Pubkey,                    // Ed25519
@@ -653,7 +653,7 @@ pub struct SidecarIdentityEntry {
     pub binary_hash:          [u8; 32],                  // must match SidecarReleaseEntry
     pub host_fingerprint:     [u8; 32],                  // mTLS cert SPKI hash
     pub key_version:          u32,
-    pub master_nft_mint:      Pubkey,
+    pub MasterNftMint:      Pubkey,
     pub registered_by:        Pubkey,                    // Foundation signer
     pub registered_at:        i64,
     pub status:               ApprovalStatus,            // Active | Revoked | Rotating | Retired | Superseded
@@ -669,14 +669,14 @@ pub struct SidecarIdentityEntry {
 #### 9.1.4 `SidecarReleaseEntry` — per-sidecar-binary release
 
 ```rust
-// seeds: ["sidecar_release", master_nft_mint, sidecar_id_bytes, version_bytes]
+// seeds: ["sidecar_release", MasterNftMint, sidecar_id_bytes, version_bytes]
 pub struct SidecarReleaseEntry {
     pub sidecar_id:           String,
     pub version:              String,
     pub binary_hash:          [u8; 32],                  // enforced SHA-256
     pub signature:            [u8; 64],                  // Ed25519, on-chain-verified
     pub signer:               Pubkey,
-    pub master_nft_mint:      Pubkey,
+    pub MasterNftMint:      Pubkey,
     pub san_list:             Vec<String>,
     pub required_permissions: u64,
     pub signed_at:            i64,
@@ -768,13 +768,13 @@ Bits 47..63 remain reserved. Existing bits 0..42 are undisturbed.
 
 ### 9.4 Discovery flow (pearl → sidecar, first call)
 
-pearl knows: `license_mint`, `app_hash`, target `sidecar_id`, `master_nft_mint`.
+pearl knows: `license_mint`, `app_hash`, target `sidecar_id`, `MasterNftMint`.
 
-1. `GlobalSidecarApproval[master_nft_mint, sidecar_id]` — TTL 5 min
+1. `GlobalSidecarApproval[MasterNftMint, sidecar_id]` — TTL 5 min
 2. `LocalSidecarApproval[license_mint, sidecar_id]` — TTL 2 min
 3. `AppSidecarAuthorization[license_mint, app_hash, sidecar_id]` — TTL 1 min
 4. `LocalAppApproval[license_mint, app_hash]` — TTL 2 min
-5. `SidecarIdentityEntry[master_nft_mint, sidecar_id, latest_key_version]`
+5. `SidecarIdentityEntry[MasterNftMint, sidecar_id, latest_key_version]`
    — TTL 30 s (rotation-sensitive)
 6. `SidecarReleaseEntry = identity.release_entry` — TTL 24 h
 
@@ -819,7 +819,7 @@ revocation propagation from worst-case TTL (60 s) to ≤2 s.
 
 ### 10.2 Baked shard
 
-- SPK is public; `A` is recoverable by anyone with `masterNftMint`. This
+- SPK is public; `A` is recoverable by anyone with `MasterNftMint`. This
   is **by design** — `A`'s role is release-binding, not secrecy. Secrecy
   rests on `B` (grain-observed) and `C` (owner-sealed).
 - Foundation key compromise → `rotate_release_signer` instruction (new)
@@ -1008,7 +1008,7 @@ type OpenResult struct {
 - `golang.org/x/crypto/nacl/box` (already in tree)
 - `golang.org/x/crypto/hkdf` (already in tree)
 - `github.com/fxamacker/cbor/v2` (deterministic CBOR encoding)
-- `github.com/hrbrlife/melusina-solana-primitives` — PDA derivation
+- `github.com/hrbrlife/melusina-Solana-primitives` — PDA derivation
 - `github.com/hrbrlife/melusina-identity-gate` — nonce cache, trust bundle types
 
 No new external crypto dependency.
@@ -1035,7 +1035,7 @@ Every port ships `verify` in v0.1.0 — any peer may receive sealed traffic.
 |---|---|---|
 | **v0.1.0** | identity/derive/seal/spkbake/canonical/envelope/sign/encrypt/verify/keycache/pda/lifecycle, pearl + sidecar profiles, HTTP transport. `PearlIdentityEntry`, `ReleaseEntry`, `SidecarIdentityEntry`, `SidecarReleaseEntry`, `AppSidecarAuthorization`, `GrainAssignment` PDAs land on-chain. | Wave 1 |
 | **v0.2.0** | capnp `SignedSealedMessage` schema + wrapper generator; `sealedBoundary` annotation; auto-wrap interfaces. | Wave 2 |
-| **v0.3.0** | Powerbox descriptor extension for expected-identity binding; Powerbox broker confusion attack closes. | Wave 3 |
+| **v0.3.0** | PowerBox descriptor extension for expected-identity binding; PowerBox broker confusion attack closes. | Wave 3 |
 
 ---
 
@@ -1056,7 +1056,7 @@ by dropping it into `$(APP_DIR)/.spkmodule-hooks/pre-pack`.
 ```
 $APP_DIR/opt/app/pearl/author_shard.bin         # 32B random, AES-GCM encrypted to K_pack
 $APP_DIR/opt/app/pearl/author_shard.meta.json   # { alg, kdf, salt_hex, nonce_hex }
-$APP_DIR/opt/app/.melusina/RELEASE.json         # { appHash, version, releaseHash, signedAtUnix, authorSig, masterNftMint }
+$APP_DIR/opt/app/.melusina/RELEASE.json         # { appHash, version, releaseHash, signedAtUnix, authorSig, MasterNftMint }
 ```
 
 ### 12.3 Post-publish hook
@@ -1115,7 +1115,7 @@ signing scheme lose verification — greenfield.
 ### 13.4 Wave 2 (v0.2.0) — sidecars + capnp
 
 Migrate in order:
-1. `fineract-sidecar` (Go, ~6 engineer-weeks including dual-verify → sealed-required)
+1. `Fineract-sidecar` (Go, ~6 engineer-weeks including dual-verify → sealed-required)
 2. `mermail-sidecar` (Go, ~5 weeks)
 3. `pr_ninja` / TeleScreen (Python port of derive + Solana client, ~10 weeks)
 
@@ -1125,7 +1125,7 @@ Each sidecar goes through three stages:
   still accepts both.
 - **Stage 3 (2 weeks)**: hard cut; legacy unsealed → HTTP 426.
 
-### 13.5 Wave 3 (v0.3.0) — all pearls + Powerbox
+### 13.5 Wave 3 (v0.3.0) — all pearls + PowerBox
 
 - Remaining pearls (botmother, cyberteller, instaco, sailsto_system,
   teleport2, vintage-test-dec, worldmonitor): run
@@ -1133,7 +1133,7 @@ Each sidecar goes through three stages:
   outbound.
 - `melusina-notify-sandstorm` upgrades to include pearl attestation
   on every notify webhook body.
-- Sandstorm shell extension: Powerbox descriptor gains
+- Sandstorm shell extension: PowerBox descriptor gains
   `melusina_attestation` JSON field.
 
 ---
@@ -1199,13 +1199,13 @@ Each sidecar goes through three stages:
 - `/home/user/Desktop/Melusina/melusina_solana_dev-license104/programs/license-registry/src/state/sidecar_approval.rs`
 - `/home/user/Desktop/Melusina/melusina_solana_dev-license104/programs/license-registry/src/state/contract.rs`
 - `/home/user/Desktop/Melusina/melusina_solana_dev-license104/programs/license-registry/src/permissions.rs`
-- `/home/user/Desktop/_killlist_staging/melusina-solana-primitives/pda.go`
+- `/home/user/Desktop/_killlist_staging/melusina-Solana-primitives/pda.go`
 - `/home/user/Desktop/_killlist_staging/melusina-identity-gate/envelope/payload.go`
 - `/home/user/Desktop/_killlist_staging/melusina-identity-gate/verify/verifier.go`
 - `/home/user/Desktop/Melusina/shared/grain-crypto-journal/keybox/wrap.go`
 - `/home/user/Desktop/_killlist_staging/melusina-spkmodule-component/README.md`
 - `/home/user/Desktop/Melusina/shared/melusina-capnp/interfaces/`
-- `/home/user/Desktop/ccash_go_htmx/fineract-sidecar/sidecar/melusina_verifier.go`
+- `/home/user/Desktop/ccash_go_htmx/Fineract-sidecar/sidecar/melusina_verifier.go`
 
 ## Appendix B. Deferred sibling components
 

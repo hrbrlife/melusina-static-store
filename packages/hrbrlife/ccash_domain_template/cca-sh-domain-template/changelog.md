@@ -4,12 +4,12 @@
 
 PSP-polish Pass-2 (audit `PSP_UX_AUDIT_2026_05_24.md` §C P0-1/2/3):
 
-- Powerbox picker copy rewritten from grain/capnp developer language
+- PowerBox picker copy rewritten from grain/capnp developer language
   into PSP/MSB operator language. All three modes (full-catalog access,
   per-domain access, station template) now read as policy decisions a
   compliance officer can reason about, not capability tokens a Sandstorm
   developer must decode.
-- Powerbox picker now renders the bound version + first-8 of the
+- PowerBox picker now renders the bound version + first-8 of the
   content digest on every station-profile card and in the
   domain-section header, so an operator can match against an approved
   change-management record before committing.
@@ -19,8 +19,8 @@ PSP-polish Pass-2 (audit `PSP_UX_AUDIT_2026_05_24.md` §C P0-1/2/3):
   preserved.
 - README documents that DueProcess / popaye / cyberteller / Welcome
   pearl require a launched Template Authority grain in the Sandstorm
-  instance before their bind flows can succeed (no DTG ⇒ Powerbox
-  returns "No token received from Powerbox" and the user is forced
+  instance before their bind flows can succeed (no DTG ⇒ PowerBox
+  returns "No token received from PowerBox" and the user is forced
   into a blank-builder fallback).
 
 ## 0.1.0 — 2026-04-23

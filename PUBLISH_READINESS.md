@@ -49,7 +49,7 @@ Columns: `mod` = registered in `.gitmodules`; `rel` = RELEASE.json present;
 | ccash                             | ccash             | Y   | Y   | **Y** | Y | Y | 0.2.0  | uw0ukgm06584v9ggjqq… | drop .asc |
 | client_collection                 | clientspace       | Y   | Y   | **Y** | Y | Y | 0.1.0  | kcemn7du4wnacu6uh4a… | drop .asc |
 | cyberteller                       | cyberteller       | **n** | Y | **Y** | Y | Y | 0.1.0  | vpj1c0z55jtgtrsv61p… | register submodule + drop .asc |
-| fineract-setup                    | fineract-setup    | **n** | Y | n | Y | Y | 0.2.0  | 7htu16dens78fcfkc7u… | register submodule (publishable now) |
+| Fineract-setup                    | Fineract-setup    | **n** | Y | n | Y | Y | 0.2.0  | 7htu16dens78fcfkc7u… | register submodule (publishable now) |
 | instaco-app                       | instaco-app       | Y   | Y   | **Y** | Y | Y | 0.1.0  | u1rf3x62sw2fk87ayxr… | drop .asc |
 | melusina-bureau-cal-app           | bureau-cal        | Y   | Y   | **Y** | Y | Y | 0.1.0  | p0wjp099ry06x0shap6… | drop .asc |
 | melusina-bureau-contacts-app      | bureau-contacts   | Y   | Y   | **Y** | Y | Y | 0.1.0  | trymnqgywrmc3pskv61… | drop .asc |
@@ -64,7 +64,7 @@ Columns: `mod` = registered in `.gitmodules`; `rel` = RELEASE.json present;
 | melusina-consilium-app            | consilium         | Y   | Y   | **Y** | Y | Y | 0.1.0  | pjqare81cxtxjz411js… | drop .asc |
 | melusina-cratelink-app            | cratelink         | Y   | Y   | **Y** | Y | Y | 0.1.0  | ztxjck2pk8ecy6mxchr… | drop .asc |
 | melusina-galactic-council         | (none)            | Y   | n   | n   | n   | n   | —       | —                       | placeholder dir, no app — investigate or remove |
-| melusina-namedcoin-app            | namedcoin         | Y   | Y   | **Y** | Y | Y | 0.1.0  | 8kea8reanvm5cw7awrx… | drop .asc |
+| melusina-NamedCoin-app            | NamedCoin         | Y   | Y   | **Y** | Y | Y | 0.1.0  | 8kea8reanvm5cw7awrx… | drop .asc |
 | openclaw-main                     | melusina-openclaw | Y   | Y   | **Y** | Y | Y | 0.1.0  | mjgmurff66jn7m1xtr6… | drop .asc |
 | vintage-test-dec                  | vintage           | **n** | Y | n | Y | Y | 1.0.0  | yea96s13pj9d7ugxzju… | register submodule (publishable now) |
 
@@ -74,10 +74,10 @@ Columns: `mod` = registered in `.gitmodules`; `rel` = RELEASE.json present;
 
 These two pass `validate_release_attestation` cleanly and have valid `app.spk`:
 
-- `fineract-setup/fineract-setup/` — v0.2.0
+- `Fineract-setup/Fineract-setup/` — v0.2.0
 - `vintage-test-dec/vintage/` — v1.0.0
 
-Both already shipped via commit `607c024 catalog: publish fineract Setup +
+Both already shipped via commit `607c024 catalog: publish Fineract Setup +
 Vintage Remote Desktop`. Minor follow-up: register both as submodules in
 `.gitmodules` so the catalog can refresh them via `git submodule update
 --remote`.
@@ -147,7 +147,7 @@ Four directories with valid app content are NOT registered in
 - `AI_Lagoon` (ai-lagoon v0.7.0) — listed in catalog but submodule
   unregistered → `git submodule update --remote` cannot refresh it.
 - `cyberteller` (cyberteller v0.1.0) — same.
-- `fineract-setup` (fineract-setup v0.2.0) — same. **Publishable**.
+- `Fineract-setup` (Fineract-setup v0.2.0) — same. **Publishable**.
 - `vintage-test-dec` (vintage v1.0.0) — same. **Publishable**.
 
 Quick fix per directory: `git submodule add <upstream-url>
@@ -179,7 +179,7 @@ to refresh.
 ## Submodule registration scope (post-`.asc` sweep, 2026-04-25)
 
 > Per Riker idx 207, scoping which of the 4 unregistered paths
-> (AI_Lagoon, cyberteller, fineract-setup, vintage-test-dec) need
+> (AI_Lagoon, cyberteller, Fineract-setup, vintage-test-dec) need
 > upstream remotes minted for v1.1 catalog completeness.
 >
 > **Bottom line:** **0 of 4 are immediately registrable.** Three are
@@ -217,21 +217,21 @@ to refresh.
   https://github.com/hrbrlife/cyberteller.git
   packages/hrbrlife/cyberteller`.
 
-### fineract-setup  (catalog dir → no upstream repo)
+### Fineract-setup  (catalog dir → no upstream repo)
 
-- Source code lives INSIDE `ccash_go_htmx/fineract-sidecar/` per the
-  metadata's `codeLink` field. No standalone `hrbrlife/fineract-setup`
+- Source code lives INSIDE `ccash_go_htmx/Fineract-sidecar/` per the
+  metadata's `codeLink` field. No standalone `hrbrlife/Fineract-setup`
   repository exists (`git ls-remote` returns 404).
 - The catalog tree carries the full publish payload (built locally
-  from the fineract-sidecar source, packaged into a separate `.spk`
+  from the Fineract-sidecar source, packaged into a separate `.spk`
   with its own `appId 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h`).
 - **Recommendation: keep as plain-tree-in-catalog.** No upstream
   source-of-truth to point at. Spinning up a standalone `hrbrlife/
-  fineract-setup` repo would split the source from `ccash_go_htmx/
-  fineract-sidecar` (which is itself the live engine), creating drift.
-  The fineract-sidecar agent (in this room) is the source-of-truth
+  Fineract-setup` repo would split the source from `ccash_go_htmx/
+  Fineract-sidecar` (which is itself the live engine), creating drift.
+  The Fineract-sidecar agent (in this room) is the source-of-truth
   owner; let them ship updates by re-packaging into the catalog
-  directly via the fineract-setup build pipeline.
+  directly via the Fineract-setup build pipeline.
 
 ### vintage-test-dec  (catalog dir → upstream `hrbrlife/vintage-test-dec.git`)
 
@@ -251,7 +251,7 @@ to refresh.
 | ------------------------ | ------------------------------------------------------ | -------------- | --------------- | ---------------------------------------------------------------------- |
 | `AI_Lagoon`              | `hrbrlife/ai-lagoon.git`                               | exists, STALE  | no              | upstream publish must catch up to catalog (newer .spk + RELEASE.json)  |
 | `cyberteller`            | `hrbrlife/cyberteller.git`                             | absent         | no              | cyberteller agent needs to create publish branch                       |
-| `fineract-setup`         | none (source in ccash_go_htmx/fineract-sidecar)        | n/a            | no              | no standalone repo; recommend stay-as-plain-tree                       |
+| `Fineract-setup`         | none (source in ccash_go_htmx/Fineract-sidecar)        | n/a            | no              | no standalone repo; recommend stay-as-plain-tree                       |
 | `vintage-test-dec`       | `hrbrlife/vintage-test-dec.git`                        | absent         | no              | vintage maintainer needs to create publish branch                      |
 
 ### Recommended next moves
@@ -267,9 +267,9 @@ to refresh.
    tree, push to a fresh `publish` branch on `hrbrlife/cyberteller`).
 3. **vintage-test-dec maintainer** (no agent in room): same action
    shape as cyberteller. May need to be done by hand.
-4. **fineract-setup**: leave as-is. Plain-tree-in-catalog is the right
+4. **Fineract-setup**: leave as-is. Plain-tree-in-catalog is the right
    shape because no upstream source-of-truth exists. Document in
    `README.md` that this app's source lives in `ccash_go_htmx/
-   fineract-sidecar` and the publish artifact is hand-curated into the
+   Fineract-sidecar` and the publish artifact is hand-curated into the
    catalog. Submodule registration is NOT applicable.
 

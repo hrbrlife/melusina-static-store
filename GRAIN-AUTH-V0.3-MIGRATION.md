@@ -39,7 +39,7 @@ length-prefixed fields. Everything goes through `attest.envelope`.
 {
   "protocol": 1,
   "license_nft": "<base58>",
-  "subject":     "<solana-wallet>",
+  "subject":     "<Solana-wallet>",
   "action":      "grain.install",
   "context_b64": "<base64 32B appHash>",
   "sender":      { /* identity.Public of the calling pearl */ },
@@ -99,7 +99,7 @@ from three shards:
 ```go
 priv, err := derive.DeriveSidecar(identity.Ref{
     Kind:        identity.KindSidecar,
-    ChainID:     "solana:mainnet",
+    ChainID:     "Solana:mainnet",
     ProgramID:   LICENSE_REGISTRY_PROGRAM_ID,
     LicenseMint: cfg.LicenseMint,
     Domain:      cfg.Domain,

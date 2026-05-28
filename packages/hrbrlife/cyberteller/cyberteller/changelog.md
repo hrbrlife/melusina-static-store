@@ -7,7 +7,7 @@ slip-render changes. Brings cyberteller into structural alignment with
 sister grains shipped this session.
 
 - `/version` and `/health` HTTP endpoints (public, no-auth) — matches
-  the convention proven by ailagoon, opensanctions, mermail, dns,
+  the convention proven by ailagoon, OpenSanctions, mermail, dns,
   vintage, creeper, ccash_domain_template. `/version` returns
   `{app, commit, time, branch, go, hostname}` with ldflag-injected
   build metadata; `/health` returns `{app, status, checks{db}}` with
@@ -37,7 +37,7 @@ sister grains shipped this session.
   / httpout / price / webhook / webhookoutbox + chainwatch sidecar
   chain.go. Closes the check-e2e-envelope tripwire (0 FAIL); every
   annotation carries an honest reason (in-band-envelope, internal-
-  dispatch, powerbox-attested, public-rpc-read, relay-presigned-tx,
+  dispatch, PowerBox-attested, public-rpc-read, relay-presigned-tx,
   public-priceapi). Documents existing trust posture without code
   change.
 - `chainwatch/internal/chain.ProofPayload` added — byte-identical
@@ -67,8 +67,8 @@ but left uncommitted on the worktree; commit captures + documents.
 - `internal/capgrain/inbound.go`: `Inbound.invoke()` synthesises
   `X-Sandstorm-Permissions = create,read,notify,admin,deposit-monitor,
   static-publish` so chi's `RequirePermission` middleware accepts the
-  capnp Powerbox caller. The peer is already authenticated by the
-  Powerbox claim that vended the Inbound cap; granting it the
+  capnp PowerBox caller. The peer is already authenticated by the
+  PowerBox claim that vended the Inbound cap; granting it the
   permission strings the routes need is the correct scope
   (CreateSlip→create, GetSlipStatus→read, NotifyPayment→notify,
   MoveToNostro→admin).

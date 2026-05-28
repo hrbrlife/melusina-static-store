@@ -5,7 +5,7 @@
   "versionNumber": 12,
   "packageId": "90e216786a64ba5d5c034460b7e1accf",
   "shortDescription": "Cyberteller install-admin (boot env source)",
-  "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Powerbox capability cyberteller claims at first launch — the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
+  "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate PowerBox capability cyberteller claims at first launch — the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
   "categories": [
     "Productivity"
   ],

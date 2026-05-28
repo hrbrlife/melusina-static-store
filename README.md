@@ -2,7 +2,7 @@
 
 Static app store and update host for Melusina. Hosted on GitHub Pages from the `publish` branch.
 
-**Live store**: https://hrbrlife.github.io/melusina-static-store/
+**Live store**: https://hrbrlife.github.io/melusina-static_store/
 
 > **This checkout is a development mirror, not the canonical builder.**
 > Two `static_store` checkouts exist on this host with non-overlapping
@@ -144,12 +144,12 @@ The build resolves a few external dependencies via env vars. Set what's relevant
 | `MELUSINA_PUBLISH_AUTHORITATIVE` | unset | **Hard gate.** Required to be `1` for `make deploy` to proceed. Default-unset aborts deploy with a pointer to `docs/M1_CCASH_CONFIG_PUBLISH_PATH.md` and `POSTMORTEM.md` follow-up #1. Two `static_store` checkouts share the same upstream on this host with non-overlapping app sets; this flag is the explicit declaration that this checkout is the canonical publisher. |
 | `MELUSINA_PUBLISH_SHRINK_OK` | unset | `scripts/preflight.sh` Gate 1 (live-catalog diff) aborts when the local build would drop appIds present in live `gh-pages`. Set to `1` only when shrink is *intentional* (e.g. an app retirement coordinated in chat). |
 | `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT` | unset | `scripts/preflight.sh` Gate 2 (manifest cross-check) **fails by default** when local `.spk` SHA-256 diverges from the deployer manifest's expected `app_hash`. Set to `1` only when reseat work is in flight on Worf's side and acknowledged in chat — drift means the catalog would serve bytes that no longer match the on-chain `ReleaseEntry` and installs would fail signature verification. |
-| `MELUSINA_ATTEST_REJECT_STUBS` | unset (warn-only) | `build-store.sh` flags `RELEASE.json` files whose `releaseEntryPda` / `masterNftMint` / `licenseSquadsVault` / `quorumPolicy.multisigPda` start with `test-` or `offline-` (placeholder IDs that pass the schema check but reference no real on-chain seat). Default behavior is **warn-only** for backwards compatibility — currently every shipping app uses stubs. Set to `1` to make stubs a hard error (intended default once the pearl ceremony goes live and the fleet has migrated). |
+| `MELUSINA_ATTEST_REJECT_STUBS` | unset (warn-only) | `build-store.sh` flags `RELEASE.json` files whose `releaseEntryPda` / `MasterNftMint` / `licenseSquadsVault` / `quorumPolicy.multisigPda` start with `test-` or `offline-` (placeholder IDs that pass the schema check but reference no real on-chain seat). Default behavior is **warn-only** for backwards compatibility — currently every shipping app uses stubs. Set to `1` to make stubs a hard error (intended default once the pearl ceremony goes live and the fleet has migrated). |
 | `MELUSINA_DEPLOYER_MANIFEST` | `/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json` | Path to the deployer's approval manifest. Read by `scripts/preflight.sh` Gate 2 and by spkmodule's non-pearl `make publish` (`manifest-check` helper). Override per host. |
 
 ## Trust model
 
-Every app in this catalog is gated by a Solana on-chain `ReleaseEntry` and a Squads-multisig signature. There are no PGP keys, no detached metadata signatures, no out-of-band approvals. End-user verification recipe is documented at [`verifier/index.html`](verifier/index.html) (deployed to `https://hrbrlife.github.io/melusina-static-store/verifier/`); the per-app published `attest` block in `apps.json` carries everything needed to re-check the chain independently of trusting this static site.
+Every app in this catalog is gated by a Solana on-chain `ReleaseEntry` and a Squads-multisig signature. There are no PGP keys, no detached metadata signatures, no out-of-band approvals. End-user verification recipe is documented at [`verifier/index.html`](verifier/index.html) (deployed to `https://hrbrlife.github.io/melusina-static_store/verifier/`); the per-app published `attest` block in `apps.json` carries everything needed to re-check the chain independently of trusting this static site.
 
 ---
 

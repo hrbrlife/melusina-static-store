@@ -116,7 +116,7 @@ Resigned + repacked + published via the catalog plan/apply lane:
   - Source: hrbrlife/AITX-Procedures @ 47a4c9b on main
   - Publish branch: hrbrlife/AITX-Procedures @ 83b3dc2 on publish (submodule pointer bumped in static_store)
   - Standardized via spkmodule v0.6.0 pre-pack-standardize hook (canonical-icon.png → 6 PNG variants + icons block rewrite)
-- Both now live at hrbrlife.github.io/melusina-static-store with `HTTP/2 200` on the new packageId routes
+- Both now live at hrbrlife.github.io/melusina-static_store with `HTTP/2 200` on the new packageId routes
 - Catalog index reflects new versions / packageIds / vn
 
 
@@ -160,10 +160,10 @@ The "boots" claims from Pass 1 covered process startup. Pass 2 (per user's reque
 | AiLagoon                  | ✅      | **108 GETs / 8 POSTs** — `api/provider/ollama`, `api/provider/openrouter`, `POST connections/add`. SIDECARS REACHED. |
 | DueProcess (AITX)         | ✅      | **74 GETs / 3 POSTs** — `api/kanban`, `api/analytics`, `api/ai/status`, `api/client-hub/status`, `api/datasets/{agreement-aml-cft-policy,…}`, `POST api/hooks/drain`, `POST api/setup/blank`. WORKFLOW + sidecar PROBES ACTIVE. |
 | ccash (popaye) v0.3.2     | ✅      | 0 — boots to system_down state (no admin gate wired); UI not yet clicked through |
-| cca.sh Config             | ✅      | 0 — capnp ready, manifest loaded (id=popaye, 11 hooks); Powerbox claim flow not exercised |
+| cca.sh Config             | ✅      | 0 — capnp ready, manifest loaded (id=popaye, 11 hooks); PowerBox claim flow not exercised |
 | cyberteller               | ✅      | 0 — limited mode (sidecar env unset), `/api/payment/create-invoice` endpoint defined but not hit |
 | Cyberteller Config        | ✅      | 0 — boots `cca.sh Config v0.1.0 — raw capnp on FD 3` |
-| fineract Setup            | ✅      | 0 — workflow loaded (9 steps, 5 datasets) but UI not exercised |
+| Fineract Setup            | ✅      | 0 — workflow loaded (9 steps, 5 datasets) but UI not exercised |
 | BotMother                 | ✅      | 0 — workflow loaded, no UI hits |
 | MerMail                   | ✅      | 0 (1 line is cgo runtime tag, not real GET) |
 | ClientSpace               | ✅      | 0 — session served, no endpoint hits |
@@ -183,10 +183,10 @@ The 0-traffic ones are NOT broken — they're un-exercised. The Chrome extension
 ## Squads-multisig publish status
 
 Per my Pass-1 verification:
-- `scripts/squads-vault-exec.js` exists at `/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js`
+- `scripts/Squads-vault-exec.js` exists at `/home/user/Desktop/Melusina/deployer/scripts/Squads-vault-exec.js`
 - Foundation multisig = `9X5ECjTMTtjJ…`, members `licensee-signer-{1..4}.json` all present at `/home/user/Desktop/Melusina/test-wallets/`
 - `melusina-pearl-tool` on PATH at `/home/user/.local/bin/melusina-pearl-tool`
-- BUT the per-app ceremony in `publish-app-full.sh` Step 3 currently runs `melusina-pearl-tool propose-release` in dry-run mode and falls back to offline-stub `RELEASE.json`. Live `node squads-vault-exec.js` finalization step is "scheduled for v1.1" per kill-list §10.4 Phase 6e⅝ — operator must invoke manually.
+- BUT the per-app ceremony in `publish-app-full.sh` Step 3 currently runs `melusina-pearl-tool propose-release` in dry-run mode and falls back to offline-stub `RELEASE.json`. Live `node Squads-vault-exec.js` finalization step is "scheduled for v1.1" per kill-list §10.4 Phase 6e⅝ — operator must invoke manually.
 - Safety gate: `make plan` requires `MELUSINA_PUBLISH_AUTHORITATIVE=1`; this session used overrides (also `MELUSINA_PUBLISH_SHRINK_OK=1`, `MELUSINA_PUBLISH_ALLOW_MANIFEST_DRIFT=1`, `MELUSINA_ATTEST_OFFLINE=1`, `MELUSINA_SKIP_BUNDLE_UPDATE=1`) to push catalog updates from this dev mirror. Captain awareness needed: this checkout is the "dev mirror", not "Melusina/static_store"; the two have non-overlapping app sets. Net delta on every plan today was 0 apps (no shrink), so the POSTMORTEM 2026-04-25 catalog-shrink regression was NOT recurred.
 
 ## 2026-05-05 16:00 — Metadata polish
@@ -205,7 +205,7 @@ Fixed nounPhrase + bumped + repacked + republished across 6 apps:
 | Cyberteller Config         | "cyberteller config"                         | "config"    | 0.1.2       |
 | cca.sh Wholesale           | "wholesale institution"                      | "institution" | 0.2.2     |
 | cca.sh Domain Template     | "domain template"                            | "template"  | 0.2.2       |
-| fineract Setup             | "setup wizard"                               | "wizard"    | 0.2.1       |
+| Fineract Setup             | "setup wizard"                               | "wizard"    | 0.2.1       |
 | Vintage Remote Desktop     | "Linux desktop"                              | "session"   | 1.0.11      |
 
 All shipped to gh-pages. New PEARLS created from these versions will
@@ -241,10 +241,10 @@ this session.
 reships (with BotMother in both classes).
 
 Branches all pushed to their respective repos:
-- melusina-static-store @ main, publish (gh-pages)
+- melusina-static_store @ main, publish (gh-pages)
 - ccash_go_htmx @ feat/killlist-audit-20260501T114701Z, publish
 - openclaw-melusina @ fix/launcher-mkdir-2026-05-05, publish
-- melusina-namedcoin-app @ feat/catalog-trust-root-default-2026-05-05, publish
+- melusina-NamedCoin-app @ feat/catalog-trust-root-default-2026-05-05, publish
 - melusina_botmother @ main
 - pr_ninja @ feat/imp22-hub-cap-routed
 - MiniGit @ feat/gomaxprocs-pthread-fix (rebased + force-pushed locally; main has stricter conflict)
@@ -270,7 +270,7 @@ distinct patterns:
    avatar. Affected: cca.sh Config, Cyberteller Config.
 2. **Embedded the ccash brown-C letter-avatar SVG** instead of the
    app's own — pkgdef referenced `icons/grain.svg` which was the ccash
-   letter-avatar copy-paste. Affected: fineract Setup, instaco, others.
+   letter-avatar copy-paste. Affected: Fineract Setup, instaco, others.
 3. **Reference to wrong asset** — OpenClaw embedded a generic blue
    chart-line SVG instead of the Clawberg lobster the user wanted.
 
@@ -286,7 +286,7 @@ Apps shipped this iteration:
 | Melusina OpenClaw         | 0.1.12      | Clawberg lobster (PNG)        |
 | cca.sh Config             | 0.0.6       | CcashAdmin (PNG)              |
 | Cyberteller Config        | 0.1.4       | cyberteller (PNG)             |
-| fineract Setup            | 0.2.2       | fineract Setup (PNG)          |
+| Fineract Setup            | 0.2.2       | Fineract Setup (PNG)          |
 | instaco                   | 0.1.2       | InstaCo.app (PNG)             |
 
 Remaining apps in user's screenshot that may still show generic icons
@@ -304,7 +304,7 @@ Continued audit + bulk fix. Fully shipped icon updates for:
 | Melusina OpenClaw            | Clawberg lobster    |
 | cca.sh Config                | CcashAdmin          |
 | Cyberteller Config           | cyberteller         |
-| fineract Setup               | fineract Setup      |
+| Fineract Setup               | Fineract Setup      |
 | instaco                      | InstaCo.app         |
 | cyberteller (wallet)         | cyberteller         |
 | cca.sh Client                | CcashClient         |
@@ -366,7 +366,7 @@ Verified end-to-end via Chrome at https://dev.pbay.app:
 - **Melusina OpenClaw** (user explicitly called out wrong icon): upgrade install via catalog → app page renders Clawberg lobster character ✓
 - **Sandstorm /install flow**: catalog URL `dev.pbay.app/install/<pkgId>?url=<gh-pages>/packages/<pkgId>` correctly downloads new SPK and offers upgrade for existing appId ✓
 - **Existing grains** (pre-refresh): keep their cached icon until user clicks "Upgrade Pearls" in the app's page — the upgrade button is offered automatically once the new packageId installs.
-- **Catalog UI** (https://hrbrlife.github.io/melusina-static-store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).
+- **Catalog UI** (https://hrbrlife.github.io/melusina-static_store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).
 
 ### Bulk-upgrade verification (round 4, 2026-05-06 ~07:50 GST)
 Triggered new-SPK installs via Sandstorm `/install/<pkgId>?url=<gh>/packages/<pkgId>` for: Vintage, OpenClaw, popaye, AiLagoon, BotMother, NamedCoin, MerMail. All accepted as upgrades; each app page now renders canonical icon at full size.
@@ -414,7 +414,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 - Updated `.icon-fix-2026-05-06/icon_map.json`: switched 4 low-res 128x128
   canonical sources to higher-res alternatives:
     - instaco          → `instaco.png` (512x512, was `InstaCo.app.png` 128)
-    - fineract Setup   → `fineract Setup.svg` (vector, was 128x128 PNG)
+    - Fineract Setup   → `Fineract Setup.svg` (vector, was 128x128 PNG)
     - popaye/Domain Template/Wholesale → `ccash.svg` (vector, was 128x128)
 - Re-ran `batch_fix_v2.py` → 34/34 OK.
 - Re-ran `repack_all_v2.sh` → 32/34 packed cleanly.
@@ -444,9 +444,9 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
   but no 100MB hard-limit hits.
 
 **Next pass** (via /loop iterations once Pages serves new index.json):
-1. Verify catalog UI shows new icons at `https://hrbrlife.github.io/melusina-static-store/`
+1. Verify catalog UI shows new icons at `https://hrbrlife.github.io/melusina-static_store/`
 2. Bulk-upgrade installed grains in Sandstorm shell:
-   `dev.pbay.app/install/<NEW_PKG>?url=https://hrbrlife.github.io/melusina-static-store/packages/<NEW_PKG>`
+   `dev.pbay.app/install/<NEW_PKG>?url=https://hrbrlife.github.io/melusina-static_store/packages/<NEW_PKG>`
 3. Verify grain dashboard shows correct icons after each upgrade
 4. **TeleScreen Hub still blocked** — cannot ship new icon SPK due to 1 GiB limit
 
@@ -457,7 +457,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 | DueProcess | d74ec3bd964251bb6284ae3f3ca7ab38 |
 | Shell Tester | d61ed8a5e72ddee71db047d17c013193 |
 | instaco | 458dcd6c1798e1cc4786a45a16e15621 |
-| fineract Setup | 76627a814927e65080f9222fb8cad39a |
+| Fineract Setup | 76627a814927e65080f9222fb8cad39a |
 | (and 27 others — see packages/hrbrlife/*/metadata.json) |
 
 ---
@@ -472,7 +472,7 @@ resolution and detail**. Verified end-to-end via Chrome MCP screenshots:
 - Row 2: CanBoard, cca.sh Client, cca.sh Config, cca.sh Domain Template,
   cca.sh Org Member, cca.sh Wholesale (cash register render now sharp)
 - Row 3: ChainWatch, ClientSpace, Consilium, CrateLink, cyberteller, Cyberteller Config
-- Row 4: Diagram Bureau, Doc Bureau, DueProcess, fineract Setup,
+- Row 4: Diagram Bureau, Doc Bureau, DueProcess, Fineract Setup,
   InstaCo.app (LLC blue), Melusina OpenClaw
 - Row 5: MerMail, MiniGit, NamedCoin, Paint Bureau, Sheets Bureau,
   **Shell Tester (terminal-window icon now visible — was "ST" text fallback)**
@@ -503,7 +503,7 @@ opening one popaye grain triggered Sandstorm to refresh icon caches
 across most existing grains. Now the grid shows proper icons for
 ChainWatch, MiniGit, popaye, Doc Bureau, OpenClaw, Teleport, Vintage
 Remote Desktop, CanBoard, ClientSpace, Bureau Contacts, NamedCoin,
-AiLagoon, cca.sh Config, TeleScreen Sidecar Configurator, fineract
+AiLagoon, cca.sh Config, TeleScreen Sidecar Configurator, Fineract
 Setup, cyberteller, Cyberteller Config, DueProcess. A few stale-cache
 diamond placeholders (`✦`) remain on individual older popaye grains —
 will refresh as user opens each.
@@ -526,14 +526,14 @@ in this round:
 |-----|-------------|
 | popaye          | ✓ PIN-unlock UI renders, sidebar green-E icon |
 | DueProcess      | ✓ "Configure Station" UI with Apply Templates / Build Scratch |
-| fineract Setup  | ✓ 9-stage wizard, Connectivity Check first stage |
+| Fineract Setup  | ✓ 9-stage wizard, Connectivity Check first stage |
 | Shell Tester    | ✓ Grain opens (404 at root expected for shell-only app) |
 | cca.sh Config   | ✓ Upgraded to v0.0.5, app-page icon renders |
 
 These four cover the four packaging fixes done in this round:
 - popaye (sandstorm-files.list cleanup)
 - DueProcess (bloom-* binaries copied in)
-- fineract Setup (canonical switched to .svg)
+- Fineract Setup (canonical switched to .svg)
 - Shell Tester (icon embedding fix verified)
 - cca.sh Config (clean upgrade from new appId)
 
@@ -554,7 +554,7 @@ panic: sql: Register called twice for driver sqlite3
 goroutine 1 [running]:
 database/sql.Register({0xf2812d, 0x7}, {0x110c480, 0xc0000e7d40})
 main.init.1()
-    namedcoin/sqlite_driver_alias.go:17 +0x35
+    NamedCoin/sqlite_driver_alias.go:17 +0x35
 ```
 
 `mattn/go-sqlite3` was being pulled in transitively by `melusina-grain-restore@v0.1.1/personas.go` via blank import. `mattn` registers itself as `"sqlite3"`, then `sqlite_driver_alias.go` tried to register `modernc.org/sqlite` as `"sqlite3"` too → panic.
@@ -564,19 +564,19 @@ CGO=0 stub it still registers as `sqlite3`, so the defensive skip means
 sql.Open returns the stub-driver error "go-sqlite3 requires cgo to work").
 
 **Solution shipped**:
-1. Forked grain-restore locally at `/home/user/Desktop/namedcoin-work/_local-grain-restore/`
+1. Forked grain-restore locally at `/home/user/Desktop/NamedCoin-work/_local-grain-restore/`
 2. Patched `personas.go` to use `sql.Open("sqlite", ...)` (modernc's native name)
 3. Removed `_ "github.com/mattn/go-sqlite3"` blank import
 4. Added `sqlite_register.go` blank-importing `modernc.org/sqlite` for auto-registration
-5. Wired `replace github.com/hrbrlife/melusina-grain-restore => /home/user/Desktop/namedcoin-work/_local-grain-restore` in namedcoin's go.mod
-6. Removed `sqlite_driver_alias.go` from namedcoin (no longer needed — fork uses "sqlite" name natively)
+5. Wired `replace github.com/hrbrlife/melusina-grain-restore => /home/user/Desktop/NamedCoin-work/_local-grain-restore` in NamedCoin's go.mod
+6. Removed `sqlite_driver_alias.go` from NamedCoin (no longer needed — fork uses "sqlite" name natively)
 7. Built CGO_ENABLED=0 → 30MB statically linked binary
 8. Packed pkg `45e5d2f87cac5eae7f75ff41984b57b9` (v6, 13MB)
 9. Aggregated dist-publish + force-pushed publish branch (incremental, fast: `49355da..f1edcfc`)
 10. Pages rebuild + upgrade-install in Sandstorm shell
 
 **Verified**: Fresh NamedCoin grain at `/grain/HpBuSxb2usAcYLkhTZbFu4` boots
-to "Melusina shell required" CCASH unlock UI. No panic, no stub error.
+to "Melusina shell required" ccash unlock UI. No panic, no stub error.
 
 **Note**: The fork should be upstreamed to `melusina-grain-restore` proper
 in a follow-up so other grain-restore consumers (ccash, etc.) can drop
@@ -638,8 +638,8 @@ omit `sandstorm-http-bridge-config` from `sandstorm-files.list`):
 | All others | launcher.sh / direct binary | not affected (don't run bridge as PID-1) |
 
 8 other apps declare `bridgeConfig` blocks (botmother, Teleport,
-bureaus paint/sheets/doc/diagram, mermail, namedcoin) but use their
-own launchers — the `bridgeConfig` is metadata-only (Powerbox claim
+bureaus paint/sheets/doc/diagram, mermail, NamedCoin) but use their
+own launchers — the `bridgeConfig` is metadata-only (PowerBox claim
 handlers, viewInfo) and Sandstorm reads it from the manifest via
 PackageDefinition.bridgeConfig, not the standalone config file.
 These don't need the fix.
@@ -651,7 +651,7 @@ Boot itself is fine; UI is the problem and that's a Sandstorm shell
 gateway-router gap, not an SPK issue.
 
 **Boot audit (#30) closed**. Cumulative apps verified booting cleanly
-this session: popaye ✓, DueProcess ✓, fineract Setup ✓, Shell Tester ✓,
+this session: popaye ✓, DueProcess ✓, Fineract Setup ✓, Shell Tester ✓,
 cca.sh Config ✓, NamedCoin ✓ (after fix), ChainWatch ✓ (after fix),
 OpenClaw ✗ (Node ABI mismatch, host needs libnode.so.115), MiniGit ✗
 (websocket gateway gap). 7 OK / 2 known-broken-with-documented-cause
@@ -663,7 +663,7 @@ iterations (tasks #6-22).
 ## 2026-05-06 15:24 — Grain-icon resolution fix (apps grid)
 
 **User report**: CanBoard, cca.sh Client, cyberteller, Cyberteller Config,
-MiniGit, fineract Setup showed low-resolution icons in the apps grid.
+MiniGit, Fineract Setup showed low-resolution icons in the apps grid.
 
 **Root cause** (found by inspecting al-card icon HTTP URLs in the live shell):
 the Melusina apps grid (`.al-card .al-card-icon` at 132×132 CSS px = 264 native

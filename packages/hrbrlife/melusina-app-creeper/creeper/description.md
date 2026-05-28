@@ -9,7 +9,7 @@ bundled sidecar.
 ## PSP Role
 
 This grain is the **consumer-grain front for OSINT** in the Melusina
-PSP stack. It exposes a `CreeperService` Powerbox capability that
+PSP stack. It exposes a `CreeperService` PowerBox capability that
 foreign Sandstorm grains (notably DueProcess case routing and popaye
 onboarding flows) claim to drive the live `creeper-sidecar` over a
 cap-routed HTTPS transport. It closes the missing wiring between the
@@ -48,14 +48,14 @@ sidecar already runs as a systemd unit at `creeper.sidecar.host`.
 
 **Depends on:**
 - `creeper-sidecar` (systemd LXC at `https://creeper.sidecar.host`)
-  via Powerbox HTTP-out cap. Endpoints: `POST /search/web`,
+  via PowerBox HTTP-out cap. Endpoints: `POST /search/web`,
   `POST /scrape/page`, `POST /handle/lookup`, `POST /validate`,
   `GET /admin/status`.
 
 **Exports:**
-- `CreeperService` Powerbox capability (capnp typeID
+- `CreeperService` PowerBox capability (capnp typeID
   `0xbf27299ef0d0be0b`) — outbound cap that foreign Sandstorm grains
-  claim via Powerbox to drive OSINT primitives.
+  claim via PowerBox to drive OSINT primitives.
 - `CreeperSubCap` — team-share sub-cap for inside-install
   delegation.
 
@@ -79,7 +79,7 @@ catalog. Tracked org-wide as task #94.
 
 - Regenerate capnp `@id`s for `CreeperService` + `CreeperSubCap`
   (placeholders today).
-- Wire `melusina-solana approve-local-sidecar --sidecar-id creeper`
+- Wire `melusina-Solana approve-local-sidecar --sidecar-id creeper`
   cascade (deployer Agent D scope, PLAN §5.3).
 - pearl onboarding (above).
 
@@ -109,7 +109,7 @@ catalog. Tracked org-wide as task #94.
   DueProcess review must surface only stable case IDs to upstream
   search engines, never raw KYC fields.
 - Do NOT bypass the authz path. Every verb is fail-closed: if the
-  Powerbox cap is not held, return `Status_failed` (CLAUDE.md
+  PowerBox cap is not held, return `Status_failed` (CLAUDE.md
   Inv 5). Do not add a "test mode" that skips the cap check.
 - Do NOT fabricate search results. No canned / stub / fixture
   responses returned through `CreeperService` — every result must

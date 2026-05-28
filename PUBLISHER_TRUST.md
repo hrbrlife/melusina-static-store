@@ -70,7 +70,7 @@ server-side NFT modules, existing SPK signing, existing wallet login.
 | `AppPurchaseReceipt` | `["app_purchase", license_nft_mint, app_id]` | ✅ Deployed, unused |
 | `purchase_app_sol` | lib.rs:3310 — currently 97/3, needs 85/15 | ⚠️ Needs fee update |
 | `acquire_free_app` | lib.rs:3489 — 0-cost receipt | ✅ Deployed, unused |
-| `FoundationTreasury` | `["treasury", master_nft_mint]` | ✅ Deployed, unused |
+| `FoundationTreasury` | `["treasury", MasterNftMint]` | ✅ Deployed, unused |
 | `FOUNDATION_FEE_BPS = 300` | lib.rs:70 — hardcoded 3%, needs 1500 (15%) | ⚠️ Redeploy required |
 
 **Key:** The `purchase_app_sol` instruction is called by the **Reseller**
@@ -98,7 +98,7 @@ keyholder review) or `Full` (auto-approved with 1 keyholder).
 | **nft-access-control.js** (426 lines) | Share enforcement: challenge-response, wallet check |
 | **nft-admin.js** (315 lines) | Admin NFT: InstallAdmin PDAs, permission levels |
 | **hack-session.js** (1912 lines) | requestWalletSign, getWalletNfts, solanaRpc, requestOtp, createGrain |
-| **solana-proxy.js** (270 lines) | Solana RPC proxy (Connection, PublicKey, PDA derivation) |
+| **Solana-proxy.js** (270 lines) | Solana RPC proxy (Connection, PublicKey, PDA derivation) |
 | **Wallet login** (6 files, 2011 lines) | Phantom, Solflare, Backpack, MWA, deeplinks |
 
 ### 2.5 What Doesn't Exist Yet
@@ -338,10 +338,10 @@ Add wallet adapter to the static store:
 
 ```
 Store (static_store) adds:
-  @solana/web3.js
-  @solana/wallet-adapter-react
-  @solana/wallet-adapter-react-ui
-  @solana/wallet-adapter-wallets
+  @Solana/web3.js
+  @Solana/wallet-adapter-react
+  @Solana/wallet-adapter-react-ui
+  @Solana/wallet-adapter-wallets
   @coral-xyz/anchor
 
 Flow:
@@ -834,7 +834,7 @@ Everything needed already exists on-chain. This phase connects it.
 
 ### Phase 2: Store Wallet + Referrals + Bundle Listings (Week 3-5)
 
-1. Add `@solana/wallet-adapter-*` to store frontend
+1. Add `@Solana/wallet-adapter-*` to store frontend
 2. Implement purchase flow: connect wallet → select server → sign tx
 3. Create platform bundle listings on-chain (5 paid bands):
    - `melusina_platform_starter_3yr` at $3,000 SOL-equivalent
@@ -935,8 +935,8 @@ Everything needed already exists on-chain. This phase connects it.
 | New error codes | ~5 | Referral validation errors |
 
 **Store dependencies to add:**
-- `@solana/web3.js`
-- `@solana/wallet-adapter-react`
-- `@solana/wallet-adapter-react-ui`
-- `@solana/wallet-adapter-wallets`
+- `@Solana/web3.js`
+- `@Solana/wallet-adapter-react`
+- `@Solana/wallet-adapter-react-ui`
+- `@Solana/wallet-adapter-wallets`
 - `@coral-xyz/anchor`

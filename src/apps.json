@@ -4908,9 +4908,9 @@
     {
       "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
       "name": "TeleScreen Hub",
-      "version": "0.0.3",
-      "versionNumber": 5,
-      "packageId": "dbae586557389a60d6b4481ffb7baa17",
+      "version": "0.0.4",
+      "versionNumber": 6,
+      "packageId": "fab1e16a6a6421db3108504922511ba1",
       "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
       "categories": [
         "Productivity",
@@ -4931,24 +4931,24 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.0.3",
-      "sha256": "dbae586557389a60d6b4481ffb7baa17b6d069a120a451b2698503079d80c35f",
+      "marketingVersion": "0.0.4",
+      "sha256": "fab1e16a6a6421db3108504922511ba1910c97406e968beaa8ec36c85e7062e8",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1779981824286,
+      "updatedAt": 1780072557998,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "d2f93e6a349ad93f953387e2bd7feeec1017cb46e3518b1c26ec8b6646c4fe32",
-        "releaseHash": "909ce1aa422553047586a7b7a7b9dce8547c5ef88e10c63c0d28f2b7a5bf36c0",
-        "releaseNonce": "23a4c30f2d9ba2aa6a03f6dfe8fdb7aa",
-        "releaseEntryPda": "B5jue6h1sMtKpZLibroyKkh4X4hGkxUcqxji73aTAVVp",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779125770,
-        "authorSig": "nDMcYN7D95TzI7cmT+OwJCPSbQEGUHqQGWTbxp8OQLwA1XtDmo2fRFfCg0WgikKfOdAzrId4YBPi1VyRM4UQBA==",
+        "appHash": "fab1e16a6a6421db3108504922511ba1910c97406e968beaa8ec36c85e7062e8",
+        "releaseHash": "75ba30bca88073300fea46fdbf261ac56e5c5689044ffd8e24ce8ad5e839132b",
+        "releaseNonce": "e6612d98d546aa021d1d8f33f43eaa2ccb06a1240272eef57f4da6d9cc5accb4",
+        "releaseEntryPda": "offline-release-entry-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
+        "MasterNftMint": "offline-master-nft-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
+        "licenseSquadsVault": "offline-license-vault-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
+        "signedAtUnix": 1780072557,
+        "authorSig": "1093b6d857e36a9c35ac613955c839b36e4476e0c694dfdc9ca4c5193c5a5439",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-55ru3mytzq9swmfx0xvxzhaq71hwdhmx"
         }
       },
       "capabilities": {

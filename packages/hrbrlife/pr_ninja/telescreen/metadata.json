@@ -1,9 +1,9 @@
 {
   "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
   "name": "TeleScreen Hub",
-  "version": "0.0.5",
-  "versionNumber": 7,
-  "packageId": "09256475b9154b5c7fc72db314e4437f",
+  "version": "0.0.6",
+  "versionNumber": 8,
+  "packageId": "caf67e1d51f2b60a45a99b8f22e45458",
   "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
   "categories": [
     "Productivity",
@@ -25,6 +25,6 @@
     "twitterUsername": "",
     "picture": ""
   },
-  "marketingVersion": "0.0.5",
-  "sha256": "09256475b9154b5c7fc72db314e4437fda6a0ae6725e3640cb77a1575d4dfe51"
+  "marketingVersion": "0.0.6",
+  "sha256": "caf67e1d51f2b60a45a99b8f22e45458eb5954e6f8674c5a0de4fa59801f6ad4"
 }

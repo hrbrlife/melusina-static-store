@@ -3801,9 +3801,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.3",
-      "versionNumber": 4,
-      "packageId": "7f868516e2afc69aa51886e57df69600",
+      "version": "0.1.4",
+      "versionNumber": 5,
+      "packageId": "f47c28f16921d3a5cfccc89511438081",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3824,20 +3824,20 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.3",
-      "sha256": "7f868516e2afc69aa51886e57df6960069be67b45e73c5ab8a5c5896c82fb9dd",
+      "marketingVersion": "0.1.4",
+      "sha256": "f47c28f16921d3a5cfccc8951143808168c98f433649c4eff445bac5ebc19b7f",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1780018752622,
+      "updatedAt": 1780020545122,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0b80d43905b14a4b9fe127b9f6cd7126c1e81e41f329073615875b121663ca77",
-        "releaseHash": "14622f81173507853fdb6fb633b0e510b66f7ef2ea07c4210b789d0c3be3f5ff",
-        "releaseNonce": "0c38c6daa3c6bbac050691db6f5904e7",
-        "releaseEntryPda": "E5tFtiXge5cK77EC9YPV5KzQKCEjXHGb26EPZuL2n4Sf",
+        "appHash": "86102a426a26bd1eaab4ada784cc0a54fc39d8878006341a87aab05c47aba5ef",
+        "releaseHash": "b1caaada75f4040374341f63b33fd2c2065622c3a9e46e21fe1ac206898493b6",
+        "releaseNonce": "963dce6dacb0379fca7ce45f225ed6d9",
+        "releaseEntryPda": "FSs6NZPWRQHyZ3Z9SQHaE2wSRMiijxNTcjwN5YLe2kZT",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780019056,
-        "authorSig": "bHxNxUdmlte4MVLIOg6V2TeNT22ZRLvNKXpaqHf1OsRKvIuokwzGM+CNm+rB2f4db8tyYWu//OrpJVAeXc5ADQ==",
+        "signedAtUnix": 1780020849,
+        "authorSig": "mmdwlT3Vk2H9TtFs2s9f7GYJ/ODmSjW2zH0TwKQnwP+h/egyuwGv1YKAb2C/IJ+jA4to0rThJCy7gfFr/PagCg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

@@ -1,0 +1,31 @@
+{
+  "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
+  "packageId": "d884341d4fd51d8d3976590d44485c5e",
+  "name": "CrateLink",
+  "version": "0.1.1",
+  "versionNumber": 6,
+  "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776836094911,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "marketingVersion": "0.1.1",
+  "sha256": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a"
+}

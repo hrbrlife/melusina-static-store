@@ -1,0 +1,35 @@
+{
+  "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+  "name": "Fineract Setup",
+  "version": "0.2.3",
+  "versionNumber": 9,
+  "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
+  "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://ccash.services",
+  "codeLink": "https://github.com/hrbrlife/ccash_go_htmx/tree/main/Fineract-sidecar",
+  "upstreamAuthor": "ccash",
+  "createdAt": 1776299121003,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Proprietary — Internal development build",
+  "screenshots": [],
+  "tier": "admin",
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "0.2.3",
+  "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc"
+}

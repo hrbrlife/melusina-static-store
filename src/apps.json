@@ -185,10 +185,10 @@
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
-      "version": "1.1.3",
-      "versionNumber": 19,
-      "packageId": "d964d735966674d52efe08af231df7ec",
-      "shortDescription": "Telegram bot manager with per-bot pearl isolation and pinned agentchat snapshots.",
+      "version": "1.1.2",
+      "versionNumber": 18,
+      "packageId": "70005533f5c0002a90679cab56533e0c",
+      "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",
         "Social"
@@ -207,28 +207,346 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "1.1.3",
-      "sha256": "d964d735966674d52efe08af231df7ec5a6629e3b1eb89d50132b871d046a4b7",
-      "imageId": "1c107ba3e2e486a030867e3b9f6157ee.png",
-      "updatedAt": 1779780580421,
+      "imageId": "d2c943e821cc0170e4143d0621fdf414.png",
+      "updatedAt": 1779985210665,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1e0c4d7cd0574a3bf94df9b9729aaa2ce5a75fbc78a3f6e6414d0a103a7dbba6",
-        "releaseHash": "a22465f26c3aee2ade2ddf8af514d76bd061b48aeaea02d073d618222141bacb",
-        "releaseNonce": "f445b83a967c9ab2a0a28813db65ee62",
-        "releaseEntryPda": "ANGuYJd779DEujTF22rj33wD2Mz8G768SXUXWDV51JiX",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779092626,
-        "authorSig": "UjYbUJlO8UTtlh3RxJ0Grxo2+73BmeaXrEF+s3Qs6yxLlzLQl9/GtDIiwntEP0md1wTfwZswWa2o68ZAlwH4CQ==",
+        "appHash": "70005533f5c0002a90679cab56533e0ce0fc6a635cb7643556d304e177def44e",
+        "releaseHash": "a812e6a3befcda7b68347097fd120a33d776439af66b18de877fadf076b7202a",
+        "releaseNonce": "fc388a02bd9d5928954cf87913163b6c84166201c7a0b6600fd67f8aeab0b95b",
+        "releaseEntryPda": "offline-release-entry-xjdtxcy392qtrf317pyutxt2h5m022h2",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "offline-license-vault-xjdtxcy392qtrf317pyutxt2h5m022h2",
+        "signedAtUnix": 1778106587,
+        "authorSig": "d317fe3a35faa7c725bb1f74e08f9b51fa53bedd5ec5ee6f24b5efb355aefc71",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-xjdtxcy392qtrf317pyutxt2h5m022h2"
         }
       },
-      "capabilities": null,
-      "description": "**BotMother** is a Telegram bot management pearl built on the gohtmx framework with native Cap'n Proto pearl communication (no `sandstorm-http-bridge`).\n\nA single pearl hosts a message hub plus agentchat and per-bot webhook handlers \u2014 each bot type runs as its own isolated pearl binary, so a token leak or runtime crash in one bot can't cascade across the fleet. Built-in pearl types: a routing-rules message hub, Telegram webhook handlers, an auto-reply agentchat engine, and workflow instance + station pearls for longer-running flows.\n\nFor fleet operators who need routing, chatrooms, and isolated bot runtimes all in one Sandstorm grain. MIT-licensed.",
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "botmother",
+        "appName": "BotMother",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "botmother",
+            "pearlName": "BotMother Hub",
+            "pearlType": "user-pearl",
+            "purpose": "The hub Pearl \u2014 defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "botmother-route",
+                  "interface": "BotMother.Route@1",
+                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there."
+                }
+              ],
+              "requests": [
+                {
+                  "name": "ai-text",
+                  "interface": "AiLagoon.AiText@1",
+                  "purpose": "Optional: AI text completion for auto-replies; supplied by AiLagoon Pearl.",
+                  "required": false
+                }
+              ]
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Persona definitions",
+                "Routing rules",
+                "Conversation history"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Define personas + routing",
+                  "purpose": "Owner-only: persona prompts, routing rules, channel bindings."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "View hub state",
+                  "purpose": "Read-only operator view."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "BotMother.Route@1",
+                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          },
+          {
+            "pearlId": "telegram",
+            "pearlName": "Telegram Bridge",
+            "pearlType": "infrastructure-pearl",
+            "purpose": "Telegram-webhook handler. Receives Telegram messages, delivers them to the BotMother hub via a Route capability, sends replies back through the Telegram Bot API. Only Pearl in the package allowed to talk to api.telegram.org directly.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [],
+              "requests": [
+                {
+                  "name": "botmother-route",
+                  "interface": "BotMother.Route@1",
+                  "purpose": "The hub-issued capability defining what to do with incoming Telegram messages.",
+                  "required": true
+                }
+              ]
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Telegram bot token",
+                "Per-chat session state"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Configure bot token / webhook",
+                  "purpose": "Owner-only: set the Telegram bot token + webhook URL."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": []
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": true,
+              "via": "sidecar:HTTP_COMPONENT",
+              "purpose": "Telegram Bot API for sending messages + acknowledging webhooks.",
+              "endpoints": [
+                "https://api.telegram.org/bot{token}/*"
+              ]
+            },
+            "apis": {
+              "capnp": [],
+              "http": [
+                {
+                  "name": "POST /telegram/webhook",
+                  "roleGate": "anyMember"
+                }
+              ]
+            }
+          },
+          {
+            "pearlId": "chatroom",
+            "pearlName": "Chatroom",
+            "pearlType": "user-pearl",
+            "purpose": "Internal chatroom Pearl \u2014 operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [],
+              "requests": [
+                {
+                  "name": "botmother-route",
+                  "interface": "BotMother.Route@1",
+                  "purpose": "Hub-issued routing cap deciding which chatroom messages go to bots.",
+                  "required": false
+                }
+              ]
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Chat history",
+                "Uploaded files"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Manage chatroom membership",
+                  "purpose": "Add / remove members."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Send / receive messages",
+                  "purpose": "Standard chat."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "grain.MainView",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          },
+          {
+            "pearlId": "station",
+            "pearlName": "Station",
+            "pearlType": "admin-pearl",
+            "purpose": "Admin Pearl \u2014 bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "botmother-policy",
+                  "interface": "BotMother.Policy@1",
+                  "purpose": "Issue per-constellation policy: allowed models, retention, content rules."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Station policy"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Push station policy",
+                  "purpose": "Squads-signed; consumed by hub on next request."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": []
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "appCapnpAuthorize",
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
+                }
+              ],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+                    "label": "Squads v4 multisig",
+                    "calls": [
+                      "proposalApprove",
+                      "vaultTransactionExecute"
+                    ]
+                  }
+                ],
+                "purpose": "Squads-rooted policy attestations."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "BotMother.Policy@1",
+                  "purpose": "Issue per-constellation policy: allowed models, retention, content rules.",
+                  "roleGate": "adminOnly"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      },
+      "description": "BotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own Pearl \u2014 a sealed, per-document container with its own database, message history, and permissions.\n\n## Why BotMother\n\n- **Pinned chatroom snapshots** \u2014 cryptographically anchor any chatroom snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bot Pearl isolation** \u2014 each bot runs in its own sealed container with separate storage, config, and message logs; no bot Pearl can see another unless you explicitly connect via Grapple\n- **Wallet-rooted bot identity** \u2014 bot tokens and credentials stored locally; bot ownership linked to Solana wallet; non-repudiable access logs\n\n## Features\n\n- **Message Routing** \u2014 define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Mermail, or log events to MiniGit\n- **Webhook Integration** \u2014 receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 all messages stay on your server; no third-party bot hosting; no message logging by others\n- **Offline Queuing** \u2014 messages received while offline are queued and processed when the bot reconnects\n\n## Setup\n\n1. Create a bot via BotFather on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n## Security Model\n\n- Viewer \u2014 see bot status and message logs\n- Editor \u2014 configure routing rules, manage chatrooms\n- Admin \u2014 manage bot tokens, permissions, and Grapple connections\n\nEvery message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n## Status\n\n*Production.* Free to install and use on your own server. No subscription, no per-message fees, no limits.",
       "screenshots": []
     },
     {
@@ -2590,9 +2908,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.13",
-      "versionNumber": 16,
-      "packageId": "199879d4e1354bfcc052e4de141df264",
+      "version": "0.1.10",
+      "versionNumber": 13,
+      "packageId": "1d29673bf4e643aa51854cf7c2492d9f",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2611,20 +2929,19 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.13",
-      "sha256": "199879d4e1354bfcc052e4de141df264dce8ae8dd52c8892f52f24b5116ed566",
+      "marketingVersion": "0.1.10",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779839540171,
+      "updatedAt": 1779985238873,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9045f717a91d9152a49ab0233b778e9811102c917759aae8bcccdbdc8e156251",
-        "releaseHash": "82e73fb900911e919be8765b9887dcf1694ca0276e91291c40425f9ddee00bbc",
-        "releaseNonce": "fa3afd7fc36f64eac8a18af970da325c0d877f3f2577a924bfa05fd78a0f09e8",
-        "releaseEntryPda": "A6kZcGDXu7FwBQ33JtJK52zY8cPWa3qi1XUGJyDwQaMa",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "appHash": "44ad4801c24a281240cc840d8562134d85d3d122d2f7168e9ab69938bd0604f0",
+        "releaseHash": "1b60b43c4573a0a149e89c347a0ead90d836bb06bb33285969229d768432b0c1",
+        "releaseNonce": "5bd3e309b89e886384c3353205039aacaa44ffe55d925be23cdb3d17060ffc6b",
+        "releaseEntryPda": "3LxUbMJZm6QXQgXdEFHtwh4FX9pco2aigTtARC6dJP6v",
+        "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779587277,
-        "authorSig": "YuSFNFDHeM1vI+uBnKec9DKcxeP8gudYkdU+Fq2lhycUAgnHKW7sTTiuFSgjRMmPYXU9hUlIQ9RpbYlEWBr1Dw==",
+        "signedAtUnix": 1779579984,
+        "authorSig": "NAqOofmNOcTQi4jY5nctKqxBra8d0TLPu7/HVSzJP7Jp1My3z2l4aj8tcKjsUyin9UZKLMyE4qEIybPiXAvNBA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2632,22 +2949,22 @@
           "signatureCount": 3,
           "signatures": [
             {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "4Bk9sMLBdY7Aj1o8hfycqG5Ku2UTiYSoYYfSppG2Q4XLwWvNPurDFZFmFSdzebYeX16zHGoV3EBSKts4TCqWdUTh"
+              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
+              "sigBase58": "2EZAw7ktWfSSh5XbDgr4jiHCBrZbMkmMBK4sBTcJft5RbgverinrfJBcKnF8QwT6YtAVQZLKuN543DLXKzXygJTg"
             },
             {
               "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "FTgThMG4vHs3cq9MqPpHbHrhmZCN7Ai249FctLgJ3JSibwBFUzLcxibJbxMUuGmCDJHLU1tr22hu6Yy7HLCzZh3"
+              "sigBase58": "2SCgSqGDukB9m5kZRGnQKyJspwqijiqfzE6mDQWeX9GyGkAsD2YBxgfATBr6tcpwo6AxrjFUjq2fonmxj1FPh1WT"
             },
             {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "3KaWuMfDAjKBcPeQCABG2CX1N3KSUsvPq53ScwauaKKmyeCHZUUNUKXgkV3SVZ29LyK5tw5wpx23UxnCGpNn9gU"
+              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+              "sigBase58": "3pgLPCt3NW6Uar7GpATvY7nNJyTPbHcNTYXFq6BdScSQEYjVuC2A1q5UH1pTpEMHACFKuMzfaW6jVNX9PV9xKZUk"
             }
           ]
         }
       },
       "capabilities": null,
-      "description": "DueProcess is the Station pearl that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
       "screenshots": []
     },
     {
@@ -2844,14 +3161,14 @@
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "name": "instaco",
-      "version": "0.1.4",
-      "versionNumber": 11,
-      "packageId": "5e85507c503ff434c7138f0a1573f400",
-      "shortDescription": "Montana series-LLC management pearl \u2014 form, hold, operate entities end-to-end.",
+      "version": "0.1.3",
+      "versionNumber": 8,
+      "packageId": "892d9b65d205c5387fa8b16980023c6f",
+      "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
       ],
-      "isOpenSource": false,
+      "isOpenSource": true,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
       "upstreamAuthor": "hrbr.life",
@@ -2864,29 +3181,127 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.4",
-      "sha256": "5e85507c503ff434c7138f0a1573f4002aee4792be9a39c78ff86c86fe0d0648",
-      "imageId": "716f4b5c4f22652a9ec42c1d6bcc3a43.png",
-      "updatedAt": 1779982455162,
+      "license": "MIT",
+      "marketingVersion": "0.1.1",
+      "imageId": "8b9eca39ba100eca66b057648720ddf4.svg",
+      "updatedAt": 1779985183845,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a4756993d10e107b9b0a1ffb5039f72ccab3d13c87bec6f9af333e7b98dca680",
-        "releaseHash": "a181c5bc6a73d833dfae301d465b16a5e0e6c9fa4ce96b90c4349cbccc62f9da",
-        "releaseNonce": "72a008e0daccf6f93debcac9ee833668",
-        "releaseEntryPda": "5f5nWAHyt9McmLxjJLb5vCdR3Z5RHzcwYX6D1djdk8m5",
+        "appHash": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
+        "releaseHash": "eaf1cf3ec663d6105298f06f9ec82b8d189df5443b2aa17f6cae82a5c76cf702",
+        "releaseNonce": "8d75613a03eeda4207b8ea7d085b7ab08bbb556096313b5fba98a679c931af78",
+        "releaseEntryPda": "offline-release-entry-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
         "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779982768,
-        "authorSig": "c4JZS3mPaVH/27jgEd179Q6X4m8Y6aHOXJ/CELlYLp6QV0nEY82qS5k3enh+kDbqou6ku/4jsj6ASjJmK28tDw==",
+        "licenseSquadsVault": "offline-license-vault-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
+        "signedAtUnix": 1778108338,
+        "authorSig": "795af48a8c5607ec951aadf1a3d1cba666b105f9ee299063b55adce88dafb453",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g"
         }
       },
-      "capabilities": null,
-      "description": "**InstaCo** is the mobile-first app for a Montana series-LLC formation product. A global resident can form a real US company \u2014 a \"series\" sitting under a parent \"clan\" LLC operated by the platform \u2014 get a real US tax ID and address, and run the company entirely in-app, with named AI assistants drafting work and humans approving via Solana wallet or OTP.\n\n**One pearl = one company.** Each pearl hosts exactly one series LLC; multi-company workflows are a Sandstorm shell concern, not an InstaCo concern. Clans are real domains whose names become the legal name of the parent series LLC \u2014 v1 clans include `impex.direct` (importers / exporters / dropshippers), `ngneer.pro` (engineers), `codest.works` (developers), `adhaus.agency` (marketers), `porto.fund` (traders / angels), and `vellum.studio` (designers / fashion / brand). A customer's business lives as a subdomain under their clan, e.g. `wildhoney.impex.direct` is the website *and* part of the legal name *\"WILDHONEY, a series of IMPEX.DIRECT SERIES LLC\"*.\n\nBuilt in Go + TypeScript (lit-html + Vite) as a Sandstorm grain. Pairs with the sibling `ccash` pearl over native Cap'n Proto for payment intents.",
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "instaco-app",
+        "appName": "instaco",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "instaco-app",
+            "pearlName": "instaco",
+            "pearlType": "user-pearl",
+            "purpose": "Instant-collaboration Pearl \u2014 drop-in spaces with members, threaded discussions, decision capture. Designed as the lightweight surface that other Pearls (consilium, dueprocess) Grapple into when they need a quick collaborative review without spinning up a full procedure.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "space-create",
+                  "interface": "Instaco.SpaceCreate@1",
+                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap."
+                },
+                {
+                  "name": "space-read",
+                  "interface": "Instaco.SpaceRead@1",
+                  "purpose": "Read-only thread embeds for downstream Pearls."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Spaces",
+                "Thread messages",
+                "Decision capture"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Manage spaces",
+                  "purpose": "Owner-only: create / archive / set retention."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Participate in spaces",
+                  "purpose": "Read + post in invited spaces."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "Instaco.SpaceCreate@1",
+                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "Instaco.SpaceRead@1",
+                  "purpose": "Read-only thread embeds for downstream Pearls.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      },
+      "description": "instaco is the self-sovereign Montana series-LLC management Pearl. Form, hold, and operate a Montana series LLC end-to-end \u2014 articles, EIN, registered-agent address, operating agreement, member ledger, capital calls, distributions \u2014 without leaving your own server.\n\n## Why instaco\n\n- **Pinned entity formation milestones** \u2014 cryptographically anchor each entity milestone (formation, first capital call, distribution, amendment) to your Solana wallet; milestones are tamper-evident, citable across Pearls via Grapple, and provide an immutable record of the entity's lifecycle\n- **Solana-wallet member identification** \u2014 members are identified by their Solana wallet; transfers, capital calls, and distributions emit signed envelopes that double as on-chain attestations; non-repudiable membership changes\n- **All documents generated locally** \u2014 operating agreement, member roll, capital account, K-1 prep, registered-agent letters \u2014 all generated in-Pearl from templates you can edit; no cloud storage; no vendor middleware\n\n## Features\n\n- **Cell-level liability separation** \u2014 each \"child\" series under the master LLC is its own asset partition; instaco lays out the cells, ledgers, and inter-series receivables\n- **Local-first document generation** \u2014 operating agreement templates editable; member roll tracked; capital account ledger; K-1 prep\n- **State filing integration** \u2014 Montana SOS API wired in for new entity registrations, annual reports, and member updates; everything else is paper-prep your registered agent can mail\n- **Right-to-export** \u2014 the entire entity record (resolutions, ledger, K-1s, member roll) exports as a single signed bundle\n\n## What instaco Does NOT Do\n\n- It is not a tax preparer. K-1 prep generates the inputs a CPA needs; it does not file your 1065\n- It is not a registered agent. Montana law requires a physical Montana street address; instaco helps you draft the engagement letter, then hands off to your agent\n- It is not legal advice. The operating agreement template was reviewed by counsel, but your specific cell structure is yours\n\n## Why Montana Series LLCs\n\nMontana is one of the few US states with a clean series LLC statute, no public member registry, and a Solana-friendly attorney bench. The form-and-fee structure is favorable for asset-protection use cases that need many cells and few annual filings.\n\n## Status\n\nOpen-source MIT. Production-ready for new entity formation; the K-1 prep module is in active testing for tax year 2026.",
       "screenshots": []
     },
     {
@@ -3386,9 +3801,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "b7ee317756fecb4e8d5655199ae436ef",
+      "version": "0.1.3",
+      "versionNumber": 4,
+      "packageId": "7f868516e2afc69aa51886e57df69600",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3409,20 +3824,20 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.2",
-      "sha256": "b7ee317756fecb4e8d5655199ae436efe604a8ea0f8147ab9418341e8a532dcd",
+      "marketingVersion": "0.1.3",
+      "sha256": "7f868516e2afc69aa51886e57df6960069be67b45e73c5ab8a5c5896c82fb9dd",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1779780590173,
+      "updatedAt": 1780018752622,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "8d262ed2180a1cd5858f4c1a89cd7bc09bc9a037db6754bb491e340d69b6ad29",
-        "releaseHash": "02a9f1d44341d8d09c56b7b2a106b9dabd390e716b23778c14dd9abb6191b8f8",
-        "releaseNonce": "440077f1642995f3eb0e76f7c836f628",
-        "releaseEntryPda": "8DKnCXpjzgmXJAJ2ML5xvPBQcGaNkJehiXVFERryQrYL",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "appHash": "0b80d43905b14a4b9fe127b9f6cd7126c1e81e41f329073615875b121663ca77",
+        "releaseHash": "14622f81173507853fdb6fb633b0e510b66f7ef2ea07c4210b789d0c3be3f5ff",
+        "releaseNonce": "0c38c6daa3c6bbac050691db6f5904e7",
+        "releaseEntryPda": "E5tFtiXge5cK77EC9YPV5KzQKCEjXHGb26EPZuL2n4Sf",
+        "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779102529,
-        "authorSig": "wZhhO4DMJS7PygTDeHWuuhq8N9V7T7paj0jctv1hzaPk2+57GK2dV40X/ws5DFhLXYlpd0LxLjuwKEHulDnhAw==",
+        "signedAtUnix": 1780019056,
+        "authorSig": "bHxNxUdmlte4MVLIOg6V2TeNT22ZRLvNKXpaqHf1OsRKvIuokwzGM+CNm+rB2f4db8tyYWu//OrpJVAeXc5ADQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

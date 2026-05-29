@@ -2299,10 +2299,10 @@
     },
     {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "ab1336c64469d46cde7f2785b8efb4e8",
+      "packageId": "58f7567bd518eac205812a1b83efd002",
       "name": "Creeper",
-      "version": "0.1.2",
-      "versionNumber": 3,
+      "version": "0.1.3",
+      "versionNumber": 4,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -2325,20 +2325,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.2",
-      "sha256": "ab1336c64469d46cde7f2785b8efb4e81bb6f6c1a18a0ed211bc20e48b76ec82",
+      "marketingVersion": "0.1.3",
+      "sha256": "58f7567bd518eac205812a1b83efd0024e71cbafee3f7b97a293da2460ed6f41",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780095198239,
+      "updatedAt": 1780095772979,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ab1336c64469d46cde7f2785b8efb4e81bb6f6c1a18a0ed211bc20e48b76ec82",
-        "releaseHash": "1e6a8995e8a940ee9b9a3e203d24a706a267de233c3cf3d9c2ee05e1aefee02b",
-        "releaseNonce": "1a54eb7c813f365a0b453061abcd0c4472650ad6406ca066e51a3cc15f579ad1",
+        "appHash": "58f7567bd518eac205812a1b83efd0024e71cbafee3f7b97a293da2460ed6f41",
+        "releaseHash": "d7014a4bd1a0be26d462c816f9f82bb681067b4ae147ea71eaec601eeeb3aeaa",
+        "releaseNonce": "a0112873d6ac3a848aeb2c489fdb271275fb75c0a04d8bbe34f227b5474273aa",
         "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
         "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
         "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "signedAtUnix": 1780095198,
-        "authorSig": "374842d791fd1a0f5556fd32ffcf34ef243b86275525255ba61a6309e2bcf210",
+        "signedAtUnix": 1780095772,
+        "authorSig": "11b2fec5736f16608942ff33137f0bee38f19913a2c441d28b63782083ef1e18",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

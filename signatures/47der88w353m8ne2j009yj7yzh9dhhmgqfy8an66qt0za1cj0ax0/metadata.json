@@ -1,0 +1,28 @@
+{
+  "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+  "name": "DueProcess v2 (option-b)",
+  "version": "0.1.23",
+  "versionNumber": 27,
+  "packageId": "e7e31ba8653388b7f5f1676c40edc054",
+  "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776612839000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.23",
+  "sha256": "e7e31ba8653388b7f5f1676c40edc054470afb566ec311ff191ab45338d5966b"
+}

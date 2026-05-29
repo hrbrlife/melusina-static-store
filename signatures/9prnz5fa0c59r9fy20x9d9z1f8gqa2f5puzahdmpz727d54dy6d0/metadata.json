@@ -1,0 +1,31 @@
+{
+  "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
+  "name": "ChainWatch",
+  "version": "0.1.1",
+  "versionNumber": 9,
+  "packageId": "4f2caa3d99dad793d38b7b869e612a71",
+  "shortDescription": "Multi-chain RPC proxy sidecar for cyberteller — stateless, no keys, talks to chain RPCs.",
+  "categories": [
+    "Productivity",
+    "DeveloperTools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/cyberteller",
+  "codeLink": "https://github.com/hrbrlife/cyberteller",
+  "upstreamAuthor": "ChainWatch",
+  "createdAt": 1809475200000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "description": "",
+  "screenshots": [],
+  "license": "Proprietary - AiTX.pro Limited",
+  "marketingVersion": "0.1.1",
+  "sha256": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb"
+}

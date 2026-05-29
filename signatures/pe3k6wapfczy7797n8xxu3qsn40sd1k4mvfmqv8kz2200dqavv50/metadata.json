@@ -1,0 +1,88 @@
+{
+  "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+  "packageId": "82d7c95713a253825ac0379a91f46f68",
+  "name": "MiniGit",
+  "version": "0.2.1",
+  "versionNumber": 8,
+  "shortDescription": "Lightweight Git hosting with per-repo pearl isolation and wallet-rooted clone credentials.",
+  "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches — all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo pearl isolation** — each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** — clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** — all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository pearl in one click**\n- **Push and pull over HTTPS** — clone URL provided automatically\n- **Browse files, commits, and diffs** — in the web UI\n- **Share read-only or read/write access** — via standard Melusina sharing\n- **SQLite-backed** — zero external dependencies\n- **Fully offline-capable** — no CDN or external calls\n- **Role-based access** — viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina — trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
+  "categories": [
+    "Developer Tools"
+  ],
+  "license": "Proprietary",
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/MiniGit",
+  "codeLink": "https://github.com/hrbrlife/MiniGit",
+  "upstreamAuthor": "Gogs Authors + alexeikarp",
+  "createdAt": 1772577065000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "contactEmail": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "codeUrl": "https://github.com/hrbrlife/MiniGit",
+  "screenshots": [
+    {
+      "url": "screenshots/01-repository-browser.png",
+      "caption": "Repository Browser"
+    },
+    {
+      "url": "screenshots/02-clone-and-file-tree.png",
+      "caption": "Clone And File Tree"
+    }
+  ],
+  "permissionVocabulary": [
+    {
+      "name": "view",
+      "title": "View",
+      "description": "Browse repository state, clone, and fetch."
+    },
+    {
+      "name": "edit",
+      "title": "Edit",
+      "description": "Push, mutate refs, write files, and apply patches."
+    },
+    {
+      "name": "admin",
+      "title": "Admin",
+      "description": "Owner-class actions: publish, change default branch, manage repo settings."
+    }
+  ],
+  "roles": [
+    {
+      "name": "admin",
+      "title": "admin",
+      "permissions": [
+        "view",
+        "edit",
+        "admin"
+      ],
+      "verbPhrase": "can read, push, manage settings, and publish"
+    },
+    {
+      "name": "editor",
+      "title": "edit",
+      "permissions": [
+        "view",
+        "edit"
+      ],
+      "verbPhrase": "can clone, fetch, and push",
+      "default": true
+    },
+    {
+      "name": "viewer",
+      "title": "pull only",
+      "permissions": [
+        "view"
+      ],
+      "verbPhrase": "can clone and fetch only"
+    }
+  ],
+  "marketingVersion": "0.2.1",
+  "sha256": "82d7c95713a253825ac0379a91f46f68479e63879dba1566127f9b3a4be421f9"
+}

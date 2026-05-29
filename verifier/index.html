@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07070d" />
+    <title>Verify a Pearl — Melusina Catalog</title>
+    <meta name="description" content="How to independently verify a Melusina app's RELEASE.json against its on-chain Solana ReleaseEntry. Greenfield trust model: zero PGP, Solana-gated, Squads-multisig signed." />
+    <link rel="icon" type="image/svg+xml" href="../icons/melulogo-cyan.svg" />
+    <style>
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html{font-size:17px}
+      body{
+        font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        background:linear-gradient(170deg,#0e0b1f 0%,#1a1040 25%,#2a1550 45%,#251245 60%,#1a1040 78%,#110e24 100%);
+        background-attachment:fixed;
+        color:#e8eafc;
+        min-height:100dvh;
+        line-height:1.7;
+        padding:48px 24px 96px;
+      }
+      main{max-width:780px;margin:0 auto}
+      h1{
+        font-family:'Orbitron','Inter',sans-serif;
+        font-size:34px;font-weight:800;letter-spacing:.02em;
+        background:linear-gradient(135deg,#00e5ff,#ff7eb3);
+        -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+        filter:drop-shadow(0 0 8px rgba(0,229,255,.3));
+        margin-bottom:8px;
+      }
+      .lede{color:#b9b3d6;font-size:15px;margin-bottom:36px;max-width:60ch}
+      h2{
+        font-family:'Orbitron','Inter',sans-serif;
+        font-size:18px;font-weight:700;color:#00e5ff;
+        text-transform:uppercase;letter-spacing:.08em;
+        margin:36px 0 12px;text-shadow:0 0 8px rgba(0,229,255,.35);
+      }
+      h3{font-size:14px;font-weight:700;color:#ff7eb3;margin:20px 0 8px;letter-spacing:.04em;text-transform:uppercase}
+      p{color:#c9c4e0;font-size:15px;margin-bottom:14px}
+      strong{color:#fff;font-weight:600}
+      a{color:#00e5ff;border-bottom:1px solid rgba(0,229,255,.3)}
+      a:hover{color:#ff7eb3;border-bottom-color:#ff7eb3}
+      code,pre{font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace}
+      code{background:rgba(0,229,255,.08);color:#00e5ff;padding:2px 6px;border-radius:2px;font-size:.9em}
+      pre{
+        background:rgba(14,11,30,.65);
+        border:1px solid rgba(0,229,255,.18);
+        border-radius:4px;
+        padding:14px 16px;
+        overflow-x:auto;
+        font-size:13px;line-height:1.55;
+        margin:10px 0 18px;
+      }
+      pre code{background:none;color:#dfe8ff;padding:0}
+      ul{list-style:none;padding:0;margin:0 0 18px}
+      ul li{padding-left:18px;position:relative;margin-bottom:6px;color:#c9c4e0;font-size:14.5px}
+      ul li::before{content:'\25B8';position:absolute;left:0;color:#00e5ff;text-shadow:0 0 4px rgba(0,229,255,.5)}
+      .field-table{
+        width:100%;border-collapse:collapse;font-size:13.5px;
+        margin:6px 0 22px;border:1px solid rgba(192,132,252,.18);border-radius:4px;overflow:hidden;
+      }
+      .field-table th{
+        text-align:left;padding:10px 14px;font-weight:700;color:#00e5ff;
+        background:rgba(0,229,255,.05);border-bottom:1px solid rgba(0,229,255,.15);
+        font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+      }
+      .field-table td{padding:9px 14px;border-bottom:1px solid rgba(192,132,252,.1);color:#c9c4e0;vertical-align:top}
+      .field-table tr:last-child td{border-bottom:none}
+      .field-table td code{font-size:12px}
+      .callout{
+        background:rgba(255,184,108,.06);
+        border-left:3px solid rgba(255,184,108,.55);
+        padding:14px 18px;border-radius:0 4px 4px 0;margin:18px 0;
+        color:#e8d6b8;font-size:14px;
+      }
+      .home-link{
+        display:inline-block;margin-top:40px;padding:10px 18px;
+        font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+        color:#00e5ff;border:1px solid rgba(0,229,255,.4);border-radius:2px;
+      }
+      .home-link:hover{background:rgba(0,229,255,.08)}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Verify a Pearl</h1>
+      <p class="lede">Every app in this catalog ships with a Solana on-chain ReleaseEntry attesting its binary. Independent verification needs no trust in this static site &mdash; the catalog publishes everything required to re-check the chain yourself.</p>
+
+      <h2>Trust model</h2>
+      <p>Each Melusina release is signed by a <strong>Squads multisig vault</strong> (the partner's quorum). The signature lands in a <strong>ReleaseEntry program-derived account</strong> on Solana mainnet, indexed by <code>MasterNftMint</code> + <code>releaseNonce</code>. The entry pins three hashes: <code>appHash</code> (the .spk content), <code>releaseHash</code> (the canonical signing payload), and the <code>authorSig</code> (ed25519 signature over <code>releaseHash</code> by a quorum member).</p>
+      <p>This is the <em>only</em> trust root. There are no PGP keys, no detached metadata signatures, no out-of-band approvals &mdash; legacy <code>.asc</code> files are explicitly rejected at publish time.</p>
+
+      <h2>What the catalog publishes per app</h2>
+      <p>Every entry in <code>apps.json</code> carries an <code>attest</code> block. The full <code>RELEASE.json</code> is mirrored at <code>/attest/&lt;appId&gt;/RELEASE.json</code>; the catalog summary is the public index of those fields.</p>
+      <table class="field-table">
+        <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>schema</code></td><td>Always <code>melusina-release-v1</code>.</td></tr>
+          <tr><td><code>appHash</code></td><td>SHA-256 of the .spk bytes. The installer recomputes this and refuses to install on mismatch.</td></tr>
+          <tr><td><code>releaseHash</code></td><td>SHA-256 of the canonical signing payload (appHash + MasterNftMint + releaseNonce + manifest digest). The signed message.</td></tr>
+          <tr><td><code>releaseNonce</code></td><td>Monotonic counter per app. Replay-resistance for the ReleaseEntry PDA.</td></tr>
+          <tr><td><code>releaseEntryPda</code></td><td>The Solana account address that holds this release on-chain. Look it up on any explorer.</td></tr>
+          <tr><td><code>MasterNftMint</code></td><td>The license NFT that gates this app. Owner = current rights-holder.</td></tr>
+          <tr><td><code>licenseSquadsVault</code></td><td>Squads multisig vault PDA whose members co-signed this release.</td></tr>
+          <tr><td><code>signedAtUnix</code></td><td>Unix timestamp the multisig finalized the release.</td></tr>
+          <tr><td><code>authorSig</code></td><td>ed25519(releaseHash) by a quorum member. The signature you verify.</td></tr>
+          <tr><td><code>quorumPolicy</code></td><td>{threshold, memberCount, multisigPda} &mdash; the rule that was in force at signing time.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Verify with the CLI</h2>
+      <p>The reference verifier is <code>melusina-pearl-tool</code>. Build from <a href="https://github.com/hrbrlife/melusina-attestdeployer-tool">hrbrlife/melusina-attestdeployer-tool</a> or grab a release binary, then:</p>
+      <pre><code># Pull the app's RELEASE.json + the .spk
+curl -sLO https://hrbrlife.github.io/melusina-static_store/attest/&lt;appId&gt;/RELEASE.json
+curl -sLO https://hrbrlife.github.io/melusina-static_store/packages/&lt;packageId&gt;.spk
+
+# Save the matching metadata.json from /signatures/&lt;appId&gt;/metadata.json
+curl -sLO https://hrbrlife.github.io/melusina-static_store/signatures/&lt;appId&gt;/metadata.json
+
+# Verify against the on-chain ReleaseEntry
+melusina-pearl-tool verify-release \
+  --spk &lt;packageId&gt;.spk \
+  --metadata metadata.json \
+  --release-json RELEASE.json \
+  --app-slug &lt;app-slug&gt;</code></pre>
+      <p>Exit 0 = the .spk byte-matches <code>appHash</code>, the <code>releaseHash</code> reproduces from canonical inputs, the <code>authorSig</code> verifies under a current quorum member's pubkey, and the on-chain <code>releaseEntryPda</code> account agrees with all of the above.</p>
+
+      <div class="callout">
+        <strong>Offline mode:</strong> set <code>MELUSINA_ATTEST_OFFLINE=1</code> to skip the on-chain RPC lookup and only validate the local schema + the ed25519 signature. Use this when you have an air-gapped quorum-member pubkey list and don't want to leak the install attempt to a public RPC.
+      </div>
+
+      <h2>Verifying without the CLI</h2>
+      <p>Everything here is plain ed25519 + SHA-256 + Solana account reads. A custom verifier in any language only needs: (1) a Solana RPC client to read <code>releaseEntryPda</code>, (2) ed25519 to check <code>authorSig</code> against <code>releaseHash</code>, (3) SHA-256 to recompute <code>appHash</code> from the .spk. The catalog gives you the inputs; the chain is the oracle.</p>
+
+      <a class="home-link" href="../">&larr; Back to the bazaar</a>
+    </main>
+  </body>
+</html>

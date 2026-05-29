@@ -1,0 +1,31 @@
+{
+  "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
+  "packageId": "25b1b35531ea35209c9c45fa056c5ad9",
+  "name": "OpenSanctions",
+  "version": "0.1.2",
+  "versionNumber": 3,
+  "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
+  "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-app-OpenSanctions",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1779088600000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "0.1.2",
+  "sha256": "25b1b35531ea35209c9c45fa056c5ad974b23cb55f43683255517e9cd5335f13"
+}

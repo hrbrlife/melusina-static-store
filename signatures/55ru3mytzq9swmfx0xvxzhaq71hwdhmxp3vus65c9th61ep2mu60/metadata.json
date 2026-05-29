@@ -1,0 +1,30 @@
+{
+  "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
+  "name": "TeleScreen Hub",
+  "version": "0.0.4",
+  "versionNumber": 6,
+  "packageId": "fab1e16a6a6421db3108504922511ba1",
+  "shortDescription": "Sanctions, adverse media, and blockchain screening sidecar",
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/pr_ninja",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776300000000,
+  "tier": "regular",
+  "domains": [
+    "*"
+  ],
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "marketingVersion": "0.0.4",
+  "sha256": "fab1e16a6a6421db3108504922511ba1910c97406e968beaa8ec36c85e7062e8"
+}

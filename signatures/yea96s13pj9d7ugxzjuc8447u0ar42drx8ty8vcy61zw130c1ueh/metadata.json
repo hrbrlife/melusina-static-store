@@ -1,0 +1,34 @@
+{
+  "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
+  "name": "Vintage Remote Desktop",
+  "version": "1.2.1",
+  "versionNumber": 15,
+  "packageId": "a37f47180828d8ae6b00d1d3a08cb480",
+  "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
+  "description": "",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/vintage-test-dec",
+  "codeLink": "https://github.com/hrbrlife/vintage-test-dec",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776988800000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Proprietary",
+  "screenshots": [],
+  "tier": "regular",
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "1.2.1",
+  "sha256": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88"
+}

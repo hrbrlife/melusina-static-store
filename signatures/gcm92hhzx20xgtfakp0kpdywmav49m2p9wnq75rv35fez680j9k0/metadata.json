@@ -1,0 +1,27 @@
+{
+  "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+  "name": "InstaDAO",
+  "version": "1.0.6",
+  "versionNumber": 57,
+  "packageId": "88aa425d78d78909eed83febbfdbf091",
+  "shortDescription": "Deploy + manage a Solana DAO",
+  "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** — each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** — entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** — cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state — not by any baked-in mint or program.\n- **Optional Utility Token** — mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** — token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** — every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** — optional out-of-band notifications via a Grapple-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place — same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/MELUSINA_token",
+  "codeLink": "https://github.com/hrbrlife/MELUSINA_token",
+  "upstreamAuthor": "Melusina Services US LLC",
+  "createdAt": 1779408000000,
+  "updatedAt": 1779573594862,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "screenshots": [],
+  "sha256": "88aa425d78d78909eed83febbfdbf0913c6fa85bb88644f1a3b92a39dd2613dd"
+}

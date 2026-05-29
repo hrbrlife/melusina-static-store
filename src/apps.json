@@ -4304,10 +4304,10 @@
     },
     {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-      "packageId": "f8549fe803ca85384d7664b693c0abee",
+      "packageId": "58df2f4f52b38058f865677526e0d2b5",
       "name": "OpenSanctions",
-      "version": "0.1.4",
-      "versionNumber": 5,
+      "version": "0.1.5",
+      "versionNumber": 6,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
       "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
@@ -4329,20 +4329,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.4",
-      "sha256": "f8549fe803ca85384d7664b693c0abeebb80819d8112f772650526d1346ee7ea",
+      "marketingVersion": "0.1.5",
+      "sha256": "58df2f4f52b38058f865677526e0d2b5da0b4f87a03f3cbc1b0fa6c77713e6d9",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780090166755,
+      "updatedAt": 1780090782199,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f8549fe803ca85384d7664b693c0abeebb80819d8112f772650526d1346ee7ea",
-        "releaseHash": "d6fbc6b418125408ece2beadab60760ff5049a3b5b4f17cc46336855009bab70",
-        "releaseNonce": "57641fdf71ff27bebac130790424fda38e8253945a2fff72ee75ee56378d6709",
+        "appHash": "58df2f4f52b38058f865677526e0d2b5da0b4f87a03f3cbc1b0fa6c77713e6d9",
+        "releaseHash": "42d536484991af530c0be65fca9241b61a9f91cbf4cee6afafbce4ad147cd141",
+        "releaseNonce": "f9e759a76c2f483098fd66be02caca59efd65eb4e5e9df08f7a79aac95ab513d",
         "releaseEntryPda": "offline-release-entry-msgn23jkp96yrup53t1yv71ens7kpda7",
         "MasterNftMint": "offline-master-nft-msgn23jkp96yrup53t1yv71ens7kpda7",
         "licenseSquadsVault": "offline-license-vault-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "signedAtUnix": 1780090166,
-        "authorSig": "c69b269332f4be527a87b1e49655f67f60f9cd27ef3c5db7549778a4d4d21d3a",
+        "signedAtUnix": 1780090782,
+        "authorSig": "9b9fd2d20c7ce83a6d664441de41ca3b4173b6481514b058d119e6843103f2ff",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

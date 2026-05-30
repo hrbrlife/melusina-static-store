@@ -785,7 +785,8 @@ for app in apps:
     # releaseHash=''), both sides agree this app has no Pearl on-chain release —
     # not a drift. Skip the field comparison.
     canonical_is_offline = canonical.get('$schema') is None and canonical.get('schemaVersion') == 1
-    embedded_is_offline = not attest.get('releaseEntryPda') and not attest.get('releaseHash')
+    _epda = attest.get('releaseEntryPda', '')
+    embedded_is_offline = (not _epda or str(_epda).startswith('offline-')) and not attest.get('releaseHash')
     if canonical_is_offline and embedded_is_offline:
         checked += 1
         continue

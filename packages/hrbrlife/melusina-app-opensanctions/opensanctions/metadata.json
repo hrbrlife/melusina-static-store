@@ -1,6 +1,6 @@
 {
   "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-  "packageId": "216acff9a9ee84be1d70c94b5cb93823",
+  "packageId": "97e9d22dd06549014d029126fe398546",
   "name": "OpenSanctions",
   "version": "0.1.6",
   "versionNumber": 7,
@@ -27,5 +27,5 @@
     "*"
   ],
   "marketingVersion": "0.1.6",
-  "sha256": "216acff9a9ee84be1d70c94b5cb93823c20ed05e6e0e6ab4d290081264312a9c"
+  "sha256": "97e9d22dd06549014d029126fe3985463306496496b5f8c1a8465cd2b61b876c"
 }

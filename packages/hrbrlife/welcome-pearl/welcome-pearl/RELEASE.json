@@ -1,7 +1,7 @@
 {
   "$schema": "melusina-release-v1",
-  "version": "0.1.5",
-  "appHash": "89e586b91cd5c3c57e582362307d7565cb4b01db9fd4aae4229c00a53b10756b",
+  "version": "0.1.6",
+  "appHash": "40f5a4873fc10723cb8375ca25251dd89c08c754aa979712af97e81e6119af36",
   "releaseHash": "2927b541d7233b5449a95a71fcfcf00d814a0d2985099013eeff1a6af5489f99",
   "releaseNonce": "98bbe64ad9566efa02e607a9955336f34c5f3ca2ac8e519d2c2b199373aad984",
   "releaseEntryPda": "offline-release-entry-021x360jnqz798taefscu7r69a0xvvqy",

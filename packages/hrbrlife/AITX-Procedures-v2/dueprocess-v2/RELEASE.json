@@ -8,7 +8,7 @@
   "MasterNftMint": "offline-master-nft-47der88w353m8ne2j009yj7yzh9dhhmg",
   "licenseSquadsVault": "offline-license-vault-47der88w353m8ne2j009yj7yzh9dhhmg",
   "authorSig": "a0e20e7df6c19a042501c737f40837638355ccb6dbbfec585bda2cfe729bae3e",
-  "signedAtUnix": 1780156451,
+  "signedAtUnix": 1780156420,
   "quorumPolicy": {
     "threshold": 1,
     "memberCount": 1,

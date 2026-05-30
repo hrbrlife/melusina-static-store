@@ -57,7 +57,7 @@ else
 fi
 
 # Validate entry shape and resolve app_id / app_hash.
-read -r APP_ID APP_HASH APP_NAME APP_VERSION APP_AUTHOR <<<"$(printf '%s' "$ENTRY_JSON" | python3 -c '
+IFS=$'\t' read -r APP_ID APP_HASH APP_NAME APP_VERSION APP_AUTHOR <<<"$(printf '%s' "$ENTRY_JSON" | python3 -c '
 import json, sys
 e = json.load(sys.stdin)
 required = ("app_id", "app_hash", "app_name", "version", "author")
@@ -65,7 +65,7 @@ missing = [k for k in required if not e.get(k)]
 if missing:
     sys.stderr.write(f"FATAL: entry missing required keys: {missing}\n")
     sys.exit(2)
-print(e["app_id"], e["app_hash"], e["app_name"], e["version"], e["author"])
+print(e["app_id"], e["app_hash"], e["app_name"], e["version"], e["author"], sep="\t")
 ')"
 
 MANIFEST="$MANIFEST" \

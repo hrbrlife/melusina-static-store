@@ -2349,10 +2349,10 @@
     },
     {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "400c686e69447c9c1e2830d1a68a4f49",
+      "packageId": "4a4875b92542a66b88b9f976d14a78af",
       "name": "Creeper",
-      "version": "0.1.3",
-      "versionNumber": 5,
+      "version": "0.1.4",
+      "versionNumber": 6,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -2375,8 +2375,8 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.3",
-      "sha256": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
+      "marketingVersion": "0.1.4",
+      "sha256": "4a4875b92542a66b88b9f976d14a78af00cf164f15d5ad097886e91855698400",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
       "updatedAt": 1780153433453,
       "attest": {
@@ -3527,7 +3527,7 @@
       ],
       "marketingVersion": "0.4.7",
       "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
-      "updatedAt": 1780134163312,
+      "updatedAt": 1780158367209,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9672f236472cadfdb2d3e951fa135a2d85ce6fab28aea75c7817440fdf9a3039",
@@ -3851,9 +3851,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.6",
-      "versionNumber": 8,
-      "packageId": "4a1d4bc8789914cc69fe63581a8995ae",
+      "version": "0.1.4",
+      "versionNumber": 7,
+      "packageId": "dfb068a03c1bfd35194e44d9cfecb443",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3874,8 +3874,8 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.6",
-      "sha256": "4a1d4bc8789914cc69fe63581a8995aee554a8b46578287b9dd482918b5c5e4d",
+      "marketingVersion": "0.1.4",
+      "sha256": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
       "updatedAt": 1780144791797,
       "attest": {
@@ -3899,16 +3899,14 @@
       "screenshots": []
     },
     {
-      "appId": "ny0kpatkzkcq4qsep22pamvhhvp7gm2stcsgc3e1htarkx5nyhuh",
-      "name": "NamedCoin \u2014 Identity Attestation",
+      "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
+      "name": "NamedCoin",
       "version": "0.1.6",
-      "versionNumber": 7,
-      "packageId": "497dbd03c33662184fa84a2f8e9debef",
-      "shortDescription": "Biometric identity attestation \u2014 tilt-to-capture liveness, document OCR, on-chain NFT attestation",
+      "versionNumber": 8,
+      "packageId": "4a1d4bc8789914cc69fe63581a8995ae",
+      "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
-        "identity",
-        "kyc",
-        "attestation"
+        "Productivity"
       ],
       "tier": "regular",
       "domains": [
@@ -3917,7 +3915,7 @@
       "isOpenSource": false,
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/NamedCoin-pearl",
+      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
       "author": {
@@ -3927,12 +3925,12 @@
         "picture": ""
       },
       "marketingVersion": "0.1.6",
-      "sha256": "497dbd03c33662184fa84a2f8e9debef7bab3f9bee18568ff04ac09803c0c2cb",
+      "sha256": "4a1d4bc8789914cc69fe63581a8995aee554a8b46578287b9dd482918b5c5e4d",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1780155758809,
+      "updatedAt": 1780157614933,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "497dbd03c33662184fa84a2f8e9debef7bab3f9bee18568ff04ac09803c0c2cb",
+        "appHash": "4a1d4bc8789914cc69fe63581a8995aee554a8b46578287b9dd482918b5c5e4d",
         "releaseHash": "805a84dd84e2b9ca47b0f5d85fd73de0c1f180411b38b58091f0fce376d04930",
         "releaseNonce": "ac9f828949b5f5f51abe684cf8a178328722e36116d08b0fe1bf78b8ad9b2662",
         "releaseEntryPda": "offline-release-entry-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
@@ -4358,10 +4356,10 @@
     },
     {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-      "packageId": "a833b968d090759d98ed199cc82b7fc2",
+      "packageId": "659edd86414e03b90e5b0e9107c52fbf",
       "name": "OpenSanctions",
-      "version": "0.1.6",
-      "versionNumber": 8,
+      "version": "0.1.7",
+      "versionNumber": 9,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
       "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
@@ -4383,8 +4381,8 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.6",
-      "sha256": "a833b968d090759d98ed199cc82b7fc2ab2f24ad996c119effa9641c0a3b37f6",
+      "marketingVersion": "0.1.7",
+      "sha256": "659edd86414e03b90e5b0e9107c52fbfca1385520b124b86d4fb9232031cd5d7",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
       "updatedAt": 1780153433477,
       "attest": {
@@ -4570,7 +4568,7 @@
         "Productivity",
         "Office"
       ],
-      "isOpenSource": false,
+      "isOpenSource": true,
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/ccash_go_htmx",
       "upstreamAuthor": "Alexei Karpov",
@@ -4587,12 +4585,11 @@
         "*"
       ],
       "marketingVersion": "0.3.66",
-      "sha256": "c2ecef94d4709f5bea8246dd81a1e1a8be662e0dfaeeccb200670737e28feb40",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780155489333,
+      "updatedAt": 1780157871177,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c2ecef94d4709f5bea8246dd81a1e1a8be662e0dfaeeccb200670737e28feb40",
+        "appHash": "c6f9db72825601c5904373a0ccdc02aceedafa929c84d25eb27e25e7194e57af",
         "releaseHash": "2737a62636aa02e4168b93daa38d822e543c521e8442f2f523ad9f316462bc3f",
         "releaseNonce": "de32489fd302a1daf699190f0e555a53e26cdd8d47271c8fbde543b4c7eb2aaf",
         "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",

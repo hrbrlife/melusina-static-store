@@ -415,7 +415,7 @@ rerun_script_as_root() {
     # Probably ran like "curl https://sandstorm.io/install.sh | bash"
     echo "Re-running script as root..."
 
-    exec sudo bash -euo pipefail -c "curl -fs -A $CURL_USER_AGENT https://hrbrlife.github.io/melusina-static_store/update/install.sh | $ENVVARS bash"
+    exec sudo bash -euo pipefail -c "curl -fs -A $CURL_USER_AGENT https://hrbrlife.github.io/melusina-static-store/update/install.sh | $ENVVARS bash"
   elif [ "$(basename $SCRIPT_NAME)" == install.sh ] && [ -e "$0" ]; then
     # Probably ran like "bash install.sh" or "./install.sh".
     echo "Re-running script as root..."
@@ -431,7 +431,7 @@ rerun_script_as_root() {
 Please download a copy and name it 'install.sh' and run that as root, perhaps using sudo. \
 Try this command:
 
-curl https://hrbrlife.github.io/melusina-static_store/update/install.sh > install.sh && sudo bash install.sh"
+curl https://hrbrlife.github.io/melusina-static-store/update/install.sh > install.sh && sudo bash install.sh"
 }
 
 set_umask() {
@@ -1307,7 +1307,7 @@ download_latest_bundle_and_extract_if_needed() {
   # to do a Sandstorm install. We had to stop using "install" because vagrant-spk happens to use
   # &type=install during situations that we do not want to categorize as an attempt by a human to
   # install Sandstorm.
-  BUILD="$(curl -A "$CURL_USER_AGENT" -fs "https://hrbrlife.github.io/melusina-static_store/update/$DEFAULT_UPDATE_CHANNEL")"
+  BUILD="$(curl -A "$CURL_USER_AGENT" -fs "https://hrbrlife.github.io/melusina-static-store/update/$DEFAULT_UPDATE_CHANNEL")"
   BUILD_DIR="sandstorm-${BUILD}"
 
   if [[ ! "$BUILD" =~ ^[0-9]+$ ]]; then
@@ -1317,7 +1317,7 @@ download_latest_bundle_and_extract_if_needed() {
   do-download() {
     rm -rf "${BUILD_DIR}"
     WORK_DIR="$(mktemp -d ./sandstorm-installer.XXXXXXXXXX)"
-    local URL="https://hrbrlife.github.io/melusina-static_store/update/sandstorm-$BUILD.tar.xz"
+    local URL="https://hrbrlife.github.io/melusina-static-store/update/sandstorm-$BUILD.tar.xz"
     echo "Downloading: $URL"
     retryable_curl "$URL" "$WORK_DIR/sandstorm-$BUILD.tar.xz"
     retryable_curl "$URL.sig" "$WORK_DIR/sandstorm-$BUILD.tar.xz.sig"

@@ -302,6 +302,12 @@ apply:
 	@echo "  remote $(PUBLISH_BRANCH) at $$CURRENT_REMOTE — no concurrent push"
 	git push $(REMOTE) $(PUBLISH_BRANCH) --force
 
+	@# --- Mirror publish → gh-pages (GitHub Pages serves gh-pages as the live CDN) ---
+	@# Without this, apply only updates publish and the live CDN (gh-pages) drifts.
+	@# Force is safe: publish is the single source of truth and is rebuilt each apply.
+	@echo "=== apply: mirror $(PUBLISH_BRANCH) → gh-pages ==="
+	git push $(REMOTE) $(PUBLISH_BRANCH):gh-pages --force
+
 	@# --- Cleanup: marker is consumed; require fresh plan next time ---
 	@rm -rf "$(PLAN_DIR)"
 	@echo "=== apply: done (plan dir cleaned up) ==="

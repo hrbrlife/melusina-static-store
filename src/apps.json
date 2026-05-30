@@ -3020,10 +3020,10 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.26",
-      "versionNumber": 30,
-      "packageId": "9159c6e151016c63b3c92595fbb2e54e",
-      "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
+      "version": "0.1.28",
+      "versionNumber": 32,
+      "packageId": "f429990a4a19022f4d7659950611df54",
+      "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
       "categories": [
         "Productivity"
       ],
@@ -3041,24 +3041,24 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.26",
-      "sha256": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
+      "marketingVersion": "0.1.28",
+      "sha256": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780153433249,
+      "updatedAt": 1780156420000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
-        "releaseHash": "0d0486071d3bf4641bccc0e6944c2450baf1cb4ad831a595a532b6662376fe2f",
-        "releaseNonce": "d7200921e18fb8d35233ba7c7d582721",
-        "releaseEntryPda": "AeZyfFcLppGTC2YTwPHfm9zUpumxcmgMuJMoGci7Qq1h",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779790445,
-        "authorSig": "h69Hwr5W6G0GCzHkZ5AaGJoAtJs8Xkfu8TspNOIrfyEK2HkPEkUQhdJX0sLp0nspWB6M6rozCxkOI+b9CARvDQ==",
+        "appHash": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
+        "releaseHash": "46ddb7b8cc2d950cffacb80dbccf8f0e85ae96ea7b2ab747b31f4fae4b3396a2",
+        "releaseNonce": "9f45d73f1e404c64127eb59414a236106b8e7c30d8309909d3926eed7ac51438",
+        "releaseEntryPda": "offline-release-entry-47der88w353m8ne2j009yj7yzh9dhhmg",
+        "MasterNftMint": "offline-master-nft-47der88w353m8ne2j009yj7yzh9dhhmg",
+        "licenseSquadsVault": "offline-license-vault-47der88w353m8ne2j009yj7yzh9dhhmg",
+        "signedAtUnix": 1780156420,
+        "authorSig": "a0e20e7df6c19a042501c737f40837638355ccb6dbbfec585bda2cfe729bae3e",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-47der88w353m8ne2j009yj7yzh9dhhmg"
         }
       },
       "capabilities": null,

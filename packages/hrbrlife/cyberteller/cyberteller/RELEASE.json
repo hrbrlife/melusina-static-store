@@ -1,6 +1,6 @@
 {
   "$schema": "melusina-release-v1",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "appHash": "97e6d6a1a74c7ab452baab8bb6995f290ca4c6145efa23e3fabc23f345109090",
   "releaseHash": "5071471237ad61c03d3a39ec076905214cd5b03ce64bd716642fadc02dac64f0",
   "releaseNonce": "eb70961d4f80334e157db008f7e07009b483b8114b2dcd17a034ce7373410395",

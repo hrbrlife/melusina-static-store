@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "appSlug": "cyberteller",
+  "appName": "cyberteller",
+  "tier": "regular",
+  "pearls": [
+    {
+      "pearlId": "cyberteller",
+      "pearlName": "Wallet",
+      "pearlType": "user-pearl",
+      "purpose": "Personal Solana wallet pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
+      "sidecars": [],
+      "grapple": {
+        "offers": [
+          {
+            "name": "wallet-sign",
+            "interface": "cyberteller.Sign@1",
+            "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction."
+          },
+          {
+            "name": "wallet-pubkey",
+            "interface": "cyberteller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification."
+          }
+        ],
+        "requests": []
+      },
+      "encryption": {
+        "supported": true,
+        "scheme": "AES-256-GCM via grain-crypto-journal envelope; master-key-anchored",
+        "fields": [
+          "Wallet private key",
+          "Transaction history",
+          "Pinned signatures + payload hashes"
+        ]
+      },
+      "roles": {
+        "adminOnly": [
+          {
+            "name": "Rotate wallet key",
+            "purpose": "Master-OTP-gated key rotation; old key archived in audit log."
+          },
+          {
+            "name": "Manage Grapple consumers",
+            "purpose": "Which peer Pearls may claim wallet-sign / wallet-pubkey."
+          }
+        ],
+        "organizationOnly": [],
+        "anyMember": [
+          {
+            "name": "Sign transaction",
+            "purpose": "Standard wallet operation; OTP per high-value sig."
+          },
+          {
+            "name": "View balance",
+            "purpose": "Read-only wallet view."
+          }
+        ]
+      },
+      "authority": {
+        "requires": [],
+        "grants": []
+      },
+      "blockchains": [
+        {
+          "chain": "Solana",
+          "cluster": "devnet",
+          "programs": [
+            {
+              "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+              "label": "license-registry",
+              "calls": [
+                "RegisterReleaseEntry"
+              ]
+            },
+            {
+              "id": "11111111111111111111111111111111",
+              "label": "System Program",
+              "calls": [
+                "transfer"
+              ]
+            },
+            {
+              "id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+              "label": "SPL Token",
+              "calls": [
+                "transfer",
+                "approve"
+              ]
+            }
+          ],
+          "purpose": "Native SOL + SPL transfers + on-chain identity proofs against the license registry."
+        }
+      ],
+      "staticPublishing": {
+        "enabled": false,
+        "via": "",
+        "purpose": ""
+      },
+      "httpOut": {
+        "enabled": false,
+        "via": "none",
+        "purpose": "",
+        "endpoints": []
+      },
+      "apis": {
+        "capnp": [
+          {
+            "name": "cyberteller.Sign@1",
+            "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
+            "roleGate": "anyMember"
+          },
+          {
+            "name": "cyberteller.Pubkey@1",
+            "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification.",
+            "roleGate": "anyMember"
+          }
+        ],
+        "http": []
+      }
+    }
+  ]
+}

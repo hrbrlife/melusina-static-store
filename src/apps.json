@@ -975,7 +975,7 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "97f79a1356b169dbe7a41eb79c9fe095",
+      "packageId": "98dee5baf6a304cb0070ffd45936ae8a",
       "name": "cca.sh Config",
       "version": "0.0.15",
       "versionNumber": 22,
@@ -2401,10 +2401,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.15",
-      "versionNumber": 72,
-      "packageId": "6458ffac67ff74a075e6f7475d06b1de",
-      "sha256": "6458ffac67ff74a075e6f7475d06b1dea73b537f0789298022cd28311c63196f",
+      "version": "0.1.16",
+      "versionNumber": 73,
+      "packageId": "58c45de8c72c6b6588bb3611c7fe1d1d",
+      "sha256": "58c45de8c72c6b6588bb3611c7fe1d1d9940e9265a0017a70f5715fc3154543c",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2425,9 +2425,9 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.15",
+      "marketingVersion": "0.1.16",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780150447481,
+      "updatedAt": 1780155592315,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "97e6d6a1a74c7ab452baab8bb6995f290ca4c6145efa23e3fabc23f345109090",

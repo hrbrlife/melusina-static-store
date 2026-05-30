@@ -1,6 +1,6 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "97f79a1356b169dbe7a41eb79c9fe095",
+  "packageId": "98dee5baf6a304cb0070ffd45936ae8a",
   "name": "cca.sh Config",
   "version": "0.0.15",
   "versionNumber": 22,
@@ -31,5 +31,5 @@
     "*"
   ],
   "marketingVersion": "0.0.15",
-  "sha256": "97f79a1356b169dbe7a41eb79c9fe0953a812db397dc75ecab1c92c65aba8011"
+  "sha256": "98dee5baf6a304cb0070ffd45936ae8a5851921a6a80aa3388e34eb7037ef2e9"
 }

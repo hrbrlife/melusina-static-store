@@ -1,10 +1,10 @@
 {
   "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-  "packageId": "b8b30481bf0f9c22a700b7d66e32dcb8",
+  "packageId": "400c686e69447c9c1e2830d1a68a4f49",
   "name": "Creeper",
   "version": "0.1.3",
-  "versionNumber": 4,
-  "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
+  "versionNumber": 5,
+  "shortDescription": "OSINT consumer grain — search/scrape/handle/contact lookup for the Melusina PSP.",
   "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
   "categories": [
     "Productivity",
@@ -28,5 +28,5 @@
     "*"
   ],
   "marketingVersion": "0.1.3",
-  "sha256": "b8b30481bf0f9c22a700b7d66e32dcb8ec590df298bcefde59df6a9c0bc81bf4"
+  "sha256": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64"
 }

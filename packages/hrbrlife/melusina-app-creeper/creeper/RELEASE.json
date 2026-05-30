@@ -1,14 +1,14 @@
 {
   "$schema": "melusina-release-v1",
   "version": "0.1.3",
-  "appHash": "b8b30481bf0f9c22a700b7d66e32dcb8ec590df298bcefde59df6a9c0bc81bf4",
-  "releaseHash": "f2c2aab6b8f22868dd38d9ad4788646e28c3ee8c2e86a59c6dc9c95b8a7c2d44",
+  "appHash": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
+  "releaseHash": "7b2a82c27b35ddbf0c8c3fe93991b950f38b487ceef3c83bcd31fce022abdb11",
   "releaseNonce": "ac8c08a2f69a1a731b1798131b3550579ec023eeb39a65a6ba39183c84e6494a",
   "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
   "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
   "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
   "authorSig": "1fcb7459b262256674e77882c2c2843be98896d57a20986e6e5d050a24f92bd5",
-  "signedAtUnix": 1780135440,
+  "signedAtUnix": 1780143577,
   "quorumPolicy": {
     "threshold": 1,
     "memberCount": 1,

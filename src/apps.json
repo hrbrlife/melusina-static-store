@@ -1318,8 +1318,8 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.2.9",
-      "sha256": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f",
+      "marketingVersion": "0.4.0",
+      "sha256": "ccf2c55d949a0295f53c0acaf020bba8158979d754a78a20d9abcc06705e59e4",
       "imageId": "171e254c68669c061150533245e42212.png",
       "updatedAt": 1780153433289,
       "attest": {
@@ -1485,10 +1485,10 @@
     },
     {
       "appId": "gyxwadv96vyss1qt05epahsgyn2993y86378hn49jzt6z4ts36x0",
-      "packageId": "6f891ec3dbd22bf62156ce1c39a5e148",
+      "packageId": "e2711bdb4228af04b57c18f058bb3ef2",
       "name": "cca.sh Organization",
-      "version": "0.1.0",
-      "versionNumber": 1,
+      "version": "0.1.3",
+      "versionNumber": 4,
       "shortDescription": "Partner administration relay grain for cca.sh",
       "categories": [
         "Productivity",
@@ -1509,8 +1509,8 @@
       },
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.0",
-      "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
+      "marketingVersion": "0.1.3",
+      "sha256": "e2711bdb4228af04b57c18f058bb3ef2f4209210f76a74f79d02507315f2882a",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
       "updatedAt": 1780153433337,
       "attest": {
@@ -1534,7 +1534,7 @@
     },
     {
       "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "130e0ee82d599de3e93be803c76b0498",
+      "packageId": "587cb4374a820b935e68c5b86247374c",
       "name": "cca.sh Wholesale",
       "version": "0.2.4",
       "versionNumber": 9,
@@ -1559,7 +1559,7 @@
       "screenshots": [],
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.2.4",
-      "sha256": "130e0ee82d599de3e93be803c76b04981cbdafc3204fec55f7ef856a67cdfb7e",
+      "sha256": "587cb4374a820b935e68c5b86247374c70ac0b7de8e435feb3762a443fb16512",
       "imageId": "171e254c68669c061150533245e42212.png",
       "updatedAt": 1780153433341,
       "attest": {
@@ -2596,7 +2596,7 @@
       ],
       "marketingVersion": "0.1.7",
       "appTitle": "Cyberteller Config",
-      "sha256": "7e679266e61b552f66b08710ede204a126fda869667c2397a2f289acefed31d0",
+      "sha256": "205d4f214edc8487b0654d94aa1f6a2aceb39ef9cde62d470b517f41884eff62",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
       "updatedAt": 1780155645293,
       "attest": {
@@ -3900,9 +3900,9 @@
     {
       "appId": "ny0kpatkzkcq4qsep22pamvhhvp7gm2stcsgc3e1htarkx5nyhuh",
       "name": "NamedCoin \u2014 Identity Attestation",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "24f5913f50261338a995559b59fb4349",
+      "version": "0.1.6",
+      "versionNumber": 7,
+      "packageId": "497dbd03c33662184fa84a2f8e9debef",
       "shortDescription": "Biometric identity attestation \u2014 tilt-to-capture liveness, document OCR, on-chain NFT attestation",
       "categories": [
         "identity",
@@ -3925,10 +3925,10 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.0",
-      "sha256": "24f5913f50261338a995559b59fb43498a772ad3dd16255721976f91d723081b",
+      "marketingVersion": "0.1.6",
+      "sha256": "497dbd03c33662184fa84a2f8e9debef7bab3f9bee18568ff04ac09803c0c2cb",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1780153433545,
+      "updatedAt": 1780155758000,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "87be21daa746e28325248818c7eb5ae3044b54586291afdf7ea2de093a344d5c",

@@ -1,9 +1,9 @@
 {
   "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
   "name": "cca.sh Domain Template v2",
-  "version": "0.2.9",
-  "versionNumber": 29,
-  "packageId": "d6778e50e4b7bbd68df45bed6a6b44fb",
+  "version": "0.4.0",
+  "versionNumber": 20,
+  "packageId": "ccf2c55d949a0295f53c0acaf020bba8",
   "shortDescription": "Domain configuration authority for cca.sh grains (option-b build)",
   "description": "The Domain Template v2 grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation. Option-b build with updated configuration schema.",
   "categories": [
@@ -26,6 +26,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.2.9",
-  "sha256": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f"
+  "marketingVersion": "0.4.0",
+  "sha256": "ccf2c55d949a0295f53c0acaf020bba8158979d754a78a20d9abcc06705e59e4"
 }

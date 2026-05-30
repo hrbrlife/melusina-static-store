@@ -1,11 +1,17 @@
 {
-  "schemaVersion": 1,
-  "appId": "ny0kpatkzkcq4qsep22pamvhhvp7gm2stcsgc3e1htarkx5nyhuh",
-  "appName": "NamedCoin — Identity Attestation",
+  "$schema": "melusina-release-v1",
+  "version": "0.1.0",
   "appHash": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
-  "packageId": "543b5847612de0c7ed8e42d18f5bba39",
-  "marketingVersion": "0.1.0",
-  "versionNumber": 1,
-  "mode": "offline",
-  "signedAtUnix": 1748427800
+  "releaseHash": "3f66e970c1176c6d8d0b46236e0cab034976642182b5629f3fa8e6ab5500bb9e",
+  "releaseNonce": "3655f43c15cfbead6bd65425cdfe3026b14b74ea870631d22a9a9bf9db5ca63d",
+  "releaseEntryPda": "offline-release-entry-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+  "MasterNftMint": "offline-master-nft-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+  "licenseSquadsVault": "offline-license-vault-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+  "authorSig": "184caeb53ef7d3e333e6a13119b35de50c0dfe93f1880aaeb8e5e232701ee6e8",
+  "signedAtUnix": 1780131611,
+  "quorumPolicy": {
+    "threshold": 1,
+    "memberCount": 1,
+    "multisigPda": "offline-multisig-ny0kpatkzkcq4qsep22pamvhhvp7gm2s"
+  }
 }

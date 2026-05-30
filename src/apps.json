@@ -2378,7 +2378,7 @@
       "marketingVersion": "0.1.4",
       "sha256": "4a4875b92542a66b88b9f976d14a78af00cf164f15d5ad097886e91855698400",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780153433453,
+      "updatedAt": 1780159004281,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "422179adbb7dff0a281620c97c53389d9e57610b1d4ccdc871d405693f1bdc46",
@@ -2601,18 +2601,18 @@
       "updatedAt": 1780155777897,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "205d4f214edc8487b0654d94aa1f6a2aceb39ef9cde62d470b517f41884eff62",
-        "releaseHash": "2399730728eb9f51189d41721a436ae5db16eaf0828f411aad8a9528086c15b0",
-        "releaseNonce": "70ed2a4581a90ba66a8b7dbd2d9b6969caeb50446c5bda9a7dabedd17e3ff685",
-        "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "MasterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "signedAtUnix": 1780155777,
-        "authorSig": "d730bbec75b1cb98006d599709d8416b97d34fc48b2c10286a898f5271d025b1",
+        "appHash": "a0cc9647588f8bc2d8d23e88e8f1ae6678d1905ba24a3611b31479bdda1c2aec",
+        "releaseHash": "7699004db6afc0ac280a4585e29ec997e92f918978ffbdd6ba35231ee0b697a3",
+        "releaseNonce": "eee268bbe67bbfb8b9ea594f15bb2d23",
+        "releaseEntryPda": "GoLx4L4kFnigsF1GgAbPx9PeSShisQuQdtZswfjSgPbH",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780184838,
+        "authorSig": "7qqHvWAVjJWE0xuIkwI3/TA2FIxq+jjT9O7qVPVcc14y0C6LCx5USRAaQqc69VMwrZZpoaUWT2z3GZoX5RTqAA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -4384,7 +4384,7 @@
       "marketingVersion": "0.1.7",
       "sha256": "659edd86414e03b90e5b0e9107c52fbfca1385520b124b86d4fb9232031cd5d7",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780153433477,
+      "updatedAt": 1780159004333,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "eb712538196b35d7d79b52f9409e720ac5467caa398d9d1016677862f7771fa0",
@@ -4589,18 +4589,18 @@
       "updatedAt": 1780157871177,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c6f9db72825601c5904373a0ccdc02aceedafa929c84d25eb27e25e7194e57af",
-        "releaseHash": "2737a62636aa02e4168b93daa38d822e543c521e8442f2f523ad9f316462bc3f",
-        "releaseNonce": "de32489fd302a1daf699190f0e555a53e26cdd8d47271c8fbde543b4c7eb2aaf",
-        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1780155489,
-        "authorSig": "062f00971fa81c231e1a2dc3a49fffabc288b3c21176a0e528c9ee621ad45ae3",
+        "appHash": "301b248ca07829412399b28ce4c798c0db70c23b5eec437e4e1e5f41b2ff0a37",
+        "releaseHash": "c9ea6c7813f21a5c307cade0f1cbd2d54a24fec7cb07f25fcfffbb151050e87b",
+        "releaseNonce": "f8f27a6ab4975be7fa305652a9117162",
+        "releaseEntryPda": "4yfhNc565V6z7phqTq49YLJMQ69Xrv7XVMED6LrENAvo",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780184773,
+        "authorSig": "jY5diTBlIPCx1F6U6ykgdpgPv4jT7jfbXTnwz0qfRSaFlmNuYdwx40bYlinqXRxz4/Obdp8wdTrU5jNlWvF8DQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null

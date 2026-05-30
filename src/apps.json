@@ -1514,18 +1514,18 @@
       "updatedAt": 1780135269648,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "130e0ee82d599de3e93be803c76b04981cbdafc3204fec55f7ef856a67cdfb7e",
-        "releaseHash": "e4db004c4f19158d552549f25cee092767ad7c9d565dc0280485696c2b155e7a",
-        "releaseNonce": "a90b4fbe5b77b2fcc6f0e502517f214796778e2e03b4b867832d3a44cbee097a",
-        "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "MasterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "signedAtUnix": 1780135269,
-        "authorSig": "d0f4cef70d92a70d0314ac263c6be5aac563fc0d4a3c8e092157548ef6fe3965",
+        "appHash": "9d622a0190aa744d01478a143f49bf11c5473fd1267cd68fe2890f671dcc3c3a",
+        "releaseHash": "97727bb291699ed23373c353610e4ed9d8322e120dc0969e9f75af60efc32f75",
+        "releaseNonce": "2fe6a403f094c720ee063f3a49c2cece",
+        "releaseEntryPda": "9sMDQpf4VyhNVMg8EuUAKJtAUsVixbsWFDWopx8WXnGG",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780143772,
+        "authorSig": "uI3vKb4iL2xCNdEsp8epHQW4TNjvpQfhEmT27uYJ2Gb4LkVS8ussqnCubjQ4aoo+6p1/O3+ikBtjs+oZRuUPDg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-3gd0393f45qrn3evmx4uf4kczvea61wp"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -2299,10 +2299,10 @@
     },
     {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "b8b30481bf0f9c22a700b7d66e32dcb8",
+      "packageId": "400c686e69447c9c1e2830d1a68a4f49",
       "name": "Creeper",
       "version": "0.1.3",
-      "versionNumber": 4,
+      "versionNumber": 5,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -2326,18 +2326,18 @@
         "*"
       ],
       "marketingVersion": "0.1.3",
-      "sha256": "b8b30481bf0f9c22a700b7d66e32dcb8ec590df298bcefde59df6a9c0bc81bf4",
+      "sha256": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780135440464,
+      "updatedAt": 1780143567273,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b8b30481bf0f9c22a700b7d66e32dcb8ec590df298bcefde59df6a9c0bc81bf4",
-        "releaseHash": "f2c2aab6b8f22868dd38d9ad4788646e28c3ee8c2e86a59c6dc9c95b8a7c2d44",
+        "appHash": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
+        "releaseHash": "7b2a82c27b35ddbf0c8c3fe93991b950f38b487ceef3c83bcd31fce022abdb11",
         "releaseNonce": "ac8c08a2f69a1a731b1798131b3550579ec023eeb39a65a6ba39183c84e6494a",
         "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
         "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
         "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "signedAtUnix": 1780135440,
+        "signedAtUnix": 1780143577,
         "authorSig": "1fcb7459b262256674e77882c2c2843be98896d57a20986e6e5d050a24f92bd5",
         "quorumPolicy": {
           "threshold": 1,
@@ -2908,9 +2908,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.25",
-      "versionNumber": 29,
-      "packageId": "c6794a36c726c0095af7947fd6a43650",
+      "version": "0.1.10",
+      "versionNumber": 13,
+      "packageId": "1d29673bf4e643aa51854cf7c2492d9f",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2929,24 +2929,38 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.25",
-      "sha256": "c6794a36c726c0095af7947fd6a436505b3dd2f03537a06fda595bf63eb7b69d",
+      "marketingVersion": "0.1.10",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780141050109,
+      "updatedAt": 1780144264437,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c6794a36c726c0095af7947fd6a436505b3dd2f03537a06fda595bf63eb7b69d",
-        "releaseHash": "9595036a889915cec24f3fe2715155693951210419918a21dc2239a770ceeb68",
-        "releaseNonce": "c4193cd69e141a8d1f9a7d4fd514a9bb52cb249ed4c8bcdd759248e23c29a23c",
-        "releaseEntryPda": "offline-release-entry-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
-        "MasterNftMint": "offline-master-nft-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
-        "licenseSquadsVault": "offline-license-vault-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s",
-        "signedAtUnix": 1780139425,
-        "authorSig": "429af6e56d96ead54a60e9f9b7e14304b59cfb8a3f411a0dfa1c909c14c1f31d",
+        "appHash": "44ad4801c24a281240cc840d8562134d85d3d122d2f7168e9ab69938bd0604f0",
+        "releaseHash": "1b60b43c4573a0a149e89c347a0ead90d836bb06bb33285969229d768432b0c1",
+        "releaseNonce": "5bd3e309b89e886384c3353205039aacaa44ffe55d925be23cdb3d17060ffc6b",
+        "releaseEntryPda": "3LxUbMJZm6QXQgXdEFHtwh4FX9pco2aigTtARC6dJP6v",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779579984,
+        "authorSig": "NAqOofmNOcTQi4jY5nctKqxBra8d0TLPu7/HVSzJP7Jp1My3z2l4aj8tcKjsUyin9UZKLMyE4qEIybPiXAvNBA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-wvgj30uhk0ec4hqsyyustkwp1xvhgc9s"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+          "signatureCount": 3,
+          "signatures": [
+            {
+              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
+              "sigBase58": "2EZAw7ktWfSSh5XbDgr4jiHCBrZbMkmMBK4sBTcJft5RbgverinrfJBcKnF8QwT6YtAVQZLKuN543DLXKzXygJTg"
+            },
+            {
+              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
+              "sigBase58": "2SCgSqGDukB9m5kZRGnQKyJspwqijiqfzE6mDQWeX9GyGkAsD2YBxgfATBr6tcpwo6AxrjFUjq2fonmxj1FPh1WT"
+            },
+            {
+              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+              "sigBase58": "3pgLPCt3NW6Uar7GpATvY7nNJyTPbHcNTYXFq6BdScSQEYjVuC2A1q5UH1pTpEMHACFKuMzfaW6jVNX9PV9xKZUk"
+            }
+          ]
         }
       },
       "capabilities": null,
@@ -2956,9 +2970,9 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.23",
-      "versionNumber": 27,
-      "packageId": "e7e31ba8653388b7f5f1676c40edc054",
+      "version": "0.1.26",
+      "versionNumber": 30,
+      "packageId": "9159c6e151016c63b3c92595fbb2e54e",
       "shortDescription": "DueProcess v0.1.23 \u2014 Reg E error resolution + CFPB complaint tracking + audit hash-chain",
       "categories": [
         "Productivity"
@@ -2977,13 +2991,13 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.23",
-      "sha256": "e7e31ba8653388b7f5f1676c40edc054470afb566ec311ff191ab45338d5966b",
+      "marketingVersion": "0.1.26",
+      "sha256": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1779981823494,
+      "updatedAt": 1780144290449,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "7e11f2d87eb751b74907054be51384c858ea9eb789db645177a371cbaed99ff5",
+        "appHash": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
         "releaseHash": "0d0486071d3bf4641bccc0e6944c2450baf1cb4ad831a595a532b6662376fe2f",
         "releaseNonce": "d7200921e18fb8d35233ba7c7d582721",
         "releaseEntryPda": "AeZyfFcLppGTC2YTwPHfm9zUpumxcmgMuJMoGci7Qq1h",
@@ -4293,10 +4307,10 @@
     },
     {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-      "packageId": "97e9d22dd06549014d029126fe398546",
+      "packageId": "a833b968d090759d98ed199cc82b7fc2",
       "name": "OpenSanctions",
       "version": "0.1.6",
-      "versionNumber": 7,
+      "versionNumber": 8,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
       "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
@@ -4319,23 +4333,23 @@
         "*"
       ],
       "marketingVersion": "0.1.6",
-      "sha256": "97e9d22dd06549014d029126fe3985463306496496b5f8c1a8465cd2b61b876c",
+      "sha256": "a833b968d090759d98ed199cc82b7fc2ab2f24ad996c119effa9641c0a3b37f6",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780135439844,
+      "updatedAt": 1780143545157,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "97e9d22dd06549014d029126fe3985463306496496b5f8c1a8465cd2b61b876c",
-        "releaseHash": "b8686b49018941bee48b84e77d9e6a8db69a5b0e96e11fce0e06d4389294094f",
-        "releaseNonce": "dad6bcbf3b9c04de4c2a068d2139acda330f27ad5cf728fc4e9afd4f9954b999",
-        "releaseEntryPda": "offline-release-entry-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "MasterNftMint": "offline-master-nft-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "licenseSquadsVault": "offline-license-vault-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "signedAtUnix": 1780135439,
-        "authorSig": "1e80afd30d8bf1af8580c7660ac61bc61da2ad654dff37afe318427ad958a79e",
+        "appHash": "eb712538196b35d7d79b52f9409e720ac5467caa398d9d1016677862f7771fa0",
+        "releaseHash": "34cc15947c855969b9b3efd3082b2ec1c21b2319874b3a5c2d7124ec7e603bb5",
+        "releaseNonce": "32a96ab8055db9f67f8b8d71df04ff2a",
+        "releaseEntryPda": "9nHq6sspBeSts63VYNKqLuWvY3TATicEkpnd2fwECZXL",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780143850,
+        "authorSig": "kw+lOtuoZz1PJoBL2F3rq96JZHeKKpz0+sGq09Oi/OMSgZqoC3+h/Yvc95ni0nheD3IWRvVU9GHko7lLPZIsAQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-msgn23jkp96yrup53t1yv71ens7kpda7"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -4495,7 +4509,7 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "3336f86e0f32ddc0930e5d983a88615e",
+      "packageId": "7080b99d3ee8407f0b9543f95e51be53",
       "name": "popaye",
       "version": "0.3.64",
       "versionNumber": 53,
@@ -4522,23 +4536,23 @@
         "*"
       ],
       "marketingVersion": "0.3.64",
-      "sha256": "3336f86e0f32ddc0930e5d983a88615ef22cf565c74335c159235bded4244449",
+      "sha256": "7080b99d3ee8407f0b9543f95e51be534d849519522ee17275953ceef9ab2c19",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780138421973,
+      "updatedAt": 1780143413809,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3336f86e0f32ddc0930e5d983a88615ef22cf565c74335c159235bded4244449",
-        "releaseHash": "679f656c284eb606cba97586e0296d44d0330d8583c8dcda9cbe3770914d99b9",
-        "releaseNonce": "659ba035ab8c4ee0718cb380f4cee2b236329715ab287699fd1ebc0a2a5cb504",
-        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1780138421,
-        "authorSig": "7a46ef701777f270173c68f8708c840f478240975ced6276e8708a4d272a2b34",
+        "appHash": "bbbedcea8eb219c5c14598962c9f054e76d7a3bb40b30ba86370a225f5928022",
+        "releaseHash": "ee7a41667de31240d62f237ffae63bd9e30374053c999cc69c253b7a1fb71810",
+        "releaseNonce": "b6cb09292be3ab94b907496ed0db1c8e",
+        "releaseEntryPda": "9VXDvirG7x2oGXEcFVjZJNnYf7V24JMfZX2CJ8owEoMf",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780143730,
+        "authorSig": "q4r+A2B+ZWrZPVsTpfK7ZPlX1NHG8dI00I+3steqb7W+M+my5uS4JSKUuyzbS/RrblF2DkPHxonSA0wgoEYcBg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null
@@ -5318,10 +5332,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome pearl",
-      "version": "0.1.5",
-      "versionNumber": 6,
-      "packageId": "89e586b91cd5c3c57e582362307d7565",
-      "sha256": "89e586b91cd5c3c57e582362307d7565cb4b01db9fd4aae4229c00a53b10756b",
+      "version": "0.1.6",
+      "versionNumber": 7,
+      "packageId": "40f5a4873fc10723cb8375ca25251dd8",
+      "sha256": "40f5a4873fc10723cb8375ca25251dd89c08c754aa979712af97e81e6119af36",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -5342,12 +5356,12 @@
       "description": "Welcome pearl is a multi-tenant visitor intake pearl for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account pearl in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "Proprietary",
-      "marketingVersion": "0.1.5",
+      "marketingVersion": "0.1.6",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780135175736,
+      "updatedAt": 1780144350037,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "89e586b91cd5c3c57e582362307d7565cb4b01db9fd4aae4229c00a53b10756b",
+        "appHash": "40f5a4873fc10723cb8375ca25251dd89c08c754aa979712af97e81e6119af36",
         "releaseHash": "2927b541d7233b5449a95a71fcfcf00d814a0d2985099013eeff1a6af5489f99",
         "releaseNonce": "98bbe64ad9566efa02e607a9955336f34c5f3ca2ac8e519d2c2b199373aad984",
         "releaseEntryPda": "offline-release-entry-021x360jnqz798taefscu7r69a0xvvqy",

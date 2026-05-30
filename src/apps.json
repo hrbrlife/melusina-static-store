@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "38240cbad65d71f4e7af47ff204ad34e",
+      "packageId": "f8b9f972fa8312047e861381f8b57092",
       "name": "AiLagoon",
-      "version": "0.7.14",
-      "versionNumber": 22,
+      "version": "0.7.15",
+      "versionNumber": 23,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
       "categories": [
@@ -39,10 +39,10 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.7.14",
-      "sha256": "38240cbad65d71f4e7af47ff204ad34ef986d20ae607bb97820f5d0840e3c2c4",
+      "marketingVersion": "0.7.15",
+      "sha256": "f8b9f972fa8312047e861381f8b57092c031b3e60c4dcf88512995e0eba37a8c",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1779982614962,
+      "updatedAt": 1780149276565,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "37f96ab38c3346e02e8782cdb88bfc22ae09b7ad6698a53d609ae10e638639e5",
@@ -1010,18 +1010,18 @@
       "updatedAt": 1780135420548,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "97f79a1356b169dbe7a41eb79c9fe0953a812db397dc75ecab1c92c65aba8011",
-        "releaseHash": "7acafd02d6c84e0d670e283a804d9f19fa2b22df7ad73895fba870cdb0ce8f2f",
-        "releaseNonce": "83624c3d00c03371cf01b765907a0c410b8c68b8583be0f71a9c13c5a7e3fb18",
-        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "MasterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
-        "signedAtUnix": 1780135420,
-        "authorSig": "b33ff1dfbc0024d88a92a79220038342652af3429f5457959e450844dae10279",
+        "appHash": "062ca6306cb965e3c45b6d8ca324b14d080b1e7bed6efbae408eedb6698a9ccb",
+        "releaseHash": "6378482df883f4d5f792dce96e00286320e9b59e2465021105177ff6af374e59",
+        "releaseNonce": "c3c11be616231a6fc7775d17efc69735",
+        "releaseEntryPda": "FhQyZxLj1hYf7EGVXLuxShk81WrZCyqXDSkbT2E67zLd",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780148606,
+        "authorSig": "//RPhx6FkzKmMFqCiLWefluFWkwzK96TB345O8pj6J50VEO5nE3Mrv/x1JufME17/av1H0Lw0tpyC9TaOk/ACw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -1323,16 +1323,20 @@
       "imageId": "171e254c68669c061150533245e42212.png",
       "updatedAt": 1780145380553,
       "attest": {
-        "schema": "",
-        "appHash": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f",
-        "releaseHash": "",
-        "releaseNonce": "",
-        "releaseEntryPda": "offline-release-entry-9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
+        "schema": "melusina-release-v1",
+        "appHash": "a639a01270f2240664075ae9f62591fa83c7ab06468b498a0f865e1c7a382914",
+        "releaseHash": "2cec5b4db4b7bad1c641a737c76629ed01c57f31e68cc27a30c32d69f48b7b75",
+        "releaseNonce": "bbc89a0e66beac90841aa44fdc842e4a",
+        "releaseEntryPda": "5oLkjewh73f5aSunig9UuazMxRZQ6VHjN5qiNnAzRvKQ",
         "MasterNftMint": "",
-        "licenseSquadsVault": "",
-        "signedAtUnix": 0,
-        "authorSig": "",
-        "quorumPolicy": {}
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780148710,
+        "authorSig": "kFDCcHsdCaREfWK9B1E5X2abJ1M5RAbcEedo1NySrOF4pDPFHW/XDisIJI9WtpIzbPpD5LYSymcsYrPJOcB1Bw==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
       },
       "capabilities": null,
       "screenshots": []
@@ -2377,18 +2381,18 @@
       "updatedAt": 1780143567273,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
-        "releaseHash": "7b2a82c27b35ddbf0c8c3fe93991b950f38b487ceef3c83bcd31fce022abdb11",
-        "releaseNonce": "ac8c08a2f69a1a731b1798131b3550579ec023eeb39a65a6ba39183c84e6494a",
-        "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "signedAtUnix": 1780143577,
-        "authorSig": "1fcb7459b262256674e77882c2c2843be98896d57a20986e6e5d050a24f92bd5",
+        "appHash": "422179adbb7dff0a281620c97c53389d9e57610b1d4ccdc871d405693f1bdc46",
+        "releaseHash": "bc0082db51bec1a581061a99effae7c0f948032c0c4d622dc2ba5acfc5820f64",
+        "releaseNonce": "84f59c878e3a51d676493550eb17c5ec",
+        "releaseEntryPda": "DJx9V9pHcDDjkAbDesdh1GdLbykdLNm7RLNVD42my1wA",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780148775,
+        "authorSig": "vPrzHC7Lby0grkpIw3puLSZNJRH5YVsQXjWXihBuPL0T/mCGJWHP2shj+A7IL2ydy9hhNBi+OoIksOZeNlHaCw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-pm1afskzvf2vfasvxhwktk0u0sq7um09"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -2398,9 +2402,9 @@
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
       "version": "0.1.15",
-      "versionNumber": 71,
-      "packageId": "53e23ca7624bd42fd8570d334aa4c22c",
-      "sha256": "53e23ca7624bd42fd8570d334aa4c22c35bc80873c6621462d2ae14145d53528",
+      "versionNumber": 72,
+      "packageId": "6458ffac67ff74a075e6f7475d06b1de",
+      "sha256": "6458ffac67ff74a075e6f7475d06b1dea73b537f0789298022cd28311c63196f",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2423,17 +2427,17 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.15",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780145622333,
+      "updatedAt": 1780149779681,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1656c57da7371335fe2387d15a0150c51f23c6047efdb2e2ea39aa8e668cba1a",
-        "releaseHash": "3bd673590461244798e619961568d6fc0df15cbaaad6366b35eb43f8f3219763",
-        "releaseNonce": "c3c7cab19ad15ebccbf3c591a559030c",
-        "releaseEntryPda": "GQZaWsUV6iCrNwqR4s3DiJVE7x2FJr9LZb4g2yBhpUse",
+        "appHash": "428e5ab11b44266408e7466838234f26edd5dd890637b4610ac6c717b8ef2118",
+        "releaseHash": "51171983f7c442aaaf9aff9de4b2ae662db1ca8ce99b40dbb53fef754856a797",
+        "releaseNonce": "f0cbca560f9e46027dba9804dafe84ed",
+        "releaseEntryPda": "B1s5DDoCTHEW5Q9QE8MDE5quDdLgft7HPDA8RR9Tid3D",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780145806,
-        "authorSig": "xl9htU4vaKIpwc8iH6mZ1vy8DCMNQSRA9Lxm80QEjYWh4b6y93WFnHjRuZpradZkD/hG0vQGHw/VvPt2dhSyBA==",
+        "signedAtUnix": 1780150158,
+        "authorSig": "ouuvY071F2LqEIcDQR8Gj1jeMen5iWaoaIqR6uxSslFEqj5Aj4R3WG7t3Xjl1rrNrk+3QiuN04VSlxS5FpekDQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3927,18 +3931,18 @@
       "updatedAt": 1780136668841,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "24f5913f50261338a995559b59fb43498a772ad3dd16255721976f91d723081b",
-        "releaseHash": "ea02a949c0484487e0f1f0b00371564643cf1679c94195ebb43714deaf40d828",
-        "releaseNonce": "96047f598bce6c68be2fc15b731a41d568c760d548585036e109bed4446e0298",
-        "releaseEntryPda": "offline-release-entry-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
-        "MasterNftMint": "offline-master-nft-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
-        "licenseSquadsVault": "offline-license-vault-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
-        "signedAtUnix": 1780136668,
-        "authorSig": "88fea9f9d81d86fd5bc156fa71b3db66e3e8782d7c2887d2d51ad831180d1680",
+        "appHash": "87be21daa746e28325248818c7eb5ae3044b54586291afdf7ea2de093a344d5c",
+        "releaseHash": "52e52d5951a07f68f443118989382457ef8f37858266f649ea66c51a22ef9fc8",
+        "releaseNonce": "00b8bd476493e464f94a7854ff74e5c5",
+        "releaseEntryPda": "FehfrEdvAQpfkNkyfByDzoq1yNfRVjf2k7xm4sUXsiY",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780148839,
+        "authorSig": "+tvZ7a8u0PJcZoBhH2Yq9DXlS7mSePOMshNHtn0vQitQxrU1NVmqwedyMlgPhA1hPds87W3KXsUImOlIaYvbAg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-ny0kpatkzkcq4qsep22pamvhhvp7gm2s"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -4555,7 +4559,7 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "7080b99d3ee8407f0b9543f95e51be53",
+      "packageId": "147a296205fe501c9945abe06cc18eaa",
       "name": "popaye",
       "version": "0.3.64",
       "versionNumber": 53,
@@ -4582,19 +4586,19 @@
         "*"
       ],
       "marketingVersion": "0.3.64",
-      "sha256": "7080b99d3ee8407f0b9543f95e51be534d849519522ee17275953ceef9ab2c19",
+      "sha256": "147a296205fe501c9945abe06cc18eaabf9504ec1832e50de52f96d4c67ec63d",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780143413809,
+      "updatedAt": 1780148824653,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bbbedcea8eb219c5c14598962c9f054e76d7a3bb40b30ba86370a225f5928022",
-        "releaseHash": "ee7a41667de31240d62f237ffae63bd9e30374053c999cc69c253b7a1fb71810",
-        "releaseNonce": "b6cb09292be3ab94b907496ed0db1c8e",
-        "releaseEntryPda": "9VXDvirG7x2oGXEcFVjZJNnYf7V24JMfZX2CJ8owEoMf",
-        "MasterNftMint": "",
+        "appHash": "48402cf106432722c10726d6ef9365eb36a4246c0561723422eebc4facc51a08",
+        "releaseHash": "b01f0d5aef7713511f8ec7037ba16fff057536922df1f437411ccd8886d60c96",
+        "releaseNonce": "23a97b7491595efd33980961e39ce9d65c279a21c038bff3744bdd970fac3e02",
+        "releaseEntryPda": "2veB8rzYvdoWYkagLR41qTBCo3JfFTbxFpBEehohQ6Td",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780143730,
-        "authorSig": "q4r+A2B+ZWrZPVsTpfK7ZPlX1NHG8dI00I+3steqb7W+M+my5uS4JSKUuyzbS/RrblF2DkPHxonSA0wgoEYcBg==",
+        "signedAtUnix": 1780148895,
+        "authorSig": "IDHmVJ63A2zDEuv2pqjIEf29dXo2aUtf9FLL8Pprfska9NEP74Uoi1j7/J8NADU8Dy1U49BAxfHBljidnz2sDw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -5407,18 +5411,18 @@
       "updatedAt": 1780144350037,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "40f5a4873fc10723cb8375ca25251dd89c08c754aa979712af97e81e6119af36",
-        "releaseHash": "2927b541d7233b5449a95a71fcfcf00d814a0d2985099013eeff1a6af5489f99",
-        "releaseNonce": "98bbe64ad9566efa02e607a9955336f34c5f3ca2ac8e519d2c2b199373aad984",
-        "releaseEntryPda": "offline-release-entry-021x360jnqz798taefscu7r69a0xvvqy",
-        "MasterNftMint": "offline-master-nft-021x360jnqz798taefscu7r69a0xvvqy",
-        "licenseSquadsVault": "offline-license-vault-021x360jnqz798taefscu7r69a0xvvqy",
-        "signedAtUnix": 1780135175,
-        "authorSig": "899a01e7eefc46c060d1b790612f752d6305078c81aecec4cfe8aeefa7feff03",
+        "appHash": "34b30034483a975d4c5c12fb9fcdb2ef6f4302103a627154251d5d215d02deed",
+        "releaseHash": "a62dfb642c5b296bd2f039411ba4a54a7e61f6cf1d9d9dcf322b78b83e1fd79e",
+        "releaseNonce": "108a7140ae55b8ed1a7f279b8e35f629",
+        "releaseEntryPda": "8UmaX2AoJhY1SQEWaaHWQdSh59TA9B6eMnuGWtGxf8dy",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780148656,
+        "authorSig": "N3vT+yQWE0e399sdj2a3I6QmhvPcraFNwSEKJQvZRJjmzyhYfezXmP3y/Rl0ulhruYRBQWUtUOJyUIidoPB5Ag==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-021x360jnqz798taefscu7r69a0xvvqy"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null

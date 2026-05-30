@@ -2958,9 +2958,9 @@
     {
       "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
       "name": "DueProcess",
-      "version": "0.1.10",
-      "versionNumber": 13,
-      "packageId": "1d29673bf4e643aa51854cf7c2492d9f",
+      "version": "0.1.28",
+      "versionNumber": 32,
+      "packageId": "f429990a4a19022f4d7659950611df54",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2979,13 +2979,14 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.10",
+      "marketingVersion": "0.1.28",
+      "sha256": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780144264437,
+      "updatedAt": 1780156649065,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "44ad4801c24a281240cc840d8562134d85d3d122d2f7168e9ab69938bd0604f0",
-        "releaseHash": "1b60b43c4573a0a149e89c347a0ead90d836bb06bb33285969229d768432b0c1",
+        "appHash": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
+        "releaseHash": "46ddb7b8cc2d950cffacb80dbccf8f0e85ae96ea7b2ab747b31f4fae4b3396a2",
         "releaseNonce": "5bd3e309b89e886384c3353205039aacaa44ffe55d925be23cdb3d17060ffc6b",
         "releaseEntryPda": "3LxUbMJZm6QXQgXdEFHtwh4FX9pco2aigTtARC6dJP6v",
         "MasterNftMint": "",
@@ -3014,7 +3015,7 @@
         }
       },
       "capabilities": null,
-      "description": "DueProcess is the Station grain that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
+      "description": "",
       "screenshots": []
     },
     {
@@ -3044,7 +3045,7 @@
       "marketingVersion": "0.1.28",
       "sha256": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780156420000,
+      "updatedAt": 1780156451401,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",

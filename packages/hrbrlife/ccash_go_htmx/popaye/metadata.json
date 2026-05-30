@@ -1,6 +1,6 @@
 {
   "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-  "packageId": "18250f3c9f109860308b450f1f8fe3e9",
+  "packageId": "3336f86e0f32ddc0930e5d983a88615e",
   "name": "popaye",
   "version": "0.3.64",
   "versionNumber": 53,
@@ -28,5 +28,5 @@
     "*"
   ],
   "marketingVersion": "0.3.64",
-  "sha256": "18250f3c9f109860308b450f1f8fe3e9b1f6ccdc1f7c5f9cfab67b48a9441a44"
+  "sha256": "3336f86e0f32ddc0930e5d983a88615ef22cf565c74335c159235bded4244449"
 }

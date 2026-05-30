@@ -42,7 +42,7 @@
       "marketingVersion": "0.7.15",
       "sha256": "f8b9f972fa8312047e861381f8b57092c031b3e60c4dcf88512995e0eba37a8c",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1780149276565,
+      "updatedAt": 1780153433273,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "37f96ab38c3346e02e8782cdb88bfc22ae09b7ad6698a53d609ae10e638639e5",
@@ -1007,21 +1007,21 @@
       "marketingVersion": "0.0.15",
       "sha256": "98dee5baf6a304cb0070ffd45936ae8a5851921a6a80aa3388e34eb7037ef2e9",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1780135420548,
+      "updatedAt": 1780155574805,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "062ca6306cb965e3c45b6d8ca324b14d080b1e7bed6efbae408eedb6698a9ccb",
-        "releaseHash": "6378482df883f4d5f792dce96e00286320e9b59e2465021105177ff6af374e59",
-        "releaseNonce": "c3c11be616231a6fc7775d17efc69735",
-        "releaseEntryPda": "FhQyZxLj1hYf7EGVXLuxShk81WrZCyqXDSkbT2E67zLd",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780148606,
-        "authorSig": "//RPhx6FkzKmMFqCiLWefluFWkwzK96TB345O8pj6J50VEO5nE3Mrv/x1JufME17/av1H0Lw0tpyC9TaOk/ACw==",
+        "appHash": "97f79a1356b169dbe7a41eb79c9fe0953a812db397dc75ecab1c92c65aba8011",
+        "releaseHash": "7acafd02d6c84e0d670e283a804d9f19fa2b22df7ad73895fba870cdb0ce8f2f",
+        "releaseNonce": "83624c3d00c03371cf01b765907a0c410b8c68b8583be0f71a9c13c5a7e3fb18",
+        "releaseEntryPda": "offline-release-entry-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "MasterNftMint": "offline-master-nft-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "licenseSquadsVault": "offline-license-vault-6gdgveudrer5a61hp8qkmxcn89wyce5u",
+        "signedAtUnix": 1780135420,
+        "authorSig": "b33ff1dfbc0024d88a92a79220038342652af3429f5457959e450844dae10279",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-6gdgveudrer5a61hp8qkmxcn89wyce5u"
         }
       },
       "capabilities": {
@@ -1176,7 +1176,7 @@
       "marketingVersion": "0.4.0",
       "sha256": "4efebbbd4f788ffa04f88079d034a251ad6f4720fac8e57f626f9352c56096db",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1779981823558,
+      "updatedAt": 1780153433281,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "077624509239f8a9a001d172ee4b74f92c91e4d9a946a5cdee0becb1d4bd1439",
@@ -1294,9 +1294,9 @@
     {
       "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
       "name": "cca.sh Domain Template v2",
-      "version": "0.2.9",
-      "versionNumber": 29,
-      "packageId": "d6778e50e4b7bbd68df45bed6a6b44fb",
+      "version": "0.4.0",
+      "versionNumber": 20,
+      "packageId": "ccf2c55d949a0295f53c0acaf020bba8",
       "shortDescription": "Domain configuration authority for cca.sh grains (option-b build)",
       "description": "The Domain Template v2 grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation. Option-b build with updated configuration schema.",
       "categories": [
@@ -1321,7 +1321,7 @@
       "marketingVersion": "0.2.9",
       "sha256": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780145380553,
+      "updatedAt": 1780153433289,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a639a01270f2240664075ae9f62591fa83c7ab06468b498a0f865e1c7a382914",
@@ -1512,7 +1512,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1779981823590,
+      "updatedAt": 1780153433337,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "0357961a34eb0219b290a7d661214cca99bc00a84b3427ba009b129bd630dd10",
@@ -1561,7 +1561,7 @@
       "marketingVersion": "0.2.4",
       "sha256": "130e0ee82d599de3e93be803c76b04981cbdafc3204fec55f7ef856a67cdfb7e",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780135269648,
+      "updatedAt": 1780153433341,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9d622a0190aa744d01478a143f49bf11c5473fd1267cd68fe2890f671dcc3c3a",
@@ -1721,7 +1721,7 @@
       "marketingVersion": "0.1.1",
       "sha256": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779981823622,
+      "updatedAt": 1780153433373,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -2378,7 +2378,7 @@
       "marketingVersion": "0.1.3",
       "sha256": "400c686e69447c9c1e2830d1a68a4f497ecd7710db32945fac996cc83e2adb64",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780143567273,
+      "updatedAt": 1780153433453,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "422179adbb7dff0a281620c97c53389d9e57610b1d4ccdc871d405693f1bdc46",
@@ -2427,7 +2427,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.16",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780155592315,
+      "updatedAt": 1780155528493,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "97e6d6a1a74c7ab452baab8bb6995f290ca4c6145efa23e3fabc23f345109090",
@@ -2573,7 +2573,7 @@
       "name": "Cyberteller Config",
       "version": "0.1.7",
       "versionNumber": 16,
-      "packageId": "7e679266e61b552f66b08710ede204a1",
+      "packageId": "205d4f214edc8487b0654d94aa1f6a2a",
       "shortDescription": "Cyberteller install-admin (boot env source)",
       "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
@@ -2598,21 +2598,21 @@
       "appTitle": "Cyberteller Config",
       "sha256": "7e679266e61b552f66b08710ede204a126fda869667c2397a2f289acefed31d0",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779981897590,
+      "updatedAt": 1780155645293,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3ece42539f092f0fa5c602c2dede07f0c2138b87352d636d6f8e8d2b5c4eac5f",
-        "releaseHash": "2ca1c4750316b8cec6eafd82ae21055f6375599e06941dce4788ca7e3e354fd5",
-        "releaseNonce": "912c3d82159127e8510ef06bf3dc694f",
-        "releaseEntryPda": "BQRpv5Dg73PuYx5pf4bwE2YUuQVzHzLFkBBq7gUAxX8j",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779982444,
-        "authorSig": "Q/UNaoujpsR2gPemDFhXL6oRLFYz82sokbxJlaaqrEHUpGi9bttqu1QcDPp0KKZRybviduAR022kv2PnWHtJAg==",
+        "appHash": "200495f4707bdf52c09f4c741cd48777007ece3e821a96e4e99399f900520b63",
+        "releaseHash": "4fab1e5125517a3137f9655e1ccff4899eb0dd3e7e0868eb00e2afd64342f529",
+        "releaseNonce": "8d338bdeac1d408540148ed997359cf5f80f47eb743f7b6dd0a671170c43d6bf",
+        "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "MasterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "signedAtUnix": 1779982210,
+        "authorSig": "1976f34d702a4145bd5ffbd4530e9d2b76a4685e1e72b2831d6f084cb502665b",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
         }
       },
       "capabilities": {
@@ -3044,7 +3044,7 @@
       "marketingVersion": "0.1.26",
       "sha256": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780144290449,
+      "updatedAt": 1780153433249,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
@@ -3099,7 +3099,7 @@
       "marketingVersion": "0.2.3",
       "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1779981823750,
+      "updatedAt": 1780153433433,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -3928,7 +3928,7 @@
       "marketingVersion": "0.1.0",
       "sha256": "24f5913f50261338a995559b59fb43498a772ad3dd16255721976f91d723081b",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1780136668841,
+      "updatedAt": 1780153433545,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "87be21daa746e28325248818c7eb5ae3044b54586291afdf7ea2de093a344d5c",
@@ -4385,7 +4385,7 @@
       "marketingVersion": "0.1.6",
       "sha256": "a833b968d090759d98ed199cc82b7fc2ab2f24ad996c119effa9641c0a3b37f6",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780143545157,
+      "updatedAt": 1780153433477,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "eb712538196b35d7d79b52f9409e720ac5467caa398d9d1016677862f7771fa0",
@@ -4588,21 +4588,21 @@
       "marketingVersion": "0.3.65",
       "sha256": "c6f9db72825601c5904373a0ccdc02aceedafa929c84d25eb27e25e7194e57af",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780148824653,
+      "updatedAt": 1780155489333,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "48402cf106432722c10726d6ef9365eb36a4246c0561723422eebc4facc51a08",
-        "releaseHash": "b01f0d5aef7713511f8ec7037ba16fff057536922df1f437411ccd8886d60c96",
-        "releaseNonce": "23a97b7491595efd33980961e39ce9d65c279a21c038bff3744bdd970fac3e02",
-        "releaseEntryPda": "2veB8rzYvdoWYkagLR41qTBCo3JfFTbxFpBEehohQ6Td",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780148895,
-        "authorSig": "IDHmVJ63A2zDEuv2pqjIEf29dXo2aUtf9FLL8Pprfska9NEP74Uoi1j7/J8NADU8Dy1U49BAxfHBljidnz2sDw==",
+        "appHash": "60f9e465b9831a76665272cbc237349a8fcff651c79c5a84c9863c264b2dcff7",
+        "releaseHash": "6e3a57f5cd5003a90fbdfbabb46d447855d70268015e1c077e93c5374ef574ba",
+        "releaseNonce": "14b3962e51e345c442468f6a61c33daa3ea8d13b862d07b0fcaa9f2163661c19",
+        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
+        "signedAtUnix": 1779773732,
+        "authorSig": "c6c3a17fadf9d7ec47afb98fea41befc7942271af35683d3a25d494381360efc",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
         }
       },
       "capabilities": null
@@ -4844,7 +4844,7 @@
       "marketingVersion": "2.1.2",
       "sha256": "9c5060f77122fced9176401e206d1dfd0b7eccd8231c66c21591dde5207d1a39",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1779981824570,
+      "updatedAt": 1780153433917,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -4987,7 +4987,7 @@
       "marketingVersion": "0.0.6",
       "sha256": "caf67e1d51f2b60a45a99b8f22e45458eb5954e6f8674c5a0de4fa59801f6ad4",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1780079996370,
+      "updatedAt": 1780153433641,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d4f9520e9758e37c7becd9d2ab3721c580ac92578c826a85d78028bc8980252c",
@@ -5147,7 +5147,7 @@
       "license": "Proprietary",
       "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1779981823830,
+      "updatedAt": 1780153433505,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -5290,7 +5290,7 @@
       "marketingVersion": "1.2.1",
       "sha256": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1779981824622,
+      "updatedAt": 1780153433969,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -5408,7 +5408,7 @@
       "license": "Proprietary",
       "marketingVersion": "0.1.6",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780144350037,
+      "updatedAt": 1780153433993,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "34b30034483a975d4c5c12fb9fcdb2ef6f4302103a627154251d5d215d02deed",

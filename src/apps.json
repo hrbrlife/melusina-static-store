@@ -3851,9 +3851,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.4",
-      "versionNumber": 7,
-      "packageId": "dfb068a03c1bfd35194e44d9cfecb443",
+      "version": "0.1.6",
+      "versionNumber": 8,
+      "packageId": "4a1d4bc8789914cc69fe63581a8995ae",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3874,8 +3874,8 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.4",
-      "sha256": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
+      "marketingVersion": "0.1.6",
+      "sha256": "4a1d4bc8789914cc69fe63581a8995aee554a8b46578287b9dd482918b5c5e4d",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
       "updatedAt": 1780144791797,
       "attest": {

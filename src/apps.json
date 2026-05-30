@@ -4560,10 +4560,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "c6f9db72825601c5904373a0ccdc02ac",
+      "packageId": "c2ecef94d4709f5bea8246dd81a1e1a8",
       "name": "popaye",
-      "version": "0.3.65",
-      "versionNumber": 54,
+      "version": "0.3.66",
+      "versionNumber": 55,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4586,13 +4586,13 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.65",
-      "sha256": "c6f9db72825601c5904373a0ccdc02aceedafa929c84d25eb27e25e7194e57af",
+      "marketingVersion": "0.3.66",
+      "sha256": "c2ecef94d4709f5bea8246dd81a1e1a8be662e0dfaeeccb200670737e28feb40",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
       "updatedAt": 1780155489333,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c6f9db72825601c5904373a0ccdc02aceedafa929c84d25eb27e25e7194e57af",
+        "appHash": "c2ecef94d4709f5bea8246dd81a1e1a8be662e0dfaeeccb200670737e28feb40",
         "releaseHash": "2737a62636aa02e4168b93daa38d822e543c521e8442f2f523ad9f316462bc3f",
         "releaseNonce": "de32489fd302a1daf699190f0e555a53e26cdd8d47271c8fbde543b4c7eb2aaf",
         "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",

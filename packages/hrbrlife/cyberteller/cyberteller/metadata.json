@@ -2,29 +2,12 @@
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "cyberteller",
   "version": "0.1.15",
-  "versionNumber": 71,
-  "packageId": "53e23ca7624bd42fd8570d334aa4c22c",
-  "sha256": "53e23ca7624bd42fd8570d334aa4c22c35bc80873c6621462d2ae14145d53528",
-  "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
-  "categories": [
-    "Productivity"
-  ],
-  "isOpenSource": false,
-  "webLink": "https://github.com/hrbrlife/cyberteller",
-  "codeLink": "https://github.com/hrbrlife/cyberteller",
-  "upstreamAuthor": "cyberteller",
-  "createdAt": 1776299124093,
-  "author": {
-    "name": "alexeikarp",
-    "githubUsername": "hrbrlife",
-    "keybaseUsername": "",
-    "twitterUsername": "",
-    "picture": "",
-    "email": "ak@hrbr.life",
-    "website": "https://hrbr.life"
-  },
+  "versionNumber": 72,
+  "packageId": "6458ffac67ff74a075e6f7475d06b1de",
+  "sha256": "6458ffac67ff74a075e6f7475d06b1dea73b537f0789298022cd28311c63196f",
+  "shortDescription": "Multi-chain crypto payment processor — invoicing + address generation + settlement.",
+  "marketingVersion": "0.1.15",
   "description": "",
   "screenshots": [],
-  "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.1.15"
+  "license": "Proprietary - AiTX.pro Limited"
 }

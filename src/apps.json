@@ -211,18 +211,18 @@
       "updatedAt": 1779985210665,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "70005533f5c0002a90679cab56533e0ce0fc6a635cb7643556d304e177def44e",
-        "releaseHash": "a812e6a3befcda7b68347097fd120a33d776439af66b18de877fadf076b7202a",
-        "releaseNonce": "fc388a02bd9d5928954cf87913163b6c84166201c7a0b6600fd67f8aeab0b95b",
-        "releaseEntryPda": "offline-release-entry-xjdtxcy392qtrf317pyutxt2h5m022h2",
+        "appHash": "1da533a97c66fab10a11097c4195ef31bff411272192749823ff9f615ff7fea8",
+        "releaseHash": "2d871bacd512534e389c4f6b164b8633d3f0a49eba8856ec6d7501b8a5b1d94e",
+        "releaseNonce": "c41bd9dca52d1279907cd52e0d6422b7",
+        "releaseEntryPda": "HbCPGwa82YQhmKvZ2FhRPU4r9Lc6Cr6yChuaHvTK7Ua3",
         "MasterNftMint": "",
-        "licenseSquadsVault": "offline-license-vault-xjdtxcy392qtrf317pyutxt2h5m022h2",
-        "signedAtUnix": 1778106587,
-        "authorSig": "d317fe3a35faa7c725bb1f74e08f9b51fa53bedd5ec5ee6f24b5efb355aefc71",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128102,
+        "authorSig": "OhgtWx87E8t145NlYIuLaAjbHsmpd7wt7J9NA+X2uDqhSm4Q5eeI+P5bELyXRddu+sLpY7Shbdqo/Jnl2gXCCQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-xjdtxcy392qtrf317pyutxt2h5m022h2"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -1465,18 +1465,18 @@
       "updatedAt": 1779981823590,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6f891ec3dbd22bf62156ce1c39a5e148e5ed95bedecdefcb62a89117ee883860",
-        "releaseHash": "0a1f3b2fbb92b42ae2c31bfb17ff20f3675efb181253d774ac4f12bf61513c46",
-        "releaseNonce": "e905a6c618944ad37117abf11b25fc75aa07b48f381f5d82d4422999b4e98535",
-        "releaseEntryPda": "offline-release-entry-gyxwadv96vyss1qt05epahsgyn2993y8",
-        "MasterNftMint": "offline-master-nft-gyxwadv96vyss1qt05epahsgyn2993y8",
-        "licenseSquadsVault": "offline-license-vault-gyxwadv96vyss1qt05epahsgyn2993y8",
-        "signedAtUnix": 1779190473,
-        "authorSig": "e955c34a8475fe1144109ee3a61e1afd8a81698ad5da23db7d624f4fb5b9e85f",
+        "appHash": "0357961a34eb0219b290a7d661214cca99bc00a84b3427ba009b129bd630dd10",
+        "releaseHash": "6a026b61f9c660138b1b33fe819f74e61b1cb96d3b98e819bb11492e232d7630",
+        "releaseNonce": "ae67a57cdf7e82515d410b848cbc9209",
+        "releaseEntryPda": "AcgZpJwAcZ9xxkw4dv4NvkBG5WpdCUyejZhL5bn2oTNn",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128008,
+        "authorSig": "BBpKu3pl4ZPzb6pvorsTpC0HBCxgg12hy7r7s1194v42VnPOOOfGOpbF4jO9G+OW+TpJqR6YbJb9+265O4WgAA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-gyxwadv96vyss1qt05epahsgyn2993y8"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -1514,18 +1514,18 @@
       "updatedAt": 1779981823594,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "21ef256ef14d94f59c90cc953d88c20d6ca21f8a7614f86333501442ae516afa",
-        "releaseHash": "7b6855990d7a1cfd9ffee317ad34faa38daa074f039c943c3b4d7e35781b8159",
-        "releaseNonce": "5ec8d461e49fe32f26b7909cda3d398d75d4b5f4156fb56184e8842701a6bcfc",
-        "releaseEntryPda": "offline-release-entry-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "MasterNftMint": "offline-master-nft-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "licenseSquadsVault": "offline-license-vault-3gd0393f45qrn3evmx4uf4kczvea61wp",
-        "signedAtUnix": 1779841290,
-        "authorSig": "f8853d16e6dbdd98628ad805bb10fe4b5b3b9f88d60cc9778e3a344dfe9e0627",
+        "appHash": "e50636d46c9ca853dfc20a1e7fff29d28fc02f0a7602a29300402480a172559f",
+        "releaseHash": "588452479eaf10f95ae96601a336404af71c1ceea08a04c74f186c63a1743c5d",
+        "releaseNonce": "4184b8f2f7277be91720f2629d66f098",
+        "releaseEntryPda": "eVWuLXiZFL6GfAXvZJtEamCgm3w66cS7UqnRYid4ukv",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780127981,
+        "authorSig": "F5JC3GV+DffHJ528hO6Oyl5P79MgAaAT3MMzx++GnTAJUXaCA7nKzQRpX0IxDzDCuSkBB4+K3t2+x36Y7y6xDA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-3gd0393f45qrn3evmx4uf4kczvea61wp"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -2331,18 +2331,18 @@
       "updatedAt": 1780095772979,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "58f7567bd518eac205812a1b83efd0024e71cbafee3f7b97a293da2460ed6f41",
-        "releaseHash": "d7014a4bd1a0be26d462c816f9f82bb681067b4ae147ea71eaec601eeeb3aeaa",
-        "releaseNonce": "a0112873d6ac3a848aeb2c489fdb271275fb75c0a04d8bbe34f227b5474273aa",
-        "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
-        "signedAtUnix": 1780095772,
-        "authorSig": "11b2fec5736f16608942ff33137f0bee38f19913a2c441d28b63782083ef1e18",
+        "appHash": "a3b464d3ed9fd32a51ace8f64d5c3fa3dc50a9248db4629138ad56d58abcfa8e",
+        "releaseHash": "cc7a4f9c2cda85addc55fa9d1915b80996961425bde3e1ca1589761c5e3f7fc9",
+        "releaseNonce": "e7789890ff03604881035dd8cb2dddf0",
+        "releaseEntryPda": "6BJnrfH7DP5rUfd48Bp1ZuvQvt9r9CPSDskwtLTzsqHu",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780127791,
+        "authorSig": "tqVilyck9fNBad2u7mv1z53zLavCfZuEV8hwzc9ZIHSRlnAlOA+GcudfP3Ffyy2WmcySV2UNfQNiRXTDE/6QCg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-pm1afskzvf2vfasvxhwktk0u0sq7um09"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -2380,18 +2380,18 @@
       "updatedAt": 1779981823738,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a8a805a53213eceb92bd549e5a3a23f23bd84de2de3fd1ba7c2474562722e643",
-        "releaseHash": "48a8799d91eedbf4540b7393d1969f26dcb814982df4a434bf81e3175c50df74",
-        "releaseNonce": "4bd856a18f332e613fa200b9bcdaa0c53987e9ddbfc22b203d9c4fd5c4295eea",
-        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "MasterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "signedAtUnix": 1779880123,
-        "authorSig": "a8a125562e6fbf6a168569008996a9a43b554cd4e8cb51d248ecfcf4bc759da7",
+        "appHash": "9ed075e31008351a4ee88c63c3b55aa25ece26fa40dce73e2b1f9f8893f22366",
+        "releaseHash": "0eb60b3bec695f5af485ddb4b7c4a27fa4c27c60e7c554792482ac14db1594d9",
+        "releaseNonce": "0cb8b009d56e47ef0abde4c04a621c86",
+        "releaseEntryPda": "6kMAmX3mFYUqaFG8JQE4pvsFpQVfRwukVPMio4pcR6VV",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780127847,
+        "authorSig": "vq9yYxOTKIGBkQIXo1l90NVZHu0ROojsdRCMto2oqbl1iiIdyqKfVcDmaxvXt6h56MjMyj7S/QJOEzqo+LSwBg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -3187,18 +3187,18 @@
       "updatedAt": 1779985183845,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
-        "releaseHash": "eaf1cf3ec663d6105298f06f9ec82b8d189df5443b2aa17f6cae82a5c76cf702",
-        "releaseNonce": "8d75613a03eeda4207b8ea7d085b7ab08bbb556096313b5fba98a679c931af78",
-        "releaseEntryPda": "offline-release-entry-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
+        "appHash": "49b6500fa30dce4799ed916bfd338ec4547103489e8294bc2c08734fd44e1582",
+        "releaseHash": "22726e067e4f0e47201d3de717f6464fae08b5902ea64f65cb87c95b7bc5bad6",
+        "releaseNonce": "b2a95ee85d64b4ddf4edf908fdae67c9",
+        "releaseEntryPda": "Dw9QwSqauasfF8SkwXRicZiqX5HXDWQuyxYycEFKJWzN",
         "MasterNftMint": "",
-        "licenseSquadsVault": "offline-license-vault-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g",
-        "signedAtUnix": 1778108338,
-        "authorSig": "795af48a8c5607ec951aadf1a3d1cba666b105f9ee299063b55adce88dafb453",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128127,
+        "authorSig": "0goVRX7njwqtSuWCsIFPOtoPdqjSU8RzdwdghssXaNUN04LeQzmk0+aIaYQLjYGZGRSCiEaypq0DVfKugRyMCg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-u1rf3x62sw2fk87ayxr2ku0fgyy9wj7g"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -3451,7 +3451,7 @@
       "version": "0.4.7",
       "versionNumber": 12,
       "packageId": "a3b3c86b46d20680df2882e9d20a3019",
-      "shortDescription": "Sovereign email client for Melusina with pearl-based mail server control",
+      "shortDescription": "Sovereign email client for Melusina with Pearl-based mail server control",
       "categories": [
         "Productivity",
         "Communications"
@@ -3467,7 +3467,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## pearl Types\n\nMerMail ships two pearl types:\n\n- **Mailbox pearl** \u2014 Your personal email client. Each pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** pearl to start using email\n3. Your pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina pearl sandbox",
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",
@@ -3475,16 +3475,15 @@
         }
       ],
       "marketingVersion": "0.4.7",
-      "sha256": "a3b3c86b46d20680df2882e9d20a30198e9c89f6da6c696ec73ee51c8c9cf650",
       "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
-      "updatedAt": 1779780580169,
+      "updatedAt": 1780134163312,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9672f236472cadfdb2d3e951fa135a2d85ce6fab28aea75c7817440fdf9a3039",
         "releaseHash": "23789b2a224cf9fa159b538cc67e46780aec707357d61da4f00c69c8367a868b",
         "releaseNonce": "1ee50cb99457df8d2fd0adbfcbe0da86",
         "releaseEntryPda": "Bq1ApWXsfCVcWMTth9WZTtz3CxUnXEjtZVZQEBBQFANJ",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092495,
         "authorSig": "ado5Af+2hE/feVr+LZ3usBVdSPafAKixNpR+fZnxygIwofm6byRY4g4iqO/wYIs8fDd15KOnZKKRBHeT7zppDQ==",
@@ -3504,7 +3503,7 @@
             "pearlId": "mermail",
             "pearlName": "MerMail",
             "pearlType": "user-pearl",
-            "purpose": "Per-user email pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
+            "purpose": "Per-user email Pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the Pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3516,7 +3515,7 @@
                 {
                   "name": "mail-send",
                   "interface": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends."
+                  "purpose": "Send a mail from a peer Pearl \u2014 peer presents a payload + recipient; user reviews + sends."
                 }
               ],
               "requests": []
@@ -3551,7 +3550,7 @@
             },
             "blockchains": [
               {
-                "chain": "Solana",
+                "chain": "solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3587,7 +3586,7 @@
                 },
                 {
                   "name": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
+                  "purpose": "Send a mail from a peer Pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -3853,7 +3852,7 @@
       "name": "NamedCoin \u2014 Identity Attestation",
       "version": "0.1.0",
       "versionNumber": 1,
-      "packageId": "543b5847612de0c7ed8e42d18f5bba39",
+      "packageId": "e59ece0fd4d2b110ea917ae70279faef",
       "shortDescription": "Biometric identity attestation \u2014 tilt-to-capture liveness, document OCR, on-chain NFT attestation",
       "categories": [
         "identity",
@@ -3879,18 +3878,22 @@
       "marketingVersion": "0.1.0",
       "sha256": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1779981824142,
+      "updatedAt": 1780131611368,
       "attest": {
-        "schema": "",
+        "schema": "melusina-release-v1",
         "appHash": "e59ece0fd4d2b110ea917ae70279faef4d2c3b3b5fa38d14e5aa67bd0bfc669a",
-        "releaseHash": "",
-        "releaseNonce": "",
-        "releaseEntryPda": "",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "",
-        "signedAtUnix": 1748427800,
-        "authorSig": "",
-        "quorumPolicy": {}
+        "releaseHash": "3f66e970c1176c6d8d0b46236e0cab034976642182b5629f3fa8e6ab5500bb9e",
+        "releaseNonce": "3655f43c15cfbead6bd65425cdfe3026b14b74ea870631d22a9a9bf9db5ca63d",
+        "releaseEntryPda": "offline-release-entry-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+        "MasterNftMint": "offline-master-nft-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+        "licenseSquadsVault": "offline-license-vault-ny0kpatkzkcq4qsep22pamvhhvp7gm2s",
+        "signedAtUnix": 1780131611,
+        "authorSig": "184caeb53ef7d3e333e6a13119b35de50c0dfe93f1880aaeb8e5e232701ee6e8",
+        "quorumPolicy": {
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-ny0kpatkzkcq4qsep22pamvhhvp7gm2s"
+        }
       },
       "capabilities": {
         "schemaVersion": 2,
@@ -4335,18 +4338,18 @@
       "updatedAt": 1780094120523,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "216acff9a9ee84be1d70c94b5cb93823c20ed05e6e0e6ab4d290081264312a9c",
-        "releaseHash": "f08d5b08e09fec330935e918d111a302450e890147fa5bd5ed78b7c58d30fabd",
-        "releaseNonce": "4bf7d9dda9a89fd8c2ccbd6aa66ea0271452d2190f9040ee30d859608f985d6e",
-        "releaseEntryPda": "offline-release-entry-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "MasterNftMint": "offline-master-nft-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "licenseSquadsVault": "offline-license-vault-msgn23jkp96yrup53t1yv71ens7kpda7",
-        "signedAtUnix": 1780094120,
-        "authorSig": "e2a17403f1602037bbd71a22f47a6ec714e5ccec776692d66df07ea0a50a03e8",
+        "appHash": "3d943b6d1c8f3829e4beb53e60a75aa819a8bc9a806b2da8bde49797921742ed",
+        "releaseHash": "7b3fc9564fc9dab4f9b67324be25469e196286a1f23ccc607e38ea9389f97df2",
+        "releaseNonce": "b3adcb4b8c328b6fa97d3a79624194ac",
+        "releaseEntryPda": "H8et9kYJ7KdzdVWW39xJjkD3bhVQr3GvJyY7tLHbePSo",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128034,
+        "authorSig": "5J6D/nJMIrhkzItwxU65Ni2bRXhalsEP4qq32ec3kXLzk8kLRAhQ1sc8BHNDlJwnry1lWRstJPhBja+dtCkLCQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-msgn23jkp96yrup53t1yv71ens7kpda7"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -4538,18 +4541,18 @@
       "updatedAt": 1779981823574,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "fcca23c27f8be6a185874b01419bf3c7bce03b6b94f41661d27c82d3cf12dab0",
-        "releaseHash": "fe6646ec229b310d11690440fb4d3543b096cf3b31dcbada9fe0c4dc5ac023e8",
-        "releaseNonce": "a1e873fc98b7ce1b5eda19cc3f86fce8fa66461d768b8dde5c7b0a777b9b9b0c",
-        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1779812777,
-        "authorSig": "7842845c1f60ef4a5265803d481b2ef9630dba8c74ad0d1bdf89c4deb9ddbfa3",
+        "appHash": "daaaf2a299204167ff76db9588cce863b4360be73b07d2d7a11411e911523e3c",
+        "releaseHash": "e5866ddcb5087bbc2ec00fe2750407761cefdbbf8b818adf5a01883d141e3809",
+        "releaseNonce": "6c56e40c7338195cd8e8198a826d91cb",
+        "releaseEntryPda": "2yXCLSzuJceZ5s98QpM3L9xiT3BEfyey9Ugs8yMmJARu",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780127883,
+        "authorSig": "V3XGky/Zn++ylRdoyP6RPuZuG+J6JrbmzfftgAHV30Pszp+DD4/ij8zyUPjoPmtXHkj7mV3atNAvXf0r3LqqDQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null
@@ -4606,18 +4609,18 @@
       "updatedAt": 1779780588185,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
-        "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
-        "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
-        "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "MasterNftMint": "offline-master-nft-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
-        "signedAtUnix": 1778142421,
-        "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
+        "appHash": "6ebc1830afae7979c4b0a3d56a2701bd651efa91e61e7242baba20c3891bcfdb",
+        "releaseHash": "9c416cab6c6b0b44d94b400b74d0148044e8f920f24288ac933b4f7942187807",
+        "releaseNonce": "5f6e25a1d0949960a2246a24224553c1",
+        "releaseEntryPda": "5CnT2hCJaYxxcnieaS47mRDouBnYHDmqjysvj8NusDAx",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128154,
+        "authorSig": "2oubKuyNw76KMhhDrUjrVLZAgGS4r8lXOWJ4iWqUDhRiHRXHIMX+Wb5vF+Ye+oJvF5fxHzkfwlOJfvtq7OxqDw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-fz7r56h1kr79g4v65cgxf7dv85ymt3ys"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -4937,18 +4940,18 @@
       "updatedAt": 1780079996370,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "caf67e1d51f2b60a45a99b8f22e45458eb5954e6f8674c5a0de4fa59801f6ad4",
-        "releaseHash": "0f0d1ee96aaa30fc163b4d056d05970c7bda07538339ab3d0d32c2b04dc5e6f7",
-        "releaseNonce": "cee6015439a351931a2ced05882d3a11a2cc7c5ecb150e58316226882203a3e6",
-        "releaseEntryPda": "offline-release-entry-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
-        "MasterNftMint": "offline-master-nft-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
-        "licenseSquadsVault": "offline-license-vault-55ru3mytzq9swmfx0xvxzhaq71hwdhmx",
-        "signedAtUnix": 1780079996,
-        "authorSig": "2cfbbdb25d9eb451e046e5b99212d353c77a87235e60792b79ba28b33e473f65",
+        "appHash": "d4f9520e9758e37c7becd9d2ab3721c580ac92578c826a85d78028bc8980252c",
+        "releaseHash": "389213699af92edba51222a6bd9822a9abe3603ee0332cb7cd96d172a9bb8a1a",
+        "releaseNonce": "1432a757126ec18a50e1dea0e10b3fe9",
+        "releaseEntryPda": "DZo86dpKkcGAkvf2mbYRVYz9ifiTEo1kEE6Y31qSysmW",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780128061,
+        "authorSig": "6vePDwRCJ5cC1tVynh2B7OvTkqdT+3FIA2RWD1UPdJ1qPj3aFctke23vqqcPa07nHAJCT92Ljg/XfN6CaDlAAw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-55ru3mytzq9swmfx0xvxzhaq71hwdhmx"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {

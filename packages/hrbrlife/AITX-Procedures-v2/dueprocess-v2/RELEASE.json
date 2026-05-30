@@ -1,8 +1,8 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "7e11f2d87eb751b74907054be51384c858ea9eb789db645177a371cbaed99ff5",
+  "appHash": "9159c6e151016c63b3c92595fbb2e54e740cca2e2cf81cd698d71032799c2312",
   "releaseHash": "0d0486071d3bf4641bccc0e6944c2450baf1cb4ad831a595a532b6662376fe2f",
-  "version": "0.1.23",
+  "version": "0.1.26",
   "signedAtUnix": 1779790445,
   "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",

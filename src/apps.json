@@ -1292,6 +1292,52 @@
       "screenshots": []
     },
     {
+      "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
+      "name": "cca.sh Domain Template v2",
+      "version": "0.2.9",
+      "versionNumber": 29,
+      "packageId": "d6778e50e4b7bbd68df45bed6a6b44fb",
+      "shortDescription": "Domain configuration authority for cca.sh grains (option-b build)",
+      "description": "The Domain Template v2 grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation. Option-b build with updated configuration schema.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1748476800000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "tier": "admin",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.2.9",
+      "sha256": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f",
+      "imageId": "171e254c68669c061150533245e42212.png",
+      "updatedAt": 1780145380553,
+      "attest": {
+        "schema": "",
+        "appHash": "d6778e50e4b7bbd68df45bed6a6b44fb3117e8e965900f15afec8629c72c1a6f",
+        "releaseHash": "",
+        "releaseNonce": "",
+        "releaseEntryPda": "offline-release-entry-9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "",
+        "signedAtUnix": 0,
+        "authorSig": "",
+        "quorumPolicy": {}
+      },
+      "capabilities": null,
+      "screenshots": []
+    },
+    {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
       "packageId": "45ad6f8e01fe22f126a78fb55f77cea1",
       "name": "cca.sh Org Member",
@@ -2352,9 +2398,9 @@
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
       "version": "0.1.15",
-      "versionNumber": 70,
-      "packageId": "87c69bf081f817d71765361c1eca4e96",
-      "sha256": "87c69bf081f817d71765361c1eca4e96066e14f3f0d8015c45d09132ca87330e",
+      "versionNumber": 71,
+      "packageId": "53e23ca7624bd42fd8570d334aa4c22c",
+      "sha256": "53e23ca7624bd42fd8570d334aa4c22c35bc80873c6621462d2ae14145d53528",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2377,17 +2423,17 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.15",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780145138917,
+      "updatedAt": 1780145622333,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "87c69bf081f817d71765361c1eca4e96066e14f3f0d8015c45d09132ca87330e",
-        "releaseHash": "",
-        "releaseNonce": "",
-        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+        "appHash": "1656c57da7371335fe2387d15a0150c51f23c6047efdb2e2ea39aa8e668cba1a",
+        "releaseHash": "3bd673590461244798e619961568d6fc0df15cbaaad6366b35eb43f8f3219763",
+        "releaseNonce": "c3c7cab19ad15ebccbf3c591a559030c",
+        "releaseEntryPda": "GQZaWsUV6iCrNwqR4s3DiJVE7x2FJr9LZb4g2yBhpUse",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 0,
-        "authorSig": "",
+        "signedAtUnix": 1780145806,
+        "authorSig": "xl9htU4vaKIpwc8iH6mZ1vy8DCMNQSRA9Lxm80QEjYWh4b6y93WFnHjRuZpradZkD/hG0vQGHw/VvPt2dhSyBA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3829,18 +3875,18 @@
       "updatedAt": 1780144791797,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
-        "releaseHash": "53b125763f0e95e456c174d77339749a5dfa2f738d19ef4b0e377831540cd1d3",
-        "releaseNonce": "0b62969c86b49f7cab617f9f0c7d76e79da84606528565b32a6cf99ec1749534",
-        "releaseEntryPda": "offline-release-entry-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "MasterNftMint": "offline-master-nft-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "licenseSquadsVault": "offline-license-vault-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "signedAtUnix": 1780144791,
-        "authorSig": "e167f21707f28b226bfec39cebd4ddef405c6b391ca8506f4fafe36e8ee88994",
+        "appHash": "186b7e95ef40157321e9a999b3ab77d0ee6892c9dc586e22430a59a3ed5e8382",
+        "releaseHash": "e7afe9e6c728abbd7b232c56f5536eadbdfc28b05fbaaed7525b973a1685f59b",
+        "releaseNonce": "b8dc183aa3e8bdbe40599f59c664feed",
+        "releaseEntryPda": "3cY2rVwM2WgogAmwLCNmwbkQk9xUyyKQH38gQBuigGyi",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780145851,
+        "authorSig": "v3Kd9Z3p9yeByoo4WVdxW2BFr7tr0kDw9jcrfUlMeB0qQBfsUC54YrAr5xZdp1KK/gyBdxTz50P5GnTrVntsAA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-8kea8reanvm5cw7awrxj8udguh5hf3yf"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,

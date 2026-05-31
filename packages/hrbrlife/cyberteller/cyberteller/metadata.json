@@ -2,9 +2,9 @@
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "cyberteller",
   "version": "0.1.15",
-  "versionNumber": 77,
-  "packageId": "9b112320d8849ab10f89d056240cfac2",
-  "sha256": "9b112320d8849ab10f89d056240cfac2d4aac055a9b418aa4c0b72fe1ffa3e7b",
+  "versionNumber": 78,
+  "packageId": "baea3d0dc8dff8fd2ab6e1ac571dcf65",
+  "sha256": "baea3d0dc8dff8fd2ab6e1ac571dcf653033c0c4974f23e8f0916a2758ece44f",
   "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
   "categories": [
     "Productivity"

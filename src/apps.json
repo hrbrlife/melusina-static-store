@@ -2402,9 +2402,9 @@
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
       "version": "0.1.15",
-      "versionNumber": 77,
-      "packageId": "9b112320d8849ab10f89d056240cfac2",
-      "sha256": "9b112320d8849ab10f89d056240cfac2d4aac055a9b418aa4c0b72fe1ffa3e7b",
+      "versionNumber": 78,
+      "packageId": "baea3d0dc8dff8fd2ab6e1ac571dcf65",
+      "sha256": "baea3d0dc8dff8fd2ab6e1ac571dcf653033c0c4974f23e8f0916a2758ece44f",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2427,7 +2427,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.15",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780219382842,
+      "updatedAt": 1780224522374,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "8d6d5692a80ee824f3572fa3b9ce15854a8629ed0a519759970dbd09ab4a8c4e",
@@ -3499,10 +3499,10 @@
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
-      "version": "0.4.7",
-      "versionNumber": 12,
-      "packageId": "a3b3c86b46d20680df2882e9d20a3019",
-      "shortDescription": "Sovereign email client for Melusina with Pearl-based mail server control",
+      "version": "0.4.8",
+      "versionNumber": 13,
+      "packageId": "b07c2179e8e5080572542bf822ffb69b",
+      "shortDescription": "Sovereign email client for Melusina with pearl-based mail server control",
       "categories": [
         "Productivity",
         "Communications"
@@ -3518,23 +3518,24 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## Pearl Types\n\nMerMail ships two Pearl types:\n\n- **Mailbox Pearl** \u2014 Your personal email client. Each Pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station Pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina Pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** Pearl to start using email\n3. Your Pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** Pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina Pearl sandbox",
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## pearl Types\n\nMerMail ships two pearl types:\n\n- **Mailbox pearl** \u2014 Your personal email client. Each pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** pearl to start using email\n3. Your pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",
           "caption": "inbox"
         }
       ],
-      "marketingVersion": "0.4.7",
+      "marketingVersion": "0.4.8",
+      "sha256": "b07c2179e8e5080572542bf822ffb69b5f037b50b5cd1adbb374e25b11283476",
       "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
-      "updatedAt": 1780158367209,
+      "updatedAt": 1780223833666,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9672f236472cadfdb2d3e951fa135a2d85ce6fab28aea75c7817440fdf9a3039",
         "releaseHash": "23789b2a224cf9fa159b538cc67e46780aec707357d61da4f00c69c8367a868b",
         "releaseNonce": "1ee50cb99457df8d2fd0adbfcbe0da86",
         "releaseEntryPda": "Bq1ApWXsfCVcWMTth9WZTtz3CxUnXEjtZVZQEBBQFANJ",
-        "MasterNftMint": "",
+        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779092495,
         "authorSig": "ado5Af+2hE/feVr+LZ3usBVdSPafAKixNpR+fZnxygIwofm6byRY4g4iqO/wYIs8fDd15KOnZKKRBHeT7zppDQ==",
@@ -3554,7 +3555,7 @@
             "pearlId": "mermail",
             "pearlName": "MerMail",
             "pearlType": "user-pearl",
-            "purpose": "Per-user email Pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the Pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
+            "purpose": "Per-user email pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3566,7 +3567,7 @@
                 {
                   "name": "mail-send",
                   "interface": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer Pearl \u2014 peer presents a payload + recipient; user reviews + sends."
+                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends."
                 }
               ],
               "requests": []
@@ -3601,7 +3602,7 @@
             },
             "blockchains": [
               {
-                "chain": "solana",
+                "chain": "Solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3637,7 +3638,7 @@
                 },
                 {
                   "name": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer Pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
+                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -3653,13 +3654,13 @@
       "name": "MiniGit",
       "version": "0.2.1",
       "versionNumber": 8,
-      "shortDescription": "Lightweight Git hosting with per-repo pearl isolation and wallet-rooted clone credentials.",
-      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
+      "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
+      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
       "categories": [
         "Developer Tools"
       ],
-      "license": "Proprietary",
-      "isOpenSource": false,
+      "license": "MIT",
+      "isOpenSource": true,
       "webLink": "https://github.com/hrbrlife/MiniGit",
       "codeLink": "https://github.com/hrbrlife/MiniGit",
       "upstreamAuthor": "Gogs Authors + alexeikarp",
@@ -3732,7 +3733,6 @@
         }
       ],
       "marketingVersion": "0.2.1",
-      "sha256": "82d7c95713a253825ac0379a91f46f68479e63879dba1566127f9b3a4be421f9",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
       "updatedAt": 1779780584617,
       "attest": {
@@ -3741,7 +3741,7 @@
         "releaseHash": "837f557a1da4f5892a88001c8083249e8c58a58cc47bb223deff5f227e8ee325",
         "releaseNonce": "4609cd98b8c187a9b7bd8fb894ffb4f3",
         "releaseEntryPda": "DCaZ3fjBqVNV487SivctWQYmFVvfqZUos213kpnGHvQa",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
         "signedAtUnix": 1779095954,
         "authorSig": "sqQDLlZtMcpLH0FUz4RQ+RV1sloxYlZB3Wkm1CYfPo2qZ4T8g+wdLpdTbdXmZSLLGY4iCXpGbfEQZ96M6Iw6Dg==",
@@ -3761,7 +3761,7 @@
             "pearlId": "gitpearl",
             "pearlName": "MiniGit",
             "pearlType": "user-pearl",
-            "purpose": "In-pearl Git server \u2014 host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming pearl (e.g. an assistant pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
+            "purpose": "In-Pearl Git server \u2014 host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3804,7 +3804,7 @@
             },
             "blockchains": [
               {
-                "chain": "Solana",
+                "chain": "solana",
                 "cluster": "devnet",
                 "programs": [
                   {
@@ -3880,18 +3880,18 @@
       "updatedAt": 1780144791797,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "186b7e95ef40157321e9a999b3ab77d0ee6892c9dc586e22430a59a3ed5e8382",
-        "releaseHash": "e7afe9e6c728abbd7b232c56f5536eadbdfc28b05fbaaed7525b973a1685f59b",
-        "releaseNonce": "b8dc183aa3e8bdbe40599f59c664feed",
-        "releaseEntryPda": "3cY2rVwM2WgogAmwLCNmwbkQk9xUyyKQH38gQBuigGyi",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780145851,
-        "authorSig": "v3Kd9Z3p9yeByoo4WVdxW2BFr7tr0kDw9jcrfUlMeB0qQBfsUC54YrAr5xZdp1KK/gyBdxTz50P5GnTrVntsAA==",
+        "appHash": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
+        "releaseHash": "53b125763f0e95e456c174d77339749a5dfa2f738d19ef4b0e377831540cd1d3",
+        "releaseNonce": "0b62969c86b49f7cab617f9f0c7d76e79da84606528565b32a6cf99ec1749534",
+        "releaseEntryPda": "offline-release-entry-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "MasterNftMint": "offline-master-nft-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "licenseSquadsVault": "offline-license-vault-8kea8reanvm5cw7awrxj8udguh5hf3yf",
+        "signedAtUnix": 1780144791,
+        "authorSig": "e167f21707f28b226bfec39cebd4ddef405c6b391ca8506f4fafe36e8ee88994",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-8kea8reanvm5cw7awrxj8udguh5hf3yf"
         }
       },
       "capabilities": null,
@@ -4657,18 +4657,18 @@
       "updatedAt": 1779780588185,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6ebc1830afae7979c4b0a3d56a2701bd651efa91e61e7242baba20c3891bcfdb",
-        "releaseHash": "9c416cab6c6b0b44d94b400b74d0148044e8f920f24288ac933b4f7942187807",
-        "releaseNonce": "5f6e25a1d0949960a2246a24224553c1",
-        "releaseEntryPda": "5CnT2hCJaYxxcnieaS47mRDouBnYHDmqjysvj8NusDAx",
+        "appHash": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
+        "releaseHash": "fdf3450e2b1b8a43d08374892a1abe45a4ee97ffa072301a5880e03e44c4188e",
+        "releaseNonce": "c46a500846237d469c49e975de7755687650941195abce29fcfb163567ce707d",
+        "releaseEntryPda": "offline-release-entry-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
         "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780128154,
-        "authorSig": "2oubKuyNw76KMhhDrUjrVLZAgGS4r8lXOWJ4iWqUDhRiHRXHIMX+Wb5vF+Ye+oJvF5fxHzkfwlOJfvtq7OxqDw==",
+        "licenseSquadsVault": "offline-license-vault-fz7r56h1kr79g4v65cgxf7dv85ymt3ys",
+        "signedAtUnix": 1778142421,
+        "authorSig": "e161f2f8f07981cd7f41aa6581f4eb171a91e67993cb8046bdb47d3e2258e986",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-fz7r56h1kr79g4v65cgxf7dv85ymt3ys"
         }
       },
       "capabilities": {

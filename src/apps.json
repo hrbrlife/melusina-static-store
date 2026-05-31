@@ -2349,10 +2349,10 @@
     },
     {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "926490cc86f9a455c5df9d09db5aa120",
+      "packageId": "f8c8101d5ed7d9c5d80ff623d6bac0d1",
       "name": "Creeper",
-      "version": "0.1.5",
-      "versionNumber": 7,
+      "version": "0.1.6",
+      "versionNumber": 8,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -2375,13 +2375,13 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.5",
-      "sha256": "926490cc86f9a455c5df9d09db5aa12040a6cb50660759506f844cd2091a92b2",
+      "marketingVersion": "0.1.6",
+      "sha256": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
       "updatedAt": 1780246329048,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "926490cc86f9a455c5df9d09db5aa12040a6cb50660759506f844cd2091a92b2",
+        "appHash": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
         "releaseHash": "d1a12c4a2d62d12687c69aa40f84b5fe45da4c89e19a2a5f214a434ab4c3d63f",
         "releaseNonce": "9697079341ccb6a5fcd17630df531a369efc8bd04f50176fdeca5f1b86d2410b",
         "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",

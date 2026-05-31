@@ -3,7 +3,7 @@
   "name": "NamedCoin",
   "version": "0.1.6",
   "versionNumber": 8,
-  "packageId": "4a1d4bc8789914cc69fe63581a8995ae",
+  "packageId": "99ff92ca43dc97b54016ed621e9ed10f",
   "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
   "categories": [
     "Productivity"
@@ -26,5 +26,5 @@
     "picture": ""
   },
   "marketingVersion": "0.1.6",
-  "sha256": "4a1d4bc8789914cc69fe63581a8995aee554a8b46578287b9dd482918b5c5e4d"
+  "sha256": "99ff92ca43dc97b54016ed621e9ed10f30112995b93e45eeb601ec2b1ccb5978"
 }

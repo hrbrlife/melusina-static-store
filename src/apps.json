@@ -2349,10 +2349,10 @@
     },
     {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "4a4875b92542a66b88b9f976d14a78af",
+      "packageId": "926490cc86f9a455c5df9d09db5aa120",
       "name": "Creeper",
-      "version": "0.1.4",
-      "versionNumber": 6,
+      "version": "0.1.5",
+      "versionNumber": 7,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -2375,24 +2375,24 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.4",
-      "sha256": "4a4875b92542a66b88b9f976d14a78af00cf164f15d5ad097886e91855698400",
+      "marketingVersion": "0.1.5",
+      "sha256": "926490cc86f9a455c5df9d09db5aa12040a6cb50660759506f844cd2091a92b2",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780185879971,
+      "updatedAt": 1780242974575,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "422179adbb7dff0a281620c97c53389d9e57610b1d4ccdc871d405693f1bdc46",
-        "releaseHash": "bc0082db51bec1a581061a99effae7c0f948032c0c4d622dc2ba5acfc5820f64",
-        "releaseNonce": "84f59c878e3a51d676493550eb17c5ec",
-        "releaseEntryPda": "DJx9V9pHcDDjkAbDesdh1GdLbykdLNm7RLNVD42my1wA",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780148775,
-        "authorSig": "vPrzHC7Lby0grkpIw3puLSZNJRH5YVsQXjWXihBuPL0T/mCGJWHP2shj+A7IL2ydy9hhNBi+OoIksOZeNlHaCw==",
+        "appHash": "926490cc86f9a455c5df9d09db5aa12040a6cb50660759506f844cd2091a92b2",
+        "releaseHash": "d1a12c4a2d62d12687c69aa40f84b5fe45da4c89e19a2a5f214a434ab4c3d63f",
+        "releaseNonce": "9697079341ccb6a5fcd17630df531a369efc8bd04f50176fdeca5f1b86d2410b",
+        "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+        "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+        "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+        "signedAtUnix": 1780242974,
+        "authorSig": "830ba30f29a3e60a564b4953d1c24c264e129863450ddbd15513407066671665",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-pm1afskzvf2vfasvxhwktk0u0sq7um09"
         }
       },
       "capabilities": null,

@@ -1,0 +1,26 @@
+127.0.0.1	localhost
+127.0.1.1	debian
+
+# IPv6
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
+# Sandstorm dev convention
+127.0.0.1 local.sandstorm.io
+10.245.50.75 mermail.sidecar.hypervisor
+10.245.50.231 ailagoon.sidecar.hypervisor
+10.245.50.143 vintage.sidecar.host
+10.245.50.245 telescreen.sidecar.hypervisor
+10.245.50.2 remotebak.sidecar.hypervisor
+10.245.50.76 watchdog.sidecar.hypervisor
+
+# Sidecar host aliases — apps default endpoint is *.sidecar.host even when SIDECAR_MODE=hypervisor.
+10.245.50.75 mermail.sidecar.host
+10.245.50.231 ailagoon.sidecar.host
+10.245.50.245 telescreen.sidecar.host
+10.245.50.2 remotebak.sidecar.host
+10.245.50.76 watchdog.sidecar.host
+64.7.199.220 cca.sh
+64.7.199.220 paype.cc
+10.245.50.250  fineract.sidecar.host

@@ -3650,17 +3650,18 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "42c383087ae94e375246c115bdcdcaff",
+      "packageId": "cfd862b9b7885f0ae88d8bf549c192c0",
       "name": "MiniGit",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "versionNumber": 10,
-      "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
-      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
+      "marketingVersion": "0.2.4",
+      "shortDescription": "Lightweight private Git hosting on Melusina \u2014 one repo per pearl, browse and push from your browser, AI-callable.",
+      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** \u2014 each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** \u2014 clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** \u2014 the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **No external database** \u2014 go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability \u2014 its \"Skills\" \u2014 so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** \u2014 full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface \u2014 all available now.\n",
       "categories": [
         "Developer Tools"
       ],
-      "license": "MIT",
-      "isOpenSource": true,
+      "license": "Proprietary",
+      "isOpenSource": false,
       "webLink": "https://github.com/hrbrlife/MiniGit",
       "codeLink": "https://github.com/hrbrlife/MiniGit",
       "upstreamAuthor": "Gogs Authors + alexeikarp",
@@ -3732,24 +3733,22 @@
           "verbPhrase": "can clone and fetch only"
         }
       ],
-      "marketingVersion": "0.2.3",
-      "sha256": "42c383087ae94e375246c115bdcdcaff4184a04e0b93f96582fbaab40173ee62",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1780334945764,
+      "updatedAt": 1780342336136,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c6134ec5d27084c974ff2c7d5110254339dd38f874414b322b04b8412dfde1aa",
-        "releaseHash": "fadec3b5afabcde5929f3cc1bcc2f077fc2ecada2ad4d8fe6f9fcc9ce46a5169",
-        "releaseNonce": "373488b752ff35e7f9b3d008e91a79f5",
-        "releaseEntryPda": "8iMhc6RXRM4tHMKniZssRJyGFG8iHcfmgPkpZJmNiLwk",
+        "appHash": "cfd862b9b7885f0ae88d8bf549c192c00b274f870413c13b0a8a6c9a9622e5e6",
+        "releaseHash": "248f95118c6d0705603f38b790783bee537fa645c7f4a98b1e5132e91f909fb3",
+        "releaseNonce": "67d5a6debb4845086a9a628f455f4dd4228817990e5bfacf41ec7dcae6d90af7",
+        "releaseEntryPda": "offline-release-entry-pe3k6wapfczy7797n8xxu3qsn40sd1k4",
         "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780335255,
-        "authorSig": "p2T4UK2lEP2KSuTPzlhOn1u6wdwn17cuu9O3SazbI8nqDQxCptZnRIQSXdtFDpiAf4+wxV/Hoimg/xvIw+hcAw==",
+        "licenseSquadsVault": "offline-license-vault-pe3k6wapfczy7797n8xxu3qsn40sd1k4",
+        "signedAtUnix": 1780341473,
+        "authorSig": "76ef87e69e1c281bae339495f8a06173a862eded25e7d4391bfa8f75ca724473",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-pe3k6wapfczy7797n8xxu3qsn40sd1k4"
         }
       },
       "capabilities": {

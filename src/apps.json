@@ -3650,10 +3650,10 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "d6f138d0b9a7186544b6e428cfe13e95",
+      "packageId": "42c383087ae94e375246c115bdcdcaff",
       "name": "MiniGit",
-      "version": "0.2.2",
-      "versionNumber": 9,
+      "version": "0.2.3",
+      "versionNumber": 10,
       "shortDescription": "Lightweight Git hosting with per-repo Pearl isolation and wallet-rooted clone credentials.",
       "description": "MiniGit provides lightweight, private Git hosting inside a Melusina Pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-repo Pearl isolation** \u2014 each repository is a sealed container; separate storage, separate permissions; no cross-repo leakage; a vulnerability in one repo cannot reach another\n- **Wallet-rooted clone credentials** \u2014 clone credentials tied to your Solana wallet; non-repudiable access logs; revoke access anytime via Grapple\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **Create a repository Pearl in one click**\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **SQLite-backed** \u2014 zero external dependencies\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, commenter, editor, admin\n\n## Suite integration\n\nMiniGit talks Grapple to the rest of Melusina \u2014 trigger Bureau Doc builds on commit, surface release notes in a CanBoard card, attach code diffs to a review Pearl.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live Git interface lands in v0.2.",
       "categories": [
@@ -3732,20 +3732,20 @@
           "verbPhrase": "can clone and fetch only"
         }
       ],
-      "marketingVersion": "0.2.2",
-      "sha256": "d6f138d0b9a7186544b6e428cfe13e95ae5c22a0edbbb5e8b8bcc937c492f5ef",
+      "marketingVersion": "0.2.3",
+      "sha256": "42c383087ae94e375246c115bdcdcaff4184a04e0b93f96582fbaab40173ee62",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1780333339804,
+      "updatedAt": 1780334945764,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "291c769988d464431c4b5859b3a2297aca17ae9a4d8c9cee4edbdd3c51bdd870",
-        "releaseHash": "b5389172b64898815f02507cacbc132ff4221f5098ced61415f2574238bdb5f3",
-        "releaseNonce": "03211f7b3c828d75053678bd1f4bc1da",
-        "releaseEntryPda": "BtdrxNftUwo4aXemVXZ4Keyji4xdqtHrNzFBB5PDUGrh",
+        "appHash": "c6134ec5d27084c974ff2c7d5110254339dd38f874414b322b04b8412dfde1aa",
+        "releaseHash": "fadec3b5afabcde5929f3cc1bcc2f077fc2ecada2ad4d8fe6f9fcc9ce46a5169",
+        "releaseNonce": "373488b752ff35e7f9b3d008e91a79f5",
+        "releaseEntryPda": "8iMhc6RXRM4tHMKniZssRJyGFG8iHcfmgPkpZJmNiLwk",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780333655,
-        "authorSig": "2AySQfrx0OXtuMQ/0nPo/iB/0D9SVWcUi/PfFc1XYGM/uZ9yVphIft1XbBTVoU5m5eCdyEijUSnrmIqwCPkiBw==",
+        "signedAtUnix": 1780335255,
+        "authorSig": "p2T4UK2lEP2KSuTPzlhOn1u6wdwn17cuu9O3SazbI8nqDQxCptZnRIQSXdtFDpiAf4+wxV/Hoimg/xvIw+hcAw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

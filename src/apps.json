@@ -2571,9 +2571,9 @@
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
       "name": "Cyberteller Config",
-      "version": "0.1.9",
-      "versionNumber": 18,
-      "packageId": "7919b223c200721e30040752eb680700",
+      "version": "0.1.10",
+      "versionNumber": 19,
+      "packageId": "e9973b294c3711ea0a6bc4bbf8b0ed21",
       "shortDescription": "Cyberteller install-admin (boot env source)",
       "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
@@ -2594,25 +2594,25 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.9",
+      "marketingVersion": "0.1.10",
       "appTitle": "Cyberteller Config",
-      "sha256": "7919b223c200721e30040752eb680700300482a9b333a9bf10cf8bf7347217dc",
+      "sha256": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780294857002,
+      "updatedAt": 1780297535230,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "cd298d8391319d6099ec6162e8ad0b71b87a063adcd3a83aab1b8c1a43b8fbad",
-        "releaseHash": "d099006a5bcb6393b2c95c5d610bca11786e140599e942aab978afa37511673a",
-        "releaseNonce": "b265ee69576119570e87e6e1729c0f4c",
-        "releaseEntryPda": "HecEmWciS9s3fUnSg8iVkh6eDJ1ffNGH24nzguMG2zFi",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780295178,
-        "authorSig": "1WtPbfOYiTxW24vQrJvb6RhSXm22WMEOBTVJurqiz7B3nnxVh2XL4OxCApGDOWyC7kZdiCeWp7KAOYBeFRvBDQ==",
+        "appHash": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
+        "releaseHash": "17fd361780560bb79e6c60992c6540a33d2d3ff9e25f894d145d420bb4607f23",
+        "releaseNonce": "d20fbbc4b7d1d8d5f4177aff1d87122c1b7e18b41efb09c5585624ad445b479e",
+        "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "MasterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
+        "signedAtUnix": 1780297535,
+        "authorSig": "3e2501ba6f4ef4aed9070999d989ce8024bfb531941afa551099f74347f93f33",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
         }
       },
       "capabilities": {

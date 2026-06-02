@@ -1,10 +1,10 @@
 {
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "cyberteller",
-  "version": "0.1.27",
-  "versionNumber": 96,
-  "packageId": "aa47357224d736c5e950de424a0e2f1b",
-  "sha256": "aa47357224d736c5e950de424a0e2f1b5d883d5e2bf5c06714e974a8bdb1f59e",
+  "version": "0.1.28",
+  "versionNumber": 97,
+  "packageId": "4c91dae51f4676c1535a02a601b23d22",
+  "sha256": "4c91dae51f4676c1535a02a601b23d2237c97a30c031277b072955a7eb0ba419",
   "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
   "categories": [
     "Productivity"
@@ -26,5 +26,5 @@
   "description": "",
   "screenshots": [],
   "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.1.27"
+  "marketingVersion": "0.1.28"
 }

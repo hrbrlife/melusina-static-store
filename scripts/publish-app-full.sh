@@ -300,9 +300,27 @@ else
       fail "  ceremony: could not extract appId from $SPK_FOR_REL"
     fi
     # Find catalog pkg dir whose metadata.json holds this appId.
-    CAT_PATH="$(find "$STATIC_STORE_ROOT/packages" -maxdepth 5 -name metadata.json -print0 2>/dev/null \
-                | xargs -0 -I {} sh -c 'grep -l "\"appId\": *\"'"$APP_ID_FROM_SPK"'\"" "{}" 2>/dev/null' \
-                | head -1)"
+    # NB: `grep -l` exits 1 on non-matching files, which under `set -o
+    # pipefail` makes a `find … | xargs grep -l | head -1` pipeline return
+    # xargs's aggregate exit 123 and abort the whole driver (latent bug
+    # hit 2026-06-02). Use `grep -rl` over the metadata.json set directly
+    # and guard the exit code so a no-match is handled by the check below,
+    # not by `set -e`.
+    #
+    # Prefer the canonical packages/<dev>/<app>/<app>/ dir that build-store.sh
+    # actually scans over flat legacy mirror dirs packages/<pkgId>/. Multiple
+    # dirs can share an appId; staging into a flat dir that build-store
+    # ignores silently drops the publish from the index (hit 2026-06-02 —
+    # wrong dir, index never advanced). Rank deeper (developer-nested) first.
+    CAT_MATCHES="$(grep -rl --include=metadata.json \
+                     "\"appId\": *\"$APP_ID_FROM_SPK\"" \
+                     "$STATIC_STORE_ROOT/packages" 2>/dev/null || true)"
+    CAT_PATH=""
+    if [[ -n "$CAT_MATCHES" ]]; then
+      CAT_PATH="$(printf '%s\n' "$CAT_MATCHES" \
+        | awk -F/ '{ print NF"\t"$0 }' \
+        | sort -rn | head -1 | cut -f2-)"
+    fi
     CAT_PATH="${CAT_PATH%/metadata.json}"
     if [[ -z "$CAT_PATH" || ! -d "$CAT_PATH" ]]; then
       fail "  ceremony: could not locate catalog pkg dir for appId=$APP_ID_FROM_SPK — set APP_CATALOG_PATH= explicitly"
@@ -327,9 +345,24 @@ print(json.load(open(os.path.join(os.environ["APP_DIR"], "metadata.json"))).get(
        run_or_dry "$STATIC_STORE_ROOT/scripts/pearl-app-ceremony.sh"; then
     fail "  pearl-app-ceremony.sh failed — see /tmp/pearl-ceremony-$APP_SLUG/ for state"
   fi
-  PUBLISHED_APP_HASH="$(jq -r '.appHash // empty' "/tmp/pearl-ceremony-$APP_SLUG/result.json" 2>/dev/null || true)"
+  # The ceremony writes the appHash into its RELEASE.json (and the catalog
+  # RELEASE.json), NOT into result.json (which carries only Squads tx ids).
+  # Prefer the ceremony RELEASE.json, then the catalog RELEASE.json, then a
+  # legacy result.json.appHash. Getting this non-empty is load-bearing: it
+  # selects the Step 4 branch that SKIPS the source-repo `make publish`
+  # (which re-packs and FATALs on the signature-derived pkgId drift — the
+  # "Phase B finalize-release pkgId-drift" failure mode).
+  PUBLISHED_APP_HASH="$(jq -r '.appHash // empty' "/tmp/pearl-ceremony-$APP_SLUG/RELEASE.json" 2>/dev/null || true)"
+  if [[ -z "$PUBLISHED_APP_HASH" && -f "$CAT_PATH/RELEASE.json" ]]; then
+    PUBLISHED_APP_HASH="$(jq -r '.appHash // empty' "$CAT_PATH/RELEASE.json" 2>/dev/null || true)"
+  fi
+  if [[ -z "$PUBLISHED_APP_HASH" ]]; then
+    PUBLISHED_APP_HASH="$(jq -r '.appHash // empty' "/tmp/pearl-ceremony-$APP_SLUG/result.json" 2>/dev/null || true)"
+  fi
   if [[ -n "$PUBLISHED_APP_HASH" ]]; then
     info "  ceremony complete — appHash=$PUBLISHED_APP_HASH"
+  else
+    warn "  ceremony complete but appHash not found in RELEASE.json/result.json — Step 4 may attempt make publish (re-pack)"
   fi
 fi
 echo

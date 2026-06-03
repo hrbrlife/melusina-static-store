@@ -1149,9 +1149,9 @@
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
       "name": "cca.sh Domain Template",
-      "version": "0.5.2",
-      "versionNumber": 24,
-      "packageId": "7c7045b508e5233688d7830f819fe67f",
+      "version": "0.5.3",
+      "versionNumber": 25,
+      "packageId": "36811cc9b288aff3c6c38c069d18117c",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -1173,20 +1173,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.5.2",
-      "sha256": "7c7045b508e5233688d7830f819fe67f5d548fd83e37a4066c1bf3d018ce2667",
+      "marketingVersion": "0.5.3",
+      "sha256": "36811cc9b288aff3c6c38c069d18117cf297f01f624c6939be86cdcee974a2ae",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780513924349,
+      "updatedAt": 1780516692685,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ce67a14497e09a219c202e8f0e2a90920cb19d35ead8e974e41eb6661c97d1ac",
-        "releaseHash": "77c5f00d47c497d4bf83f521adb63ccadf4ad7df068b51220a11aedb590df333",
-        "releaseNonce": "96e058f2c58c5095aceb187f4d374871",
-        "releaseEntryPda": "DpMuoJ6X3yz6PqcTuyufq871QaoHsLWnmthKEQcUgwme",
+        "appHash": "2238cb3cb3a4ea5fcd54b9f615d99f449068f0b2855dc2fe108e359f7c0c5a4d",
+        "releaseHash": "c7b4c304b34ed2cc8d08f549bf6bc50ec9e0ba970e78ac3035814cee1e3a8cd4",
+        "releaseNonce": "7ea7a52155abfbba464714fcf7975da9",
+        "releaseEntryPda": "GWbADFHZu5EBp4sqHziFYMkwHwo8rKa9bLtS1UyvJBZ6",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780514242,
-        "authorSig": "cItv043C/BR6klPcFL5KgjFPQMqFwiTitl/q3VYmj3KIJJXf+lwTw77J4IUIkop56FARvouXknPkXjLb9BhZBA==",
+        "signedAtUnix": 1780517010,
+        "authorSig": "jtmexJaihLfjUlrsBuB9cg7smSREuqQ33pne+0OUiT2j+pRYAXBBzJ37/C6GXTK33PcOhNVjDTo00SfuilvnAA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

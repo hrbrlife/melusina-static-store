@@ -4558,10 +4558,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "31b3b91d372bca4a93226c59d117fa6a",
+      "packageId": "da0a3e0c03d99ba4fba78e8a82016fe0",
       "name": "popaye",
-      "version": "0.3.80",
-      "versionNumber": 70,
+      "version": "0.3.81",
+      "versionNumber": 71,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4584,20 +4584,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.80",
-      "sha256": "31b3b91d372bca4a93226c59d117fa6a88806b5cb084aeaf93338577f0e5a7fd",
+      "marketingVersion": "0.3.81",
+      "sha256": "da0a3e0c03d99ba4fba78e8a82016fe04416b6dd4b5048ed4d655df851db6d34",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780511715853,
+      "updatedAt": 1780528219746,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "fbc44b2bd5c4cd2b43852479ee055d4a29e9f4246091396af6d09c16cdd60ed6",
-        "releaseHash": "7eded3a94b254a576ad09ce508e4da746379ac8c0eeb12429653ab6f100d5a0b",
-        "releaseNonce": "9dc328750b8b9d5dcc488d4cc7066189",
-        "releaseEntryPda": "7hFRgiqCorKMvmXNsHKLZ7CWMmNmcdtdkAVNmLhRzBrQ",
+        "appHash": "9e5698e5fca9961557dead42416edc092333a055f338383e72c8829b7b446cca",
+        "releaseHash": "1a1757c05e715f6cdd4f4ce6c343f2d3674a10c50f4f94c2d79084660be98dcb",
+        "releaseNonce": "072aa36f30bbfdf90079a7b3b416a3f8",
+        "releaseEntryPda": "5W4xWYHSA4CKsYqmufzCPRdFVXH4eFjhzxQzV3cR6NFG",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780512031,
-        "authorSig": "+SwZn1hU31/p1sWm0ujen41BJDBKWHuaT0WTEArIhgZ1hkpoca+iQQd0K+FOZh1F5HUmnXbfen0nU3PuylqaAQ==",
+        "signedAtUnix": 1780528536,
+        "authorSig": "gZTuUnWa4Kl6XDg6ikhkztwUw6ckzif8xZ0UnKoAeGXppf3ifPgSzbSn73c08xCRknYGRk68C/F5i+K7enA0Dg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

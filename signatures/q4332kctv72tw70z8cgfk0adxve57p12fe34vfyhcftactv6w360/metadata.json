@@ -1,0 +1,33 @@
+{
+  "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+  "name": "Paint Bureau",
+  "version": "1.0.7",
+  "versionNumber": 9,
+  "packageId": "febd9be232e208149725c25d721c233d",
+  "shortDescription": "Sovereign minipaint grain (Paint Bureau)",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-bureau-paint-app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776663498,
+  "screenshots": [
+    "screenshot_docs.png",
+    "screenshot_docs2.png",
+    "screenshot_graphs.png",
+    "screenshot_image.png",
+    "screenshot_sheets.png"
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "1.0.7"
+}

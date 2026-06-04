@@ -3045,7 +3045,7 @@
       "marketingVersion": "0.1.29",
       "sha256": "03a5bc3b6ec4e6127df345f4679f5c9c6853ba1698e6c2d45507a43bf41547b7",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780458433649,
+      "updatedAt": 1780546676391,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "abdde016954e85a585e2081d83c48532dfcf57abaa74b3fb87dee73c324c4a1a",
@@ -4218,6 +4218,52 @@
         ]
       },
       "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the NamedCoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm pearl store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated OpenSanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Pearl**: NamedCoin-pearl (Go + HTMX, Sandstorm pearl)\n- **Sidecar**: NamedCoin-sidecar (Go, HTTP API on port 9100)\n- **Admin pearl**: melusina-NamedCoin-admin-app (separate pearl)\n- **Dependencies**: ailagoon-sidecar (LLM), OpenSanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the NamedCoin, ailagoon, OpenSanctions, and mermail sidecars.",
+      "screenshots": []
+    },
+    {
+      "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
+      "name": "NamedCoin Admin",
+      "version": "0.1.1",
+      "versionNumber": 2,
+      "packageId": "529790406d193db36e447aeb615f6cb7",
+      "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source)",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
+      "upstreamAuthor": "hrbr.life",
+      "author": {
+        "name": "hrbr.life",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": ""
+      },
+      "marketingVersion": "0.1.1",
+      "sha256": "529790406d193db36e447aeb615f6cb74ce9f58599fb9751b9f1637eed3047be",
+      "createdAt": 1780547509756,
+      "imageId": "6808801193391d9254773a067bc1b295.svg",
+      "updatedAt": 1780547386623,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "0910659403113f9052dea609613af5a983619d910e0b1528bd960fb00e53ecdf",
+        "releaseHash": "4562ed2f0ade8661fb4ac8c5e4d22dc1012f15ebd6ffde7de86aac16061a4ae3",
+        "releaseNonce": "e06e604014f483f22b6289b0f3b9c396",
+        "releaseEntryPda": "6aMg5XvqHD4um9uWSDojWzgaAtToABvAJdAz6FycYtQD",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780547713,
+        "authorSig": "srH/7XnsFq4qZ14Yt4IgymZUiPpjHNMcxfcgbLAgqSE8k/4acZJa7/DignWcu5fFHJ34VI70W9/eH6iqFnKlCg==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null,
+      "description": "**NamedCoin Admin** is the operator console for the NamedCoin KYC system.\n\nReview incoming KYC packets (ID photo, OCR, doc-authenticity, face-match, sanctions-screen results), configure the consumer-trust list that tells Melusina which other licenses' attestations this license accepts, build unsigned Solana instructions for issue / revoke / trust-edit so an install admin can sign them in their browser, and inspect any user wallet's live attestation state via the built-in KYC Inspector.\n\nCompanion grain for per-user onboarding: melusina-namedcoin-app (the Pearl).\n\nRaw ID documents and questionnaire answers never leave the pearl's encrypted store. Nothing but Merkle roots, hashes, and enum values land on-chain or in the admin audit log.\n\nBuilt in Go with HTMX + vanilla templates. Melusina grain.",
       "screenshots": []
     },
     {

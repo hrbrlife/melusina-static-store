@@ -1,9 +1,9 @@
 {
   "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
   "name": "NamedCoin Admin",
-  "version": "0.1.5",
-  "versionNumber": 6,
-  "packageId": "83d6d675b085ee2a969ed0d4df8cbbac",
+  "version": "0.1.6",
+  "versionNumber": 7,
+  "packageId": "bacd30e696dddca3c3e2bdd904aaff70",
   "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
   "categories": [
     "Productivity"
@@ -20,7 +20,7 @@
     "twitterUsername": "",
     "picture": ""
   },
-  "marketingVersion": "0.1.5",
-  "sha256": "83d6d675b085ee2a969ed0d4df8cbbacfd7f81dd0ddb6cbceae7f363153335d1",
+  "marketingVersion": "0.1.6",
+  "sha256": "bacd30e696dddca3c3e2bdd904aaff705a533cdfa6ac3ad069bc22cdbfa82cd2",
   "createdAt": 1780547509756
 }

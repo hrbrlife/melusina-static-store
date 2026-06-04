@@ -1,0 +1,9 @@
+SHELL := /bin/bash
+test-refresh:
+	@echo "=== Refreshing submodules ==="
+	@SM_PATHS=$$(git config --file .gitmodules --get-regexp 'submodule\..*\.path' | awk '{print $$2}'); \
+	echo "PATHS=$$SM_PATHS"; \
+	for sm_path in $$SM_PATHS; do \
+		echo "  path: $$sm_path"; \
+	done; \
+	echo "done"

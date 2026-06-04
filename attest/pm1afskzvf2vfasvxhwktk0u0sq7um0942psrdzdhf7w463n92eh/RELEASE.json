@@ -1,0 +1,17 @@
+{
+  "$schema": "melusina-release-v1",
+  "version": "0.1.6",
+  "appHash": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
+  "releaseHash": "d1a12c4a2d62d12687c69aa40f84b5fe45da4c89e19a2a5f214a434ab4c3d63f",
+  "releaseNonce": "9697079341ccb6a5fcd17630df531a369efc8bd04f50176fdeca5f1b86d2410b",
+  "releaseEntryPda": "offline-release-entry-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+  "MasterNftMint": "offline-master-nft-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+  "licenseSquadsVault": "offline-license-vault-pm1afskzvf2vfasvxhwktk0u0sq7um09",
+  "authorSig": "830ba30f29a3e60a564b4953d1c24c264e129863450ddbd15513407066671665",
+  "signedAtUnix": 1780242974,
+  "quorumPolicy": {
+    "threshold": 1,
+    "memberCount": 1,
+    "multisigPda": "offline-multisig-pm1afskzvf2vfasvxhwktk0u0sq7um09"
+  }
+}

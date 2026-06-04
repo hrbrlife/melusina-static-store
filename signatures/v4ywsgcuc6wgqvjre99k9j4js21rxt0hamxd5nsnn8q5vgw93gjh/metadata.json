@@ -1,0 +1,43 @@
+{
+  "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+  "packageId": "f8b9f972fa8312047e861381f8b57092",
+  "name": "AiLagoon",
+  "version": "0.7.15",
+  "versionNumber": 23,
+  "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
+  "description": "",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ai-lagoon",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1739491200000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [
+    {
+      "url": "screenshots/01-dashboard.png",
+      "caption": "Dashboard with connected AI models and capability routing"
+    },
+    {
+      "url": "screenshots/02-connections.png",
+      "caption": "Managing Ollama, OpenAI, and OpenRouter model connections"
+    },
+    {
+      "url": "screenshots/03-playground.png",
+      "caption": "Built-in chat playground for testing models"
+    }
+  ],
+  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.7.15",
+  "sha256": "f8b9f972fa8312047e861381f8b57092c031b3e60c4dcf88512995e0eba37a8c"
+}

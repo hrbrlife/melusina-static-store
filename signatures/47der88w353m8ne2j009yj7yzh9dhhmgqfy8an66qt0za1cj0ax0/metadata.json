@@ -1,0 +1,28 @@
+{
+  "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+  "name": "DueProcess v2 (option-b)",
+  "version": "0.1.30",
+  "versionNumber": 34,
+  "packageId": "8edc1f91d315e66ab23e2c647254e567",
+  "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776612839000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.30",
+  "sha256": "8edc1f91d315e66ab23e2c647254e567e94ce78a66a792565829f67d1ac1ff14"
+}

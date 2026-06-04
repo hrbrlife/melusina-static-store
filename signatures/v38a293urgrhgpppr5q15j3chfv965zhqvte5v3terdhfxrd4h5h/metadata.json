@@ -1,0 +1,34 @@
+{
+  "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
+  "name": "Doc Bureau",
+  "version": "1.0.9",
+  "versionNumber": 10,
+  "packageId": "2bbc0843359c8383f1f8001510393e17",
+  "shortDescription": "Sovereign document grain (Doc Bureau)",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-bureau-doc-app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776663049,
+  "screenshots": [
+    "screenshot_docs.png",
+    "screenshot_docs2.png",
+    "screenshot_graphs.png",
+    "screenshot_image.png",
+    "screenshot_sheets.png"
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "1.0.9",
+  "sha256": "2bbc0843359c8383f1f8001510393e17cd58cb7282bc290c4545a89def6c188d"
+}

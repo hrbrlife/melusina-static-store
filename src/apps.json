@@ -4269,9 +4269,9 @@
     {
       "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
       "name": "NamedCoin Admin",
-      "version": "0.1.2",
-      "versionNumber": 3,
-      "packageId": "c47999a3f19c6edff49b197a094401d9",
+      "version": "0.1.3",
+      "versionNumber": 4,
+      "packageId": "f77df3509f8f0ca730c5d7226052521c",
       "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
       "categories": [
         "Productivity"
@@ -4287,21 +4287,21 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.2",
-      "sha256": "c47999a3f19c6edff49b197a094401d987739a899e35ee30660420f50ea7cc47",
+      "marketingVersion": "0.1.3",
+      "sha256": "f77df3509f8f0ca730c5d7226052521c409d043d6a3d4c61e376781221c81677",
       "createdAt": 1780547509756,
       "imageId": "6808801193391d9254773a067bc1b295.svg",
-      "updatedAt": 1780574371012,
+      "updatedAt": 1780596240461,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1c1dc8965f9f01f4501c6e21fad2185ceffda1398b4a79dd946fe359eb673737",
-        "releaseHash": "114e1287446826963e6b144dcb331b201555f67e4ef7efa7d1a3f4fd6f37aa52",
-        "releaseNonce": "deabb331a4edfdb07bc18ea303c7925a",
-        "releaseEntryPda": "9KjoEhUXTWyf2RkprrMt41ZsuVad2A6va8buBgS6m661",
+        "appHash": "bbacbb67f522880b33ebf80b601e16c22701dac55865db478eae84e1d0443b8e",
+        "releaseHash": "69c79a70eeb439d2f418a24cff798fba969bdf91afa008752828833cff21cd60",
+        "releaseNonce": "10c714ccfdab65837e716ac40084b474",
+        "releaseEntryPda": "8WT4Qq4mbcssAhRq7mwQM2pv7E5fLccoiewtBV1VEneq",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780574416,
-        "authorSig": "UpjN+ZBIOyoWmpqxDIbYPAgA4ieJmRQrXmWASAKqtf2jPSNqio5eH8mHbZJR7ZUlnc18ofVjUWRxmXl5/GXYAg==",
+        "signedAtUnix": 1780596343,
+        "authorSig": "RpwhqeYNmN0j1TnAzHx0UNzfHesXPyglonIvJbz5A2JSFg7+2hjnijQvIL5NCiuDAnMy0mDxZZRM3P2JTHSbAg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

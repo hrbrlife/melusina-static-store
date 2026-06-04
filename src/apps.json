@@ -4650,10 +4650,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "b43d9778fcee9453b239efe568383d39",
+      "packageId": "52e3e2580f3dae0c0476adbcc8c4f038",
       "name": "popaye",
-      "version": "0.3.91",
-      "versionNumber": 81,
+      "version": "0.3.92",
+      "versionNumber": 82,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4676,24 +4676,24 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.91",
-      "sha256": "b43d9778fcee9453b239efe568383d396a9aca0b0bfbed1f88394d110db0d89a",
+      "marketingVersion": "0.3.92",
+      "sha256": "52e3e2580f3dae0c0476adbcc8c4f038755886849b460e7eee0cb3f097c5cb3f",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780561439060,
+      "updatedAt": 1780568412420,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b43d9778fcee9453b239efe568383d396a9aca0b0bfbed1f88394d110db0d89a",
-        "releaseHash": "db8150b0a87d81221a6e8d6a0ff7208f26b55dcb08f3a81f3d3ed9795e00c771",
-        "releaseNonce": "51b3e9403581fae19d90b335971222179ec53da7f21282d21187b75d91ddcdd9",
-        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1780561439,
-        "authorSig": "2ef0fda5b9528262d9ae624dc970d371c21c51217534c92a4b9406d6caa99077",
+        "appHash": "a9b916e1f4afac58e579c5239abdb2728911a69ebf5de4eedadf9d7e6d4de8f2",
+        "releaseHash": "c44856df46b2e040cbc4794635ee96289e9cfa54450fabb5b2fba96420656c89",
+        "releaseNonce": "16339a984598be7b2208aeb35d3889c6",
+        "releaseEntryPda": "8DZSCDicpkwZcty5RDdea8Ldvxr4GUxVFDNv13gSYmDX",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780568439,
+        "authorSig": "4i+sfHtl2g7sL+GwTEm1uIn/MqNgfHQJUxnGSR/dG455fen4UtttBhEZ9SUUow7PqmcoMotoNRWlFONI66OqBw==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null

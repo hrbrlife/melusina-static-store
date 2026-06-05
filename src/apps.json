@@ -3067,9 +3067,9 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.30",
-      "versionNumber": 34,
-      "packageId": "8edc1f91d315e66ab23e2c647254e567",
+      "version": "0.1.31",
+      "versionNumber": 35,
+      "packageId": "6e27dcd6ae34c9d99feb01760b193c8f",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
       "categories": [
         "Productivity"
@@ -3088,20 +3088,20 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.30",
-      "sha256": "8edc1f91d315e66ab23e2c647254e567e94ce78a66a792565829f67d1ac1ff14",
+      "marketingVersion": "0.1.31",
+      "sha256": "6e27dcd6ae34c9d99feb01760b193c8f56ad40bf22f1661df7df7f2d8223af5f",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780613692944,
+      "updatedAt": 1780660920862,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bac19c2f411fe54cca292669001254d2757ec87774c45362a02df60103c8e53f",
-        "releaseHash": "e1da348cf8ad592f602281e2181b42da9eda41fc21c8134bb61589f5db6d5404",
-        "releaseNonce": "fdbb5ca5651dc344a32552c2833de6a0",
-        "releaseEntryPda": "9f7Ao6kh8vNRor95rq8MkrhRsBKjQadKNQ7Y7jrHhZDf",
+        "appHash": "dbadc1c20ddafa2e56e7398edb863df51a9e75056079c156330752a1953f7053",
+        "releaseHash": "47633b1820d7df2ff0dd92a2f06f9b0d405fbf9176ed78ff3dedf2ea288adee2",
+        "releaseNonce": "47ca1625c45f3992946396b31b17cc85",
+        "releaseEntryPda": "EfkP5U1ktN2PJbQXd33QzrsTpXq2MSUs3RMLYciJpAKD",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780548912,
-        "authorSig": "PqECct5tgXOG9hJNKUU0E2CdQEl6sONoOOzoajPUuiV2IrvywVnfxN2Rqkeu04kM4QmY/Z+uZk7WkqhDLyY7BA==",
+        "signedAtUnix": 1780661249,
+        "authorSig": "SQXqNWew0cCTEFlY2ar4KpXMKsuo89s+Yog7uGv/vUULRsG7OxkX7+75An3EGQTaI16KIGX8YBQVaNE5jPBDCw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

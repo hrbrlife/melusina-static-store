@@ -1,0 +1,74 @@
+[
+  {
+    "code": "USD",
+    "symbol": "$",
+    "short": "US$",
+    "long": "US Dollar",
+    "precision": 2,
+    "kind": "fiat"
+  },
+  {
+    "code": "EUR",
+    "symbol": "€",
+    "short": "€",
+    "long": "Euro",
+    "precision": 2,
+    "kind": "fiat"
+  },
+  {
+    "code": "GBP",
+    "symbol": "£",
+    "short": "£",
+    "long": "Pound Sterling",
+    "precision": 2,
+    "kind": "fiat"
+  },
+  {
+    "code": "CHF",
+    "symbol": "Fr",
+    "short": "CHF",
+    "long": "Swiss Franc",
+    "precision": 2,
+    "kind": "fiat"
+  },
+  {
+    "code": "USDC",
+    "symbol": "USDC",
+    "short": "USDC",
+    "long": "USD Coin",
+    "precision": 6,
+    "kind": "stablecoin"
+  },
+  {
+    "code": "USDT",
+    "symbol": "USDT",
+    "short": "USDT",
+    "long": "Tether",
+    "precision": 6,
+    "kind": "stablecoin"
+  },
+  {
+    "code": "BTC",
+    "symbol": "₿",
+    "short": "BTC",
+    "long": "Bitcoin",
+    "precision": 8,
+    "kind": "crypto"
+  },
+  {
+    "code": "ETH",
+    "symbol": "Ξ",
+    "short": "ETH",
+    "long": "Ether",
+    "precision": 8,
+    "kind": "crypto"
+  },
+  {
+    "code": "SOL",
+    "symbol": "◎",
+    "short": "SOL",
+    "long": "Solana",
+    "precision": 9,
+    "kind": "crypto"
+  }
+]

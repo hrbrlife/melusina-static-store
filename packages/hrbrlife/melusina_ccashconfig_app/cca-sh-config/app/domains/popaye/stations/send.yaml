@@ -1,0 +1,443 @@
+id: send
+name: "Send"
+process_type: send
+description: "Outbound payment from a client wallet — recipient pick, amount + currency selection, funding source + fee preview, purpose/notes, and review with risk display before settlement."
+category: operations
+icon: "📤"
+version: 1
+
+# subject_correlation declares that every case SHOULD be stamped with the
+# ccash grain ID that owns the subject. Backed by Case.ClientGrainID in
+# pkg/station/case_store.go (set opportunistically today by ClientHub
+# orchestration; not yet engine-enforced — convention only for v0.1).
+subject_correlation:
+  required: true
+  field: client_grain_id
+  enforcement: convention
+  description: "Sandstorm grain ID of the ccash client grain that owns this subject."
+
+panels_json: |
+  [
+    {"id":"intake","label":"INTAKE","type":"active","color":"#64748b","order":0,"step_ids":["recipient","amount","funding","context","confirm"]},
+    {"id":"review","label":"COMPLIANCE REVIEW","type":"active","color":"#eab308","order":1,"step_ids":["compliance_review"]},
+    {"id":"approval_c","label":"AWAITING COMPLIANCE APPROVAL","type":"active","color":"#3b82f6","order":2,"step_ids":["compliance_approval"]},
+    {"id":"execution","label":"EXECUTION","type":"active","color":"#a855f7","order":3,"step_ids":["execute"]},
+    {"id":"completed","label":"COMPLETED","type":"terminal","color":"#22c55e","order":4,"step_ids":["settled"]},
+    {"id":"rejected","label":"REJECTED","type":"terminal","color":"#ef4444","order":5,"step_ids":["rejected_end"]}
+  ]
+
+hooks_json: |
+  [
+    {"id":"hook_send_intake","name":"Send Initiated","enabled":true,"trigger":{"event_type":"webhook_received"},"action":{"type":"process_start","target_label":"Send","rule_id":"rule_send"}},
+    {"id":"hook_send_screen","name":"Screen recipient before approval","enabled":true,"trigger":{"event_type":"step_completed","step_id":"confirm"},"action":{"type":"http_webhook","target_label":"TeleScreen Sanctions","url":"/hook/screening","method":"POST","body_template":"{\"counterparty\":\"{{.recipient_label}}\",\"amount\":\"{{.amount}}\",\"currency\":\"{{.currency}}\",\"case_id\":\"{{.case_id}}\"}"}},
+    {"id":"hook_send_approval_signed","name":"Approval signed → emit typed admin hook","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"approved"},"action":{"type":"admin_route","admin_arm":"approval.signed","target_label":"Admin: typed approval signal","payload_keys":["case_id","approver_role","tier","value_minor","currency"]}},
+    {"id":"hook_subprocedure_required_send","name":"High-risk send → spawn screening child","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_review","filter_expr":"{\"in\":[{\"var\":\"risk_band\"},[\"medium\",\"high\"]]}"},"action":{"type":"admin_route","admin_arm":"subprocedure.required","target_label":"Admin: spawn screening child","payload_keys":["case_id","process_type","seed_fields"]}},
+    {"id":"hook_send_settle","name":"Send settled → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"execute"},"action":{"type":"email_send","target_label":"Client send receipt","to_field":"client_email","subject":"Send {{.reference}} settled","body_template":"Your send of {{.amount}} {{.currency}} to {{.recipient_label}} (ref {{.reference}}) has been settled.","is_html":false}},
+    {"id":"hook_send_rejected","name":"Send rejected → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"rejected"},"action":{"type":"email_send","target_label":"Client send rejection","to_field":"client_email","subject":"Send not authorised","body_template":"Hello {{.client_name}}, your send of {{.amount}} {{.currency}} to {{.recipient_label}} could not be authorised. Please contact compliance@ccash-demo.ch.","is_html":false}}
+  ]
+
+grain_rules_json: |
+  [
+    {"id":"rule_send","name":"Send Procedure","enabled":true,"mode":"autonomous","target_app_id":"dueprocess","target_action":0,"target_label":"Send","append_timestamp":true,"share_role_id":1,"share_duration":-1,"share_single_use":false,"return_view_cap":true,"return_share_url":false,"required_permission":0}
+  ]
+
+registries_json: |
+  {
+    "transaction": {
+      "fields": [
+        {"id":"recipient_id","type":"text","label":"Recipient contact ID (opaque)","required":true,"system":true},
+        {"id":"recipient_label","type":"text","label":"Recipient display label","required":true,"max_length":200},
+        {"id":"amount","type":"text","label":"Amount (decimal string)","required":true},
+        {"id":"currency","type":"text","label":"Currency","required":true,"max_length":4},
+        {"id":"currency_kind","type":"select","label":"Currency Kind","required":true,"options":["fiat","stablecoin","crypto"]},
+        {"id":"funding_wallet_id","type":"text","label":"Funding wallet ID (opaque)","required":true,"system":true},
+        {"id":"funding_wallet_label","type":"text","label":"Funding wallet display label","required":true},
+        {"id":"funding_method","type":"select","label":"Funding Method","required":true,"options":["sepa","swift","ach","card","crypto","wallet"]},
+        {"id":"fee_minor","type":"text","label":"Estimated fee (minor units)","system":true},
+        {"id":"fee_currency","type":"text","label":"Fee currency","system":true},
+        {"id":"purpose","type":"select","label":"Purpose of Payment","required":true,"options":["goods","services","salary","family","investment","other"]},
+        {"id":"note","type":"textarea","label":"Note","max_length":500},
+        {"id":"projects","type":"text_multi","label":"Projects","required":false},
+        {"id":"attachments","type":"file_multi","label":"Supporting Documents","accept":["application/pdf","image/jpeg","image/png"]},
+        {"id":"reference","type":"text","label":"External reference","system":true},
+        {"id":"client_name","type":"text","label":"Client name (for receipts)","system":true},
+        {"id":"client_email","type":"email","label":"Client email (for receipts)","system":true}
+      ]
+    },
+    "case": {
+      "fields": [
+        {"id":"case_id","type":"text","label":"Case ID","system":true},
+        {"id":"_approval_outcome","type":"text","label":"Approval outcome","system":true},
+        {"id":"approver_role","type":"text","label":"Approver role","system":true},
+        {"id":"tier","type":"text","label":"Risk tier","options":["low","medium","high","blocked"],"system":true},
+        {"id":"value_minor","type":"text","label":"Value in minor units (for typed hook)","system":true},
+        {"id":"risk_band","type":"text","label":"Risk band","options":["low","medium","high","blocked"]},
+        {"id":"screening_result","type":"text","label":"Screening result","options":["clear","review","blocked"]},
+        {"id":"seed_fields","type":"text","label":"Seed fields JSON for child case","system":true}
+      ]
+    }
+  }
+
+ai_prompts_json: |
+  {
+    "send_risk_summary": {
+      "model": "claude-sonnet-4",
+      "system": "You summarise the risk profile of an outbound payment for a compliance reviewer. Be concise (3 sentences max). Cite only supplied fields; never invent counterparties or destinations.",
+      "user": "Recipient: {{.recipient_label}}. Amount: {{.amount}} {{.currency}} ({{.currency_kind}}). Funding method: {{.funding_method}}. Purpose: {{.purpose}}. Risk band: {{.risk_band}}. Screening: {{.screening_result}}. Summarise."
+    }
+  }
+
+permission_groups_json: |
+  [
+    {"id":"client","name":"Client","description":"The account holder initiating the send.","sandstorm_permission":"respondent","members_role":1},
+    {"id":"co","name":"Compliance Officer","description":"Reviews and approves outbound payments.","sandstorm_permission":"admin","members_role":0},
+    {"id":"accountant","name":"Accountant","description":"Executes the settlement.","sandstorm_permission":"admin","members_role":0},
+    {"id":"auditor","name":"Auditor","description":"Read-only audit access.","sandstorm_permission":"viewer","members_role":2}
+  ]
+
+sub_permissions_json: |
+  {
+    "groups": [
+      {"id":"client","permissions":["initiate_send","view_own_case","upload_document"]},
+      {"id":"co","permissions":["view_pii","screen_counterparty","approve_send","reject_send","write_review_notes"]},
+      {"id":"accountant","permissions":["execute_send","post_ledger_entry","view_ledger"]},
+      {"id":"auditor","permissions":["view_pii","view_decisions","export_audit_log"]}
+    ]
+  }
+
+section_access_json: |
+  {
+    "dashboard_view": {"co":true,"accountant":true,"auditor":true,"client":false},
+    "builder_view": {"co":false,"accountant":false,"auditor":false,"client":false},
+    "case_detail_view": {"co":true,"accountant":true,"auditor":true,"client":true},
+    "screening_panel_view": {"co":true,"accountant":false,"auditor":true,"client":false},
+    "audit_log_view": {"co":true,"accountant":true,"auditor":true,"client":false}
+  }
+
+doc_matrix_json: |
+  {
+    "low": {"required": []},
+    "medium": {"required": [
+      {"id":"purpose_evidence","label":"Purpose evidence (invoice, contract, etc.)","accept":["application/pdf","image/jpeg","image/png"]}
+    ]},
+    "high": {"required": [
+      {"id":"purpose_evidence","label":"Detailed purpose evidence","accept":["application/pdf"]},
+      {"id":"sof_evidence","label":"Source-of-funds evidence","accept":["application/pdf"]}
+    ]}
+  }
+
+risk_config_json: |
+  {
+    "bands": [
+      {"id":"low","label":"Low","threshold_usd":10000,"auto_proceed":true,"color":"#22c55e"},
+      {"id":"medium","label":"Medium","threshold_usd":50000,"requires_role":"co","spawn_screening":true,"color":"#eab308"},
+      {"id":"high","label":"High","threshold_usd":250000,"requires_role":"co","four_eyes":true,"spawn_screening":true,"color":"#f97316"},
+      {"id":"blocked","label":"Blocked","threshold_usd":-1,"auto_reject":true,"color":"#ef4444"}
+    ],
+    "high_risk_methods": ["swift","sepa","crypto"],
+    "default_band": "low"
+  }
+
+datasets_json: |
+  {
+    "high_risk_countries": ["AF","BY","BI","CF","CD","CU","ER","IR","IQ","KP","LB","LY","ML","MM","NI","RU","SS","SD","SY","VE","YE","ZW"],
+    "supported_currencies": ["USD","EUR","GBP","CHF","USDC","USDT","BTC","ETH","SOL"],
+    "purposes": ["goods","services","salary","family","investment","other"]
+  }
+
+metadata_json: |
+  {
+    "label": "Send",
+    "short_label": "Send",
+    "description": "Outbound payment from a client wallet with compliance review, approval gate, and settlement.",
+    "owner_role": "co",
+    "compliance_basis": "FATF Recommendations 10, 16; Travel-Rule guidance; AMLA Art. 6 (ongoing monitoring)",
+    "estimated_duration_minutes": 5,
+    "tags": ["send","payment","outbound","compliance"]
+  }
+
+notification_cfg: '{"approve":true,"reject":true,"review":true}'
+
+source: "OTC Procedure §3; AML/CFT Manual §6.3"
+process_owner: "Compliance Officer"
+card_naming_template: "Send → {recipient_label} ({amount} {currency})"
+
+kanban_columns:
+  - id: intake
+    name: INTAKE
+    color: "#64748b"
+    order: 0
+  - id: review
+    name: COMPLIANCE REVIEW
+    color: "#eab308"
+    order: 1
+  - id: approval_c
+    name: AWAITING COMPLIANCE APPROVAL
+    color: "#3b82f6"
+    order: 2
+  - id: execution
+    name: EXECUTION
+    color: "#a855f7"
+    order: 3
+  - id: completed
+    name: COMPLETED
+    color: "#22c55e"
+    order: 4
+  - id: rejected
+    name: REJECTED
+    color: "#ef4444"
+    order: 5
+
+roles:
+  - id: client
+    name: Client
+    sandstorm_permission: respondent
+  - id: co
+    name: Compliance Officer
+    sandstorm_permission: admin
+  - id: accountant
+    name: Accountant
+    sandstorm_permission: admin
+
+steps:
+  - id: recipient
+    column: intake
+    type: form
+    title: "Recipient"
+    description: "Pick the contact who will receive the funds."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: recipient_id
+        type: contact_picker
+        label: "Recipient"
+        required: true
+        kind: contact
+      - id: recipient_label
+        type: text
+        label: "Recipient (display label, set by picker)"
+        system: true
+    default_next_step: amount
+
+  - id: amount
+    column: intake
+    type: form
+    title: "Amount"
+    description: "Specify amount and currency."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: amount
+        type: currency_amount
+        label: "Amount"
+        required: true
+      - id: currency
+        type: text
+        label: "Currency"
+        required: true
+      - id: currency_kind
+        type: select
+        label: "Currency Kind"
+        required: true
+        options:
+          - id: fiat
+            label: Fiat
+          - id: stablecoin
+            label: Stablecoin
+          - id: crypto
+            label: Crypto
+    default_next_step: funding
+
+  - id: funding
+    column: intake
+    type: form
+    title: "Funding"
+    description: "Choose the wallet to fund the send and the settlement method. Fee preview is computed when the method is picked."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: funding_wallet_id
+        type: wallet_picker
+        label: "Funding Wallet"
+        required: true
+        filter_by_currency_kind: true
+      - id: funding_wallet_label
+        type: text
+        label: "Funding Wallet (display label, set by picker)"
+        system: true
+      - id: funding_method
+        type: select
+        label: "Funding Method"
+        required: true
+        options:
+          - id: sepa
+            label: SEPA
+          - id: swift
+            label: SWIFT
+          - id: ach
+            label: ACH
+          - id: card
+            label: Card
+          - id: crypto
+            label: Crypto
+          - id: wallet
+            label: Internal Wallet
+      - id: fee_minor
+        type: text
+        label: "Estimated fee (minor units, computed)"
+        system: true
+      - id: fee_currency
+        type: text
+        label: "Fee currency (computed)"
+        system: true
+    default_next_step: context
+
+  - id: context
+    column: intake
+    type: form
+    title: "Purpose & Context"
+    description: "Provide the purpose and any supporting context for compliance review."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: purpose
+        type: select
+        label: "Purpose of Payment"
+        required: true
+        options:
+          - id: goods
+            label: Goods
+          - id: services
+            label: Services
+          - id: salary
+            label: Salary
+          - id: family
+            label: Family Support
+          - id: investment
+            label: Investment
+          - id: other
+            label: Other
+      - id: note
+        type: textarea
+        label: "Note"
+      - id: projects
+        type: text_multi
+        label: "Projects"
+      - id: attachments
+        type: file_multi
+        label: "Supporting Documents"
+    default_next_step: confirm
+
+  - id: confirm
+    column: intake
+    type: form
+    title: "Review & Confirm"
+    description: "Review the send details, the computed fee, and the risk band before submitting for approval."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: risk_band
+        type: risk_display
+        label: "Risk band"
+        system: true
+    default_next_step: compliance_review
+
+  - id: compliance_review
+    column: review
+    type: form
+    title: "Compliance Review"
+    description: "Compliance officer reviews the send. Risk band shown is system-populated by the screening callback fired on confirm; the §4.5 spawn hook reads it on completion of this step to trigger a child screening case automatically."
+    assigned_role: co
+    access:
+      client: none
+      co: edit
+      accountant: view
+    fields:
+      - id: risk_band
+        type: text
+        label: "Risk band (system-populated by screening callback)"
+        system: true
+      - id: screening_result
+        type: text
+        label: "Screening result (system-populated)"
+        system: true
+      - id: review_notes
+        type: textarea
+        label: "Review notes"
+    default_next_step: compliance_approval
+
+  - id: compliance_approval
+    column: approval_c
+    type: approval
+    title: "Compliance Approval"
+    description: "Compliance officer approves or rejects the send. High-risk sends gate at this step."
+    assigned_role: co
+    access:
+      client: none
+      co: edit
+      accountant: view
+    approval:
+      required_roles:
+        - co
+      min_approvers: 1
+      review_data:
+        - recipient_label
+        - amount
+        - currency
+        - funding_method
+        - purpose
+        - risk_band
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: execute
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: rejected_end
+    default_next_step: execute
+
+  - id: execute
+    column: execution
+    type: form
+    title: "Execute Send"
+    description: "Accountant executes the settlement and posts the ledger entry."
+    assigned_role: accountant
+    access:
+      client: none
+      co: view
+      accountant: edit
+    fields:
+      - id: reference
+        type: text
+        label: "Settlement reference"
+        required: true
+    default_next_step: settled
+
+  - id: settled
+    column: completed
+    type: complete
+    title: "Send Settled"
+    description: "Send has been settled and the ledger entry posted."
+
+  - id: rejected_end
+    column: rejected
+    type: complete
+    title: "Send Rejected"
+    description: "Send was not authorised."

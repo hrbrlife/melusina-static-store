@@ -1,0 +1,21 @@
+{
+  "id": "popaye",
+  "name": "CCash Procedures",
+  "description": "Compliance, onboarding, and operations procedures for CCash: KYC, account opening, deposits/withdrawals, OTC trading, and risk management.",
+  "version": 2,
+  "hooks": [
+    "subprocedure.required",
+    "subprocedure.resolved",
+    "approval.signed",
+    "cyber.create_invoice",
+    "cyber.payment_detected",
+    "cyber.settlement_moved",
+    "cyber.screening_verdict",
+    "account.operation",
+    "fee.preview_request",
+    "fee.preview_response",
+    "document.uploaded",
+    "risk.band_computed",
+    "status.beacon"
+  ]
+}

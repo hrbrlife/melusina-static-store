@@ -1,0 +1,53 @@
+[
+  {
+    "id": "rule_kyc_to_account",
+    "name": "KYC approved → spawn ccash account grain",
+    "description": "When a Simple-KYC case is approved, autonomously spawn a ccash account grain configured for the new client.",
+    "enabled": true,
+    "mode": "autonomous",
+    "target_app_id": "ccash",
+    "target_action": 0,
+    "target_label": "CCash Account",
+    "append_timestamp": true,
+    "share_role_id": 1,
+    "share_duration": -1,
+    "share_single_use": false,
+    "return_view_cap": true,
+    "return_share_url": true,
+    "required_permission": 0
+  },
+  {
+    "id": "rule_account_to_portal",
+    "name": "Account opened → spawn client portal grain",
+    "description": "When an Account Opening case completes with executive sign-off, spawn the client-facing portal grain and share it with the holder.",
+    "enabled": true,
+    "mode": "autonomous",
+    "target_app_id": "ccash-portal",
+    "target_action": 0,
+    "target_label": "Client Portal",
+    "append_timestamp": false,
+    "share_role_id": 0,
+    "share_duration": 0,
+    "share_single_use": true,
+    "return_view_cap": true,
+    "return_share_url": true,
+    "required_permission": 0
+  },
+  {
+    "id": "rule_four_eyes_review",
+    "name": "High-value four-eyes review",
+    "description": "Spawn a process grain to route a high-value transaction through executive sign-off. Used by the high-value hook gate.",
+    "enabled": true,
+    "mode": "interactive",
+    "target_app_id": "dueprocess",
+    "target_action": 0,
+    "target_label": "Four-Eyes Review",
+    "append_timestamp": true,
+    "share_role_id": 1,
+    "share_duration": 7,
+    "share_single_use": false,
+    "return_view_cap": true,
+    "return_share_url": false,
+    "required_permission": 0
+  }
+]

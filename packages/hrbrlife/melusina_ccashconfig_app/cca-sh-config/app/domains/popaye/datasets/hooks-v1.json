@@ -1,0 +1,105 @@
+[
+  {
+    "id": "hook_screening_cleared",
+    "name": "Screening cleared — notify operator",
+    "description": "Fires when a sanctions/PEP screening returns CLEAR. Surfaces a notification to the compliance officer so the case can move into approval.",
+    "enabled": true,
+    "trigger": {
+      "event_type": "step_completed",
+      "step_id": "screening",
+      "status_match": "cleared"
+    },
+    "action": {
+      "type": "email_send",
+      "target_label": "Compliance Officer",
+      "to_field": "compliance_email",
+      "subject": "Screening cleared for case {{.case_id}}",
+      "body_template": "Case {{.case_id}} ({{.holder_name}}) has cleared sanctions and PEP screening. Ready for compliance review.",
+      "is_html": false
+    }
+  },
+  {
+    "id": "hook_settlement_complete",
+    "name": "Settlement complete — email client",
+    "description": "Confirms to the client that a deposit/withdrawal has been ledger-posted and externally settled.",
+    "enabled": true,
+    "trigger": {
+      "event_type": "step_completed",
+      "step_id": "17.4"
+    },
+    "action": {
+      "type": "email_send",
+      "target_label": "Client",
+      "to_field": "client_email",
+      "subject": "Your transaction {{.reference}} has settled",
+      "body_template": "Hi {{.holder_name}}, your {{.direction}} of {{.processed_amount}} {{.currency}} (ref {{.reference}}) has settled. View the receipt in your portal.",
+      "is_html": false
+    }
+  },
+  {
+    "id": "hook_kyc_approved_activate_wallets",
+    "name": "KYC approved — activate wallets",
+    "description": "When a Simple-KYC case completes with approved outcome, signal the client's account grain to activate the default wallet set.",
+    "enabled": true,
+    "trigger": {
+      "event_type": "step_completed",
+      "step_id": "officer_review",
+      "status_match": "approved"
+    },
+    "action": {
+      "type": "grain_state_transition",
+      "target_label": "Activate client wallets",
+      "target_step": "wallet_activation",
+      "correlation_id_source": "case_id",
+      "bearer_token_env": "STATION_ACTIVATION_SECRET"
+    },
+    "gate": {
+      "enabled": false,
+      "default_action": "auto"
+    }
+  },
+  {
+    "id": "hook_high_value_four_eyes",
+    "name": "High-value transaction — require four-eyes review",
+    "description": "Gate any transaction whose USD-equivalent exceeds USD 50,000. Routes the case to the executive queue for a second approver.",
+    "enabled": true,
+    "trigger": {
+      "event_type": "step_completed",
+      "step_id": "compliance_approval",
+      "filter_expr": "{\">\":[{\"var\":\"amount_usd\"},50000]}"
+    },
+    "action": {
+      "type": "process_start",
+      "target_label": "Four-Eyes Review",
+      "rule_id": "rule_four_eyes_review"
+    },
+    "gate": {
+      "enabled": true,
+      "risk_threshold": "high",
+      "value_field": "amount_usd",
+      "value_max": 50000,
+      "default_action": "approval",
+      "approval_roles": ["executive", "compliance"]
+    }
+  },
+  {
+    "id": "hook_account_opened_credit_book",
+    "name": "Account opened — post opening journal",
+    "description": "On successful account opening, post the zero-balance opening entry against the operator's correspondent ledger so the new account shows up on the books.",
+    "enabled": true,
+    "trigger": {
+      "event_type": "step_completed",
+      "step_id": "account_opened"
+    },
+    "action": {
+      "type": "account_operation",
+      "target_label": "Opening Entry",
+      "account_slot": "operator_correspondent",
+      "account_op": "credit",
+      "amount_fixed": 0,
+      "ref_template": "OPEN-{{.case_id}}",
+      "desc_template": "Account opened for {{.holder_name}} ({{.account_type}})",
+      "counterpart": "{{.account_grain_id}}"
+    }
+  }
+]

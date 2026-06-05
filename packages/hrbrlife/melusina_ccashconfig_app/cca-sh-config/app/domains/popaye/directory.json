@@ -1,0 +1,35 @@
+{
+  "domain": "popaye",
+  "entries": [
+    {
+      "process_type": "account-opening",
+      "station_grain_id": "",
+      "station_url": ""
+    },
+    {
+      "process_type": "deposits-withdrawals",
+      "station_grain_id": "",
+      "station_url": ""
+    },
+    {
+      "process_type": "screening",
+      "station_grain_id": "",
+      "station_url": ""
+    },
+    {
+      "process_type": "receive",
+      "station_grain_id": "",
+      "station_url": ""
+    },
+    {
+      "process_type": "send",
+      "station_grain_id": "",
+      "station_url": ""
+    },
+    {
+      "process_type": "simple-kyc",
+      "station_grain_id": "",
+      "station_url": ""
+    }
+  ]
+}

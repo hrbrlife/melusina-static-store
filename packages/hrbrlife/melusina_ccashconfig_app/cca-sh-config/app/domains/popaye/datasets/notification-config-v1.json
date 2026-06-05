@@ -1,0 +1,17 @@
+{
+  "default_mode": "important",
+  "important_events": [
+    "transaction_created",
+    "transaction_approved",
+    "transaction_rejected",
+    "transaction_settled",
+    "kyc_approved",
+    "kyc_rejected",
+    "deposit_received",
+    "withdrawal_initiated",
+    "withdrawal_completed",
+    "screening_alert",
+    "four_eyes_required",
+    "account_activated"
+  ]
+}

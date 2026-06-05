@@ -1,0 +1,450 @@
+id: receive
+name: "Receive"
+process_type: receive
+description: "Inbound payment to a client wallet — sender pick (multi), amount + currency, destination wallet, purpose/notes, review with risk display, and on approval fire cyberteller invoice creation for crypto rails."
+category: operations
+icon: "📥"
+version: 1
+
+# subject_correlation declares that every case SHOULD be stamped with the
+# ccash grain ID that owns the subject. Backed by Case.ClientGrainID in
+# pkg/station/case_store.go (set opportunistically today by ClientHub
+# orchestration; not yet engine-enforced — convention only for v0.1).
+subject_correlation:
+  required: true
+  field: client_grain_id
+  enforcement: convention
+  description: "Sandstorm grain ID of the ccash client grain that owns this subject."
+
+panels_json: |
+  [
+    {"id":"intake","label":"INTAKE","type":"active","color":"#64748b","order":0,"step_ids":["senders","amount","destination","context","confirm"]},
+    {"id":"review","label":"COMPLIANCE REVIEW","type":"active","color":"#eab308","order":1,"step_ids":["compliance_review"]},
+    {"id":"approval_c","label":"AWAITING COMPLIANCE APPROVAL","type":"active","color":"#3b82f6","order":2,"step_ids":["compliance_approval"]},
+    {"id":"execution","label":"EXECUTION","type":"active","color":"#a855f7","order":3,"step_ids":["mint_invoice","await_payment"]},
+    {"id":"completed","label":"COMPLETED","type":"terminal","color":"#22c55e","order":4,"step_ids":["settled"]},
+    {"id":"rejected","label":"REJECTED","type":"terminal","color":"#ef4444","order":5,"step_ids":["rejected_end"]}
+  ]
+
+hooks_json: |
+  [
+    {"id":"hook_receive_intake","name":"Receive Initiated","enabled":true,"trigger":{"event_type":"webhook_received"},"action":{"type":"process_start","target_label":"Receive","rule_id":"rule_receive"}},
+    {"id":"hook_receive_screen","name":"Screen senders before approval","enabled":true,"trigger":{"event_type":"step_completed","step_id":"confirm"},"action":{"type":"http_webhook","target_label":"TeleScreen Sanctions","url":"/hook/screening","method":"POST","body_template":"{\"counterparties\":\"{{.senders_label_csv}}\",\"amount\":\"{{.amount}}\",\"currency\":\"{{.currency}}\",\"case_id\":\"{{.case_id}}\"}"}},
+    {"id":"hook_receive_approval_signed","name":"Approval signed → emit typed admin hook","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"approved"},"action":{"type":"admin_route","admin_arm":"approval.signed","target_label":"Admin: typed approval signal","payload_keys":["case_id","approver_role","tier","value_minor","currency"]}},
+    {"id":"hook_subprocedure_required_receive","name":"High-risk receive → spawn screening child","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_review","filter_expr":"{\"in\":[{\"var\":\"risk_band\"},[\"medium\",\"high\"]]}"},"action":{"type":"admin_route","admin_arm":"subprocedure.required","target_label":"Admin: spawn screening child","payload_keys":["case_id","process_type","seed_fields"]}},
+    {"id":"hook_cyber_create_invoice","name":"On approval → mint cyberteller invoice","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"approved","filter_expr":"{\"in\":[{\"var\":\"currency_kind\"},[\"crypto\",\"stablecoin\"]]}"},"action":{"type":"admin_route","admin_arm":"cyber.create_invoice","target_label":"Cyberteller: create invoice","payload_keys":["case_id","ccash_txn_id","chain","reference_currency","amount","accepted_currencies","webhook_url","idempotency_key","expires_at","post_receipt_kind","post_receipt_target","envelope"]}},
+    {"id":"hook_receive_settle","name":"Receive settled → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"await_payment"},"action":{"type":"email_send","target_label":"Client receive receipt","to_field":"client_email","subject":"Receive {{.reference}} settled","body_template":"Your receive of {{.amount}} {{.currency}} from {{.senders_label_csv}} (ref {{.reference}}) has been settled.","is_html":false}},
+    {"id":"hook_receive_rejected","name":"Receive rejected → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"rejected"},"action":{"type":"email_send","target_label":"Client receive rejection","to_field":"client_email","subject":"Receive not authorised","body_template":"Hello {{.client_name}}, the receive of {{.amount}} {{.currency}} from {{.senders_label_csv}} could not be authorised. Please contact compliance@ccash-demo.ch.","is_html":false}}
+  ]
+
+grain_rules_json: |
+  [
+    {"id":"rule_receive","name":"Receive Procedure","enabled":true,"mode":"autonomous","target_app_id":"dueprocess","target_action":0,"target_label":"Receive","append_timestamp":true,"share_role_id":1,"share_duration":-1,"share_single_use":false,"return_view_cap":true,"return_share_url":false,"required_permission":0}
+  ]
+
+registries_json: |
+  {
+    "transaction": {
+      "fields": [
+        {"id":"sender_ids","type":"text_multi","label":"Sender contact IDs (opaque)","required":true,"system":true},
+        {"id":"senders_label_csv","type":"text","label":"Sender display labels (CSV)","required":true,"max_length":1000},
+        {"id":"amount","type":"text","label":"Amount (decimal string)","required":true},
+        {"id":"currency","type":"text","label":"Currency","required":true,"max_length":4},
+        {"id":"currency_kind","type":"select","label":"Currency Kind","required":true,"options":["fiat","stablecoin","crypto"]},
+        {"id":"destination_wallet_id","type":"text","label":"Destination wallet ID (opaque)","required":true,"system":true},
+        {"id":"destination_wallet_label","type":"text","label":"Destination wallet display label","required":true},
+        {"id":"chain","type":"select","label":"Chain (for crypto/stablecoin only)","options":["Solana","ethereum","tron","ton"]},
+        {"id":"accepted_currencies","type":"text_multi","label":"Accepted pay types (chain+token)"},
+        {"id":"webhook_url","type":"text","label":"Cyberteller M2 webhook URL","system":true},
+        {"id":"idempotency_key","type":"text","label":"Idempotency key (admin-derived)","system":true},
+        {"id":"expires_at","type":"text","label":"Invoice expiry (RFC3339)","system":true},
+        {"id":"post_receipt_kind","type":"select","label":"Post-receipt routing","options":["send_exchange","sweep_cold",""]},
+        {"id":"post_receipt_target","type":"text","label":"Post-receipt target (destination_id)"},
+        {"id":"envelope","type":"text","label":"Solana-signed envelope (operator)","system":true},
+        {"id":"purpose","type":"select","label":"Purpose of Payment","required":true,"options":["goods","services","salary","family","investment","other"]},
+        {"id":"note","type":"textarea","label":"Note","max_length":500},
+        {"id":"projects","type":"text_multi","label":"Projects","required":false},
+        {"id":"attachments","type":"file_multi","label":"Supporting Documents","accept":["application/pdf","image/jpeg","image/png"]},
+        {"id":"reference","type":"text","label":"External reference","system":true},
+        {"id":"client_name","type":"text","label":"Client name (for receipts)","system":true},
+        {"id":"client_email","type":"email","label":"Client email (for receipts)","system":true},
+        {"id":"ccash_txn_id","type":"text","label":"ccash transaction ID","system":true}
+      ]
+    },
+    "case": {
+      "fields": [
+        {"id":"case_id","type":"text","label":"Case ID","system":true},
+        {"id":"_approval_outcome","type":"text","label":"Approval outcome","system":true},
+        {"id":"approver_role","type":"text","label":"Approver role","system":true},
+        {"id":"tier","type":"text","label":"Risk tier","options":["low","medium","high","blocked"],"system":true},
+        {"id":"value_minor","type":"text","label":"Value in minor units (for typed hook)","system":true},
+        {"id":"risk_band","type":"text","label":"Risk band","options":["low","medium","high","blocked"]},
+        {"id":"screening_result","type":"text","label":"Screening result","options":["clear","review","blocked"]},
+        {"id":"seed_fields","type":"text","label":"Seed fields JSON for child case","system":true},
+        {"id":"invoice_id","type":"text","label":"Cyberteller invoice ID","system":true},
+        {"id":"deposit_address","type":"text","label":"Deposit address (chain-native)","system":true},
+        {"id":"received_amount","type":"text","label":"Received amount (system-set)","system":true},
+        {"id":"tx_hash","type":"text","label":"Settlement tx hash","system":true}
+      ]
+    }
+  }
+
+ai_prompts_json: |
+  {
+    "receive_risk_summary": {
+      "model": "claude-sonnet-4",
+      "system": "You summarise the risk profile of an inbound payment for a compliance reviewer. Be concise (3 sentences max). Cite only supplied fields; never invent counterparties.",
+      "user": "Senders: {{.senders_label_csv}}. Amount: {{.amount}} {{.currency}} ({{.currency_kind}}). Chain: {{.chain}}. Purpose: {{.purpose}}. Risk band: {{.risk_band}}. Screening: {{.screening_result}}. Summarise."
+    }
+  }
+
+permission_groups_json: |
+  [
+    {"id":"client","name":"Client","description":"The account holder requesting the inbound payment.","sandstorm_permission":"respondent","members_role":1},
+    {"id":"co","name":"Compliance Officer","description":"Reviews and approves inbound payments.","sandstorm_permission":"admin","members_role":0},
+    {"id":"accountant","name":"Accountant","description":"Reconciles the settled receive against the ledger.","sandstorm_permission":"admin","members_role":0},
+    {"id":"auditor","name":"Auditor","description":"Read-only audit access.","sandstorm_permission":"viewer","members_role":2}
+  ]
+
+sub_permissions_json: |
+  {
+    "groups": [
+      {"id":"client","permissions":["initiate_receive","view_own_case","upload_document"]},
+      {"id":"co","permissions":["view_pii","screen_counterparty","approve_receive","reject_receive","write_review_notes"]},
+      {"id":"accountant","permissions":["reconcile_receive","post_ledger_entry","view_ledger"]},
+      {"id":"auditor","permissions":["view_pii","view_decisions","export_audit_log"]}
+    ]
+  }
+
+section_access_json: |
+  {
+    "dashboard_view": {"co":true,"accountant":true,"auditor":true,"client":false},
+    "builder_view": {"co":false,"accountant":false,"auditor":false,"client":false},
+    "case_detail_view": {"co":true,"accountant":true,"auditor":true,"client":true},
+    "screening_panel_view": {"co":true,"accountant":false,"auditor":true,"client":false},
+    "audit_log_view": {"co":true,"accountant":true,"auditor":true,"client":false}
+  }
+
+doc_matrix_json: |
+  {
+    "low": {"required": []},
+    "medium": {"required": [
+      {"id":"sof_evidence","label":"Source-of-funds evidence (sender side)","accept":["application/pdf","image/jpeg","image/png"]}
+    ]},
+    "high": {"required": [
+      {"id":"sof_evidence","label":"Detailed source-of-funds evidence","accept":["application/pdf"]},
+      {"id":"contract_or_invoice","label":"Underlying contract or invoice","accept":["application/pdf"]}
+    ]}
+  }
+
+risk_config_json: |
+  {
+    "bands": [
+      {"id":"low","label":"Low","threshold_usd":10000,"auto_proceed":true,"color":"#22c55e"},
+      {"id":"medium","label":"Medium","threshold_usd":50000,"requires_role":"co","spawn_screening":true,"color":"#eab308"},
+      {"id":"high","label":"High","threshold_usd":250000,"requires_role":"co","four_eyes":true,"spawn_screening":true,"color":"#f97316"},
+      {"id":"blocked","label":"Blocked","threshold_usd":-1,"auto_reject":true,"color":"#ef4444"}
+    ],
+    "high_risk_chains": ["tron","ton"],
+    "default_band": "low"
+  }
+
+datasets_json: |
+  {
+    "high_risk_countries": ["AF","BY","BI","CF","CD","CU","ER","IR","IQ","KP","LB","LY","ML","MM","NI","RU","SS","SD","SY","VE","YE","ZW"],
+    "supported_currencies": ["USD","EUR","GBP","CHF","USDC","USDT","BTC","ETH","SOL"],
+    "supported_chains": ["Solana","ethereum","tron","ton"],
+    "purposes": ["goods","services","salary","family","investment","other"]
+  }
+
+metadata_json: |
+  {
+    "label": "Receive",
+    "short_label": "Receive",
+    "description": "Inbound payment to a client wallet with compliance review, approval gate, cyberteller invoice mint, and reconciliation on settlement.",
+    "owner_role": "co",
+    "compliance_basis": "FATF Recommendations 10, 16; Travel-Rule guidance; AMLA Art. 6 (ongoing monitoring)",
+    "estimated_duration_minutes": 5,
+    "tags": ["receive","payment","inbound","compliance","crypto"]
+  }
+
+notification_cfg: '{"approve":true,"reject":true,"review":true}'
+
+source: "OTC Procedure §3; AML/CFT Manual §6.3"
+process_owner: "Compliance Officer"
+card_naming_template: "Receive ← {senders_label_csv} ({amount} {currency})"
+
+kanban_columns:
+  - id: intake
+    name: INTAKE
+    color: "#64748b"
+    order: 0
+  - id: review
+    name: COMPLIANCE REVIEW
+    color: "#eab308"
+    order: 1
+  - id: approval_c
+    name: AWAITING COMPLIANCE APPROVAL
+    color: "#3b82f6"
+    order: 2
+  - id: execution
+    name: EXECUTION
+    color: "#a855f7"
+    order: 3
+  - id: completed
+    name: COMPLETED
+    color: "#22c55e"
+    order: 4
+  - id: rejected
+    name: REJECTED
+    color: "#ef4444"
+    order: 5
+
+roles:
+  - id: client
+    name: Client
+    sandstorm_permission: respondent
+  - id: co
+    name: Compliance Officer
+    sandstorm_permission: admin
+  - id: accountant
+    name: Accountant
+    sandstorm_permission: admin
+
+steps:
+  - id: senders
+    column: intake
+    type: form
+    title: "Senders"
+    description: "Pick one or more sender contacts."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: sender_ids
+        type: contact_picker
+        label: "Senders"
+        required: true
+        kind: contact
+        multi: true
+      - id: senders_label_csv
+        type: text
+        label: "Senders (display labels, set by picker)"
+        system: true
+    default_next_step: amount
+
+  - id: amount
+    column: intake
+    type: form
+    title: "Amount"
+    description: "Specify the amount and currency expected."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: amount
+        type: currency_amount
+        label: "Amount"
+        required: true
+      - id: currency
+        type: text
+        label: "Currency"
+        required: true
+      - id: currency_kind
+        type: select
+        label: "Currency Kind"
+        required: true
+        options:
+          - id: fiat
+            label: Fiat
+          - id: stablecoin
+            label: Stablecoin
+          - id: crypto
+            label: Crypto
+    default_next_step: destination
+
+  - id: destination
+    column: intake
+    type: form
+    title: "Destination"
+    description: "Choose the wallet that will receive the funds."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: destination_wallet_id
+        type: wallet_picker
+        label: "Destination Wallet"
+        required: true
+        filter_by_currency_kind: true
+      - id: destination_wallet_label
+        type: text
+        label: "Destination Wallet (display label, set by picker)"
+        system: true
+    default_next_step: context
+
+  - id: context
+    column: intake
+    type: form
+    title: "Purpose & Context"
+    description: "Provide the purpose and any supporting context for compliance review."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: purpose
+        type: select
+        label: "Purpose of Payment"
+        required: true
+        options:
+          - id: goods
+            label: Goods
+          - id: services
+            label: Services
+          - id: salary
+            label: Salary
+          - id: family
+            label: Family Support
+          - id: investment
+            label: Investment
+          - id: other
+            label: Other
+      - id: note
+        type: textarea
+        label: "Note"
+      - id: projects
+        type: text_multi
+        label: "Projects"
+      - id: attachments
+        type: file_multi
+        label: "Supporting Documents"
+    default_next_step: confirm
+
+  - id: confirm
+    column: intake
+    type: form
+    title: "Review & Confirm"
+    description: "Review the receive details and the risk band before submitting for approval."
+    assigned_role: client
+    access:
+      client: edit
+      co: view
+      accountant: view
+    fields:
+      - id: risk_band
+        type: risk_display
+        label: "Risk band"
+        system: true
+    default_next_step: compliance_review
+
+  - id: compliance_review
+    column: review
+    type: form
+    title: "Compliance Review"
+    description: "Compliance officer reviews the receive. Risk band shown is system-populated by the screening callback fired on confirm; the §4.5 spawn hook reads it on completion of this step to trigger a child screening case automatically."
+    assigned_role: co
+    access:
+      client: none
+      co: edit
+      accountant: view
+    fields:
+      - id: risk_band
+        type: text
+        label: "Risk band (system-populated by screening callback)"
+        system: true
+      - id: screening_result
+        type: text
+        label: "Screening result (system-populated)"
+        system: true
+      - id: review_notes
+        type: textarea
+        label: "Review notes"
+    default_next_step: compliance_approval
+
+  - id: compliance_approval
+    column: approval_c
+    type: approval
+    title: "Compliance Approval"
+    description: "Compliance officer approves or rejects the receive. Approval mints the cyberteller invoice for crypto rails."
+    assigned_role: co
+    access:
+      client: none
+      co: edit
+      accountant: view
+    approval:
+      required_roles:
+        - co
+      min_approvers: 1
+      review_data:
+        - senders_label_csv
+        - amount
+        - currency
+        - chain
+        - purpose
+        - risk_band
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: mint_invoice
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: rejected_end
+    default_next_step: mint_invoice
+
+  - id: mint_invoice
+    column: execution
+    type: machine
+    title: "Mint Cyberteller Invoice"
+    description: "Cyberteller mints a deposit invoice. Skipped automatically for fiat-only receives."
+    service: cyberteller
+    endpoint: /api/invoices
+    fields:
+      - id: invoice_id
+        type: text
+        label: "Cyberteller invoice ID"
+        system: true
+      - id: deposit_address
+        type: text
+        label: "Deposit address"
+        system: true
+    default_next_step: await_payment
+
+  - id: await_payment
+    column: execution
+    type: machine
+    title: "Await Payment"
+    description: "Wait for cyberteller M2 webhook signalling the payment was received and confirmed."
+    service: cyberteller
+    endpoint: webhook
+    fields:
+      - id: received_amount
+        type: text
+        label: "Received amount"
+        system: true
+      - id: tx_hash
+        type: text
+        label: "Settlement tx hash"
+        system: true
+    default_next_step: settled
+
+  - id: settled
+    column: completed
+    type: complete
+    title: "Receive Settled"
+    description: "Receive has been settled and reconciled to the ledger."
+
+  - id: rejected_end
+    column: rejected
+    type: complete
+    title: "Receive Rejected"
+    description: "Receive was not authorised."

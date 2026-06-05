@@ -1,0 +1,398 @@
+id: simple-kyc
+name: "Simple KYC"
+process_type: simple-kyc
+description: "Streamlined 3-step KYC: client intake, document upload, compliance review."
+category: compliance
+icon: "🪪"
+version: 1
+
+# subject_correlation declares that every case SHOULD be stamped with the
+# ccash grain ID that owns the subject. Backed by Case.ClientGrainID in
+# pkg/station/case_store.go (set opportunistically today by ClientHub
+# orchestration; not yet engine-enforced — convention only for v0.1).
+subject_correlation:
+  required: true
+  field: client_grain_id
+  enforcement: convention
+  description: "Sandstorm grain ID of the ccash client grain that owns this subject."
+
+panels_json: |
+  [
+    {"id":"intake","label":"INTAKE","type":"active","color":"#64748b","order":0,"step_ids":["client_info","document_upload"]},
+    {"id":"review","label":"COMPLIANCE REVIEW","type":"active","color":"#eab308","order":1,"step_ids":["officer_review"]},
+    {"id":"completed","label":"COMPLETED","type":"terminal","color":"#22c55e","order":2,"step_ids":["complete"]},
+    {"id":"rejected","label":"REJECTED","type":"terminal","color":"#ef4444","order":3,"step_ids":["rejected_end"]}
+  ]
+
+hooks_json: |
+  [
+    {"id":"hook_kyc_intake","name":"KYC Application Received","enabled":true,"trigger":{"event_type":"webhook_received"},"action":{"type":"process_start","rule_id":"rule_simple_kyc","target_label":"KYC Application"}},
+    {"id":"hook_screening_request","name":"Send screening request on submit","enabled":true,"trigger":{"event_type":"step_completed","step_id":"document_upload"},"action":{"type":"http_webhook","target_label":"TeleScreen Sanctions","url":"/hook/screening","method":"POST","body_template":"{\"name\":\"{{.full_name}}\",\"dob\":\"{{.date_of_birth}}\",\"nationality\":\"{{.nationality}}\",\"case_id\":\"{{.case_id}}\"}"}},
+    {"id":"hook_namedcoin_check","name":"NamedCoin KYC check","enabled":true,"trigger":{"event_type":"step_completed","step_id":"officer_review","status_match":"approved"},"action":{"type":"admin_route","admin_arm":"kyc.check_request","target_label":"NamedCoin: verify subject KYC","payload_keys":["case_id","subject_wallet","partner_license","purpose"]}},
+    {"id":"hook_namedcoin_issue","name":"NamedCoin issue attestation (Phase 2)","enabled":false,"trigger":{"event_type":"step_completed","step_id":"officer_review","status_match":"approved"},"action":{"type":"admin_route","admin_arm":"kyc.attestation_issued","target_label":"NamedCoin: mint attestation","payload_keys":["case_id","subject_wallet","partner_license","purpose","assurance_level","expires_at","merkle_root"]}},
+    {"id":"hook_kyc_approved","name":"KYC approved → activate account","enabled":true,"trigger":{"event_type":"step_completed","step_id":"officer_review","status_match":"approved"},"action":{"type":"grain_state_transition","target_label":"Activate client wallets","target_step":"wallet_activation","correlation_id_source":"case_id","bearer_token_env":"STATION_ACTIVATION_SECRET"}},
+    {"id":"hook_kyc_rejected","name":"KYC rejected → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"officer_review","status_match":"rejected"},"action":{"type":"email_send","target_label":"Client notification","to_field":"email","subject":"KYC outcome — additional information required","body_template":"Hello {{.full_name}}, your KYC submission requires additional information. Please contact compliance@popay.app for details.","is_html":false}}
+  ]
+
+grain_rules_json: |
+  [
+    {"id":"rule_simple_kyc","name":"KYC Application","enabled":true,"mode":"autonomous","target_app_id":"dueprocess","target_action":0,"target_label":"KYC Application","append_timestamp":true,"share_duration":-1,"share_role_id":1,"share_single_use":false,"return_view_cap":true,"return_share_url":false,"required_permission":0},
+    {"id":"rule_kyc_to_account","name":"KYC approved → spawn account grain","enabled":true,"mode":"autonomous","target_app_id":"ccash","target_action":0,"target_label":"PoPay.app Account","append_timestamp":true,"share_duration":-1,"share_role_id":1,"share_single_use":false,"return_view_cap":true,"return_share_url":true,"required_permission":0}
+  ]
+
+registries_json: |
+  {
+    "person": {
+      "fields": [
+        {"id":"full_name","type":"text","label":"Full Legal Name","required":true,"max_length":200},
+        {"id":"date_of_birth","type":"date","label":"Date of Birth","required":true},
+        {"id":"nationality","type":"text","label":"Nationality (ISO 3166-1 alpha-2)","required":true,"max_length":2,"description":"Citizenship — distinct from residence."},
+        {"id":"residence_country","type":"text","label":"Country of Residence (ISO 3166-1 alpha-2)","required":true,"max_length":2,"description":"Where the subject ordinarily resides — distinct from citizenship."},
+        {"id":"email","type":"email","label":"Email","required":true},
+        {"id":"phone","type":"phone","label":"Phone","required":false},
+        {"id":"address","type":"textarea","label":"Residential Address","required":true},
+        {"id":"pep_status","type":"select","label":"Politically Exposed Person?","required":true,"options":["not_pep","is_pep","family_member"],"default":"not_pep"},
+        {"id":"pep_details","type":"textarea","label":"PEP details (if PEP/family)","required":false,"max_length":500,"min_length":50},
+        {"id":"sanctions_match","type":"boolean","label":"Sanctions match flag","required":false,"default":false}
+      ]
+    },
+    "source_of_funds": {
+      "_description":"Closed 12-source vocabulary. Per primary/secondary source: industry + country + 50-500 char description.",
+      "fields": [
+        {"id":"sof_primary_source","type":"select","label":"Primary source of funds","required":true,"options":["employment_income","investment_income","real_estate_income","business_income","retirement_and_social_income","speculative_income","inheritance_and_family","gambling_and_winnings","borrowed_funds","savings_and_personal_funds","third_party_funds","other"]},
+        {"id":"sof_primary_industry","type":"select","label":"Primary source — industry","required":true,"options":["technology","finance","real_estate","retail","healthcare","education","government","entertainment","manufacturing","non_profit","other"]},
+        {"id":"sof_primary_country","type":"text","label":"Primary source — country (ISO 3166-1 alpha-2)","required":true,"max_length":2},
+        {"id":"sof_primary_description","type":"textarea","label":"Primary source — description","required":true,"min_length":50,"max_length":500},
+        {"id":"sof_secondary_source","type":"select","label":"Secondary source of funds (if any)","required":false,"options":["","employment_income","investment_income","real_estate_income","business_income","retirement_and_social_income","speculative_income","inheritance_and_family","gambling_and_winnings","borrowed_funds","savings_and_personal_funds","third_party_funds","other"]},
+        {"id":"sof_secondary_industry","type":"select","label":"Secondary source — industry","required":false,"options":["","technology","finance","real_estate","retail","healthcare","education","government","entertainment","manufacturing","non_profit","other"]},
+        {"id":"sof_secondary_country","type":"text","label":"Secondary source — country","required":false,"max_length":2},
+        {"id":"sof_secondary_description","type":"textarea","label":"Secondary source — description","required":false,"min_length":50,"max_length":500}
+      ]
+    },
+    "entity_stakeholders": {
+      "_description":"Stakeholder repeater. Constraints: shareholders total ≥75%, no shareholder <10%, 1% increments, no duplicates, no self-shareholding. Beneficial owners: persons only, same percentage rules. Officers: ≥1; same person may hold multiple roles. Skip BOs if isPubliclyListed=true (then listingMarket required).",
+      "constraints": {
+        "shareholders": {"total_min_percent": 75, "per_holder_min_percent": 10, "step_percent": 1, "allow_duplicates": false, "allow_self": false},
+        "beneficial_owners": {"total_min_percent": 75, "per_holder_min_percent": 10, "step_percent": 1, "person_only": true, "skip_if_publicly_listed": true},
+        "officers_min_count": 1
+      },
+      "fields": [
+        {"id":"shareholder_name","type":"text","label":"Shareholder name","required":true},
+        {"id":"shareholder_percent","type":"number","label":"Shareholding %","required":true,"min":10,"max":100,"step":1},
+        {"id":"officer_name","type":"text","label":"Officer name","required":false},
+        {"id":"officer_role","type":"select","label":"Officer role","required":false,"options":["director","secretary","clo","cfo","ceo","treasurer","trustee","protector","settlor","council_member"]},
+        {"id":"bo_name","type":"text","label":"Beneficial owner name","required":false},
+        {"id":"bo_percent","type":"number","label":"BO %","required":false,"min":10,"max":100,"step":1},
+        {"id":"is_publicly_listed","type":"boolean","label":"Entity is publicly listed?","required":false,"default":false},
+        {"id":"listing_market","type":"text","label":"Listing market (if publicly listed)","required":false}
+      ]
+    },
+    "kyc_extracted": {
+      "_description":"Bloom-depth extracted-ID lane (output of the AI ID-extraction step; see ccash-STD-DATA-MODEL-001 §6.1.1 'Natural-person — extracted-ID layer'). Field IDs are snake_case for consistency with the rest of registries_json; the canonical Bloom field name is preserved in `description` for cross-reference. All fields are populated by the id_extraction prompt or by post-OCR human review; none are client-editable.",
+      "fields": [
+        {"id":"id_doc_image_ref","type":"image_ref","label":"ID document image","required":true,"system":true,"description":"Sandstorm grain-relative image ref or content hash (canonical: idDocImageRef)."},
+        {"id":"score_readability_id_doc","type":"integer","label":"ID-doc readability score","required":false,"min":0,"max":100,"system":true,"description":"Auto + manual readability score 0-100 (canonical: scoreReadabilityIdDoc)."},
+        {"id":"visible_security_features_id_doc","type":"select","label":"ID-doc visible security features","required":false,"options":["present","absent","partial","indeterminate"],"system":true,"description":"Closed enum (canonical: visibleSecurityFeaturesIdDoc)."},
+        {"id":"visible_mrz_fully_id_doc","type":"boolean","label":"MRZ fully visible","required":false,"system":true,"description":"Canonical: visibleMrzFullyIdDoc."},
+        {"id":"mrz_extracted_raw","type":"text","label":"MRZ raw extracted string","required":false,"max_length":256,"system":true,"description":"Canonical: mrzExtractedRaw."},
+        {"id":"holder_full_name","type":"text","label":"Holder full name (extracted)","required":true,"max_length":200,"system":true,"description":"Canonical: holderFullName."},
+        {"id":"holder_date_of_birth","type":"date","label":"Holder date of birth (extracted)","required":true,"format":"YYYY-MM-DD","system":true,"description":"Canonical: holderDateOfBirth."},
+        {"id":"holder_nationality","type":"text","label":"Holder nationality (extracted)","required":false,"max_length":3,"format":"ISO_3166_1_alpha_3","system":true,"description":"Canonical: holderNationality."},
+        {"id":"holder_sex","type":"select","label":"Holder sex (extracted)","required":false,"options":["F","M","X","U"],"system":true,"description":"Canonical: holderSex."},
+        {"id":"id_doc_type","type":"select","label":"ID document type (extracted)","required":false,"options":["passport","national_id","drivers_license","residence_permit","refugee_doc","other"],"system":true,"description":"Canonical: idDocType."},
+        {"id":"id_doc_country","type":"text","label":"ID document country (extracted)","required":false,"max_length":3,"format":"ISO_3166_1_alpha_3","system":true,"description":"Canonical: idDocCountry."},
+        {"id":"id_doc_number","type":"text","label":"ID document number (extracted)","required":false,"max_length":64,"system":true,"description":"Canonical: idDocNumber. Full document number — disclosure rules per case_type and risk band."},
+        {"id":"id_doc_issue_date","type":"date","label":"ID document issue date (extracted)","required":false,"system":true,"description":"Canonical: idDocIssueDate."},
+        {"id":"id_doc_expiry_date","type":"date","label":"ID document expiry date (extracted)","required":true,"system":true,"description":"Canonical: idDocExpiryDate."},
+        {"id":"id_doc_issuing_authority","type":"text","label":"ID document issuing authority (extracted)","required":false,"max_length":200,"system":true,"description":"Canonical: idDocIssuingAuthority."},
+        {"id":"extraction_status","type":"select","label":"ID-extraction status","required":false,"options":["extracted_clean","extracted_partial","extraction_failed","not_attempted"],"system":true,"description":"Closed enum (canonical: extractionStatus). Aligned with Bloom canonical lane."},
+        {"id":"extraction_confidence_overall","type":"integer","label":"Extraction confidence overall","required":false,"min":0,"max":100,"system":true,"description":"Canonical: extractionConfidenceOverall."}
+      ]
+    },
+    "case": {
+      "fields": [
+        {"id":"case_id","type":"text","label":"Case ID","system":true},
+        {"id":"_approval_outcome","type":"text","label":"Approval outcome","system":true},
+        {"id":"screening_result","type":"text","label":"Screening result","options":["clear","review","blocked"]},
+        {"id":"screening_score","type":"number","label":"Screening risk score (0-100)"},
+        {"id":"subject_wallet","type":"text","label":"Subject Solana wallet (base58)","system":true,"description":"Captured at the wallet_capture step (Phantom/Solflare connect) or resolved via NamedCoinStation.resolveAlias for non-Solana subjects."},
+        {"id":"partner_license","type":"text","label":"Partner license PDA (base58)","system":true,"description":"License PDA the operator issues / consumes attestations under."},
+        {"id":"id_type","type":"text","label":"ID type (extracted)","system":true,"description":"AI-extracted from id_extraction prompt; one of passport|national_id|driving_licence|residence_permit."},
+        {"id":"id_number_last4","type":"text","label":"ID number — last 4 (extracted)","system":true,"description":"AI-extracted; only the last 4 chars of the document number, the rest never leaves DueProcess."},
+        {"id":"id_expiry_date","type":"date","label":"ID expiry date (extracted)","system":true},
+        {"id":"id_issuing_authority","type":"text","label":"ID issuing authority (extracted)","system":true},
+        {"id":"namedcoin_status","type":"text","label":"NamedCoin attestation status","system":true,"options":["unbound","onboarding","awaiting_review","attested","revoked","expired","issued","denied","timeout"]},
+        {"id":"namedcoin_attestation_pda","type":"text","label":"NamedCoin attestation PDA","system":true},
+        {"id":"namedcoin_revocation_reason","type":"text","label":"NamedCoin revocation reason (closed enum)","system":true,"options":["","expired","superseded","subject_request","policy_violation","compliance_action","fraud_detected","other","compliance_review_pending"],"description":"Closed enum mirrors anchor_client.RevocationReason. compliance_review_pending is the SAR-redaction cover (31 USC §5318(g)(2)) — never surface to subject."},
+        {"id":"namedcoin_is_sar_redacted","type":"boolean","label":"NamedCoin SAR-redacted","system":true,"default":false},
+        {"id":"subject_consent_token","type":"text","label":"Subject consent token (base64)","system":true,"max_length":128,"description":"Base64-std encoding of the subject's 64-byte Ed25519 signature over canonical bytes \"NamedCoin-checkkyc-v1\\n\" + subject_wallet + \"\\n\" + requesting_party + \"\\n\" + decimal(subject_consent_expires_at). Captured at onboarding via Phantom/Solflare and re-supplied on every kyc.check_request hook fire. Empty ⇒ case advances to consent_required state."},
+        {"id":"subject_consent_expires_at","type":"integer","label":"Subject consent expires at (unix seconds)","system":true,"description":"Unix epoch seconds at which subject_consent_token expires. The signature commits to this value; admin re-checks on every checkKyc."},
+        {"id":"subject_consent_state","type":"text","label":"Consent collection state","system":true,"options":["consent_pending","consent_collected","consent_required","consent_expired"],"default":"consent_pending","description":"State machine: consent_pending (onboarding not finished) → consent_collected (token persisted) → consent_required (handler tried to fire kyc.check_request and found token missing/expired)."}
+      ]
+    }
+  }
+
+ai_prompts_json: |
+  {
+    "id_extraction": {
+      "model": "qwen3-vl-8b-instruct",
+      "system": "You are a KYC document parser. Extract identity fields from the provided ID image. Return strict JSON with keys: full_name, date_of_birth (YYYY-MM-DD), nationality (ISO alpha-2), document_type, document_number, expiry_date, issuing_authority. Use null for any field you cannot confidently read. Do not invent values.",
+      "user": "Extract identity fields from this document. Return JSON only."
+    },
+    "screening_summary": {
+      "model": "claude-sonnet-4",
+      "system": "You are a compliance assistant summarising a sanctions/PEP screening result for a human reviewer. Be concise (3 sentences max), neutral, and never invent details not present in the input.",
+      "user": "Subject: {{.full_name}} ({{.nationality}}, DOB {{.date_of_birth}}). Screening result: {{.screening_result}} (score {{.screening_score}}/100). Hits: {{.screening_hits_json}}. Summarise for the reviewer."
+    },
+    "rejection_reason": {
+      "model": "claude-sonnet-4",
+      "system": "You draft a brief, polite rejection notice for a KYC applicant. Do not disclose specific screening details or internal risk reasoning. Direct the applicant to compliance@ccash-demo.ch for follow-up.",
+      "user": "Draft a 2–3 sentence rejection notice addressed to {{.full_name}}."
+    }
+  }
+
+permission_groups_json: |
+  [
+    {"id":"client","name":"Client","description":"The applicant submitting KYC information.","sandstorm_permission":"respondent","members_role":1},
+    {"id":"compliance","name":"Compliance Officer","description":"Reviews and decides KYC applications.","sandstorm_permission":"admin","members_role":0},
+    {"id":"auditor","name":"Auditor","description":"Read-only access for periodic AML audits.","sandstorm_permission":"viewer","members_role":2}
+  ]
+
+sub_permissions_json: |
+  {
+    "groups": [
+      {"id":"compliance","permissions":["view_pii","approve_kyc","reject_kyc","request_documents","escalate_to_executive","write_cdd_notes"]},
+      {"id":"client","permissions":["submit_form","upload_document","view_own_case"]},
+      {"id":"auditor","permissions":["view_pii","view_decisions","export_audit_log"]}
+    ]
+  }
+
+section_access_json: |
+  {
+    "dashboard_view": {"compliance":true,"auditor":true,"client":false},
+    "builder_view": {"compliance":false,"auditor":false,"client":false},
+    "case_detail_view": {"compliance":true,"auditor":true,"client":true},
+    "screening_panel_view": {"compliance":true,"auditor":true,"client":false},
+    "audit_log_view": {"compliance":true,"auditor":true,"client":false},
+    "document_upload": {"compliance":false,"auditor":false,"client":true}
+  }
+
+doc_matrix_json: |
+  {
+    "_description":"Document matrix indexed by (case_type, entity_type, risk_level). Document types come from the closed Bloom-depth vocabulary: proof_of_address, photo_id, power_of_attorney, power_of_attorney_corporate, beneficial_ownership_natural, beneficial_ownership_corporate, data_processing_consent, source_of_funds, source_of_funds_confirmation, entity_registration, founding_documents, governing_documents, trust_deed, stakeholder_verification, good_standing, business_license. Accept formats: pdf, jpg, jpeg, png. Status: uploaded | approved | removed.",
+    "rules": [
+      {"case_type":"natural_person","entity_type":"none","risk_level":"low",       "required":["photo_id","proof_of_address"],"optional":["data_processing_consent"]},
+      {"case_type":"natural_person","entity_type":"none","risk_level":"medium",    "required":["photo_id","proof_of_address","source_of_funds"],"optional":["data_processing_consent","source_of_funds_confirmation"]},
+      {"case_type":"natural_person","entity_type":"none","risk_level":"high",      "required":["photo_id","proof_of_address","source_of_funds","source_of_funds_confirmation"],"optional":["data_processing_consent"]},
+      {"case_type":"natural_person","entity_type":"none","risk_level":"exclusion", "required":["photo_id","proof_of_address","source_of_funds","source_of_funds_confirmation","data_processing_consent"],"optional":[]},
+      {"case_type":"entity","entity_type":"commercial","risk_level":"low",         "required":["entity_registration","founding_documents","beneficial_ownership_natural"],"optional":["good_standing","business_license"]},
+      {"case_type":"entity","entity_type":"commercial","risk_level":"medium",      "required":["entity_registration","founding_documents","beneficial_ownership_natural","stakeholder_verification","source_of_funds"],"optional":["good_standing","business_license","power_of_attorney_corporate"]},
+      {"case_type":"entity","entity_type":"commercial","risk_level":"high",        "required":["entity_registration","founding_documents","governing_documents","beneficial_ownership_natural","beneficial_ownership_corporate","stakeholder_verification","source_of_funds","source_of_funds_confirmation"],"optional":["power_of_attorney_corporate","good_standing"]},
+      {"case_type":"entity","entity_type":"holding_private","risk_level":"medium", "required":["entity_registration","founding_documents","beneficial_ownership_natural","beneficial_ownership_corporate","stakeholder_verification"],"optional":["good_standing"]},
+      {"case_type":"entity","entity_type":"holding_private","risk_level":"high",   "required":["entity_registration","founding_documents","governing_documents","beneficial_ownership_natural","beneficial_ownership_corporate","stakeholder_verification","source_of_funds","source_of_funds_confirmation"],"optional":["power_of_attorney_corporate"]},
+      {"case_type":"entity","entity_type":"financial","risk_level":"medium",       "required":["entity_registration","business_license","beneficial_ownership_natural","stakeholder_verification"],"optional":["good_standing","governing_documents"]},
+      {"case_type":"entity","entity_type":"financial","risk_level":"high",         "required":["entity_registration","business_license","governing_documents","beneficial_ownership_natural","beneficial_ownership_corporate","stakeholder_verification","source_of_funds","source_of_funds_confirmation"],"optional":["power_of_attorney_corporate"]},
+      {"case_type":"entity","entity_type":"trust_foundation","risk_level":"medium","required":["entity_registration","trust_deed","beneficial_ownership_natural","stakeholder_verification"],"optional":["governing_documents"]},
+      {"case_type":"entity","entity_type":"trust_foundation","risk_level":"high",  "required":["entity_registration","trust_deed","governing_documents","beneficial_ownership_natural","beneficial_ownership_corporate","stakeholder_verification","source_of_funds","source_of_funds_confirmation"],"optional":["power_of_attorney_corporate"]},
+      {"case_type":"entity","entity_type":"partnership_business","risk_level":"medium","required":["entity_registration","founding_documents","beneficial_ownership_natural","stakeholder_verification"],"optional":["good_standing"]},
+      {"case_type":"entity","entity_type":"non_profit","risk_level":"medium",      "required":["entity_registration","founding_documents","governing_documents","beneficial_ownership_natural"],"optional":["good_standing"]},
+      {"case_type":"entity","entity_type":"statutory","risk_level":"medium",       "required":["entity_registration","founding_documents","governing_documents"],"optional":["good_standing"]}
+    ],
+    "accept_formats":["application/pdf","image/jpeg","image/jpg","image/png"],
+    "status_values":["uploaded","approved","removed"]
+  }
+
+risk_config_json: |
+  {
+    "bands": [
+      {"id":"low","label":"Low","threshold_score":30,"auto_approve":true,"color":"#22c55e"},
+      {"id":"medium","label":"Medium","threshold_score":60,"auto_approve":false,"requires_role":"compliance","color":"#eab308"},
+      {"id":"high","label":"High","threshold_score":80,"auto_approve":false,"requires_role":"executive","four_eyes":true,"color":"#f97316"},
+      {"id":"blocked","label":"Blocked","threshold_score":100,"auto_approve":false,"auto_reject":true,"color":"#ef4444"}
+    ],
+    "scoring": {
+      "pep_match":40,
+      "sanctions_match":100,
+      "high_risk_country":25,
+      "missing_proof_of_address":15,
+      "expired_id":20
+    },
+    "default_band":"low"
+  }
+
+datasets_json: |
+  {
+    "high_risk_countries": ["AF","BY","BI","CF","CD","CU","ER","IR","IQ","KP","LB","LY","ML","MM","NI","RU","SS","SD","SY","VE","YE","ZW"],
+    "id_document_types": ["passport","national_id","driving_licence","residence_permit"],
+    "screening_lists": ["UN_SANCTIONS","EU_SANCTIONS","OFAC_SDN","UK_HMT","SECO","INTERPOL"]
+  }
+
+metadata_json: |
+  {
+    "label": "Simple KYC",
+    "short_label": "KYC",
+    "description": "Streamlined 3-step KYC: client intake, document upload, compliance review.",
+    "owner_role": "compliance",
+    "compliance_basis": "FATF Recommendation 10; FINMA Circular 2016/7; AMLA Art. 3",
+    "estimated_duration_minutes": 15,
+    "tags": ["kyc","onboarding","compliance"],
+    "purposes": ["identity","aml_cft","source_of_wealth","beneficial_owner"]
+  }
+
+# V1.1 NamedCoin integration: closed list of KycPurpose snake_case wire
+# strings this station may issue / check attestations for. Gates which
+# Phase-2 flows the officer-review hook may fire.
+namedcoin_attestation_purposes:
+  - identity
+  - aml_cft
+  - source_of_wealth
+  - beneficial_owner
+
+# V1.1 NamedCoin officer-review pane. Read-only — populated by the
+# kyc.check_response / kyc.attestation_issued / kyc.attestation_result
+# hooks fired DOWNWARD from admin. SAR tipping-off (31 USC §5318(g)(2)):
+# `namedcoin_revocation_reason` is the synthesised cover when
+# `namedcoin_is_sar_redacted = true`; the actual cause is never persisted.
+namedcoin_attestation_pane: |
+  {
+    "id": "namedcoin_attestation_pane",
+    "visibility": "compliance",
+    "kind": "namedcoin_attestation_pane",
+    "fields": [
+      {"id":"subject_wallet","label":"Subject wallet","kind":"text","readonly":true},
+      {"id":"partner_license","label":"Issuer license","kind":"text","readonly":true},
+      {"id":"namedcoin_status","label":"Attestation status","kind":"text","readonly":true},
+      {"id":"namedcoin_attestation_pda","label":"Attestation PDA","kind":"text","readonly":true},
+      {"id":"namedcoin_revocation_reason","label":"Revocation reason","kind":"text","readonly":true},
+      {"id":"namedcoin_is_sar_redacted","label":"SAR-redacted","kind":"boolean","readonly":true}
+    ]
+  }
+
+notification_cfg: '{"approve":true,"reject":true,"review":true}'
+
+source: "AML/CFT Manual §3.1"
+process_owner: "Compliance Officer"
+card_naming_template: "{full_name} — KYC"
+
+kanban_columns:
+  - id: intake
+    name: INTAKE
+    color: "#64748b"
+    order: 0
+  - id: review
+    name: COMPLIANCE REVIEW
+    color: "#eab308"
+    order: 1
+  - id: completed
+    name: COMPLETED
+    color: "#22c55e"
+    order: 2
+  - id: rejected
+    name: REJECTED
+    color: "#ef4444"
+    order: 3
+
+roles:
+  - id: client
+    name: Client
+    sandstorm_permission: respondent
+  - id: compliance
+    name: Compliance Officer
+    sandstorm_permission: admin
+
+steps:
+  - id: client_info
+    column: intake
+    type: form
+    title: "Client Information"
+    description: "Provide personal details for KYC review."
+    assigned_role: client
+    access:
+      client: edit
+      compliance: view
+    fields:
+      - id: full_name
+        type: text
+        label: "Full Legal Name"
+        required: true
+      - id: date_of_birth
+        type: date
+        label: "Date of Birth"
+        required: true
+      - id: nationality
+        type: text
+        label: "Nationality"
+        required: true
+      - id: email
+        type: text
+        label: "Email Address"
+        required: true
+      - id: phone
+        type: text
+        label: "Phone Number"
+      - id: address
+        type: textarea
+        label: "Residential Address"
+        required: true
+    default_next_step: document_upload
+
+  - id: document_upload
+    column: intake
+    type: form
+    title: "Document Upload"
+    description: "Upload identity document (passport, national ID, or driving licence). Plain file_upload for MVP; document_capture (Qwen3-VL OCR) ships v1.1."
+    assigned_role: client
+    access:
+      client: edit
+      compliance: view
+    fields:
+      - id: id_document
+        type: file_upload
+        label: "Identity Document"
+        required: true
+        accept:
+          - image/jpeg
+          - image/png
+          - application/pdf
+    default_next_step: officer_review
+
+  - id: officer_review
+    column: review
+    type: approval
+    title: "Compliance Review"
+    description: "Compliance officer reviews submitted information and documents."
+    assigned_role: compliance
+    access:
+      client: none
+      compliance: edit
+    approval:
+      required_roles:
+        - compliance
+      min_approvers: 1
+      review_data:
+        - full_name
+        - date_of_birth
+        - nationality
+      rejection_step: rejected_end
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: complete
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: rejected_end
+    default_next_step: complete
+
+  - id: rejected_end
+    column: rejected
+    type: complete
+    title: "KYC Rejected"
+    description: "Application has been rejected."
+
+  - id: complete
+    column: completed
+    type: complete
+    title: "KYC Approved"
+    description: "KYC review completed and approved."

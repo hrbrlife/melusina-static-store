@@ -1,0 +1,8 @@
+{
+  "high_tier_usd": "50000",
+  "medium_tier_usd": "10000",
+  "new_contact_window": "168h",
+  "high_risk_currencies": ["BTC", "ETH", "SOL", "USDT"],
+  "high_risk_methods": ["crypto", "westernUnion"],
+  "medium_risk_methods": ["swift", "card", "mobile"]
+}

@@ -1,0 +1,366 @@
+id: account-opening
+name: "Account Opening"
+process_type: account-opening
+description: "New account application with KYC/CDD verification, compliance approval, executive sign-off (four-eyes), and automated account grain creation."
+category: accounts
+icon: "🏦"
+version: 1
+
+# subject_correlation declares that every case SHOULD be stamped with the
+# ccash grain ID that owns the subject. Backed by Case.ClientGrainID in
+# pkg/station/case_store.go (set opportunistically today by ClientHub
+# orchestration; not yet engine-enforced — convention only for v0.1).
+subject_correlation:
+  required: true
+  field: client_grain_id
+  enforcement: convention
+  description: "Sandstorm grain ID of the ccash client grain that owns this subject."
+
+panels_json: |
+  [
+    {"id":"intake","label":"INTAKE","type":"active","color":"#64748b","order":0,"step_ids":["account_application"]},
+    {"id":"review","label":"COMPLIANCE REVIEW","type":"active","color":"#eab308","order":1,"step_ids":["kyc_check"]},
+    {"id":"approval_c","label":"AWAITING COMPLIANCE APPROVAL","type":"active","color":"#3b82f6","order":2,"step_ids":["compliance_approval"]},
+    {"id":"approval_e","label":"AWAITING EXECUTIVE SIGN-OFF","type":"active","color":"#6366f1","order":3,"step_ids":["executive_signoff"]},
+    {"id":"completed","label":"COMPLETED","type":"terminal","color":"#22c55e","order":4,"step_ids":["account_opened"]},
+    {"id":"rejected","label":"REJECTED","type":"terminal","color":"#ef4444","order":5,"step_ids":["rejected_end"]}
+  ]
+
+hooks_json: |
+  [
+    {"id":"hook_application_received","name":"Application received → notify compliance","enabled":true,"trigger":{"event_type":"step_completed","step_id":"account_application"},"action":{"type":"email_send","target_label":"Compliance queue","to_field":"compliance_email","subject":"New account application — {{.holder_name}}","body_template":"A new {{.account_type}} account application has been submitted for {{.holder_name}}. Currency: {{.currency}}. Purpose: {{.purpose}}.","is_html":false}},
+    {"id":"hook_compliance_approved","name":"Compliance approved → request executive sign-off","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","status_match":"approved"},"action":{"type":"email_send","target_label":"Executive Director","to_field":"executive_email","subject":"Account opening awaits executive sign-off — {{.holder_name}}","body_template":"Compliance has approved the {{.account_type}} account for {{.holder_name}}. Please review and sign off in the procedures portal.","is_html":false}},
+    {"id":"hook_executive_approved","name":"Executive sign-off → spawn account grain","enabled":true,"trigger":{"event_type":"step_completed","step_id":"executive_signoff","status_match":"approved"},"action":{"type":"process_start","target_label":"CCash Account","rule_id":"rule_account_open"}},
+    {"id":"hook_account_grain_activate","name":"Account grain spawned → activate it via /api/v1/activate","enabled":true,"trigger":{"event_type":"step_completed","step_id":"account_opened"},"action":{"type":"grain_state_transition","target_label":"Activate spawned ccash grain","target_step":"executive_signoff","correlation_id_source":"case_id","bearer_token_env":"STATION_ACTIVATION_SECRET"}},
+    {"id":"hook_account_opened_notify","name":"Account opened → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"account_opened"},"action":{"type":"email_send","target_label":"Client welcome","to_field":"holder_email","subject":"Your CCash account is open","body_template":"Welcome {{.holder_name}}, your {{.account_type}} account in {{.currency}} is now active. Sign in to your portal to view your balances and start moving funds.","is_html":false}},
+    {"id":"hook_application_rejected","name":"Application rejected → notify client","enabled":true,"trigger":{"event_type":"step_completed","step_id":"rejected_end"},"action":{"type":"email_send","target_label":"Client rejection notice","to_field":"holder_email","subject":"Account application outcome","body_template":"Hello {{.holder_name}}, after review we are unable to proceed with your application at this time. Please contact compliance@ccash-demo.ch for further information.","is_html":false}},
+    {"id":"hook_subprocedure_required_acct_open","name":"Enhanced/restricted tier → spawn screening child","enabled":true,"trigger":{"event_type":"step_completed","step_id":"compliance_approval","filter_expr":"{\"in\":[{\"var\":\"approval_tier\"},[\"enhanced\",\"restricted\"]]}"},"action":{"type":"admin_route","admin_arm":"subprocedure.required","target_label":"Admin: spawn screening child","payload_keys":["case_id","process_type","seed_fields"]}}
+  ]
+
+grain_rules_json: |
+  [
+    {"id":"rule_account_open","name":"Open Account Grain","enabled":true,"mode":"autonomous","target_app_id":"ccash","target_action":0,"target_label":"CCash Account","append_timestamp":true,"share_role_id":1,"share_duration":-1,"share_single_use":false,"return_view_cap":true,"return_share_url":true,"required_permission":0},
+    {"id":"rule_open_client_portal","name":"Open client portal grain","enabled":true,"mode":"autonomous","target_app_id":"ccash-portal","target_action":0,"target_label":"Client Portal","append_timestamp":false,"share_role_id":0,"share_duration":0,"share_single_use":true,"return_view_cap":true,"return_share_url":true,"required_permission":0}
+  ]
+
+registries_json: |
+  {
+    "entity": {
+      "fields": [
+        {"id":"holder_name","type":"text","label":"Account Holder Name","required":true,"max_length":200},
+        {"id":"account_type","type":"select","label":"Account Type","required":true,"options":["individual","corporate"]},
+        {"id":"currency","type":"text","label":"Account Currency","required":true,"max_length":3,"validation":"iso4217"},
+        {"id":"purpose","type":"textarea","label":"Purpose of Account","required":true,"max_length":1000},
+        {"id":"expected_monthly_volume_usd","type":"number","label":"Expected Monthly Volume (USD)","required":true},
+        {"id":"jurisdiction","type":"text","label":"Country of Tax Residence","required":true,"max_length":2,"validation":"iso3166-1-alpha-2"},
+        {"id":"pep","type":"boolean","label":"Politically Exposed Person?","required":true,"default":false},
+        {"id":"sanctions_match","type":"boolean","label":"Sanctions match flag","required":false,"default":false},
+        {"id":"holder_email","type":"email","label":"Holder Email","required":true},
+        {"id":"compliance_email","type":"email","label":"Assigned Compliance Email","required":false,"default":"compliance@ccash-demo.ch"},
+        {"id":"executive_email","type":"email","label":"Assigned Executive Email","required":false,"default":"executive@ccash-demo.ch"}
+      ]
+    },
+    "case": {
+      "fields": [
+        {"id":"case_id","type":"text","label":"Case ID","system":true},
+        {"id":"_approval_outcome","type":"text","label":"Approval outcome","system":true},
+        {"id":"approval_tier","type":"text","label":"Risk tier","options":["standard","enhanced","restricted"]},
+        {"id":"account_grain_id","type":"text","label":"Spawned account grain ID","system":true},
+        {"id":"seed_fields","type":"text","label":"Seed fields JSON for child case","system":true}
+      ]
+    }
+  }
+
+ai_prompts_json: |
+  {
+    "cdd_summary": {
+      "model": "claude-sonnet-4",
+      "system": "You are a compliance assistant summarising CDD findings for a four-eyes reviewer. Be neutral, cite the supplied evidence only, never invent details. Maximum 150 words.",
+      "user": "Holder: {{.holder_name}} ({{.account_type}}). Jurisdiction: {{.jurisdiction}}. Expected volume: USD {{.expected_monthly_volume_usd}}/month. PEP: {{.pep}}. Sanctions: {{.sanctions_match}}. CDD notes: {{.cdd_notes}}. Summarise the case for the executive."
+    },
+    "purpose_validation": {
+      "model": "claude-sonnet-4",
+      "system": "You assess whether a stated account purpose is plausible and consistent with the declared expected volume. Output strict JSON: {\"plausible\": bool, \"flags\": [string], \"recommendation\": \"approve|review|reject\"}.",
+      "user": "Account type: {{.account_type}}. Purpose: \"{{.purpose}}\". Expected monthly volume USD: {{.expected_monthly_volume_usd}}. Jurisdiction: {{.jurisdiction}}."
+    },
+    "executive_brief": {
+      "model": "claude-sonnet-4",
+      "system": "You produce a one-paragraph executive brief for sign-off. Highlight risk tier, key findings, and the compliance recommendation. Do not paraphrase the applicant; rely strictly on the supplied data.",
+      "user": "Tier: {{.approval_tier}}. Findings: {{.cdd_summary}}. Compliance recommendation: {{.compliance_decision}}."
+    }
+  }
+
+permission_groups_json: |
+  [
+    {"id":"client","name":"Client","description":"The applicant or authorised signatory.","sandstorm_permission":"respondent","members_role":1},
+    {"id":"compliance","name":"Compliance Officer","description":"Performs KYC/CDD review and first-tier approval.","sandstorm_permission":"admin","members_role":0},
+    {"id":"executive","name":"Executive Director","description":"Final four-eyes sign-off.","sandstorm_permission":"admin","members_role":0},
+    {"id":"auditor","name":"Auditor","description":"Read-only audit access.","sandstorm_permission":"viewer","members_role":2}
+  ]
+
+sub_permissions_json: |
+  {
+    "groups": [
+      {"id":"compliance","permissions":["view_pii","review_cdd","approve_compliance","reject_compliance","request_documents","write_cdd_notes"]},
+      {"id":"executive","permissions":["view_pii","executive_signoff","reject_executive","activate_account"]},
+      {"id":"client","permissions":["submit_application","view_own_case"]},
+      {"id":"auditor","permissions":["view_pii","view_decisions","export_audit_log"]}
+    ]
+  }
+
+section_access_json: |
+  {
+    "dashboard_view": {"compliance":true,"executive":true,"auditor":true,"client":false},
+    "builder_view": {"compliance":false,"executive":false,"auditor":false,"client":false},
+    "case_detail_view": {"compliance":true,"executive":true,"auditor":true,"client":true},
+    "four_eyes_panel_view": {"compliance":true,"executive":true,"auditor":true,"client":false},
+    "account_grid_view": {"compliance":true,"executive":true,"auditor":true,"client":false},
+    "audit_log_view": {"compliance":true,"executive":true,"auditor":true,"client":false}
+  }
+
+doc_matrix_json: |
+  {
+    "individual": {
+      "standard": {
+        "required": [
+          {"id":"government_id","label":"Government-issued photo ID","accept":["image/jpeg","image/png","application/pdf"]},
+          {"id":"proof_of_address","label":"Proof of address (< 3 months old)","accept":["image/jpeg","image/png","application/pdf"],"max_age_days":90},
+          {"id":"sof_declaration","label":"Source-of-funds declaration","accept":["application/pdf"]}
+        ]
+      },
+      "enhanced": {
+        "required": [
+          {"id":"government_id","label":"Government-issued photo ID","accept":["image/jpeg","image/png","application/pdf"]},
+          {"id":"proof_of_address","label":"Proof of address (< 3 months old)","accept":["image/jpeg","image/png","application/pdf"],"max_age_days":90},
+          {"id":"sof_declaration","label":"Source-of-funds declaration with evidence","accept":["application/pdf"]},
+          {"id":"sow_evidence","label":"Source-of-wealth supporting documents","accept":["application/pdf"]},
+          {"id":"selfie","label":"Selfie holding ID","accept":["image/jpeg","image/png"]}
+        ]
+      }
+    },
+    "corporate": {
+      "standard": {
+        "required": [
+          {"id":"certificate_of_incorporation","label":"Certificate of Incorporation","accept":["application/pdf"]},
+          {"id":"register_extract","label":"Commercial register extract (< 6 months)","accept":["application/pdf"],"max_age_days":180},
+          {"id":"articles","label":"Articles of Association","accept":["application/pdf"]},
+          {"id":"ubo_declaration","label":"UBO declaration (≥25% beneficial owners)","accept":["application/pdf"]},
+          {"id":"director_ids","label":"ID for each director and authorised signatory","accept":["image/jpeg","image/png","application/pdf"]}
+        ]
+      },
+      "enhanced": {
+        "required": [
+          {"id":"certificate_of_incorporation","label":"Certificate of Incorporation","accept":["application/pdf"]},
+          {"id":"register_extract","label":"Commercial register extract (< 6 months)","accept":["application/pdf"],"max_age_days":180},
+          {"id":"articles","label":"Articles of Association","accept":["application/pdf"]},
+          {"id":"ubo_declaration","label":"UBO declaration with chain-of-ownership diagram","accept":["application/pdf"]},
+          {"id":"director_ids","label":"ID for each director and authorised signatory","accept":["image/jpeg","image/png","application/pdf"]},
+          {"id":"financial_statements","label":"Audited financial statements (last 2 years)","accept":["application/pdf"]},
+          {"id":"sow_corporate","label":"Source-of-wealth narrative for the entity","accept":["application/pdf"]}
+        ]
+      }
+    }
+  }
+
+risk_config_json: |
+  {
+    "tiers": [
+      {"id":"standard","label":"Standard","max_expected_monthly_volume_usd":10000,"pep_allowed":false,"approvers":{"compliance":1,"executive":1,"unique_reviewers":true}},
+      {"id":"enhanced","label":"Enhanced Due Diligence","min_expected_monthly_volume_usd":10000,"approvers":{"compliance":1,"executive":1,"unique_reviewers":true,"require_cdd_notes":true}},
+      {"id":"restricted","label":"Restricted","pep_allowed":true,"sanctions_match_allowed":false,"approvers":{"compliance":2,"executive":1,"unique_reviewers":true,"require_manual_decision":true}}
+    ],
+    "tier_resolution_order": ["restricted","enhanced","standard"],
+    "default_tier":"standard"
+  }
+
+datasets_json: |
+  {
+    "high_risk_countries": ["AF","BY","BI","CF","CD","CU","ER","IR","IQ","KP","LB","LY","ML","MM","NI","RU","SS","SD","SY","VE","YE","ZW"],
+    "supported_currencies": ["USD","EUR","GBP","CHF","USDC","USDT","BTC","ETH","SOL"],
+    "account_types": ["individual","corporate"],
+    "account_subtypes": {
+      "individual": ["standard","joint","trust"],
+      "corporate": ["limited_company","partnership","foundation","fund"]
+    }
+  }
+
+metadata_json: |
+  {
+    "label": "Account Opening",
+    "short_label": "Open Account",
+    "description": "New account application with KYC/CDD verification, compliance approval, and executive four-eyes sign-off.",
+    "owner_role": "compliance",
+    "compliance_basis": "FATF Recommendations 10–12; FINMA Circular 2016/7; AMLA Art. 3, 6; SO-FIT rules of conduct §4",
+    "estimated_duration_minutes": 30,
+    "tags": ["account-opening","kyc","cdd","four-eyes","onboarding"]
+  }
+
+notification_cfg: '{"approve":true,"reject":true,"review":true}'
+
+source: "Account Opening §2.1; AML/CFT Manual §5"
+process_owner: "Compliance Officer"
+card_naming_template: "{holder_name} — {account_type}"
+
+kanban_columns:
+  - id: intake
+    name: INTAKE
+    color: "#64748b"
+    order: 0
+  - id: review
+    name: COMPLIANCE REVIEW
+    color: "#eab308"
+    order: 1
+  - id: approval_c
+    name: AWAITING COMPLIANCE APPROVAL
+    color: "#3b82f6"
+    order: 2
+  - id: approval_e
+    name: AWAITING EXECUTIVE SIGN-OFF
+    color: "#6366f1"
+    order: 3
+  - id: completed
+    name: COMPLETED
+    color: "#22c55e"
+    order: 4
+  - id: rejected
+    name: REJECTED
+    color: "#ef4444"
+    order: 5
+
+roles:
+  - id: client
+    name: Client
+    sandstorm_permission: respondent
+  - id: compliance
+    name: Compliance Officer
+    sandstorm_permission: admin
+  - id: executive
+    name: Executive Director
+    sandstorm_permission: admin
+
+steps:
+  - id: account_application
+    column: intake
+    type: form
+    title: "Account Application"
+    description: "Client submits account opening request."
+    assigned_role: client
+    access:
+      client: edit
+      compliance: view
+      executive: view
+    fields:
+      - id: holder_name
+        type: text
+        label: "Account Holder Name"
+        required: true
+      - id: account_type
+        type: select
+        label: "Account Type"
+        required: true
+        options:
+          - id: individual
+            label: Individual
+          - id: corporate
+            label: Corporate
+      - id: currency
+        type: text
+        label: "Currency"
+        required: true
+      - id: purpose
+        type: textarea
+        label: "Purpose of Account"
+        required: true
+    default_next_step: kyc_check
+
+  - id: kyc_check
+    column: review
+    type: form
+    title: "KYC/CDD Review"
+    description: "Compliance officer performs KYC/CDD checks."
+    assigned_role: compliance
+    access:
+      client: none
+      compliance: edit
+      executive: view
+    fields:
+      - id: kyc_passed
+        type: checkbox
+        label: "KYC verification passed"
+        required: true
+      - id: cdd_notes
+        type: textarea
+        label: "CDD Notes"
+    default_next_step: compliance_approval
+
+  - id: compliance_approval
+    column: approval_c
+    type: approval
+    title: "Compliance Approval"
+    description: "Compliance officer approves the account."
+    assigned_role: compliance
+    access:
+      client: none
+      compliance: edit
+      executive: view
+    approval:
+      required_roles:
+        - compliance
+      min_approvers: 1
+      review_data:
+        - holder_name
+        - account_type
+        - currency
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: executive_signoff
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: rejected_end
+    default_next_step: executive_signoff
+
+  - id: executive_signoff
+    column: approval_e
+    type: approval
+    title: "Executive Sign-off"
+    description: "Executive director provides final approval (four-eyes)."
+    assigned_role: executive
+    access:
+      client: none
+      compliance: view
+      executive: edit
+    approval:
+      required_roles:
+        - executive
+      min_approvers: 1
+      unique_reviewers: true
+      review_data:
+        - holder_name
+        - account_type
+        - currency
+        - kyc_passed
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: account_opened
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: rejected_end
+    default_next_step: account_opened
+
+  - id: rejected_end
+    column: rejected
+    type: complete
+    title: "Application Rejected"
+    description: "Account application was rejected."
+
+  - id: account_opened
+    column: completed
+    type: complete
+    title: "Account Opened"
+    description: "Account has been successfully opened."

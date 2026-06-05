@@ -1,0 +1,4 @@
+{
+  "default_admin_role": "admin",
+  "default_client_role": "client"
+}

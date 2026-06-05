@@ -1,0 +1,22 @@
+[
+  { "from": "USD", "to": "EUR", "rate": 0.92 },
+  { "from": "EUR", "to": "USD", "rate": 1.087 },
+  { "from": "USD", "to": "GBP", "rate": 0.79 },
+  { "from": "GBP", "to": "USD", "rate": 1.266 },
+  { "from": "USD", "to": "CHF", "rate": 0.91 },
+  { "from": "CHF", "to": "USD", "rate": 1.099 },
+  { "from": "EUR", "to": "GBP", "rate": 0.859 },
+  { "from": "GBP", "to": "EUR", "rate": 1.164 },
+  { "from": "EUR", "to": "CHF", "rate": 0.989 },
+  { "from": "CHF", "to": "EUR", "rate": 1.011 },
+  { "from": "USD", "to": "USDC", "rate": 1.0 },
+  { "from": "USDC", "to": "USD", "rate": 1.0 },
+  { "from": "USD", "to": "USDT", "rate": 1.0 },
+  { "from": "USDT", "to": "USD", "rate": 1.0 },
+  { "from": "USD", "to": "BTC", "rate": 0.0000115 },
+  { "from": "BTC", "to": "USD", "rate": 86956.52 },
+  { "from": "USD", "to": "ETH", "rate": 0.000295 },
+  { "from": "ETH", "to": "USD", "rate": 3389.83 },
+  { "from": "USD", "to": "SOL", "rate": 0.0067 },
+  { "from": "SOL", "to": "USD", "rate": 149.25 }
+]

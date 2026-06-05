@@ -1,0 +1,20 @@
+[
+  {
+    "type": "fiat",
+    "label": "Fiat",
+    "description": "Traditional currency wallet for USD, EUR, GBP, CHF balances cleared via bank rails (SEPA, SWIFT, ACH).",
+    "currencies": ["USD", "EUR", "GBP", "CHF"]
+  },
+  {
+    "type": "stablecoin",
+    "label": "Stablecoin",
+    "description": "USD-pegged digital wallet (USDC, USDT). Settles on-chain with same-day finality and 1:1 fiat parity.",
+    "currencies": ["USDC", "USDT"]
+  },
+  {
+    "type": "crypto",
+    "label": "Crypto",
+    "description": "Native crypto wallet for BTC, ETH, and SOL. On-chain custody only — no fiat conversion implied.",
+    "currencies": ["BTC", "ETH", "SOL"]
+  }
+]

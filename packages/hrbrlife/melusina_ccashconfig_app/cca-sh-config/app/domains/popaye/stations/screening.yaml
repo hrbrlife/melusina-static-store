@@ -1,0 +1,279 @@
+id: screening
+name: "Screening"
+process_type: screening
+description: "Sub-procedure child case spawned from any parent (deposits-withdrawals, account-opening, send, receive) at risk_band ≥ medium. Auto-seeds intake from parent via seedFields, runs an external sanctions/PEP screen, and decides clear/hold/blocked. Outcome unblocks or rejects the parent through subprocedure.resolved hook."
+category: compliance
+icon: "🔎"
+version: 1
+
+# subject_correlation declares that every case SHOULD be stamped with the
+# ccash grain ID that owns the subject. For screening children, this is
+# inherited from the parent case via seedFields. Backed by Case.ClientGrainID
+# (set opportunistically today; not yet engine-enforced — convention only
+# for v0.1).
+subject_correlation:
+  required: true
+  field: client_grain_id
+  inherit_from_parent: true
+  enforcement: convention
+  description: "Sandstorm grain ID of the ccash client grain that owns this subject (inherited from parent case)."
+
+panels_json: |
+  [
+    {"id":"intake","label":"INTAKE","type":"active","color":"#64748b","order":0,"step_ids":["intake_data"]},
+    {"id":"review","label":"COMPLIANCE REVIEW","type":"active","color":"#eab308","order":1,"step_ids":["external_screen"]},
+    {"id":"approval_c","label":"AWAITING COMPLIANCE APPROVAL","type":"active","color":"#3b82f6","order":2,"step_ids":["decision"]},
+    {"id":"completed","label":"COMPLETED","type":"terminal","color":"#22c55e","order":3,"step_ids":["resolved_clear"]},
+    {"id":"rejected","label":"REJECTED","type":"terminal","color":"#ef4444","order":4,"step_ids":["resolved_blocked"]}
+  ]
+
+hooks_json: |
+  [
+    {"id":"hook_screening_intake","name":"Screening Spawned","enabled":true,"trigger":{"event_type":"webhook_received"},"action":{"type":"process_start","target_label":"Screening","rule_id":"rule_screening"}},
+    {"id":"hook_subprocedure_resolved_clear","name":"Decision approved → resolve parent (clear)","enabled":true,"trigger":{"event_type":"step_completed","step_id":"decision","status_match":"approved"},"action":{"type":"admin_route","admin_arm":"subprocedure.resolved","target_label":"Admin: unblock parent (cleared)","payload_keys":["case_id","parent_case_id","outcome"]}},
+    {"id":"hook_subprocedure_resolved_block","name":"Decision rejected → resolve parent (blocked)","enabled":true,"trigger":{"event_type":"step_completed","step_id":"decision","status_match":"rejected"},"action":{"type":"admin_route","admin_arm":"subprocedure.resolved","target_label":"Admin: reject parent (blocked)","payload_keys":["case_id","parent_case_id","outcome"]}}
+  ]
+
+grain_rules_json: |
+  [
+    {"id":"rule_screening","name":"Screening Sub-procedure","enabled":true,"mode":"autonomous","target_app_id":"dueprocess","target_action":0,"target_label":"Screening","append_timestamp":true,"share_role_id":1,"share_duration":-1,"share_single_use":false,"return_view_cap":true,"return_share_url":false,"required_permission":0}
+  ]
+
+registries_json: |
+  {
+    "subject": {
+      "fields": [
+        {"id":"counterparty_label","type":"text","label":"Counterparty (redacted display label)","required":true,"max_length":200},
+        {"id":"counterparty_id","type":"text","label":"Counterparty contact ID (opaque, parent-side)","system":true},
+        {"id":"amount","type":"text","label":"Amount (decimal string)"},
+        {"id":"currency","type":"text","label":"Currency","max_length":4},
+        {"id":"asset_kind","type":"select","label":"Asset Kind","options":["fiat","stablecoin","crypto"]},
+        {"id":"jurisdiction","type":"text","label":"Counterparty jurisdiction (ISO alpha-2)","max_length":2}
+      ]
+    },
+    "case": {
+      "fields": [
+        {"id":"case_id","type":"text","label":"Case ID (this child)","system":true},
+        {"id":"parent_case_id","type":"text","label":"Parent case ID (set by spawnChild)","required":true,"system":true},
+        {"id":"parent_process_type","type":"text","label":"Parent process type","system":true},
+        {"id":"_approval_outcome","type":"text","label":"Approval outcome","system":true},
+        {"id":"outcome","type":"text","label":"Screening outcome","options":["cleared","held","rejected"],"system":true},
+        {"id":"screening_ref","type":"text","label":"External screening reference","system":true},
+        {"id":"screening_score","type":"number","label":"Screening risk score (0-100)","system":true},
+        {"id":"screening_hits_json","type":"text","label":"Screening hits JSON","system":true},
+        {"id":"risk_band","type":"text","label":"Risk band","options":["low","medium","high","blocked"],"system":true}
+      ]
+    }
+  }
+
+ai_prompts_json: |
+  {
+    "screening_summary": {
+      "model": "claude-sonnet-4",
+      "system": "You summarise a sanctions/PEP screening result for a compliance reviewer. Be concise (3 sentences max), neutral, and never invent details.",
+      "user": "Counterparty: {{.counterparty_label}} ({{.jurisdiction}}). Asset: {{.asset_kind}} {{.amount}} {{.currency}}. Result score: {{.screening_score}}/100. Hits: {{.screening_hits_json}}. Summarise."
+    }
+  }
+
+permission_groups_json: |
+  [
+    {"id":"co","name":"Compliance Officer","description":"Reviews screening outcome and decides clear / hold / reject.","sandstorm_permission":"admin","members_role":0},
+    {"id":"auditor","name":"Auditor","description":"Read-only audit access.","sandstorm_permission":"viewer","members_role":2}
+  ]
+
+sub_permissions_json: |
+  {
+    "groups": [
+      {"id":"co","permissions":["view_pii","review_screening","decide_clear","decide_hold","decide_reject","write_review_notes"]},
+      {"id":"auditor","permissions":["view_pii","view_decisions","export_audit_log"]}
+    ]
+  }
+
+section_access_json: |
+  {
+    "dashboard_view": {"co":true,"auditor":true},
+    "builder_view": {"co":false,"auditor":false},
+    "case_detail_view": {"co":true,"auditor":true},
+    "screening_panel_view": {"co":true,"auditor":true},
+    "audit_log_view": {"co":true,"auditor":true}
+  }
+
+doc_matrix_json: |
+  {
+    "all": {"required": []}
+  }
+
+risk_config_json: |
+  {
+    "bands": [
+      {"id":"low","label":"Low","threshold_score":30,"auto_proceed":true,"color":"#22c55e"},
+      {"id":"medium","label":"Medium","threshold_score":60,"requires_role":"co","color":"#eab308"},
+      {"id":"high","label":"High","threshold_score":80,"requires_role":"co","four_eyes":false,"color":"#f97316"},
+      {"id":"blocked","label":"Blocked","threshold_score":100,"auto_reject":true,"color":"#ef4444"}
+    ],
+    "default_band": "low"
+  }
+
+datasets_json: |
+  {
+    "screening_lists": ["UN_SANCTIONS","EU_SANCTIONS","OFAC_SDN","UK_HMT","SECO","INTERPOL"]
+  }
+
+metadata_json: |
+  {
+    "label": "Screening",
+    "short_label": "Screen",
+    "description": "Sub-procedure child case for sanctions/PEP screening of a counterparty, spawned from a parent procedure at risk_band ≥ medium.",
+    "owner_role": "co",
+    "compliance_basis": "FATF Recommendation 6, 7; FINMA Circular 2016/7; AMLA Art. 6",
+    "estimated_duration_minutes": 2,
+    "tags": ["screening","sanctions","pep","sub-procedure","child"]
+  }
+
+notification_cfg: '{"approve":true,"reject":true,"review":true}'
+
+source: "AML/CFT Manual §4.2"
+process_owner: "Compliance Officer"
+card_naming_template: "Screen → {counterparty_label}"
+
+kanban_columns:
+  - id: intake
+    name: INTAKE
+    color: "#64748b"
+    order: 0
+  - id: review
+    name: COMPLIANCE REVIEW
+    color: "#eab308"
+    order: 1
+  - id: approval_c
+    name: AWAITING COMPLIANCE APPROVAL
+    color: "#3b82f6"
+    order: 2
+  - id: completed
+    name: COMPLETED
+    color: "#22c55e"
+    order: 3
+  - id: rejected
+    name: REJECTED
+    color: "#ef4444"
+    order: 4
+
+roles:
+  - id: co
+    name: Compliance Officer
+    sandstorm_permission: admin
+
+steps:
+  - id: intake_data
+    column: intake
+    type: form
+    title: "Intake from Parent Case"
+    description: "Auto-seeded by AdminGate.spawnChild from the parent case via seedFields. Compliance officer can correct or annotate before the screen runs."
+    assigned_role: co
+    access:
+      co: edit
+    seeded_from: parent
+    fields:
+      - id: counterparty_label
+        type: text
+        label: "Counterparty"
+        required: true
+      - id: counterparty_id
+        type: text
+        label: "Counterparty contact ID"
+        system: true
+      - id: amount
+        type: text
+        label: "Amount"
+      - id: currency
+        type: text
+        label: "Currency"
+      - id: asset_kind
+        type: select
+        label: "Asset Kind"
+        options:
+          - id: fiat
+            label: Fiat
+          - id: stablecoin
+            label: Stablecoin
+          - id: crypto
+            label: Crypto
+      - id: jurisdiction
+        type: text
+        label: "Jurisdiction (ISO alpha-2)"
+    default_next_step: external_screen
+
+  - id: external_screen
+    column: review
+    type: machine
+    title: "External Screening"
+    description: "Calls TeleScreen sanctions/PEP screen. Result fields are populated by the screening callback; failure is non-fatal for MVP (live wire ships in v1.1)."
+    service_call:
+      service: telescreen
+      endpoint: /api/screen/person
+      trigger: on_enter
+      optional: true
+      async_mode: poll
+      poll_endpoint: /api/request
+      poll_interval: 3
+      poll_timeout: 600
+    fields:
+      - id: screening_ref
+        type: text
+        label: "External screening reference"
+        system: true
+      - id: screening_score
+        type: number
+        label: "Risk score (0-100)"
+        system: true
+      - id: screening_hits_json
+        type: text
+        label: "Screening hits JSON"
+        system: true
+      - id: risk_band
+        type: text
+        label: "Risk band (computed)"
+        system: true
+    default_next_step: decision
+
+  - id: decision
+    column: approval_c
+    type: approval
+    title: "Decision"
+    description: "Compliance officer reviews the screening result and decides clear / hold / reject. Outcome propagates to the parent case via subprocedure.resolved hook."
+    assigned_role: co
+    access:
+      co: edit
+    approval:
+      required_roles:
+        - co
+      min_approvers: 1
+      review_data:
+        - counterparty_label
+        - jurisdiction
+        - asset_kind
+        - amount
+        - currency
+        - screening_score
+    conditions:
+      - field: _approval_outcome
+        operator: eq
+        value: approved
+        next_step: resolved_clear
+      - field: _approval_outcome
+        operator: eq
+        value: rejected
+        next_step: resolved_blocked
+    default_next_step: resolved_clear
+
+  - id: resolved_clear
+    column: completed
+    type: complete
+    title: "Cleared"
+    description: "Screening cleared. Parent case unblocked via subprocedure.resolved hook."
+
+  - id: resolved_blocked
+    column: rejected
+    type: complete
+    title: "Blocked"
+    description: "Screening rejected the counterparty. Parent case rejected via subprocedure.resolved hook."

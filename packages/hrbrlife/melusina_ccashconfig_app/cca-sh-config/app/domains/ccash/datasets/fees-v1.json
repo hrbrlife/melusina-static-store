@@ -1,0 +1,74 @@
+[
+  {
+    "method": "wallet",
+    "label": "From wallet",
+    "icon": "i-wallet",
+    "description": "Pay instantly from your own balance. Free, settles immediately, no external rail involved.",
+    "percent": "0",
+    "fixed": "0",
+    "currency": "USD"
+  },
+  {
+    "method": "bank",
+    "label": "Bank transfer",
+    "icon": "i-bank",
+    "description": "Domestic bank transfer via your local clearing rail. Settles next business day.",
+    "percent": "0",
+    "fixed": "0.50",
+    "currency": "USD"
+  },
+  {
+    "method": "ach",
+    "label": "ACH",
+    "icon": "i-bank",
+    "description": "US domestic transfers via ACH. Settles in 1–2 business days.",
+    "percent": "0",
+    "fixed": "0.25",
+    "currency": "USD"
+  },
+  {
+    "method": "sepa",
+    "label": "SEPA",
+    "icon": "i-euro",
+    "description": "Eurozone bank transfers. Settles same-day or next-day across the EU, EEA, and UK.",
+    "percent": "0.1",
+    "fixed": "0.50",
+    "currency": "EUR"
+  },
+  {
+    "method": "swift",
+    "label": "SWIFT",
+    "icon": "i-globe",
+    "description": "International bank wires via the SWIFT network. Settles in 3–5 days. Use for cross-border transfers outside SEPA.",
+    "percent": "0.5",
+    "fixed": "25",
+    "currency": "USD"
+  },
+  {
+    "method": "card",
+    "label": "Card",
+    "icon": "i-card",
+    "description": "Hosted Visa / Mastercard payment page. Instant authorisation, settles T+2.",
+    "percent": "2.9",
+    "fixed": "0.30",
+    "currency": "USD"
+  },
+  {
+    "method": "crypto",
+    "label": "Crypto on-chain",
+    "icon": "i-coin",
+    "description": "On-chain transfer for BTC, ETH, SOL, USDC, or USDT. Settles within network confirmation windows. Irreversible.",
+    "percent": "0.5",
+    "fixed": "0.0001",
+    "currency": "BTC"
+  },
+  {
+    "method": "mobile",
+    "label": "Mobile money",
+    "icon": "i-phone",
+    "description": "Mobile-money rail (M-Pesa, MTN, Airtel). Instant settlement. Best for sub-Saharan Africa, South & SE Asia, and Latin America.",
+    "percent": "1.0",
+    "fixed": "0",
+    "currency": "USD"
+  }
+]

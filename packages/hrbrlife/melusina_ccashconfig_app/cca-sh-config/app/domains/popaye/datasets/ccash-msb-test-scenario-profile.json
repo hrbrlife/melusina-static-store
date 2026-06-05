@@ -1,0 +1,487 @@
+{
+  "schema": "ccash.msb.test_scenario_profile.v1",
+  "id": "ccash-msb-sandbox-2026-04",
+  "name": "ccash MSB Sandbox Scenario Profile",
+  "version": 1,
+  "domain": "popaye",
+  "status": "sandbox-runnable",
+  "effective_date": "2026-04-15",
+  "summary": "A test-only MSB profile that exercises ccash account opening, KYC, sanctions screening, deposit, OTC, settlement, and audit controls without touching production customers, production funds, mainnet wallets, or live regulatory filings.",
+  "source_repositories": [
+    {
+      "id": "ccash_go_htmx",
+      "path": "/home/user/Desktop/ccash_go_htmx",
+      "purpose": "Go/HTMX operator console, Solana signatures, incoming payment protocol, finreact sidecar integration"
+    },
+    {
+      "id": "aitx_procedures",
+      "path": "/home/user/Desktop/AITX Procedures",
+      "purpose": "Template grain, MSB workflow pack, Station/Process grains, Playwright video QA harness"
+    },
+    {
+      "id": "ccash_legal",
+      "path": "/home/user/Desktop/CCASH_Legal",
+      "purpose": "Legal source registry, BSA/AML obligations, type-safe marker references"
+    },
+    {
+      "id": "melusina",
+      "path": "/home/user/Desktop/Melusina",
+      "purpose": "Deployment, Solana license controls, release allowlisting, backup and unseal procedures"
+    }
+  ],
+  "hard_limits": {
+    "network": "devnet",
+    "funds": "test-fixture-only",
+    "customers": "synthetic-only",
+    "regulatory_filings": "draft-or-simulated-only",
+    "state_money_transmission": "sandbox-only-no-live-interstate-routing",
+    "private_key_material": "not-in-profile",
+    "production_partner_msb": "not-required-for-this-profile"
+  },
+  "runtime_modes": [
+    {
+      "id": "template-dataset",
+      "description": "The profile is loaded as a ccash domain dataset by the AITX Template grain."
+    },
+    {
+      "id": "browser-video-qa",
+      "description": "AITX qa scenarios drive real Sandstorm UI clicks and produce screenshots, SRT, and MP4 proof artifacts."
+    },
+    {
+      "id": "protocol-smoke",
+      "description": "ccash Go tests and cmd/roundtrip-smoke verify signed webhook and canonical payload drift without a live chain."
+    }
+  ],
+  "personas": [
+    {
+      "id": "alice",
+      "sandstorm_name": "Alice",
+      "role": "admin",
+      "browser": "chromium",
+      "solana_pubkey_ref": "operator-devnet-pubkey",
+      "responsibilities": [
+        "grain_setup",
+        "template_publish",
+        "provider_setup",
+        "operator_approval"
+      ]
+    },
+    {
+      "id": "bob",
+      "sandstorm_name": "Bob",
+      "role": "compliance",
+      "browser": "firefox",
+      "solana_pubkey_ref": "compliance-devnet-pubkey",
+      "responsibilities": [
+        "kyc_review",
+        "sanctions_review",
+        "source_of_funds_review",
+        "sar_str_draft_review"
+      ]
+    },
+    {
+      "id": "carol",
+      "sandstorm_name": "Carol",
+      "role": "executive",
+      "browser": "chromium",
+      "solana_pubkey_ref": "executive-devnet-pubkey",
+      "responsibilities": [
+        "four_eyes_signoff",
+        "high_risk_approval"
+      ]
+    },
+    {
+      "id": "dave",
+      "sandstorm_name": "Dave",
+      "role": "client",
+      "browser": "chromium",
+      "solana_pubkey_ref": "client-devnet-pubkey",
+      "responsibilities": [
+        "account_application",
+        "receive_request",
+        "otc_request"
+      ]
+    },
+    {
+      "id": "eve",
+      "sandstorm_name": "Eve",
+      "role": "auditor",
+      "browser": "chromium",
+      "solana_pubkey_ref": "auditor-devnet-pubkey",
+      "responsibilities": [
+        "read_only_audit_review"
+      ]
+    }
+  ],
+  "template_profiles": {
+    "station_profiles": [
+      "ccash/account-opening",
+      "ccash/simple-kyc",
+      "ccash/deposits-withdrawals",
+      "msb/four-eyes-kyc",
+      "msb/deposits-withdrawals",
+      "msb/otc-trade",
+      "msb/request-intake"
+    ],
+    "account_profiles": [
+      "msb/fiat-ledger-usd",
+      "msb/crypto-ledger-btc"
+    ],
+    "portal_profiles": [
+      "msb/default"
+    ],
+    "dataset_profiles": [
+      "ccash/ccash-msb-test-scenario-profile"
+    ]
+  },
+  "fixtures": {
+    "client": {
+      "id": "client_c001_acme_sandbox",
+      "series_code": "C-001",
+      "entity_name": "Acme Treasury Sandbox LLC",
+      "entity_type": "llc",
+      "jurisdiction": "Montana",
+      "account_type": "corporate",
+      "purpose_of_account": "Business payments, crypto liquidity testing, and compliance workflow validation",
+      "expected_monthly_volume_usd": "250000.00",
+      "source_of_funds": "Retained earnings and documented business revenue",
+      "risk_tier_expected": "medium"
+    },
+    "individual_applicant": {
+      "full_name": "Dave Morgan",
+      "date_of_birth": "1988-09-14",
+      "nationality": "United States",
+      "country_of_residence": "United States",
+      "email": "dave.morgan@example.test",
+      "phone": "+1 415 555 0140",
+      "address": "100 Market Street, San Francisco, CA 94105",
+      "occupation": "Treasury Operations Manager",
+      "document_type": "passport"
+    },
+    "providers": [
+      {
+        "id": "provider_usd_correspondent_mock",
+        "type": "fiat_correspondent",
+        "currency": "USD",
+        "routing": "mock_nostro",
+        "live_funds": false,
+        "required_checks": [
+          "reachability_probe",
+          "trust_bundle_present",
+          "route_policy_present"
+        ]
+      },
+      {
+        "id": "provider_btc_custody_mock",
+        "type": "crypto_custodian",
+        "asset": "BTC",
+        "chain": "bitcoin",
+        "routing": "mock_chainwatch",
+        "live_funds": false,
+        "required_checks": [
+          "address_derivation",
+          "screening_dispatch",
+          "settlement_hook"
+        ]
+      },
+      {
+        "id": "provider_usdt_devnet_mock",
+        "type": "stablecoin_invoice",
+        "asset": "USDT",
+        "chain": "ethereum",
+        "routing": "mock_invoice",
+        "live_funds": false,
+        "required_checks": [
+          "m1_create_invoice",
+          "m2_payment_detected",
+          "m7_settlement_complete"
+        ]
+      }
+    ]
+  },
+  "legal_controls": [
+    {
+      "id": "fincen-registration-simulated",
+      "marker_refs": [
+        "[TERM:MSB]",
+        "[TERM:FinCEN]",
+        "[FLOW:fincen_registration]",
+        "[DOC:N5]"
+      ],
+      "profile_requirement": "The sandbox client must carry FinCEN registration fields as simulated evidence, but must not submit a live BSA E-Filing action."
+    },
+    {
+      "id": "bsa-aml-program",
+      "marker_refs": [
+        "[TERM:BSA/AML]",
+        "[DOC:B5]",
+        "[FLOW:cdd_edd]",
+        "[FLOW:transaction_monitoring]",
+        "[FLOW:sar_filing]"
+      ],
+      "profile_requirement": "Each positive and negative path must leave evidence for CDD, source of funds, screening, transaction monitoring, and escalation."
+    },
+    {
+      "id": "ofac-sanctions-screening",
+      "marker_refs": [
+        "[FLOW:sanctions_screening]",
+        "[DECISION:COMPLIANCE-001]",
+        "[DOC:B5]"
+      ],
+      "profile_requirement": "TeleScreen or an explicit sanctions simulator must produce a clear, held, or rejected decision with retained evidence."
+    },
+    {
+      "id": "travel-rule-threshold",
+      "marker_refs": [
+        "[TERM:TravelRule]",
+        "[DOC:N1]",
+        "[FLOW:travel_rule]"
+      ],
+      "profile_requirement": "Any virtual asset or funds transfer at or above 3000 USD equivalent must collect originator, beneficiary, account/reference, and institution data."
+    },
+    {
+      "id": "records-retention",
+      "marker_refs": [
+        "[DOC:B4]",
+        "[FLOW:record_management]",
+        "[RIGHT:AUDIT-001]"
+      ],
+      "profile_requirement": "Every scenario must retain screenshots, workflow state, audit rows, and generated proof artifacts."
+    },
+    {
+      "id": "partner-routing-sandbox-only",
+      "marker_refs": [
+        "[TERM:PartnerMSB]",
+        "[DOC:N3]",
+        "[DOC:N4]",
+        "[FLOW:partner_msb_routing]"
+      ],
+      "profile_requirement": "Because the partner directory is empty for production, interstate partner routing is represented only by mock provider fixtures."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "S0_profile_load_and_type_contract",
+      "group": "preflight",
+      "priority": 0,
+      "personas": [
+        "alice",
+        "eve"
+      ],
+      "entrypoint": "AITX Template grain domain loader",
+      "workflows": [],
+      "required_profiles": [
+        "ccash/ccash-msb-test-scenario-profile"
+      ],
+      "must_pass": [
+        "ccash domain loads the profile as a JSON dataset",
+        "scenario IDs are unique",
+        "required personas are present",
+        "network is devnet",
+        "profile contains no private keys or mock-verification environment flags"
+      ]
+    },
+    {
+      "id": "S1_account_opening_four_eyes",
+      "group": "client-lifecycle",
+      "priority": 1,
+      "personas": [
+        "dave",
+        "bob",
+        "carol",
+        "eve"
+      ],
+      "entrypoint": "Station profile msb/four-eyes-kyc or ccash/account-opening",
+      "workflows": [
+        "client_onboarding",
+        "cip",
+        "cdd_edd",
+        "sanctions_screening"
+      ],
+      "required_profiles": [
+        "msb/four-eyes-kyc",
+        "ccash/account-opening"
+      ],
+      "must_pass": [
+        "client submits account application with KYC fields",
+        "document and face capture evidence is attached or explicitly simulated",
+        "TeleScreen returns clear decision",
+        "compliance approval and executive approval are by different personas",
+        "case reaches approved or account_opened terminal state"
+      ]
+    },
+    {
+      "id": "S2_rejected_or_held_screening",
+      "group": "negative-controls",
+      "priority": 2,
+      "personas": [
+        "dave",
+        "bob",
+        "eve"
+      ],
+      "entrypoint": "Station profile msb/four-eyes-kyc",
+      "workflows": [
+        "sanctions_screening",
+        "cdd_edd",
+        "sar_filing"
+      ],
+      "required_profiles": [
+        "msb/four-eyes-kyc"
+      ],
+      "must_pass": [
+        "screening simulator can produce held or rejected",
+        "client operational access is blocked",
+        "compliance notes are required before closure",
+        "audit trail contains screening reference and decision reason"
+      ]
+    },
+    {
+      "id": "S3_deposit_withdrawal_register",
+      "group": "funds-flow",
+      "priority": 3,
+      "personas": [
+        "dave",
+        "bob",
+        "alice",
+        "eve"
+      ],
+      "entrypoint": "Station profile msb/deposits-withdrawals",
+      "workflows": [
+        "transaction_monitoring",
+        "sanctions_screening",
+        "travel_rule",
+        "record_management"
+      ],
+      "required_profiles": [
+        "msb/deposits-withdrawals",
+        "msb/fiat-ledger-usd",
+        "msb/crypto-ledger-btc"
+      ],
+      "must_pass": [
+        "deposit request includes direction, asset type, amount, USD equivalent, origin of funds, and purpose",
+        "source of funds verification is required",
+        "ledger update occurs through the workflow hook, not direct balance mutation",
+        "transaction register contains the reference number"
+      ]
+    },
+    {
+      "id": "S4_incoming_crypto_payment_protocol",
+      "group": "protocol",
+      "priority": 4,
+      "personas": [
+        "alice",
+        "bob",
+        "eve"
+      ],
+      "entrypoint": "ccash docs/incoming-payment-protocol.md plus cmd/roundtrip-smoke",
+      "workflows": [
+        "transaction_monitoring",
+        "sanctions_screening",
+        "travel_rule",
+        "financial_controls"
+      ],
+      "required_profiles": [
+        "provider_usdt_devnet_mock"
+      ],
+      "must_pass": [
+        "M1 create invoice is idempotent by ccash_txn_id",
+        "M2 payment_detected webhook verifies protocol v2 signature",
+        "M3 screening dispatch creates or reuses a screening case",
+        "M4 decision branches to cleared, held, or rejected",
+        "M5 temp credit and M6 move-to-nostro require signed audit evidence",
+        "M7 settlement_complete transitions ccash transaction to settled"
+      ]
+    },
+    {
+      "id": "S5_otc_trade_settlement_hook",
+      "group": "trading",
+      "priority": 5,
+      "personas": [
+        "dave",
+        "bob",
+        "alice",
+        "carol",
+        "eve"
+      ],
+      "entrypoint": "AITX qa/scenarios/msb_full_otc.py",
+      "workflows": [
+        "transaction_monitoring",
+        "sanctions_screening",
+        "cdd_edd",
+        "financial_controls"
+      ],
+      "required_profiles": [
+        "msb/otc-trade",
+        "msb/fiat-ledger-usd",
+        "msb/crypto-ledger-btc"
+      ],
+      "must_pass": [
+        "OTC request includes asset, direction, quantity, notional value, capacity, and source of funds",
+        "pricing approval is recorded",
+        "executive approval is recorded when risk tier requires it",
+        "settlement occurs through account_operation hook",
+        "audit phase verifies expected USD and BTC balances"
+      ]
+    },
+    {
+      "id": "S6_melusina_deployment_preflight",
+      "group": "deployment",
+      "priority": 6,
+      "personas": [
+        "alice",
+        "eve"
+      ],
+      "entrypoint": "Melusina deployment preflight, devnet only",
+      "workflows": [
+        "access_control",
+        "key_management",
+        "incident_response",
+        "bcp_drp"
+      ],
+      "required_profiles": [],
+      "must_pass": [
+        "BLOCKCHAIN_NETWORK is devnet for this profile",
+        "release hash verification is checked before running browser scenarios",
+        "license domain matches dev.pbay.app or the configured Sandstorm dev URL",
+        "mainnet-beta is rejected unless a separate production-readiness profile is used",
+        "mock Solana verification flags are absent from live-style runs"
+      ]
+    }
+  ],
+  "regression_gates": [
+    {
+      "id": "R1_no_direct_settlement_shortcuts",
+      "assertion": "Tests must not call direct credit or debit endpoints to fake settlement."
+    },
+    {
+      "id": "R2_unique_reviewers",
+      "assertion": "Any four-eyes step must use unique_reviewers and two distinct Sandstorm identities."
+    },
+    {
+      "id": "R3_protocol_v2_only",
+      "assertion": "Webhook and Solana-signed requests must reject protocol v1 envelopes."
+    },
+    {
+      "id": "R4_template_source_of_truth",
+      "assertion": "Workflow and scenario data must come from Template grain domain packs or this dataset, not copied into test code."
+    },
+    {
+      "id": "R5_no_mainnet_no_live_filings",
+      "assertion": "Sandbox scenarios must not hit mainnet-beta, live BSA E-Filing, production partner MSBs, or production financial rails."
+    }
+  ],
+  "blocked_production_items": [
+    {
+      "id": "production_partner_msb_directory",
+      "reason": "The legal Partner MSB directory is not populated. This blocks production interstate routing, but not mock sandbox tests."
+    },
+    {
+      "id": "live_regulatory_filings",
+      "reason": "FinCEN and state filings are represented as draft evidence only."
+    },
+    {
+      "id": "production_solana_mainnet_controls",
+      "reason": "This profile is devnet-only and does not assert mainnet release-authority separation."
+    }
+  ]
+}

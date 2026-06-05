@@ -1,0 +1,65 @@
+{
+  "operator": {
+    "legal_name": "CCash Demo Operator AG",
+    "legal_status": "Swiss FINMA-supervised financial intermediary (SO-FIT, member affiliation #4032)",
+    "registered_office": "Bahnhofstrasse 42, 8001 Zürich, Switzerland",
+    "lei": "549300CCASHDEMO00001",
+    "iban": "CH93 0076 2011 6238 5295 7",
+    "fincen_reg": "31000000000001",
+    "complaints_email": "complaints@ccash-demo.ch",
+    "privacy_email": "privacy@ccash-demo.ch",
+    "support_email": "support@ccash-demo.ch",
+    "website": "https://ccash-demo.ch",
+    "brand_name": "CCash"
+  },
+  "fees": [
+    { "method": "swift", "percent": "0.5", "fixed": "25", "fixed_currency": "USD", "label": "SWIFT wire", "description": "International bank wire — 3–5 day settlement." },
+    { "method": "sepa", "percent": "0.1", "fixed": "0.50", "fixed_currency": "EUR", "label": "SEPA transfer" },
+    { "method": "card", "percent": "2.9", "fixed": "0.30", "fixed_currency": "USD", "label": "Card payment" }
+  ],
+  "currencies": [
+    { "code": "USD", "symbol": "$", "short": "US$", "long": "US Dollar", "precision": 2, "kind": "fiat" },
+    { "code": "EUR", "symbol": "€", "short": "€", "long": "Euro", "precision": 2, "kind": "fiat" },
+    { "code": "GBP", "symbol": "£", "short": "£", "long": "Pound Sterling", "precision": 2, "kind": "fiat" },
+    { "code": "CHF", "symbol": "Fr", "short": "CHF", "long": "Swiss Franc", "precision": 2, "kind": "fiat" },
+    { "code": "USDC", "symbol": "USDC", "short": "USDC", "long": "USD Coin", "precision": 6, "kind": "stablecoin" },
+    { "code": "USDT", "symbol": "USDT", "short": "USDT", "long": "Tether", "precision": 6, "kind": "stablecoin" },
+    { "code": "BTC", "symbol": "₿", "short": "BTC", "long": "Bitcoin", "precision": 8, "kind": "crypto" },
+    { "code": "ETH", "symbol": "Ξ", "short": "ETH", "long": "Ether", "precision": 8, "kind": "crypto" },
+    { "code": "SOL", "symbol": "◎", "short": "SOL", "long": "Solana", "precision": 9, "kind": "crypto" }
+  ],
+  "approval": {
+    "high_tier_usd": "50000",
+    "medium_tier_usd": "10000",
+    "new_contact_window": "168h",
+    "high_risk_currencies": ["BTC", "ETH", "SOL", "USDT"],
+    "high_risk_methods": ["crypto", "westernUnion"],
+    "medium_risk_methods": ["swift", "card", "mobile"]
+  },
+  "faq": [
+    {
+      "question": "How long does a SWIFT transfer take to settle?",
+      "answer": "SWIFT wires typically settle in 3–5 business days depending on the corresponding bank chain. We mark the transaction settled the moment our correspondent confirms receipt."
+    },
+    {
+      "question": "What are your KYC requirements for new accounts?",
+      "answer": "Standard accounts require government ID, proof of address (less than 3 months old), and a brief source-of-funds declaration. Enhanced Due Diligence applies to accounts above USD 10,000 expected monthly volume."
+    },
+    {
+      "question": "Why was my transaction held for review?",
+      "answer": "Transactions above USD 10,000 (medium tier) or USD 50,000 (high tier) trigger four-eyes review. Crypto transfers and SWIFT wires also screen against our sanctions and PEP lists before release."
+    },
+    {
+      "question": "Which crypto assets do you support?",
+      "answer": "We custody BTC, ETH, SOL, and the USDC/USDT stablecoins natively. Other ERC-20 or SPL tokens are not supported in this release."
+    },
+    {
+      "question": "How do I dispute a fee or transaction?",
+      "answer": "Email complaints@ccash-demo.ch with your transaction reference. We respond within 2 business days and resolve disputes within 15 days per FINMA guidance."
+    }
+  ],
+  "defaults": {
+    "default_currency": "USD",
+    "notification_mode": "important"
+  }
+}

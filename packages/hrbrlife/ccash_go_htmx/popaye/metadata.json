@@ -1,9 +1,9 @@
 {
   "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-  "packageId": "5cdc86b9ababeaba1f1c453478a07f93",
+  "packageId": "9aea0921cd33217b5b6af09428e14ec4",
   "name": "popaye",
-  "version": "0.3.98",
-  "versionNumber": 88,
+  "version": "0.3.99",
+  "versionNumber": 89,
   "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
   "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
   "categories": [
@@ -27,6 +27,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.3.98",
-  "sha256": "5cdc86b9ababeaba1f1c453478a07f93cf49ae5dfcda494e212d8f60d9d11eb6"
+  "marketingVersion": "0.3.99",
+  "sha256": "9aea0921cd33217b5b6af09428e14ec467d1fb69b652f1b5088801fe1adb3823"
 }

@@ -42,7 +42,7 @@
       "marketingVersion": "0.7.15",
       "sha256": "f8b9f972fa8312047e861381f8b57092c031b3e60c4dcf88512995e0eba37a8c",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1780185879835,
+      "updatedAt": 1780613692972,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "37f96ab38c3346e02e8782cdb88bfc22ae09b7ad6698a53d609ae10e638639e5",
@@ -207,7 +207,7 @@
       "marketingVersion": "1.0.2-kb6",
       "sha256": "ae845c01db1bfe065c313b0307ee165ab92f801abb6e2e7c1388751f167635c8",
       "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
-      "updatedAt": 1780547805335,
+      "updatedAt": 1780613693484,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "1fd967f89f826a924c9a74f7756c646d80be602e152fc2d508d327bc50924149",
@@ -1053,7 +1053,7 @@
       "marketingVersion": "0.0.15",
       "sha256": "98dee5baf6a304cb0070ffd45936ae8a5851921a6a80aa3388e34eb7037ef2e9",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1780185880031,
+      "updatedAt": 1780613693576,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "b4335fbb5d4d94642b0996196e9302a75994a03c6267f03d4fd49c80ea509526",
@@ -1195,9 +1195,9 @@
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
       "name": "cca.sh Domain Template",
-      "version": "0.5.15",
-      "versionNumber": 37,
-      "packageId": "6f8c6a2ba49f8c6a8a51d31ba42ad056",
+      "version": "0.5.17",
+      "versionNumber": 39,
+      "packageId": "4cac54816ce96c1489c8e67a783a65fe",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -1219,10 +1219,10 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.5.15",
-      "sha256": "6f8c6a2ba49f8c6a8a51d31ba42ad0561cae2abfe4f416efcaf31f286597e13d",
+      "marketingVersion": "0.5.17",
+      "sha256": "4cac54816ce96c1489c8e67a783a65fef91ca7edd59f278df87561218f1ac8c3",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780593130185,
+      "updatedAt": 1780616587276,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d38e1185ca8560dc91aee15ac39153930da5dd1aeffcd3d0eac9f8868f182684",
@@ -1367,7 +1367,7 @@
       "marketingVersion": "0.4.0",
       "sha256": "ccf2c55d949a0295f53c0acaf020bba8158979d754a78a20d9abcc06705e59e4",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780185879847,
+      "updatedAt": 1780613692984,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "ccf2c55d949a0295f53c0acaf020bba8158979d754a78a20d9abcc06705e59e4",
@@ -1558,7 +1558,7 @@
       "marketingVersion": "0.1.3",
       "sha256": "e2711bdb4228af04b57c18f058bb3ef2f4209210f76a74f79d02507315f2882a",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1780185879871,
+      "updatedAt": 1780613693016,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "a138b5bb5bd109fedffe6251f32c89bc67fee3ce36f4b814f01bff8b4d885713",
@@ -1607,7 +1607,7 @@
       "marketingVersion": "0.2.4",
       "sha256": "587cb4374a820b935e68c5b86247374c70ac0b7de8e435feb3762a443fb16512",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780185879875,
+      "updatedAt": 1780613693020,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "9fb25b53fe1e61288be3f713635c454466593ca70e42291f339ebe580e298f23",
@@ -1767,7 +1767,7 @@
       "marketingVersion": "0.1.1",
       "sha256": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780185879903,
+      "updatedAt": 1780613693048,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
@@ -2424,7 +2424,7 @@
       "marketingVersion": "0.1.6",
       "sha256": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780246329048,
+      "updatedAt": 1780613693440,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
@@ -2473,7 +2473,7 @@
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.45",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780583237785,
+      "updatedAt": 1780613693076,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "734106c6acc57ce550e93fe6c309c56448464a544a8210748d3568f0efeb53fa",
@@ -2644,7 +2644,7 @@
       "appTitle": "Cyberteller Config",
       "sha256": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780378113030,
+      "updatedAt": 1780613693592,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
@@ -3091,7 +3091,7 @@
       "marketingVersion": "0.1.30",
       "sha256": "8edc1f91d315e66ab23e2c647254e567e94ce78a66a792565829f67d1ac1ff14",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780548572407,
+      "updatedAt": 1780613692944,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "bac19c2f411fe54cca292669001254d2757ec87774c45362a02df60103c8e53f",
@@ -3146,7 +3146,7 @@
       "marketingVersion": "0.2.3",
       "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc",
       "imageId": "58f7cecd9041ab75a8b70a87e2453630.png",
-      "updatedAt": 1780185879951,
+      "updatedAt": 1780613693420,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d20ff79c7b95b815109dae73b18eeb1cead05b5c23a404254509f9c81c59cca6",
@@ -3973,7 +3973,7 @@
       "marketingVersion": "0.1.6",
       "sha256": "99ff92ca43dc97b54016ed621e9ed10f30112995b93e45eeb601ec2b1ccb5978",
       "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1780185881811,
+      "updatedAt": 1780613693616,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "99ff92ca43dc97b54016ed621e9ed10f30112995b93e45eeb601ec2b1ccb5978",
@@ -4269,9 +4269,9 @@
     {
       "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
       "name": "NamedCoin Admin",
-      "version": "0.1.6",
-      "versionNumber": 7,
-      "packageId": "bacd30e696dddca3c3e2bdd904aaff70",
+      "version": "0.1.8",
+      "versionNumber": 9,
+      "packageId": "838310f63df75a3181237fb771e0e16c",
       "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
       "categories": [
         "Productivity"
@@ -4287,21 +4287,21 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.6",
-      "sha256": "bacd30e696dddca3c3e2bdd904aaff705a533cdfa6ac3ad069bc22cdbfa82cd2",
+      "marketingVersion": "0.1.8",
+      "sha256": "838310f63df75a3181237fb771e0e16c52d9dc7244940c12b636ec173d707742",
       "createdAt": 1780547509756,
       "imageId": "6808801193391d9254773a067bc1b295.svg",
-      "updatedAt": 1780603219214,
+      "updatedAt": 1780632522869,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "dbf0788f0bce15590b29f33be7c3846973c72b83420e4aa1c1b0d186aad28055",
-        "releaseHash": "b03eede619a7e2f91c2218e2caf1b61cd0b6d67ca42f31a8c0a66daa6140c825",
-        "releaseNonce": "015876e918afd51bacb25c4791ffa098",
-        "releaseEntryPda": "82okpZcMYVpcTUDCNXqHcsqL7AfJQzKg3K84y7CveR47",
+        "appHash": "0ce8c939151d9bb13b5fb0ac773f205811a71cf7bf350d1f74a1d20c4b948d21",
+        "releaseHash": "cffca77fe1d838391f1922e10f8002edc6b37db791f557f7652890aeb603c6ad",
+        "releaseNonce": "aae79f7c45e6a644c06c8256d45dbc15",
+        "releaseEntryPda": "Eb2HV9imWKtrUAoZPXPSz2fMWe7WaVdp9wjeRnairBhH",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780603248,
-        "authorSig": "sTwK+L9AN6S4elYZ5Ti6U8D/AiqjobRFaEkSNOmTdeqKwpUVpWPjtp4EcP1Th9+7dyNezXxeir5l2sOS3YjEAQ==",
+        "signedAtUnix": 1780632852,
+        "authorSig": "XzErtjHyKbbAq/u8cS/U3hIQs4A55pTda5sZKXGxHpZOeIgdwLvZtBH24993ynDcgg4CbLTuCoQ6brzY8Qt8BQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -4476,7 +4476,7 @@
       "marketingVersion": "0.1.9",
       "sha256": "fed249e212e791bd388126a9cb19ffb4b1b1cbec7690a0926838d928227059c9",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780317912311,
+      "updatedAt": 1780613693460,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fed249e212e791bd388126a9cb19ffb4b1b1cbec7690a0926838d928227059c9",
@@ -4650,10 +4650,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "d0f2abee26595e7103321a9a95333749",
+      "packageId": "5cdc86b9ababeaba1f1c453478a07f93",
       "name": "popaye",
-      "version": "0.3.94",
-      "versionNumber": 84,
+      "version": "0.3.98",
+      "versionNumber": 88,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4676,10 +4676,10 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.94",
-      "sha256": "d0f2abee26595e7103321a9a95333749519ff633921cdcc75b24260584d2b4ff",
+      "marketingVersion": "0.3.98",
+      "sha256": "5cdc86b9ababeaba1f1c453478a07f93cf49ae5dfcda494e212d8f60d9d11eb6",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780584203661,
+      "updatedAt": 1780616587292,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "896ad8e08ea072e06c401456b5c0fd0b25f970b36aa27f5a6d79e4842d01c267",
@@ -4935,7 +4935,7 @@
       "marketingVersion": "2.1.2",
       "sha256": "9c5060f77122fced9176401e206d1dfd0b7eccd8231c66c21591dde5207d1a39",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1780185880391,
+      "updatedAt": 1780613693944,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "5e21d8d6c7b41bc79e499c376fbac5f6a486cab97fb639f4aafcd229159a4fa6",
@@ -5078,7 +5078,7 @@
       "marketingVersion": "0.0.6",
       "sha256": "caf67e1d51f2b60a45a99b8f22e45458eb5954e6f8674c5a0de4fa59801f6ad4",
       "imageId": "94aa847213597790c78624d0672a4ef4.svg",
-      "updatedAt": 1780185880147,
+      "updatedAt": 1780613693736,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "d4f9520e9758e37c7becd9d2ab3721c580ac92578c826a85d78028bc8980252c",
@@ -5238,7 +5238,7 @@
       "license": "Proprietary",
       "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1780185880015,
+      "updatedAt": 1780613693552,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "fd5bb7cb18da9e6b95850752f1b78d4c3544e8e010f0fe4e720eba97c271cc4d",
@@ -5381,7 +5381,7 @@
       "marketingVersion": "1.2.1",
       "sha256": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
       "imageId": "49afc687aef2ebc8afa82efa3b8e1497.png",
-      "updatedAt": 1780185880459,
+      "updatedAt": 1780613693996,
       "attest": {
         "schema": "",
         "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
@@ -5499,7 +5499,7 @@
       "license": "Proprietary",
       "marketingVersion": "0.1.6",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1780185880487,
+      "updatedAt": 1780613694016,
       "attest": {
         "schema": "melusina-release-v1",
         "appHash": "34b30034483a975d4c5c12fb9fcdb2ef6f4302103a627154251d5d215d02deed",

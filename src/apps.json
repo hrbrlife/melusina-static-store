@@ -1021,10 +1021,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "01ba5c9def841bfc5c711a47f495206e",
+      "packageId": "c532a5e2f0d35bee83a7c99f346dd653",
       "name": "cca.sh Config",
-      "version": "0.0.18",
-      "versionNumber": 25,
+      "version": "0.0.19",
+      "versionNumber": 26,
       "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
       "categories": [
@@ -1050,20 +1050,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.0.18",
-      "sha256": "01ba5c9def841bfc5c711a47f495206e9aa939f581d19d311baa979dfb7db96a",
+      "marketingVersion": "0.0.19",
+      "sha256": "c532a5e2f0d35bee83a7c99f346dd65376086020e4a060bfccaffdbff708a9dc",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1780698543580,
+      "updatedAt": 1780746373147,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b2a87fd85f27a2173acafc6eace82d12f70c7aa9b246b4123f406e0cdfefdd31",
-        "releaseHash": "3de31111fde0c010d599cb4cbe7c58e1d1a1bb2e60a98dc741b6defd23a65777",
-        "releaseNonce": "a312da8977824ab1a2106637c08f0476",
-        "releaseEntryPda": "91Z2EH9LKNF83gMk4vU3q6p2o8nnZGVc81qbY5fJvehZ",
+        "appHash": "a92b879f6d19153a6cab00e576b732434aa4f8b78e0eb30149242fe789d0f691",
+        "releaseHash": "e649be826aa3785cdd71dcebc72bbc894c067ee338a1553f55878141298c94ce",
+        "releaseNonce": "685d956bd932ffaeb065c9ebfc65a714",
+        "releaseEntryPda": "FmJQMu2jqkzYxBrEEVcNeCXMfHEw6dNn3kgEeX3o2hv",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780698867,
-        "authorSig": "it4lKaitnJsEdtGKDs7fzMYyURzDhZiiIcS2Iy0udtEb81XleYJMZXLEr2p8r3rCeQcIfK+BNMdklnFY2HvMDg==",
+        "signedAtUnix": 1780746699,
+        "authorSig": "eOuIKMYWUhl2fl8157RnvLL2qRS+tIkG5eNOxa5FR8yv0CBAhpMo0AGh1A98C1CY/m+lstOgv06qYcvHv8EwAg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

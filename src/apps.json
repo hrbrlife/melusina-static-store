@@ -2447,10 +2447,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.49",
-      "versionNumber": 118,
-      "packageId": "2bec409eddbba08df2225530003e9ebb",
-      "sha256": "2bec409eddbba08df2225530003e9ebb9859248226c2a338a2ef244b5154eda6",
+      "version": "0.1.50",
+      "versionNumber": 119,
+      "packageId": "b723e28bfe5f31937946ff5733b2058d",
+      "sha256": "b723e28bfe5f31937946ff5733b2058d8aa5d6ac4046bb1db80fe7c59d059b74",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2471,23 +2471,23 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.49-dispose-envelope-auth",
+      "marketingVersion": "0.1.50",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780814846538,
+      "updatedAt": 1780825426841,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "976165a66a2fc05edab51823075bc25f797c7a46c2a03a31d7fc465404d003fa",
-        "releaseHash": "1ce00f6e96d0f455f4c788a688c61c0a0b52dd7c5f0ace894ca0c25197d4b2bb",
-        "releaseNonce": "a39e1890d30d3ddd6f87e73f1b000367",
-        "releaseEntryPda": "g8dikXAQge7awcZ8FZptjJLv4wdCmepXNjiAufYzujz",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780814860,
-        "authorSig": "GciA+Fd8SvhJv8IxK1uKdfiAoCYySDrP4duTTltUP/GmT5UI50QSjbX23jULV+cxAJmosvFfIBPCggCztGF8Cw==",
+        "appHash": "b723e28bfe5f31937946ff5733b2058d8aa5d6ac4046bb1db80fe7c59d059b74",
+        "releaseHash": "92f5e8eeca6dc20308287a9578ace3602d09b14994b61ce140438f8334ab47bf",
+        "releaseNonce": "b10d66dd316fcf3ffc18474eac617b0882d7505f912e59014981244d6c972f0d",
+        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "MasterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
+        "signedAtUnix": 1780825426,
+        "authorSig": "dd551045a7825bf460da0b524a545ec6b8aefeeef266b89b0a4f2a85fd5d518f",
         "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+          "threshold": 1,
+          "memberCount": 1,
+          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
         }
       },
       "capabilities": {
@@ -4650,10 +4650,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "372f8d9c83a528d5506541a45d42f481",
+      "packageId": "40c4f8086d9e7688ebb46bd7b3dc2d40",
       "name": "popaye",
-      "version": "0.3.107",
-      "versionNumber": 97,
+      "version": "0.3.108",
+      "versionNumber": 98,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4676,20 +4676,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.107-foureyes-durable-session",
-      "sha256": "372f8d9c83a528d5506541a45d42f481090d4dc8b3dbb889438b197ad577e4ac",
+      "marketingVersion": "0.3.108",
+      "sha256": "40c4f8086d9e7688ebb46bd7b3dc2d4063a6e26e9a7894c3e7f144bb61725420",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780807530151,
+      "updatedAt": 1780825498429,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "372f8d9c83a528d5506541a45d42f481090d4dc8b3dbb889438b197ad577e4ac",
-        "releaseHash": "890c190240c2b5398b69bcac2597e54dd7b9d545d4a3a9ba01d3b9a8b3da34d1",
-        "releaseNonce": "d8500dd9548f23f850cddd6ca4eaa965502cbea5bad2dc70b3d1873f2abfc599",
+        "appHash": "40c4f8086d9e7688ebb46bd7b3dc2d4063a6e26e9a7894c3e7f144bb61725420",
+        "releaseHash": "47d998a635fb5339482e8e97547db6033f022c7eebe7d9a38c734db7647b3ff8",
+        "releaseNonce": "1efc447e4f4a76b847341bfad26856838b87d06a48105eff112009d8c8356109",
         "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
         "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1780807530,
-        "authorSig": "f2c6d2886a2c7aa3f86f20e9807d9158ff15a96fcb48928841d069f4e68c559e",
+        "signedAtUnix": 1780825498,
+        "authorSig": "21bc9353dcfee4c9b3a16bc41bfa4ae5acc2d750f1df037151e8dbba763bc996",
         "quorumPolicy": {
           "threshold": 1,
           "memberCount": 1,

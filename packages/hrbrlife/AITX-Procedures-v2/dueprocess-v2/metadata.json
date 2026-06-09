@@ -1,9 +1,9 @@
 {
   "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
   "name": "DueProcess v2 (option-b)",
-  "version": "0.1.37",
-  "versionNumber": 41,
-  "packageId": "2875878c3dc8b130de1251e909248d46",
+  "version": "0.1.38",
+  "versionNumber": 42,
+  "packageId": "658026fe7a050bfa4cb37de7e9df73a3",
   "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
   "categories": [
     "Productivity"
@@ -23,6 +23,6 @@
     "website": "https://hrbr.life"
   },
   "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-  "marketingVersion": "0.1.37",
-  "sha256": "2875878c3dc8b130de1251e909248d4661c671293c6a3d9463e317f86ea486a3"
+  "marketingVersion": "0.1.38",
+  "sha256": "658026fe7a050bfa4cb37de7e9df73a3e9295c0cd37afe024994c2cf4f9ccf10"
 }

@@ -20,11 +20,6 @@
 	url = https://github.com/hrbrlife/melusina-galactic-council.git
 	branch = main
 	fetchRecurseSubmodules = false
-[submodule "packages/hrbrlife/AITX-Procedures"]
-	path = packages/hrbrlife/AITX-Procedures
-	url = https://github.com/hrbrlife/AITX-Procedures.git
-	branch = publish
-	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/client_collection"]
 	path = packages/hrbrlife/client_collection
 	url = https://github.com/hrbrlife/clientspace.git

@@ -2,10 +2,10 @@
   "apps": [
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-      "packageId": "f8b9f972fa8312047e861381f8b57092",
+      "packageId": "d8f56981d17ea6f58f2315a5a352b5ca",
       "name": "AiLagoon",
-      "version": "0.7.15",
-      "versionNumber": 23,
+      "version": "0.7.16",
+      "versionNumber": 24,
       "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
       "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
       "categories": [
@@ -39,20 +39,20 @@
         }
       ],
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.7.15",
-      "sha256": "f8b9f972fa8312047e861381f8b57092c031b3e60c4dcf88512995e0eba37a8c",
+      "marketingVersion": "0.7.16",
+      "sha256": "d8f56981d17ea6f58f2315a5a352b5ca4105f55921d407c15939ef8779c88c40",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1780613692972,
+      "updatedAt": 1780891146907,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "37f96ab38c3346e02e8782cdb88bfc22ae09b7ad6698a53d609ae10e638639e5",
-        "releaseHash": "5a3e690dd1940b6ae60d26856d8e7188cad69c44213223d9d2fc748b86d19cdf",
-        "releaseNonce": "45d31ca61b1971dacc7654af0906c3bc",
-        "releaseEntryPda": "34ZY5nAhjaJvV36ua4QEaa9H4oSH9JQV1KWjEvJDWr9X",
+        "appHash": "b94ad5b25e8d4dd33d07b5a5b2f62835a3979134aa4daeddd7318803f78da31c",
+        "releaseHash": "e1ab7a1573c3b5fde94de9b71b2205a2d9e6c9c3a6ff63b34e1926e4f2a6e4bd",
+        "releaseNonce": "a455cfb612e61d38c4810abacc095a96",
+        "releaseEntryPda": "6t1hFWBxivBH6hs2TdN9YhVVBzkcB6dGMVmwfgKEfHYC",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779982895,
-        "authorSig": "UbTWxglifQfGBJWlb9p5U4x2kdJ4QaMF3lM7F/z510FW3mcutwXGZGIn8lgUBOQjqbd6vUoLA936UzUVxCHWAw==",
+        "signedAtUnix": 1780891158,
+        "authorSig": "4n2COy89zdB3oWYldqbRT4uVD48m0ayXcX+eYxuUI8q4bzFGINCW0JPQa9OCV/f5XzUlo+zuqshlc2CQZukHAg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1021,10 +1021,10 @@
     },
     {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "03bd2aceaae0d80a9f0a31238edd7a92",
+      "packageId": "c547f1ce77f7fbca851a55243392f7fa",
       "name": "cca.sh Config",
-      "version": "0.0.20",
-      "versionNumber": 27,
+      "version": "0.0.24",
+      "versionNumber": 31,
       "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
       "categories": [
@@ -1050,20 +1050,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.0.20",
-      "sha256": "03bd2aceaae0d80a9f0a31238edd7a929c1628486ff8341cc9241ad7fa74c6fb",
+      "marketingVersion": "0.0.24",
+      "sha256": "c547f1ce77f7fbca851a55243392f7fa5c81d16b7ccc229fa93a48ddf2add9de",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1780747749547,
+      "updatedAt": 1780888456091,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "2439d7f28871fcce7c29fe1716beda3a2dd1a59ca6ab411550c2d20aefa59ce0",
-        "releaseHash": "0315447b69f83c6466626cc6671e8063b1520f3c538da3f28b9dfb50b6c39421",
-        "releaseNonce": "24f42dea0ee7ce3ff9844a769b3a4fb2",
-        "releaseEntryPda": "GkrM7RLx96RLFJQNSKfL5U6q9bQjKmY5MpuQrCXtLuwK",
+        "appHash": "93ef5b603647e6849d20d5fb814a7cb2a1219f652a6b612df1f35626fd5ebd00",
+        "releaseHash": "f62ff30e8b364fe854fc932c91139601a03d852fb8d52e819c92a9dc657e99de",
+        "releaseNonce": "4ea92879eead84dbcf187c1291eb2b6f",
+        "releaseEntryPda": "7Q3mmSiZ1ZmxWKgsQiu458QrAucDfk8UhAzAeXtQktNL",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780748075,
-        "authorSig": "WhPI62fOd0Ox4hz72gEBmd8vFGHZwwB6t7s4QMGLrxM6/uhG+R2vMz/ODTHyWwbcOhEWylMokMjNLnPTdw1dDA==",
+        "signedAtUnix": 1780888483,
+        "authorSig": "GX+hlL2zQeWdHLsKFDYczlIDneTXo+GlUJg4yZMacof80YaR0D9UxvMVJtjh5nUe/T7tW4hwMjcKGYrgsuMqDw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1195,9 +1195,9 @@
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
       "name": "cca.sh Domain Template",
-      "version": "0.5.19",
-      "versionNumber": 41,
-      "packageId": "39f585ad762d8bdeb0df9d25ecb683d8",
+      "version": "0.5.21",
+      "versionNumber": 43,
+      "packageId": "0133b25d00b316f8ed0fc2a4e7e5b49c",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -1219,20 +1219,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.5.19",
-      "sha256": "39f585ad762d8bdeb0df9d25ecb683d8017ee1ff6ece6f9360d1f73ec9c840b0",
+      "marketingVersion": "0.5.21",
+      "sha256": "0133b25d00b316f8ed0fc2a4e7e5b49ccd9589ee97debf9caa169a54682dd914",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1780683144308,
+      "updatedAt": 1780890311941,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "66a9d9d9bdac4568308f58d46ff8952efddc3d2af0cc1cc7027114f9dd955f6a",
-        "releaseHash": "5ac8d2e754caabb9df2b572db58a66d2e595b3ab71a9bc374deed718f891e285",
-        "releaseNonce": "b2f909e71f13790fb8f2d8fff662548d",
-        "releaseEntryPda": "EN2PB8GuLAB7u8fwEHcX9XeVDB7CytmuusaQZLU9UGrf",
+        "appHash": "3d68244429ea925906c816a2b900b8d0bfacbf5fd8f828e3fa711a9ba8747e8b",
+        "releaseHash": "1e6429f3d2d4055b07c1a97304d33d510182b67a29daf32295a953a71e9105c8",
+        "releaseNonce": "d49205505a15a091cb079631ba585592",
+        "releaseEntryPda": "yZwq9AHqvbCBcXByJ1PFcf6GUbDkGLx2cFdP5gwASRh",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780683454,
-        "authorSig": "2VpBdlpcLgiOJJK6WGuCx4NGQNeABFrsgEX+RaY4SXJa9JxJaoF17uY3gUdEsXGrEcGi4t+o8Q/IUJg/V6oIDg==",
+        "signedAtUnix": 1780890323,
+        "authorSig": "GjTkNUlIbIEYHsDBmXdgbgKD5pCo6sxXZF50hSHATXIKeW1C3tzoOrEd1+8+wrLhO54iwVX+Nj9CjrbdwPHMDw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2447,10 +2447,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.50",
-      "versionNumber": 119,
-      "packageId": "b723e28bfe5f31937946ff5733b2058d",
-      "sha256": "b723e28bfe5f31937946ff5733b2058d8aa5d6ac4046bb1db80fe7c59d059b74",
+      "version": "0.1.51",
+      "versionNumber": 122,
+      "packageId": "4b5850b4a63d6ef60dff5dad7306385d",
+      "sha256": "4b5850b4a63d6ef60dff5dad7306385dbda539dbeda90f235d754ef4cf65a5a5",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2471,23 +2471,23 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.50",
+      "marketingVersion": "0.1.51",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780825426841,
+      "updatedAt": 1780888791559,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b723e28bfe5f31937946ff5733b2058d8aa5d6ac4046bb1db80fe7c59d059b74",
-        "releaseHash": "92f5e8eeca6dc20308287a9578ace3602d09b14994b61ce140438f8334ab47bf",
-        "releaseNonce": "b10d66dd316fcf3ffc18474eac617b0882d7505f912e59014981244d6c972f0d",
-        "releaseEntryPda": "offline-release-entry-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "MasterNftMint": "offline-master-nft-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "licenseSquadsVault": "offline-license-vault-vpj1c0z55jtgtrsv61pp237h2x7tx07h",
-        "signedAtUnix": 1780825426,
-        "authorSig": "dd551045a7825bf460da0b524a545ec6b8aefeeef266b89b0a4f2a85fd5d518f",
+        "appHash": "b2da7d2395f2552af79dc467172fe2867e10948ef2f190d06856d75695896c77",
+        "releaseHash": "433c4355d647c78eabecbe6f73c50853693d2d2b863f0dd3eac88f5018b8bc9d",
+        "releaseNonce": "834789c39094130cfdf9e315371324c8",
+        "releaseEntryPda": "JArd8TjdoRBixTVrCeofoSm3bZWYGKjm9UuAR6Qm9BtM",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780888818,
+        "authorSig": "kCF1daP6WiNXZIHeyi5oR3YYNkSJ8dBRtYy6AVPqF31LcpZOuRVxTHPZ/6rFd8Xdgpb4M5MtaX/tpfevjK5vAg==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-vpj1c0z55jtgtrsv61pp237h2x7tx07h"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -2617,9 +2617,9 @@
     {
       "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
       "name": "Cyberteller Config",
-      "version": "0.1.10",
-      "versionNumber": 19,
-      "packageId": "e9973b294c3711ea0a6bc4bbf8b0ed21",
+      "version": "0.1.12",
+      "versionNumber": 21,
+      "packageId": "bf282e575325b55a5cf2d1268ce9ecb4",
       "shortDescription": "Cyberteller install-admin (boot env source)",
       "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
@@ -2640,25 +2640,25 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.10",
+      "marketingVersion": "0.1.12",
       "appTitle": "Cyberteller Config",
-      "sha256": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
+      "sha256": "bf282e575325b55a5cf2d1268ce9ecb482b5f740dbc90b710cf182dc3a84aa95",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1780613693592,
+      "updatedAt": 1780890143002,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e9973b294c3711ea0a6bc4bbf8b0ed217b1d2cf06ceacac9d0542976376eb298",
-        "releaseHash": "17fd361780560bb79e6c60992c6540a33d2d3ff9e25f894d145d420bb4607f23",
-        "releaseNonce": "d20fbbc4b7d1d8d5f4177aff1d87122c1b7e18b41efb09c5585624ad445b479e",
-        "releaseEntryPda": "offline-release-entry-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "MasterNftMint": "offline-master-nft-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "licenseSquadsVault": "offline-license-vault-3z8v9rsdkj4xn4exfvq9arqax90g6h9r",
-        "signedAtUnix": 1780297535,
-        "authorSig": "3e2501ba6f4ef4aed9070999d989ce8024bfb531941afa551099f74347f93f33",
+        "appHash": "b396d88e44f8478bae3869825ddf2da11517c942efa8bb95420277e1a86c8d76",
+        "releaseHash": "f3763b8017869e1f563d17d5483fc8950a4714a31403e144a4d8b0cef34d5221",
+        "releaseNonce": "1ad475ab615a25060194871d24f0e7ad",
+        "releaseEntryPda": "7xUZAh7wszUcYWDDyk3XTkPG53sKZ9PX18z4gW71UGyZ",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780890169,
+        "authorSig": "139Z1DAsh2X6dJ+2qv7RGkZoXDbmuFka/uXruTkxLWrDjVPCNU/OpdBUyHxIhnmNNErFV7C1od+Rg2IkklcLBA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-3z8v9rsdkj4xn4exfvq9arqax90g6h9r"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": {
@@ -3002,74 +3002,11 @@
       "description": "Docs Bureau is the document editor pearl of the Melusina Bureau office suite. Rich-text documents with real-time collaborative editing, no conflicts, and unlimited simultaneous editors \u2014 entirely on your server.\n\n## Why Docs\n\n- **Pinned document revisions** \u2014 cryptographically anchor any document snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Conflict-free CRDT sync** \u2014 unlimited simultaneous editors; Yjs CRDT merges edits automatically without conflicts\n- **Per-document pearl** \u2014 each document is a sealed container; Grapple-scoped roles (viewer, commenter, editor, admin) enforced server-side\n\n## Features\n\n- **Real-time collaboration** \u2014 see who's connected, watch edits appear as they happen, presence indicators\n- **Rich formatting** \u2014 bold, italic, underline, strikethrough, headings, bullets, numbered lists, blockquotes, code blocks\n- **Sections** \u2014 organize long documents into named sections\n- **Tables** \u2014 insert and edit tables inline\n- **HTML export** \u2014 no lock-in; leave anytime with full fidelity\n\n## Suite integration\n\nDocs Bureau speaks Grapple to the suite \u2014 link a spreadsheet to a proposal, reference a diagram in a design doc, attach a contact card, embed a calendar into an agenda.\n\n## Status\n\n*Shipped v1.0.4.* Rich-text documents with Yjs CRDT, real-time collaboration, Solana-pinned revisions."
     },
     {
-      "appId": "wvgj30uhk0ec4hqsyyustkwp1xvhgc9s2e1xqmsxxucran303efh",
-      "name": "DueProcess",
-      "version": "0.1.28",
-      "versionNumber": 32,
-      "packageId": "f429990a4a19022f4d7659950611df54",
-      "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776612839000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.28",
-      "sha256": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
-      "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780156649065,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "f429990a4a19022f4d7659950611df5426d870b5ed4da022280cde142ac95e59",
-        "releaseHash": "46ddb7b8cc2d950cffacb80dbccf8f0e85ae96ea7b2ab747b31f4fae4b3396a2",
-        "releaseNonce": "5bd3e309b89e886384c3353205039aacaa44ffe55d925be23cdb3d17060ffc6b",
-        "releaseEntryPda": "3LxUbMJZm6QXQgXdEFHtwh4FX9pco2aigTtARC6dJP6v",
-        "MasterNftMint": "",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779579984,
-        "authorSig": "NAqOofmNOcTQi4jY5nctKqxBra8d0TLPu7/HVSzJP7Jp1My3z2l4aj8tcKjsUyin9UZKLMyE4qEIybPiXAvNBA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-          "signatureCount": 3,
-          "signatures": [
-            {
-              "member": "7hG6N24krBwu2hgNkfin7XVSAUmtcAv7CCUqtzUfMKvV",
-              "sigBase58": "2EZAw7ktWfSSh5XbDgr4jiHCBrZbMkmMBK4sBTcJft5RbgverinrfJBcKnF8QwT6YtAVQZLKuN543DLXKzXygJTg"
-            },
-            {
-              "member": "8stvUEVXhaPiXecztiXc4cAmE2pVrMjBVZSQMNmHU4rC",
-              "sigBase58": "2SCgSqGDukB9m5kZRGnQKyJspwqijiqfzE6mDQWeX9GyGkAsD2YBxgfATBr6tcpwo6AxrjFUjq2fonmxj1FPh1WT"
-            },
-            {
-              "member": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
-              "sigBase58": "3pgLPCt3NW6Uar7GpATvY7nNJyTPbHcNTYXFq6BdScSQEYjVuC2A1q5UH1pTpEMHACFKuMzfaW6jVNX9PV9xKZUk"
-            }
-          ]
-        }
-      },
-      "capabilities": null,
-      "description": "",
-      "screenshots": []
-    },
-    {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.37",
-      "versionNumber": 41,
-      "packageId": "2875878c3dc8b130de1251e909248d46",
+      "version": "0.1.38",
+      "versionNumber": 42,
+      "packageId": "658026fe7a050bfa4cb37de7e9df73a3",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
       "categories": [
         "Productivity"
@@ -3088,20 +3025,20 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.37",
-      "sha256": "2875878c3dc8b130de1251e909248d4661c671293c6a3d9463e317f86ea486a3",
+      "marketingVersion": "0.1.38",
+      "sha256": "658026fe7a050bfa4cb37de7e9df73a3e9295c0cd37afe024994c2cf4f9ccf10",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780764169944,
+      "updatedAt": 1780890561881,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9d414e8eb8825c212fbb8572c7ed25cdc86069eb6bad8e0dcf0462919ddefe01",
-        "releaseHash": "05487efdbd7afde0db87626a37c58d1f497cba46b84e33092b942ce3bddd4131",
-        "releaseNonce": "ca56a1f63fccd5c8f4d3925acb06f38d",
-        "releaseEntryPda": "HE7GiVRUFVzZ5uhWbFnu6BJCJGbeS1sU9H876SAirYik",
+        "appHash": "43f27f8eed6768621d7d37765dace9ea7f768c68f1c14f96f604dc6769cf51a9",
+        "releaseHash": "6a8ac67c38a348a0fe198858401e529d16ee837719dd28c8acbb7d327a5c43fc",
+        "releaseNonce": "903b026707522b78f293f4e2d2e48a0e",
+        "releaseEntryPda": "49WrvFQQXXpgnB2z7XB5FgseBNHuSmUzdVBLV7WYo2kn",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780764496,
-        "authorSig": "y+p4gxm/3yiyg+OJc4KSRaPFDbs2Z9nXsPVu7PY6aprqBg1/SsqSfPU5+Jb09FgwmnuihsJKyvghk5GpVQU2BA==",
+        "signedAtUnix": 1780890587,
+        "authorSig": "fxtQAyEa5GQNx8rTgJTDbMEtadnLcXDR+oMMBRHfQqTZxG6QBtAAlFuN16oG/9a/xHWoCyDsfTFKFPLsIQe7DQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3404,9 +3341,9 @@
     {
       "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
       "name": "InstaDAO",
-      "version": "1.0.6",
-      "versionNumber": 57,
-      "packageId": "88aa425d78d78909eed83febbfdbf091",
+      "version": "1.0.7",
+      "versionNumber": 59,
+      "packageId": "979232877c8bd64c309e50a13308b368",
       "shortDescription": "Deploy + manage a Solana DAO",
       "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a Grapple-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
       "categories": [
@@ -3418,7 +3355,7 @@
       "codeLink": "https://github.com/hrbrlife/MELUSINA_token",
       "upstreamAuthor": "Melusina Services US LLC",
       "createdAt": 1779408000000,
-      "updatedAt": 1779780580553,
+      "updatedAt": 1780891335476,
       "author": {
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
@@ -3426,22 +3363,23 @@
         "picture": ""
       },
       "screenshots": [],
-      "sha256": "88aa425d78d78909eed83febbfdbf0913c6fa85bb88644f1a3b92a39dd2613dd",
+      "sha256": "979232877c8bd64c309e50a13308b368dc6dfa34eed7ba0b2f0774e802b418c6",
+      "marketingVersion": "1.0.7",
       "imageId": "faf732ca56d38b49972872d13cde1c6d.svg",
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "88aa425d78d78909eed83febbfdbf0913c6fa85bb88644f1a3b92a39dd2613dd",
-        "releaseHash": "88aa425d78d78909eed83febbfdbf0913c6fa85bb88644f1a3b92a39dd2613dd",
-        "releaseNonce": "88aa425d78d78909eed83febbfdbf091",
-        "releaseEntryPda": "11111111111111111111111111111111",
-        "MasterNftMint": "11111111111111111111111111111111",
-        "licenseSquadsVault": "HtabU1Wh3UfFfEyq4Yub7B5dPHPo7QDYSRRs1DX2xgFe",
-        "signedAtUnix": 1779573594,
-        "authorSig": "",
+        "appHash": "5cd96c2d91f3f574c0a2e6593fefb3b08f8717132664bb0ce4dfed8184973903",
+        "releaseHash": "cc8d8d50710ce6243c0f6e21c1be50acd360065b4bd635c9f07f57f3f3cfe7f6",
+        "releaseNonce": "3952cdf2d3b204560beab2e1eb2d12e9",
+        "releaseEntryPda": "BABkGaGKythjba2883msVoBYSA8eRLSGfbWTusxr1XPj",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780891368,
+        "authorSig": "8eIlvI9cEM9eQ1G46p79m+gkwP0gYl5lBuoQD1rJeB6TUihSV/NI6YIA4q4Wxwlyak6SceGY/gS/DuthAlCKBg==",
         "quorumPolicy": {
-          "threshold": 2,
+          "threshold": 3,
           "memberCount": 4,
-          "multisigPda": "7wjv1SmdVxqfEP2JkSVnjE1tfSr4sxjBfSEbwp5HcLUn"
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null
@@ -3897,9 +3835,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.4",
-      "versionNumber": 7,
-      "packageId": "dfb068a03c1bfd35194e44d9cfecb443",
+      "version": "0.1.9",
+      "versionNumber": 11,
+      "packageId": "f02466e8bf9cae66c022236a261cc639",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3920,24 +3858,24 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.4",
-      "sha256": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
+      "marketingVersion": "0.1.9",
+      "sha256": "f02466e8bf9cae66c022236a261cc639c46479beb337f54222a34465dfc507f7",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1780144791797,
+      "updatedAt": 1780890802485,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "dfb068a03c1bfd35194e44d9cfecb4439824741fc9a627ecb5ee29829c6da98b",
-        "releaseHash": "53b125763f0e95e456c174d77339749a5dfa2f738d19ef4b0e377831540cd1d3",
-        "releaseNonce": "0b62969c86b49f7cab617f9f0c7d76e79da84606528565b32a6cf99ec1749534",
-        "releaseEntryPda": "offline-release-entry-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "MasterNftMint": "offline-master-nft-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "licenseSquadsVault": "offline-license-vault-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "signedAtUnix": 1780144791,
-        "authorSig": "e167f21707f28b226bfec39cebd4ddef405c6b391ca8506f4fafe36e8ee88994",
+        "appHash": "0136747e8a1e573557b4b4620a6ea27de6e7eb3668e34c265c1e983a5cfe694a",
+        "releaseHash": "e522f25773ba6084bc3575aa0941ebad983c9f14339956717ed27b7860e9157c",
+        "releaseNonce": "6dde905f2372cf674ff88d7f8669a1e5",
+        "releaseEntryPda": "GkQyVCfPkn5LnqFSsw3gPJSJmtCeqseyCY6WVAdZf2Uv",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780890814,
+        "authorSig": "yCQ+yYQMGltpRr6//kzenSsA07jBA1W/cze3b4LiTHLQq41JsFnpSUxdqQqTb4QEjarZcJsuf4ED6NsdGA8+AQ==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-8kea8reanvm5cw7awrxj8udguh5hf3yf"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null,
@@ -3945,333 +3883,11 @@
       "screenshots": []
     },
     {
-      "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
-      "name": "NamedCoin",
-      "version": "0.1.6",
-      "versionNumber": 8,
-      "packageId": "99ff92ca43dc97b54016ed621e9ed10f",
-      "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
-      "categories": [
-        "Productivity"
-      ],
-      "tier": "regular",
-      "domains": [
-        "*"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776300000000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "marketingVersion": "0.1.6",
-      "sha256": "99ff92ca43dc97b54016ed621e9ed10f30112995b93e45eeb601ec2b1ccb5978",
-      "imageId": "b53277c6b915c7d8b72ef00069bb8de7.svg",
-      "updatedAt": 1780613693616,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "99ff92ca43dc97b54016ed621e9ed10f30112995b93e45eeb601ec2b1ccb5978",
-        "releaseHash": "9ddfc3ce648bed0f45dd2e022b8953bc4c40085f39c797e33007943fc208b123",
-        "releaseNonce": "ff3cd7289ce2ebcce49cb287247a7a5395de10e6a6f7ac0ed7b2343760afe165",
-        "releaseEntryPda": "offline-release-entry-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "MasterNftMint": "offline-master-nft-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "licenseSquadsVault": "offline-license-vault-8kea8reanvm5cw7awrxj8udguh5hf3yf",
-        "signedAtUnix": 1780184919,
-        "authorSig": "211d317f8ae1102cb90b0cf188c1113be07554f07ff846951c5c51abefc96808",
-        "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-8kea8reanvm5cw7awrxj8udguh5hf3yf"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "NamedCoin-pearl",
-        "appName": "NamedCoin \u2014 Identity Attestation",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "NamedCoin-pearl",
-            "pearlName": "NamedCoin \u2014 Identity Attestation",
-            "pearlType": "user-pearl",
-            "purpose": "Biometric identity verification \u2014 tilt-to-capture liveness detection, document OCR, sanctions screening, and on-chain NFT attestation. Pass KYC once and receive a time-boxed attestation that every Melusina app can verify without accessing raw ID data.",
-            "sidecars": [
-              {
-                "name": "NamedCoin-sidecar",
-                "port": 9100,
-                "endpoints": [
-                  "/api/v1/health",
-                  "/api/v1/image/standardize",
-                  "/api/v1/kyc/sign",
-                  "/api/v1/biometric/sign",
-                  "/api/v1/biometric/verify",
-                  "/api/v1/provenance/verify",
-                  "/api/v1/merkle/probe",
-                  "/api/v1/merkle/disclose",
-                  "/api/v1/contact/email-otp/send",
-                  "/api/v1/contact/email-otp/verify",
-                  "/api/v1/contact/phone-otp/send",
-                  "/api/v1/contact/phone-otp/verify",
-                  "/api/v1/contact/status",
-                  "/api/v1/cross-server/probe",
-                  "/api/v1/nft/mint",
-                  "/api/v1/nft/verify-claim",
-                  "/api/v1/nft/freeze",
-                  "/api/v1/nft/unfreeze",
-                  "/api/v1/nft/link-wallet",
-                  "/api/v1/nft/attestation"
-                ]
-              },
-              {
-                "name": "ailagoon-sidecar",
-                "port": 9101,
-                "endpoints": [
-                  "/api/v1/chat/completions",
-                  "/api/v1/embeddings"
-                ]
-              },
-              {
-                "name": "OpenSanctions-sidecar",
-                "port": 9102,
-                "endpoints": [
-                  "/api/screen/person",
-                  "/api/screen/entity",
-                  "/api/sanctions/lists",
-                  "/api/crypto/screen"
-                ]
-              },
-              {
-                "name": "mermail-sidecar",
-                "port": 9103,
-                "endpoints": [
-                  "/api/v1/email/send",
-                  "/api/v1/email/otp/send",
-                  "/api/v1/email/otp/verify"
-                ]
-              }
-            ],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "attestation-verify",
-                  "interface": "NamedCoin.Attestation@1",
-                  "purpose": "Verify a Merkle claim against the on-chain attestation root \u2014 individual claims (name, DOB, nationality, etc.) probeable without exposing the full KYC packet.",
-                  "required": false
-                },
-                {
-                  "name": "attestation-status",
-                  "interface": "NamedCoin.AttestationStatus@1",
-                  "purpose": "Check if a wallet holds a valid (non-expired, non-revoked) attestation NFT.",
-                  "required": false
-                },
-                {
-                  "name": "kyc-complete-hook",
-                  "interface": "NamedCoin.KycComplete@1",
-                  "purpose": "Notify subscribing grains when a KYC attestation is issued or revoked \u2014 enables reactive account opening, tier upgrade, etc.",
-                  "required": false
-                }
-              ],
-              "requests": [
-                {
-                  "name": "admin-gate",
-                  "interface": "AdminGate.Capability@1",
-                  "purpose": "Obtain admin capability from ccash admin grain for correspondent account creation and DueProcess case routing.",
-                  "required": true
-                },
-                {
-                  "name": "config-gate",
-                  "interface": "ConfigGate.Capability@1",
-                  "purpose": "Obtain config capability from cyberteller config grain for payment slip workflow integration.",
-                  "required": false
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via Sandstorm grain-crypto-journal envelope",
-              "fields": [
-                "Raw ID document images",
-                "Biometric capture frames (selfie, document photo)",
-                "KYC questionnaire answers",
-                "Contact email/phone for OTP verification",
-                "Merkle leaf salts (never leave the grain)"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Issue attestation",
-                  "purpose": "Approve KYC packet and mint the on-chain NFT attestation. Requires Owner role + OTP-gated."
-                },
-                {
-                  "name": "Revoke attestation",
-                  "purpose": "Freeze or revoke an existing attestation. Requires Owner role + OTP-gated."
-                },
-                {
-                  "name": "Configure attestation policy",
-                  "purpose": "Set attestation expiry duration (90/180/365 days), trusted jurisdiction list, and Merkle claim schema."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Start KYC process",
-                  "purpose": "Begin the identity verification flow \u2014 upload ID documents, capture biometrics, fill questionnaire."
-                },
-                {
-                  "name": "View own attestation status",
-                  "purpose": "Check the status and expiry of your own attestation."
-                },
-                {
-                  "name": "Selective disclosure",
-                  "purpose": "Authorize individual claim probes by other grains."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "type": "AdminGate",
-                  "from": "melusina-ccashconfig-app",
-                  "purpose": "Correspondent account creation on Fineract + DueProcess case routing"
-                }
-              ],
-              "grants": [
-                {
-                  "type": "IdentityCap",
-                  "to": "any-grain",
-                  "purpose": "Merkle claim verification via NamedCoin-sidecar HMAC-signed probe"
-                }
-              ]
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Each attestation mints an NFT on Solana devnet. Merkle root stored on-chain; individual claims verified via selective-disclosure probe."
-              }
-            ],
-            "httpOut": {
-              "enabled": true,
-              "via": "NamedCoin-sidecar",
-              "purpose": "All egress goes through the NamedCoin-sidecar \u2014 HMAC-signed requests to ailagoon (LLM), OpenSanctions (screening), and mermail (email/OTP).",
-              "endpoints": {
-                "NamedCoin-sidecar": "http://10.245.50.6:9100",
-                "ailagoon-sidecar": "http://10.245.50.5:9101",
-                "OpenSanctions-sidecar": "http://10.245.50.7:9102",
-                "mermail-sidecar": "http://10.245.50.8:9103"
-              }
-            },
-            "uiView": {
-              "tabs": [
-                {
-                  "id": "biometric",
-                  "title": "Biometric Capture",
-                  "path": "/biometric",
-                  "description": "Tilt-to-capture liveness detection, selfie, and document photo"
-                },
-                {
-                  "id": "document",
-                  "title": "Document Upload",
-                  "path": "/ui/document_upload",
-                  "description": "Upload and OCR ID documents"
-                },
-                {
-                  "id": "contact",
-                  "title": "Contact Verify",
-                  "path": "/ui/contact_verify",
-                  "description": "Email and phone OTP verification"
-                },
-                {
-                  "id": "status",
-                  "title": "Process Status",
-                  "path": "/ui/process_status",
-                  "description": "KYC verification status and attestation details"
-                },
-                {
-                  "id": "result",
-                  "title": "Result",
-                  "path": "/ui/result",
-                  "description": "Attestation result and Merkle claim summary"
-                }
-              ],
-              "defaultTab": "biometric"
-            },
-            "AdminGate": {
-              "exports": [
-                {
-                  "capability": "ProcessExecutor",
-                  "interface": "AdminGate.ProcessExecutor@1",
-                  "purpose": "Allows DueProcess to execute review procedures (kyc-refresh, sanctions-recheck, account-open, payment-block) on behalf of the NamedCoin grain."
-                }
-              ],
-              "imports": [
-                {
-                  "capability": "AdminGate",
-                  "from": "melusina-ccashconfig-app",
-                  "purpose": "Required for correspondent account creation and DueProcess case routing."
-                }
-              ]
-            },
-            "powerboxManifest": {
-              "sidecarAccess": [
-                {
-                  "label": "NamedCoin-sidecar",
-                  "ip": "10.245.50.6",
-                  "port": 9100,
-                  "protocol": "http",
-                  "purpose": "KYC signing, Merkle probe/disclose, NFT mint/verify, biometric sign, contact OTP"
-                },
-                {
-                  "label": "ailagoon-sidecar",
-                  "ip": "10.245.50.5",
-                  "port": 9101,
-                  "protocol": "http",
-                  "purpose": "LLM document-authenticity check and face-match"
-                },
-                {
-                  "label": "OpenSanctions-sidecar",
-                  "ip": "10.245.50.7",
-                  "port": 9102,
-                  "protocol": "http",
-                  "purpose": "Sanctions screening against OFAC, UN, EU, UK, CH lists"
-                },
-                {
-                  "label": "mermail-sidecar",
-                  "ip": "10.245.50.8",
-                  "port": 9103,
-                  "protocol": "http",
-                  "purpose": "Email and phone OTP delivery for contact verification"
-                }
-              ]
-            }
-          }
-        ]
-      },
-      "description": "**NamedCoin \u2014 Identity Attestation** is the biometric KYC pearl for Melusina PSP.\n\nPass identity verification once \u2014 including tilt-to-capture liveness detection, document OCR, and sanctions screening \u2014 and receive a time-boxed on-chain NFT attestation on Solana devnet. Every Melusina app that needs \"is this person KYC'd?\" probes the attestation through the NamedCoin-sidecar.\n\nRaw ID images, biometric captures, and questionnaire answers never leave the pearl's encrypted Sandstorm pearl store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g., \"residence is FR\", \"age >= 18\") with a selective-disclosure Merkle probe.\n\n## Features\n- **Biometric liveness**: Tilt-to-capture with camera, selfie, and document photo\n- **Document OCR**: Extracts name, DOB, document number from uploaded ID\n- **Sanctions screening**: Integrated OpenSanctions-sidecar check during receive\n- **On-chain attestation**: Merkle-rooted NFT mint on Solana devnet with configurable expiry (90/180/365 days)\n- **Selective disclosure**: Individual claim verification without exposing raw data\n- **Admin review**: KYC packet approval, attestation issuance/revocation\n- **Cross-server probe**: HMAC-signed Merkle verification across Melusina nodes\n\n## Architecture\n- **Pearl**: NamedCoin-pearl (Go + HTMX, Sandstorm pearl)\n- **Sidecar**: NamedCoin-sidecar (Go, HTTP API on port 9100)\n- **Admin pearl**: melusina-NamedCoin-admin-app (separate pearl)\n- **Dependencies**: ailagoon-sidecar (LLM), OpenSanctions-sidecar (screening), mermail-sidecar (email OTP)\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the NamedCoin, ailagoon, OpenSanctions, and mermail sidecars.",
-      "screenshots": []
-    },
-    {
       "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
       "name": "NamedCoin Admin",
-      "version": "0.1.12",
-      "versionNumber": 13,
-      "packageId": "1f906362a6c62fc9a21bbf5a6b582611",
+      "version": "0.1.13",
+      "versionNumber": 16,
+      "packageId": "7c02a0b2123fff09834b4aeefd1b79fe",
       "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
       "categories": [
         "Productivity"
@@ -4287,21 +3903,21 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.12",
-      "sha256": "1f906362a6c62fc9a21bbf5a6b58261102d98704d504eb746a76add90b93ab01",
+      "marketingVersion": "0.1.13",
+      "sha256": "7c02a0b2123fff09834b4aeefd1b79fe77356c6e1fe40617710d48175a1867b2",
       "createdAt": 1780547509756,
       "imageId": "6808801193391d9254773a067bc1b295.svg",
-      "updatedAt": 1780650982938,
+      "updatedAt": 1780890975208,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "7dfc3a4e9bc17044fbcef06f6ac7750f58c17e55fd12cba2ff3c9c3b2698f9f6",
-        "releaseHash": "489d642aca3ab0227a2cd9790dc6ffd8e8737fe6fa679c499d5413f483885e6b",
-        "releaseNonce": "72712964538df0198a7ee0b7d04d23fb",
-        "releaseEntryPda": "92h5m5Kwz2vWSv8E8Tfim7z2EC6sKkgi4xKrNLNMiHMX",
+        "appHash": "f7ec18d16d71d5c93bba62bdf1abad97f4135f35bbf1d74426a930fe7402d317",
+        "releaseHash": "b6aeea67c7472e4bc836edd2f516e4e05c1fcac5fb7103ecf741acf41dd7d9ff",
+        "releaseNonce": "d5c95c16fff7ff15a1313f8a1c7d30e4",
+        "releaseEntryPda": "35EWu7QWQwgVmbyPkgURb2PcXyjMWpk1RHHJZkiPpCtq",
         "MasterNftMint": "",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780651302,
-        "authorSig": "V4LtP7QUr2KAX7zTSDVTruJzrftVyeObBSe9oTBRbOluCTCES7ZCnSifl/BnnwNMTN0ZrPOKpqSaAMPwY1sZCA==",
+        "signedAtUnix": 1780891008,
+        "authorSig": "7YTEAAhpjCz6NDXCG4TA/lGH8IfiBRH0hw7g5e9fXUPeeMlpuP0VuHmIIL5xeDr5xq16+bCze7w4G1dQZcTLAw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -4650,10 +4266,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "1aa61a4b26968ed4889c6a6ec6f0e499",
+      "packageId": "60abb4eebe4ca7ee1a23255fceb67e4e",
       "name": "popaye",
-      "version": "0.3.109",
-      "versionNumber": 99,
+      "version": "0.3.110",
+      "versionNumber": 100,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4676,24 +4292,24 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.109",
-      "sha256": "1aa61a4b26968ed4889c6a6ec6f0e499967757eec1fafcf7d378912c3f61ba14",
+      "marketingVersion": "0.3.110",
+      "sha256": "60abb4eebe4ca7ee1a23255fceb67e4e3bad716ae74eb9db1d88050f5c2ef344",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1780835081718,
+      "updatedAt": 1780888667850,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1aa61a4b26968ed4889c6a6ec6f0e499967757eec1fafcf7d378912c3f61ba14",
-        "releaseHash": "175ad0de1ec29f737c1053da589f302517f56b287b518b143b3059d64b483e14",
-        "releaseNonce": "4d137eb623946cc3fb04d275ced1fff99b2e5c7bdac6e3870331e3ef9196d14a",
-        "releaseEntryPda": "offline-release-entry-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "MasterNftMint": "offline-master-nft-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "licenseSquadsVault": "offline-license-vault-uw0ukgm06584v9ggjqqqt4dqwy6r2ker",
-        "signedAtUnix": 1780835081,
-        "authorSig": "073ac369dd8e33126c78c4567629422b806d9831af57573b6fba47b3dce000d5",
+        "appHash": "ebd66c5f940b7b2b28e7c633aecc9f5a494cb8c3feaa84cb6c718b7d3b518833",
+        "releaseHash": "b66d76441abfbe69492e731938e71ca6d4d8a47bd2bde177a07a499ddb46c7c5",
+        "releaseNonce": "15e2d689f3a2d25f459bac3d3fdc96d2",
+        "releaseEntryPda": "DwbG4Nx5BQPMTUK4oV3u98H4KQTHbqs7o2y9sMc8E9gr",
+        "MasterNftMint": "",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1780888679,
+        "authorSig": "PY7R4YSdFpFWjocY2SBvxX4gbbJhub577qIgH5FwhbLfPkxSfvHDwgWWluJiTaUpmxCpsgQvl/ZsCl0txDaeDA==",
         "quorumPolicy": {
-          "threshold": 1,
-          "memberCount": 1,
-          "multisigPda": "offline-multisig-uw0ukgm06584v9ggjqqqt4dqwy6r2ker"
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
         }
       },
       "capabilities": null

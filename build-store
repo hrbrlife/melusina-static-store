@@ -438,13 +438,23 @@ m['imageId'] = image_id
 if isinstance(m.get('createdAt'), float):
     m['createdAt'] = int(m['createdAt'])
 
-# updatedAt: when the SPK was last packed. Falls back to file mtime, then
-# git log of the publish-branch checkout, then createdAt. Recorded in ms
-# (UTC) to match createdAt's units.
+# updatedAt: the authoritative release timestamp. Prefer RELEASE.json's
+# signedAtUnix (the multisig-signed release time, in seconds) because it is
+# stable across rebuilds and fresh clones — unlike the SPK file mtime, which
+# is re-stamped to checkout time (submodules) or store-build time (plain
+# dirs) on every build and so falsely freshens apps that did not change.
+# Fall back to SPK mtime, then the publish-branch commit time, then
+# createdAt. Recorded in ms (UTC) to match createdAt's units.
 import subprocess
-spk_path_for_mtime = os.path.join(os.path.dirname(meta_file), 'app.spk')
 updated_ms = None
-if os.path.isfile(spk_path_for_mtime):
+signed_at = release.get('signedAtUnix')
+try:
+    if signed_at is not None and int(signed_at) > 0:
+        updated_ms = int(signed_at) * 1000
+except (TypeError, ValueError):
+    pass
+spk_path_for_mtime = os.path.join(os.path.dirname(meta_file), 'app.spk')
+if updated_ms is None and os.path.isfile(spk_path_for_mtime):
     try:
         updated_ms = int(os.path.getmtime(spk_path_for_mtime) * 1000)
     except Exception:

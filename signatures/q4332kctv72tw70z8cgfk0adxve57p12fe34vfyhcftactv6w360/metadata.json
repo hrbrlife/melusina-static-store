@@ -1,0 +1,34 @@
+{
+  "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+  "name": "Paint Bureau",
+  "version": "2.0.16",
+  "versionNumber": 10,
+  "packageId": "febd9be232e208149725c25d721c233d",
+  "shortDescription": "Layered image editor — brushes, filters, layers, crop — entirely in your browser, self-hosted.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776663498,
+  "screenshots": [
+    {
+      "url": "screenshots/screenshot_image.png",
+      "caption": "Layered image editor"
+    }
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "2.0.16"
+}

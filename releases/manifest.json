@@ -1,0 +1,7 @@
+{
+  "version": "local-dev-mode-v1-264-gdb2fcfb7",
+  "platforms": ["linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"],
+  "base_url": "https://hrbrlife.github.io/melusina-static-store/releases/local-dev-mode-v1-264-gdb2fcfb7",
+  "checksums": "https://hrbrlife.github.io/melusina-static-store/releases/local-dev-mode-v1-264-gdb2fcfb7/checksums.sha256",
+  "timestamp": "2026-06-12T20:37:32Z"
+}

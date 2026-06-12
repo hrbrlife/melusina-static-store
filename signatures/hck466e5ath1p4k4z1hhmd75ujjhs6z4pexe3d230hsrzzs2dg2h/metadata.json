@@ -1,0 +1,31 @@
+{
+  "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+  "name": "cca.sh Domain Template",
+  "version": "0.5.21",
+  "versionNumber": 43,
+  "packageId": "0133b25d00b316f8ed0fc2a4e7e5b49c",
+  "shortDescription": "Domain configuration authority for cca.sh grains",
+  "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1745366400000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "tier": "admin",
+  "domains": [
+    "*"
+  ],
+  "marketingVersion": "0.5.21",
+  "sha256": "0133b25d00b316f8ed0fc2a4e7e5b49ccd9589ee97debf9caa169a54682dd914"
+}

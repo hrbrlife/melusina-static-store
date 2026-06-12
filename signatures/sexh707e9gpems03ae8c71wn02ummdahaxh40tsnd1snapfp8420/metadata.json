@@ -1,0 +1,34 @@
+{
+  "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
+  "name": "Diagram Bureau",
+  "version": "2.0.16",
+  "versionNumber": 9,
+  "packageId": "bc14e4dadd64fc0f5ec4da83bda30811",
+  "shortDescription": "Flowcharts, org charts, mindmaps, UML — full draw.io engine, real-time collaboration, self-hosted.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776663241,
+  "screenshots": [
+    {
+      "url": "screenshots/screenshot_graphs.png",
+      "caption": "Diagrams and flowcharts"
+    }
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "2.0.16"
+}

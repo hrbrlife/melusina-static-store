@@ -1,0 +1,88 @@
+{
+  "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+  "packageId": "ec0d9d8eacf2bc1d9885f59d1ccbdee8",
+  "name": "MiniGit",
+  "version": "0.2.5",
+  "versionNumber": 11,
+  "marketingVersion": "0.2.5",
+  "shortDescription": "Lightweight private Git hosting on Melusina \u2014 one repo per pearl, browse and push from your browser, AI-callable.",
+  "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** \u2014 each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** \u2014 clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** \u2014 the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **No external database** \u2014 go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability \u2014 its \"Skills\" \u2014 so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** \u2014 full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface \u2014 all available now.\n",
+  "categories": [
+    "Developer Tools"
+  ],
+  "license": "Proprietary",
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/MiniGit",
+  "codeLink": "https://github.com/hrbrlife/MiniGit",
+  "upstreamAuthor": "Gogs Authors + alexeikarp",
+  "createdAt": 1772577065000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "contactEmail": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "codeUrl": "https://github.com/hrbrlife/MiniGit",
+  "screenshots": [
+    {
+      "url": "screenshots/01-repository-browser.png",
+      "caption": "Repository Browser"
+    },
+    {
+      "url": "screenshots/02-clone-and-file-tree.png",
+      "caption": "Clone And File Tree"
+    }
+  ],
+  "permissionVocabulary": [
+    {
+      "name": "view",
+      "title": "View",
+      "description": "Browse repository state, clone, and fetch."
+    },
+    {
+      "name": "edit",
+      "title": "Edit",
+      "description": "Push, mutate refs, write files, and apply patches."
+    },
+    {
+      "name": "admin",
+      "title": "Admin",
+      "description": "Owner-class actions: publish, change default branch, manage repo settings."
+    }
+  ],
+  "roles": [
+    {
+      "name": "admin",
+      "title": "admin",
+      "permissions": [
+        "view",
+        "edit",
+        "admin"
+      ],
+      "verbPhrase": "can read, push, manage settings, and publish"
+    },
+    {
+      "name": "editor",
+      "title": "edit",
+      "permissions": [
+        "view",
+        "edit"
+      ],
+      "verbPhrase": "can clone, fetch, and push",
+      "default": true
+    },
+    {
+      "name": "viewer",
+      "title": "pull only",
+      "permissions": [
+        "view"
+      ],
+      "verbPhrase": "can clone and fetch only"
+    }
+  ],
+  "sha256": "ec0d9d8eacf2bc1d9885f59d1ccbdee899b38b8fec604f5e83f53f12ea26517e"
+}

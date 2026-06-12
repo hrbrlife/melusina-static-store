@@ -1,0 +1,34 @@
+{
+  "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
+  "name": "Sheets Bureau",
+  "version": "2.0.16",
+  "versionNumber": 13,
+  "packageId": "ff8df4eec3bae85ca6b07a6a113cea1f",
+  "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing — self-hosted.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776662583000,
+  "screenshots": [
+    {
+      "url": "screenshots/screenshot_sheets.png",
+      "caption": "Spreadsheet with live formulas"
+    }
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "2.0.16"
+}

@@ -45,6 +45,11 @@
 
 set -euo pipefail
 
+# Single source of pipeline config (RPC endpoint + key overrides). Untracked /
+# gitignored — holds the devnet RPC key (retained centrally; rotate at graduation).
+_SS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[[ -f "$_SS_ROOT/.publish.env" ]] && source "$_SS_ROOT/.publish.env"
+
 : "${APP_CATALOG_PATH:?APP_CATALOG_PATH is required (e.g. /home/user/Desktop/static_store/packages/hrbrlife/AI_Lagoon/ai-lagoon)}"
 : "${APP_SLUG:?APP_SLUG is required (e.g. ai-lagoon)}"
 

@@ -346,3 +346,5 @@ echo "appHash:        $APP_HASH"
 echo "RELEASE.json:   $FINAL_RELEASE_JSON"
 echo "result.json:    $RESULT_PATH"
 [[ "$COPY_TO_CATALOG" = "1" ]] && echo "catalog:        $APP_CATALOG_PATH/RELEASE.json"
+
+exit 0  # the trailing conditional above must not set a non-zero exit on success

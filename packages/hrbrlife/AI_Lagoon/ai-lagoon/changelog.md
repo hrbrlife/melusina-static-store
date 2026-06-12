@@ -24,11 +24,11 @@
   output. Transcript pinning to Squads-controlled wallets remains on
   the v0.8 roadmap. Closes PSP-audit gap **P0-1**.
 
-## v0.7.8 (2026-05-07) — drop MCP / AIAgent: Clawberg owns orchestration
+## v0.7.8 (2026-05-07) — drop MCP / AIAgent: Jinn owns orchestration
 
 - AiLagoon's role narrows back to "AI provider gateway". Agentic
   orchestration (tool-calling loop, ContextProvider discovery,
-  write-confirmation, templates, engine) moves to Clawberg. AiLagoon
+  write-confirmation, templates, engine) moves to Jinn. AiLagoon
   keeps `AICapBundle` (text / vision / generic) as the unified Grapple
   capability; Ollama / OpenAI / OpenRouter routing is unchanged.
 - Removed: `pkg/mcp/`, the `AIAgent` capnp interface and its server,
@@ -36,7 +36,7 @@
   `templates/mcp.html`, and the Routing-page MCP / engine-config /
   queue-status panels. `ARCHITECTURE-MCP-BRIDGE.md` and
   `DEEP-DIVE-3-ACTOR-FLOW.md` are gone; canonical replacements live
-  in the Clawberg repo.
+  in the Jinn repo.
 - Refreshed the OpenRouter catalog: 26 new entries (GPT-5 Pro,
   Claude Sonnet/Opus/Haiku Latest, Gemini Pro/Flash Latest, o1,
   o3-pro, o3-deep-research, o4-mini-deep-research, GLM 4.5V, ERNIE
@@ -77,7 +77,7 @@
   who tried to claim an `AICapBundle` / `AIText` / `AIVision` /
   `AIGeneric` / `AIAgent` capability via the Sandstorm picker, which
   forced every user to first link a Solana wallet — wrong product
-  shape for "open AiLagoon, attach it to my Clawberg assistant". The
+  shape for "open AiLagoon, attach it to my Jinn assistant". The
   fix: when the calling Sandstorm session holds the pearl's `admin`
   permission bit (`isAdmin`), Grapple grants pass through; external /
   shared sessions still go through the license-gated path. Admin-tier

@@ -11,7 +11,7 @@ export const EXPECTED_APPS = [
   { name: 'cca.sh Client',       version: '0.1.0', categories: ['Productivity', 'Office'] },
   { name: 'cca.sh Org Member',   version: '0.1.0', categories: ['Productivity', 'Office'] },
   { name: 'CanBoard',            version: '0.1.0', categories: ['Productivity'] },
-  { name: 'Clawberg',            version: '0.1.0', categories: ['Productivity'] },
+  { name: 'Jinn',                version: '0.1.0', categories: ['Productivity'] },
   { name: 'clientspace',         version: '0.1.0', categories: ['Productivity'] },
   { name: 'Consilium',           version: '0.1.0', categories: ['Productivity', 'Social'] },
   { name: 'Contacts Bureau',     version: '0.1.0', categories: ['Productivity', 'Office'] },

@@ -6,8 +6,8 @@
       "name": "AiLagoon",
       "version": "0.7.16",
       "versionNumber": 24,
-      "shortDescription": "AI model hub — aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
-      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple — all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** — local or remote Ollama server, any model it can host\n- **ChatGPT** — OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** — 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` — generic text / chat completion\n- `ai-vision` — image understanding and OCR\n- `ai-generic` — consumer picks a model in the Grapple UI at grant time\n- Direct per-model — scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host — the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl — useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring — roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design — see `pkg/audit/logger.go`).",
+      "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
+      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
       "categories": [
         "Productivity"
       ],
@@ -69,14 +69,14 @@
             "pearlId": "ai-lagoon",
             "pearlName": "AiLagoon",
             "pearlType": "user-pearl",
-            "purpose": "AI model hub pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
+            "purpose": "AI model hub pearl \u2014 register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "ai-text",
                   "interface": "AiLagoon.AiText@1",
-                  "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider."
+                  "purpose": "Generic text / chat completion \u2014 the consuming pearl picks model class; this pearl picks provider."
                 },
                 {
                   "name": "ai-vision",
@@ -86,7 +86,7 @@
                 {
                   "name": "ai-generic",
                   "interface": "AiLagoon.AiGeneric@1",
-                  "purpose": "Open-ended capability — the user picks the exact model in the Grapple UI at grant time."
+                  "purpose": "Open-ended capability \u2014 the user picks the exact model in the Grapple UI at grant time."
                 }
               ],
               "requests": []
@@ -151,7 +151,7 @@
             "httpOut": {
               "enabled": true,
               "via": "sidecar:HTTP_COMPONENT",
-              "purpose": "All AI provider API calls — never directly from the pearl, only through the HTTP_COMPONENT sidecar.",
+              "purpose": "All AI provider API calls \u2014 never directly from the pearl, only through the HTTP_COMPONENT sidecar.",
               "endpoints": [
                 "https://api.openai.com/*",
                 "https://openrouter.ai/api/*",
@@ -162,7 +162,7 @@
               "capnp": [
                 {
                   "name": "AiLagoon.AiText@1",
-                  "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider.",
+                  "purpose": "Generic text / chat completion \u2014 the consuming pearl picks model class; this pearl picks provider.",
                   "roleGate": "anyMember"
                 },
                 {
@@ -172,7 +172,7 @@
                 },
                 {
                   "name": "AiLagoon.AiGeneric@1",
-                  "purpose": "Open-ended capability — the user picks the exact model in the Grapple UI at grant time.",
+                  "purpose": "Open-ended capability \u2014 the user picks the exact model in the Grapple UI at grant time.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -225,7 +225,7 @@
         }
       },
       "capabilities": null,
-      "description": "BLOOM Identity is a self-hosted KYC (Know Your Customer) identity verification platform for Sandstorm. It lets you run compliant identity checks entirely on your own server — no third-party data processors, no cloud dependencies.\n\n## How It Works\n\nAn administrator creates a **Station** grain, configures the verification workflow, and shares a link. Recipients open the link and complete the verification steps in their own **Identity** grain. Results flow back to the Station for review.\n\n### For Administrators\n\n- Create verification workflows with configurable steps\n- Share invite links to respondents — no account needed on their end\n- Review submitted cases from the Station dashboard\n- AI-assisted document and identity analysis (optional, via local Ollama or configured endpoint)\n- Case notes, status tracking, and audit logs\n\n### For Respondents\n\nThe verification flow guides users through each step:\n\n1. **Terms & Conditions** — Accept the verification terms\n2. **Contact Verification** — Email and phone OTP confirmation\n3. **Document Upload** — Government ID, passport, or other identity documents\n4. **Facial Verification** — Live selfie capture with liveness detection\n5. **Personal Details** — Identity form with occupation, source of funds, etc.\n6. **Review & Submit** — Confirm all information before submission\n\nEach step is completed in-browser with no app installation required.\n\n## Key Features\n\n- **Privacy-First** — All data stays on your Sandstorm server. Documents, photos, and personal data never leave your infrastructure.\n- **Two-Grain Architecture** — Station (admin) and Identity (respondent) grains communicate via Sandstorm's capability system, enforcing strict access control.\n- **AI-Powered Analysis** — Optional integration with local LLMs for document OCR, face matching, and risk scoring.\n- **Workflow Engine** — YAML-defined verification workflows with conditional steps, configurable per use case.\n- **Multi-Language** — Internationalized interface supporting multiple languages.\n- **Audit Trail** — Complete journal of all actions for compliance reporting.\n- **Responsive Design** — Works on desktop and mobile browsers.\n\n## Screenshots\n\n![Admin Dashboard](screenshots/01-admin-dashboard.png)\n*Station admin dashboard showing active verification cases*\n\n![Share Link](screenshots/02-share-link.png)\n*Creating a shareable verification link for respondents*\n\n![KYC Start](screenshots/03-kyc-start.png)\n*Respondent begins the identity verification process*\n\n![Terms Acceptance](screenshots/04-terms-accepted.png)\n*Terms and conditions step*\n\n![Document Upload](screenshots/05-document-upload.png)\n*Document upload with supported ID types*\n\n![Face Capture](screenshots/06-face-capture.png)\n*Live facial verification capture*\n\n![Verification Complete](screenshots/07-verification-complete.png)\n*Respondent completes all verification steps*\n\n![Admin Review](screenshots/08-admin-final-review.png)\n*Administrator reviews completed verification case*",
+      "description": "BLOOM Identity is a self-hosted KYC (Know Your Customer) identity verification platform for Sandstorm. It lets you run compliant identity checks entirely on your own server \u2014 no third-party data processors, no cloud dependencies.\n\n## How It Works\n\nAn administrator creates a **Station** grain, configures the verification workflow, and shares a link. Recipients open the link and complete the verification steps in their own **Identity** grain. Results flow back to the Station for review.\n\n### For Administrators\n\n- Create verification workflows with configurable steps\n- Share invite links to respondents \u2014 no account needed on their end\n- Review submitted cases from the Station dashboard\n- AI-assisted document and identity analysis (optional, via local Ollama or configured endpoint)\n- Case notes, status tracking, and audit logs\n\n### For Respondents\n\nThe verification flow guides users through each step:\n\n1. **Terms & Conditions** \u2014 Accept the verification terms\n2. **Contact Verification** \u2014 Email and phone OTP confirmation\n3. **Document Upload** \u2014 Government ID, passport, or other identity documents\n4. **Facial Verification** \u2014 Live selfie capture with liveness detection\n5. **Personal Details** \u2014 Identity form with occupation, source of funds, etc.\n6. **Review & Submit** \u2014 Confirm all information before submission\n\nEach step is completed in-browser with no app installation required.\n\n## Key Features\n\n- **Privacy-First** \u2014 All data stays on your Sandstorm server. Documents, photos, and personal data never leave your infrastructure.\n- **Two-Grain Architecture** \u2014 Station (admin) and Identity (respondent) grains communicate via Sandstorm's capability system, enforcing strict access control.\n- **AI-Powered Analysis** \u2014 Optional integration with local LLMs for document OCR, face matching, and risk scoring.\n- **Workflow Engine** \u2014 YAML-defined verification workflows with conditional steps, configurable per use case.\n- **Multi-Language** \u2014 Internationalized interface supporting multiple languages.\n- **Audit Trail** \u2014 Complete journal of all actions for compliance reporting.\n- **Responsive Design** \u2014 Works on desktop and mobile browsers.\n\n## Screenshots\n\n![Admin Dashboard](screenshots/01-admin-dashboard.png)\n*Station admin dashboard showing active verification cases*\n\n![Share Link](screenshots/02-share-link.png)\n*Creating a shareable verification link for respondents*\n\n![KYC Start](screenshots/03-kyc-start.png)\n*Respondent begins the identity verification process*\n\n![Terms Acceptance](screenshots/04-terms-accepted.png)\n*Terms and conditions step*\n\n![Document Upload](screenshots/05-document-upload.png)\n*Document upload with supported ID types*\n\n![Face Capture](screenshots/06-face-capture.png)\n*Live facial verification capture*\n\n![Verification Complete](screenshots/07-verification-complete.png)\n*Respondent completes all verification steps*\n\n![Admin Review](screenshots/08-admin-final-review.png)\n*Administrator reviews completed verification case*",
       "screenshots": []
     },
     {
@@ -252,7 +252,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.1.3",
       "imageId": "d2c943e821cc0170e4143d0621fdf414.png",
       "updatedAt": 1781267903000,
@@ -282,14 +282,14 @@
             "pearlId": "botmother",
             "pearlName": "BotMother Hub",
             "pearlType": "user-pearl",
-            "purpose": "The hub Pearl — defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
+            "purpose": "The hub Pearl \u2014 defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "botmother-route",
                   "interface": "BotMother.Route@1",
-                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl — defines which messages flow there."
+                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there."
                 }
               ],
               "requests": [
@@ -329,7 +329,7 @@
               "requires": [
                 {
                   "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
                 }
               ],
               "grants": []
@@ -365,7 +365,7 @@
               "capnp": [
                 {
                   "name": "BotMother.Route@1",
-                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl — defines which messages flow there.",
+                  "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl \u2014 defines which messages flow there.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -411,7 +411,7 @@
               "requires": [
                 {
                   "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
                 }
               ],
               "grants": []
@@ -443,7 +443,7 @@
             "pearlId": "chatroom",
             "pearlName": "Chatroom",
             "pearlType": "user-pearl",
-            "purpose": "Internal chatroom Pearl — operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
+            "purpose": "Internal chatroom Pearl \u2014 operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -483,7 +483,7 @@
               "requires": [
                 {
                   "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
                 }
               ],
               "grants": []
@@ -503,7 +503,7 @@
               "capnp": [
                 {
                   "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -514,7 +514,7 @@
             "pearlId": "station",
             "pearlName": "Station",
             "pearlType": "admin-pearl",
-            "purpose": "Admin Pearl — bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
+            "purpose": "Admin Pearl \u2014 bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -547,7 +547,7 @@
               "requires": [
                 {
                   "bit": "appCapnpAuthorize",
-                  "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+                  "purpose": "TODO: review \u2014 needed to authorise the broker\u2192worker capnp surfaces"
                 }
               ],
               "grants": []
@@ -593,7 +593,7 @@
           }
         ]
       },
-      "description": "BotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own Pearl — a sealed, per-document container with its own database, message history, and permissions.\n\n## Why BotMother\n\n- **Pinned chatroom snapshots** — cryptographically anchor any chatroom snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bot Pearl isolation** — each bot runs in its own sealed container with separate storage, config, and message logs; no bot Pearl can see another unless you explicitly connect via Grapple\n- **Wallet-rooted bot identity** — bot tokens and credentials stored locally; bot ownership linked to Solana wallet; non-repudiable access logs\n\n## Features\n\n- **Message Routing** — define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** — manage group conversations and route messages between channels\n- **Grapple Connections** — link BotMother Pearls to other app Pearls — trigger actions in Bureau spreadsheets, pipe notifications into Mermail, or log events to MiniGit\n- **Webhook Integration** — receive and process Telegram webhook events in real-time\n- **Privacy-First** — all messages stay on your server; no third-party bot hosting; no message logging by others\n- **Offline Queuing** — messages received while offline are queued and processed when the bot reconnects\n\n## Setup\n\n1. Create a bot via BotFather on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live — routing messages through your own server\n\n## Security Model\n\n- Viewer — see bot status and message logs\n- Editor — configure routing rules, manage chatrooms\n- Admin — manage bot tokens, permissions, and Grapple connections\n\nEvery message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement — no client-side trust.\n\n## Status\n\n*Production.* Free to install and use on your own server. No subscription, no per-message fees, no limits.",
+      "description": "BotMother is a Telegram bot manager with message routing and chatroom support, running on Melusina. Each bot configuration lives in its own Pearl \u2014 a sealed, per-document container with its own database, message history, and permissions.\n\n## Why BotMother\n\n- **Pinned chatroom snapshots** \u2014 cryptographically anchor any chatroom snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bot Pearl isolation** \u2014 each bot runs in its own sealed container with separate storage, config, and message logs; no bot Pearl can see another unless you explicitly connect via Grapple\n- **Wallet-rooted bot identity** \u2014 bot tokens and credentials stored locally; bot ownership linked to Solana wallet; non-repudiable access logs\n\n## Features\n\n- **Message Routing** \u2014 define rules to route incoming messages by command, keyword, or sender\n- **Chatroom Support** \u2014 manage group conversations and route messages between channels\n- **Grapple Connections** \u2014 link BotMother Pearls to other app Pearls \u2014 trigger actions in Bureau spreadsheets, pipe notifications into Mermail, or log events to MiniGit\n- **Webhook Integration** \u2014 receive and process Telegram webhook events in real-time\n- **Privacy-First** \u2014 all messages stay on your server; no third-party bot hosting; no message logging by others\n- **Offline Queuing** \u2014 messages received while offline are queued and processed when the bot reconnects\n\n## Setup\n\n1. Create a bot via BotFather on Telegram\n2. Copy the bot token\n3. Create a new BotMother Pearl and paste the token\n4. Define your routing rules\n5. Your bot is live \u2014 routing messages through your own server\n\n## Security Model\n\n- Viewer \u2014 see bot status and message logs\n- Editor \u2014 configure routing rules, manage chatrooms\n- Admin \u2014 manage bot tokens, permissions, and Grapple connections\n\nEvery message, every routing rule, every bot token stays inside the Pearl. Server-side permission enforcement \u2014 no client-side trust.\n\n## Status\n\n*Production.* Free to install and use on your own server. No subscription, no per-message fees, no limits.",
       "screenshots": []
     },
     {
@@ -602,14 +602,14 @@
       "name": "Cal Bureau",
       "version": "0.1.2",
       "versionNumber": 12,
-      "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop — self-hosted, per-calendar isolation.",
-      "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop — entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** — cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar pearl** — share pearl-by-pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** — interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** — the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite — link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
+      "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
+      "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar pearl** \u2014 share pearl-by-pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_bureau_cal_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -653,7 +653,7 @@
             "pearlId": "bureau-cal",
             "pearlName": "Cal Bureau",
             "pearlType": "user-pearl",
-            "purpose": "A calendar-and-scheduling pearl in the Bureau family. Hosts events, recurring schedules, and shared calendar views. The pearl runs entirely client-side (no outbound network); any sharing happens through Grapple — another pearl claims a calendar capability and gets scoped read or write access.",
+            "purpose": "A calendar-and-scheduling pearl in the Bureau family. Hosts events, recurring schedules, and shared calendar views. The pearl runs entirely client-side (no outbound network); any sharing happens through Grapple \u2014 another pearl claims a calendar capability and gets scoped read or write access.",
             "hostShell": {
               "id": "BUREAU_SHELL",
               "label": "Bureau Shell",
@@ -740,13 +740,13 @@
       "name": "CanBoard",
       "version": "0.1.0",
       "versionNumber": 6,
-      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments — self-hosted, no third-party SaaS.",
-      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** — cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** — each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** — scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** — descriptions, checklists, attachments, comments\n- **Labels and filters** — colour-code by team, priority, status\n- **No third-party telemetry** — your tasks aren't training someone's model\n- **Export** — JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple — pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
+      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
+      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** \u2014 each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
       "categories": [
         "Productivity"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -885,14 +885,14 @@
       "name": "cca.sh Client",
       "version": "0.1.1",
       "versionNumber": 7,
-      "shortDescription": "Client seat for cca.sh — access financial services, submit approvals, view settled activity.",
-      "description": "cca.sh Client is the client-facing mode of cca.sh — the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** — cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** — see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** — every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** — see your account balance and transaction history\n- **Submit Transactions** — request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** — compare transactions against your books; download statements\n- **Solana-signed Actions** — every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** — contacts are identity-only, not stored cards\n- **Privacy-first** — your transaction history lives on the operator's pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** — full operator console (approval and sign authority)\n- **cca.sh Org Member** — team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
+      "shortDescription": "Client seat for cca.sh \u2014 access financial services, submit approvals, view settled activity.",
+      "description": "cca.sh Client is the client-facing mode of cca.sh \u2014 the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** \u2014 cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** \u2014 see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** \u2014 every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** \u2014 see your account balance and transaction history\n- **Submit Transactions** \u2014 request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** \u2014 compare transactions against your books; download statements\n- **Solana-signed Actions** \u2014 every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** \u2014 contacts are identity-only, not stored cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (approval and sign authority)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_ccash_client_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -935,7 +935,7 @@
             "pearlId": "ccash-client",
             "pearlName": "Client Portal",
             "pearlType": "user-pearl",
-            "purpose": "End-customer-facing pearl for a ccash operator's clientele. The client sees only their own OTC deals, balances, and tickets — never operator-private state. The client claims a ClientCap from the operator's ccash grain (issued during onboarding); the cap defines exactly which records the client can see.",
+            "purpose": "End-customer-facing pearl for a ccash operator's clientele. The client sees only their own OTC deals, balances, and tickets \u2014 never operator-private state. The client claims a ClientCap from the operator's ccash grain (issued during onboarding); the cap defines exactly which records the client can see.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -963,7 +963,7 @@
               "anyMember": [
                 {
                   "name": "View own deals + balances",
-                  "purpose": "Standard client view — restricted to records the operator's ClientCap exposes."
+                  "purpose": "Standard client view \u2014 restricted to records the operator's ClientCap exposes."
                 },
                 {
                   "name": "Sign a deal",
@@ -1010,7 +1010,7 @@
               "capnp": [
                 {
                   "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -1026,7 +1026,7 @@
       "name": "cca.sh Config",
       "version": "0.0.24",
       "versionNumber": 31,
-      "shortDescription": "Admin pearl for cca.sh — controls procedure templates, hook allowlist, and per-install routing",
+      "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
       "categories": [
         "Productivity",
@@ -1046,7 +1046,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "tier": "admin",
       "domains": [
         "*"
@@ -1087,7 +1087,7 @@
             "pearlId": "cca-sh-config",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Grapple. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Grapple-claim only.",
+            "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Grapple. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI \u2014 Grapple-claim only.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -1130,15 +1130,15 @@
               "requires": [
                 {
                   "bit": "appContractPair",
-                  "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+                  "purpose": "TODO: review \u2014 needed to bind wholesale apps to operator contracts"
                 },
                 {
                   "bit": "contractWhitelistEdit",
-                  "purpose": "TODO: review — needed to edit the contract whitelist used by ccash installs"
+                  "purpose": "TODO: review \u2014 needed to edit the contract whitelist used by ccash installs"
                 },
                 {
                   "bit": "installAdminEdit",
-                  "purpose": "TODO: review — needed to push policy updates to operator installs"
+                  "purpose": "TODO: review \u2014 needed to push policy updates to operator installs"
                 }
               ],
               "grants": []
@@ -1165,7 +1165,7 @@
                     ]
                   }
                 ],
-                "purpose": "Solana programs invoked by the pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime — recorded for catalog visibility into the app's on-chain release lineage."
+                "purpose": "Solana programs invoked by the pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime \u2014 recorded for catalog visibility into the app's on-chain release lineage."
               }
             ],
             "staticPublishing": {
@@ -1257,7 +1257,7 @@
                 {
                   "name": "domain-template",
                   "interface": "ccash.DomainTemplate@1",
-                  "purpose": "Read the canonical template — jurisdictions, station tree, default policies."
+                  "purpose": "Read the canonical template \u2014 jurisdictions, station tree, default policies."
                 },
                 {
                   "name": "station-template",
@@ -1322,7 +1322,7 @@
               "capnp": [
                 {
                   "name": "ccash.DomainTemplate@1",
-                  "purpose": "Read the canonical template — jurisdictions, station tree, default policies.",
+                  "purpose": "Read the canonical template \u2014 jurisdictions, station tree, default policies.",
                   "roleGate": "anyMember"
                 },
                 {
@@ -1394,14 +1394,14 @@
       "name": "cca.sh Org Member",
       "version": "0.1.2",
       "versionNumber": 3,
-      "shortDescription": "Team collaboration for cca.sh — draft transactions, share contacts, track approvals.",
-      "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls — without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped pearl isolation** — each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** — cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** — trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** — see what's pending, what's settled, who owes what\n- **Draft + propose** — prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** — a light CRM over your organisation's counterparties\n- **Audit log read-through** — trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** — no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** — every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** — full operator console (sign + approve authority)\n- **cca.sh Client** — the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
+      "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
+      "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_ccash_org_member_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -1445,7 +1445,7 @@
             "pearlId": "ccash-org-member",
             "pearlName": "Organization Member",
             "pearlType": "user-pearl",
-            "purpose": "Per-organization-member pearl for an operator's internal team — a relationship manager, a settlement clerk, a compliance reviewer. Sees the org-scoped subset of ccash state the operator's Org policy permits. Org-member actions feed into the operator console's review queue.",
+            "purpose": "Per-organization-member pearl for an operator's internal team \u2014 a relationship manager, a settlement clerk, a compliance reviewer. Sees the org-scoped subset of ccash state the operator's Org policy permits. Org-member actions feed into the operator console's review queue.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -1520,7 +1520,7 @@
               "capnp": [
                 {
                   "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -1555,7 +1555,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.0",
       "sha256": "e2711bdb4228af04b57c18f058bb3ef2f4209210f76a74f79d02507315f2882a",
       "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
@@ -1585,7 +1585,7 @@
       "name": "cca.sh Wholesale",
       "version": "0.1.0",
       "versionNumber": 9,
-      "shortDescription": "Institutional wholesale pearl — owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
+      "shortDescription": "Institutional wholesale pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
       "categories": [
         "Productivity",
         "Office"
@@ -1604,7 +1604,7 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.0",
       "sha256": "587cb4374a820b935e68c5b86247374c70ac0b7de8e435feb3762a443fb16512",
       "imageId": "171e254c68669c061150533245e42212.png",
@@ -1635,7 +1635,7 @@
             "pearlId": "cca-sh-wholesale",
             "pearlName": "Wholesale Operator",
             "pearlType": "admin-pearl",
-            "purpose": "Wholesale-tier operator console — manages a fleet of operator ccash installs (sub-accounts, correspondent ledger, revocation registry). Issues SubAccountCap capabilities to operator Pearls so they can settle through the wholesale ledger. Storage is plain JSON for the correspondent ledger (no operator-private secrets); identity is delegated to the wholesale Squads vault.",
+            "purpose": "Wholesale-tier operator console \u2014 manages a fleet of operator ccash installs (sub-accounts, correspondent ledger, revocation registry). Issues SubAccountCap capabilities to operator Pearls so they can settle through the wholesale ledger. Storage is plain JSON for the correspondent ledger (no operator-private secrets); identity is delegated to the wholesale Squads vault.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -1736,161 +1736,7 @@
           }
         ]
       },
-      "description": "cca.sh Wholesale is the institutional pearl of the cca.sh constellation. It owns the four correspondent relationships — SWIFT, SEPA, crypto-custodian, crypto-exchange — at the Fineract / sidecar boundary, and grants per-sub-account capabilities to whitelabel-partner operator Pearls (the popaye / cca.sh-Admin family) over Grapple. End-clients never see this pearl directly; their operator sees it as a Grapple-grant of \"settle this envelope to that correspondent at this rate\".\n\n## Why cca.sh Wholesale\n\n- **Pinned settlement envelopes** — every settlement request is signed at draft time, pinned to the operator's Solana wallet at approval time, and recorded as an immutable, citable artifact. Disputes between wholesale and a whitelabel partner are resolved against the signed envelope, not a database row that either side could mutate\n- **Per-correspondent Grapple capability scoping** — a whitelabel partner's operator pearl claims a sub-account capability scoped to one correspondent + one rate sheet. They cannot see other partners' correspondents; they cannot escalate to the wholesale-admin role; they cannot enumerate the full correspondent topology. Capability surface is enforced at the Cap'n Proto boundary, not at a SaaS endpoint\n- **Operator-accountability through wallet signatures** — every wholesale-admin action (correspondent CRUD, rate-sheet edit, sub-account grant) is non-repudiable; the wholesale operator's Solana wallet signs the change. The audit log is provably theirs, not a vendor-database table they can claim was tampered with\n\n## Topology\n\n```\nG-ccash Wholesale (this pearl) ─── grants sub-account caps ──▶ G-organization (whitelabel partner)\n     │                                                                   │\n     ▼                                                                   ▼\nfinreact-sidecar                                                  G-popaye (operator console)\n     │                                                                   │\n     ▼                                                                   drafts sends\nFineract GL                                                       emits envelopes\n```\n\n## Status\n\n*Pre-release v0.2.0.* The institutional correspondent surface and sub-account grant flow are scaffolded; first end-to-end SWIFT settlement against the live finreact-sidecar lands in v0.3."
-    },
-    {
-      "appId": "9prnz5fa0c59r9fy20x9d9z1f8gqa2f5puzahdmpz727d54dy6d0",
-      "name": "ChainWatch",
-      "version": "0.1.1",
-      "versionNumber": 9,
-      "packageId": "4f2caa3d99dad793d38b7b869e612a71",
-      "shortDescription": "Multi-chain RPC proxy sidecar for cyberteller — stateless, no keys, talks to chain RPCs.",
-      "categories": [
-        "Productivity",
-        "DeveloperTools"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/cyberteller",
-      "codeLink": "https://github.com/hrbrlife/cyberteller",
-      "upstreamAuthor": "ChainWatch",
-      "createdAt": 1809475200000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "description": "ChainWatch is the multi-chain RPC proxy sidecar for cyberteller. It exposes three HTTP endpoints — `GET /api/check/{chain}/{address}`, `POST /api/broadcast`, and `GET /healthz` — and translates each call into the matching JSON-RPC against the configured Ethereum and Solana endpoints.\n\n## Why this is a separate pearl\n\n- **Single chokepoint for outbound RPC.** cyberteller never opens a TCP socket to a chain provider; ChainWatch does, and the boundary is auditable in one place.\n- **No keys.** ChainWatch holds no signing material. If compromised, the attacker gets RPC URLs — nothing else. cyberteller signs every transaction itself and hands ChainWatch the pre-signed bytes.\n- **Stateless.** No DB, no on-disk cache, no scheduler. Restart-safe, replicate-safe.\n\n## Configuration\n\nSet per-deploy via environment (the configurator pearl or operator UI):\n\n| Env var       | Default                                          | Purpose                                  |\n|---------------|--------------------------------------------------|------------------------------------------|\n| `PORT`        | `8091`                                           | HTTP listen port                         |\n| `SOL_RPC_URL` | `https://api.devnet.Solana.com`                  | Solana JSON-RPC endpoint                 |\n| `ETH_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com`    | Ethereum JSON-RPC endpoint               |\n\nBoth URLs are required at boot — there is no stub fallback (greenfield posture, fail loud).",
-      "screenshots": [],
-      "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.1",
-      "sha256": "4f2caa3d99dad793d38b7b869e612a71c7a149da2b5a57fcef590b64ebfe03bb",
-      "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1779092731000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "86b539568e5474a5f871fbc65cbaadad215286ef90afa98d71c500b17150c461",
-        "releaseHash": "9f14eca59c85ebcf341d85bff2916a31571e16c207a4d4dfc31d885581256fa5",
-        "releaseNonce": "28c803a97f2a1a4995cc3834693fd11d",
-        "releaseEntryPda": "GnpJvP3KozNAincttAtrmDPWHbPwjcLEiQW4kj9TsuGy",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779092731,
-        "authorSig": "9mpUIxxGhGbCLWHuwIKLAYgUDiKZ3/VD4joRGQhdy0DsmzRBsZqDI0jDyASlKopxRTy6zyxBf5M/Y1/muQ32DA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "chainwatch",
-        "appName": "ChainWatch",
-        "tier": "sidecar",
-        "pearls": [
-          {
-            "pearlId": "chainwatch",
-            "pearlName": "ChainWatch RPC Proxy",
-            "pearlType": "sidecar",
-            "purpose": "Stateless multi-chain JSON-RPC proxy. Cyberteller's only network path to chain providers (Solana, Ethereum). Polls per-invoice deposit addresses and broadcasts pre-signed transactions on demand. No keys, no state, no scheduler — pure HTTP-to-RPC adapter.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": []
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "n/a — stateless proxy, no persistent secrets",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Operator",
-                  "purpose": "Full HTTP access to all endpoints. Cyberteller's only consumer claims this role via Grapple."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": []
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "11111111111111111111111111111111",
-                    "label": "System Program",
-                    "calls": [
-                      "getSignaturesForAddress",
-                      "getTransaction",
-                      "sendTransaction"
-                    ]
-                  }
-                ],
-                "purpose": "Read-only address polling + broadcast of pre-signed tx bytes. ChainWatch never derives a key, never signs."
-              },
-              {
-                "chain": "ethereum",
-                "cluster": "sepolia",
-                "programs": [
-                  {
-                    "id": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-                    "label": "USDT (mainnet contract; tracked symbol)",
-                    "calls": [
-                      "eth_getLogs",
-                      "eth_getBlockByNumber",
-                      "eth_sendRawTransaction"
-                    ]
-                  }
-                ],
-                "purpose": "ERC-20 Transfer log scan + native ETH transfer scan + raw-tx broadcast."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": true,
-              "via": "sandbox-default",
-              "purpose": "JSON-RPC against the configured chain endpoints. URLs are operator-set via env vars (SOL_RPC_URL, ETH_RPC_URL); defaults point at Solana devnet + Ethereum sepolia public nodes.",
-              "endpoints": [
-                "https://api.devnet.Solana.com",
-                "https://ethereum-sepolia-rpc.publicnode.com"
-              ]
-            },
-            "apis": {
-              "capnp": [],
-              "http": [
-                {
-                  "name": "GET /api/check/{chain}/{address}",
-                  "purpose": "Query the chain RPC for incoming transfers to the watched address. Cyberteller polls this every 30s per pending invoice.",
-                  "roleGate": "adminOnly"
-                },
-                {
-                  "name": "POST /api/broadcast",
-                  "purpose": "Broadcast a pre-signed transaction (raw bytes) supplied in the request body. Returns the chain-side tx hash.",
-                  "roleGate": "adminOnly"
-                },
-                {
-                  "name": "GET /healthz",
-                  "purpose": "Liveness check. Returns the list of configured chains.",
-                  "roleGate": "adminOnly"
-                }
-              ]
-            }
-          }
-        ]
-      }
+      "description": "cca.sh Wholesale is the institutional pearl of the cca.sh constellation. It owns the four correspondent relationships \u2014 SWIFT, SEPA, crypto-custodian, crypto-exchange \u2014 at the Fineract / sidecar boundary, and grants per-sub-account capabilities to whitelabel-partner operator Pearls (the popaye / cca.sh-Admin family) over Grapple. End-clients never see this pearl directly; their operator sees it as a Grapple-grant of \"settle this envelope to that correspondent at this rate\".\n\n## Why cca.sh Wholesale\n\n- **Pinned settlement envelopes** \u2014 every settlement request is signed at draft time, pinned to the operator's Solana wallet at approval time, and recorded as an immutable, citable artifact. Disputes between wholesale and a whitelabel partner are resolved against the signed envelope, not a database row that either side could mutate\n- **Per-correspondent Grapple capability scoping** \u2014 a whitelabel partner's operator pearl claims a sub-account capability scoped to one correspondent + one rate sheet. They cannot see other partners' correspondents; they cannot escalate to the wholesale-admin role; they cannot enumerate the full correspondent topology. Capability surface is enforced at the Cap'n Proto boundary, not at a SaaS endpoint\n- **Operator-accountability through wallet signatures** \u2014 every wholesale-admin action (correspondent CRUD, rate-sheet edit, sub-account grant) is non-repudiable; the wholesale operator's Solana wallet signs the change. The audit log is provably theirs, not a vendor-database table they can claim was tampered with\n\n## Topology\n\n```\nG-ccash Wholesale (this pearl) \u2500\u2500\u2500 grants sub-account caps \u2500\u2500\u25b6 G-organization (whitelabel partner)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   \u25bc\nfinreact-sidecar                                                  G-popaye (operator console)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   drafts sends\nFineract GL                                                       emits envelopes\n```\n\n## Status\n\n*Pre-release v0.2.0.* The institutional correspondent surface and sub-account grant flow are scaffolded; first end-to-end SWIFT settlement against the live finreact-sidecar lands in v0.3."
     },
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
@@ -1898,7 +1744,7 @@
       "version": "0.1.3",
       "versionNumber": 8,
       "packageId": "f501f3a72d2500b6277fa0b919a2fb38",
-      "shortDescription": "Client portal — per-client pearl isolation with pinned document snapshots and sturdyref handoff.",
+      "shortDescription": "Client portal \u2014 per-client pearl isolation with pinned document snapshots and sturdyref handoff.",
       "categories": [
         "Productivity"
       ],
@@ -1937,7 +1783,7 @@
         }
       },
       "capabilities": null,
-      "description": "BLOOM Client Collection — a sturdyref-based container pearl for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates — all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
+      "description": "BLOOM Client Collection \u2014 a sturdyref-based container pearl for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
       "screenshots": []
     },
     {
@@ -1946,14 +1792,14 @@
       "name": "Consilium",
       "version": "0.1.0",
       "versionNumber": 6,
-      "shortDescription": "Unified messaging hub — bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
-      "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord — manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** — cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge pearl isolation** — each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** — swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** — Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** — view all conversations in one interface; no context switching\n- **Per-protocol thread history** — keep full audit trail per channel\n- **Grapple integrations** — connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** — full-text search in all bridged conversations\n- **Privacy-first** — no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium pearl\n2. Add messaging connections — one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
+      "shortDescription": "Unified messaging hub \u2014 bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
+      "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord \u2014 manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** \u2014 cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge pearl isolation** \u2014 each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** \u2014 swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** \u2014 Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** \u2014 view all conversations in one interface; no context switching\n- **Per-protocol thread history** \u2014 keep full audit trail per channel\n- **Grapple integrations** \u2014 connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** \u2014 full-text search in all bridged conversations\n- **Privacy-first** \u2014 no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium pearl\n2. Add messaging connections \u2014 one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
       "categories": [
         "Productivity",
         "Social"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_consilium_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -1996,7 +1842,7 @@
             "pearlId": "consilium",
             "pearlName": "Consilium",
             "pearlType": "user-pearl",
-            "purpose": "Decision-tracking pearl — capture motions, votes, quorum rules, and signed resolutions. Each motion is anchored to the participants' wallets; resolutions are off-chain ed25519-signed records that downstream Pearls (ccash for governance, dueprocess for audit trail) can read via Grapple.",
+            "purpose": "Decision-tracking pearl \u2014 capture motions, votes, quorum rules, and signed resolutions. Each motion is anchored to the participants' wallets; resolutions are off-chain ed25519-signed records that downstream Pearls (ccash for governance, dueprocess for audit trail) can read via Grapple.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -2008,7 +1854,7 @@
                 {
                   "name": "motion-pick",
                   "interface": "Consilium.MotionPick@1",
-                  "purpose": "Interactive picker — peer pearl raises UI; user picks which motion / resolution to attach."
+                  "purpose": "Interactive picker \u2014 peer pearl raises UI; user picks which motion / resolution to attach."
                 }
               ],
               "requests": []
@@ -2086,7 +1932,7 @@
                 },
                 {
                   "name": "Consilium.MotionPick@1",
-                  "purpose": "Interactive picker — peer pearl raises UI; user picks which motion / resolution to attach.",
+                  "purpose": "Interactive picker \u2014 peer pearl raises UI; user picks which motion / resolution to attach.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -2102,14 +1948,14 @@
       "name": "Contacts Bureau",
       "version": "0.1.0",
       "versionNumber": 6,
-      "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage — entirely self-hosted.",
-      "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer — entirely self-hosted.\n\n## Why Contacts\n\n- **Pinned contact-list snapshots** — cryptographically anchor any contact list state to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-list pearl** — work contacts, personal contacts, project leads — separate Pearls with per-pearl access control\n- **vCard 4.0 import + export** — interop with Apple, Google, Outlook contacts\n\n## Features\n\n- **Light CRM** — last-contacted, next-action, tags, notes per contact\n- **Business-card scan** — paste a photo, OCR + parse + add to any list\n- **No leakage to address-book scrapers** — they cannot reach your pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite — attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.",
+      "shortDescription": "Address book and CRM with vCard sync, business-card OCR, no data leakage \u2014 entirely self-hosted.",
+      "description": "Bureau Contacts is the contact book pearl of the Melusina Bureau office suite. Address book, business-card scanner, vCard import/export, and a light CRM layer \u2014 entirely self-hosted.\n\n## Why Contacts\n\n- **Pinned contact-list snapshots** \u2014 cryptographically anchor any contact list state to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-list pearl** \u2014 work contacts, personal contacts, project leads \u2014 separate Pearls with per-pearl access control\n- **vCard 4.0 import + export** \u2014 interop with Apple, Google, Outlook contacts\n\n## Features\n\n- **Light CRM** \u2014 last-contacted, next-action, tags, notes per contact\n- **Business-card scan** \u2014 paste a photo, OCR + parse + add to any list\n- **No leakage to address-book scrapers** \u2014 they cannot reach your pearl\n\n## Suite integration\n\nBureau Contacts speaks Grapple to the suite \u2014 attach a contact to a Doc, auto-populate Cal invitees, link a contact to a CanBoard card.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live contact UI lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -2152,7 +1998,7 @@
             "pearlId": "bureau-contacts",
             "pearlName": "Contacts Bureau",
             "pearlType": "user-pearl",
-            "purpose": "Contact-management pearl in the Bureau family — people, organisations, relationships, free-text notes. Stays local to the pearl; sharing fields with other Pearls (e.g. Mail, Calendar, Bureau Doc for mailmerge) is explicit per-record via Grapple.",
+            "purpose": "Contact-management pearl in the Bureau family \u2014 people, organisations, relationships, free-text notes. Stays local to the pearl; sharing fields with other Pearls (e.g. Mail, Calendar, Bureau Doc for mailmerge) is explicit per-record via Grapple.",
             "hostShell": {
               "id": "BUREAU_SHELL",
               "label": "Bureau Shell",
@@ -2165,12 +2011,12 @@
                 {
                   "name": "contact-read",
                   "interface": "BureauContacts.Read@1",
-                  "purpose": "Read scoped contact records by tag or list — for mailmerge, address lookup, etc."
+                  "purpose": "Read scoped contact records by tag or list \u2014 for mailmerge, address lookup, etc."
                 },
                 {
                   "name": "contact-pick",
                   "interface": "BureauContacts.Pick@1",
-                  "purpose": "Interactive contact picker — the consuming pearl raises a UI; the user picks; the picked records flow back via the capability."
+                  "purpose": "Interactive contact picker \u2014 the consuming pearl raises a UI; the user picks; the picked records flow back via the capability."
                 }
               ],
               "requests": []
@@ -2218,12 +2064,12 @@
               "capnp": [
                 {
                   "name": "BureauContacts.Read@1",
-                  "purpose": "Read scoped contact records by tag or list — for mailmerge, address lookup, etc.",
+                  "purpose": "Read scoped contact records by tag or list \u2014 for mailmerge, address lookup, etc.",
                   "roleGate": "anyMember"
                 },
                 {
                   "name": "BureauContacts.Pick@1",
-                  "purpose": "Interactive contact picker — the consuming pearl raises a UI; the user picks; the picked records flow back via the capability.",
+                  "purpose": "Interactive contact picker \u2014 the consuming pearl raises a UI; the user picks; the picked records flow back via the capability.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -2240,13 +2086,13 @@
       "version": "0.1.1",
       "versionNumber": 6,
       "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
-      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up — full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** — cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** — files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** — download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** — automatic expiry on download or by date\n- **End-to-end encryption** — files are encrypted at the pearl boundary\n- **No corporate inbox** — recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** — second factor before download\n- **Download tracking** — see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina — drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
+      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -2290,7 +2136,7 @@
             "pearlId": "cratelink",
             "pearlName": "CrateLink",
             "pearlType": "user-pearl",
-            "purpose": "Per-user shipment tracker / supply-chain pearl — define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
+            "purpose": "Per-user shipment tracker / supply-chain pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -2339,11 +2185,11 @@
               "requires": [
                 {
                   "bit": "pearlRegister",
-                  "purpose": "TODO: review — needed to register child cratelink pearls under the parent license"
+                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
                 },
                 {
                   "bit": "audit",
-                  "purpose": "TODO: review — needed for cross-org audit trails"
+                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
                 }
               ],
               "grants": []
@@ -2400,7 +2246,7 @@
       "name": "Creeper",
       "version": "0.1.6",
       "versionNumber": 8,
-      "shortDescription": "OSINT consumer grain — search/scrape/handle/contact lookup for the Melusina PSP.",
+      "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
         "Productivity",
@@ -2452,7 +2298,7 @@
       "versionNumber": 129,
       "packageId": "634f28aaa56965e1939a106fa8ba0ace",
       "sha256": "634f28aaa56965e1939a106fa8ba0ace90fab85405b5b1760b75fb070ab596b5",
-      "shortDescription": "Multi-chain crypto payment processor — invoicing + address generation + settlement.",
+      "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
       ],
@@ -2469,7 +2315,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** — cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** — every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** — edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** — Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** — ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** — create invoices via REST with amount, currency, description, and customer details\n- **Payment page** — customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** — paid / underpaid / overpaid / expired\n- **Webhook endpoint** — integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** — dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** — zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
+      "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
       "marketingVersion": "0.1.57",
@@ -2501,14 +2347,14 @@
             "pearlId": "cyberteller",
             "pearlName": "Wallet",
             "pearlType": "user-pearl",
-            "purpose": "Personal Solana wallet pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
+            "purpose": "Personal Solana wallet pearl \u2014 sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "wallet-sign",
                   "interface": "cyberteller.Sign@1",
-                  "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction."
+                  "purpose": "Sign a presented payload with the user's wallet key \u2014 used by peer Pearls (ccash) when the user authorizes a transaction."
                 },
                 {
                   "name": "wallet-pubkey",
@@ -2600,7 +2446,7 @@
               "capnp": [
                 {
                   "name": "cyberteller.Sign@1",
-                  "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
+                  "purpose": "Sign a presented payload with the user's wallet key \u2014 used by peer Pearls (ccash) when the user authorizes a transaction.",
                   "roleGate": "anyMember"
                 },
                 {
@@ -2622,7 +2468,7 @@
       "versionNumber": 21,
       "packageId": "bf282e575325b55a5cf2d1268ce9ecb4",
       "shortDescription": "Cyberteller install-admin (boot env source)",
-      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch — the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
+      "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
       "categories": [
         "Productivity"
       ],
@@ -2675,7 +2521,7 @@
             "pearlId": "cybertellerconfig",
             "pearlName": "Configuration",
             "pearlType": "admin-pearl",
-            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Grapple capability every cyberteller grain claims at first launch — hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
+            "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Grapple capability every cyberteller grain claims at first launch \u2014 hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -2718,15 +2564,15 @@
               "requires": [
                 {
                   "bit": "appContractPair",
-                  "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+                  "purpose": "TODO: review \u2014 needed to bind wholesale apps to operator contracts"
                 },
                 {
                   "bit": "contractWhitelistEdit",
-                  "purpose": "TODO: review — needed to edit the contract whitelist used by Cyberteller installs"
+                  "purpose": "TODO: review \u2014 needed to edit the contract whitelist used by Cyberteller installs"
                 },
                 {
                   "bit": "installAdminEdit",
-                  "purpose": "TODO: review — needed to push policy updates to operator installs"
+                  "purpose": "TODO: review \u2014 needed to push policy updates to operator installs"
                 }
               ],
               "grants": []
@@ -2771,7 +2617,7 @@
               "capnp": [
                 {
                   "name": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
-                  "purpose": "Hosted via NewSession(sessionType = ConfigGate_TypeID) per pkg/server.ConfigGate. Three methods — hello (handshake + digest), getEnv (read-only boot fetch), setEnv (admin-bit-gated mutation). Source-of-truth schema at melusina_cybertellerconfig_app/capnp/cybertellerconfig.capnp.",
+                  "purpose": "Hosted via NewSession(sessionType = ConfigGate_TypeID) per pkg/server.ConfigGate. Three methods \u2014 hello (handshake + digest), getEnv (read-only boot fetch), setEnv (admin-bit-gated mutation). Source-of-truth schema at melusina_cybertellerconfig_app/capnp/cybertellerconfig.capnp.",
                   "roleGate": "consumerOrAdmin"
                 }
               ],
@@ -2788,7 +2634,7 @@
       "version": "2.0.16",
       "versionNumber": 9,
       "packageId": "bc14e4dadd64fc0f5ec4da83bda30811",
-      "shortDescription": "Flowcharts, org charts, mindmaps, UML — full draw.io engine, real-time collaboration, self-hosted.",
+      "shortDescription": "Flowcharts, org charts, mindmaps, UML \u2014 full draw.io engine, real-time collaboration, self-hosted.",
       "categories": [
         "Productivity",
         "Office"
@@ -2812,7 +2658,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.16",
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
       "updatedAt": 1781285881000,
@@ -2855,7 +2701,7 @@
                 {
                   "name": "diagram-embed",
                   "interface": "BureauDiagram.Embed@1",
-                  "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) — peer holds a capability to fetch the live SVG."
+                  "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) \u2014 peer holds a capability to fetch the live SVG."
                 },
                 {
                   "name": "diagram-export",
@@ -2904,7 +2750,7 @@
               "capnp": [
                 {
                   "name": "BureauDiagram.Embed@1",
-                  "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) — peer holds a capability to fetch the live SVG.",
+                  "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) \u2014 peer holds a capability to fetch the live SVG.",
                   "roleGate": "anyMember"
                 },
                 {
@@ -2918,7 +2764,7 @@
           }
         ]
       },
-      "description": "Diagram Bureau is the diagramming pearl of the Melusina Bureau office suite. Flowcharts, org charts, mindmaps, UML diagrams, and architecture diagrams with the full draw.io engine — entirely on your server, real-time collaboration.\n\n## Why Diagram\n\n- **Pinned diagram revisions** — cryptographically anchor any diagram snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Edit-lock with live viewers** — one editor at a time; all connected viewers see changes appear live, no conflicts\n- **Multi-format export** — XML, PNG, SVG, PDF; no lock-in\n\n## Features\n\n- **Full draw.io (mxGraph)** — the same engine used by millions; complete stencil library; every shape and connector\n- **Diagram types** — flowcharts, org charts, UML, ER, BPMN, network topology, freeform drawing\n- **Per-diagram pearl** — each diagram is a sealed container; share by pearl, not org-wide\n- **Offline-capable** — all draw.io assets bundled; no internet needed\n\n## Suite integration\n\nDiagram Bureau speaks Grapple to the rest of the Bureau suite — reference a spreadsheet in a flow, link a document to an architecture decision, embed a diagram in a CanBoard card.\n\n## Status\n\n*Shipped v1.0.4.* Full draw.io engine, real-time collaborative editing, Solana-pinned revisions."
+      "description": "Diagram Bureau is the diagramming pearl of the Melusina Bureau office suite. Flowcharts, org charts, mindmaps, UML diagrams, and architecture diagrams with the full draw.io engine \u2014 entirely on your server, real-time collaboration.\n\n## Why Diagram\n\n- **Pinned diagram revisions** \u2014 cryptographically anchor any diagram snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Edit-lock with live viewers** \u2014 one editor at a time; all connected viewers see changes appear live, no conflicts\n- **Multi-format export** \u2014 XML, PNG, SVG, PDF; no lock-in\n\n## Features\n\n- **Full draw.io (mxGraph)** \u2014 the same engine used by millions; complete stencil library; every shape and connector\n- **Diagram types** \u2014 flowcharts, org charts, UML, ER, BPMN, network topology, freeform drawing\n- **Per-diagram pearl** \u2014 each diagram is a sealed container; share by pearl, not org-wide\n- **Offline-capable** \u2014 all draw.io assets bundled; no internet needed\n\n## Suite integration\n\nDiagram Bureau speaks Grapple to the rest of the Bureau suite \u2014 reference a spreadsheet in a flow, link a document to an architecture decision, embed a diagram in a CanBoard card.\n\n## Status\n\n*Shipped v2.0.16.* Full draw.io engine, real-time collaborative editing, Solana-pinned revisions."
     },
     {
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
@@ -2926,7 +2772,7 @@
       "version": "2.0.16",
       "versionNumber": 11,
       "packageId": "2bbc0843359c8383f1f8001510393e17",
-      "shortDescription": "Rich-text document editor with real-time collaboration, DOCX export — self-hosted.",
+      "shortDescription": "Rich-text document editor with real-time collaboration, DOCX export \u2014 self-hosted.",
       "categories": [
         "Productivity",
         "Office"
@@ -2954,7 +2800,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.16",
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
       "updatedAt": 1781285919000,
@@ -2997,7 +2843,7 @@
                 {
                   "name": "section-read",
                   "interface": "BureauDoc.SectionRead@1",
-                  "purpose": "Read scoped document sections by name/id — for summaries, mailmerge, search."
+                  "purpose": "Read scoped document sections by name/id \u2014 for summaries, mailmerge, search."
                 },
                 {
                   "name": "section-write",
@@ -3064,7 +2910,7 @@
           }
         ]
       },
-      "description": "Docs Bureau is the document editor pearl of the Melusina Bureau office suite. Rich-text documents with real-time collaborative editing, no conflicts, and unlimited simultaneous editors — entirely on your server.\n\n## Why Docs\n\n- **Pinned document revisions** — cryptographically anchor any document snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Conflict-free CRDT sync** — unlimited simultaneous editors; Yjs CRDT merges edits automatically without conflicts\n- **Per-document pearl** — each document is a sealed container; Grapple-scoped roles (viewer, commenter, editor, admin) enforced server-side\n\n## Features\n\n- **Real-time collaboration** — see who's connected, watch edits appear as they happen, presence indicators\n- **Rich formatting** — bold, italic, underline, strikethrough, headings, bullets, numbered lists, blockquotes, code blocks\n- **Sections** — organize long documents into named sections\n- **Tables** — insert and edit tables inline\n- **HTML export** — no lock-in; leave anytime with full fidelity\n\n## Suite integration\n\nDocs Bureau speaks Grapple to the suite — link a spreadsheet to a proposal, reference a diagram in a design doc, attach a contact card, embed a calendar into an agenda.\n\n## Status\n\n*Shipped v1.0.4.* Rich-text documents with Yjs CRDT, real-time collaboration, Solana-pinned revisions."
+      "description": "Docs Bureau is the document editor pearl of the Melusina Bureau office suite. Rich-text documents with real-time collaborative editing, no conflicts, and unlimited simultaneous editors \u2014 entirely on your server.\n\n## Why Docs\n\n- **Pinned document revisions** \u2014 cryptographically anchor any document snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Conflict-free CRDT sync** \u2014 unlimited simultaneous editors; Yjs CRDT merges edits automatically without conflicts\n- **Per-document pearl** \u2014 each document is a sealed container; Grapple-scoped roles (viewer, commenter, editor, admin) enforced server-side\n\n## Features\n\n- **Real-time collaboration** \u2014 see who's connected, watch edits appear as they happen, presence indicators\n- **Rich formatting** \u2014 bold, italic, underline, strikethrough, headings, bullets, numbered lists, blockquotes, code blocks\n- **Sections** \u2014 organize long documents into named sections\n- **Tables** \u2014 insert and edit tables inline\n- **HTML export** \u2014 no lock-in; leave anytime with full fidelity\n\n## Suite integration\n\nDocs Bureau speaks Grapple to the suite \u2014 link a spreadsheet to a proposal, reference a diagram in a design doc, attach a contact card, embed a calendar into an agenda.\n\n## Status\n\n*Shipped v2.0.16.* Rich-text documents with Yjs CRDT, real-time collaboration, Solana-pinned revisions."
     },
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
@@ -3072,7 +2918,7 @@
       "version": "0.1.38",
       "versionNumber": 42,
       "packageId": "658026fe7a050bfa4cb37de7e9df73a3",
-      "shortDescription": "Compliance casework engine — KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
+      "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
       "categories": [
         "Productivity"
       ],
@@ -3089,7 +2935,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.38",
       "sha256": "658026fe7a050bfa4cb37de7e9df73a3e9295c0cd37afe024994c2cf4f9ccf10",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
@@ -3120,8 +2966,8 @@
       "version": "0.2.3",
       "versionNumber": 9,
       "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
-      "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
-      "description": "Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why Fineract Setup\n\n- **Cryptographically pinned configuration bundles** — anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** — configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Pearl-local setup isolation** — setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
+      "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
+      "description": "Fineract Setup is the Melusina companion wizard for Apache Fineract integration. It provisions the attached Fineract backend, walks the operator through the bootstrap workflow, and exports a signed trust bundle shared by both security gates.\n\n## Why Fineract Setup\n\n- **Cryptographically pinned configuration bundles** \u2014 anchor any configuration bundle to your Solana wallet; bundles are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready for compliance\n- **Dual-gate architecture** \u2014 configuration flows through two security boundaries: the Go HTTPS sidecar and the Java SolanaSignatureAuthenticationFilter inside Fineract; each gate validates the trust bundle independently\n- **Pearl-local setup isolation** \u2014 setup happens once per pearl; every Fineract instance has its own isolated configuration; no shared state; no cross-instance leakage\n\n## Bootstrap Workflow\n\nThe wizard packages the cold-start work that has to happen before cca.sh can talk to a hardened Fineract install:\n\n- Tenant setup\n- Offices and currencies\n- Chart of accounts\n- Savings products\n- Signer registration\n- Governance policy\n- Trust-bundle export\n\n## Status\n\n*Pre-release.* The wizard currently ships with cca.sh Admin; the live Fineract integration lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
@@ -3139,7 +2985,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Proprietary — Internal development build",
+      "license": "Proprietary \u2014 Internal development build",
       "screenshots": [],
       "tier": "admin",
       "domains": [
@@ -3263,7 +3109,7 @@
       "version": "0.1.3",
       "versionNumber": 8,
       "packageId": "892d9b65d205c5387fa8b16980023c6f",
-      "shortDescription": "Montana series-LLC management Pearl — form, hold, operate entities end-to-end.",
+      "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
       "categories": [
         "Productivity"
       ],
@@ -3310,14 +3156,14 @@
             "pearlId": "instaco-app",
             "pearlName": "instaco",
             "pearlType": "user-pearl",
-            "purpose": "Instant-collaboration Pearl — drop-in spaces with members, threaded discussions, decision capture. Designed as the lightweight surface that other Pearls (consilium, dueprocess) Grapple into when they need a quick collaborative review without spinning up a full procedure.",
+            "purpose": "Instant-collaboration Pearl \u2014 drop-in spaces with members, threaded discussions, decision capture. Designed as the lightweight surface that other Pearls (consilium, dueprocess) Grapple into when they need a quick collaborative review without spinning up a full procedure.",
             "sidecars": [],
             "grapple": {
               "offers": [
                 {
                   "name": "space-create",
                   "interface": "Instaco.SpaceCreate@1",
-                  "purpose": "Issue a one-shot collab space scoped to a specific topic — peer Pearl claims to spin up a thread, captures the outcome, then releases the cap."
+                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap."
                 },
                 {
                   "name": "space-read",
@@ -3386,7 +3232,7 @@
               "capnp": [
                 {
                   "name": "Instaco.SpaceCreate@1",
-                  "purpose": "Issue a one-shot collab space scoped to a specific topic — peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
+                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
                   "roleGate": "anyMember"
                 },
                 {
@@ -3400,7 +3246,7 @@
           }
         ]
       },
-      "description": "instaco is the self-sovereign Montana series-LLC management Pearl. Form, hold, and operate a Montana series LLC end-to-end — articles, EIN, registered-agent address, operating agreement, member ledger, capital calls, distributions — without leaving your own server.\n\n## Why instaco\n\n- **Pinned entity formation milestones** — cryptographically anchor each entity milestone (formation, first capital call, distribution, amendment) to your Solana wallet; milestones are tamper-evident, citable across Pearls via Grapple, and provide an immutable record of the entity's lifecycle\n- **Solana-wallet member identification** — members are identified by their Solana wallet; transfers, capital calls, and distributions emit signed envelopes that double as on-chain attestations; non-repudiable membership changes\n- **All documents generated locally** — operating agreement, member roll, capital account, K-1 prep, registered-agent letters — all generated in-Pearl from templates you can edit; no cloud storage; no vendor middleware\n\n## Features\n\n- **Cell-level liability separation** — each \"child\" series under the master LLC is its own asset partition; instaco lays out the cells, ledgers, and inter-series receivables\n- **Local-first document generation** — operating agreement templates editable; member roll tracked; capital account ledger; K-1 prep\n- **State filing integration** — Montana SOS API wired in for new entity registrations, annual reports, and member updates; everything else is paper-prep your registered agent can mail\n- **Right-to-export** — the entire entity record (resolutions, ledger, K-1s, member roll) exports as a single signed bundle\n\n## What instaco Does NOT Do\n\n- It is not a tax preparer. K-1 prep generates the inputs a CPA needs; it does not file your 1065\n- It is not a registered agent. Montana law requires a physical Montana street address; instaco helps you draft the engagement letter, then hands off to your agent\n- It is not legal advice. The operating agreement template was reviewed by counsel, but your specific cell structure is yours\n\n## Why Montana Series LLCs\n\nMontana is one of the few US states with a clean series LLC statute, no public member registry, and a Solana-friendly attorney bench. The form-and-fee structure is favorable for asset-protection use cases that need many cells and few annual filings.\n\n## Status\n\nOpen-source MIT. Production-ready for new entity formation; the K-1 prep module is in active testing for tax year 2026.",
+      "description": "instaco is the self-sovereign Montana series-LLC management Pearl. Form, hold, and operate a Montana series LLC end-to-end \u2014 articles, EIN, registered-agent address, operating agreement, member ledger, capital calls, distributions \u2014 without leaving your own server.\n\n## Why instaco\n\n- **Pinned entity formation milestones** \u2014 cryptographically anchor each entity milestone (formation, first capital call, distribution, amendment) to your Solana wallet; milestones are tamper-evident, citable across Pearls via Grapple, and provide an immutable record of the entity's lifecycle\n- **Solana-wallet member identification** \u2014 members are identified by their Solana wallet; transfers, capital calls, and distributions emit signed envelopes that double as on-chain attestations; non-repudiable membership changes\n- **All documents generated locally** \u2014 operating agreement, member roll, capital account, K-1 prep, registered-agent letters \u2014 all generated in-Pearl from templates you can edit; no cloud storage; no vendor middleware\n\n## Features\n\n- **Cell-level liability separation** \u2014 each \"child\" series under the master LLC is its own asset partition; instaco lays out the cells, ledgers, and inter-series receivables\n- **Local-first document generation** \u2014 operating agreement templates editable; member roll tracked; capital account ledger; K-1 prep\n- **State filing integration** \u2014 Montana SOS API wired in for new entity registrations, annual reports, and member updates; everything else is paper-prep your registered agent can mail\n- **Right-to-export** \u2014 the entire entity record (resolutions, ledger, K-1s, member roll) exports as a single signed bundle\n\n## What instaco Does NOT Do\n\n- It is not a tax preparer. K-1 prep generates the inputs a CPA needs; it does not file your 1065\n- It is not a registered agent. Montana law requires a physical Montana street address; instaco helps you draft the engagement letter, then hands off to your agent\n- It is not legal advice. The operating agreement template was reviewed by counsel, but your specific cell structure is yours\n\n## Why Montana Series LLCs\n\nMontana is one of the few US states with a clean series LLC statute, no public member registry, and a Solana-friendly attorney bench. The form-and-fee structure is favorable for asset-protection use cases that need many cells and few annual filings.\n\n## Status\n\nOpen-source MIT. Production-ready for new entity formation; the K-1 prep module is in active testing for tax year 2026.",
       "screenshots": []
     },
     {
@@ -3410,7 +3256,7 @@
       "versionNumber": 60,
       "packageId": "d95aa3a8b1c3ed65bec296e256d95d42",
       "shortDescription": "Deploy + manage a Solana DAO",
-      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** — each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** — entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** — cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state — not by any baked-in mint or program.\n- **Optional Utility Token** — mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** — token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** — every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** — optional out-of-band notifications via a Grapple-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place — same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
+      "description": "# InstaDAO\n\nDeploy and manage a Solana DAO from a single Sandstorm grain. Wizard-driven entity + governance + treasury + cap-table setup, with optional utility-token and holder-voting modules. **Nothing is hardcoded** \u2014 each grain stands up its own DAO with its own programs, mint, signers, and parameters.\n\n## What it does\n\n- **10-step Onboarding Wizard** \u2014 entity setup, module selection, directors + officers, founders cap-table, OA drafting, deploy quote, on-chain deploy, init-state finalize.\n- **DAO Dashboard** \u2014 cap-table, governance, treasury, activity for the deployed DAO. Driven by the DAO's own on-chain state \u2014 not by any baked-in mint or program.\n- **Optional Utility Token** \u2014 mint, freeze, burn, standing-offer (USDC + SOL routes) for the DAO's own token, parameterized at deploy time.\n- **Optional Holder Voting** \u2014 token-weighted proposals with a binding sha256 commitment to question text.\n- **Squads-Gated Admin** \u2014 every privileged action is a multisig proposal; the grain author can't move the DAO without quorum.\n- **Telegram Bot** \u2014 optional out-of-band notifications via a Grapple-bound HTTP-out capability.\n\n## Why this design\n\nSandstorm gives every grain its own root-owned ext4 sandbox + revocable capabilities. We use those to keep the DAO operator's keypairs encrypted at rest, route every Solana RPC through the Melusina shell's `HackSessionContext.solanaRpc` (no outbound HTTP from the grain), and let the operator share read-only or proposal-author roles per Sandstorm's permission grid.\n\n## Upgrading from MLSNA Admin v3.0.x\n\nExisting MLSNA grains auto-upgrade in place \u2014 same appId, new versionNumber (51 > 50). Per-tenant config at `/var/melusina/mlsna-admin.env` is still honored; rename to `instadao.env` on the next deploy.",
       "categories": [
         "Productivity",
         "Office"
@@ -3450,54 +3296,6 @@
       "capabilities": null
     },
     {
-      "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
-      "packageId": "2eccc423055827472fbe45e209c0e9d3",
-      "name": "Jinn",
-      "version": "0.0.4",
-      "versionNumber": 4,
-      "shortDescription": "pearl orchestrator + dream-shell. Routes all AI traffic via AiLagoon and orchestrates other pearls.",
-      "description": "Jinn is the Melusina pearl orchestrator. It coordinates other pearls (Bureau, gitpearl, ccash) through Cap'n Proto capabilities and routes all AI traffic exclusively through the AiLagoon AICapBundle, so AI access is gated by a single Sandstorm permission rather than per-grain capability hops. Includes a setup-wizard for first-time pearl onboarding.",
-      "categories": [
-        "Productivity"
-      ],
-      "license": "Melusina Public License v1.0 (source-available, not open source).",
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/Clawberg",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1746748800000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "marketingVersion": "0.0.4",
-      "sha256": "2eccc423055827472fbe45e209c0e9d34de8ae2fe97e3365f9b819965ed33d4b",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1779095892000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "183afdc353a2ec27ad292466196795544edb7e065e8fcdb94727f6a678f8d5fe",
-        "releaseHash": "10417bdc7b5d9d8acd32b18b6d5425c6a57372541ba103fcbe36e147c98774af",
-        "releaseNonce": "ba0f1eaa009e3d453bbfcbe4b6a9318a",
-        "releaseEntryPda": "FtLX6n58BLRoBPHFAjhtV2qzVgdskaWwYzpF5SynsVVB",
-        "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1779095892,
-        "authorSig": "eOva/aoSzSuaT6n1X0HlIjv0CM0nytOv4RwZih8eXDhpjtq8sbrXx2R0FWxUjOC0jBFZlZ3oR+rQpPkJ51L6Cg==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "screenshots": []
-    },
-    {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
       "version": "0.1.13",
@@ -3520,7 +3318,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "0.1.13",
       "sha256": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
       "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
@@ -3542,7 +3340,7 @@
         }
       },
       "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant pearl for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the pearl's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon pearl, and discovers\n  tools from any other Melusina pearl you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` — permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new pearl access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental — there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** — raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** — every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-pearl permission scoping** — each connected pearl decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** — operations marked\n  `walletSignature` or `threshold` in a pearl's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two pearl types** — `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo pearl registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
+      "description": "# OpenClaw\n\nA personal AI assistant pearl for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the pearl's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon pearl, and discovers\n  tools from any other Melusina pearl you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new pearl access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-pearl permission scoping** \u2014 each connected pearl decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a pearl's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two pearl types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo pearl registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
       "screenshots": []
     },
     {
@@ -3567,7 +3365,7 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs — no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** — View, organise, and search your email across custom folders\n- **Compose & Reply** — Rich compose form with reply, reply-all, and forward support\n- **Attachments** — Upload, download, and inline-view attachments\n- **Drafts** — Auto-save and manually save drafts; resume editing anytime\n- **Search** — Full-text search across all messages\n- **Star & Organise** — Star important messages, move between folders, bulk delete\n- **Real-time Updates** — WebSocket push for new mail notifications\n- **Role-based Access** — Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** — Single static binary, SQLite storage, zero external dependencies\n\n## pearl Types\n\nMerMail ships two pearl types:\n\n- **Mailbox pearl** — Your personal email client. Each pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station pearl** — Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates — no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** pearl to start using email\n3. Your pearl gets a unique email address — forward mail to it or share it directly\n4. Create a **Station** pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina pearl sandbox",
+      "description": "MerMail is a sovereign email client for [Melusina](https://melusina-os.org), built with Go and HTMX. It connects directly to Melusina's Cap'n Proto APIs \u2014 no HTTP bridge required.\n\n## Features\n\n- **Inbox & Folders** \u2014 View, organise, and search your email across custom folders\n- **Compose & Reply** \u2014 Rich compose form with reply, reply-all, and forward support\n- **Attachments** \u2014 Upload, download, and inline-view attachments\n- **Drafts** \u2014 Auto-save and manually save drafts; resume editing anytime\n- **Search** \u2014 Full-text search across all messages\n- **Star & Organise** \u2014 Star important messages, move between folders, bulk delete\n- **Real-time Updates** \u2014 WebSocket push for new mail notifications\n- **Role-based Access** \u2014 Melusina sharing with viewer, editor, and admin roles\n- **Lightweight** \u2014 Single static binary, SQLite storage, zero external dependencies\n\n## pearl Types\n\nMerMail ships two pearl types:\n\n- **Mailbox pearl** \u2014 Your personal email client. Each pearl is an independent mailbox with its own inbox, folders, drafts, and contacts.\n- **Station pearl** \u2014 Mail server control panel for managing forwarding rules, DNS configuration, and aliases.\n\n## How It Works\n\nEach Melusina pearl is an independent mailbox. Email arrives via Melusina's built-in SMTP gateway and is stored locally in SQLite. The UI is server-rendered HTML with HTMX for seamless partial updates \u2014 no JavaScript framework required.\n\n## Getting Started\n\n1. Open the App Bazaar and install MerMail\n2. Create a new **Mailbox** pearl to start using email\n3. Your pearl gets a unique email address \u2014 forward mail to it or share it directly\n4. Create a **Station** pearl to manage mail server settings\n\n## Technical Details\n\n- **Backend:** Go with native Cap'n Proto RPC (no sandstorm-http-bridge)\n- **Frontend:** Server-side HTML + HTMX + WebSocket\n- **Storage:** SQLite with automatic migrations\n- **Binary:** Statically linked, runs inside the Melusina pearl sandbox",
       "screenshots": [
         {
           "url": "screenshots/01-inbox.png",
@@ -3604,7 +3402,7 @@
             "pearlId": "mermail",
             "pearlName": "MerMail",
             "pearlType": "user-pearl",
-            "purpose": "Per-user email pearl — receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket → cca.sh, parcel → cratelink, etc.).",
+            "purpose": "Per-user email pearl \u2014 receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket \u2192 cca.sh, parcel \u2192 cratelink, etc.).",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3616,7 +3414,7 @@
                 {
                   "name": "mail-send",
                   "interface": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer pearl — peer presents a payload + recipient; user reviews + sends."
+                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends."
                 }
               ],
               "requests": []
@@ -3687,7 +3485,7 @@
                 },
                 {
                   "name": "MerMail.Send@1",
-                  "purpose": "Send a mail from a peer pearl — peer presents a payload + recipient; user reviews + sends.",
+                  "purpose": "Send a mail from a peer pearl \u2014 peer presents a payload + recipient; user reviews + sends.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -3704,8 +3502,8 @@
       "version": "0.2.4",
       "versionNumber": 10,
       "marketingVersion": "0.2.4",
-      "shortDescription": "Lightweight private Git hosting on Melusina — one repo per pearl, browse and push from your browser, AI-callable.",
-      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches — all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** — each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** — clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** — all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** — the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** — clone URL provided automatically\n- **Browse files, commits, and diffs** — in the web UI\n- **Share read-only or read/write access** — via standard Melusina sharing\n- **No external database** — go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** — no CDN or external calls\n- **Role-based access** — viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability — its \"Skills\" — so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** — full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface — all available now.\n",
+      "shortDescription": "Lightweight private Git hosting on Melusina \u2014 one repo per pearl, browse and push from your browser, AI-callable.",
+      "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** \u2014 each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** \u2014 clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** \u2014 the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **No external database** \u2014 go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability \u2014 its \"Skills\" \u2014 so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** \u2014 full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface \u2014 all available now.\n",
       "categories": [
         "Developer Tools"
       ],
@@ -3810,7 +3608,7 @@
             "pearlId": "gitpearl",
             "pearlName": "MiniGit",
             "pearlType": "user-pearl",
-            "purpose": "In-Pearl Git server — host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
+            "purpose": "In-Pearl Git server \u2014 host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
             "sidecars": [],
             "grapple": {
               "offers": [
@@ -3875,7 +3673,7 @@
             "httpOut": {
               "enabled": false,
               "via": "none",
-              "purpose": "No HTTP-out — pull/push goes through Grapple-scoped caps, not external Git URLs.",
+              "purpose": "No HTTP-out \u2014 pull/push goes through Grapple-scoped caps, not external Git URLs.",
               "endpoints": []
             },
             "apis": {
@@ -3903,7 +3701,7 @@
       "version": "0.1.9",
       "versionNumber": 11,
       "packageId": "f02466e8bf9cae66c022236a261cc639",
-      "shortDescription": "KYC onboarding — pass once, get a time-boxed on-chain attestation",
+      "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
       ],
@@ -3912,7 +3710,7 @@
         "*"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina-NamedCoin-app",
       "upstreamAuthor": "hrbr.life",
@@ -3944,7 +3742,7 @@
         }
       },
       "capabilities": null,
-      "description": "**NamedCoin** is the KYC onboarding pearl for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation — no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin pearl: melusina-NamedCoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
+      "description": "**NamedCoin** is the KYC onboarding pearl for Melusina.\n\nPass an identity + sanctions check once, and a time-boxed KYC attestation is recorded against your Solana wallet with a configurable expiry (90/180/365 days, up to five years). Every Melusina app that needs \"is this person KYC'd?\" probes the on-chain attestation \u2014 no re-upload, no storage of raw ID documents inside other grains.\n\nRaw ID images + questionnaire answers never leave the pearl's encrypted store. What lands on-chain is a Merkle root over salted (key, value) claim leaves; apps verify individual claims (e.g. \"residence is FR\") with a selective-disclosure Merkle probe through the sidecar.\n\nAdmin-side review (KYC packet approval, sanctions list configuration, issue / revoke, consumer-trust editing) lives in the companion admin pearl: melusina-NamedCoin-admin-app.\n\nBuilt in Go with HTMX + vanilla templates. Sandstorm pearl with HTTP-out to the TeleScreen sidecar for sanctions screening and AI Lagoon for document-authenticity / face-match checks.",
       "screenshots": []
     },
     {
@@ -3998,14 +3796,14 @@
       "name": "Notes Bureau",
       "version": "0.1.1",
       "versionNumber": 7,
-      "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots — self-hosted.",
-      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references — all hosted on your own server. Each notebook is a sealed pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** — cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** — share by pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** — no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** — jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event — all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
+      "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
+      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
       "categories": [
         "Productivity",
         "Office"
       ],
       "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
       "codeLink": "https://github.com/hrbrlife/melusina_bureau_notes_app",
       "upstreamAuthor": "Alexei Karpov",
@@ -4050,7 +3848,7 @@
             "pearlId": "bureau-notes",
             "pearlName": "Notes Bureau",
             "pearlType": "user-pearl",
-            "purpose": "Lightweight note-taking pearl — fast-capture markdown, daily-journal mode, hierarchical notebooks. Storage is per-pearl; sharing notes with peer Pearls (Doc, Calendar) goes through Grapple per-note or per-tag.",
+            "purpose": "Lightweight note-taking pearl \u2014 fast-capture markdown, daily-journal mode, hierarchical notebooks. Storage is per-pearl; sharing notes with peer Pearls (Doc, Calendar) goes through Grapple per-note or per-tag.",
             "hostShell": {
               "id": "BUREAU_SHELL",
               "label": "Bureau Shell",
@@ -4133,7 +3931,7 @@
       "name": "OpenSanctions",
       "version": "0.1.10",
       "versionNumber": 12,
-      "shortDescription": "Sanctions consumer grain — KYC/AML screening for the Melusina PSP.",
+      "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
       "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
         "Productivity"
@@ -4183,7 +3981,7 @@
       "version": "2.0.16",
       "versionNumber": 10,
       "packageId": "febd9be232e208149725c25d721c233d",
-      "shortDescription": "Layered image editor — brushes, filters, layers, crop — entirely in your browser, self-hosted.",
+      "shortDescription": "Layered image editor \u2014 brushes, filters, layers, crop \u2014 entirely in your browser, self-hosted.",
       "categories": [
         "Productivity",
         "Office"
@@ -4207,7 +4005,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.16",
       "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
       "updatedAt": 1781285960000,
@@ -4237,7 +4035,7 @@
             "pearlId": "paint-bureau",
             "pearlName": "Paint Bureau",
             "pearlType": "user-pearl",
-            "purpose": "Bitmap image editor (mini-Paint style — layers, brushes, selection, simple filters). Outputs PNG/JPEG; consumed by other Bureau Pearls (Doc, Notes) via Grapple's Embed capability.",
+            "purpose": "Bitmap image editor (mini-Paint style \u2014 layers, brushes, selection, simple filters). Outputs PNG/JPEG; consumed by other Bureau Pearls (Doc, Notes) via Grapple's Embed capability.",
             "hostShell": {
               "id": "BUREAU_SHELL",
               "label": "Bureau Shell",
@@ -4313,7 +4111,7 @@
           }
         ]
       },
-      "description": "Paint Bureau is the image editor pearl of the Melusina Bureau office suite. Layered editing, filters, drawing tools, crop, resize, rotate — entirely in your browser on your own server.\n\n## Why Paint\n\n- **Pinned image revisions** — cryptographically anchor any image snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Edit-lock with live viewers** — one editor at a time; all connected viewers see changes appear live\n- **Multi-format export** — PNG, JPG, BMP, WebP; no lock-in\n\n## Features\n\n- **Layers** — create, reorder, merge, and manage layers\n- **Drawing tools** — pencil, brush, line, circle, rectangle, text\n- **Filters** — blur, sharpen, brightness, contrast, and adjustments\n- **Transform** — crop, resize, rotate with live preview\n- **Per-image pearl** — each image is a sealed container; share by pearl, not org-wide\n- **Offline-capable** — all assets bundled; no internet needed\n\n## Suite integration\n\nPaint Bureau speaks Grapple to the suite — embed a diagram in a document, attach an image to a contact card, reference an image in a CanBoard card.\n\n## Status\n\n*Shipped v1.0.4.* Layered image editor with filters, real-time multi-user, Solana-pinned revisions."
+      "description": "Paint Bureau is the image editor pearl of the Melusina Bureau office suite. Layered editing, filters, drawing tools, crop, resize, rotate \u2014 entirely in your browser on your own server.\n\n## Why Paint\n\n- **Pinned image revisions** \u2014 cryptographically anchor any image snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Edit-lock with live viewers** \u2014 one editor at a time; all connected viewers see changes appear live\n- **Multi-format export** \u2014 PNG, JPG, BMP, WebP; no lock-in\n\n## Features\n\n- **Layers** \u2014 create, reorder, merge, and manage layers\n- **Drawing tools** \u2014 pencil, brush, line, circle, rectangle, text\n- **Filters** \u2014 blur, sharpen, brightness, contrast, and adjustments\n- **Transform** \u2014 crop, resize, rotate with live preview\n- **Per-image pearl** \u2014 each image is a sealed container; share by pearl, not org-wide\n- **Offline-capable** \u2014 all assets bundled; no internet needed\n\n## Suite integration\n\nPaint Bureau speaks Grapple to the suite \u2014 embed a diagram in a document, attach an image to a contact card, reference an image in a CanBoard card.\n\n## Status\n\n*Shipped v2.0.16.* Layered image editor with filters, real-time multi-user, Solana-pinned revisions."
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
@@ -4321,8 +4119,8 @@
       "name": "popaye",
       "version": "0.3.114",
       "versionNumber": 104,
-      "shortDescription": "MSB / PSP / VASP operator console — Solana-signed, encrypted, mobile-first.",
-      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office — the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only — no stored payment instruments — and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
+      "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
+      "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
         "Productivity",
         "Office"
@@ -4371,7 +4169,7 @@
       "version": "2.0.16",
       "versionNumber": 13,
       "packageId": "ff8df4eec3bae85ca6b07a6a113cea1f",
-      "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing — self-hosted.",
+      "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
       "categories": [
         "Productivity",
         "Office"
@@ -4385,22 +4183,6 @@
         {
           "url": "screenshots/screenshot_sheets.png",
           "caption": "Spreadsheet with live formulas"
-        },
-        {
-          "url": "screenshots/screenshot_docs.png",
-          "caption": "Collaborative document editing"
-        },
-        {
-          "url": "screenshots/screenshot_docs2.png",
-          "caption": "Multi-user document review"
-        },
-        {
-          "url": "screenshots/screenshot_graphs.png",
-          "caption": "Diagrams and flowcharts"
-        },
-        {
-          "url": "screenshots/screenshot_image.png",
-          "caption": "Layered image editor"
         }
       ],
       "author": {
@@ -4411,20 +4193,20 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "sha256": "ff8df4eec3bae85ca6b07a6a113cea1f79d3d90e11f0578b613c94e8f71042ca",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "marketingVersion": "2.0.16",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1780128154000,
+      "updatedAt": 1781288362000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6ebc1830afae7979c4b0a3d56a2701bd651efa91e61e7242baba20c3891bcfdb",
-        "releaseHash": "9c416cab6c6b0b44d94b400b74d0148044e8f920f24288ac933b4f7942187807",
-        "releaseNonce": "5f6e25a1d0949960a2246a24224553c1",
-        "releaseEntryPda": "5CnT2hCJaYxxcnieaS47mRDouBnYHDmqjysvj8NusDAx",
+        "appHash": "827b53cb4ad96ba4b1c6d00a8a845c4d0a0d60339cc9696bb6da939fd2a3807a",
+        "releaseHash": "0e1b7125b6630ca987bba6a6dc34c6ec649836c7871ce47e6e98b6f9d915cfa3",
+        "releaseNonce": "54664d65cb524ffdbd552371efed631b",
+        "releaseEntryPda": "ExH3U8so1bcv1AmYEKkg68JAJp1KX3VXmqh1NBohmx1r",
         "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780128154,
-        "authorSig": "2oubKuyNw76KMhhDrUjrVLZAgGS4r8lXOWJ4iWqUDhRiHRXHIMX+Wb5vF+Ye+oJvF5fxHzkfwlOJfvtq7OxqDw==",
+        "signedAtUnix": 1781288362,
+        "authorSig": "z8q8D1yHXcIJ15gHfdvGbpdgPqQO74IxLYEBXz6Uot86bHvxYNmX/eSGomQDRFrSx393+pa49SRCMPhb9F31Aw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -4441,7 +4223,7 @@
             "pearlId": "sheets-bureau",
             "pearlName": "Sheets Bureau",
             "pearlType": "user-pearl",
-            "purpose": "Spreadsheet pearl in the Bureau family — Univer-based grid, formulas, charts, named ranges. Storage local; range-level Grapple offers let peer Pearls read live values from a named range without seeing the full sheet.",
+            "purpose": "Spreadsheet pearl in the Bureau family \u2014 Univer-based grid, formulas, charts, named ranges. Storage local; range-level Grapple offers let peer Pearls read live values from a named range without seeing the full sheet.",
             "hostShell": {
               "id": "BUREAU_SHELL",
               "label": "Bureau Shell",
@@ -4527,8 +4309,7 @@
           }
         ]
       },
-      "description": "Sheets Bureau is the spreadsheet pearl of the Melusina Bureau office suite. Formulas, real-time multi-user editing, XLSX import/export, and a full toolkit for collaborative spreadsheets — entirely on your server.\n\n## Why Sheets\n\n- **Pinned spreadsheet snapshots** — cryptographically anchor any spreadsheet snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready\n- **Grapple-scoped AI access** — connect to AI Lagoon; AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation; AI sees only the cells you grant\n- **XLSX export with full fidelity** — styles, column widths, formulas, formatting preserved; no lock-in\n\n## Features\n\n- **Real-time collaboration** — unlimited simultaneous editors; conflict-free CRDT sync; live presence indicators\n- **Formulas** — A1 references, formula bar, cross-cell calculations\n- **Formatting** — fonts, colors, bold, italic, borders, alignment, fill, text wrap\n- **Worksheets** — multiple tabs with rename, reorder, add, delete\n- **Structure** — merge cells, freeze rows/columns, hide columns, multi-level sort\n- **Comments** — per-cell threads with author attribution\n- **Import** — XLSX (preserves styles), CSV, JSON\n- **Per-spreadsheet pearl** — each spreadsheet is a sealed container; share by pearl, not org-wide\n- **Offline-capable** — all assets bundled\n\n## Suite integration\n\nSheets Bureau speaks Grapple to the suite — link a diagram to a budget sheet, reference a cost table in a doc, embed a sheet in a CanBoard card, attach to a calendar agenda.\n\n## Status\n\n*Shipped v1.0.7.* Spreadsheets with formulas, XLSX import/export, real-time multi-user editing, Solana-pinned snapshots.",
-      "marketingVersion": "2.0.16"
+      "description": "Sheets Bureau is the spreadsheet pearl of the Melusina Bureau office suite. Formulas, real-time multi-user editing, XLSX import/export, and a full toolkit for collaborative spreadsheets \u2014 entirely on your server.\n\n## Why Sheets\n\n- **Pinned spreadsheet snapshots** \u2014 cryptographically anchor any spreadsheet snapshot to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, verifiable independent of the operator, and audit-ready\n- **Grapple-scoped AI access** \u2014 connect to AI Lagoon; AI reads/writes cells through capability-scoped tools with human-in-the-loop confirmation; AI sees only the cells you grant\n- **XLSX export with full fidelity** \u2014 styles, column widths, formulas, formatting preserved; no lock-in\n\n## Features\n\n- **Real-time collaboration** \u2014 unlimited simultaneous editors; conflict-free CRDT sync; live presence indicators\n- **Formulas** \u2014 A1 references, formula bar, cross-cell calculations\n- **Formatting** \u2014 fonts, colors, bold, italic, borders, alignment, fill, text wrap\n- **Worksheets** \u2014 multiple tabs with rename, reorder, add, delete\n- **Structure** \u2014 merge cells, freeze rows/columns, hide columns, multi-level sort\n- **Comments** \u2014 per-cell threads with author attribution\n- **Import** \u2014 XLSX (preserves styles), CSV, JSON\n- **Per-spreadsheet pearl** \u2014 each spreadsheet is a sealed container; share by pearl, not org-wide\n- **Offline-capable** \u2014 all assets bundled\n\n## Suite integration\n\nSheets Bureau speaks Grapple to the suite \u2014 link a diagram to a budget sheet, reference a cost table in a doc, embed a sheet in a CanBoard card, attach to a calendar agenda.\n\n## Status\n\n*Shipped v2.0.16.* Spreadsheets with formulas, XLSX import/export, real-time multi-user editing, Solana-pinned snapshots."
     },
     {
       "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
@@ -4572,7 +4353,7 @@
         }
       },
       "capabilities": null,
-      "description": "# Shell Tester\n\nA minimal Sandstorm pearl for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** — Test wallet signing operations via Melusina shell capabilities\n- **OTP** — Verify one-time password generation and validation\n- **NFTs** — Test NFT-related operations through shell extensions\n- **Solana RPC** — Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis pearl is intended for developers and testers working on Melusina platform integrations.",
+      "description": "# Shell Tester\n\nA minimal Sandstorm pearl for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** \u2014 Test wallet signing operations via Melusina shell capabilities\n- **OTP** \u2014 Verify one-time password generation and validation\n- **NFTs** \u2014 Test NFT-related operations through shell extensions\n- **Solana RPC** \u2014 Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis pearl is intended for developers and testers working on Melusina platform integrations.",
       "screenshots": []
     },
     {
@@ -4599,7 +4380,7 @@
         "email": "ak@hrbr.life",
         "website": "https://hrbr.life"
       },
-      "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.1.2",
       "sha256": "9c5060f77122fced9176401e206d1dfd0b7eccd8231c66c21591dde5207d1a39",
       "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
@@ -4655,7 +4436,7 @@
               "anyMember": [
                 {
                   "name": "Send / receive chat messages",
-                  "purpose": "Standard chat — per-message E2E encryption is opt-in client-side."
+                  "purpose": "Standard chat \u2014 per-message E2E encryption is opt-in client-side."
                 },
                 {
                   "name": "Publish own public key",
@@ -4680,7 +4461,7 @@
                     ]
                   }
                 ],
-                "purpose": "Release attestation only — no per-grain on-chain state."
+                "purpose": "Release attestation only \u2014 no per-grain on-chain state."
               }
             ],
             "staticPublishing": {
@@ -4698,7 +4479,7 @@
               "capnp": [
                 {
                   "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -4714,7 +4495,7 @@
           }
         ]
       },
-      "description": "Teleport is a Sandstorm-native chat pearl with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** — AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-pearl isolation** — each Teleport pearl is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** — admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** — no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** — every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** — single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** — directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` §7 future work)\n- **GraphQL API** — `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** — local file-backed database inside the pearl\n- **Six-role permission set** — admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-pearl platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" pearl action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session — no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
+      "description": "Teleport is a Sandstorm-native chat pearl with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-pearl isolation** \u2014 each Teleport pearl is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the pearl\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-pearl platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" pearl action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
     {
@@ -4773,7 +4554,7 @@
             "pearlId": "telescreen",
             "pearlName": "TeleScreen",
             "pearlType": "user-pearl",
-            "purpose": "Public-relations / publication-ready surface — push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
+            "purpose": "Public-relations / publication-ready surface \u2014 push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
             "sidecars": [],
             "grapple": {
               "offers": [],
@@ -4866,7 +4647,7 @@
               "capnp": [
                 {
                   "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
                   "roleGate": "anyMember"
                 }
               ],
@@ -4884,7 +4665,7 @@
       "name": "TeleScreen Sidecar Configurator",
       "version": "0.4.0",
       "versionNumber": 5,
-      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar — exposes config UI + Grapple cap.",
+      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Grapple cap.",
       "categories": [
         "Productivity",
         "Developer Tools"
@@ -5014,7 +4795,7 @@
           }
         ]
       },
-      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm pearl is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes — secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context — entirely\nthrough the browser, with no SSH-into-container required.\n\nThe pearl stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
+      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm pearl is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe pearl stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
     },
     {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
@@ -5023,7 +4804,7 @@
       "versionNumber": 15,
       "packageId": "a37f47180828d8ae6b00d1d3a08cb480",
       "shortDescription": "Browser-based Linux desktop with ephemeral sandbox default; pin sessions to Solana wallet.",
-      "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode — every change is ephemeral and wiped when the pearl closes. Click Save to upgrade the pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** — cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** — by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** — when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** — apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** — no VNC client, no RDP software; open in any browser\n- **File transfer** — drag-drop files into the desktop; export files back out\n- **Clipboard sync** — paste between your computer and the remote desktop\n- **Audio** — WebRTC audio support for VoIP and media playback\n- **Offline-capable** — all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
+      "description": "Vintage Remote Desktop gives every Melusina operator a disposable, full Linux desktop rendered in the browser. Pearls start in sandbox mode \u2014 every change is ephemeral and wiped when the pearl closes. Click Save to upgrade the pearl to a persistent, Solana-backed workspace.\n\n## Why Vintage\n\n- **Pinned session snapshots** \u2014 cryptographically anchor any desktop session to your Solana wallet; snapshots are tamper-evident, citable across Pearls via Grapple, and recoverable if the session crashes\n- **Ephemeral-first sandbox** \u2014 by default, everything is temporary; persistence is an explicit choice, not a default; ideal for one-off work that shouldn't pollute your environment\n- **Wallet-rooted persistent state** \u2014 when you click Save, session state is anchored to your Solana wallet; ownership and restoration tied to your key; no operator backdoor\n\n## Ideal For\n\n- One-off tooling that you don't want polluting your main environment\n- Demo environments that reset cleanly\n- Remote-ops consoles where persistence should be an explicit choice, not a default\n- Isolated testing and experimentation\n\n## Features\n\n- **Full Linux desktop** \u2014 apt, gcc, git, Python, Node, Docker, and standard utilities\n- **Browser-based** \u2014 no VNC client, no RDP software; open in any browser\n- **File transfer** \u2014 drag-drop files into the desktop; export files back out\n- **Clipboard sync** \u2014 paste between your computer and the remote desktop\n- **Audio** \u2014 WebRTC audio support for VoIP and media playback\n- **Offline-capable** \u2014 all assets bundled; no external calls\n\n## Status\n\n*Shipped v1.0.0.* Browser-based Linux desktop with ephemeral sandbox default, Solana-pinned session snapshots, full-featured toolchain.",
       "categories": [
         "Productivity"
       ],
@@ -5076,7 +4857,7 @@
             "pearlId": "vintage",
             "pearlName": "Vintage Desktop",
             "pearlType": "user-pearl",
-            "purpose": "Per-user vintage operating-system desktop pearl — runs old-school environments inside a pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the pearl; outbound network is gated by the standard sidecars (none enabled by default — fully airgapped).",
+            "purpose": "Per-user vintage operating-system desktop pearl \u2014 runs old-school environments inside a pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the pearl; outbound network is gated by the standard sidecars (none enabled by default \u2014 fully airgapped).",
             "sidecars": [],
             "grapple": {
               "offers": [],

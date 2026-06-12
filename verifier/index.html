@@ -87,7 +87,7 @@
       <p class="lede">Every app in this catalog ships with a Solana on-chain ReleaseEntry attesting its binary. Independent verification needs no trust in this static site &mdash; the catalog publishes everything required to re-check the chain yourself.</p>
 
       <h2>Trust model</h2>
-      <p>Each Melusina release is signed by a <strong>Squads multisig vault</strong> (the partner's quorum). The signature lands in a <strong>ReleaseEntry program-derived account</strong> on Solana mainnet, indexed by <code>MasterNftMint</code> + <code>releaseNonce</code>. The entry pins three hashes: <code>appHash</code> (the .spk content), <code>releaseHash</code> (the canonical signing payload), and the <code>authorSig</code> (ed25519 signature over <code>releaseHash</code> by a quorum member).</p>
+      <p>Each Melusina release is signed by a <strong>Squads multisig vault</strong> (the partner's quorum). The signature lands in a <strong>ReleaseEntry program-derived account</strong> on Solana mainnet, indexed by <code>MasterNftMint</code> + <code>releaseNonce</code>. The entry pins three hashes: <code>appHash</code> (a deterministic hash over the app tree), <code>releaseHash</code> (the canonical signing payload), and the <code>authorSig</code> (ed25519 signature over <code>releaseHash</code> by a quorum member).</p>
       <p>This is the <em>only</em> trust root. There are no PGP keys, no detached metadata signatures, no out-of-band approvals &mdash; legacy <code>.asc</code> files are explicitly rejected at publish time.</p>
 
       <h2>What the catalog publishes per app</h2>
@@ -96,7 +96,7 @@
         <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td><code>schema</code></td><td>Always <code>melusina-release-v1</code>.</td></tr>
-          <tr><td><code>appHash</code></td><td>SHA-256 of the .spk bytes. The installer recomputes this and refuses to install on mismatch.</td></tr>
+          <tr><td><code>appHash</code></td><td>Deterministic SHA-256 over the app tree (staged <code>app.spk</code> + <code>metadata.json</code>, excluding RELEASE.json) — what <code>melusina-pearl-tool compute-app-hash</code> produces and the on-chain ReleaseEntry pins. <em>Note:</em> raw SPK byte-integrity is enforced separately by the Sandstorm <code>packageId == sha256(app.spk)[:32]</code> binding, which the store now asserts fail-closed on every build.</td></tr>
           <tr><td><code>releaseHash</code></td><td>SHA-256 of the canonical signing payload (appHash + MasterNftMint + releaseNonce + manifest digest). The signed message.</td></tr>
           <tr><td><code>releaseNonce</code></td><td>Monotonic counter per app. Replay-resistance for the ReleaseEntry PDA.</td></tr>
           <tr><td><code>releaseEntryPda</code></td><td>The Solana account address that holds this release on-chain. Look it up on any explorer.</td></tr>

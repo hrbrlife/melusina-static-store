@@ -38,8 +38,11 @@ Flow: **app repo (committed) → SPK → RELEASE.json → catalog index → publ
 | `MasterNftMint` (on-chain mint) | ceremony | read case-insensitively | fail if metadata has mint but index empty |
 | `changelog` (new) | app `changelog.md` | emit into index | warn if missing |
 
-> "grapple" in the directive is read as the **permission/capability surface**
-> (`capabilities`+`permissionVocabulary`+`roles`) and/or the icon — **confirm.**
+> **"grapple" decoded:** `build-store.sh:492` defines an 8-axis `capabilities.json` profile
+> whose first axis is literally **"Grapple & Sidecars"** (then Encryption / Roles / Blockchains /
+> Static-Publishing / HTTP-Out / Incoming-API). So GRAPPLE = the Grapple & Sidecars capability
+> axis. Currently `capabilities.json` is *optional* (line 494); the meta-sync goal requires it
+> committed per app and synced into the index. Tracked as a Phase-4 per-app deliverable.
 
 ## Phase status
 
@@ -48,7 +51,17 @@ Flow: **app repo (committed) → SPK → RELEASE.json → catalog index → publ
   - [x] K24 signer → `127.0.0.1:3848` (was `0.0.0.0`); pipeline-independent; restarted.
   - [x] K25 unbind `packages/hrbrlife/Melusina`; unique secrets → central `graduation-rotate/` + `GRADUATION.md`.
   - [x] K26/K09 `admin-server.py` fail-closed (no token ⇒ refuse start), `_check_auth` deny-by-default, CORS de-wildcarded.
-- [ ] **Phase 2 — kill forgery + build-store gates** — K02 delete `release-json-stub-fallback`(+copies)+invocations; K03 fix vacuous detector + fail-closed `REJECT_STUBS`; K04 mtime date; K13 `sha256(spk)==appHash`; K14 version match; K15 `MasterNftMint` case; K16 reject unsigned schema; K17 restore on-chain verify; K28 collapse build-store twins; K27 PGP residue.
+- [~] **Phase 2 — kill forgery + build-store gates** (commit pending)
+  - [x] K28 collapse `build-store`→symlink of `build-store.sh` (were byte-identical).
+  - [x] K02 delete store-side `release-json-stub-fallback`; gate `publish-app-full.sh` stub paths behind `MELUSINA_ATTEST_OFFLINE` (fail-closed).
+  - [x] K03 fix vacuous `startswith(('offline-',''))`→`'offline-'`; fail-closed reject of 1-of-1 quorum / offline-* PDA; empty authorSig now FAILs.
+  - [x] K16 reject `schemaVersion=1` offline stub fail-closed. Probe: **8 apps** correctly flagged (welcome-pearl, vintage, sheets-bureau, popaye, mlsna-admin, gitpearl, creeper, cca-sh-domain-template); ~35 on-chain pass.
+  - [x] **K13 CORRECTED** — real SPK-integrity binding is `packageId==sha256(app.spk)[:32]` (empirically **43/43 green**); flipped Step 5c WARN→FAIL (escape `MELUSINA_ALLOW_PACKAGEID_DRIFT=1`). The "34/43 appHash mismatch" was a *verifier-doc recipe error* (appHash is a pearl dir-tree hash, not raw-spk), NOT 34 corrupt apps.
+  - [x] K14 version-drift gate (RELEASE.version must match metadata.version|marketingVersion).
+  - [x] K15 `MasterNftMint` read case-insensitively in index assembly + drift check (17 apps used lowercase).
+  - [ ] K17 correct `verifier/index.html` recipe (check `packageId==sha256(spk)[:32]`; appHash via dir-tree/on-chain). **NEXT.**
+  - [ ] K04 mtime dates: resolved structurally by rejecting stubs (only stubs set signedAtUnix=mtime); real-signed apps carry real dates. Verify post-resign.
+  - [ ] K27 the 3 `author.pgp.pub` live in app submodules → handled with per-app commits in Phase 4.
 - [ ] **Phase 3 — de-dup writers + locking** — K06 one RELEASE.json writer; K07 quarantine `pearl-ceremony.sh`; K08 real `flock`; K10/K11 ship-loop gates; K12 one Squads identity; K19 non-destructive refresh; K20 single entry point; K21 additive apply.
 - [ ] **Phase 4 — per-app Stage-A (all apps)** — K05/K18/K22 commit real attestations across the 20 dirty submodules; re-sign every app (real ceremony); K01 restore popaye; K31 quarantine do-not-reintroduce + riker builds; K27 per-app PGP; K23 changelog.
 - [ ] **Phase 5 — regenerate, verify green, deploy** — build from committed; assert meta-sync matrix 43/43; no shrink vs live; then gated `make apply` (publish→gh-pages) + on-chain. Rollback armed via `publish-prev`.

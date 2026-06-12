@@ -32,6 +32,14 @@ RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/downlo
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
 
+# --- Attestation integrity gates (kill-list K03/K13/K14/K16) -----------------
+# Fail-closed by default: the store refuses to publish forged/offline-stub
+# RELEASE.json, empty/low-quorum signatures, version-vs-attestation drift, or
+# packageId drift. MELUSINA_ATTEST_OFFLINE=1 is an explicit test-only escape
+# hatch (e.g. before the real core-app-team ceremony is wired for an app).
+MELUSINA_ATTEST_OFFLINE="${MELUSINA_ATTEST_OFFLINE:-0}"
+MELUSINA_ALLOW_PACKAGEID_DRIFT="${MELUSINA_ALLOW_PACKAGEID_DRIFT:-0}"
+
 # Melusina binary update hosting
 SANDSTORM_SRC="${SANDSTORM_SRC:-../sandstorm}"
 UPDATE_OUT="$OUTPUT_DIR/update"
@@ -231,7 +239,12 @@ if d.get('$field', '').strip() == '':
       fi
       if [[ ${#empty_fields[@]} -gt 0 ]]; then
         for fld in "${empty_fields[@]}"; do
-          warn "$app_dir: on-chain RELEASE.json field '$fld' is empty — not yet Pearl-signed"
+          if [[ "$MELUSINA_ATTEST_OFFLINE" == "1" ]]; then
+            warn "$app_dir: on-chain RELEASE.json field '$fld' empty — not yet Pearl-signed (offline mode)"
+          else
+            fail "$app_dir: on-chain RELEASE.json field '$fld' is empty — must be Pearl-signed (K03/K16; set MELUSINA_ATTEST_OFFLINE=1 to bypass)"
+            ((errors++))
+          fi
         done
       fi
 
@@ -253,10 +266,40 @@ else:
       elif [[ "$quorum_ok" == "incomplete" ]]; then
         warn "$app_dir: on-chain RELEASE.json quorumPolicy incomplete"
       fi
+
+      # K03: reject 1-of-1 (stub-grade) quorum and offline-*/empty releaseEntryPda
+      # masquerading as an on-chain release. Real core-app-team releases are
+      # threshold>=2 with a real on-chain PDA.
+      if [[ "$MELUSINA_ATTEST_OFFLINE" != "1" ]]; then
+        local forged
+        forged="$(python3 -c "
+import json
+d=json.load(open('$rel_file'))
+qp=d.get('quorumPolicy',{}) or {}
+epda=str(d.get('releaseEntryPda','') or '')
+bad=[]
+if epda.startswith('offline-') or epda=='':
+    bad.append('releaseEntryPda='+(epda or 'empty'))
+try:
+    if int(qp.get('threshold',0) or 0) < 2: bad.append('threshold=%s' % qp.get('threshold'))
+except Exception:
+    bad.append('threshold=%r' % qp.get('threshold'))
+print(';'.join(bad))
+" 2>/dev/null)"
+        if [[ -n "$forged" ]]; then
+          fail "$app_dir: RELEASE.json is a forged/offline stub ($forged) — refusing (K03; set MELUSINA_ATTEST_OFFLINE=1 to bypass)"
+          ((errors++))
+        fi
+      fi
       ;;
 
     1)
-      ok "$app_dir: offline-stub RELEASE.json (schemaVersion=1, no on-chain attestation)"
+      if [[ "$MELUSINA_ATTEST_OFFLINE" == "1" ]]; then
+        warn "$app_dir: offline-stub RELEASE.json (schemaVersion=1) — allowed in test-only offline mode"
+      else
+        fail "$app_dir: offline-stub RELEASE.json (schemaVersion=1, no on-chain attestation) — refusing to publish (K16; run the real ceremony or set MELUSINA_ATTEST_OFFLINE=1)"
+        ((errors++))
+      fi
       ;;
 
     *)
@@ -264,6 +307,23 @@ else:
       ((errors++))
       ;;
   esac
+
+  # K14: the signed version must equal the published version. A RELEASE.json
+  # version that matches neither metadata.version nor marketingVersion means a
+  # stale attestation was reused for a newer package.
+  local ver_drift
+  ver_drift="$(python3 -c "
+import json
+m=json.load(open('$meta_file')); r=json.load(open('$rel_file'))
+mv=str(m.get('version','') or ''); mmv=str(m.get('marketingVersion','') or '')
+rv=str(r.get('version','') or '')
+ok = (not rv) or (rv in (mv, mmv))
+print('' if ok else 'metadata.version=%s marketingVersion=%s RELEASE.version=%s' % (mv, mmv, rv))
+" 2>/dev/null)"
+  if [[ -n "$ver_drift" ]]; then
+    fail "$app_dir: signed-vs-published version drift ($ver_drift) — stale attestation reused (K14)"
+    ((errors++))
+  fi
 
   return $errors
 }
@@ -480,7 +540,7 @@ m['attest'] = {
     'releaseHash': release.get('releaseHash', ''),
     'releaseNonce': release.get('releaseNonce', ''),
     'releaseEntryPda': release.get('releaseEntryPda', ''),
-    'MasterNftMint': release.get('MasterNftMint', ''),
+    'MasterNftMint': release.get('MasterNftMint') or release.get('masterNftMint') or '',  # K15: case-insensitive
     'licenseSquadsVault': release.get('licenseSquadsVault', ''),
     'signedAtUnix': release.get('signedAtUnix', 0),
     'authorSig': release.get('authorSig', ''),
@@ -785,7 +845,7 @@ for app in apps:
         continue
     rel_path = os.path.join(attest_root, app_id, 'RELEASE.json')
     if not os.path.isfile(rel_path):
-        if attest.get('releaseEntryPda', '').startswith(('offline-', '')):
+        if attest.get('releaseEntryPda', '').startswith('offline-'):
             continue
         mismatches.append(f'{app_id}: embedded attest is on-chain but /attest/{app_id}/RELEASE.json missing')
         continue
@@ -805,6 +865,8 @@ for app in apps:
     for k in EMBEDDED_KEYS:
         ev = attest.get(k)
         cv = canonical.get(k)
+        if k == 'MasterNftMint' and not cv:
+            cv = canonical.get('masterNftMint')  # K15: RELEASE.json may use lowercase
         # The index builder defaults missing on-chain fields to '' (see line ~473),
         # while RELEASE.json omits them entirely (None). Both mean "unset" — only a
         # genuine value-vs-value mismatch is real drift.
@@ -843,9 +905,10 @@ PY
 # the bazaar). The right fix lives upstream in spkmodule's
 # publish-to-branch helper.
 info "Asserting metadata.packageId matches sha256(app.spk)[:32] across catalog..."
-python3 - "$SCRIPT_DIR/$PACKAGES_DIR/hrbrlife" <<'PY'
+python3 - "$SCRIPT_DIR/$PACKAGES_DIR/hrbrlife" "$MELUSINA_ALLOW_PACKAGEID_DRIFT" <<'PY'
 import os, json, hashlib, sys, glob
 root = sys.argv[1]
+allow_drift = (len(sys.argv) > 2 and sys.argv[2] == '1')
 checked = 0
 mismatches = []
 for app_dir in glob.glob(f'{root}/*/*/'):
@@ -868,11 +931,14 @@ for app_dir in glob.glob(f'{root}/*/*/'):
     checked += 1
 print(f'  {checked} catalog apps checked')
 if mismatches:
-    print(f'  WARN: {len(mismatches)} apps have stale metadata.packageId (publish-to-branch-not-synced bug):', file=sys.stderr)
+    label = 'WARN' if allow_drift else 'FAIL'
+    print(f'  {label}: {len(mismatches)} apps have stale metadata.packageId (publish-to-branch-not-synced bug):', file=sys.stderr)
     for m in mismatches:
         print(f'  {m}', file=sys.stderr)
-    print(f'  Fix lives in spkmodule publish-to-branch helper (not static_store).', file=sys.stderr)
-    print(f'  Catalog still works — SPK files are renamed to metadata.packageId at /packages/<id> — but `spk verify` internal packageId differs.', file=sys.stderr)
+    print(f'  metadata.packageId must equal sha256(app.spk)[:32] (K13). Re-pack/re-stage so metadata matches the shipped SPK.', file=sys.stderr)
+    if not allow_drift:
+        print(f'  Set MELUSINA_ALLOW_PACKAGEID_DRIFT=1 to bypass (test-only).', file=sys.stderr)
+        sys.exit(1)
 else:
     print(f'  OK: 0 metadata.packageId drift')
 PY

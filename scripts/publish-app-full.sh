@@ -217,8 +217,15 @@ regen_stub_release() {
     warn "  no metadata.json at $APP_DIR — release-json-stub requires one"
     return
   fi
+  # K02: store-side release-json-stub-fallback deleted — no forged-stub fallback.
+  # Stubs are gated behind explicit MELUSINA_ATTEST_OFFLINE; build-store.sh rejects
+  # any stub that reaches the catalog (fail-closed). Prefer the real Pearl ceremony.
+  if [[ "${MELUSINA_ATTEST_OFFLINE:-0}" != "1" ]]; then
+    warn "  refusing to forge an offline-stub RELEASE.json (K02/K03): run the real Pearl"
+    warn "  ceremony (core-app-team keys), or set MELUSINA_ATTEST_OFFLINE=1 for test-only mode"
+    return
+  fi
   local stub_bin="$APP_DIR/spkmodule/bin/release-json-stub"
-  [[ -x "$stub_bin" ]] || stub_bin="$STATIC_STORE_ROOT/scripts/release-json-stub-fallback"
   if [[ ! -x "$stub_bin" ]]; then
     warn "  release-json-stub not found at $APP_DIR/spkmodule/bin/release-json-stub"
     return
@@ -239,8 +246,10 @@ if skip_step ceremony; then
   warn "  --skip ceremony — regenerating offline-stub RELEASE.json (so it matches the new SPK hash)"
   regen_stub_release
 elif [[ ! -f "$APP_DIR/spkmodule/mk/pearl.mk" ]]; then
-  warn "  no spkmodule/mk/pearl.mk — running release-json-stub instead"
-  if [[ -f "$APP_DIR/app.spk" ]]; then
+  if [[ "${MELUSINA_ATTEST_OFFLINE:-0}" != "1" ]]; then
+    warn "  no spkmodule/mk/pearl.mk — refusing to forge a stub (K02/K03); set MELUSINA_ATTEST_OFFLINE=1 for test-only mode"
+  elif [[ -f "$APP_DIR/app.spk" ]]; then
+    warn "  MELUSINA_ATTEST_OFFLINE=1 — running release-json-stub (test-only)"
     # Read marketingVersion from metadata.json without shell-interpolating the
     # path (avoid quoting bugs / injection from APP_DIR).
     VER="$(APP_DIR="$APP_DIR" python3 -c '

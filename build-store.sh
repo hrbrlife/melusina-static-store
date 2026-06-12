@@ -118,9 +118,16 @@ else
     if git -C "$sm_path" fetch --depth 1 origin "$sm_branch" 2>/dev/null; then
       new_sha="$(git -C "$sm_path" rev-parse --short FETCH_HEAD 2>/dev/null)"
       if [[ "$old_sha" != "$new_sha" ]]; then
-        git -C "$sm_path" checkout FETCH_HEAD 2>/dev/null
-        ok "$sm_name: $old_sha → $new_sha"
-        ((UPDATED_SUBS++)) || true
+        # K19: never discard local commits not yet on origin. Only fast-forward
+        # when HEAD is an ancestor of FETCH_HEAD; otherwise keep local state so an
+        # unpushed real re-sign (e.g. a fresh ceremony) survives a refresh.
+        if git -C "$sm_path" merge-base --is-ancestor HEAD FETCH_HEAD 2>/dev/null; then
+          git -C "$sm_path" checkout FETCH_HEAD 2>/dev/null
+          ok "$sm_name: $old_sha → $new_sha"
+          ((UPDATED_SUBS++)) || true
+        else
+          warn "$sm_name: local commits ahead of origin/$sm_branch — keeping $old_sha (K19; not discarding unpushed work)"
+        fi
       else
         ok "$sm_name: up to date ($old_sha)"
       fi

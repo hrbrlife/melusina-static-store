@@ -15,9 +15,13 @@ for sm_path in $SM_PATHS; do
     if git -C "$sm_path" fetch --depth 1 origin "$sm_branch" 2>/dev/null; then
         new=$(git -C "$sm_path" rev-parse --short FETCH_HEAD)
         if [ "$old" != "$new" ]; then
-            git -C "$sm_path" checkout FETCH_HEAD 2>/dev/null
-            echo "  ✓ $sm_name: $old → $new"
-            UPDATED=$((UPDATED+1))
+            if git -C "$sm_path" merge-base --is-ancestor HEAD FETCH_HEAD 2>/dev/null; then
+                git -C "$sm_path" checkout FETCH_HEAD 2>/dev/null
+                echo "  ✓ $sm_name: $old → $new"
+                UPDATED=$((UPDATED+1))
+            else
+                echo "  ⚠ $sm_name: local commits ahead — keeping $old (K19; not discarding unpushed work)"
+            fi
         else
             echo "  ✓ $sm_name: up to date ($old)"
         fi

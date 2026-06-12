@@ -10,11 +10,6 @@
 	path = packages/hrbrlife/MELUSINA_BOTMOTHER
 	url = https://github.com/hrbrlife/MELUSINA_BOTMOTHER.git
 	branch = publish
-[submodule "packages/hrbrlife/Melusina"]
-	path = packages/hrbrlife/Melusina
-	url = https://github.com/hrbrlife/Melusina.git
-	branch = pbay-app
-	fetchRecurseSubmodules = false
 [submodule "packages/hrbrlife/melusina-galactic-council"]
 	path = packages/hrbrlife/melusina-galactic-council
 	url = https://github.com/hrbrlife/melusina-galactic-council.git

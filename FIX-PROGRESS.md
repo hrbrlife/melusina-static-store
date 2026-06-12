@@ -67,7 +67,11 @@ Flow: **app repo (committed) → SPK → RELEASE.json → catalog index → publ
   - [ ] K06 one RELEASE.json writer; K07 quarantine `pearl-ceremony.sh`; K10/K11 ship-loop gates; K12 one Squads identity; K19 non-destructive refresh; K20 single entry point; K21 additive apply.
 - [ ] **Phase 4 — per-app Stage-A (all apps)** — K05/K18/K22 commit real attestations across the 20 dirty submodules; re-sign every app (real ceremony); K01 restore popaye; K31 quarantine do-not-reintroduce + riker builds; K27 per-app PGP; K23 changelog.
   - **Signing path VALIDATED (2026-06-12):** `melusina-pearl-tool` works; core-app-team **2-of-4** multisig `4sPNmdcSz…` on devnet (note: 2-of-4, not 3-of-4 as some docs said — my gate's `threshold>=2` matches); `verify-release` passes end-to-end via the **Helius RPC** (public `api.devnet.solana.com` times out on getAccountInfo). RPC wired into gitignored `.publish.env` → sourced by `pearl-app-ceremony.sh`. 8 stub apps to re-sign: welcome-pearl, vintage, sheets-bureau, popaye, mlsna-admin, gitpearl, creeper, cca-sh-domain-template. Ceremony advances a shared multisig transactionIndex ⇒ **serial, not parallel**.
-- [ ] **Phase 5 — regenerate, verify green, deploy** — build from committed; assert meta-sync matrix 43/43; no shrink vs live; then gated `make apply` (publish→gh-pages) + on-chain. Rollback armed via `publish-prev`.
+- [~] **Phase 5 — regenerate, verify green, deploy**
+  - [x] **Regenerate from committed PROVEN GREEN**: `build-store.sh --no-refresh` → **43 apps, 43 valid, 0 errors**; 0 forged/stub attest, 0 packageId drift, attest matches index across all 43, all MasterNftMint present, all updatedAt real. The "store regenerates by pulling all committed" half of the goal is proven.
+  - Meta-sync perfect for signatures/versions/dates/hashes/mint. **App-content gaps** (not pipeline bugs): 16/43 lack `capabilities.json` (Grapple axis), 36/43 lack screenshots — app-team authored.
+  - [ ] **Gated outward steps** (need owner go-ahead): merge branch→main, push ~20 app-repo re-sign commits to origin/publish, `make apply` (publish→gh-pages CDN force-push). Rollback armed via `publish-prev`.
+- **All 43 apps re-attested** (real on-chain, verify-release passes): the 8 stubs + namedcoin (K05) + 14 K22 submodules + 8 gate-caught (5 fresh-signed, 3 aligned to on-chain-true v0.1.0).
 - [ ] **Phase 6 — docs + hygiene** — K29 admin-store partition; K30 doc reconciliation; K32 gh-pages skew; K33 worktrees/stashes; K34 update-channel; K35 runtime-authz separate bucket.
 
 ## Notes / open confirmations

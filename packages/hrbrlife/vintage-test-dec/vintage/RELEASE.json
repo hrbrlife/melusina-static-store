@@ -1,11 +1,17 @@
 {
-  "schemaVersion": 1,
-  "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
-  "appName": "Vintage Remote Desktop",
-  "appHash": "a37f47180828d8ae6b00d1d3a08cb4806dcb4f019a9e00d6b7a10e7b5a56ea88",
-  "packageId": "a37f47180828d8ae6b00d1d3a08cb480",
-  "marketingVersion": "1.2.1",
-  "versionNumber": 15,
-  "mode": "offline",
-  "signedAtUnix": 1778880636
+  "$schema": "melusina-release-v1",
+  "appHash": "18f8650332c2393bdcec3dc03b176b811c92f8005c01dbdad9d2fa4ef836b897",
+  "releaseHash": "89431f62ea287c0a8c7aa53982649832a5ef36a233cf898911d6802171489131",
+  "version": "1.2.1",
+  "signedAtUnix": 1781266374,
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+  "releaseEntryPda": "A1v4sCEm8ty5hcoDCE7PuMMnyv1yNemjG3DSXisAhnRB",
+  "authorSig": "An3tXa8cxxJHbmgUZKgNEkVo0lUhw4+es0cfKINs7QC2xzG0b5Ht4ibRoiPdNU2kJZP9WMuubydWQ3lfrmYVBw==",
+  "quorumPolicy": {
+    "threshold": 3,
+    "memberCount": 4,
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+  },
+  "releaseNonce": "fedd15876be8129a244fc53526e0cdfd"
 }

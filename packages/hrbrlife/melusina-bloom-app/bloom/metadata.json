@@ -1,7 +1,7 @@
 {
   "appId": "qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h",
   "name": "BLOOM Identity",
-  "version": "1.0.2-kb6",
+  "version": "0.1.0",
   "versionNumber": 2,
   "packageId": "ae845c01db1bfe065c313b0307ee165a",
   "shortDescription": "KYC Identity Verification",
@@ -21,6 +21,6 @@
     "twitterUsername": "",
     "picture": ""
   },
-  "marketingVersion": "1.0.2-kb6",
+  "marketingVersion": "0.1.0",
   "sha256": "ae845c01db1bfe065c313b0307ee165ab92f801abb6e2e7c1388751f167635c8"
 }

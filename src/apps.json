@@ -3497,11 +3497,11 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "cfd862b9b7885f0ae88d8bf549c192c0",
+      "packageId": "ec0d9d8eacf2bc1d9885f59d1ccbdee8",
       "name": "MiniGit",
-      "version": "0.2.4",
-      "versionNumber": 10,
-      "marketingVersion": "0.2.4",
+      "version": "0.2.5",
+      "versionNumber": 11,
+      "marketingVersion": "0.2.5",
       "shortDescription": "Lightweight private Git hosting on Melusina \u2014 one repo per pearl, browse and push from your browser, AI-callable.",
       "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** \u2014 each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** \u2014 clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** \u2014 the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **No external database** \u2014 go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability \u2014 its \"Skills\" \u2014 so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** \u2014 full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface \u2014 all available now.\n",
       "categories": [
@@ -3580,18 +3580,19 @@
           "verbPhrase": "can clone and fetch only"
         }
       ],
+      "sha256": "ec0d9d8eacf2bc1d9885f59d1ccbdee899b38b8fec604f5e83f53f12ea26517e",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1781266151000,
+      "updatedAt": 1781296561000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "05570aa822e8cea59311e3d230875c3c206ab405eb2a41e30a91f445bb5d966a",
-        "releaseHash": "1b4b696c53a5291695c183af7dcbca7282ac3532a817a247af30bdc35d15821d",
-        "releaseNonce": "604be2f7ec77edea3d73b99e1808b9c7",
-        "releaseEntryPda": "Cd3MQ8ej38uRgb8gCH3jh7UEBWBMts5xtTo8UdjH3bfw",
+        "appHash": "e20ee63e20e0603fa77dcc54df14d20d81e42dc46362af51819ce5ef47f3c54c",
+        "releaseHash": "20e7762551789f336ac84c1faee8a93d431dd8df574f53974cd9d36c0153dd5a",
+        "releaseNonce": "2fadc180bf597d056e719ab96935cda2",
+        "releaseEntryPda": "AhHCjDeaM9pckF7F9kvkpXP6dd4m2H1QCvBVAeNwaeJG",
         "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781266151,
-        "authorSig": "aLzqEvDpIicnqQwhYCoYNxdfYwwHNTyr8BSCRs4+rPOnSpWzcerRfjPImRz5ctM4s/wmQwSEenCBHWj4xNrkAQ==",
+        "signedAtUnix": 1781296561,
+        "authorSig": "SFgLXXPGHk7wtJmRk2rcF3a6SNUV70gz/sADsoYZulbv7RBRhsM4jPCiOQ5aHpALn4IEeet4tujljFVHWDqmDg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

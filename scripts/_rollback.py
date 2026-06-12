@@ -17,6 +17,7 @@ Rollback history:
 
 import argparse
 import configparser
+import fcntl
 import json
 import os
 import subprocess
@@ -268,10 +269,18 @@ def rollback_full_catalog(operator: str = "admin") -> dict:
     run(["git", "fetch", REMOTE, "refs/tags/" + PUBLISH_PREV_TAG], cwd=REPO_ROOT, check=False)
 
     timestamp = datetime.now(timezone.utc).isoformat()
-    result = run(
-        ["git", "push", "--force", REMOTE, f"{PUBLISH_PREV_TAG}:{PUBLISH_BRANCH}"],
-        cwd=REPO_ROOT, check=False
-    )
+    # K08: hold the publish lock across the rollback force-push so it cannot race a
+    # concurrent `make apply` (which holds the same .publish.lock flock).
+    _lockf = open(REPO_ROOT / ".publish.lock", "w")
+    fcntl.flock(_lockf, fcntl.LOCK_EX)
+    try:
+        result = run(
+            ["git", "push", "--force", REMOTE, f"{PUBLISH_PREV_TAG}:{PUBLISH_BRANCH}"],
+            cwd=REPO_ROOT, check=False
+        )
+    finally:
+        fcntl.flock(_lockf, fcntl.LOCK_UN)
+        _lockf.close()
 
     if result.returncode != 0:
         return {

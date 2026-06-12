@@ -225,6 +225,12 @@ plan: preflight
 #   - staging tree fingerprint has changed (someone touched $(PLAN_STAGING))
 # Cleans up $(PLAN_DIR) on success so the next call requires a fresh plan.
 apply:
+	@echo "=== apply: acquiring exclusive publish lock (.publish.lock, K08) ==="
+	@flock -w 600 "$(CURDIR)/.publish.lock" $(MAKE) --no-print-directory apply-locked
+
+# Real apply body — only ever entered while holding the .publish.lock flock so it
+# cannot race another make apply / rollback / sync on the same host.
+apply-locked:
 	@test -f "$(PLAN_MARKER)" || { \
 	  echo "✗ apply aborted: no plan marker at $(PLAN_MARKER)"; \
 	  echo "  Run 'make plan' first."; \

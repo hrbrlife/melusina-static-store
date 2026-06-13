@@ -1,0 +1,9 @@
+{
+  "_doc": "Canonical store_domain_hash = sha256(ascii_lower(strip_one_trailing_dot(host))). Contract C-5 / spec S8. These vectors MUST match across Rust (license-registry), Go (store sidecar), and JS (shell witness). The melusina-os.org vector is the program-pinned ROOT_STORE_DOMAIN_HASH (C1).",
+  "vectors": [
+    {"host": "melusina-os.org",   "hash_hex": "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7", "note": "pinned ROOT_STORE_DOMAIN_HASH"},
+    {"host": "Melusina-OS.org",   "hash_hex": "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7", "note": "case-insensitive"},
+    {"host": "melusina-os.org.",  "hash_hex": "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7", "note": "strips one trailing dot"},
+    {"host": "store.example.org", "hash_hex": "62394de22847f0540cad4c6bdcf1f21280616a53c955baff8f3e9ad4d097097a", "note": "distinct reseller domain"}
+  ]
+}

@@ -1,6 +1,7 @@
 # Federated Store MVP — Progress & Audit Ledger
 
 > STATE for the `/loop` (cron `b4040345`, every 20m). Each fire: read this, advance the next unblocked task, run builds/tests, update this file. Spec = `FEDERATED-STORE-MVP.md`.
+> # ✅ DONE 2026-06-13 — two consecutive OK end-to-end audits (1/2 wf_7cf91641-104, 2/2 wf_6bfd3f35-678). Cron b4040345 deleted.
 > **DONE = two CONSECUTIVE OK audits** (see §Audit ledger). When reached → `CronDelete b4040345` + report.
 
 ## Operating mode
@@ -73,11 +74,12 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 - env: meteor bin present but full build too heavy; lint(eslint)+typecheck(tsc) usable; tsc fails only on @types/node esnext.disposable (pre-existing, identical on HEAD). DETACHED-HEAD +1 WIP left untouched.
 
 ## Audit ledger
-**Consecutive OK count: 1 / 2.** (any non-OK resets to 0)
+**Consecutive OK count: 2 / 2 — ✅ DONE.**
 
 | # | Date | Builds | Critical/High findings | Verdict |
 |---|---|---|---|---|
 | 1 | 2026-06-13 | all 4 repos green | 0 | **OK** (wf_7cf91641-104; 4 dims OK, store↔shell in-tune, deploy-time items fail-closed) |
+| 2 | 2026-06-13 | all 4 repos green (re-run incl -race) | 0 | **OK** (wf_6bfd3f35-678; exploit-focused, 8 attacks all blocked, independent re-derivation) |
 
 ## Frozen cross-component contracts (from recipe workflow wf_7d011aea-017)
 Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.txt`. Key bindings ALL components must match:
@@ -112,3 +114,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13 (RECOVERY): session suspended ~13:51→18:49 (5h); the two in-flight workflows (C5-gov-tier, C2.6) DIED without completing/notifying. Recovered: **C2.6 ✅** had committed (e3b64855 + 0e37aea2), builds+tests pass. **C5.3 ✅** work survived UNCOMMITTED in shell tree — verified (node tests pass, eslint 0 errors) + committed (8f6e411). C5.1 (governance UI, non-trust-critical) was never done → re-launching. Per-component reviews for C2.6/C5.3 died → folding into the end-to-end audit. Audit 0/2.
 - 2026-06-13 (C5.1 ✅): wf_15f8a1fe-116 review OK; commit a1e4747. **ALL C1–C5 boxes done.** Implementation complete modulo documented deploy-time items (C2.5 boot-identity ceremony, C1.6 reseller AppTierPolicy, FU-1..FU-4). → Launching FIRST end-to-end audit (§7). Audit 0/2.
 - 2026-06-13 (AUDIT 1/2 ✅): first end-to-end audit wf_7cf91641-104 → **OVERALL OK**. 4 dims OK, 0 critical/high (41 info), builds_all_green, all 5 §7 criteria PASS, lockstep re-derived first-hand (domain-hash 0595e1c4..d4d7 Rust==Go==JS), S1-S8 closed on BOTH daemon+shell install sides. Launching 2nd INDEPENDENT audit (exploit-focused lens). If OK → 2/2 → CronDelete b4040345 + DONE.
+- 2026-06-13 (AUDIT 2/2 ✅ → **DONE**): second independent exploit-focused audit wf_6bfd3f35-678 → OVERALL OK. 8 exploit scenarios all blocked, 0 critical/high, builds re-run green (Rust 76/76, Go -race sidecar+authzsign+submit, shell node tests), store↔shell in-tune re-derived. TWO CONSECUTIVE OK → goal met. CronDelete b4040345. Implementation complete on all 4 branches; deploy-time items (IDL regen, on-chain ceremonies, FU-2 cert pin, FU-4) handed off (guardrail: no push/deploy/RPC-write).

@@ -79,4 +79,5 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 ## Log
 - 2026-06-13: loop armed (cron b4040345); spec + ledger written; static_store branch created; grounding workflow launched.
 - 2026-06-13: recipes + frozen contracts received (wf_7d011aea-017); C1 scope finalized (version-floor→off-chain, AppTierPolicy deferred); C1 implementation workflow launched (wf_95d744d9-564).
-- 2026-06-13: C2 READ surface scaffolded in parallel (sidecar/melusina-store-sidecar/: main/config/handler.go, go.mod, store.yaml.example, README) — go build/vet/fmt green, smoke-tested (read 200s, /publish fail-closed 501, no bypass). Committed on feat/federated-store-mvp. Gated path blocked on C1.
+- 2026-06-13: C2 READ surface scaffolded in parallel (sidecar/melusina-store-sidecar/: main/config/handler.go, go.mod, store.yaml.example, README) — go build/vet/fmt green, smoke-tested (read 200s, /publish fail-closed 501, no bypass). Committed f6b460a9 on feat/federated-store-mvp. Gated path blocked on C1.
+- 2026-06-13: pinned contract C-5 — `StoreDomainHash` (domainhash.go) + shared testdata/domain_hash_vectors.json (Rust/Go/JS must match; S8). ROOT_STORE_DOMAIN_HASH("melusina-os.org")=0595e1c4..d4d7. go test green. Committed c44e59da. Remaining work (C2.3 gated path, C3, C4, C5) blocked on C1 → yielding to let wf_95d744d9-564 land.

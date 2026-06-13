@@ -20,14 +20,18 @@ import (
 // Each Fetch* is keyed by the address the gate derives, so a test can pin the
 // exact on-chain answer (or error) per PDA.
 type mockChainReader struct {
-	releaseEntry map[string]mockReleaseEntry
-	storeAuthz   map[string]mockStoreAuthz
-	blacklist    map[string]mockBlacklist
+	releaseEntry   map[string]mockReleaseEntry
+	storeAuthz     map[string]mockStoreAuthz
+	blacklist      map[string]mockBlacklist
+	installerEntry map[string]mockInstallerEntry
+	foundationApp  map[string]mockFoundationApp
 
 	// global error injection: if set, the named Fetch returns this error.
-	releaseErr   error
-	authzErr     error
-	blacklistErr error
+	releaseErr    error
+	authzErr      error
+	blacklistErr  error
+	installerErr  error
+	foundationErr error
 }
 
 type mockReleaseEntry struct {
@@ -51,11 +55,26 @@ type mockBlacklist struct {
 	err       error
 }
 
+type mockInstallerEntry struct {
+	installerHash [32]byte
+	status        verify.AttestationStatus
+	err           error
+}
+
+type mockFoundationApp struct {
+	appID  [32]byte
+	tier   uint8
+	status verify.ApprovalStatus
+	err    error
+}
+
 func newMockChainReader() *mockChainReader {
 	return &mockChainReader{
-		releaseEntry: map[string]mockReleaseEntry{},
-		storeAuthz:   map[string]mockStoreAuthz{},
-		blacklist:    map[string]mockBlacklist{},
+		releaseEntry:   map[string]mockReleaseEntry{},
+		storeAuthz:     map[string]mockStoreAuthz{},
+		blacklist:      map[string]mockBlacklist{},
+		installerEntry: map[string]mockInstallerEntry{},
+		foundationApp:  map[string]mockFoundationApp{},
 	}
 }
 
@@ -99,6 +118,34 @@ func (m *mockChainReader) FetchBlacklistEntry(_ context.Context, addr string) (b
 		return false, 0, b.err
 	}
 	return b.present, b.entryType, nil
+}
+
+func (m *mockChainReader) FetchInstallerReleaseEntry(_ context.Context, addr string) ([32]byte, verify.AttestationStatus, error) {
+	if m.installerErr != nil {
+		return [32]byte{}, 0, m.installerErr
+	}
+	e, ok := m.installerEntry[addr]
+	if !ok {
+		return [32]byte{}, 0, verify.ErrPDANotFound
+	}
+	if e.err != nil {
+		return [32]byte{}, 0, e.err
+	}
+	return e.installerHash, e.status, nil
+}
+
+func (m *mockChainReader) FetchFoundationAppEntry(_ context.Context, addr string) ([32]byte, uint8, verify.ApprovalStatus, error) {
+	if m.foundationErr != nil {
+		return [32]byte{}, 0, 0, m.foundationErr
+	}
+	e, ok := m.foundationApp[addr]
+	if !ok {
+		return [32]byte{}, 0, 0, verify.ErrPDANotFound
+	}
+	if e.err != nil {
+		return [32]byte{}, 0, 0, e.err
+	}
+	return e.appID, e.tier, e.status, nil
 }
 
 // ── identity + fixture builders ───────────────────────────────────────────

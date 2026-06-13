@@ -70,9 +70,33 @@ func main() {
 	// is exercised end-to-end by the handler tests with an injected identity.
 	var operator *identity.Private
 
+	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
+	// mirror.enabled is set in config AND a chain reader is wired (the worker
+	// re-verifies on-chain pins every cycle). The worker itself self-disables if
+	// the on-chain StoreOperatorAuthorization for this store reports is_root —
+	// the root originates the installer + basic apps; it never mirrors. nil here
+	// means /root/ is simply not mounted.
+	var mirror *rootMirror
+	if cfg.Mirror.Enabled {
+		if cr == nil {
+			log.Fatalf("mirror: mirror.enabled requires rpc_url (the worker re-verifies on-chain pins each cycle)")
+		}
+		mirror, err = newRootMirror(cfg, cr, nil, log.Printf)
+		if err != nil {
+			log.Fatalf("mirror: %v", err)
+		}
+	}
+
+	ctxRoot, cancelRoot := context.WithCancel(context.Background())
+	defer cancelRoot()
+	if mirror != nil {
+		go mirror.Run(ctxRoot)
+		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newRouter(cfg, operator, cr),
+		Handler:           newRouter(cfg, operator, cr, mirror),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -81,6 +105,7 @@ func main() {
 		sigc := make(chan os.Signal, 1)
 		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 		<-sigc
+		cancelRoot()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {

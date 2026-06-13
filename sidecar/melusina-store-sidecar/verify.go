@@ -33,6 +33,13 @@ type chainReader interface {
 	FetchReleaseEntry(ctx context.Context, addrB58 string) (appHash [32]byte, status verify.AttestationStatus, err error)
 	FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (status verify.AuthorizationStatus, storeAuthority verify.Pubkey, allowedTierMask uint8, isRoot bool, storeDomainHash [32]byte, err error)
 	FetchBlacklistEntry(ctx context.Context, addrB58 string) (present bool, entryType verify.BlacklistType, err error)
+	// FetchInstallerReleaseEntry + FetchFoundationAppEntry are the reseller
+	// ROOT-MIRROR worker's re-verification reads (FEDERATED-STORE-MVP §C2.6): the
+	// base installer's InstallerReleaseEntry must be Active and each basic app's
+	// FoundationAppEntry must be Active with the advertised tier before the
+	// reseller re-serves the root's mirrored bytes.
+	FetchInstallerReleaseEntry(ctx context.Context, addrB58 string) (installerHash [32]byte, status verify.AttestationStatus, err error)
+	FetchFoundationAppEntry(ctx context.Context, addrB58 string) (appID [32]byte, tier uint8, status verify.ApprovalStatus, err error)
 }
 
 // compile-time assertion: the production client satisfies the interface.

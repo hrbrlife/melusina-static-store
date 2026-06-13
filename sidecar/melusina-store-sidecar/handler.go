@@ -67,7 +67,11 @@ type publishRequest struct {
 // *verify.RPCClient in production, a mock in tests). Either may be nil only when
 // the gated path is not exercised (e.g. the READ-only smoke in main before boot
 // identity is wired) — in that case /publish fails closed with 503.
-func newRouter(cfg Config, operator *identity.Private, cr chainReader) http.Handler {
+//
+// mirror is the reseller ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6) or nil.
+// When non-nil, its verified snapshot is served under /root/ (X-Store-Origin:
+// root). The root operator passes nil (it originates, never mirrors).
+func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror) http.Handler {
 	mux := http.NewServeMux()
 
 	svc := &publishService{
@@ -89,6 +93,15 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader) http.Hand
 	})
 
 	mux.HandleFunc("/publish", svc.handlePublish)
+
+	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
+	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
+	// verifies. Registered BEFORE the catch-all FileServer so /root/* never falls
+	// through to the local dist tree. nil on a root operator (it does not mirror).
+	if mirror != nil {
+		mux.Handle("/root/", mirror.rootHandler())
+		log.Printf("reseller root-mirror: serving verified root snapshot under /root/ (X-Store-Origin: root)")
+	}
 
 	// READ surface — serve the existing build output byte-identically.
 	// No added cache headers (matches static hosting behavior).

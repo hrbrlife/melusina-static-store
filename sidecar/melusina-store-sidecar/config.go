@@ -47,6 +47,38 @@ type Config struct {
 	// the Go verify (VerifyPublish) is the gate. Defaults to ".".
 	CatalogRepoRoot string    `json:"catalog_repo_root"`
 	TLS             TLSConfig `json:"tls"`
+
+	// Mirror is the reseller-only ROOT-MIRROR worker config (FEDERATED-STORE-MVP
+	// §C2.6). A reseller sidecar serves the base Melusina installer + basic
+	// (Foundation) apps by MIRRORING melusina-os.org (the root) — it NEVER
+	// originates them. The root operator (StoreOperatorAuthorization.is_root) does
+	// NOT mirror; the worker self-disables when the on-chain authz says is_root.
+	Mirror MirrorConfig `json:"mirror"`
+}
+
+// MirrorConfig parameterizes the reseller ROOT-MIRROR worker (§C2.6). All fields
+// are reseller-only: the worker is a no-op on a root operator.
+type MirrorConfig struct {
+	// Enabled turns the worker on. A reseller config sets this true; the root
+	// leaves it false. Even when true, the worker self-disables if the on-chain
+	// StoreOperatorAuthorization for this store reports is_root.
+	Enabled bool `json:"enabled"`
+	// RootOperatorPubkey is the base58 Ed25519 pubkey of the ROOT operator's
+	// trust-bundle signing identity. The worker verifies the root's
+	// /.well-known/melusina/trust-bundle.json signature against THIS key; a
+	// bundle that does not verify is rejected (fail-closed). Required when Enabled.
+	RootOperatorPubkey string `json:"root_operator_pubkey"`
+	// RootMasterNftMint is the base58 Master NFT mint the root's InstallerRelease
+	// PDA is derived under (seeds ["installer_release", master_nft_mint,
+	// installer_hash]). Required when Enabled.
+	RootMasterNftMint string `json:"root_master_nft_mint"`
+	// BaseInstallerHash is the lowercase-hex sha256 of the base Melusina installer
+	// binary the root pins. The worker re-derives InstallerReleaseEntry from
+	// RootMasterNftMint + this hash and asserts it is Active before re-serving the
+	// base binary. Required when Enabled.
+	BaseInstallerHash string `json:"base_installer_hash"`
+	// IntervalSeconds is the mirror poll cadence. <=0 falls back to 300s (5 min).
+	IntervalSeconds int `json:"interval_seconds"`
 }
 
 func defaultConfig() Config {

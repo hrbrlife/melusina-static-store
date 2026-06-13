@@ -44,22 +44,23 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 - ⏳ FU-2 `tls_cert_fingerprint` is currently populated from a carrier account's pubkey bytes (the frozen authorize param list omitted it). Fix: pass it as a `[u8;32]` instruction arg + add `update_store_tls` (S8) so the operator's real cert SPKI binds on-chain. Needed before C4/C5 TLS pinning (S2/S8).
 - ⏳ FU-3 no `permission_bit_coherence_test` file exists (only referenced in comments); bit 55/capnp mirrored manually — wire a real coherence test if/when the harness is added.
 
-### C2 — Store sidecar (Phase-1 spine) — 🔄 read surface LANDED (sidecar/melusina-store-sidecar/, branch feat/federated-store-mvp)
-- 🔄 C2.1 module skeleton + JSON config loader + go.mod (stdlib) — builds; `derive.DeriveSidecar` identity pending dep-wiring post-C1
-- ✅ C2.2 READ surface byte-identical — `http.FileServer(dist-publish)`; smoke: /healthz 200, /apps/index.json 200, /index.html 301→/, POST /publish 501 (handler.go)
-- 🔄 C2.3 gated POST /publish + REAL Go on-chain verify + single writer — wf_b6b56d74-79c (UNBLOCKED: C1+C1b done; deps wired via ../../../Melusina/shared replaces)
-- 🔄 C2.4 store-signed provenance receipt (raw-96 C-2) — part of wf_b6b56d74-79c
-- 🔄 C2.5 bypasses compiled out (MELUSINA_ATTEST_OFFLINE/SKIP_STEPS/SCAN_NOOP → reject; verified); boot identity/TLS check pending post-C1
+### C2 — Store sidecar — ✅ gated path DONE (commit a2fb31a9; review OK, fail-closed audit YES)
+- ✅ C2.1 module + config (+CatalogRepoRoot) + go.mod wired to 3 shared libs (offline-resolved; go.sum = x/crypto + edwards25519)
+- ✅ C2.2 READ surface byte-identical (handler.go)
+- ✅ C2.3 gated /publish: `VerifyPublish` steps a–d (re-hash==app_hash Active → StoreOperatorAuthz Active+authority+tier → blacklist deny), `envelope.Verify(KindArtifact)`+nonce, single-writer mutex; `go test -race` green w/ full accept/reject matrix (verify.go/handler.go)
+- ✅ C2.4 provenance receipt — `SignReceipt` over raw-96 `appHash||releaseHash||servingDomainHash` (C-2); test asserts exact-96 signing (provenance.go)
+- 🔄 C2.5 bypasses compiled out ✅ (offline/skip/scan-noop→400). BOOT IDENTITY pending → operator key nil → /publish 503 fail-closed (derive.DeriveSidecar + domain/TLS assert TODO; needs FU-2 tls fingerprint)
 - ⬜ C2.6 reseller root-mirror worker
-- ✅ C2.7 go build / go vet / gofmt green (read-surface scaffold)
+- ✅ C2.7 go build/vet/test green
+- 📌 follow-ups: blacklist target = App(masterMint)+License(licenseMint) only (Author/app_hash-keyed not checked — refine w/ app_id record); FoundationApp tier reader not wired (VerifyPublish takes mask, handler passes 0) — wire when app_id-keyed tier reader lands.
 
-### C3 — Submit-client
-- ⬜ C3.1 `make publish <storeurl>` → sealed-v3 submit; force-push deleted
+### C3 — Submit-client — 🔄 wf launched (static_store)
+- 🔄 C3.1 `make publish <storeurl>` → `envelope.Sign(KindArtifact)` sealed-v3 POST to /publish; verify returned receipt sig vs on-chain store_authority; force-push step deleted
 
-### C4 — authzsign daemon
-- ⬜ C4.1 cascade.go 4th store-stage from store-signed receipt
-- ⬜ C4.2 blacklist read + version floor + root-class + cached root fast-path
-- ⬜ C4.3 go build/test green
+### C4 — authzsign daemon — 🔄 wf launched (melusina-authzsign-component, branch feat/cascade-store-stage; SELF-CONTAINED, own pda/borsh)
+- 🔄 C4.1 cascade.go 4th store-stage: on-chain listing-chain verify (servingStore∈accepted_stores ∪ root; StoreReleaseListing[store,appHash] Active; ReleaseEntry Active) from the 96-byte receipt (appHash+servingDomainHash). Trustless via chain reads, NOT shell-asserted (closes S2).
+- 🔄 C4.2 borsh: decode LicenseEntry.accepted_stores+root_store_domain_hash (before bump) + StoreOperatorAuthz/StoreReleaseListing/BlacklistEntry; pda.go derivers; Context length-discrimination (32 OR ≥128, slice [0:32]/[32:128]) — LOCKSTEP w/ C5
+- 🔄 C4.3 blacklist deny + fail-closed on RPC err + cached root fast-path (D3); go build/test green
 
 ### C5 — Shell
 - ⬜ C5.1 accepted_stores governance UI (Squads proposal)
@@ -85,7 +86,7 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - **SHOWSTOPPER (mismatch #1):** daemon `Context` must be length-discriminated: 32 bytes (appHash only) OR ≥128 (appHash + 96-byte receipt). C4+C5 must ship this wire change in LOCKSTEP (HashRequest signs full Context).
 
 ## Next action (updated each fire)
-**→ C1 ✅ + C1b ✅. C2.3 gated /publish IN FLIGHT (wf_b6b56d74-79c).** On C2.3 review-OK → launch C4 (cascade store-stage; also add the `LicenseEntry.accepted_stores` reader) & C5 in lockstep on the 128-byte Context, plus C3 submit-client. Remaining sequence:
+**→ C1 ✅ · C1b ✅ · C2 gated path ✅. C3 + C4 IN FLIGHT in parallel** (static_store + authzsign — independent repos, no shared build path). On their review-OK → **C5** (shell) in lockstep with C4's 128-byte Context, then **C2.5 boot identity** (+FU-2 tls) and **C2.6 root-mirror**, then the first end-to-end audit. Remaining sequence:
 1. **C2.3 gated /publish** — add melusina-attest/identity-gate/primitives local replaces to sidecar go.mod (paths resolved: shared/melusina-attest, shared/melusina-identity-gate, shared/melusina-solana-primitives — all in the Melusina monorepo). Real Go on-chain verify: `pda.Release`→`verify.FetchReleaseEntry` (re-hash SPK==app_hash, Active), `pda.StoreOperatorAuthorization`→`FetchStoreOperatorAuthz` (Active, store_authority, tier covers), blacklist check; `envelope.Verify(KindArtifact)`; then `build-store.sh` single-writer; sign provenance receipt (C-2: raw-96 `appHash||releaseHash||servingDomainHash`).
 2. **C3 submit-client** — `make publish <storeurl>` → `envelope.Sign(KindArtifact,...)` sealed-v3 POST replacing publish-app-full.sh force-push.
 3. **C4 + C5 in LOCKSTEP** — Context length-discrimination (mismatch #1: 32B appHash OR ≥128B appHash+receipt); cascade store-stage + accepted_stores decode + blacklist + tier gate (C5 server-side).
@@ -99,3 +100,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13 (cron fire): C1 workflow still in implement phase (~12min, anchor build). Corrected StoreOperatorAuthorization LEN 224->193 in spec+ledger (implementer caught the slip). Added sidecar LoadConfig tests (go test green). Program repo left untouched (active single writer). Audit count 0/2.
 - 2026-06-13 (cron fire): **C1 ✅** — wf_95d744d9-564 review verdict **OK, 0 findings**; commit 918921e; cargo build-sbf + `anchor build --no-idl` + 76/76 lib tests GREEN; contract-conformant (is_root gate, listing guard, accepted_stores-before-bump, PERM bit55). Follow-ups FU-1 (IDL regen=env), FU-2 (tls_cert_fingerprint→instr arg + update_store_tls, S8), FU-3 (coherence test). Launched C1b shared Go derivers/readers (wf_ecc26307-65e) to unblock C2.3+C4; scouted real melusina-attest API. End-to-end audit count unchanged **0/2** (a per-component review is NOT one of the two final end-to-end audits).
 - 2026-06-13 (C1b completion): **C1b ✅** — wf_ecc26307-65e review OK; commit d41272af; Go derivers/readers for StoreOperatorAuthorization/StoreReleaseListing/ReleaseEntry/BlacklistEntry, offsets byte-verified, 3 modules build+test green. Monorepo on feat/store-operator-go-readers (sidecar replaces resolve against it). Launched C2.3 gated-publish workflow (wf_b6b56d74-79c). C4 deferred until C2.3 receipt confirmed (+ needs accepted_stores reader). Audit 0/2.
+- 2026-06-13 (C2.3 completion): **C2.3+C2.4 ✅** — wf_b6b56d74-79c review OK, fail-closed audit YES; commit a2fb31a9; gated /publish on-chain verify + raw-96 provenance receipt; go test -race green (full accept/reject matrix). Confirmed authzsign is self-contained (own pda/borsh; no monorepo dep) → launching C3 (submit-client, static_store) + C4 (cascade store-stage, authzsign) IN PARALLEL. C4 store-stage uses trustless on-chain listing-chain verify (not shell-asserted) → closes S2. Audit 0/2.

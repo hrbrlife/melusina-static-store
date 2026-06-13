@@ -1,0 +1,18 @@
+{
+  "license_nft_mint": "<base58 License NFT mint of the operating license>",
+  "domain": "store.example.org",
+  "store_id": "melusina-store",
+  "root_store_url": "https://melusina-os.org",
+  "policy": {
+    "allowed_tiers": ["regular"],
+    "require_scan_report": true,
+    "accept_publishers": []
+  },
+  "rpc_url": "<Solana RPC endpoint>",
+  "listen_addr": ":8443",
+  "dist_dir": "dist-publish",
+  "tls": {
+    "cert_path": "/etc/melusina/store/tls/cert.pem",
+    "key_path": "/etc/melusina/store/tls/key.pem"
+  }
+}

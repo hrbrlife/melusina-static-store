@@ -1,0 +1,30 @@
+# melusina-store-sidecar — per-operator config (documented target format).
+#
+# NOTE: the current scaffold loads the equivalent JSON (see
+# store.config.example.json); YAML loading lands when the melusina-attest
+# module deps are wired for the gated /publish path (post-C1).
+#
+# ONE binary runs both the root store and any reseller store — only this file
+# and the three attest shards differ between operators.
+
+license_nft_mint: "<base58 License NFT mint of the operating license>"
+domain: "store.example.org"        # bare host only (no scheme/port/path); store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
+store_id: "melusina-store"
+# reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
+root_store_url: "https://melusina-os.org"   # base binary + basic apps are MIRRORED from here when this is not the root
+
+policy:
+  allowed_tiers: ["regular"]       # capability tiers this store may list
+  require_scan_report: true        # reject publishes without an attested clean scan report
+  accept_publishers: []            # base58 ReleaseEntry PDAs / publisher identities trusted to submit
+
+rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
+listen_addr: ":8443"
+dist_dir: "dist-publish"           # the build output to serve (relative to CWD or absolute)
+
+tls:
+  cert_path: "/etc/melusina/store/tls/cert.pem"
+  key_path: "/etc/melusina/store/tls/key.pem"
+
+# Three attest shards are supplied via environment (never the config file):
+#   SIDECAR_AUTHOR_SHARD, SIDECAR_HOST_OBSERVATION_SHARD, SIDECAR_RELEASE_SHARD

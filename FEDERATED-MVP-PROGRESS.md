@@ -14,7 +14,7 @@
 | static_store | /home/user/Desktop/static_store | `feat/federated-store-mvp` | ✅ |
 | Anchor program | /home/user/Desktop/Melusina/melusina_solana_dev-license104 | `feat/store-operator-authz` | ✅ C1 committed 918921e (review OK; build-sbf+76 tests green) |
 | Melusina monorepo shared/ libs | /home/user/Desktop/Melusina | `feat/store-operator-go-readers` | ✅ C1b committed d41272af (review OK; 3 modules build+test green) |
-| shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | ⬜ |
+| shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | 🔄 C5-core ✅ e25215a; C5-gov-tier wf_27955dce-16b |
 | authzsign | /home/user/Desktop/Melusina/melusina-authzsign-component | `feat/cascade-store-stage` | ✅ C4 committed f653de4 (review OK; build+23 tests green) |
 
 ## Task board (see spec §4 for acceptance criteria)
@@ -65,12 +65,12 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 - ✅ C4.3 fail-closed on every RPC/decode err; blacklist present==REJECT (no cache); D3 cached-last-known-good for ROOT only; resellers live-verified
 - 📌 ROOT-path: servingDomainHash==root skips operator/listing checks (root=identity, serves canonical releases directly), still gated by ReleaseEntry Active + blacklist. Revisit IF on-chain root design requires a real root listing. Discriminators = sha256("account:&lt;T&gt;")[0:8] — CI-pin vs real IDL advisable (FU-1).
 
-### C5 — Shell (split into C5-core trust-critical + C5-gov-tier UX)
-- 🔄 C5.2 (**C5-core**, wf_d229e042-508 — implement COMMITTED e25215a, review running) updateAppIndex multi-source verify (re-hash SPK==on-chain ReleaseEntry.app_hash before startInstall; Active StoreReleaseListing from accepted store; auto-update chokepoint; root precedence-by-IDENTITY) + 128-byte Context producer (LOCKSTEP w/ C4) + JS raw-byte decoders (IDL blocked, FU-1)
-- ⬜ C5.1 (C5-gov-tier, next) accepted_stores governance UI (Squads proposal; root row locked)
-- ⬜ C5.3 (C5-gov-tier, next) server-side tier gate @ gateGrainAction + visitor-never-installs invariant + signed tier-policy (S6)
-- ⬜ C5.4 lint+typecheck (+ unit tests); full `meteor build` may be an env limitation (flag like FU-1)
-- env: meteor present, node_modules present, npm lint/typecheck available; repo DETACHED-HEAD +1 WIP (leave untouched)
+### C5 — Shell (C5-core ✅; C5-gov-tier 🔄)
+- ✅ C5.2 (**C5-core**, e25215a, review OK, fail-closed audit PASS) updateAppIndex multi-source verify (re-hash SPK==on-chain ReleaseEntry.app_hash BEFORE startInstall; Active StoreReleaseListing from accepted store; auto-update through SAME chokepoint; root precedence-by-IDENTITY) + 128-byte Context producer + JS decoders. **CROSS-LANG LOCKSTEP PROVEN**: JS storeDomainHash("melusina-os.org")=0595e1c4..d4d7; 5 discriminators == Go store_borsh.go; JS 128-byte Context parses identically in Go ParseContext.
+- 🔄 C5.1 (C5-gov-tier wf_27955dce-16b) App-Sources governance: curated list, locked root row, prepare-Squads-proposal (NO auto-submit, guardrail)
+- 🔄 C5.3 (C5-gov-tier wf_27955dce-16b) server-side tier gate @ gateGrainAction keyed on on-chain app_id tier ceiling (FoundationAppEntry) + visitor-never-installs HARD invariant + signed tier-policy.json (monotonic epoch, anti-rollback) — S6
+- ⬜ C5.4 lint+typecheck (+ node tests); full `meteor build`/`test` = ENV limitation (no Meteor runtime) — flag like FU-1
+- env: meteor bin present but full build too heavy; lint(eslint)+typecheck(tsc) usable; tsc fails only on @types/node esnext.disposable (pre-existing, identical on HEAD). DETACHED-HEAD +1 WIP left untouched.
 
 ## Audit ledger
 **Consecutive OK count: 0 / 2.** (any non-OK resets to 0)
@@ -90,11 +90,11 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - **SHOWSTOPPER (mismatch #1):** daemon `Context` must be length-discriminated: 32 bytes (appHash only) OR ≥128 (appHash + 96-byte receipt). C4+C5 must ship this wire change in LOCKSTEP (HashRequest signs full Context).
 
 ## Next action (updated each fire)
-**→ C1 ✅ · C1b ✅ · C2 gated path ✅. C3 + C4 IN FLIGHT in parallel** (static_store + authzsign — independent repos, no shared build path). On their review-OK → **C5** (shell) in lockstep with C4's 128-byte Context, then **C2.5 boot identity** (+FU-2 tls) and **C2.6 root-mirror**, then the first end-to-end audit. Remaining sequence:
-1. **C2.3 gated /publish** — add melusina-attest/identity-gate/primitives local replaces to sidecar go.mod (paths resolved: shared/melusina-attest, shared/melusina-identity-gate, shared/melusina-solana-primitives — all in the Melusina monorepo). Real Go on-chain verify: `pda.Release`→`verify.FetchReleaseEntry` (re-hash SPK==app_hash, Active), `pda.StoreOperatorAuthorization`→`FetchStoreOperatorAuthz` (Active, store_authority, tier covers), blacklist check; `envelope.Verify(KindArtifact)`; then `build-store.sh` single-writer; sign provenance receipt (C-2: raw-96 `appHash||releaseHash||servingDomainHash`).
-2. **C3 submit-client** — `make publish <storeurl>` → `envelope.Sign(KindArtifact,...)` sealed-v3 POST replacing publish-app-full.sh force-push.
-3. **C4 + C5 in LOCKSTEP** — Context length-discrimination (mismatch #1: 32B appHash OR ≥128B appHash+receipt); cascade store-stage + accepted_stores decode + blacklist + tier gate (C5 server-side).
-- Real API confirmed: `envelope.Sign/Verify`, `derive.DeriveSidecar(ref, SidecarShards)`, `pda.Release/InstallerRelease/SidecarIdentity`, `binhash.AttestSelfHashWith(ctx,Options)`, `verify.RPCClient.Fetch*Status/FetchGlobalAppApprovalAppHash` (templates for the new readers C1b adds).
+**→ C1 ✅ · C1b ✅ · C2 (gated path) ✅ · C3 ✅ · C4 ✅ · C5-core ✅. C5-gov-tier + C2.6 IN FLIGHT in parallel** (shell vs static_store+monorepo — independent). When BOTH land review-OK:
+1. **First END-TO-END audit** (spec §7): a fresh cross-repo adversarial pass over the WHOLE assembled system (all 4 repos) — does publish→sidecar-verify→install-verify agree byte-for-byte on appHash/PDA-seeds/128-byte-Context/domain-hash/tier across Rust+Go+JS; is every path fail-closed; are S1–S8 closed; are all C1–C5 boxes checked (C2.5 boot-identity = documented deploy-time/ceremony-gated, NOT a code gap).
+2. If OK → **second END-TO-END audit** (independent agents) → if OK → **CronDelete b4040345** + report DONE.
+3. If either audit finds critical/high → fix, reset the consecutive-OK counter to 0, re-audit.
+- DEPLOY-TIME items (out of code scope / guardrail-blocked, NOT audit-blocking): FU-1 IDL regen (needs compatible Anchor host), C2.5 sidecar boot-identity activation (needs on-chain onboarding ceremony), FU-2 update_store_tls cert, on-chain store-operator/accepted-stores ceremonies. All code is written + fail-closed pending these.
 
 ## Log
 - 2026-06-13: loop armed (cron b4040345); spec + ledger written; static_store branch created; grounding workflow launched.
@@ -108,3 +108,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13 (C3 completion): **C3 ✅** — wf_7f3b6493-a95 review OK; commit 2c9cd1c6; sealed-v3 submit-client, force-push DELETED from publish-app-full.sh, receipt sig verified vs on-chain store_authority, 14 tests incl e2e. C4 implement committed (f653de4), review running. Will launch C5 once C4 review confirms the Context behavior. Audit 0/2.
 - 2026-06-13 (C4 completion): **C4 ✅** — wf_cfda217f-548 review OK, fail-closed audit PASS; commit f653de4; trustless store-stage + 23 tests, build green; root-path resolved (identity, ReleaseEntry+blacklist gated). ALL 5 component cores now done+reviewed (C1,C1b,C2,C3,C4). Launched C5-core (wf_d229e042-508): shell install-side verify + 128-byte Context (lockstep w/ C4) + JS decoders. C5-gov-tier (governance UI + tier gate) to follow. Audit 0/2.
 - 2026-06-13 (cron fire): C5-core implement committed (e25215a, shell branch feat/federated-store-accepted-sources); review running. On review-OK → INTERIM cross-component spine audit (Rust/Go/JS agreement on bytes/PDA/Context/domain-hash) before C5-gov-tier + C2.6. Two FINAL end-to-end audits still pending (need all C1-C5 boxes). Audit 0/2.
+- 2026-06-13 (C5-core completion): **C5-core ✅** — wf_d229e042-508 review OK, fail-closed PASS, CROSS-LANG LOCKSTEP PROVEN (JS↔Go discriminators+Context+domain-hash). 6/6 component cores done (C1,C1b,C2,C3,C4,C5-core). Launched final two in parallel: C5-gov-tier (wf_27955dce-16b, shell — S6 tier gate + governance) + C2.6 root-mirror (wf_c3ce727c-57a, sidecar+monorepo readers). On both OK → FIRST end-to-end audit. Audit 0/2.

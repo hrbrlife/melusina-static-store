@@ -24,19 +24,27 @@
 #                          /home/user/Desktop/Melusina/test-wallets/
 #                          core-app-team/. The finalized RELEASE.json
 #                          lands directly in the catalog pkg dir.
-#   4. Source repo publish-branch push — SKIPPED when Step 3 used the
-#                          new ceremony path (catalog publish happens
-#                          via Step 6, source repo origin/publish is
-#                          not load-bearing under this model).
+#   4. Sealed-v3 submit (FEDERATED-STORE-MVP §C3) — REPLACES the old
+#                          source-repo publish-branch / gh-pages force-
+#                          push. Wraps the canonical RELEASE.json in a
+#                          signed artifact envelope and POSTs it (+ SPK)
+#                          to a store sidecar's gated POST /publish (the
+#                          C2.3 single writer), then verifies the store-
+#                          signed provenance receipt against the on-chain
+#                          store_authority. Set MELUSINA_STORE_URL (+ the
+#                          MELUSINA_PUBLISHER_KEY / MELUSINA_STORE_PUBKEY /
+#                          MELUSINA_STORE_LICENSE_MINT / MELUSINA_STORE_RPC_URL
+#                          env) to enable. No force-push fallback exists.
 #   5. Deployer approval manifest update — auto-merges the new app_hash
 #                          into the deployer manifest so subsequent
 #                          deploys don't need MELUSINA_PUBLISH_ALLOW_
 #                          MANIFEST_DRIFT=1.
 #   6. Static_store catalog sync — sync-catalog.sh rebuilds dist-publish/.
 #
-# After this script: cd static_store && MELUSINA_PUBLISH_AUTHORITATIVE=1
-# make deploy to force-push gh-pages. (Or batch multiple per-app runs
-# then a single make deploy.)
+# After this script: nothing — when MELUSINA_STORE_URL is configured the
+# verifying store sidecar (the single writer) has already assembled and is
+# serving the catalog (Step 4). The legacy `make deploy` gh-pages force-push is
+# SUPERSEDED by the sidecar and is not part of this flow.
 #
 # Designed to be safe to re-run. Each step is idempotent or skip-when-up-to-date.
 # Uses per-step env-var flags so an operator can opt out of a step (e.g.
@@ -376,25 +384,63 @@ print(json.load(open(os.path.join(os.environ["APP_DIR"], "metadata.json"))).get(
 fi
 echo
 
-# ---- Step 4: push publish branch --------------------------------------------
-step 4 "push publish branch"
-if [[ -n "${PUBLISHED_APP_HASH:-}" ]]; then
-  # Step 3 used the canonical static_store ceremony path — the catalog
-  # entry is already updated in place and will be deployed by Step 6
-  # (sync-catalog → make deploy). The source repo's origin/publish
-  # branch is NOT load-bearing for the Bazaar catalog under this model,
-  # so skipping `make publish` here is correct (and avoids the Phase B
-  # finalize-release pkgId-drift failure mode that blocked cycle14).
-  info "  Pearl ceremony already published to catalog — skipping source-repo origin/publish push"
-elif skip_step push; then
-  warn "  --skip push — local-only publish"
+# ---- Step 4: sealed-v3 submit to the store sidecar (C3) ----------------------
+# FEDERATED-STORE-MVP §C3: this step REPLACES the old gh-pages/source-repo
+# force-push. We no longer push a `publish` branch anywhere; instead we wrap the
+# canonical RELEASE.json in a signed artifact envelope and POST it (+ the SPK) to
+# a store sidecar's gated POST /publish (the C2.3 single writer). The sidecar
+# verifies on-chain and returns a store-signed provenance receipt, which the
+# submit client verifies against the on-chain store_authority before succeeding.
+# The force-push path is DELETED — there is no `make -C "$APP_DIR" publish`
+# fallback here. (gh-pages itself is force-pushed only by the legacy
+# static_store `make apply`, which the verifying sidecar supersedes; this driver
+# never invokes it.)
+step 4 "sealed-v3 submit to store sidecar"
+SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
+
+# Locate the RELEASE.json produced by Step 3 (ceremony catalog dir first, then
+# the app dir). The submit client asserts sha256(SPK)==RELEASE.appHash locally.
+SUBMIT_RELEASE=""
+if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/RELEASE.json" ]]; then
+  SUBMIT_RELEASE="$CAT_PATH/RELEASE.json"
+elif [[ -f "$APP_DIR/RELEASE.json" ]]; then
+  SUBMIT_RELEASE="$APP_DIR/RELEASE.json"
+fi
+
+if skip_step push || skip_step submit; then
+  warn "  --skip submit — not POSTing to a store sidecar (local-only)"
+elif [[ -z "${MELUSINA_STORE_URL:-}" ]]; then
+  warn "  MELUSINA_STORE_URL not set — skipping sealed submit."
+  warn "  To publish to the verifying store sidecar, set: MELUSINA_STORE_URL,"
+  warn "  MELUSINA_PUBLISHER_KEY, MELUSINA_STORE_PUBKEY, MELUSINA_STORE_LICENSE_MINT,"
+  warn "  MELUSINA_STORE_RPC_URL (see Makefile target 'publish-sealed')."
+elif [[ -z "$SUBMIT_RELEASE" || ! -f "$SUBMIT_RELEASE" ]]; then
+  fail "  submit: no RELEASE.json found (looked in \$CAT_PATH and $APP_DIR) — run the ceremony (Step 3) first"
+elif [[ -z "$SPK_FOR_REL" || ! -f "$SPK_FOR_REL" ]]; then
+  fail "  submit: no SPK found — run make pack (Step 2) first"
 else
-  has_target() { make -C "$APP_DIR" -q "$1" >/dev/null 2>&1; rc=$?; [[ $rc -eq 0 || $rc -eq 1 ]]; }
-  if has_target publish; then
-    run_or_dry make -C "$APP_DIR" publish || fail "make publish (push to origin) failed"
-  else
-    warn "  no 'publish' target — skipping branch push (use spkmodule)"
+  # Build the submit client on demand if it is not already compiled.
+  if [[ ! -x "$SUBMIT_BIN" ]]; then
+    info "  building submit client"
+    run_or_dry make -C "$STATIC_STORE_ROOT" submit-build || fail "  submit-build failed"
   fi
+  : "${MELUSINA_PUBLISHER_KEY:?MELUSINA_PUBLISHER_KEY required for sealed submit (path or env:NAME)}"
+  : "${MELUSINA_STORE_PUBKEY:?MELUSINA_STORE_PUBKEY required (sidecar operator identity.Public JSON)}"
+  : "${MELUSINA_STORE_LICENSE_MINT:?MELUSINA_STORE_LICENSE_MINT required (store operator license_nft_mint, base58)}"
+  : "${MELUSINA_STORE_RPC_URL:?MELUSINA_STORE_RPC_URL required (Solana JSON-RPC for receipt verification)}"
+  info "  POST $MELUSINA_STORE_URL/publish (single writer; NO force-push)"
+  SUBMIT_ARGS=(
+    --store "$MELUSINA_STORE_URL"
+    --spk "$SPK_FOR_REL"
+    --release "$SUBMIT_RELEASE"
+    --publisher-key "$MELUSINA_PUBLISHER_KEY"
+    --store-pubkey "$MELUSINA_STORE_PUBKEY"
+    --license-mint "$MELUSINA_STORE_LICENSE_MINT"
+    --rpc-url "$MELUSINA_STORE_RPC_URL"
+  )
+  [[ -n "${MELUSINA_STORE_DOMAIN:-}" ]]   && SUBMIT_ARGS+=(--domain "$MELUSINA_STORE_DOMAIN")
+  [[ -n "${MELUSINA_VERIFIED_SLOT:-}" ]]  && SUBMIT_ARGS+=(--verified-slot "$MELUSINA_VERIFIED_SLOT")
+  run_or_dry "$SUBMIT_BIN" "${SUBMIT_ARGS[@]}" || fail "  sealed submit to $MELUSINA_STORE_URL rejected the publish"
 fi
 echo
 

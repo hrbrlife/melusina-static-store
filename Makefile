@@ -20,7 +20,16 @@ CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
         plan apply build-from-source publish-apps publish-app sync \
-        bump-version icon-qc
+        bump-version icon-qc publish-sealed submit-build
+
+# --- Sealed-v3 submit client (FEDERATED-STORE-MVP §C3) -----------------------
+# The submit client REPLACES the gh-pages force-push: it wraps the canonical
+# RELEASE.json in a signed artifact envelope and POSTs it (+ the SPK) to a store
+# sidecar's gated POST /publish (the C2.3 single-writer). The sidecar verifies
+# on-chain and returns a store-signed provenance receipt; the client verifies
+# that receipt against the on-chain store_authority before declaring success.
+SIDECAR_DIR  := sidecar/melusina-store-sidecar
+SUBMIT_BIN   := $(SIDECAR_DIR)/bin/submit
 
 # --- doctor: environment + readiness check ---------------------------------
 # Single-pass health report: tools on PATH, submodule init state, deployer
@@ -343,8 +352,16 @@ deploy:
 # Cardinal rule: this single command must produce a fully signed, version-
 # bumped, on-chain-attested release that auto-syncs into the catalog and
 # deploys gh-pages — no manual stages.
+#
+# SEALED MODE (C3): `make publish STORE_URL=https://store... SPK=... RELEASE=...`
+# dispatches to the sealed-v3 submit client instead of the legacy gh-pages
+# force-push. This is the federated single-writer path: see `publish-sealed`.
 publish: REBUILD ?= $(APPS)
 publish:
+	@if [ -n "$(STORE_URL)" ]; then \
+	   $(MAKE) --no-print-directory publish-sealed; \
+	   exit $$?; \
+	 fi
 	@echo "╔══════════════════════════════════════════════╗"
 	@echo "║   Full publish: $(if $(REBUILD),per-app rebuild → )refresh → build → plan → apply"
 	@echo "╚══════════════════════════════════════════════╝"
@@ -368,6 +385,60 @@ publish:
 	$(MAKE) plan
 	@echo ""
 	$(MAKE) apply
+
+# --- submit-build: compile the sealed-v3 submit client -----------------------
+# NB: under .ONESHELL a `cd` would persist into the test line, so build with an
+# absolute -o and check the absolute path (no cd).
+submit-build:
+	@echo "=== Building submit client ($(SUBMIT_BIN)) ==="
+	go build -C $(SIDECAR_DIR) -o "$(CURDIR)/$(SUBMIT_BIN)" ./cmd/submit
+	@test -x "$(CURDIR)/$(SUBMIT_BIN)" || { echo "submit build failed — no $(SUBMIT_BIN)"; exit 1; }
+
+# --- publish-sealed: sealed-v3 POST to a store sidecar's /publish (C3) --------
+# REPLACES the gh-pages force-push. Packs the SPK + canonical RELEASE.json into a
+# signed artifact envelope, POSTs to <STORE_URL>/publish (the C2.3 single-writer
+# sidecar), and verifies the returned store-signed provenance receipt against the
+# on-chain store_authority. Force-push never happens on this path — the sidecar
+# is the only writer.
+#
+# Required:
+#   STORE_URL       store sidecar base URL (e.g. https://melusina-os.org)
+#   SPK             path to the .spk package bytes
+#   RELEASE         path to the canonical RELEASE.json
+#   PUBLISHER_KEY   publisher signing identity (path, or env:NAME)
+#   STORE_PUBKEY    path to the sidecar operator identity.Public JSON (envelope destination)
+#   LICENSE_MINT    store operator license_nft_mint (base58; StoreOperatorAuthorization seed)
+#   RPC_URL         Solana JSON-RPC endpoint (reads the on-chain store_authority for receipt verify)
+# Optional:
+#   DOMAIN          store serving domain (defaults to the host in STORE_URL)
+#   VERIFIED_SLOT   ChainEvidence verified_slot (default 1)
+#   MULTIPART=1     POST multipart/form-data instead of the JSON wire form
+#
+#   make publish-sealed STORE_URL=https://melusina-os.org \
+#     SPK=app.spk RELEASE=RELEASE.json \
+#     PUBLISHER_KEY=~/.melusina/publisher.key.json \
+#     STORE_PUBKEY=store-operator.pub.json \
+#     LICENSE_MINT=<base58> RPC_URL=https://devnet.helius-rpc.com/?api-key=...
+publish-sealed: submit-build
+	@test -n "$(STORE_URL)"      || { echo "ERROR: STORE_URL=... required";      exit 2; }
+	@test -n "$(SPK)"            || { echo "ERROR: SPK=<app.spk> required";       exit 2; }
+	@test -n "$(RELEASE)"        || { echo "ERROR: RELEASE=<RELEASE.json> required"; exit 2; }
+	@test -n "$(PUBLISHER_KEY)"  || { echo "ERROR: PUBLISHER_KEY=... required";   exit 2; }
+	@test -n "$(STORE_PUBKEY)"   || { echo "ERROR: STORE_PUBKEY=... required";    exit 2; }
+	@test -n "$(LICENSE_MINT)"   || { echo "ERROR: LICENSE_MINT=... required";    exit 2; }
+	@test -n "$(RPC_URL)"        || { echo "ERROR: RPC_URL=... required";         exit 2; }
+	@echo "=== Sealed-v3 publish → $(STORE_URL)/publish (single writer; NO force-push) ==="
+	"$(CURDIR)/$(SUBMIT_BIN)" \
+	  --store "$(STORE_URL)" \
+	  --spk "$(SPK)" \
+	  --release "$(RELEASE)" \
+	  --publisher-key "$(PUBLISHER_KEY)" \
+	  --store-pubkey "$(STORE_PUBKEY)" \
+	  --license-mint "$(LICENSE_MINT)" \
+	  --rpc-url "$(RPC_URL)" \
+	  $(if $(DOMAIN),--domain "$(DOMAIN)") \
+	  $(if $(VERIFIED_SLOT),--verified-slot "$(VERIFIED_SLOT)") \
+	  $(if $(MULTIPART),--multipart)
 
 # --- publish-apps: rebuild + sign + push N source apps (no catalog deploy) ---
 # Useful when you want to ship app changes upstream but stage the catalog

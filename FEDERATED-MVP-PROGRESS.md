@@ -15,7 +15,7 @@
 | Anchor program | /home/user/Desktop/Melusina/melusina_solana_dev-license104 | `feat/store-operator-authz` | ✅ C1 committed 918921e (review OK; build-sbf+76 tests green) |
 | Melusina monorepo shared/ libs | /home/user/Desktop/Melusina | `feat/store-operator-go-readers` | ✅ C1b committed d41272af (review OK; 3 modules build+test green) |
 | shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | ⬜ |
-| authzsign | /home/user/Desktop/Melusina/melusina-authzsign-component | `feat/cascade-store-stage` | ⬜ |
+| authzsign | /home/user/Desktop/Melusina/melusina-authzsign-component | `feat/cascade-store-stage` | ✅ C4 committed f653de4 (review OK; build+23 tests green) |
 
 ## Task board (see spec §4 for acceptance criteria)
 Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
@@ -59,16 +59,18 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 - ✅ C3.1 `cmd/submit/main.go`: `envelope.Sign(KindArtifact, Body=RELEASE.json, RequestHash=sha256(spk))` → POST (JSON or multipart) to /publish; verifies returned receipt sig vs ON-CHAIN store_authority (`FetchStoreOperatorAuthz`); defends serving-domain + on-chain-domain drift. Makefile `publish-sealed` target + `publish-app-full.sh` Step 4 force-push DELETED (no fallback). 14 tests.
 - 📌 C3 follow-ups: (a) no well-known identity endpoint yet → `--store-pubkey` = operator identity.Public JSON path (handler matches by identity Digest, not raw key). (b) publisher key = JSON {ref, sign_seed_hex, box_seed_hex} → identity.NewPrivate (MVP; standardize later). (c) receipt-verify needs RPC_URL (Helius devnet).
 
-### C4 — authzsign daemon — 🔄 implement COMMITTED (f653de4); review running (wf_cfda217f-548)
-- 🔄 C4.1 cascade.go 4th store-stage: on-chain listing-chain verify (servingStore∈accepted_stores ∪ root; StoreReleaseListing[store,appHash] Active; ReleaseEntry Active) from the 96-byte receipt (appHash+servingDomainHash). Trustless via chain reads, NOT shell-asserted (closes S2).
-- 🔄 C4.2 borsh: decode LicenseEntry.accepted_stores+root_store_domain_hash (before bump) + StoreOperatorAuthz/StoreReleaseListing/BlacklistEntry; pda.go derivers; Context length-discrimination (32 OR ≥128, slice [0:32]/[32:128]) — LOCKSTEP w/ C5
-- 🔄 C4.3 blacklist deny + fail-closed on RPC err + cached root fast-path (D3); go build/test green
+### C4 — authzsign daemon — ✅ DONE (commit f653de4; review OK, fail-closed audit PASS; 23 new tests)
+- ✅ C4.1 `store_cascade.go` 4th stage: trustless on-chain listing-chain verify (servingStore∈accepted_stores∪root; StoreReleaseListing Active; ReleaseEntry Active; blacklist deny) from the receipt — closes S2 (shell-lie can only name a store with a genuine Active listing)
+- ✅ C4.2 `store_borsh.go`/`store_pda.go`/`store_wire.go`: decoders+derivers in NEW files (left WIP borsh.go/pda.go untouched); `DecodeLicenseEntryStoreFields` walk for accepted_stores+root_hash; Context 32 OR ≥128 + appHash-match, back-compatible (daemon side READY for C5's 128-byte form)
+- ✅ C4.3 fail-closed on every RPC/decode err; blacklist present==REJECT (no cache); D3 cached-last-known-good for ROOT only; resellers live-verified
+- 📌 ROOT-path: servingDomainHash==root skips operator/listing checks (root=identity, serves canonical releases directly), still gated by ReleaseEntry Active + blacklist. Revisit IF on-chain root design requires a real root listing. Discriminators = sha256("account:&lt;T&gt;")[0:8] — CI-pin vs real IDL advisable (FU-1).
 
-### C5 — Shell
-- ⬜ C5.1 accepted_stores governance UI (Squads proposal)
-- ⬜ C5.2 updateAppIndex multi-source verify (re-hash before startInstall; auto-update chokepoint; root precedence-by-identity)
-- ⬜ C5.3 server-side tier gate + visitor invariant + signed tier-policy
-- ⬜ C5.4 build/tests
+### C5 — Shell (split into C5-core trust-critical + C5-gov-tier UX)
+- 🔄 C5.2 (**C5-core**, wf_d229e042-508) updateAppIndex multi-source verify (re-hash SPK==on-chain ReleaseEntry.app_hash before startInstall; Active StoreReleaseListing from accepted store; auto-update chokepoint; root precedence-by-IDENTITY) + 128-byte Context producer (LOCKSTEP w/ C4) + JS raw-byte decoders (IDL blocked, FU-1)
+- ⬜ C5.1 (C5-gov-tier, next) accepted_stores governance UI (Squads proposal; root row locked)
+- ⬜ C5.3 (C5-gov-tier, next) server-side tier gate @ gateGrainAction + visitor-never-installs invariant + signed tier-policy (S6)
+- ⬜ C5.4 lint+typecheck (+ unit tests); full `meteor build` may be an env limitation (flag like FU-1)
+- env: meteor present, node_modules present, npm lint/typecheck available; repo DETACHED-HEAD +1 WIP (leave untouched)
 
 ## Audit ledger
 **Consecutive OK count: 0 / 2.** (any non-OK resets to 0)
@@ -104,3 +106,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13 (C1b completion): **C1b ✅** — wf_ecc26307-65e review OK; commit d41272af; Go derivers/readers for StoreOperatorAuthorization/StoreReleaseListing/ReleaseEntry/BlacklistEntry, offsets byte-verified, 3 modules build+test green. Monorepo on feat/store-operator-go-readers (sidecar replaces resolve against it). Launched C2.3 gated-publish workflow (wf_b6b56d74-79c). C4 deferred until C2.3 receipt confirmed (+ needs accepted_stores reader). Audit 0/2.
 - 2026-06-13 (C2.3 completion): **C2.3+C2.4 ✅** — wf_b6b56d74-79c review OK, fail-closed audit YES; commit a2fb31a9; gated /publish on-chain verify + raw-96 provenance receipt; go test -race green (full accept/reject matrix). Confirmed authzsign is self-contained (own pda/borsh; no monorepo dep) → launching C3 (submit-client, static_store) + C4 (cascade store-stage, authzsign) IN PARALLEL. C4 store-stage uses trustless on-chain listing-chain verify (not shell-asserted) → closes S2. Audit 0/2.
 - 2026-06-13 (C3 completion): **C3 ✅** — wf_7f3b6493-a95 review OK; commit 2c9cd1c6; sealed-v3 submit-client, force-push DELETED from publish-app-full.sh, receipt sig verified vs on-chain store_authority, 14 tests incl e2e. C4 implement committed (f653de4), review running. Will launch C5 once C4 review confirms the Context behavior. Audit 0/2.
+- 2026-06-13 (C4 completion): **C4 ✅** — wf_cfda217f-548 review OK, fail-closed audit PASS; commit f653de4; trustless store-stage + 23 tests, build green; root-path resolved (identity, ReleaseEntry+blacklist gated). ALL 5 component cores now done+reviewed (C1,C1b,C2,C3,C4). Launched C5-core (wf_d229e042-508): shell install-side verify + 128-byte Context (lockstep w/ C4) + JS decoders. C5-gov-tier (governance UI + tier gate) to follow. Audit 0/2.

@@ -14,7 +14,7 @@
 | static_store | /home/user/Desktop/static_store | `feat/federated-store-mvp` | ✅ |
 | Anchor program | /home/user/Desktop/Melusina/melusina_solana_dev-license104 | `feat/store-operator-authz` | ✅ C1 committed 918921e (review OK; build-sbf+76 tests green) |
 | Melusina monorepo shared/ libs | /home/user/Desktop/Melusina | `feat/store-operator-go-readers` | ✅ C1b committed d41272af (review OK; 3 modules build+test green) |
-| shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | 🔄 C5-core ✅ e25215a + C5.3 ✅ 8f6e411 (rescued); C5.1 pending |
+| shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | ✅ C5 COMPLETE (C5-core e25215a, C5.3 8f6e411, C5.1 a1e4747) |
 | authzsign | /home/user/Desktop/Melusina/melusina-authzsign-component | `feat/cascade-store-stage` | ✅ C4 committed f653de4 (review OK; build+23 tests green) |
 
 ## Task board (see spec §4 for acceptance criteria)
@@ -67,7 +67,7 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 
 ### C5 — Shell (C5-core ✅; C5-gov-tier 🔄)
 - ✅ C5.2 (**C5-core**, e25215a, review OK, fail-closed audit PASS) updateAppIndex multi-source verify (re-hash SPK==on-chain ReleaseEntry.app_hash BEFORE startInstall; Active StoreReleaseListing from accepted store; auto-update through SAME chokepoint; root precedence-by-IDENTITY) + 128-byte Context producer + JS decoders. **CROSS-LANG LOCKSTEP PROVEN**: JS storeDomainHash("melusina-os.org")=0595e1c4..d4d7; 5 discriminators == Go store_borsh.go; JS 128-byte Context parses identically in Go ParseContext.
-- 🔄 C5.1 App-Sources governance UI (re-launching after suspension-death): curated list, locked root row, prepare-Squads-proposal (NO auto-submit). Non-trust-critical (trust enforced on-chain regardless).
+- ✅ C5.1 App-Sources governance UI (a1e4747): curated accepted_stores list, LOCKED root row, prepare-only Squads proposal (review confirmed NO on-chain write/sign/submit), buildAcceptedStoreProposal 15/15 node tests, eslint 0 errors.
 - ✅ C5.3 server-side tier gate (rescued+committed 8f6e411): tier-gate.js (unknown→DENY, visitor-never-installs HARD invariant, policy rollback/unverified/bad-epoch REJECT), tier-resolve.js (app_hash→ReleaseEntry.app_id→FoundationAppEntry), tier-policy.js (signed monotonic epoch). Node tests pass; eslint 0 errors. S6 closed.
 - ⬜ C5.4 lint+typecheck (+ node tests); full `meteor build`/`test` = ENV limitation (no Meteor runtime) — flag like FU-1
 - env: meteor bin present but full build too heavy; lint(eslint)+typecheck(tsc) usable; tsc fails only on @types/node esnext.disposable (pre-existing, identical on HEAD). DETACHED-HEAD +1 WIP left untouched.
@@ -110,3 +110,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13 (cron fire): C5-core implement committed (e25215a, shell branch feat/federated-store-accepted-sources); review running. On review-OK → INTERIM cross-component spine audit (Rust/Go/JS agreement on bytes/PDA/Context/domain-hash) before C5-gov-tier + C2.6. Two FINAL end-to-end audits still pending (need all C1-C5 boxes). Audit 0/2.
 - 2026-06-13 (C5-core completion): **C5-core ✅** — wf_d229e042-508 review OK, fail-closed PASS, CROSS-LANG LOCKSTEP PROVEN (JS↔Go discriminators+Context+domain-hash). 6/6 component cores done (C1,C1b,C2,C3,C4,C5-core). Launched final two in parallel: C5-gov-tier (wf_27955dce-16b, shell — S6 tier gate + governance) + C2.6 root-mirror (wf_c3ce727c-57a, sidecar+monorepo readers). On both OK → FIRST end-to-end audit. Audit 0/2.
 - 2026-06-13 (RECOVERY): session suspended ~13:51→18:49 (5h); the two in-flight workflows (C5-gov-tier, C2.6) DIED without completing/notifying. Recovered: **C2.6 ✅** had committed (e3b64855 + 0e37aea2), builds+tests pass. **C5.3 ✅** work survived UNCOMMITTED in shell tree — verified (node tests pass, eslint 0 errors) + committed (8f6e411). C5.1 (governance UI, non-trust-critical) was never done → re-launching. Per-component reviews for C2.6/C5.3 died → folding into the end-to-end audit. Audit 0/2.
+- 2026-06-13 (C5.1 ✅): wf_15f8a1fe-116 review OK; commit a1e4747. **ALL C1–C5 boxes done.** Implementation complete modulo documented deploy-time items (C2.5 boot-identity ceremony, C1.6 reseller AppTierPolicy, FU-1..FU-4). → Launching FIRST end-to-end audit (§7). Audit 0/2.

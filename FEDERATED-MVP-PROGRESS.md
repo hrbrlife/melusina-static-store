@@ -13,7 +13,7 @@
 |---|---|---|---|
 | static_store | /home/user/Desktop/static_store | `feat/federated-store-mvp` | ✅ |
 | Anchor program | /home/user/Desktop/Melusina/melusina_solana_dev-license104 | `feat/store-operator-authz` | ✅ C1 committed 918921e (review OK; build-sbf+76 tests green) |
-| Melusina monorepo shared/ libs | /home/user/Desktop/Melusina | `feat/store-operator-go-readers` | 🔄 (C1b workflow wf_ecc26307-65e) |
+| Melusina monorepo shared/ libs | /home/user/Desktop/Melusina | `feat/store-operator-go-readers` | ✅ C1b committed d41272af (review OK; 3 modules build+test green) |
 | shell | /home/user/Desktop/Melusina/sandstorm-b31/shell | `feat/federated-store-accepted-sources` | ⬜ |
 | authzsign | /home/user/Desktop/Melusina/melusina-authzsign-component | `feat/cascade-store-stage` | ⬜ |
 
@@ -31,11 +31,13 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 - ✅ C1.7 `cargo check` + `cargo build-sbf` + `anchor build --no-idl` GREEN; `cargo test --lib` 76/76. (full anchor-build IDL regen = ENV blocker, see follow-ups)
 - ⚠️ BPF stack fix: growing LicenseEntry +548B blew the 4096 stack in `AuthorizeCrossLicenseHop` → Box-ed both accounts (repo pattern). Watch for similar elsewhere.
 
-### C1b — shared Go derivers/readers (unblocks C2.3 + C4) — 🔄 wf_ecc26307-65e
-- 🔄 `primitives.DeriveStoreOperatorAuthz` / `DeriveStoreReleaseListing` / `DeriveBlacklistEntry?`
-- 🔄 `pda.StoreOperatorAuthorization` / `pda.StoreReleaseListing` wrappers
-- 🔄 `verify.RPCClient.FetchReleaseEntry` (appHash+status), `FetchStoreOperatorAuthz`, `FetchStoreReleaseListing`, `FetchBlacklistEntry?` — decode at C1 byte offsets
-- 🔄 go build/test green for the 3 shared modules
+### C1b — shared Go derivers/readers — ✅ DONE (commit d41272af; review OK; offsets verified byte-for-byte)
+- ✅ `primitives.StoreDomainHash` (ASCII-lower, Rust parity), `DeriveStoreOperatorAuthz`, `DeriveBlacklistEntry` (+SeedStoreOperator/SeedBlacklist)
+- ✅ `pda.StoreOperatorAuthorization` / `pda.BlacklistEntry` / `pda.StoreDomainHash` wrappers
+- ✅ `verify` readers + RPC: `FetchReleaseEntry`(appHash+status), `FetchStoreOperatorAuthz`(status,storeAuthority,allowedTierMask,isRoot,storeDomainHash), `FetchStoreReleaseListing`, `FetchBlacklistEntry`(present,type) + `Read*` decoders. AttestationStatus/AuthorizationStatus w/ RequireActive()
+- ✅ go build+test green (3 modules); only pre-existing unrelated testvectors fail
+- ⚠️ CALLER CAVEATS: (a) `FetchBlacklistEntry` — existence==deny; not-found=(false,0,nil) NOT err → C4/C2.3 must treat present==true as blacklisted AND fail-closed on genuine RPC err. (b) `StoreDomainHash` ASCII-lower → IDN must be punycode-encoded BEFORE the call. (c) `verify.Pubkey = [32]byte` local alias (no primitives import).
+- 📌 C4 PREREQ: still need a `verify` reader for `LicenseEntry.accepted_stores` (Vec<Pubkey>) + `root_store_domain_hash` — fold into the C4 workflow.
 
 ### C1 FOLLOW-UPS (tracked; not build-blocking)
 - ⏳ FU-1 IDL regen: full `anchor build` IDL doc-extraction fails on this host (proc-macro2 1.0.86 vs rustc 1.95.0 nightly; 1.85.0 breaks ark-bn254). Code builds clean (build-sbf + --no-idl). IDL must regen on a compatible Anchor-0.30.1 host before any deploy. Go readers don't need IDL (raw-byte decode). Shell client (C5) may — confirm.
@@ -45,8 +47,8 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 ### C2 — Store sidecar (Phase-1 spine) — 🔄 read surface LANDED (sidecar/melusina-store-sidecar/, branch feat/federated-store-mvp)
 - 🔄 C2.1 module skeleton + JSON config loader + go.mod (stdlib) — builds; `derive.DeriveSidecar` identity pending dep-wiring post-C1
 - ✅ C2.2 READ surface byte-identical — `http.FileServer(dist-publish)`; smoke: /healthz 200, /apps/index.json 200, /index.html 301→/, POST /publish 501 (handler.go)
-- ⬜ C2.3 gated POST /publish + REAL Go on-chain verify + single writer — BLOCKED on C1 PDAs + melusina-attest dep wiring
-- ⬜ C2.4 store-signed provenance receipt — blocked on C1
+- 🔄 C2.3 gated POST /publish + REAL Go on-chain verify + single writer — wf_b6b56d74-79c (UNBLOCKED: C1+C1b done; deps wired via ../../../Melusina/shared replaces)
+- 🔄 C2.4 store-signed provenance receipt (raw-96 C-2) — part of wf_b6b56d74-79c
 - 🔄 C2.5 bypasses compiled out (MELUSINA_ATTEST_OFFLINE/SKIP_STEPS/SCAN_NOOP → reject; verified); boot identity/TLS check pending post-C1
 - ⬜ C2.6 reseller root-mirror worker
 - ✅ C2.7 go build / go vet / gofmt green (read-surface scaffold)
@@ -83,7 +85,7 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - **SHOWSTOPPER (mismatch #1):** daemon `Context` must be length-discriminated: 32 bytes (appHash only) OR ≥128 (appHash + 96-byte receipt). C4+C5 must ship this wire change in LOCKSTEP (HashRequest signs full Context).
 
 ## Next action (updated each fire)
-**→ C1 ✅ DONE (review OK, build+tests green). C1b Go readers in flight (wf_ecc26307-65e).** When C1b lands OK the dependent increments unblock:
+**→ C1 ✅ + C1b ✅. C2.3 gated /publish IN FLIGHT (wf_b6b56d74-79c).** On C2.3 review-OK → launch C4 (cascade store-stage; also add the `LicenseEntry.accepted_stores` reader) & C5 in lockstep on the 128-byte Context, plus C3 submit-client. Remaining sequence:
 1. **C2.3 gated /publish** — add melusina-attest/identity-gate/primitives local replaces to sidecar go.mod (paths resolved: shared/melusina-attest, shared/melusina-identity-gate, shared/melusina-solana-primitives — all in the Melusina monorepo). Real Go on-chain verify: `pda.Release`→`verify.FetchReleaseEntry` (re-hash SPK==app_hash, Active), `pda.StoreOperatorAuthorization`→`FetchStoreOperatorAuthz` (Active, store_authority, tier covers), blacklist check; `envelope.Verify(KindArtifact)`; then `build-store.sh` single-writer; sign provenance receipt (C-2: raw-96 `appHash||releaseHash||servingDomainHash`).
 2. **C3 submit-client** — `make publish <storeurl>` → `envelope.Sign(KindArtifact,...)` sealed-v3 POST replacing publish-app-full.sh force-push.
 3. **C4 + C5 in LOCKSTEP** — Context length-discrimination (mismatch #1: 32B appHash OR ≥128B appHash+receipt); cascade store-stage + accepted_stores decode + blacklist + tier gate (C5 server-side).
@@ -96,3 +98,4 @@ Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.t
 - 2026-06-13: pinned contract C-5 — `StoreDomainHash` (domainhash.go) + shared testdata/domain_hash_vectors.json (Rust/Go/JS must match; S8). ROOT_STORE_DOMAIN_HASH("melusina-os.org")=0595e1c4..d4d7. go test green. Committed c44e59da. Remaining work (C2.3 gated path, C3, C4, C5) blocked on C1 → yielding to let wf_95d744d9-564 land.
 - 2026-06-13 (cron fire): C1 workflow still in implement phase (~12min, anchor build). Corrected StoreOperatorAuthorization LEN 224->193 in spec+ledger (implementer caught the slip). Added sidecar LoadConfig tests (go test green). Program repo left untouched (active single writer). Audit count 0/2.
 - 2026-06-13 (cron fire): **C1 ✅** — wf_95d744d9-564 review verdict **OK, 0 findings**; commit 918921e; cargo build-sbf + `anchor build --no-idl` + 76/76 lib tests GREEN; contract-conformant (is_root gate, listing guard, accepted_stores-before-bump, PERM bit55). Follow-ups FU-1 (IDL regen=env), FU-2 (tls_cert_fingerprint→instr arg + update_store_tls, S8), FU-3 (coherence test). Launched C1b shared Go derivers/readers (wf_ecc26307-65e) to unblock C2.3+C4; scouted real melusina-attest API. End-to-end audit count unchanged **0/2** (a per-component review is NOT one of the two final end-to-end audits).
+- 2026-06-13 (C1b completion): **C1b ✅** — wf_ecc26307-65e review OK; commit d41272af; Go derivers/readers for StoreOperatorAuthorization/StoreReleaseListing/ReleaseEntry/BlacklistEntry, offsets byte-verified, 3 modules build+test green. Monorepo on feat/store-operator-go-readers (sidecar replaces resolve against it). Launched C2.3 gated-publish workflow (wf_b6b56d74-79c). C4 deferred until C2.3 receipt confirmed (+ needs accepted_stores reader). Audit 0/2.

@@ -39,7 +39,7 @@ Program: license-registry `7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, repo `
 ## 4. Components & acceptance criteria (the "fully implemented" checklist)
 
 ### C1 — Anchor program (`melusina_solana_dev-license104`, branch `feat/store-operator-authz`)
-- [ ] `StoreOperatorAuthorization` PDA, seeds `["store_operator", license_nft_mint, store_domain_hash]`; fields `{license_nft_mint, store_domain_hash:[u8;32], store_authority:Pubkey, tls_cert_fingerprint:[u8;32], is_root:bool, allowed_tier_mask:u8, max_listings, status, authorized_by, authorized_at, revoked_at, bump}`. `LEN` correct, mirrors `reseller_approval.rs` shape.
+- [ ] `StoreOperatorAuthorization` PDA, seeds `["store_operator", license_nft_mint, store_domain_hash]`; fields `{license_nft_mint, store_domain_hash:[u8;32], store_authority:Pubkey, tls_cert_fingerprint:[u8;32], is_root:bool, allowed_tier_mask:u8, max_listings, status, authorized_by, authorized_at, revoked_at, bump}`. **LEN=193** (8+32+32+32+32+1+1+4+1+32+8+(1+8)+1), mirrors `reseller_approval.rs` shape.
 - [ ] `authorize_store_operator` / `revoke_store_operator` instructions. `is_root=true` ONLY under Master-NFT custody and only for the pinned root domain_hash; otherwise requires operator `LicenseEntry` Active + reseller chain Active + InstallAdmin bearing `PERM_STORE_OPERATE`, license-Squads co-sign for admin/infrastructure tiers.
 - [ ] Guard `register_store_release_listing`: require `store_authority == an Active StoreOperatorAuthorization.store_authority` whose `allowed_tier_mask` covers the app; persist `store_domain_hash` + `operator_authorization` on the listing.
 - [ ] `PERM_STORE_OPERATE = 1<<55`; mirror into `idl/MelusinaPermissions.capnp`; `permission_bit_coherence_test` green.

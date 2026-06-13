@@ -20,7 +20,7 @@
 Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 
 ### C1 — Anchor program (foundational; unblocks C2/C4/C5) — 🔄 wf_95d744d9-564
-- 🔄 C1.1 `StoreOperatorAuthorization` PDA + LEN=224 (contract C-1; mirror reseller_approval.rs)
+- 🔄 C1.1 `StoreOperatorAuthorization` PDA + LEN=193 (field formula; earlier "224" was an arithmetic slip — implementer pinned 193 w/ `len_is_193` test) (contract C-1; mirror reseller_approval.rs)
 - 🔄 C1.2 `authorize_store_operator` / `revoke_store_operator` (is_root Master-NFT-only + pinned ROOT_STORE_DOMAIN_HASH const)
 - 🔄 C1.3 guard `register_store_release_listing.store_authority` == Active StoreOperatorAuthorization; +store_domain_hash/operator_authorization on StoreReleaseListing (LEN +64)
 - 🔄 C1.4 `PERM_STORE_OPERATE=1<<55` + capnp mirror (+coherence test if present)
@@ -61,7 +61,7 @@ Status: ⬜ todo · 🔄 in-progress · ✅ done(evidence) · ⛔ blocked
 
 ## Frozen cross-component contracts (from recipe workflow wf_7d011aea-017)
 Full recipes: `/tmp/claude-1000/.../tasks/_recipes.txt`; contracts: `_contract.txt`. Key bindings ALL components must match:
-- **C-1** StoreOperatorAuthorization: seeds `[b"store_operator", license_nft_mint, store_domain_hash]`, LEN=224, field order fixed (see spec/contract).
+- **C-1** StoreOperatorAuthorization: seeds `[b"store_operator", license_nft_mint, store_domain_hash]`, **LEN=193** (8+32+32+32+32+1+1+4+1+32+8+(1+8)+1; the "224" in the recipe was wrong), field order fixed (see spec/contract).
 - **C-2** provenance receipt: signed msg = raw 96 bytes `appHash||releaseHash||servingDomainHash`; HTTP form adds operatorSignature(b58)+storedAt; daemon Context carries raw 96 (sig pre-verified by sidecar).
 - **C-3** sealed-v3 publish envelope: `KindArtifact`, Body=canonical RELEASE.json, RequestHash=sha256(SPK)=appHash; SPK uploaded alongside (not in envelope).
 - **C-4** `accepted_stores:Vec<Pubkey>` (StoreOperatorAuthz addrs) + `root_store_domain_hash` appended BEFORE `bump` on LicenseEntry.

@@ -11,6 +11,7 @@
   "rpc_url": "<Solana RPC endpoint>",
   "listen_addr": ":8443",
   "dist_dir": "dist-publish",
+  "catalog_repo_root": "../..",
   "tls": {
     "cert_path": "/etc/melusina/store/tls/cert.pem",
     "key_path": "/etc/melusina/store/tls/key.pem"

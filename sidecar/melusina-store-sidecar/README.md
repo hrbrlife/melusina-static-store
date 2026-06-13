@@ -18,9 +18,25 @@ never a code fork. Full contract: `../../FEDERATED-STORE-MVP.md` (component C2).
 - **Ops:** `GET /healthz`
 
 ## Status
-Phase-1 spine: READ surface + fail-closed `/publish` (501 until C1 lands).
-Pending (post-C1): boot identity/TLS check, on-chain verify, provenance-receipt
-signing, reseller root-mirror worker, sealed-v3 submit-client (C3).
+Phase-1 spine: READ surface + **gated `/publish`** (C2.3). The receive path now
+verifies the publisher's signed artifact envelope, re-hashes the SPK against the
+on-chain `ReleaseEntry.app_hash`, requires an Active `StoreOperatorAuthorization`
+whose `store_authority` is this sidecar's own operator key, requires a clear
+`BlacklistEntry`, then (single writer, under a mutex) runs `build-store.sh` as a
+convenience assembler and returns a store-signed provenance receipt over the raw
+96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify
+is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
+`SKIP_STEPS` / `SCAN_NOOP` bypass is reachable on this path (spec §5 S7).
+
+Until the boot-identity ceremony wires the operator's signing identity from the
+three attest shards (`derive.DeriveSidecarIdentity`) + asserts the
+`SidecarIdentityEntry.domain_hash` / TLS-SPKI pins, `main` leaves the operator
+identity nil and `/publish` fails closed with `503`. The gated verify→assemble→
+receipt path itself is complete and is exercised end-to-end by the tests.
+
+Pending (post-C2.3): boot identity/TLS check wiring in `main`, reseller
+root-mirror worker, sealed-v3 submit-client (C3), per-app FoundationApp tier
+reader.
 
 ## Build & run
 ```sh

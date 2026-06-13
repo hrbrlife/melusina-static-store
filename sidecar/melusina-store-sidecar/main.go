@@ -21,6 +21,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
 // Version is set via -ldflags at build time.
@@ -45,15 +48,31 @@ func main() {
 		cfg.DistDir = *distOverride
 	}
 
-	// TODO(C2-gated, post-C1): boot identity check — derive the sidecar identity
-	// from the three attest shards (derive.DeriveSidecar), assert
-	// sha256(ascii_lower(strip_trailing_dot(cfg.Domain))) == on-chain
-	// SidecarIdentityEntry.domain_hash AND TLS SPKI == tls_cert_fingerprint
-	// (binhash.AttestSelfHashWith), failing CLOSED on any mismatch before serving.
+	// The on-chain reader is the trust gate for /publish (VerifyPublish). It is
+	// always wired from cfg.RPCURL; the production client (*verify.RPCClient)
+	// satisfies the chainReader interface.
+	var cr chainReader
+	if cfg.RPCURL != "" {
+		cr = verify.NewRPCClient(cfg.RPCURL)
+	} else {
+		log.Printf("WARNING: rpc_url not set — /publish stays gated-closed (503) until an on-chain reader is configured")
+	}
+
+	// Boot identity: the operator's signing identity is the receipt signer AND
+	// the envelope destination publishers address. The full ceremony (derive
+	// from the three attest shards via derive.DeriveSidecar, assert
+	// sha256(ascii_lower(strip_trailing_dot(cfg.Domain))) ==
+	// SidecarIdentityEntry.domain_hash AND TLS SPKI == tls_cert_fingerprint via
+	// binhash.AttestSelfHashWith, failing CLOSED on mismatch) is the boot-identity
+	// step tracked separately. Until those shards are wired here, operator stays
+	// nil and /publish fails closed with 503 — it NEVER accepts an unverified
+	// upload. The C2.3 gated verify→assemble→receipt path itself is complete and
+	// is exercised end-to-end by the handler tests with an injected identity.
+	var operator *identity.Private
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newRouter(cfg),
+		Handler:           newRouter(cfg, operator, cr),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

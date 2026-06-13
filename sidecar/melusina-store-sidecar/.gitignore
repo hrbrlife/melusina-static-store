@@ -1,2 +1,4 @@
 bin/
 *.exe
+# the self-named compiled binary (go build -o melusina-store-sidecar .)
+/melusina-store-sidecar

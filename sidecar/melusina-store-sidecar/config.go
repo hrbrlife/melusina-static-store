@@ -32,24 +32,30 @@ type Policy struct {
 }
 
 type Config struct {
-	LicenseNFTMint  string    `json:"license_nft_mint"`
-	Domain          string    `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
-	StoreID         string    `json:"store_id"`
-	ResellerNFTMint string    `json:"reseller_nft_mint,omitempty"`
-	RootStoreURL    string    `json:"root_store_url"`
-	Policy          Policy    `json:"policy"`
-	RPCURL          string    `json:"rpc_url"`
-	ListenAddr      string    `json:"listen_addr"`
-	DistDir         string    `json:"dist_dir"`
+	LicenseNFTMint  string `json:"license_nft_mint"`
+	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
+	StoreID         string `json:"store_id"`
+	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
+	RootStoreURL    string `json:"root_store_url"`
+	Policy          Policy `json:"policy"`
+	RPCURL          string `json:"rpc_url"`
+	ListenAddr      string `json:"listen_addr"`
+	DistDir         string `json:"dist_dir"`
+	// CatalogRepoRoot is the static_store working tree from which the in-process
+	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
+	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —
+	// the Go verify (VerifyPublish) is the gate. Defaults to ".".
+	CatalogRepoRoot string    `json:"catalog_repo_root"`
 	TLS             TLSConfig `json:"tls"`
 }
 
 func defaultConfig() Config {
 	return Config{
-		StoreID:      "melusina-store",
-		RootStoreURL: "https://melusina-os.org",
-		ListenAddr:   ":8443",
-		DistDir:      "dist-publish",
+		StoreID:         "melusina-store",
+		RootStoreURL:    "https://melusina-os.org",
+		ListenAddr:      ":8443",
+		DistDir:         "dist-publish",
+		CatalogRepoRoot: ".",
 	}
 }
 
@@ -71,6 +77,9 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = "dist-publish"
+	}
+	if cfg.CatalogRepoRoot == "" {
+		cfg.CatalogRepoRoot = "."
 	}
 	return cfg, nil
 }

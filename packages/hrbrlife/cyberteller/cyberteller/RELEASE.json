@@ -1,17 +1,34 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "df91e9a109aafc4c452050b3210d52d4a1fff48cea999ce9068400d9aad63e4b",
-  "releaseHash": "586138057f139d5424a29d407da74d37ee6bfda8b37eeb24fdc020780951f37f",
-  "version": "0.1.57",
-  "signedAtUnix": 1781098700,
+  "appHash": "ef412e8caa1b4642f32eac63e0d0eac10f70784aaca10cf52c8e6c835164dc97",
+  "releaseHash": "",
+  "version": "0.1.59",
+  "signedAtUnix": 0,
   "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-  "releaseEntryPda": "GsqcmYcGegtU9RW7arhoCBCHcevMUkSTFsSgDt6Jn39m",
-  "authorSig": "U13H3SwMNtBalj1GA1sRIttIC0apDJKRg4Rz836otQHVK80Ydo40z86jMyTrDaNwdPnw5dMOiRygq1Dz6pulBQ==",
+  "releaseEntryPda": "pending-reattest",
+  "authorSig": "",
   "quorumPolicy": {
     "threshold": 3,
     "memberCount": 4,
     "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
   },
-  "releaseNonce": "077220c94cf082cb84ccf2f174abe5fe"
+  "releaseNonce": "",
+  "_pendingReattest": {
+    "status": "PENDING on-chain Squads re-attest (Captain/fleet) \u2014 see kill-list I10/I11",
+    "signOverAppHash": "ef412e8caa1b4642f32eac63e0d0eac10f70784aaca10cf52c8e6c835164dc97",
+    "version": "0.1.59",
+    "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+    "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+    "quorum": "3-of-4",
+    "regenerate": [
+      "releaseEntryPda",
+      "releaseHash",
+      "releaseNonce",
+      "authorSig",
+      "signedAtUnix"
+    ],
+    "note": "appHash + version above are FINAL (over the freshly-packed SPK). Re-pack would change the SPK signature region -> appHash, so re-attest must run AFTER this pack, not before."
+  }
 }

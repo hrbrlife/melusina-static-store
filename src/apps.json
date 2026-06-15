@@ -2294,10 +2294,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.58",
-      "versionNumber": 130,
-      "packageId": "5c571dfac294369b591ade9e0ef76ba9",
-      "sha256": "5c571dfac294369b591ade9e0ef76ba9ef5bff15c7ae82f94ddeb6aa854a8ce8",
+      "version": "0.1.59",
+      "versionNumber": 131,
+      "packageId": "ef412e8caa1b4642f32eac63e0d0eac1",
+      "sha256": "ef412e8caa1b4642f32eac63e0d0eac10f70784aaca10cf52c8e6c835164dc97",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2318,12 +2318,12 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.58",
+      "marketingVersion": "0.1.59",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
       "updatedAt": 1781475737378,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5c571dfac294369b591ade9e0ef76ba9ef5bff15c7ae82f94ddeb6aa854a8ce8",
+        "appHash": "ef412e8caa1b4642f32eac63e0d0eac10f70784aaca10cf52c8e6c835164dc97",
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "pending-reattest",
@@ -2915,9 +2915,9 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess v2 (option-b)",
-      "version": "0.1.38",
-      "versionNumber": 42,
-      "packageId": "658026fe7a050bfa4cb37de7e9df73a3",
+      "version": "0.1.41",
+      "versionNumber": 45,
+      "packageId": "73e670135bf6a652821006a851fbcede",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
       "categories": [
         "Productivity"
@@ -2936,20 +2936,20 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.38",
-      "sha256": "658026fe7a050bfa4cb37de7e9df73a3e9295c0cd37afe024994c2cf4f9ccf10",
+      "marketingVersion": "0.1.41",
+      "sha256": "73e670135bf6a652821006a851fbcedeca4b0e5d8627cd354257536c52a8ac3f",
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
       "updatedAt": 1780890587000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "43f27f8eed6768621d7d37765dace9ea7f768c68f1c14f96f604dc6769cf51a9",
-        "releaseHash": "6a8ac67c38a348a0fe198858401e529d16ee837719dd28c8acbb7d327a5c43fc",
-        "releaseNonce": "903b026707522b78f293f4e2d2e48a0e",
-        "releaseEntryPda": "49WrvFQQXXpgnB2z7XB5FgseBNHuSmUzdVBLV7WYo2kn",
+        "appHash": "73e670135bf6a652821006a851fbcedeca4b0e5d8627cd354257536c52a8ac3f",
+        "releaseHash": "",
+        "releaseNonce": "",
+        "releaseEntryPda": "pending-reattest",
         "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780890587,
-        "authorSig": "fxtQAyEa5GQNx8rTgJTDbMEtadnLcXDR+oMMBRHfQqTZxG6QBtAAlFuN16oG/9a/xHWoCyDsfTFKFPLsIQe7DQ==",
+        "signedAtUnix": 0,
+        "authorSig": "",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -4116,10 +4116,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "0f08b6aa64839a99f444ff402b732e6b",
+      "packageId": "bb4d8bb4a7466659104a20e3351ee7fa",
       "name": "popaye",
-      "version": "0.3.115",
-      "versionNumber": 105,
+      "version": "0.3.116",
+      "versionNumber": 106,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4142,13 +4142,13 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.115",
-      "sha256": "0f08b6aa64839a99f444ff402b732e6b0d56b77f9dab33064c975a55fe8f3ba1",
+      "marketingVersion": "0.3.116",
+      "sha256": "bb4d8bb4a7466659104a20e3351ee7fabb78a8c968a8d9e93a688ad2ff81a5da",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
       "updatedAt": 1781475737378,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0f08b6aa64839a99f444ff402b732e6b0d56b77f9dab33064c975a55fe8f3ba1",
+        "appHash": "bb4d8bb4a7466659104a20e3351ee7fabb78a8c968a8d9e93a688ad2ff81a5da",
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "pending-reattest",
@@ -4927,10 +4927,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome pearl",
-      "version": "0.1.9",
-      "versionNumber": 10,
-      "packageId": "7ef893517089645f1c70a5f29bc0b40d",
-      "sha256": "7ef893517089645f1c70a5f29bc0b40d9ced0ce53ea6fcc1cf7f5dd5a218a6df",
+      "version": "0.1.10",
+      "versionNumber": 11,
+      "packageId": "b2b34bb6be21a55b56957bfe2a5afc0f",
+      "sha256": "b2b34bb6be21a55b56957bfe2a5afc0fd78a70732f6f5bfb85f361b650d348b7",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4951,12 +4951,12 @@
       "description": "Welcome pearl is a multi-tenant visitor intake pearl for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account pearl in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "Proprietary",
-      "marketingVersion": "0.1.9",
+      "marketingVersion": "0.1.10",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
       "updatedAt": 1781475737378,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "7ef893517089645f1c70a5f29bc0b40d9ced0ce53ea6fcc1cf7f5dd5a218a6df",
+        "appHash": "b2b34bb6be21a55b56957bfe2a5afc0fd78a70732f6f5bfb85f361b650d348b7",
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "pending-reattest",

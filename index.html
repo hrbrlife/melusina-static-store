@@ -10,7 +10,7 @@
     <meta property="og:title" content="Melusina App Bazaar" />
     <meta property="og:description" content="Self-hosted web apps for Melusina. Browse, install, and manage Pearls on your own server. Privacy-first, open source." />
     <meta property="og:image" content="icons/melulogo-512.png" />
-    <meta property="og:url" content="https://hrbrlife.github.io/melusina-static-store/" />
+    <meta property="og:url" content="https://bazaar.melusina-os.org/" />
     <meta property="og:site_name" content="Melusina" />
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
@@ -36,7 +36,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js', { scope: '/melusina-static-store/' })
+          navigator.serviceWorker.register('sw.js', { scope: '/' })
             .then(reg => console.log('[SW] registered:', reg.scope))
             .catch(err => console.warn('[SW] registration failed:', err));
         });

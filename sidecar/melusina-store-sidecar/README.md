@@ -1,10 +1,22 @@
 # melusina-store-sidecar
 
 The reusable **verifying store sidecar** for the federated Melusina app store.
-One binary runs both the melusina-os.org root store and any licensed reseller
-store — parameterized only by `store.yaml`/`store.config.json` + three attest
-shards. "Root vs reseller" is an on-chain fact (`StoreOperatorAuthorization.is_root`),
-never a code fork. Full contract: `../../FEDERATED-STORE-MVP.md` (component C2).
+One binary runs all THREE tiers of the `bazaar.<domain>` hierarchy, parameterized
+only by `store.yaml`/`store.config.json` + three attest shards (never a code fork):
+
+1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (~40
+   Squads-signed apps), baked into every shell as the default app source + the
+   source for Sandstorm binary updates. `is_root=true`, no parent.
+2. **RESELLER** — `bazaar.<reseller-domain>` (e.g. `bazaar.paype.cc`). Mirrors ROOT
+   (via `root_store_url`) and adds reseller-specific apps.
+3. **INSTALL** — `bazaar.<install-domain>` (e.g. `bazaar.us.paype.cc`). Mirrors its
+   reseller and adds install-specific apps; this is the per-tenant store the shell
+   actually points `appIndexUrl`/`appMarketUrl` at.
+
+Tier/role is an on-chain fact (`StoreOperatorAuthorization.is_root` + the
+configured `root_store_url`), never a code fork. Each tier mirrors its parent
+(`root_mirror.go`) and overlays its own signed apps. Full contract:
+`../../FEDERATED-STORE-MVP.md` (component C2).
 
 ## Surfaces
 - **READ** (public, unauthenticated, byte-identical to the static store):

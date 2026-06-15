@@ -4116,7 +4116,7 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "bb4d8bb4a7466659104a20e3351ee7fa",
+      "packageId": "fc151cb069cd3262a5e2ebe2e5528218",
       "name": "popaye",
       "version": "0.3.116",
       "versionNumber": 106,
@@ -4143,12 +4143,12 @@
         "*"
       ],
       "marketingVersion": "0.3.116",
-      "sha256": "bb4d8bb4a7466659104a20e3351ee7fabb78a8c968a8d9e93a688ad2ff81a5da",
+      "sha256": "fc151cb069cd3262a5e2ebe2e55282184bb044d9240eebb7b9c728531cfb504e",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
       "updatedAt": 1781475737378,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bb4d8bb4a7466659104a20e3351ee7fabb78a8c968a8d9e93a688ad2ff81a5da",
+        "appHash": "fc151cb069cd3262a5e2ebe2e55282184bb044d9240eebb7b9c728531cfb504e",
         "releaseHash": "",
         "releaseNonce": "",
         "releaseEntryPda": "pending-reattest",

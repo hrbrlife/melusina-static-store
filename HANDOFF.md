@@ -272,7 +272,7 @@ distinct patterns:
    app's own — pkgdef referenced `icons/grain.svg` which was the ccash
    letter-avatar copy-paste. Affected: Fineract Setup, instaco, others.
 3. **Reference to wrong asset** — OpenClaw embedded a generic blue
-   chart-line SVG instead of the Clawberg lobster the user wanted.
+   chart-line SVG instead of the Jinn lobster the user wanted.
 
 Fixed by bundling proper PNGs from `static_store/icons_split/`
 (24/64/128/512 sizes) and rewriting pkgdef icons section to embed PNG
@@ -283,7 +283,7 @@ Apps shipped this iteration:
 
 | App                       | New version | Icon now embedded             |
 |---------------------------|-------------|--------------------------------|
-| Melusina OpenClaw         | 0.1.12      | Clawberg lobster (PNG)        |
+| Melusina OpenClaw         | 0.1.12      | Jinn lobster (PNG)            |
 | cca.sh Config             | 0.0.6       | CcashAdmin (PNG)              |
 | Cyberteller Config        | 0.1.4       | cyberteller (PNG)             |
 | Fineract Setup            | 0.2.2       | Fineract Setup (PNG)          |
@@ -301,7 +301,7 @@ Continued audit + bulk fix. Fully shipped icon updates for:
 
 | App                          | Icon                |
 |------------------------------|---------------------|
-| Melusina OpenClaw            | Clawberg lobster    |
+| Melusina OpenClaw            | Jinn lobster        |
 | cca.sh Config                | CcashAdmin          |
 | Cyberteller Config           | cyberteller         |
 | Fineract Setup               | Fineract Setup      |
@@ -326,7 +326,7 @@ User asked: every app must have a) the same icon in store and as installed, b) a
 ### What was done
 - Audited every catalog app's `metadata.icons` block in their source pkgdef.
 - Replaced each with a single `(svg = embed "icons/icon.svg")` for appGrid/grain/market.
-  - Real-vector SVG canonicals (e.g. ccash, instaco, openclaw via Clawberg)
+  - Real-vector SVG canonicals (e.g. ccash, instaco, openclaw via Jinn)
   - PNG canonicals wrapped as `<svg><image href="data:image/png;base64,...">` so Sandstorm shell renders crisp at any display size.
 - Synced `packages/hrbrlife/<app>/<subdir>/icon.svg` to use the same canonical icon as the SPK's embedded one — eliminates catalog-vs-shell drift.
 - Repacked 33 of 34 catalog SPKs with the new pkgdef. Each got a fresh `packageId` and bumped `versionNumber`.
@@ -363,7 +363,7 @@ User asked: every app must have a) the same icon in store and as installed, b) a
 ### Live verification (round 3, 2026-05-06 ~07:30 GST)
 Verified end-to-end via Chrome at https://dev.pbay.app:
 - **Vintage Remote Desktop** (was BLANK in user screenshot): upgrade install via catalog → app page renders canonical retro-PC icon ✓
-- **Melusina OpenClaw** (user explicitly called out wrong icon): upgrade install via catalog → app page renders Clawberg lobster character ✓
+- **Melusina OpenClaw** (user explicitly called out wrong icon): upgrade install via catalog → app page renders Jinn lobster character ✓
 - **Sandstorm /install flow**: catalog URL `dev.pbay.app/install/<pkgId>?url=<gh-pages>/packages/<pkgId>` correctly downloads new SPK and offers upgrade for existing appId ✓
 - **Existing grains** (pre-refresh): keep their cached icon until user clicks "Upgrade Pearls" in the app's page — the upgrade button is offered automatically once the new packageId installs.
 - **Catalog UI** (https://hrbrlife.github.io/melusina-static_store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).
@@ -374,10 +374,10 @@ Triggered new-SPK installs via Sandstorm `/install/<pkgId>?url=<gh>/packages/<pk
 **Important behavior to communicate to end users:**
 - Existing pearls (grains created before the upgrade) keep their cached icon and will continue to render the OLD pkgdef's icon (or Sandstorm's blue-diamond fallback when none was set) until the user clicks "Upgrade Pearls" on each app's page.
 - New pearls created after the SPK upgrade get the canonical icon automatically.
-- Sandstorm shell shows the new icon end-to-end for: Vintage Remote Desktop (was BLANK), Melusina OpenClaw (Clawberg lobster — user's specific call-out), AiLagoon (alligator), popaye (cedi/peso), BotMother (mama bot + baby), MerMail, NamedCoin.
+- Sandstorm shell shows the new icon end-to-end for: Vintage Remote Desktop (was BLANK), Melusina OpenClaw (Jinn lobster — user's specific call-out), AiLagoon (alligator), popaye (cedi/peso), BotMother (mama bot + baby), MerMail, NamedCoin.
 
 ### Round 4: PNG-embed icons (the actual fix, 2026-05-06 ~10:00 GST)
-**Root-cause discovered**: Sandstorm shell's icon renderer (Caja-sanitized SVG) does NOT display SVG containing `<image href="data:image/png;base64,...">`. Apps that *appeared* to work in earlier rounds were rendering OLD cached PNG files from previous SPK installs (e.g. OpenClaw still had `clawberg-128.png` etc. from its prior version).
+**Root-cause discovered**: Sandstorm shell's icon renderer (Caja-sanitized SVG) does NOT display SVG containing `<image href="data:image/png;base64,...">`. Apps that *appeared* to work in earlier rounds were rendering OLD cached PNG files from previous SPK installs (e.g. OpenClaw still had `jinn-128.png` etc. from its prior version).
 
 **Fix**: `fix_app_icon_v2.py` ships REAL PNG files (icon-24/48/128/256/150/300.png) and embeds them directly via `(png = (dpi1x = embed "icons/icon-24.png", dpi2x = embed "icons/icon-48.png"))` shape. Sandstorm renders these reliably.
 

@@ -139,7 +139,7 @@ Drop a single line into `$src/.melusina/ship-skip` describing why. The script wi
 
 Examples in the wild:
 - `/home/user/Desktop/DueProcess/.melusina/ship-skip` — Go module path issue (`dueprocess-client-collection/pkg/client is not in std`).
-- `/home/user/Desktop/Clawberg/.melusina/ship-skip` — `./app` symlink → `.sandstorm/app` packaging conflict.
+- `/home/user/Desktop/Jinn/.melusina/ship-skip` — `./app` symlink → `.sandstorm/app` packaging conflict.
 
 ---
 
@@ -269,7 +269,7 @@ ones with no source on disk; flagged here so you know not to wait for them.
 - `AITX-Procedures` → `/home/user/Desktop/DueProcess`
 - `client_collection` → `/home/user/Desktop/client_collection`
 - `ccash` → `/home/user/Desktop/ccash_go_htmx`
-- `openclaw-main` → `/home/user/Desktop/Clawberg`
+- `openclaw-main` → `/home/user/Desktop/Jinn`
 - `instaco-app` → `/home/user/Desktop/instaco.app`
 - `melusina-NamedCoin-app` → `/home/user/Desktop/NamedCoin-work/melusina-NamedCoin-app`
 - `pr_ninja` → `/home/user/Desktop/pr_ninja`

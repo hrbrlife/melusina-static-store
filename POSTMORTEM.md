@@ -34,7 +34,7 @@ The 2 apps that "looked missing" but were actually present under
 different display names (metadata.json drift):
 
 - `popaye` (manifest) ↔ `cca.sh Admin` (catalog) — same `uw0ukgm0…`
-- `Clawberg` (manifest) ↔ `Melusina OpenClaw` (catalog) — same `mjgmurf6…`
+- `Jinn` (manifest) ↔ `Melusina OpenClaw` (catalog) — same `mjgmurf6…`
 
 The 3 `.spk` hashes that did not match the on-chain `InstallAdminEntry`
 expectation per `Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json`:

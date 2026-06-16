@@ -872,6 +872,10 @@ for app in apps:
     for k in EMBEDDED_KEYS:
         ev = attest.get(k)
         cv = canonical.get(k)
+        # masterNftMint: legacy RELEASE.json files may use 'MasterNftMint' (capital M).
+        # The index always embeds lowercase 'masterNftMint'; accept either casing in canonical.
+        if k == 'masterNftMint' and cv is None:
+            cv = canonical.get('MasterNftMint')
         # The index builder defaults missing on-chain fields to '' (see line ~473),
         # while RELEASE.json omits them entirely (None). Both mean "unset" — only a
         # genuine value-vs-value mismatch is real drift.

@@ -25,5 +25,6 @@
   },
   "screenshots": [],
   "license": "Proprietary",
-  "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960"
+  "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
+  "marketingVersion": "0.4.0"
 }

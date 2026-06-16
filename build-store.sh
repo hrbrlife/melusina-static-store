@@ -547,7 +547,7 @@ m['attest'] = {
     'releaseHash': release.get('releaseHash', ''),
     'releaseNonce': release.get('releaseNonce', ''),
     'releaseEntryPda': release.get('releaseEntryPda', ''),
-    'MasterNftMint': release.get('MasterNftMint') or release.get('masterNftMint') or '',  # K15: case-insensitive
+    'masterNftMint': release.get('masterNftMint') or release.get('MasterNftMint') or '',
     'licenseSquadsVault': release.get('licenseSquadsVault', ''),
     'signedAtUnix': release.get('signedAtUnix', 0),
     'authorSig': release.get('authorSig', ''),
@@ -832,7 +832,7 @@ index_path, attest_root = sys.argv[1], sys.argv[2]
 index = json.load(open(index_path))
 apps = index.get('apps', [])
 EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
-                 'MasterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
                  'authorSig', 'quorumPolicy']
 
 # Pre-pass: find duplicate appIds (warn-only).
@@ -872,8 +872,6 @@ for app in apps:
     for k in EMBEDDED_KEYS:
         ev = attest.get(k)
         cv = canonical.get(k)
-        if k == 'MasterNftMint' and not cv:
-            cv = canonical.get('masterNftMint')  # K15: RELEASE.json may use lowercase
         # The index builder defaults missing on-chain fields to '' (see line ~473),
         # while RELEASE.json omits them entirely (None). Both mean "unset" — only a
         # genuine value-vs-value mismatch is real drift.

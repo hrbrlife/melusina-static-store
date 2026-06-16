@@ -183,57 +183,12 @@
       }
     },
     {
-      "appId": "qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h",
-      "name": "BLOOM Identity",
-      "version": "0.1.0",
-      "versionNumber": 2,
-      "packageId": "ae845c01db1bfe065c313b0307ee165a",
-      "shortDescription": "KYC Identity Verification",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source)",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-bloom-app",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1780547798071,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "marketingVersion": "0.1.0",
-      "sha256": "ae845c01db1bfe065c313b0307ee165ab92f801abb6e2e7c1388751f167635c8",
-      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
-      "updatedAt": 1781268661000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "4c4c8166981e8588d93d9ff6738ddd77956e06a75f9c7b19b9d060622d1153df",
-        "releaseHash": "587894f0e541f3f235d44d06e3512bc9d9d982b7615de8423522bb4e8691fe1c",
-        "releaseNonce": "70992d9f18175e98e4c0bba14751a652",
-        "releaseEntryPda": "iD6iBTArTsBamSC7pRMdfqSLr7WSyZBJanwSggqWkUZ",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781268661,
-        "authorSig": "qn/tEssusXo2KHeEjVsL7cEcYsqS653qU83wdANvx9mHKyE8NuZfae6BsrviAjCqfJD8m+JWuYDNrvXgWDahAw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "BLOOM Identity is a self-hosted KYC (Know Your Customer) identity verification platform for Sandstorm. It lets you run compliant identity checks entirely on your own server \u2014 no third-party data processors, no cloud dependencies.\n\n## How It Works\n\nAn administrator creates a **Station** grain, configures the verification workflow, and shares a link. Recipients open the link and complete the verification steps in their own **Identity** grain. Results flow back to the Station for review.\n\n### For Administrators\n\n- Create verification workflows with configurable steps\n- Share invite links to respondents \u2014 no account needed on their end\n- Review submitted cases from the Station dashboard\n- AI-assisted document and identity analysis (optional, via local Ollama or configured endpoint)\n- Case notes, status tracking, and audit logs\n\n### For Respondents\n\nThe verification flow guides users through each step:\n\n1. **Terms & Conditions** \u2014 Accept the verification terms\n2. **Contact Verification** \u2014 Email and phone OTP confirmation\n3. **Document Upload** \u2014 Government ID, passport, or other identity documents\n4. **Facial Verification** \u2014 Live selfie capture with liveness detection\n5. **Personal Details** \u2014 Identity form with occupation, source of funds, etc.\n6. **Review & Submit** \u2014 Confirm all information before submission\n\nEach step is completed in-browser with no app installation required.\n\n## Key Features\n\n- **Privacy-First** \u2014 All data stays on your Sandstorm server. Documents, photos, and personal data never leave your infrastructure.\n- **Two-Grain Architecture** \u2014 Station (admin) and Identity (respondent) grains communicate via Sandstorm's capability system, enforcing strict access control.\n- **AI-Powered Analysis** \u2014 Optional integration with local LLMs for document OCR, face matching, and risk scoring.\n- **Workflow Engine** \u2014 YAML-defined verification workflows with conditional steps, configurable per use case.\n- **Multi-Language** \u2014 Internationalized interface supporting multiple languages.\n- **Audit Trail** \u2014 Complete journal of all actions for compliance reporting.\n- **Responsive Design** \u2014 Works on desktop and mobile browsers.\n\n## Screenshots\n\n![Admin Dashboard](screenshots/01-admin-dashboard.png)\n*Station admin dashboard showing active verification cases*\n\n![Share Link](screenshots/02-share-link.png)\n*Creating a shareable verification link for respondents*\n\n![KYC Start](screenshots/03-kyc-start.png)\n*Respondent begins the identity verification process*\n\n![Terms Acceptance](screenshots/04-terms-accepted.png)\n*Terms and conditions step*\n\n![Document Upload](screenshots/05-document-upload.png)\n*Document upload with supported ID types*\n\n![Face Capture](screenshots/06-face-capture.png)\n*Live facial verification capture*\n\n![Verification Complete](screenshots/07-verification-complete.png)\n*Respondent completes all verification steps*\n\n![Admin Review](screenshots/08-admin-final-review.png)\n*Administrator reviews completed verification case*",
-      "screenshots": []
-    },
-    {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
       "version": "1.1.3",
       "versionNumber": 19,
       "packageId": "70005533f5c0002a90679cab56533e0c",
+      "sha256": "70005533f5c0002a90679cab56533e0ce0fc6a635cb7643556d304e177def44e",
       "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
       "categories": [
         "Productivity",
@@ -761,6 +716,7 @@
       },
       "screenshots": [],
       "sha256": "75181d409aeccd93fef7eacab61468515028ac4558e9c34e452ceea1bc06f332",
+      "marketingVersion": "0.1.0",
       "imageId": "d1094f6e2253f02fda782364633d7705.svg",
       "updatedAt": 1779094956000,
       "attest": {
@@ -907,6 +863,7 @@
       },
       "screenshots": [],
       "sha256": "1ea51595d768be9d4fc51cc16c3c779d556f90c2b68085c8b652233088d34ec2",
+      "marketingVersion": "0.1.1",
       "imageId": "d3599b206f5c5eae2ddfc7816cf2ee87.svg",
       "updatedAt": 1779094988000,
       "attest": {
@@ -1339,56 +1296,6 @@
       "screenshots": []
     },
     {
-      "appId": "9nvf2002sphsr5d0de7am33f3jr0n0a0fax42e4mxup440guatfh",
-      "name": "cca.sh Domain Template v2",
-      "version": "0.4.0",
-      "versionNumber": 20,
-      "packageId": "ccf2c55d949a0295f53c0acaf020bba8",
-      "shortDescription": "Domain configuration authority for cca.sh grains (option-b build)",
-      "description": "The Domain Template v2 grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation. Option-b build with updated configuration schema.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/ccash_domain_template",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1748476800000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "tier": "admin",
-      "domains": [
-        "*"
-      ],
-      "marketingVersion": "0.4.0",
-      "sha256": "ccf2c55d949a0295f53c0acaf020bba8158979d754a78a20d9abcc06705e59e4",
-      "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1781267689000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "267fbbac7327417f9667092457544991ba71bfb950d204e569f0e450adfff51d",
-        "releaseHash": "8e18b6607538c54ba3d77fd07e00d9a30cf16e914395dea633a7904857564043",
-        "releaseNonce": "717070e65024c10aad83b344862a6cea",
-        "releaseEntryPda": "HCyuUxBHYYNaJB3ukL7xszb2Mhhh8Xd8AmAeffzMPNRP",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781267689,
-        "authorSig": "F6TIt+kcDu2CKSfq81xrJ8DT+oeCBmQcZFJLYY0sM/cexSqLffDGGHpDj7DWIb3zU8W4hS6bzXUbHZkEmOMLAw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "screenshots": []
-    },
-    {
       "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
       "packageId": "45ad6f8e01fe22f126a78fb55f77cea1",
       "name": "cca.sh Org Member",
@@ -1762,7 +1669,7 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.1",
+      "marketingVersion": "0.1.3",
       "sha256": "f501f3a72d2500b6277fa0b919a2fb38190080b1707eaf1b9ae8e9400d90b817",
       "imageId": "0bde48f210028b0491cfacfd30e16537.png",
       "updatedAt": 1779091445000,
@@ -1814,6 +1721,7 @@
       },
       "screenshots": [],
       "sha256": "c7bf146520e6ee18cc5d173db2f1eb649332b5c3e5e2b917c656d56028fcb43e",
+      "marketingVersion": "0.1.0",
       "imageId": "bf3059900d8fd5c80f7e63af53b011a5.svg",
       "updatedAt": 1779095033000,
       "attest": {
@@ -1970,6 +1878,7 @@
       },
       "screenshots": [],
       "sha256": "c186d3c409c00c83a7176b320c3d218905cf2026d89942341d457484f4dc086d",
+      "marketingVersion": "0.12.0",
       "imageId": "f9f915ff60fc663abd2d3167a4db0fac.svg",
       "updatedAt": 1781337319000,
       "attest": {
@@ -2634,6 +2543,7 @@
       "version": "2.0.16",
       "versionNumber": 9,
       "packageId": "bc14e4dadd64fc0f5ec4da83bda30811",
+      "sha256": "bc14e4dadd64fc0f5ec4da83bda30811dce9d2015defe4491609cdcde3c409c0",
       "shortDescription": "Flowcharts, org charts, mindmaps, UML \u2014 full draw.io engine, real-time collaboration, self-hosted.",
       "categories": [
         "Productivity",
@@ -2772,6 +2682,7 @@
       "version": "2.0.17",
       "versionNumber": 12,
       "packageId": "d894bc368210a0c9ad38fb8c462d21b9",
+      "sha256": "d894bc368210a0c9ad38fb8c462d21b954b848526077334a3b9127be9dda8bd3",
       "shortDescription": "Rich-text document editor with real-time collaboration, DOCX export \u2014 self-hosted.",
       "categories": [
         "Productivity",
@@ -2911,54 +2822,6 @@
         ]
       },
       "description": "Docs Bureau is the document editor pearl of the Melusina Bureau office suite. Rich-text documents with real-time collaborative editing, no conflicts, and unlimited simultaneous editors \u2014 entirely on your server.\n\n## Why Docs\n\n- **Pinned document revisions** \u2014 cryptographically anchor any document snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Conflict-free CRDT sync** \u2014 unlimited simultaneous editors; Yjs CRDT merges edits automatically without conflicts\n- **Per-document pearl** \u2014 each document is a sealed container; Grapple-scoped roles (viewer, commenter, editor, admin) enforced server-side\n\n## Features\n\n- **Real-time collaboration** \u2014 see who's connected, watch edits appear as they happen, presence indicators\n- **Rich formatting** \u2014 bold, italic, underline, strikethrough, headings, bullets, numbered lists, blockquotes, code blocks\n- **Sections** \u2014 organize long documents into named sections\n- **Tables** \u2014 insert and edit tables inline\n- **HTML export** \u2014 no lock-in; leave anytime with full fidelity\n\n## Suite integration\n\nDocs Bureau speaks Grapple to the suite \u2014 link a spreadsheet to a proposal, reference a diagram in a design doc, attach a contact card, embed a calendar into an agenda.\n\n## Status\n\n*Shipped v2.0.16.* Rich-text documents with Yjs CRDT, real-time collaboration, Solana-pinned revisions."
-    },
-    {
-      "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
-      "name": "DueProcess v2 (option-b)",
-      "version": "0.1.38",
-      "versionNumber": 42,
-      "packageId": "658026fe7a050bfa4cb37de7e9df73a3",
-      "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR. v32: restored text-format pkgdef + admin_route dispatch + HMAC e2e.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/AITX-Procedures",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776612839000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.38",
-      "sha256": "658026fe7a050bfa4cb37de7e9df73a3e9295c0cd37afe024994c2cf4f9ccf10",
-      "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1780890587000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "43f27f8eed6768621d7d37765dace9ea7f768c68f1c14f96f604dc6769cf51a9",
-        "releaseHash": "6a8ac67c38a348a0fe198858401e529d16ee837719dd28c8acbb7d327a5c43fc",
-        "releaseNonce": "903b026707522b78f293f4e2d2e48a0e",
-        "releaseEntryPda": "49WrvFQQXXpgnB2z7XB5FgseBNHuSmUzdVBLV7WYo2kn",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780890587,
-        "authorSig": "fxtQAyEa5GQNx8rTgJTDbMEtadnLcXDR+oMMBRHfQqTZxG6QBtAAlFuN16oG/9a/xHWoCyDsfTFKFPLsIQe7DQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "DueProcess v2 is the next-generation compliance casework engine for the cca.sh constellation. It drives Reg E error resolution, CFPB complaint tracking, and an audit hash-chain that makes every case state transition non-repudiable. Cases are routed through configurable procedure templates; outcomes are signed and time-stamped. Multi-role sign-off (maker/checker/reviewer) with per-template quorum policies. Integrates with ccash (operator console), cyberteller (payment slips), and OpenSanctions (screening sidecar) via Grapple capability claims.",
-      "screenshots": []
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
@@ -3127,7 +2990,8 @@
         "website": "https://hrbr.life"
       },
       "license": "MIT",
-      "marketingVersion": "0.1.1",
+      "sha256": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
+      "marketingVersion": "0.1.3",
       "imageId": "8b9eca39ba100eca66b057648720ddf4.svg",
       "updatedAt": 1780128127000,
       "attest": {
@@ -3699,9 +3563,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.9",
-      "versionNumber": 11,
-      "packageId": "f02466e8bf9cae66c022236a261cc639",
+      "version": "0.1.12",
+      "versionNumber": 14,
+      "packageId": "21b12412f4bf076e7a529e23d75cbddb",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -3713,7 +3577,7 @@
       "isOpenSource": false,
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-NamedCoin-app",
+      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
       "author": {
@@ -3722,20 +3586,20 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.9",
-      "sha256": "f02466e8bf9cae66c022236a261cc639c46479beb337f54222a34465dfc507f7",
+      "marketingVersion": "0.1.12",
+      "sha256": "21b12412f4bf076e7a529e23d75cbddb4b83249ed0c466cdbe8dcd060dfd6bcc",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1780890814000,
+      "updatedAt": 1781641860000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0136747e8a1e573557b4b4620a6ea27de6e7eb3668e34c265c1e983a5cfe694a",
-        "releaseHash": "e522f25773ba6084bc3575aa0941ebad983c9f14339956717ed27b7860e9157c",
-        "releaseNonce": "6dde905f2372cf674ff88d7f8669a1e5",
-        "releaseEntryPda": "GkQyVCfPkn5LnqFSsw3gPJSJmtCeqseyCY6WVAdZf2Uv",
+        "appHash": "0a014f663d4f76bf47ce2490fc409471cbd968c6d76baeef9f4294de520c0ada",
+        "releaseHash": "2b74c6523dbd767a6730e39aebd871705f63d88b821dfdda7e9df0939421f9b3",
+        "releaseNonce": "7d6251d9402b9482922aee3b1602224c",
+        "releaseEntryPda": "4dRmatmnfmoW9GAJtudnfHHudQuvjrdroPXGbwaS1i3T",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780890814,
-        "authorSig": "yCQ+yYQMGltpRr6//kzenSsA07jBA1W/cze3b4LiTHLQq41JsFnpSUxdqQqTb4QEjarZcJsuf4ED6NsdGA8+AQ==",
+        "signedAtUnix": 1781641860,
+        "authorSig": "2bR8nQL8YR2VZylNSwf7K1dUFV6Hx0Fnb0u8EhToomnVr4jhE3HABc+uuCJhps5GdEYV77M6clGO09nUAD98Aw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3982,6 +3846,7 @@
       "version": "2.0.17",
       "versionNumber": 11,
       "packageId": "7daf8f785e4a1ebb7362309a9ea99fb3",
+      "sha256": "7daf8f785e4a1ebb7362309a9ea99fb39e7dedd44977d4a10fd41ae4d836da37",
       "shortDescription": "Layered image editor \u2014 brushes, filters, layers, crop \u2014 entirely in your browser, self-hosted.",
       "categories": [
         "Productivity",
@@ -4170,6 +4035,7 @@
       "version": "2.0.17",
       "versionNumber": 14,
       "packageId": "f2a314e5b7392d9ed49853312bb88654",
+      "sha256": "f2a314e5b7392d9ed49853312bb88654de4fae13879229fa19c4bc75f794be2f",
       "shortDescription": "Spreadsheet with formulas, XLSX import/export, real-time multi-user editing \u2014 self-hosted.",
       "categories": [
         "Productivity",
@@ -4355,148 +4221,6 @@
       },
       "capabilities": null,
       "description": "# Shell Tester\n\nA minimal Sandstorm pearl for testing Melusina shell extensions.\n\n## Features\n\n- **Wallet Signing** \u2014 Test wallet signing operations via Melusina shell capabilities\n- **OTP** \u2014 Verify one-time password generation and validation\n- **NFTs** \u2014 Test NFT-related operations through shell extensions\n- **Solana RPC** \u2014 Exercise Solana RPC calls via the Melusina shell interface\n\n## Technical Details\n\nShell Tester uses raw Cap'n Proto communication (no HTTP bridge), connecting directly to Melusina shell extension capabilities. The UI is a single embedded HTML page served by a Go binary.\n\nThis pearl is intended for developers and testers working on Melusina platform integrations.",
-      "screenshots": []
-    },
-    {
-      "appId": "2tchnyd52jx5f2cadgwcvrsvavphnuee0vvexuw1muxhhy5w2e60",
-      "name": "Teleport",
-      "version": "2.1.2",
-      "versionNumber": 12,
-      "packageId": "9c5060f77122fced9176401e206d1dfd",
-      "shortDescription": "Sandstorm-native chat grain with session-scoped browser-side end-to-end encryption.",
-      "categories": [
-        "Social",
-        "Communications"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://github.com/hrbrlife/melusina-teleport",
-      "codeLink": "https://github.com/hrbrlife/melusina-teleport",
-      "upstreamAuthor": "Melusina Contributors",
-      "createdAt": 1777301034000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "2.1.2",
-      "sha256": "9c5060f77122fced9176401e206d1dfd0b7eccd8231c66c21591dde5207d1a39",
-      "imageId": "126aa47d135d8249f9382023c3f1be0d.png",
-      "updatedAt": 1781285374000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "bc19feb0ccf814cbbdd322aecc72ca69edf6e7fdaa04b7f7c22a647132218528",
-        "releaseHash": "be1ce80e43199792506ce9aea94e529d42166d83fb9838e0510a6d737900929b",
-        "releaseNonce": "5ea522aae588e229a060a8f6fadd6f25",
-        "releaseEntryPda": "9jBMjHhedAEY7qUZwyMQjY3YR1K1zdhB5UJPEXiVbEfU",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781285374,
-        "authorSig": "vLp06tda3pxvtAL5q9h/9+nSG2YNAOwLztKHSoakPZEeTAFWcMOmqia/Q2/fc4RiimZMA3/eXwOGzeG+q2EjAQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "teleport",
-        "appName": "Teleport",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "teleport",
-            "pearlName": "Teleport",
-            "pearlType": "user-pearl",
-            "purpose": "Sandstorm-native chat grain. TypeScript Express + Apollo GraphQL + better-sqlite3 server with session-scoped end-to-end field encryption performed in the browser. The server stays blind on E2E1: envelopes (single AES-256-GCM DEK per browser session); mixed-mode is supported, so plaintext chat coexists with encrypted fields when the operator opts in. Per-grain identity, role-aware permissions for admin / collaborator / auditor / client / assistant / public viewer.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM, single browser-session DEK; server stores E2E1: envelopes verbatim",
-              "fields": [
-                "Chat messages (E2E1: prefixed)",
-                "User public-key directory entries"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Manage grain membership",
-                  "purpose": "Owner-only: invite / remove members, set role assignments."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Send / receive chat messages",
-                  "purpose": "Standard chat \u2014 per-message E2E encryption is opt-in client-side."
-                },
-                {
-                  "name": "Publish own public key",
-                  "purpose": "Register a per-user public key in the grain directory for future per-recipient envelope wrapping."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only \u2014 no per-grain on-chain state."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": [
-                {
-                  "name": "POST /api/graphql",
-                  "purpose": "GraphQL endpoint for chat operations (insertMessage, listMessages, upsertUserPublicKey, getUserPublicKey).",
-                  "roleGate": "anyMember",
-                  "auth": "cookie"
-                }
-              ]
-            }
-          }
-        ]
-      },
-      "description": "Teleport is a Sandstorm-native chat pearl with browser-side end-to-end field encryption. The server stays blind: encrypted messages are stored as `E2E1:<base64>` envelopes that the host never decrypts. Mixed-mode is supported, so plaintext and encrypted chat coexist as the operator chooses.\n\n## Why Teleport\n\n- **Server-blind E2E** \u2014 AES-256-GCM with a single DEK derived per browser session; the host stores opaque envelopes only\n- **Per-pearl isolation** \u2014 each Teleport pearl is its own sealed Sandstorm container with its own SQLite database, members, and permissions\n- **Role-aware permissions** \u2014 admin, collaborator, auditor, client, assistant, and public-viewer roles map to a six-bit permission set from the bridgeConfig\n- **No third-party trust** \u2014 no external chat backend; messages stay on your Sandstorm instance\n- **Wallet-rooted release attestation** \u2014 every release is anchored on Solana via a Squads-signed ReleaseEntry; the appHash on-chain has to match the SPK byte-for-byte\n\n## Features\n\n- **Session-scoped E2E encryption** \u2014 single DEK per browser session, AES-256-GCM, server-side blind\n- **Per-user public keys** \u2014 directory of registered public keys for future per-recipient envelope wrapping (see `docs/CHAT_E2E.md` \u00a77 future work)\n- **GraphQL API** \u2014 `insertMessage`, `listMessages`, `upsertUserPublicKey`, `getUserPublicKey` over `/api/graphql`\n- **Better-sqlite3 storage** \u2014 local file-backed database inside the pearl\n- **Six-role permission set** \u2014 admin / collaborator / auditor / client / assistant / public viewer\n\n## Status\n\nTeleport is the chat-only MVP carved out of the INSTASYS KYC platform. The full multi-pearl platform (panel execution, wallets, screening, AI enrichment, static publishing, identity, telemetry) was stripped from this build; the manifest now exposes a single \"New Chat Room\" pearl action that launches the chat server directly.\n\nThis release is for human testing and development. **Not production-ready**: chat E2E uses one DEK per browser session \u2014 no forward secrecy, no per-message DEK, no NaCl-box wrapping per recipient. See `docs/CHAT_E2E.md` for the threat model and the future-work notes.",
       "screenshots": []
     },
     {
@@ -4687,6 +4411,7 @@
       "screenshots": [],
       "license": "Proprietary",
       "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
+      "marketingVersion": "0.4.0",
       "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
       "updatedAt": 1781285331000,
       "attest": {

@@ -3749,9 +3749,9 @@
     {
       "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
       "name": "NamedCoin Admin",
-      "version": "0.1.13",
-      "versionNumber": 16,
-      "packageId": "7c02a0b2123fff09834b4aeefd1b79fe",
+      "version": "0.1.14",
+      "versionNumber": 17,
+      "packageId": "14721c31f9bc4a62d608da63a4759f0d",
       "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
       "categories": [
         "Productivity"
@@ -3767,21 +3767,21 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.13",
-      "sha256": "7c02a0b2123fff09834b4aeefd1b79fe77356c6e1fe40617710d48175a1867b2",
+      "marketingVersion": "0.1.14",
+      "sha256": "14721c31f9bc4a62d608da63a4759f0de48c00b0448a91d0cf786b63e90a1863",
       "createdAt": 1780547509756,
       "imageId": "6808801193391d9254773a067bc1b295.svg",
-      "updatedAt": 1780891008000,
+      "updatedAt": 1781599131000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "f7ec18d16d71d5c93bba62bdf1abad97f4135f35bbf1d74426a930fe7402d317",
-        "releaseHash": "b6aeea67c7472e4bc836edd2f516e4e05c1fcac5fb7103ecf741acf41dd7d9ff",
-        "releaseNonce": "d5c95c16fff7ff15a1313f8a1c7d30e4",
-        "releaseEntryPda": "35EWu7QWQwgVmbyPkgURb2PcXyjMWpk1RHHJZkiPpCtq",
+        "appHash": "ad740891b5df28f2a6ab799a67232d38252bccf1e54c36f1dc82e3254111ff06",
+        "releaseHash": "fd68492a166df48abd54aca0a78e48fb67431895c8c23887e0c398886bfd63e1",
+        "releaseNonce": "8dca0f28095383235cee52a835f1d52b",
+        "releaseEntryPda": "4HdgzjiYJpmRwGe4VENQ7yz5PhMk6doczMErGA4fmSV5",
         "MasterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1780891008,
-        "authorSig": "7YTEAAhpjCz6NDXCG4TA/lGH8IfiBRH0hw7g5e9fXUPeeMlpuP0VuHmIIL5xeDr5xq16+bCze7w4G1dQZcTLAw==",
+        "signedAtUnix": 1781599131,
+        "authorSig": "f4ZSB1+KsR2hjI6s1aShAIU2EZAeKNqnmmzdElQGS/7Y2Ysu4FkSdelpjOKIcCqLrxKG7006HU4Wq8QXRgB7Dg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -66,6 +67,10 @@ var _ chainReader = (*verify.RPCClient)(nil)
 // OPERATOR from bad publishers; the install still re-verifies the chain itself.
 //
 //	spk            — the raw Sandstorm package bytes (.spk) being published.
+//	metadata       — the app's metadata.json bytes. Together with spk they form the
+//	                 canonical staged tree the on-chain AppHash binds (the pearl
+//	                 ceremony hashes exactly {app.spk, metadata.json}); transported
+//	                 in the publish request so the gate can recompute that AppHash.
 //	rel            — the publisher's CLAIMS (melusina-release-v1). Never trusted
 //	                 on its own; every field used here is re-checked on-chain.
 //	operatorPubkey — the sidecar's own receipt-signing ed25519 pubkey (32B). The
@@ -76,13 +81,18 @@ var _ chainReader = (*verify.RPCClient)(nil)
 // on-chain ReleaseEntry.app_id → FoundationAppEntry — never from a caller-supplied
 // tier or the untrusted RELEASE.json — so an operator cannot dodge the mask by
 // omitting the tier.
-func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON, operatorPubkey [32]byte) error {
-	// (a)+(b) Re-hash the SPK, require it equals the claimed app_hash, and require
-	// an Active on-chain ReleaseEntry (derived from masterNftMint+app_hash) pinning
-	// that hash. This is the load-bearing "are these the attested bytes" core,
-	// SHARED with the serve-time gate (VerifyServeHash) so both enforce it identically.
-	sum := sha256.Sum256(spk)
-	masterMint, _, relPDA, err := verifyReleaseEntryHash(ctx, cr, hex.EncodeToString(sum[:]), rel)
+func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, metadata []byte, rel ReleaseJSON, operatorPubkey [32]byte) error {
+	// (a)+(b) Recompute the on-chain AppHash — the TREE-HASH over the canonical
+	// {app.spk, metadata.json} pair (apphash.Canonical), NOT sha256(spk) — require it
+	// equals the claimed app_hash, and require an Active on-chain ReleaseEntry
+	// (derived from masterNftMint+app_hash) pinning that hash. This is the
+	// load-bearing "are these the attested bytes" core, SHARED with the serve-time
+	// gate (VerifyServeHash) so both enforce it identically.
+	appHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
+	}
+	masterMint, _, relPDA, err := verifyReleaseEntryHash(ctx, cr, appHash, rel)
 	if err != nil {
 		return err
 	}
@@ -183,11 +193,11 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // matches — load-bearing AT SERVE TIME"). It is the chain-READ-ONLY subset of
 // VerifyPublish: it needs ONLY the on-chain reader, never the operator signing
 // identity — serve-time proves the SERVED BYTES are on-chain-attested, not who
-// may write. The serve handler stream-hashes the file once while serving and
-// passes that lowercase hex here, so the gate never re-buffers a 100 MiB SPK.
-// FAIL-CLOSED at every step:
+// may write. The serve handler recomputes the on-chain AppHash (the tree-hash over
+// the served {app.spk, metadata.json}) once while serving and passes that lowercase
+// hex here, so the gate never re-buffers a 100 MiB SPK. FAIL-CLOSED at every step:
 //
-//	(a) spkSHA256Hex == rel.AppHash
+//	(a) appHashHex (the recomputed tree-hash) == rel.AppHash
 //	(b) an Active on-chain ReleaseEntry (masterNftMint+appHash) pins that appHash
 //	(d) the app's master NFT mint is not blacklisted
 //
@@ -196,35 +206,35 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // boot-identity ceremony, tracked separately as B1-02). cfg is accepted for
 // signature parity with VerifyPublish and future per-store policy; it is not used
 // by the read-only serve checks today.
-func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, spkSHA256Hex string, rel ReleaseJSON) error {
+func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
 	_ = cfg
-	masterMint, _, _, err := verifyReleaseEntryHash(ctx, cr, spkSHA256Hex, rel)
+	masterMint, _, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
 	if err != nil {
 		return err
 	}
 	return verifyNotBlacklisted(ctx, cr, masterMint, "app")
 }
 
-// verifyReleaseEntryHash performs the serve-time load-bearing checks given the
-// PRECOMPUTED sha256 hex of the bytes in hand: (a) it equals rel.AppHash, and
-// (b) the on-chain ReleaseEntry derived from rel.masterNftMint+appHash exists,
-// pins THIS app_hash, and is Active. Returns the app master NFT mint + the
-// 32-byte app_hash for the caller's downstream (blacklist) checks. FAIL-CLOSED.
-// (The author ed25519 sig was verified on-chain at register — §1; we confirm the
-// entry, not the sig.)
-func verifyReleaseEntryHash(ctx context.Context, cr chainReader, spkSHA256Hex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, error) {
+// verifyReleaseEntryHash performs the load-bearing checks given the PRECOMPUTED
+// app-hash hex of the bytes in hand (the tree-hash over {app.spk, metadata.json},
+// per apphash.Canonical): (a) it equals rel.AppHash, and (b) the on-chain
+// ReleaseEntry derived from rel.masterNftMint+appHash exists, pins THIS app_hash,
+// and is Active. Returns the app master NFT mint + the 32-byte app_hash for the
+// caller's downstream (blacklist) checks. FAIL-CLOSED. (The author ed25519 sig was
+// verified on-chain at register — §1; we confirm the entry, not the sig.)
+func verifyReleaseEntryHash(ctx context.Context, cr chainReader, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
 	var zeroPDA pda.Pubkey
 
-	gotHash := strings.ToLower(strings.TrimSpace(spkSHA256Hex))
+	gotHash := strings.ToLower(strings.TrimSpace(appHashHex))
 	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
 	if gotHash != wantHash {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", gotHash, wantHash)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", gotHash, wantHash)
 	}
 	appHashBytes, err := hash32FromHex(wantHash)
 	if err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=spk_sha256: release.appHash not 32-byte hex: %w", err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=app_hash: release.appHash not 32-byte hex: %w", err)
 	}
 
 	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))

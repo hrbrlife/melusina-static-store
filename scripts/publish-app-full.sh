@@ -399,12 +399,20 @@ step 4 "sealed-v3 submit to store sidecar"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 
 # Locate the RELEASE.json produced by Step 3 (ceremony catalog dir first, then
-# the app dir). The submit client asserts sha256(SPK)==RELEASE.appHash locally.
+# the app dir). The submit client asserts apphash(SPK,metadata.json)==RELEASE.appHash
+# locally — the on-chain appHash is the tree-hash over {app.spk, metadata.json}, so
+# the metadata.json is REQUIRED alongside the SPK + RELEASE.json.
 SUBMIT_RELEASE=""
+SUBMIT_METADATA=""
 if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/RELEASE.json" ]]; then
   SUBMIT_RELEASE="$CAT_PATH/RELEASE.json"
 elif [[ -f "$APP_DIR/RELEASE.json" ]]; then
   SUBMIT_RELEASE="$APP_DIR/RELEASE.json"
+fi
+if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/metadata.json" ]]; then
+  SUBMIT_METADATA="$CAT_PATH/metadata.json"
+elif [[ -f "$APP_DIR/metadata.json" ]]; then
+  SUBMIT_METADATA="$APP_DIR/metadata.json"
 fi
 
 if skip_step push || skip_step submit; then
@@ -416,6 +424,8 @@ elif [[ -z "${MELUSINA_STORE_URL:-}" ]]; then
   warn "  MELUSINA_STORE_RPC_URL (see Makefile target 'publish-sealed')."
 elif [[ -z "$SUBMIT_RELEASE" || ! -f "$SUBMIT_RELEASE" ]]; then
   fail "  submit: no RELEASE.json found (looked in \$CAT_PATH and $APP_DIR) — run the ceremony (Step 3) first"
+elif [[ -z "$SUBMIT_METADATA" || ! -f "$SUBMIT_METADATA" ]]; then
+  fail "  submit: no metadata.json found (looked in \$CAT_PATH and $APP_DIR) — it is bound into the on-chain appHash"
 elif [[ -z "$SPK_FOR_REL" || ! -f "$SPK_FOR_REL" ]]; then
   fail "  submit: no SPK found — run make pack (Step 2) first"
 else
@@ -432,6 +442,7 @@ else
   SUBMIT_ARGS=(
     --store "$MELUSINA_STORE_URL"
     --spk "$SPK_FOR_REL"
+    --metadata "$SUBMIT_METADATA"
     --release "$SUBMIT_RELEASE"
     --publisher-key "$MELUSINA_PUBLISHER_KEY"
     --store-pubkey "$MELUSINA_STORE_PUBKEY"

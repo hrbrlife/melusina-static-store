@@ -22,24 +22,28 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
 - **READ** (public, unauthenticated): static assets — `GET /`, `/apps/index.json`,
   `/attest/<appId>/RELEASE.json`, `/verifier/*` — are byte-identical to the static
   store. **SPK fetches `/packages/<packageId>` are GATED AT SERVE TIME** (`serve_gate.go`,
-  B1-01): the served bytes are sha256'd and refused (`403`) unless an **Active**
-  on-chain `ReleaseEntry` pins that exact hash (and the app is not blacklisted).
-  Content-addressed, fail-closed: no chain reader ⇒ SPK fetches `503`; a drifted
-  catalog (served bytes ≠ the on-chain-anchored `appHash`) is refused. A verified
-  verdict is cached per-appHash for `serve_verify_ttl_seconds` (default 60s; the
-  revoke-visibility window).
+  B1-01): the gate resolves the served packageId → its `signatures/<appId>/metadata.json`
+  + `attest/<appId>/RELEASE.json`, recomputes the on-chain **AppHash** — the TREE-HASH over
+  the canonical `{app.spk, metadata.json}` pair (`internal/apphash`; this is what the pearl
+  ceremony registers, **NOT** `sha256(spk)`) — over the EXACT served bytes, and refuses
+  (`403`) unless an **Active** on-chain `ReleaseEntry` pins that AppHash (and the app is not
+  blacklisted). Content-bound, fail-closed: no chain reader ⇒ SPK fetches `503`; a drifted
+  SPK or tampered `metadata.json` (recomputed AppHash ≠ the on-chain-anchored `appHash`) is
+  refused. A verified verdict is cached per-appHash for `serve_verify_ttl_seconds` (default
+  60s; the revoke-visibility window).
 - **WRITE** (gated; the sidecar is the SINGLE WRITER): `POST /publish`
-  — sealed-v3 envelope from an attested publisher → re-hash SPK == on-chain
-  `ReleaseEntry.app_hash`, PDA Active, blacklist clear, version floor →
-  invoke `build-store.sh` as an in-process assembler → return a store-signed
-  provenance receipt. **No `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP`
-  bypass exists on this path.**
+  — sealed-v3 envelope from an attested publisher (+ the `metadata.json`) → recompute the
+  AppHash (tree-hash over `{app.spk, metadata.json}`) == on-chain `ReleaseEntry.app_hash`,
+  PDA Active, blacklist clear, version floor → invoke `build-store.sh` as an in-process
+  assembler → return a store-signed provenance receipt. **No `MELUSINA_ATTEST_OFFLINE`/
+  `SKIP_STEPS`/`SCAN_NOOP` bypass exists on this path.**
 - **Ops:** `GET /healthz`
 
 ## Status
 Phase-1 spine: READ surface + **gated `/publish`** (C2.3). The receive path now
-verifies the publisher's signed artifact envelope, re-hashes the SPK against the
-on-chain `ReleaseEntry.app_hash`, requires an Active `StoreOperatorAuthorization`
+verifies the publisher's signed artifact envelope, recomputes the AppHash (the
+tree-hash over `{app.spk, metadata.json}`) and requires it == the on-chain
+`ReleaseEntry.app_hash`, requires an Active `StoreOperatorAuthorization`
 whose `store_authority` is this sidecar's own operator key, requires a clear
 `BlacklistEntry`, then (single writer, under a mutex) runs `build-store.sh` as a
 convenience assembler and returns a store-signed provenance receipt over the raw

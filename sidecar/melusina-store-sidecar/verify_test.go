@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"strings"
 	"testing"
@@ -11,9 +10,9 @@ import (
 )
 
 // TestVerifyPublish_Accept asserts the gate ACCEPTs a self-consistent
-// (spk, release, authz) bundle: sha256(spk)==appHash, Active ReleaseEntry
-// pinning that hash, Active StoreOperatorAuthorization whose store_authority is
-// the sidecar's own operator key, and a clear blacklist.
+// (spk, metadata, release, authz) bundle: canonicalAppHash(spk,metadata)==appHash,
+// Active ReleaseEntry pinning that hash, Active StoreOperatorAuthorization whose
+// store_authority is the sidecar's own operator key, and a clear blacklist.
 func TestVerifyPublish_Accept(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -24,7 +23,7 @@ func TestVerifyPublish_Accept(t *testing.T) {
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err != nil {
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err != nil {
 		t.Fatalf("expected ACCEPT, got: %v", err)
 	}
 }
@@ -41,18 +40,18 @@ func TestVerifyPublish_Reject(t *testing.T) {
 		wantCheck string
 	}{
 		{
-			name: "sha256_mismatch",
+			name: "apphash_mismatch",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				// Corrupt the SPK so its hash no longer equals release.appHash.
+				// Corrupt the SPK so the recomputed tree-hash no longer equals
+				// release.appHash.
 				f.spk = append(append([]byte{}, f.spk...), 0xFF)
 			},
-			wantCheck: "check=spk_sha256",
+			wantCheck: "check=app_hash",
 		},
 		{
 			name: "release_entry_not_active",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				appSum := sha256.Sum256(f.spk)
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: appSum, status: verify.AttestationStatusRevoked}
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
 			},
 			wantCheck: "check=release_entry",
 		},
@@ -144,7 +143,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 			f.pinAccept(m, operatorPub)
 			tc.mutate(m, &f)
 
-			err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub)
+			err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub)
 			if err == nil {
 				t.Fatalf("expected REJECT, got ACCEPT")
 			}
@@ -175,7 +174,7 @@ func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	a.tierMask = 0x01
 	m.storeAuthz[f.authzPDA] = a
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err == nil {
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err == nil {
 		t.Fatal("expected REJECT for uncovered Standard tier")
 	} else if !strings.Contains(err.Error(), "check=store_operator_authz") {
 		t.Fatalf("tier reject did not name store_operator_authz: %v", err)
@@ -185,7 +184,7 @@ func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	a = m.storeAuthz[f.authzPDA]
 	a.tierMask = 0x03
 	m.storeAuthz[f.authzPDA] = a
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err != nil {
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err != nil {
 		t.Fatalf("expected ACCEPT once mask covers Standard, got: %v", err)
 	}
 }

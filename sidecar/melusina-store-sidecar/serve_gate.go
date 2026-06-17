@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,24 +12,29 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 )
 
 // ── SERVE-TIME on-chain gate (B1-01; canon §5b) ───────────────────────────────
 //
 // serveGate wraps the static FileServer to make the on-chain ReleaseEntry quorum
-// LOAD-BEARING AT SERVE TIME. Requests under /packages/ are SPK fetches: the gate
-// stream-hashes the served bytes, finds the on-chain-anchored RELEASE.json that
-// claims THAT exact sha256, and refuses to write a single byte unless an Active
-// on-chain ReleaseEntry pins that hash (VerifyServeHash). Everything else
-// (index.json, icons, attest/*, releases/*, the SPA) is served byte-identically
-// by the embedded FileServer.
+// LOAD-BEARING AT SERVE TIME. Requests under /packages/ are SPK fetches. For each
+// the gate resolves the on-chain-anchored catalog app for the served packageId
+// (apps/index.json → attest/<appId>/RELEASE.json + signatures/<appId>/metadata.json),
+// recomputes the on-chain AppHash — the TREE-HASH over the canonical {app.spk,
+// metadata.json} pair (apphash.Canonical; this is what the pearl ceremony registers,
+// NOT sha256(spk)) — over the EXACT bytes it is about to serve, and refuses to
+// write a single byte unless an Active on-chain ReleaseEntry pins that AppHash
+// (VerifyServeHash). Everything else (index.json, icons, attest/*, releases/*, the
+// SPA) is served byte-identically by the embedded FileServer.
 //
-// It is CONTENT-ADDRESSED on purpose: the binding is "served bytes -> Active
-// ReleaseEntry", never the filename or the index. Swapping the bytes under a
-// packageId changes their sha256, so no RELEASE.json/ReleaseEntry matches and the
-// fetch is refused (403). This is also the serve-side of B1-09 — only bytes that
-// content-match an on-chain anchor are served; a drifted catalog (served bytes !=
-// the anchor's appHash) is correctly refused, fail-closed.
+// CONTENT-BOUND: the cryptographic binding is "served bytes + their metadata.json
+// -> on-chain AppHash -> Active ReleaseEntry". The served packageId only SELECTS
+// which RELEASE.json/metadata.json to check against; a mismatch (swapped or drifted
+// SPK bytes, or a tampered metadata.json) changes the recomputed AppHash so no
+// on-chain ReleaseEntry matches and the fetch is refused (403). This is the
+// serve-side of B1-09: only bytes that recompute to an on-chain anchor are served.
 //
 // FAIL-CLOSED: no chain reader (cr==nil) => every SPK fetch is 503 (never
 // unverified). There is no env/dev bypass (mirrors the /publish S7 stance).
@@ -48,22 +50,29 @@ type serveGate struct {
 	fileServer http.Handler
 
 	// verifyTTL bounds the cached "appHash -> Active" verdict; 0 disables caching
-	// (re-verify on every GET). releaseRefresh bounds how often the RELEASE.json
-	// resolve index is rebuilt from disk (so a flood of unknown packageIds cannot
-	// stampede disk scans, while a newly published app is still picked up within
-	// the window).
+	// (re-verify on every GET). releaseRefresh bounds how often the resolve index
+	// is rebuilt from disk (so a flood of unknown packageIds cannot stampede disk
+	// scans, while a newly published app is still picked up within the window).
 	verifyTTL      time.Duration
 	releaseRefresh time.Duration
 
 	// now is the clock (injectable in tests for deterministic TTL expiry).
 	now func() time.Time
 
-	mu              sync.RWMutex
-	releaseByHash   map[string]ReleaseJSON // appHash(lowerhex) -> RELEASE.json claim
-	releaseLoadedAt time.Time
-	verdict         map[string]time.Time // appHash(lowerhex) -> last on-chain-Active time
+	mu           sync.RWMutex
+	apps         map[string]servedApp // packageId(lowerhex) -> anchored app
+	appsLoadedAt time.Time
+	verdict      map[string]time.Time // appHash(lowerhex) -> last on-chain-Active time
 
 	rebuildMu sync.Mutex // serializes resolve-index rebuilds
+}
+
+// servedApp is the dist-resolved material the gate needs to verify one served
+// SPK: its on-chain-anchored RELEASE.json claim and the EXACT metadata.json bytes
+// the on-chain AppHash binds (both are part of the catalog the operator serves).
+type servedApp struct {
+	rel      ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
+	metadata []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
 }
 
 // errServeNoChainReader marks the fail-closed "no chain configured" condition,
@@ -129,19 +138,32 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash the EXACT bytes we are about to serve (same open fd, no TOCTOU), then
-	// gate on that content hash.
-	servedHash, err := streamSHA256Hex(f)
+	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
+	// reader to verify it (503, distinct from a 403 verification refusal).
+	if g.cr == nil {
+		http.Error(w, "store serve-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	// Resolve the on-chain-anchored catalog app for this packageId. A miss means
+	// these bytes are not an anchored catalog app (orphan / drifted under a fresh
+	// packageId) — fail closed.
+	app, ok := g.lookupApp(base)
+	if !ok {
+		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
+		return
+	}
+
+	// Recompute the on-chain AppHash (tree-hash over the EXACT bytes we are about
+	// to serve + the app's metadata.json) from the same open fd (no TOCTOU), then
+	// gate on that AppHash.
+	appHash, err := apphash.Canonical(f, app.metadata)
 	if err != nil {
 		http.Error(w, "store serve-gate: hash error", http.StatusInternalServerError)
 		return
 	}
-	if err := g.gate(r.Context(), servedHash); err != nil {
-		code := http.StatusForbidden
-		if errors.Is(err, errServeNoChainReader) {
-			code = http.StatusServiceUnavailable
-		}
-		http.Error(w, "store serve-gate refused: "+err.Error(), code)
+	if err := g.gate(r.Context(), appHash, app.rel); err != nil {
+		http.Error(w, "store serve-gate refused: "+err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -154,26 +176,19 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// is what spares the chain RPC on the hot path.
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
-	w.Header().Set("X-Store-AppHash", servedHash)
+	w.Header().Set("X-Store-AppHash", appHash)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, base, st.ModTime(), f)
 }
 
-// gate returns nil iff an SPK whose served bytes hash to servedHashHex may be
+// gate returns nil iff an SPK whose served bytes recompute to appHash may be
 // served: either a fresh cached verdict, or a live on-chain re-verification
-// (Active ReleaseEntry pinning that hash + app not blacklisted). It is the single
-// fail-closed decision point.
-func (g *serveGate) gate(ctx context.Context, servedHashHex string) error {
-	if g.cr == nil {
-		return errServeNoChainReader
-	}
-	h := strings.ToLower(strings.TrimSpace(servedHashHex))
+// (Active ReleaseEntry pinning that AppHash + app not blacklisted). It is the
+// single fail-closed decision point. The caller guarantees g.cr != nil.
+func (g *serveGate) gate(ctx context.Context, appHash string, rel ReleaseJSON) error {
+	h := strings.ToLower(strings.TrimSpace(appHash))
 	if g.verdictFresh(h) {
 		return nil
-	}
-	rel, ok := g.lookupRelease(h)
-	if !ok {
-		return fmt.Errorf("check=release_provenance: no on-chain-anchored RELEASE.json matches served bytes sha256=%s", h)
 	}
 	if err := VerifyServeHash(ctx, g.cr, g.cfg, h, rel); err != nil {
 		return err
@@ -182,12 +197,12 @@ func (g *serveGate) gate(ctx context.Context, servedHashHex string) error {
 	return nil
 }
 
-func (g *serveGate) verdictFresh(hash string) bool {
+func (g *serveGate) verdictFresh(appHash string) bool {
 	if g.verifyTTL <= 0 {
 		return false // caching disabled => always re-verify on chain
 	}
 	g.mu.RLock()
-	at, ok := g.verdict[hash]
+	at, ok := g.verdict[appHash]
 	g.mu.RUnlock()
 	if !ok {
 		return false
@@ -195,77 +210,109 @@ func (g *serveGate) verdictFresh(hash string) bool {
 	return g.now().Sub(at) < g.verifyTTL
 }
 
-func (g *serveGate) recordVerdict(hash string) {
+func (g *serveGate) recordVerdict(appHash string) {
 	g.mu.Lock()
-	g.verdict[hash] = g.now()
+	g.verdict[appHash] = g.now()
 	g.mu.Unlock()
 }
 
-// lookupRelease resolves the on-chain-anchored RELEASE.json that claims appHash
-// (content-addressed). On a miss it rebuilds the resolve index from disk at most
-// once per releaseRefresh window (bounding disk scans under a flood of unknown
-// packageIds) and retries once, so a newly published app becomes resolvable
-// within the window.
-func (g *serveGate) lookupRelease(hash string) (ReleaseJSON, bool) {
+// lookupApp resolves the on-chain-anchored catalog app for a served packageId.
+// On a miss it rebuilds the resolve index from disk at most once per
+// releaseRefresh window (bounding disk scans under a flood of unknown packageIds)
+// and retries once, so a newly published app becomes resolvable within the window.
+func (g *serveGate) lookupApp(packageID string) (servedApp, bool) {
+	key := strings.ToLower(strings.TrimSpace(packageID))
 	g.mu.RLock()
-	rel, ok := g.releaseByHash[hash]
-	loadedAt := g.releaseLoadedAt
-	built := g.releaseByHash != nil
+	app, ok := g.apps[key]
+	loadedAt := g.appsLoadedAt
+	built := g.apps != nil
 	g.mu.RUnlock()
 	if ok {
-		return rel, true
+		return app, true
 	}
 	if built && g.now().Sub(loadedAt) < g.releaseRefresh {
-		return ReleaseJSON{}, false // recently scanned; the hash genuinely has no anchor
+		return servedApp{}, false // recently scanned; this packageId genuinely has no anchor
 	}
-	g.rebuildReleaseIndex()
+	g.rebuildAppIndex()
 	g.mu.RLock()
-	rel, ok = g.releaseByHash[hash]
+	app, ok = g.apps[key]
 	g.mu.RUnlock()
-	return rel, ok
+	return app, ok
 }
 
-// rebuildReleaseIndex scans <dist>/attest/*/RELEASE.json into the appHash->rel
-// map. A malformed or non-32-byte-appHash file is skipped (it can never match a
-// real served hash). Serialized by rebuildMu; a redundant concurrent call that
-// finds a fresh index returns early.
-func (g *serveGate) rebuildReleaseIndex() {
+// catalogIndex is the subset of <dist>/apps/index.json the gate needs: the
+// packageId (the served /packages/<id> path) joined to the appId that keys the
+// app's attest/ RELEASE.json and signatures/ metadata.json.
+type catalogIndex struct {
+	Apps []catalogIndexApp `json:"apps"`
+}
+
+type catalogIndexApp struct {
+	AppID     string `json:"appId"`
+	PackageID string `json:"packageId"`
+}
+
+// rebuildAppIndex rebuilds packageId -> servedApp by joining <dist>/apps/index.json
+// to each app's attest/<appId>/RELEASE.json (the on-chain-anchored claim) and
+// signatures/<appId>/metadata.json (the exact bytes the AppHash binds). An entry
+// missing either file, or with a non-32-byte appHash, is skipped (it can never
+// verify). Serialized by rebuildMu; a redundant concurrent call that finds a
+// fresh index returns early.
+func (g *serveGate) rebuildAppIndex() {
 	g.rebuildMu.Lock()
 	defer g.rebuildMu.Unlock()
 
 	g.mu.RLock()
-	fresh := g.releaseByHash != nil && g.now().Sub(g.releaseLoadedAt) < g.releaseRefresh
+	fresh := g.apps != nil && g.now().Sub(g.appsLoadedAt) < g.releaseRefresh
 	g.mu.RUnlock()
 	if fresh {
 		return
 	}
 
-	idx := make(map[string]ReleaseJSON)
-	attestDir := filepath.Join(g.distDir, "attest")
-	if entries, err := os.ReadDir(attestDir); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
+	idx := make(map[string]servedApp)
+	if b, err := os.ReadFile(filepath.Join(g.distDir, "apps", "index.json")); err == nil {
+		var ci catalogIndex
+		if json.Unmarshal(b, &ci) == nil {
+			for _, e := range ci.Apps {
+				pkgID := strings.ToLower(strings.TrimSpace(e.PackageID))
+				appID := strings.TrimSpace(e.AppID)
+				if pkgID == "" || appID == "" {
+					continue
+				}
+				rel, ok := readReleaseClaim(filepath.Join(g.distDir, "attest", appID, "RELEASE.json"))
+				if !ok {
+					continue
+				}
+				meta, err := os.ReadFile(filepath.Join(g.distDir, "signatures", appID, "metadata.json"))
+				if err != nil {
+					continue
+				}
+				idx[pkgID] = servedApp{rel: rel, metadata: meta}
 			}
-			b, err := os.ReadFile(filepath.Join(attestDir, e.Name(), "RELEASE.json"))
-			if err != nil {
-				continue
-			}
-			var rel ReleaseJSON
-			if err := json.Unmarshal(b, &rel); err != nil {
-				continue
-			}
-			h := strings.ToLower(strings.TrimSpace(rel.AppHash))
-			if len(h) != 64 {
-				continue
-			}
-			idx[h] = rel
 		}
 	}
 	g.mu.Lock()
-	g.releaseByHash = idx
-	g.releaseLoadedAt = g.now()
+	g.apps = idx
+	g.appsLoadedAt = g.now()
 	g.mu.Unlock()
+}
+
+// readReleaseClaim loads + minimally validates an attest RELEASE.json. A
+// malformed file or one whose appHash is not 64 lowercase-hex chars is rejected
+// (it can never match a recomputed 32-byte AppHash).
+func readReleaseClaim(path string) (ReleaseJSON, bool) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ReleaseJSON{}, false
+	}
+	var rel ReleaseJSON
+	if json.Unmarshal(b, &rel) != nil {
+		return ReleaseJSON{}, false
+	}
+	if len(strings.TrimSpace(rel.AppHash)) != 64 {
+		return ReleaseJSON{}, false
+	}
+	return rel, true
 }
 
 // packageBase classifies + sanitizes a request path. It returns the flat SPK file
@@ -285,13 +332,4 @@ func packageBase(urlPath string) (string, bool) {
 		return "", false
 	}
 	return base, true
-}
-
-// streamSHA256Hex hashes r fully without buffering it, returning lowercase hex.
-func streamSHA256Hex(r io.Reader) (string, error) {
-	h := sha256.New()
-	if _, err := io.Copy(h, r); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
 }

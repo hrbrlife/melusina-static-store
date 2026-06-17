@@ -47,6 +47,10 @@ type publishRequest struct {
 	ReleaseB64 string `json:"release_b64"`
 	// SPKB64 is the raw .spk bytes, base64-std.
 	SPKB64 string `json:"spk_b64"`
+	// MetadataB64 is the app's metadata.json bytes, base64-std. Together with the
+	// SPK they form the canonical tree the on-chain AppHash binds; the gate
+	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
+	MetadataB64 string `json:"metadata_b64"`
 }
 
 // newRouter builds the sidecar HTTP surface.
@@ -141,7 +145,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sig, releaseBytes, spk, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, err := parsePublishBody(r)
 	if err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
@@ -199,7 +203,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, rel, operatorSignPub); err != nil {
+	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, metadata, rel, operatorSignPub); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
@@ -251,57 +255,73 @@ func (s *publishService) publisherAccepted(rel ReleaseJSON) bool {
 	return false
 }
 
-// parsePublishBody extracts the signed envelope, the RELEASE.json bytes, and the
-// raw SPK bytes from either a multipart/form-data request (fields: envelope,
-// release, spk) or a JSON request (publishRequest).
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, err error) {
+// parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw
+// SPK bytes, and the metadata.json bytes from either a multipart/form-data request
+// (fields: envelope, release, spk, metadata) or a JSON request (publishRequest).
+// metadata is REQUIRED (the on-chain AppHash binds {app.spk, metadata.json}); a
+// publish without it cannot recompute the AppHash and is malformed.
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, err error) {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, fmt.Errorf("spk part: %w", perr)
 		}
-		return sig, release, spk, nil
+		metadata, perr = readFormFile(r, "metadata")
+		if perr != nil {
+			return sig, nil, nil, nil, fmt.Errorf("metadata part: %w", perr)
+		}
+		if len(metadata) == 0 {
+			return sig, nil, nil, nil, errors.New("metadata is empty")
+		}
+		return sig, release, spk, metadata, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, errors.New("spk is empty")
+		return sig, nil, nil, nil, errors.New("spk is empty")
 	}
-	return sig, release, spk, nil
+	metadata, perr = stdB64(req.MetadataB64)
+	if perr != nil {
+		return sig, nil, nil, nil, fmt.Errorf("metadata_b64: %w", perr)
+	}
+	if len(metadata) == 0 {
+		return sig, nil, nil, nil, errors.New("metadata is empty")
+	}
+	return sig, release, spk, metadata, nil
 }
 
 func sha256Sum(b []byte) []byte {

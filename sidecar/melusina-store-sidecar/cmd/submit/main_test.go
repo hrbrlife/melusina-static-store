@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -18,6 +19,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -73,16 +75,21 @@ func signPub32(t *testing.T, p *identity.Private) [32]byte {
 	return out
 }
 
-// testRelease returns a self-consistent (spk, RELEASE.json bytes, claims) bundle
-// whose appHash == sha256(spk).
-func testRelease(t *testing.T, masterMintB58 string) (spk, releaseBytes []byte, claims ReleaseClaims) {
+// testRelease returns a self-consistent (spk, metadata, RELEASE.json bytes, claims)
+// bundle whose appHash == apphash.Canonical(spk, metadata) — the on-chain tree-hash,
+// NOT sha256(spk).
+func testRelease(t *testing.T, masterMintB58 string) (spk, metadata, releaseBytes []byte, claims ReleaseClaims) {
 	t.Helper()
 	spk = []byte("sandstorm package bytes — deterministic submit-client test SPK v1")
-	appSum := sha256.Sum256(spk)
+	metadata = []byte(`{"appTitle":"Submit Test","appVersion":"1.0.0"}`)
+	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
 	relSum := sha256.Sum256([]byte("release manifest bytes"))
 	rel := map[string]any{
 		"$schema":       "melusina-release-v1",
-		"appHash":       hex.EncodeToString(appSum[:]),
+		"appHash":       appHashHex,
 		"releaseHash":   hex.EncodeToString(relSum[:]),
 		"version":       "1.0.0",
 		"masterNftMint": masterMintB58,
@@ -91,8 +98,8 @@ func testRelease(t *testing.T, masterMintB58 string) (spk, releaseBytes []byte, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return spk, b, ReleaseClaims{
-		AppHash:       hex.EncodeToString(appSum[:]),
+	return spk, metadata, b, ReleaseClaims{
+		AppHash:       appHashHex,
 		ReleaseHash:   hex.EncodeToString(relSum[:]),
 		MasterNftMint: masterMintB58,
 	}
@@ -164,7 +171,7 @@ func signReceipt(operator *identity.Private, appHash, releaseHash, servingDomain
 
 func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	master := randPubkeyB58(t)
-	spk, releaseBytes, claims := testRelease(t, master)
+	spk, _, releaseBytes, claims := testRelease(t, master)
 
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
@@ -210,7 +217,7 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 
 func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	master := randPubkeyB58(t)
-	spk, releaseBytes, claims := testRelease(t, master)
+	spk, _, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	other := newTestIdentity(t, "other-operator", randPubkeyB58(t), "other.example.org")
@@ -462,11 +469,11 @@ func TestLoadStorePubkey_RoundTrip(t *testing.T) {
 
 func TestHostFromURL(t *testing.T) {
 	cases := map[string]string{
-		"https://store.example.org":            "store.example.org",
-		"https://store.example.org/":           "store.example.org",
-		"https://store.example.org:8443/x":     "store.example.org",
-		"http://localhost:8080":                "localhost",
-		"store.example.org":                    "store.example.org",
+		"https://store.example.org":        "store.example.org",
+		"https://store.example.org/":       "store.example.org",
+		"https://store.example.org:8443/x": "store.example.org",
+		"http://localhost:8080":            "localhost",
+		"store.example.org":                "store.example.org",
 	}
 	for in, want := range cases {
 		if got := hostFromURL(in); got != want {
@@ -483,7 +490,7 @@ func TestHostFromURL(t *testing.T) {
 // receipt, then verify that receipt against a mock on-chain store_authority.
 func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	master := randPubkeyB58(t)
-	spk, releaseBytes, claims := testRelease(t, master)
+	spk, metadata, releaseBytes, claims := testRelease(t, master)
 
 	licenseMint := randPubkeyB58(t)
 	domain := "store.example.org"
@@ -555,7 +562,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
-	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk)
+	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish: %v", err)
 	}
@@ -577,7 +584,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}
 
 	// Also exercise the multipart path against the same server.
-	body, status, err = postPublish(context.Background(), options{store: srv.URL, useMultipart: true, timeout: 10 * time.Second}, sig, releaseBytes, spk)
+	body, status, err = postPublish(context.Background(), options{store: srv.URL, useMultipart: true, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish(multipart): %v", err)
 	}
@@ -590,26 +597,26 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 // surfaced as an error naming the store's failing check (exit-1 path).
 func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "check=spk_sha256: sha256(spk)=deadbeef != release.appHash=cafe", http.StatusForbidden)
+		http.Error(w, "check=app_hash: apphash(spk,metadata)=deadbeef != release.appHash=cafe", http.StatusForbidden)
 	}))
 	defer srv.Close()
 
 	master := randPubkeyB58(t)
-	spk, releaseBytes, claims := testRelease(t, master)
+	spk, metadata, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk)
+	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if status != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", status)
 	}
-	if !strings.Contains(string(body), "check=spk_sha256") {
+	if !strings.Contains(string(body), "check=app_hash") {
 		t.Fatalf("rejection body %q does not name the failing check", string(body))
 	}
 }

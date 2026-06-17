@@ -28,13 +28,16 @@ func pkgBase(f publishFixture) string {
 }
 
 // writeServeFixture lays out a one-app dist tree exactly as the catalog assembler
-// does: the SPK at packages/<sha256[:32]> and its on-chain-anchored RELEASE.json
-// at attest/<appId>/RELEASE.json (appHash == sha256(spk), as a real publish
-// produces). It also drops a non-SPK static asset to prove passthrough. Returns
-// the packageId.
+// does: the SPK at packages/<sha256[:32]>, its on-chain-anchored RELEASE.json at
+// attest/<appId>/RELEASE.json (appHash == the TREE-HASH over {app.spk,
+// metadata.json}, as a real publish produces), the exact metadata.json at
+// signatures/<appId>/metadata.json, and the packageId↔appId join in
+// apps/index.json. It also drops a non-SPK static asset to prove passthrough.
+// Returns the packageId.
 func writeServeFixture(t *testing.T, distDir string, f publishFixture) string {
 	t.Helper()
 	base := pkgBase(f)
+	appID := "app-" + base[:8]
 
 	pkgDir := filepath.Join(distDir, "packages")
 	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
@@ -44,7 +47,7 @@ func writeServeFixture(t *testing.T, distDir string, f publishFixture) string {
 		t.Fatal(err)
 	}
 
-	attDir := filepath.Join(distDir, "attest", "app-"+base[:8])
+	attDir := filepath.Join(distDir, "attest", appID)
 	if err := os.MkdirAll(attDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +56,26 @@ func writeServeFixture(t *testing.T, distDir string, f publishFixture) string {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(attDir, "RELEASE.json"), relBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sigDir := filepath.Join(distDir, "signatures", appID)
+	if err := os.MkdirAll(sigDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sigDir, "metadata.json"), f.metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	appsDir := filepath.Join(distDir, "apps")
+	if err := os.MkdirAll(appsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	idxBytes, err := json.Marshal(catalogIndex{Apps: []catalogIndexApp{{AppID: appID, PackageID: base}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(appsDir, "index.json"), idxBytes, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,10 +99,10 @@ func serveSetup(t *testing.T) (Config, *mockChainReader, publishFixture, *serveG
 	return cfg, m, f, g, base
 }
 
-// pinReleaseActive pins an Active ReleaseEntry pinning sha256(spk) — the ACCEPT
-// state for the serve gate.
+// pinReleaseActive pins an Active ReleaseEntry pinning the on-chain tree-hash
+// app_hash — the ACCEPT state for the serve gate.
 func pinReleaseActive(m *mockChainReader, f publishFixture) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: sha256.Sum256(f.spk), status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusActive}
 }
 
 func serveGet(t *testing.T, h http.Handler, method, target string) *httptest.ResponseRecorder {
@@ -106,14 +129,9 @@ func TestServeGate_Active(t *testing.T) {
 	if got := w.Header().Get("X-Store-Gate"); got != "verified" {
 		t.Fatalf("X-Store-Gate=%q, want verified", got)
 	}
-	if got := w.Header().Get("X-Store-AppHash"); got != pkgBaseFullHash(f) {
-		t.Fatalf("X-Store-AppHash=%q, want served sha256", got)
+	if got := w.Header().Get("X-Store-AppHash"); got != strings.ToLower(f.rel.AppHash) {
+		t.Fatalf("X-Store-AppHash=%q, want recomputed tree-hash %q", got, f.rel.AppHash)
 	}
-}
-
-func pkgBaseFullHash(f publishFixture) string {
-	sum := sha256.Sum256(f.spk)
-	return hex.EncodeToString(sum[:])
 }
 
 // TestServeGate_Refusals is the fail-closed serve-refusal table: missing,
@@ -139,7 +157,7 @@ func TestServeGate_Refusals(t *testing.T) {
 		{
 			name: "release_entry_revoked",
 			mutate: func(t *testing.T, cfg Config, m *mockChainReader, f publishFixture) string {
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: sha256.Sum256(f.spk), status: verify.AttestationStatusRevoked}
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
 				return "/packages/" + pkgBase(f)
 			},
 			wantCode: http.StatusForbidden,
@@ -224,6 +242,53 @@ func TestServeGate_Refusals(t *testing.T) {
 	}
 }
 
+// TestServeGate_DriftedBytesAtValidPackageId proves the content binding: if the
+// SPK bytes under a LEGITIMATE packageId are swapped (so they no longer recompute
+// to the anchored RELEASE.json appHash), the gate recomputes the tree-hash over the
+// served bytes + metadata, finds it != rel.AppHash, and refuses (check=app_hash).
+// This is the B1-09 drift case the OLD sha256(spk) model could only catch by a
+// resolve miss; the tree-hash model catches it even at the right packageId.
+func TestServeGate_DriftedBytesAtValidPackageId(t *testing.T) {
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+
+	// Overwrite the SPK at its legitimate packageId path with tampered bytes.
+	tampered := append(append([]byte{}, f.spk...), 0xFF)
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "packages", base), tampered, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("want 403 for drifted bytes, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=app_hash") {
+		t.Fatalf("drift refusal must name check=app_hash, got %q", w.Body.String())
+	}
+}
+
+// TestServeGate_TamperedMetadataRefused proves the metadata.json is bound into the
+// gate: tampering signatures/<appId>/metadata.json changes the recomputed tree-hash
+// so the (unchanged, legitimate) SPK no longer matches its on-chain anchor.
+func TestServeGate_TamperedMetadataRefused(t *testing.T) {
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+
+	appID := "app-" + base[:8]
+	metaPath := filepath.Join(cfg.DistDir, "signatures", appID, "metadata.json")
+	if err := os.WriteFile(metaPath, []byte(`{"appTitle":"TAMPERED"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Force an index rebuild so the tampered metadata is picked up.
+	g.releaseRefresh = 0
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("want 403 for tampered metadata, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=app_hash") {
+		t.Fatalf("tampered-metadata refusal must name check=app_hash, got %q", w.Body.String())
+	}
+}
+
 // TestServeGate_StaticPassthrough proves non-SPK assets bypass the gate entirely
 // (served even though the chain is unpinned, with no gate marker).
 func TestServeGate_StaticPassthrough(t *testing.T) {
@@ -295,7 +360,7 @@ func TestServeGate_VerdictCacheWindow(t *testing.T) {
 	}
 
 	// Revoke on-chain. Within the TTL window the cached verdict still serves.
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: sha256.Sum256(f.spk), status: verify.AttestationStatusRevoked}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
 	now = now.Add(10 * time.Second)
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusOK {
 		t.Fatalf("within TTL want cached 200, got %d: %s", w.Code, w.Body.String())
@@ -327,7 +392,7 @@ func TestServeGate_CacheDisabledReverifies(t *testing.T) {
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
 	}
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: sha256.Sum256(f.spk), status: verify.AttestationStatusRevoked}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusForbidden {
 		t.Fatalf("cache disabled: revoke must be immediately visible (403), got %d", w.Code)
 	}

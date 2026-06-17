@@ -68,12 +68,13 @@ func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity
 }
 
 // jsonPublishBody assembles the JSON wire form for POST /publish.
-func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk []byte) *bytes.Buffer {
+func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk, metadata []byte) *bytes.Buffer {
 	t.Helper()
 	req := publishRequest{
-		Envelope:   sig,
-		ReleaseB64: b64(release),
-		SPKB64:     b64(spk),
+		Envelope:    sig,
+		ReleaseB64:  b64(release),
+		SPKB64:      b64(spk),
+		MetadataB64: b64(metadata),
 	}
 	b, err := json.Marshal(req)
 	if err != nil {
@@ -113,7 +114,7 @@ func TestHandlePublish_Accept(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
 
-	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk))
+	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -138,10 +139,11 @@ func TestHandlePublish_Rejects(t *testing.T) {
 		wantBody string
 	}{
 		{
-			name: "sha256_mismatch",
+			name: "apphash_mismatch",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
 				// Tamper the SPK AFTER signing so the envelope RequestHash binds the
-				// tampered bytes (envelope passes) but sha256(spk) != appHash.
+				// tampered bytes (envelope passes) but the recomputed tree-hash !=
+				// appHash.
 				release := mustJSON(t, f.rel)
 				tampered := append(append([]byte{}, f.spk...), 0x00)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
@@ -149,13 +151,12 @@ func TestHandlePublish_Rejects(t *testing.T) {
 				return release, tampered, sig
 			},
 			wantCode: http.StatusForbidden,
-			wantBody: "check=spk_sha256",
+			wantBody: "check=app_hash",
 		},
 		{
 			name: "release_entry_revoked",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
-				appSum := sha256.Sum256(f.spk)
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: appSum, status: 1 /* Revoked */}
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: 1 /* Revoked */}
 				release := mustJSON(t, f.rel)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
@@ -213,7 +214,7 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			svc := newTestService(t, cfg, m, op)
 
 			release, spk, sig := tc.setup(t, cfg, m, op, &f, operatorPub)
-			w := doPublish(t, svc, jsonPublishBody(t, sig, release, spk))
+			w := doPublish(t, svc, jsonPublishBody(t, sig, release, spk, f.metadata))
 			if w.Code != tc.wantCode {
 				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
 			}

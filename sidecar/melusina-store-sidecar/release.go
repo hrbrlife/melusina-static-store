@@ -14,7 +14,7 @@ package main
 // it confirms the on-chain ReleaseEntry exists, is Active, and pins this AppHash.
 type ReleaseJSON struct {
 	Schema             string       `json:"$schema"`
-	AppHash            string       `json:"appHash"`     // lowercase sha256 hex of the SPK bytes
+	AppHash            string       `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))
 	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256 hex; binds the full release manifest
 	Version            string       `json:"version"`
 	SignedAtUnix       int64        `json:"signedAtUnix"`

@@ -44,6 +44,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -71,9 +72,9 @@ type Receipt struct {
 }
 
 // ReleaseClaims is the subset of the canonical RELEASE.json (melusina-release-v1)
-// the submit client needs to (a) assert sha256(SPK)==appHash locally before
-// uploading and (b) re-derive the StoreOperatorAuthorization for receipt
-// verification. The full RELEASE.json is sent verbatim as the envelope Body —
+// the submit client needs to (a) assert apphash.Canonical(spk,metadata)==appHash
+// locally before uploading and (b) re-derive the StoreOperatorAuthorization for
+// receipt verification. The full RELEASE.json is sent verbatim as the envelope Body —
 // the sidecar re-checks every trust field on-chain, so this struct only reads
 // what the client itself uses.
 type ReleaseClaims struct {
@@ -97,9 +98,10 @@ type publisherKeyFile struct {
 // publishRequest is the JSON wire form the sidecar's /publish accepts when the
 // client does not use multipart. Mirrors handler.go publishRequest. base64-std.
 type publishRequest struct {
-	Envelope   envelope.Signed `json:"envelope"`
-	ReleaseB64 string          `json:"release_b64"`
-	SPKB64     string          `json:"spk_b64"`
+	Envelope    envelope.Signed `json:"envelope"`
+	ReleaseB64  string          `json:"release_b64"`
+	SPKB64      string          `json:"spk_b64"`
+	MetadataB64 string          `json:"metadata_b64"`
 }
 
 func main() {
@@ -112,6 +114,7 @@ func main() {
 type options struct {
 	store        string
 	spkPath      string
+	metadataPath string
 	releasePath  string
 	publisherKey string // path; or env name via --publisher-key env:NAME
 	storePubkey  string // path to the sidecar operator identity.Public JSON
@@ -128,6 +131,7 @@ func parseFlags(args []string) (options, error) {
 	var o options
 	fs.StringVar(&o.store, "store", "", "store sidecar base URL, e.g. https://store.example.org (required)")
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
+	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
@@ -147,6 +151,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.spkPath == "" {
 		missing = append(missing, "--spk")
+	}
+	if o.metadataPath == "" {
+		missing = append(missing, "--metadata")
 	}
 	if o.releasePath == "" {
 		missing = append(missing, "--release")
@@ -189,23 +196,33 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if len(spk) == 0 {
 		return fmt.Errorf("spk %s is empty", o.spkPath)
 	}
+	metadata, err := os.ReadFile(o.metadataPath)
+	if err != nil {
+		return fmt.Errorf("read metadata %s: %w", o.metadataPath, err)
+	}
+	if len(metadata) == 0 {
+		return fmt.Errorf("metadata %s is empty", o.metadataPath)
+	}
 	releaseBytes, err := os.ReadFile(o.releasePath)
 	if err != nil {
 		return fmt.Errorf("read release %s: %w", o.releasePath, err)
 	}
 
-	// Local pre-check: sha256(SPK) must equal release.appHash. The sidecar
-	// re-checks this on-chain; failing here saves a doomed round-trip and names
-	// the mismatch with publisher-side context.
+	// Local pre-check: the on-chain appHash is the TREE-HASH over {app.spk,
+	// metadata.json} (apphash.Canonical), NOT sha256(spk); it must equal
+	// release.appHash. The sidecar re-checks this on-chain; failing here saves a
+	// doomed round-trip and names the mismatch with publisher-side context.
 	var claims ReleaseClaims
 	if err := json.Unmarshal(releaseBytes, &claims); err != nil {
 		return fmt.Errorf("parse RELEASE.json %s: %w", o.releasePath, err)
 	}
-	appSum := sha256.Sum256(spk)
-	appHashHex := hex.EncodeToString(appSum[:])
+	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
+	}
 	wantAppHash := strings.ToLower(strings.TrimSpace(claims.AppHash))
 	if appHashHex != wantAppHash {
-		return fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", appHashHex, wantAppHash)
+		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
 
 	pubPriv, err := loadPublisherKey(o.publisherKey)
@@ -228,12 +245,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 
 	// POST to <store>/publish.
-	resp, status, err := postPublish(context.Background(), o, sig, releaseBytes, spk)
+	resp, status, err := postPublish(context.Background(), o, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		return fmt.Errorf("publish POST: %w", err)
 	}
 	if status != http.StatusOK {
-		// The sidecar names the failing check in the body (e.g. "check=spk_sha256").
+		// The sidecar names the failing check in the body (e.g. "check=app_hash").
 		return fmt.Errorf("store rejected publish: HTTP %d: %s", status, strings.TrimSpace(string(resp)))
 	}
 
@@ -268,12 +285,16 @@ func buildEnvelope(src *identity.Private, dst identity.Public, spk, releaseBytes
 		ProgramID:    firstNonEmpty(src.Public().Ref.ProgramID, programIDB58),
 		VerifiedSlot: verifiedSlot,
 	}
-	// Pin the ReleaseEntry PDA as chain evidence when the masterNftMint is
-	// present and parseable (it is re-derived + checked by the sidecar against
-	// the release.masterNftMint anyway; this is the publisher's claimed PDA).
+	// Pin the ReleaseEntry PDA as chain evidence when the masterNftMint + appHash
+	// are present and parseable. The PDA is seeded by the app_hash (the tree-hash
+	// over {app.spk, metadata.json}, = claims.AppHash) — NOT sha256(spk) — matching
+	// the sidecar's VerifyPublish derivation. It is re-derived + checked by the
+	// sidecar anyway; this is the publisher's claimed PDA.
 	if mm := strings.TrimSpace(claims.MasterNftMint); mm != "" {
-		if relPDA, err := releaseEntryPDA(mm, spkSum); err == nil {
-			chain.ReleaseEntryPDA = relPDA
+		if appHash, err := hash32FromHex(claims.AppHash); err == nil {
+			if relPDA, err := releaseEntryPDA(mm, appHash); err == nil {
+				chain.ReleaseEntryPDA = relPDA
+			}
 		}
 	}
 
@@ -287,7 +308,8 @@ func buildEnvelope(src *identity.Private, dst identity.Public, spk, releaseBytes
 }
 
 // releaseEntryPDA derives the ReleaseEntry PDA base58 from the masterNftMint and
-// the app_hash (= sha256(SPK)), matching the sidecar's VerifyPublish derivation.
+// the app_hash (the tree-hash over {app.spk, metadata.json}), matching the
+// sidecar's VerifyPublish derivation.
 func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 	mm, err := primitives.PubkeyFromBase58(masterMintB58)
 	if err != nil {
@@ -305,8 +327,9 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 }
 
 // postPublish sends the publish to <store>/publish in either the JSON wire form
-// or multipart/form-data, returning the raw body + status code.
-func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseBytes, spk []byte) ([]byte, int, error) {
+// or multipart/form-data, returning the raw body + status code. metadata is the
+// app's metadata.json bytes, bound into the on-chain appHash the sidecar recomputes.
+func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
 	url := strings.TrimRight(o.store, "/") + "/publish"
 	client := &http.Client{Timeout: o.timeout}
 
@@ -330,6 +353,9 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 		if werr := writePart(mw, "spk", "app.spk", spk); werr != nil {
 			return nil, 0, werr
 		}
+		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
+			return nil, 0, werr
+		}
 		if cerr := mw.Close(); cerr != nil {
 			return nil, 0, cerr
 		}
@@ -340,9 +366,10 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 		req.Header.Set("Content-Type", mw.FormDataContentType())
 	} else {
 		body, merr := json.Marshal(publishRequest{
-			Envelope:   sig,
-			ReleaseB64: stdB64(releaseBytes),
-			SPKB64:     stdB64(spk),
+			Envelope:    sig,
+			ReleaseB64:  stdB64(releaseBytes),
+			SPKB64:      stdB64(spk),
+			MetadataB64: stdB64(metadata),
 		})
 		if merr != nil {
 			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)

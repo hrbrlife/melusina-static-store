@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -10,6 +11,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -237,14 +239,18 @@ func operatorSignPub32(t *testing.T, op *identity.Private) [32]byte {
 	return pk
 }
 
-// publishFixture is a self-consistent (spk, release, config) bundle plus the
-// PDAs the gate will derive, so a mock can be pinned to ACCEPT it.
+// publishFixture is a self-consistent (spk, metadata, release, config) bundle plus
+// the PDAs the gate will derive, so a mock can be pinned to ACCEPT it. The release
+// appHash is the on-chain TREE-HASH over {app.spk, metadata.json} (canonicalAppHash),
+// exactly as a real ceremony produces — NOT sha256(spk).
 type publishFixture struct {
 	spk           []byte
+	metadata      []byte
 	rel           ReleaseJSON
 	cfg           Config
 	masterMint    pda.Pubkey
 	appID         [32]byte
+	appHashBytes  [32]byte // the tree-hash app_hash the ReleaseEntry PDA is derived under
 	relPDA        string
 	authzPDA      string
 	foundationPDA string
@@ -272,8 +278,17 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	t.Helper()
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
-	appSum := sha256.Sum256(spk)
-	appHashHex := hex.EncodeToString(appSum[:])
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0"}`)
+	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
+	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
+	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appHashBytes, err := hash32FromHex(appHashHex)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	releaseSum := sha256.Sum256([]byte("release manifest bytes"))
 	releaseHashHex := hex.EncodeToString(releaseSum[:])
@@ -283,7 +298,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 		t.Fatalf("bad test master mint: %v", err)
 	}
 
-	relPDA, _, err := pda.Release(masterMint, appSum, programID)
+	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,10 +342,12 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 
 	return publishFixture{
 		spk:           spk,
+		metadata:      metadata,
 		rel:           rel,
 		cfg:           cfg,
 		masterMint:    masterMint,
 		appID:         appID,
+		appHashBytes:  appHashBytes,
 		relPDA:        relPDA.Base58(),
 		authzPDA:      authzPDA.Base58(),
 		foundationPDA: foundationPDA.Base58(),
@@ -344,8 +361,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), no
 // blacklist entries.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
-	appSum := sha256.Sum256(f.spk)
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: appSum, appID: f.appID, status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, status: verify.AttestationStatusActive}
 	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
 		status:     verify.AuthorizationStatusActive,
 		authority:  verify.Pubkey(operatorPub),

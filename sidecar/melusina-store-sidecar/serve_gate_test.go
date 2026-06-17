@@ -289,6 +289,45 @@ func TestServeGate_TamperedMetadataRefused(t *testing.T) {
 	}
 }
 
+// TestIsSafePathSegment locks the appId path-segment guard: any separator or
+// traversal must be rejected so a malformed apps/index.json appId cannot make the
+// resolve index read outside the dist tree.
+func TestIsSafePathSegment(t *testing.T) {
+	safe := []string{"v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh", "app-abc123", "a"}
+	unsafe := []string{"", ".", "..", "../etc", "a/b", "a\\b", "..%2f", "x/../y", "../../passwd"}
+	for _, s := range safe {
+		if !isSafePathSegment(s) {
+			t.Errorf("isSafePathSegment(%q) = false, want true", s)
+		}
+	}
+	for _, s := range unsafe {
+		if isSafePathSegment(s) {
+			t.Errorf("isSafePathSegment(%q) = true, want false", s)
+		}
+	}
+}
+
+// TestServeGate_TraversalAppIdSkipped proves a traversal appId in apps/index.json
+// is skipped (the gate refuses the packageId rather than reading outside dist).
+func TestServeGate_TraversalAppIdSkipped(t *testing.T) {
+	cfg, m, f, g, _ := serveSetup(t)
+	pinReleaseActive(m, f)
+	// Overwrite apps/index.json with a malicious traversal appId for a real packageId.
+	base := pkgBase(f)
+	idxBytes, _ := json.Marshal(catalogIndex{Apps: []catalogIndexApp{{AppID: "../../../../etc", PackageID: base}}})
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), idxBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	g.releaseRefresh = 0 // force rebuild
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("want 403 (traversal appId skipped), got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=release_provenance") {
+		t.Fatalf("want release_provenance refusal, got %q", w.Body.String())
+	}
+}
+
 // TestServeGate_StaticPassthrough proves non-SPK assets bypass the gate entirely
 // (served even though the chain is unpinned, with no gate marker).
 func TestServeGate_StaticPassthrough(t *testing.T) {

@@ -276,7 +276,11 @@ func (g *serveGate) rebuildAppIndex() {
 			for _, e := range ci.Apps {
 				pkgID := strings.ToLower(strings.TrimSpace(e.PackageID))
 				appID := strings.TrimSpace(e.AppID)
-				if pkgID == "" || appID == "" {
+				// appID is interpolated into attest/<appID>/ and signatures/<appID>/
+				// paths. Defense-in-depth: skip anything that is not a single clean
+				// path segment so a malformed index entry can never traverse the dist
+				// tree (a real Sandstorm appId is 52 lowercase base32 chars).
+				if pkgID == "" || !isSafePathSegment(appID) {
 					continue
 				}
 				rel, ok := readReleaseClaim(filepath.Join(g.distDir, "attest", appID, "RELEASE.json"))
@@ -295,6 +299,15 @@ func (g *serveGate) rebuildAppIndex() {
 	g.apps = idx
 	g.appsLoadedAt = g.now()
 	g.mu.Unlock()
+}
+
+// isSafePathSegment reports whether s is a single clean path segment safe to
+// interpolate into a dist path — no separator, no "." / ".." traversal, non-empty.
+func isSafePathSegment(s string) bool {
+	if s == "" || s == "." || s == ".." {
+		return false
+	}
+	return !strings.ContainsAny(s, "/\\") && !strings.Contains(s, "..")
 }
 
 // readReleaseClaim loads + minimally validates an attest RELEASE.json. A

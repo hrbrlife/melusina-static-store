@@ -141,14 +141,6 @@ func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, spkSHA256H
 	return verifyNotBlacklisted(ctx, cr, masterMint, "app")
 }
 
-// VerifyServe is VerifyServeHash over raw bytes (it computes the sha256). Used by
-// callers/tests holding the bytes; the serve hot path uses VerifyServeHash with a
-// hash it already streamed.
-func VerifyServe(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON) error {
-	sum := sha256.Sum256(spk)
-	return VerifyServeHash(ctx, cr, cfg, hex.EncodeToString(sum[:]), rel)
-}
-
 // verifyReleaseEntryHash performs the serve-time load-bearing checks given the
 // PRECOMPUTED sha256 hex of the bytes in hand: (a) it equals rel.AppHash, and
 // (b) the on-chain ReleaseEntry derived from rel.masterNftMint+appHash exists,

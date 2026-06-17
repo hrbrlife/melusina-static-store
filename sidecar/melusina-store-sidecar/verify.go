@@ -66,7 +66,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	// (a)+(b) Re-hash the SPK, require it equals the claimed app_hash, and require
 	// an Active on-chain ReleaseEntry (derived from masterNftMint+app_hash) pinning
 	// that hash. This is the load-bearing "are these the attested bytes" core,
-	// SHARED with the serve-time gate (VerifyServe) so both enforce it identically.
+	// SHARED with the serve-time gate (VerifyServeHash) so both enforce it identically.
 	sum := sha256.Sum256(spk)
 	masterMint, _, err := verifyReleaseEntryHash(ctx, cr, hex.EncodeToString(sum[:]), rel)
 	if err != nil {

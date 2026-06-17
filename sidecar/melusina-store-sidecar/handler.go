@@ -103,11 +103,18 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 		log.Printf("reseller root-mirror: serving verified root snapshot under /root/ (X-Store-Origin: root)")
 	}
 
-	// READ surface — serve the existing build output byte-identically.
-	// No added cache headers (matches static hosting behavior).
-	mux.Handle("/", http.FileServer(http.Dir(cfg.DistDir)))
+	// READ surface — static assets are served byte-identically, but SPK fetches
+	// under /packages/ pass the SERVE-TIME on-chain gate (canon §5b, B1-01): the
+	// served bytes must content-match an Active on-chain ReleaseEntry or the GET
+	// is refused (403). Fail-closed: with no chain reader, SPK serves 503.
+	gate := newServeGate(cfg, cr, http.FileServer(http.Dir(cfg.DistDir)))
+	mux.Handle("/", gate)
 
-	log.Printf("read surface: serving %q byte-identical; /publish -> gated on-chain verify (single writer)", cfg.DistDir)
+	if cr == nil {
+		log.Printf("read surface: %q — WARNING: no chain reader; /packages/* SPK serves fail CLOSED (503) until rpc_url is set", cfg.DistDir)
+	} else {
+		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
+	}
 	return mux
 }
 

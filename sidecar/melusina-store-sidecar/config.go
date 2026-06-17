@@ -48,6 +48,14 @@ type Config struct {
 	CatalogRepoRoot string    `json:"catalog_repo_root"`
 	TLS             TLSConfig `json:"tls"`
 
+	// ServeVerifyTTLSeconds bounds how long a verified serve-time verdict
+	// (appHash -> Active on-chain ReleaseEntry) is cached before the chain is
+	// re-checked on an SPK GET (serve-gate, B1-01). Within the window the chain
+	// RPC is skipped; a REVOKED entry therefore keeps serving for at most this
+	// long — the documented revoke-visibility window. 0/unset => 60s default;
+	// negative => disable the cache (re-verify on every GET).
+	ServeVerifyTTLSeconds int `json:"serve_verify_ttl_seconds"`
+
 	// Mirror is the reseller-only ROOT-MIRROR worker config (FEDERATED-STORE-MVP
 	// §C2.6). A reseller sidecar serves the base Melusina installer + basic
 	// (Foundation) apps by MIRRORING melusina-os.org (the root) — it NEVER

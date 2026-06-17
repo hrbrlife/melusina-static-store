@@ -1,14 +1,17 @@
 // Command melusina-store-sidecar is the reusable verifying store sidecar.
 //
 // One artifact runs both the melusina-os.org root store and any reseller store,
-// parameterized only by its config + three attest shards. It serves the
-// existing static catalog byte-identically (READ) and is the SINGLE WRITER for
-// publishes (gated POST /publish, on-chain verified). See FEDERATED-STORE-MVP.md
-// component C2 for the full contract.
+// parameterized only by its config + three attest shards. It serves the existing
+// static catalog byte-identically for non-SPK assets, GATES SPK fetches
+// (/packages/*) AT SERVE TIME against the on-chain ReleaseEntry (READ; see
+// serve_gate.go), and is the SINGLE WRITER for publishes (gated POST /publish,
+// on-chain verified). See FEDERATED-STORE-MVP.md component C2 for the full
+// contract.
 //
-// Status: read surface + fail-closed /publish stub. The gated verify path,
-// boot identity check, provenance-receipt signing, and reseller root-mirror
-// worker land once StoreOperatorAuthorization (C1) is available on-chain.
+// Status: read surface with the serve-time on-chain SPK gate (B1-01) + fail-closed
+// /publish stub. The /publish boot-identity ceremony that wires the operator
+// signing key (so /publish stops 503-ing) is tracked separately (B1-02); the
+// serve gate does NOT need it — it only READS the chain.
 package main
 
 import (

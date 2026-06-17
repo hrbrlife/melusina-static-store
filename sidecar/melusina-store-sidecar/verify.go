@@ -63,46 +63,22 @@ var _ chainReader = (*verify.RPCClient)(nil)
 //	                 not supplied; the mask coverage check is then skipped — see
 //	                 residual: no per-app tier reader is wired yet).
 func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON, operatorPubkey [32]byte, foundationTier uint8) error {
-	// (a) Re-hash the SPK and require it equals the claimed app_hash. This is
-	// the load-bearing "are these the attested bytes" check.
+	// (a)+(b) Re-hash the SPK, require it equals the claimed app_hash, and require
+	// an Active on-chain ReleaseEntry (derived from masterNftMint+app_hash) pinning
+	// that hash. This is the load-bearing "are these the attested bytes" core,
+	// SHARED with the serve-time gate (VerifyServe) so both enforce it identically.
 	sum := sha256.Sum256(spk)
-	gotHash := hex.EncodeToString(sum[:])
-	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
-	if gotHash != wantHash {
-		return fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", gotHash, wantHash)
-	}
-	appHashBytes, err := hash32FromHex(wantHash)
+	masterMint, _, err := verifyReleaseEntryHash(ctx, cr, hex.EncodeToString(sum[:]), rel)
 	if err != nil {
-		return fmt.Errorf("check=spk_sha256: release.appHash not 32-byte hex: %w", err)
-	}
-
-	// (b) Derive the ReleaseEntry PDA from masterNftMint+app_hash, fetch it, and
-	// require: it exists, pins THIS app_hash, and is Active. (The author ed25519
-	// sig was verified on-chain at register — §1; we confirm the entry, not the sig.)
-	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
-	if err != nil {
-		return fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
-	}
-	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
-	if err != nil {
-		return fmt.Errorf("check=release_entry: derive PDA: %w", err)
-	}
-	onchainAppHash, relStatus, err := cr.FetchReleaseEntry(ctx, relPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
-	}
-	if onchainAppHash != appHashBytes {
-		return fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", onchainAppHash[:], appHashBytes[:])
-	}
-	if err := relStatus.RequireActive(); err != nil {
-		return fmt.Errorf("check=release_entry: status %s not Active: %w", relStatus, err)
+		return err
 	}
 
 	// (c) Derive the StoreOperatorAuthorization PDA for THIS license+domain,
 	// fetch it, and require: Active, its store_authority == our own operator
 	// signing key (proving this process is the authorized single writer for this
 	// store), and — if a FoundationApp tier is known — the allowed_tier_mask
-	// covers it.
+	// covers it. This is the WRITE-authority half: it needs the operator identity
+	// and is therefore NOT part of the serve-time (read-only) gate.
 	storeDomainHash := primitives.StoreDomainHash(cfg.Domain)
 	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
 	if err != nil {
@@ -126,32 +102,112 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return fmt.Errorf("check=store_operator_authz: allowed_tier_mask 0x%02x does not cover app tier 0x%02x", allowedTierMask, foundationTier)
 	}
 
-	// (d) Blacklist check. The BlacklistEntry PDA's mere EXISTENCE is the deny
-	// signal (the struct carries no status). seeds=["blacklist", target]; for an
-	// app the target is the app's master NFT mint pubkey, and the operator's own
-	// license can also be blacklisted. present==true => REJECT; a genuine RPC /
-	// decode error => REJECT (fail closed). A missing PDA is the common, expected
-	// "clear" case and returns (false,nil,nil).
-	for _, t := range []struct {
-		label  string
-		target pda.Pubkey
-	}{
-		{"app", masterMint},
-		{"license", licenseMint},
-	} {
-		blPDA, _, derr := pda.BlacklistEntry(t.target, programID)
-		if derr != nil {
-			return fmt.Errorf("check=blacklist[%s]: derive PDA: %w", t.label, derr)
-		}
-		present, entryType, ferr := cr.FetchBlacklistEntry(ctx, blPDA.Base58())
-		if ferr != nil {
-			return fmt.Errorf("check=blacklist[%s]: fetch %s: %w", t.label, blPDA.Base58(), ferr)
-		}
-		if present {
-			return fmt.Errorf("check=blacklist[%s]: target %s is blacklisted (type=%s)", t.label, t.target.Base58(), entryType)
-		}
+	// (d) Blacklist check. Neither the app master NFT mint nor the operator's own
+	// license may be denied. present==true => REJECT; a genuine RPC/decode error
+	// => REJECT (fail closed); a missing PDA is the common "clear" case.
+	if err := verifyNotBlacklisted(ctx, cr, masterMint, "app"); err != nil {
+		return err
+	}
+	if err := verifyNotBlacklisted(ctx, cr, licenseMint, "license"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// VerifyServeHash is the SERVE-TIME trust gate (canon §5b: "the store-sidecar's
+// verifier refuses to serve any SPK lacking an Active ReleaseEntry whose AppHash
+// matches — load-bearing AT SERVE TIME"). It is the chain-READ-ONLY subset of
+// VerifyPublish: it needs ONLY the on-chain reader, never the operator signing
+// identity — serve-time proves the SERVED BYTES are on-chain-attested, not who
+// may write. The serve handler stream-hashes the file once while serving and
+// passes that lowercase hex here, so the gate never re-buffers a 100 MiB SPK.
+// FAIL-CLOSED at every step:
+//
+//	(a) spkSHA256Hex == rel.AppHash
+//	(b) an Active on-chain ReleaseEntry (masterNftMint+appHash) pins that appHash
+//	(d) the app's master NFT mint is not blacklisted
+//
+// It deliberately OMITS VerifyPublish's StoreOperatorAuthorization/operator check
+// (c): that is a write-authority concern requiring the operator identity (the
+// boot-identity ceremony, tracked separately as B1-02). cfg is accepted for
+// signature parity with VerifyPublish and future per-store policy; it is not used
+// by the read-only serve checks today.
+func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, spkSHA256Hex string, rel ReleaseJSON) error {
+	_ = cfg
+	masterMint, _, err := verifyReleaseEntryHash(ctx, cr, spkSHA256Hex, rel)
+	if err != nil {
+		return err
+	}
+	return verifyNotBlacklisted(ctx, cr, masterMint, "app")
+}
+
+// VerifyServe is VerifyServeHash over raw bytes (it computes the sha256). Used by
+// callers/tests holding the bytes; the serve hot path uses VerifyServeHash with a
+// hash it already streamed.
+func VerifyServe(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON) error {
+	sum := sha256.Sum256(spk)
+	return VerifyServeHash(ctx, cr, cfg, hex.EncodeToString(sum[:]), rel)
+}
+
+// verifyReleaseEntryHash performs the serve-time load-bearing checks given the
+// PRECOMPUTED sha256 hex of the bytes in hand: (a) it equals rel.AppHash, and
+// (b) the on-chain ReleaseEntry derived from rel.masterNftMint+appHash exists,
+// pins THIS app_hash, and is Active. Returns the app master NFT mint + the
+// 32-byte app_hash for the caller's downstream (blacklist) checks. FAIL-CLOSED.
+// (The author ed25519 sig was verified on-chain at register — §1; we confirm the
+// entry, not the sig.)
+func verifyReleaseEntryHash(ctx context.Context, cr chainReader, spkSHA256Hex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, error) {
+	var zeroMint pda.Pubkey
+	var zeroHash [32]byte
+
+	gotHash := strings.ToLower(strings.TrimSpace(spkSHA256Hex))
+	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
+	if gotHash != wantHash {
+		return zeroMint, zeroHash, fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", gotHash, wantHash)
+	}
+	appHashBytes, err := hash32FromHex(wantHash)
+	if err != nil {
+		return zeroMint, zeroHash, fmt.Errorf("check=spk_sha256: release.appHash not 32-byte hex: %w", err)
 	}
 
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
+	if err != nil {
+		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
+	}
+	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
+	if err != nil {
+		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: derive PDA: %w", err)
+	}
+	onchainAppHash, relStatus, err := cr.FetchReleaseEntry(ctx, relPDA.Base58())
+	if err != nil {
+		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
+	}
+	if onchainAppHash != appHashBytes {
+		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", onchainAppHash[:], appHashBytes[:])
+	}
+	if err := relStatus.RequireActive(); err != nil {
+		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: status %s not Active: %w", relStatus, err)
+	}
+	return masterMint, appHashBytes, nil
+}
+
+// verifyNotBlacklisted rejects when target has a BlacklistEntry PDA — its mere
+// EXISTENCE is the deny signal (the struct carries no status); seeds=["blacklist",
+// target]. A genuine RPC/decode error => REJECT (fail closed); a missing PDA is
+// the common, expected "clear" case. label names the check in the error
+// ("app" / "license").
+func verifyNotBlacklisted(ctx context.Context, cr chainReader, target pda.Pubkey, label string) error {
+	blPDA, _, err := pda.BlacklistEntry(target, programID)
+	if err != nil {
+		return fmt.Errorf("check=blacklist[%s]: derive PDA: %w", label, err)
+	}
+	present, entryType, err := cr.FetchBlacklistEntry(ctx, blPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("check=blacklist[%s]: fetch %s: %w", label, blPDA.Base58(), err)
+	}
+	if present {
+		return fmt.Errorf("check=blacklist[%s]: target %s is blacklisted (type=%s)", label, target.Base58(), entryType)
+	}
 	return nil
 }
 

@@ -19,8 +19,15 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
 `../../FEDERATED-STORE-MVP.md` (component C2).
 
 ## Surfaces
-- **READ** (public, unauthenticated, byte-identical to the static store):
-  `GET /`, `/apps/index.json`, `/attest/<appId>/RELEASE.json`, `/packages/<packageId>`, `/verifier/*`
+- **READ** (public, unauthenticated): static assets — `GET /`, `/apps/index.json`,
+  `/attest/<appId>/RELEASE.json`, `/verifier/*` — are byte-identical to the static
+  store. **SPK fetches `/packages/<packageId>` are GATED AT SERVE TIME** (`serve_gate.go`,
+  B1-01): the served bytes are sha256'd and refused (`403`) unless an **Active**
+  on-chain `ReleaseEntry` pins that exact hash (and the app is not blacklisted).
+  Content-addressed, fail-closed: no chain reader ⇒ SPK fetches `503`; a drifted
+  catalog (served bytes ≠ the on-chain-anchored `appHash`) is refused. A verified
+  verdict is cached per-appHash for `serve_verify_ttl_seconds` (default 60s; the
+  revoke-visibility window).
 - **WRITE** (gated; the sidecar is the SINGLE WRITER): `POST /publish`
   — sealed-v3 envelope from an attested publisher → re-hash SPK == on-chain
   `ReleaseEntry.app_hash`, PDA Active, blacklist clear, version floor →

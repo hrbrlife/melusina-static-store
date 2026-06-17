@@ -190,15 +190,16 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// THE TRUST GATE: re-verify on-chain. No env bypass is reachable here.
-	// foundationTier=0 — no per-app FoundationApp tier reader is wired yet, so
-	// the allowed_tier_mask coverage check is skipped (see residual).
+	// THE TRUST GATE: re-verify on-chain. No env bypass is reachable here. The
+	// FoundationApp tier ceiling (B1-05/B2-05) is resolved INSIDE VerifyPublish
+	// from the on-chain ReleaseEntry.app_id → FoundationAppEntry — the sidecar no
+	// longer passes a dead tier=0.
 	operatorSignPub, err := signPubkey32(operatorPub)
 	if err != nil {
 		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, rel, operatorSignPub, 0); err != nil {
+	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, rel, operatorSignPub); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}

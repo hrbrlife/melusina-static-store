@@ -8,10 +8,13 @@
 // on-chain verified). See FEDERATED-STORE-MVP.md component C2 for the full
 // contract.
 //
-// Status: read surface with the serve-time on-chain SPK gate (B1-01) + fail-closed
-// /publish stub. The /publish boot-identity ceremony that wires the operator
-// signing key (so /publish stops 503-ing) is tracked separately (B1-02); the
-// serve gate does NOT need it — it only READS the chain.
+// Status: read surface with the serve-time on-chain SPK gate (B1-01) + gated
+// /publish whose operator signing key is established by the boot-identity
+// ceremony (B1-02, boot_identity.go): the operator is DERIVED from three
+// deploy-provisioned attest shards and bound — fail-closed — to an on-chain
+// SidecarIdentityEntry. With no shards provisioned the store runs read-only and
+// /publish fails closed (503); the serve gate needs no operator (it only READS
+// the chain).
 package main
 
 import (
@@ -25,7 +28,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
@@ -61,17 +63,27 @@ func main() {
 		log.Printf("WARNING: rpc_url not set — /publish stays gated-closed (503) until an on-chain reader is configured")
 	}
 
-	// Boot identity: the operator's signing identity is the receipt signer AND
-	// the envelope destination publishers address. The full ceremony (derive
-	// from the three attest shards via derive.DeriveSidecar, assert
-	// sha256(ascii_lower(strip_trailing_dot(cfg.Domain))) ==
-	// SidecarIdentityEntry.domain_hash AND TLS SPKI == tls_cert_fingerprint via
-	// binhash.AttestSelfHashWith, failing CLOSED on mismatch) is the boot-identity
-	// step tracked separately. Until those shards are wired here, operator stays
-	// nil and /publish fails closed with 503 — it NEVER accepts an unverified
-	// upload. The C2.3 gated verify→assemble→receipt path itself is complete and
-	// is exercised end-to-end by the handler tests with an injected identity.
-	var operator *identity.Private
+	// Boot identity (B1-02): the operator's signing identity is the receipt signer
+	// AND the envelope destination publishers address. The ceremony derives it from
+	// the three deploy-provisioned attest shards (derive.DeriveSidecar) and binds it
+	// — fail-closed — to an on-chain SidecarIdentityEntry whose signing/encryption
+	// pubkeys, domain_hash, tls_cert_fingerprint, and binary_hash must all match
+	// (see boot_identity.go). When boot_identity.shards_dir is UNSET the store is
+	// deliberately read-only: operator stays nil and /publish 503s (it NEVER accepts
+	// an unverified upload). When SET, any failure (missing shard, RPC error, missing
+	// or mismatched on-chain entry) is FATAL — a publish-provisioned store refuses to
+	// start with an unverified identity (Inv 5).
+	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	bootCancel()
+	if err != nil {
+		log.Fatalf("boot identity: %v", err)
+	}
+	if operator == nil {
+		log.Printf("boot identity: no /publish operator provisioned (boot_identity.shards_dir unset) — /publish fails closed (503); read + serve active")
+	} else {
+		log.Printf("boot identity: operator %s bound to on-chain SidecarIdentityEntry (Active) — /publish enabled", operator.Public().SignPubkeyB58)
+	}
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker

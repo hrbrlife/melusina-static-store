@@ -47,15 +47,36 @@ convenience assembler and returns a store-signed provenance receipt over the raw
 is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
 `SKIP_STEPS` / `SCAN_NOOP` bypass is reachable on this path (spec §5 S7).
 
-Until the boot-identity ceremony wires the operator's signing identity from the
-three attest shards (`derive.DeriveSidecarIdentity`) + asserts the
-`SidecarIdentityEntry.domain_hash` / TLS-SPKI pins, `main` leaves the operator
-identity nil and `/publish` fails closed with `503`. The gated verify→assemble→
-receipt path itself is complete and is exercised end-to-end by the tests.
+### Boot identity (gated `/publish`) — B1-02
+The operator signing identity (receipt signer + envelope destination) is no
+longer a nil stub. When `boot_identity.shards_dir` is set, `main` runs the
+boot-identity ceremony (`boot_identity.go`): it DERIVES the operator from the
+three deploy-provisioned attest shards (`derive.DeriveSidecar`) and binds it —
+fail-closed — to an on-chain `SidecarIdentityEntry`, asserting **all** of
+`signing_pubkey`, `encryption_pubkey`, `domain_hash`, `tls_cert_fingerprint`, and
+`binary_hash` match the locally derived/observed values before `/publish` is
+enabled. Any mismatch / missing entry / RPC error is FATAL (Inv 5). When
+`shards_dir` is unset the store is deliberately read-only: operator nil,
+`/publish` `503`, serve gate unaffected.
 
-Pending (post-C2.3): boot identity/TLS check wiring in `main`, reseller
-root-mirror worker, sealed-v3 submit-client (C3), per-app FoundationApp tier
-reader.
+**DEPLOYER must provision** (NONE of this lives in-repo — it is secret /
+per-install material):
+- **Three shard files** under `boot_identity.shards_dir`, each either 64
+  lowercase-hex chars or 32 raw bytes, mode `0600`:
+  `author.shard`, `host-observation.shard`, `release.shard`.
+- **An Active on-chain `SidecarIdentityEntry`** registered via
+  `register_sidecar_identity` under seeds
+  `["sidecar_identity", license_nft_mint, sidecar_id, key_version_le]`, pinning:
+  `signing_pubkey`/`encryption_pubkey` = the keys derived from those shards (the
+  deployer derives the same identity to register it), `domain_hash` =
+  `sha256(ascii_lower(strip_trailing_dot(domain)))`, `tls_cert_fingerprint` =
+  `sha256(serving leaf cert DER)`, `binary_hash` = `sha256(/proc/self/exe)` of the
+  deployed sidecar binary.
+- `boot_identity.sidecar_id` / `chain_id` / `key_version` matching that on-chain
+  registration, and `tls.cert_path` pointing at the cert whose DER was pinned.
+
+Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
+submit-client (C3).
 
 ## Build & run
 ```sh

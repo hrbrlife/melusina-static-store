@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -31,15 +32,26 @@ func mustPubkey(s string) pda.Pubkey {
 // melusina-devnet-rpc; we NEVER hit a live RPC in unit tests).
 type chainReader interface {
 	FetchReleaseEntry(ctx context.Context, addrB58 string) (appHash [32]byte, status verify.AttestationStatus, err error)
+	// FetchReleaseEntryAppID reads the on-chain ReleaseEntry.app_id (the stable
+	// per-application identity, distinct from app_hash). The publish gate derives
+	// the FoundationAppEntry from THIS app_id — never from the untrusted
+	// RELEASE.json — to enforce the operator tier ceiling (B1-05/B2-05).
+	FetchReleaseEntryAppID(ctx context.Context, addrB58 string) (appID [32]byte, err error)
 	FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (status verify.AuthorizationStatus, storeAuthority verify.Pubkey, allowedTierMask uint8, isRoot bool, storeDomainHash [32]byte, err error)
 	FetchBlacklistEntry(ctx context.Context, addrB58 string) (present bool, entryType verify.BlacklistType, err error)
 	// FetchInstallerReleaseEntry + FetchFoundationAppEntry are the reseller
 	// ROOT-MIRROR worker's re-verification reads (FEDERATED-STORE-MVP §C2.6): the
 	// base installer's InstallerReleaseEntry must be Active and each basic app's
 	// FoundationAppEntry must be Active with the advertised tier before the
-	// reseller re-serves the root's mirrored bytes.
+	// reseller re-serves the root's mirrored bytes. FetchFoundationAppEntry is
+	// ALSO the publish-gate tier reader (B1-05/B2-05).
 	FetchInstallerReleaseEntry(ctx context.Context, addrB58 string) (installerHash [32]byte, status verify.AttestationStatus, err error)
 	FetchFoundationAppEntry(ctx context.Context, addrB58 string) (appID [32]byte, tier uint8, status verify.ApprovalStatus, err error)
+	// FetchSidecarIdentity is the boot-identity ceremony's anchor read (B1-02):
+	// the derived operator's signing/encryption keys, served domain, TLS cert, and
+	// binary hash must all match the on-chain SidecarIdentityEntry before /publish
+	// is enabled.
+	FetchSidecarIdentity(ctx context.Context, addrB58 string) (verify.SidecarIdentity, error)
 }
 
 // compile-time assertion: the production client satisfies the interface.
@@ -59,16 +71,28 @@ var _ chainReader = (*verify.RPCClient)(nil)
 //	operatorPubkey — the sidecar's own receipt-signing ed25519 pubkey (32B). The
 //	                 on-chain StoreOperatorAuthorization.store_authority MUST equal
 //	                 this, proving this process is the authorized single writer.
-//	foundationTier — optional FoundationApp tier mask for the app (0 = unknown /
-//	                 not supplied; the mask coverage check is then skipped — see
-//	                 residual: no per-app tier reader is wired yet).
-func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON, operatorPubkey [32]byte, foundationTier uint8) error {
+//
+// The FoundationApp tier ceiling (B1-05/B2-05) is resolved INTERNALLY from the
+// on-chain ReleaseEntry.app_id → FoundationAppEntry — never from a caller-supplied
+// tier or the untrusted RELEASE.json — so an operator cannot dodge the mask by
+// omitting the tier.
+func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, rel ReleaseJSON, operatorPubkey [32]byte) error {
 	// (a)+(b) Re-hash the SPK, require it equals the claimed app_hash, and require
 	// an Active on-chain ReleaseEntry (derived from masterNftMint+app_hash) pinning
 	// that hash. This is the load-bearing "are these the attested bytes" core,
 	// SHARED with the serve-time gate (VerifyServeHash) so both enforce it identically.
 	sum := sha256.Sum256(spk)
-	masterMint, _, err := verifyReleaseEntryHash(ctx, cr, hex.EncodeToString(sum[:]), rel)
+	masterMint, _, relPDA, err := verifyReleaseEntryHash(ctx, cr, hex.EncodeToString(sum[:]), rel)
+	if err != nil {
+		return err
+	}
+
+	// (b2) Resolve the FoundationApp tier from the CHAIN (B1-05/B2-05). app_id is
+	// read from the on-chain ReleaseEntry (just confirmed Active) — NOT from the
+	// untrusted RELEASE.json — and the FoundationAppEntry is derived from it. A
+	// non-Foundation app yields tier 0 (no ceiling); a Foundation app yields its
+	// tier bit, which the StoreOperatorAuthorization.allowed_tier_mask MUST cover.
+	foundationTier, err := resolveFoundationTier(ctx, cr, relPDA)
 	if err != nil {
 		return err
 	}
@@ -98,8 +122,12 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	if storeAuthority != verify.Pubkey(operatorPubkey) {
 		return fmt.Errorf("check=store_operator_authz: store_authority %x != sidecar operator %x", storeAuthority[:], operatorPubkey[:])
 	}
+	// Tier ceiling (B1-05/B2-05): a Foundation app (tier != 0) must be covered by
+	// the operator's allowed_tier_mask. foundationTier is the on-chain-resolved
+	// tier BIT (1<<FoundationAppTier); 0 means the app is not a Foundation app and
+	// no ceiling applies.
 	if foundationTier != 0 && (allowedTierMask&foundationTier) != foundationTier {
-		return fmt.Errorf("check=store_operator_authz: allowed_tier_mask 0x%02x does not cover app tier 0x%02x", allowedTierMask, foundationTier)
+		return fmt.Errorf("check=store_operator_authz: allowed_tier_mask 0x%02x does not cover Foundation app tier 0x%02x", allowedTierMask, foundationTier)
 	}
 
 	// (d) Blacklist check. Neither the app master NFT mint nor the operator's own
@@ -112,6 +140,42 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 	return nil
+}
+
+// resolveFoundationTier reads the on-chain ReleaseEntry.app_id at relPDA, derives
+// the FoundationAppEntry PDA (["foundation_app", app_id]), and returns the tier
+// BIT (1<<FoundationAppTier) the operator's allowed_tier_mask must cover. It is
+// FAIL-CLOSED: a genuine RPC/decode error rejects; a Foundation app whose status
+// is not Active rejects (a revoked basic app must not be re-listed). The only
+// non-error "no ceiling" outcome is a genuine PDA-absent FoundationAppEntry —
+// i.e. a third-party (non-Foundation) app — which returns tier 0.
+//
+// app_id is taken from the CHAIN (the just-confirmed-Active ReleaseEntry), never
+// from RELEASE.json: trusting a publisher-supplied app_id would let a Standard
+// app borrow a Core app_id to dodge the mask (audit 2026-06-17 B1-05/B2-05).
+func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubkey) (uint8, error) {
+	appID, err := cr.FetchReleaseEntryAppID(ctx, relPDA.Base58())
+	if err != nil {
+		return 0, fmt.Errorf("check=foundation_tier: fetch release app_id %s: %w", relPDA.Base58(), err)
+	}
+	faPDA, _, err := pda.FoundationApp(appID, programID)
+	if err != nil {
+		return 0, fmt.Errorf("check=foundation_tier: derive FoundationApp PDA: %w", err)
+	}
+	_, tier, status, err := cr.FetchFoundationAppEntry(ctx, faPDA.Base58())
+	if err != nil {
+		if errors.Is(err, verify.ErrPDANotFound) {
+			return 0, nil // not a Foundation app — no tier ceiling applies
+		}
+		return 0, fmt.Errorf("check=foundation_tier: fetch %s: %w", faPDA.Base58(), err)
+	}
+	if err := status.RequireActive(); err != nil {
+		return 0, fmt.Errorf("check=foundation_tier: FoundationAppEntry status %s not Active: %w", status, err)
+	}
+	// FoundationAppTier discriminant → allowed_tier_mask bit (Core=0→0x01,
+	// Standard=1→0x02), matching TIER_MASK_CORE/STANDARD on-chain. A corrupt tier
+	// byte > Standard is already rejected by the reader (fail-closed).
+	return uint8(1) << tier, nil
 }
 
 // VerifyServeHash is the SERVE-TIME trust gate (canon §5b: "the store-sidecar's
@@ -134,7 +198,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 // by the read-only serve checks today.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, spkSHA256Hex string, rel ReleaseJSON) error {
 	_ = cfg
-	masterMint, _, err := verifyReleaseEntryHash(ctx, cr, spkSHA256Hex, rel)
+	masterMint, _, _, err := verifyReleaseEntryHash(ctx, cr, spkSHA256Hex, rel)
 	if err != nil {
 		return err
 	}
@@ -148,39 +212,40 @@ func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, spkSHA256H
 // 32-byte app_hash for the caller's downstream (blacklist) checks. FAIL-CLOSED.
 // (The author ed25519 sig was verified on-chain at register — §1; we confirm the
 // entry, not the sig.)
-func verifyReleaseEntryHash(ctx context.Context, cr chainReader, spkSHA256Hex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, error) {
+func verifyReleaseEntryHash(ctx context.Context, cr chainReader, spkSHA256Hex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
+	var zeroPDA pda.Pubkey
 
 	gotHash := strings.ToLower(strings.TrimSpace(spkSHA256Hex))
 	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
 	if gotHash != wantHash {
-		return zeroMint, zeroHash, fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", gotHash, wantHash)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=spk_sha256: sha256(spk)=%s != release.appHash=%s", gotHash, wantHash)
 	}
 	appHashBytes, err := hash32FromHex(wantHash)
 	if err != nil {
-		return zeroMint, zeroHash, fmt.Errorf("check=spk_sha256: release.appHash not 32-byte hex: %w", err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=spk_sha256: release.appHash not 32-byte hex: %w", err)
 	}
 
 	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
 	if err != nil {
-		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
 	}
 	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
 	if err != nil {
-		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: derive PDA: %w", err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: derive PDA: %w", err)
 	}
 	onchainAppHash, relStatus, err := cr.FetchReleaseEntry(ctx, relPDA.Base58())
 	if err != nil {
-		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
 	}
 	if onchainAppHash != appHashBytes {
-		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", onchainAppHash[:], appHashBytes[:])
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", onchainAppHash[:], appHashBytes[:])
 	}
 	if err := relStatus.RequireActive(); err != nil {
-		return zeroMint, zeroHash, fmt.Errorf("check=release_entry: status %s not Active: %w", relStatus, err)
+		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: status %s not Active: %w", relStatus, err)
 	}
-	return masterMint, appHashBytes, nil
+	return masterMint, appHashBytes, relPDA, nil
 }
 
 // verifyNotBlacklisted rejects when target has a BlacklistEntry PDA — its mere

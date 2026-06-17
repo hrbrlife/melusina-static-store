@@ -24,7 +24,7 @@ func TestVerifyPublish_Accept(t *testing.T) {
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub, 0); err != nil {
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err != nil {
 		t.Fatalf("expected ACCEPT, got: %v", err)
 	}
 }
@@ -120,6 +120,21 @@ func TestVerifyPublish_Reject(t *testing.T) {
 			},
 			wantCheck: "check=blacklist",
 		},
+		{
+			name: "foundation_app_not_active",
+			mutate: func(m *mockChainReader, f *publishFixture) {
+				// A Foundation app whose entry is Revoked must not be re-listable.
+				f.pinFoundationApp(m, 0, verify.ApprovalStatusRevoked)
+			},
+			wantCheck: "check=foundation_tier",
+		},
+		{
+			name: "foundation_app_rpc_error",
+			mutate: func(m *mockChainReader, f *publishFixture) {
+				m.foundationErr = errors.New("RPC unreachable")
+			},
+			wantCheck: "check=foundation_tier",
+		},
 	}
 
 	for _, tc := range cases {
@@ -129,7 +144,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 			f.pinAccept(m, operatorPub)
 			tc.mutate(m, &f)
 
-			err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub, 0)
+			err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub)
 			if err == nil {
 				t.Fatalf("expected REJECT, got ACCEPT")
 			}
@@ -140,9 +155,10 @@ func TestVerifyPublish_Reject(t *testing.T) {
 	}
 }
 
-// TestVerifyPublish_TierMaskCoverage asserts the optional FoundationApp tier
-// gate: a non-zero tier not covered by allowed_tier_mask is REJECTed; the same
-// tier when covered is ACCEPTed.
+// TestVerifyPublish_TierMaskCoverage asserts the FoundationApp tier ceiling
+// (B1-05/B2-05) is resolved FROM CHAIN (not a caller param) and is unbypassable:
+// a Standard-tier Foundation app published by a Core-only operator is REJECTed;
+// the same app is ACCEPTed once the operator mask covers Standard.
 func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -152,19 +168,24 @@ func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	f := buildValidFixture(t, cfg, master)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
-	// Narrow the mask to Core only (0x01) and require an admin tier (0x04).
+	// The app IS a Foundation app of Standard tier (discriminant 1 → bit 0x02).
+	f.pinFoundationApp(m, uint8(verify.FoundationAppTierStandard), verify.ApprovalStatusActive)
+	// Narrow the operator mask to Core only (0x01) — it does NOT cover Standard.
 	a := m.storeAuthz[f.authzPDA]
 	a.tierMask = 0x01
 	m.storeAuthz[f.authzPDA] = a
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub, 0x04); err == nil {
-		t.Fatal("expected REJECT for uncovered tier")
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err == nil {
+		t.Fatal("expected REJECT for uncovered Standard tier")
 	} else if !strings.Contains(err.Error(), "check=store_operator_authz") {
 		t.Fatalf("tier reject did not name store_operator_authz: %v", err)
 	}
 
-	// Covered tier (Core) is accepted.
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub, 0x01); err != nil {
-		t.Fatalf("expected ACCEPT for covered tier, got: %v", err)
+	// Widen the mask to Core|Standard (0x03) — now the Standard app is accepted.
+	a = m.storeAuthz[f.authzPDA]
+	a.tierMask = 0x03
+	m.storeAuthz[f.authzPDA] = a
+	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.rel, operatorPub); err != nil {
+		t.Fatalf("expected ACCEPT once mask covers Standard, got: %v", err)
 	}
 }

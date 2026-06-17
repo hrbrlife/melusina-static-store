@@ -42,3 +42,20 @@ func signPubkey32(pub identity.Public) ([32]byte, error) {
 	copy(out[:], raw)
 	return out, nil
 }
+
+// boxPubkey32 returns the operator's raw 32-byte x25519 encryption public key,
+// which the boot-identity ceremony (B1-02) compares against the on-chain
+// SidecarIdentityEntry.encryption_pubkey.
+func boxPubkey32(pub identity.Public) ([32]byte, error) {
+	var out [32]byte
+	bp, err := pub.BoxPublicKey()
+	if err != nil {
+		return out, fmt.Errorf("operator box pubkey: %w", err)
+	}
+	raw := bp.Bytes()
+	if len(raw) != 32 {
+		return out, fmt.Errorf("operator box pubkey: want 32 bytes, got %d", len(raw))
+	}
+	copy(out[:], raw)
+	return out, nil
+}

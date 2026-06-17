@@ -62,6 +62,46 @@ type Config struct {
 	// originates them. The root operator (StoreOperatorAuthorization.is_root) does
 	// NOT mirror; the worker self-disables when the on-chain authz says is_root.
 	Mirror MirrorConfig `json:"mirror"`
+
+	// BootIdentity provisions the gated /publish operator identity (B1-02). When
+	// unset, the operator stays nil and /publish fails closed (503) — read+serve
+	// are unaffected. When set, the sidecar DERIVES its operator from the three
+	// deploy-provisioned attest shards and binds it on-chain before enabling
+	// /publish (fail-closed). See README "Boot identity (gated /publish)".
+	BootIdentity BootIdentityConfig `json:"boot_identity"`
+}
+
+// BootIdentityConfig provisions the gated /publish operator boot-identity
+// ceremony (audit 2026-06-17 B1-02). The operator's signing identity (receipt
+// signer + envelope destination) is DERIVED from the three deploy-provisioned
+// attest shards and then bound, fail-closed, to an on-chain SidecarIdentityEntry
+// whose signing_pubkey/encryption_pubkey/domain_hash/tls_cert_fingerprint/binary_hash
+// must all match. A misprovisioned or mismatched identity refuses to boot (Inv 5);
+// a deliberately-omitted ShardsDir leaves the operator nil → /publish 503.
+//
+// DEPLOYER-PROVISIONED material (NOT in-repo — see README):
+//   - the three shard files under ShardsDir,
+//   - an Active on-chain SidecarIdentityEntry registered (register_sidecar_identity)
+//     under (license_nft_mint, SidecarID, KeyVersion) pinning the derived keys +
+//     this store's domain hash, TLS cert fingerprint, and binary hash.
+type BootIdentityConfig struct {
+	// ShardsDir holds the three attest shards, each a file of either 64
+	// lowercase-hex chars OR 32 raw bytes (whitespace trimmed):
+	//   author.shard            (attest author shard)
+	//   host-observation.shard  (host observation shard)
+	//   release.shard           (release shard)
+	// SECRET material — provision mode 0600, NEVER commit. Empty disables the
+	// operator (read-only store; /publish 503).
+	ShardsDir string `json:"shards_dir"`
+	// SidecarID is the canonical on-chain seed id the SidecarIdentityEntry (and
+	// the Foundation sidecar cascade) are published under, e.g. "store". Required
+	// when ShardsDir is set. Must satisfy primitives.ValidateSidecarID.
+	SidecarID string `json:"sidecar_id"`
+	// ChainID is the attest identity-ref chain id, e.g. "solana:devnet". Required
+	// when ShardsDir is set (it salts the derived key via the ref digest).
+	ChainID string `json:"chain_id"`
+	// KeyVersion is the SidecarIdentityEntry key_version seed. 0 => 1.
+	KeyVersion uint32 `json:"key_version"`
 }
 
 // MirrorConfig parameterizes the reseller ROOT-MIRROR worker (§C2.6). All fields

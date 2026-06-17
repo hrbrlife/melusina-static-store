@@ -15,5 +15,12 @@
   "tls": {
     "cert_path": "/etc/melusina/store/tls/cert.pem",
     "key_path": "/etc/melusina/store/tls/key.pem"
+  },
+  "boot_identity": {
+    "_comment": "OMIT this block for a READ-ONLY store (operator nil, /publish 503). Set it to enable gated /publish (B1-02). DEPLOYER MUST also register an Active on-chain SidecarIdentityEntry (register_sidecar_identity) pinning the derived signing/encryption pubkeys + this store's domain hash, sha256(tls cert DER), and the binary hash.",
+    "shards_dir": "/etc/melusina/store/shards",
+    "sidecar_id": "store",
+    "chain_id": "solana:devnet",
+    "key_version": 1
   }
 }

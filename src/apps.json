@@ -3254,6 +3254,54 @@
       "capabilities": null
     },
     {
+      "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
+      "name": "Melusina Dashboard",
+      "version": "0.1.0",
+      "versionNumber": 1,
+      "packageId": "4864e30a640f611221a257330aa7161f",
+      "sha256": "4864e30a640f611221a257330aa7161ff9b80a535cd9115d0d8da04db8af840b",
+      "shortDescription": "Operator aggregation dashboard \u2014 treasury positions, GL, compliance across ccash + NamedCoin domain profiles.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://github.com/hrbrlife/melusina-dashboard-app",
+      "codeLink": "https://github.com/hrbrlife/melusina-dashboard-app",
+      "upstreamAuthor": "melusina",
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "description": "",
+      "screenshots": [],
+      "license": "Proprietary - AiTX.pro Limited",
+      "marketingVersion": "0.1.0",
+      "createdAt": 1781826324919,
+      "imageId": "1dc5916596862f936d145647aca83bc4.png",
+      "updatedAt": 1781826519000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "b3ad7d56cb0690d81f37835a57e9404dda246dc111780c094fa4a4431019b2f6",
+        "releaseHash": "fec81d6bb3489541cebf33ed92820e89de761875a8fd3d1b2ee21f8f606e885a",
+        "releaseNonce": "bd953a900c08b6a262c4944b9c53adb6",
+        "releaseEntryPda": "3gR4SeCVpLfVkjs5gTXELCrK4Eq69Amo2TvHPLR8pvM9",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1781826519,
+        "authorSig": "ToAki4nr4fZVkUUje0Aj2e8Qmib4qE+AaRhPwHKRoczH6TzTg6KUvHYcSFPw7Ekpn8ti/HvtI27WiXkqqWPgDQ==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": null
+    },
+    {
       "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
       "name": "Melusina OpenClaw",
       "version": "0.1.13",

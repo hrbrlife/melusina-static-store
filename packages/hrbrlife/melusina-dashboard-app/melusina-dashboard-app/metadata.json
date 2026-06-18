@@ -1,0 +1,30 @@
+{
+  "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
+  "name": "Melusina Dashboard",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "packageId": "4864e30a640f611221a257330aa7161f",
+  "sha256": "4864e30a640f611221a257330aa7161ff9b80a535cd9115d0d8da04db8af840b",
+  "shortDescription": "Operator aggregation dashboard — treasury positions, GL, compliance across ccash + NamedCoin domain profiles.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina-dashboard-app",
+  "codeLink": "https://github.com/hrbrlife/melusina-dashboard-app",
+  "upstreamAuthor": "melusina",
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "description": "",
+  "screenshots": [],
+  "license": "Proprietary - AiTX.pro Limited",
+  "marketingVersion": "0.1.0",
+  "createdAt": 1781826324919
+}

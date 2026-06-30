@@ -290,8 +290,60 @@ cat > "$APP_DIR/RELEASE.json" <<JSON
 }
 JSON
 
-# Step 3: dry-run.
-TX_INDEX="$(node "$TMP/next-index.mjs" "$RPC_URL" "$MULTISIG_PDA")"
+# --- RPC resilience: pick an endpoint that actually serves the multisig -------
+# The #1 documented ceremony flake is public/free-devnet 429s ("max usage
+# reached" / -32429) on getAccountInfo while getHealth still 200s
+# (project_authz_incident_2026_06_19; PROVEN_PATTERNS Authz/RPC resilience). A
+# stale/throttled RPC dies AFTER the Squads quorum is burned. Probe candidates
+# in preference order (keyed first), pick the first that returns the multisig
+# account, and fail FAST before proposing if none are healthy. Export the choice
+# so pearl-tool (reads MELUSINA_RPC_URL) and the .mjs (read $RPC_URL) all agree.
+_rpc_probe() {  # $1=url -> 0 iff getAccountInfo(MULTISIG_PDA) returns an account
+  local url="$1" resp
+  resp="$(curl -fsS --max-time 12 -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$MULTISIG_PDA\",{\"encoding\":\"base64\"}]}" \
+    "$url" 2>/dev/null)" || return 1
+  printf '%s' "$resp" | grep -q '"error"'      && return 1   # -32429/-32029/etc
+  printf '%s' "$resp" | grep -q '"value":null' && return 1   # multisig not found here
+  printf '%s' "$resp" | grep -q '"value"'      || return 1
+  return 0
+}
+_pick_rpc() {
+  local cand seen=" "
+  for cand in "${MELUSINA_RPC_PRIMARY:-}" "${HELIUS_RPC:-}" "${MELUSINA_RPC_URL:-}" \
+              "${MELUSINA_RPC_SECONDARY:-}" "https://api.devnet.solana.com"; do
+    [[ -z "$cand" ]] && continue
+    case "$seen" in *" $cand "*) continue;; esac
+    seen+="$cand "
+    if _rpc_probe "$cand"; then printf '%s' "$cand"; return 0; fi
+    echo "[ceremony:$APP_SLUG] RPC candidate unhealthy (429/unreachable), next: ${cand%%\?*}" >&2
+  done
+  return 1
+}
+if _PICKED="$(_pick_rpc)"; then
+  [[ "$_PICKED" != "$RPC_URL" ]] && echo "[ceremony:$APP_SLUG] RPC failover: ${_PICKED%%\?*} (was ${RPC_URL%%\?*})"
+  RPC_URL="$_PICKED"; export MELUSINA_RPC_URL="$_PICKED"
+  echo "[ceremony:$APP_SLUG] RPC healthy: ${RPC_URL%%\?*}"
+else
+  echo "[ceremony:$APP_SLUG] FATAL: no healthy Solana RPC (tried MELUSINA_RPC_PRIMARY/HELIUS_RPC/MELUSINA_RPC_URL/SECONDARY/public)." >&2
+  echo "[ceremony:$APP_SLUG]   all 429'd/-32429 or were unreachable for getAccountInfo($MULTISIG_PDA)." >&2
+  echo "[ceremony:$APP_SLUG]   export HELIUS_RPC=<topped-up key endpoint> (see .publish.env note) and re-run." >&2
+  exit 1
+fi
+
+# Step 3: dry-run. next-index is a PURE READ — retry transient blips (the
+# endpoint was just probed, but a lone 429 can still slip through). The stateful
+# Squads submit below is deliberately NOT auto-retried (re-running it blind would
+# double-create at a fresh index); on submit failure use `make pearl-clean`.
+TX_INDEX=""
+for _t in 1 2 3 4; do
+  if TX_INDEX="$(node "$TMP/next-index.mjs" "$RPC_URL" "$MULTISIG_PDA" 2>/dev/null)" && [[ -n "$TX_INDEX" ]]; then
+    break
+  fi
+  echo "[ceremony:$APP_SLUG] next-index RPC read failed (attempt $_t/4); backing off" >&2
+  sleep $(( _t * 2 )); TX_INDEX=""
+done
+[[ -n "$TX_INDEX" ]] || { echo "[ceremony:$APP_SLUG] FATAL: could not read Squads transactionIndex after retries on ${RPC_URL%%\?*}" >&2; exit 1; }
 echo "[ceremony:$APP_SLUG] next transactionIndex=$TX_INDEX"
 
 "$PEARL_TOOL" propose-release \

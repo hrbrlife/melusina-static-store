@@ -118,8 +118,18 @@ cat > "$TMP/next-index.mjs" <<'JS'
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
+// Retry transient network blips (TypeError: fetch failed) at the HTTP layer so a
+// flaky devnet RPC doesn't abort the ceremony. Read-only here; safe to retry.
+async function rfetch(u, o) {
+  let last;
+  for (let i = 0; i < 6; i++) {
+    try { return await fetch(u, o); }
+    catch (e) { last = e; await new Promise(r => setTimeout(r, 500 * (i + 1))); }
+  }
+  throw last;
+}
 const [rpcUrl, multisigPdaRaw] = process.argv.slice(2);
-const connection = new Connection(rpcUrl, "confirmed");
+const connection = new Connection(rpcUrl, { commitment: "confirmed", fetch: rfetch });
 const multisigPda = new PublicKey(multisigPdaRaw);
 const ms = await multisig.accounts.Multisig.fromAccountAddress(connection, multisigPda);
 console.log(String(BigInt(ms.transactionIndex) + 1n));
@@ -137,6 +147,18 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 
+// Retry transient network blips (TypeError: fetch failed) at the HTTP layer. Safe:
+// getLatestBlockhash/getAccountInfo are reads; sendTransaction re-send is
+// signature-idempotent on Solana (a duplicate of the same signed tx is rejected,
+// not double-applied). Kills the flaky-devnet mid-ceremony abort class.
+async function rfetch(u, o) {
+  let last;
+  for (let i = 0; i < 6; i++) {
+    try { return await fetch(u, o); }
+    catch (e) { last = e; await new Promise(r => setTimeout(r, 500 * (i + 1))); }
+  }
+  throw last;
+}
 const [statePath, rpcUrl, publisherPath, reviewer1Path, reviewer2Path, resultPath, memoLabel] = process.argv.slice(2);
 
 function loadKeypair(file) {
@@ -167,7 +189,7 @@ async function sendAndConfirm(connection, tx, label) {
 }
 
 const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
-const connection = new Connection(rpcUrl, "confirmed");
+const connection = new Connection(rpcUrl, { commitment: "confirmed", fetch: rfetch });
 const publisher = loadKeypair(publisherPath);
 const reviewer1 = loadKeypair(reviewer1Path);
 const reviewer2 = loadKeypair(reviewer2Path);

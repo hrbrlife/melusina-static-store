@@ -3,6 +3,9 @@ dist/
 dist-publish/
 dist-publish.staging.*
 dist-publish.prev.*
+packages/**/*.staging.*
+packages/**/*.prev.*
+.ceremony-*.lock
 dist-melusina/
 .staging-tmp/
 .build-tmp/

@@ -50,17 +50,33 @@ if (( $# < 2 || $# % 2 != 0 )); then
   exit 2
 fi
 
-# ATOMIC STAGING (CODEX-G defect: "catalog direct-stage not atomic").
-# Every artifact (app.spk, metadata.json, RELEASE.json) is built on
-# same-directory temp files and `spk verify` runs on the TEMP spk BEFORE the
-# live catalog is touched. Only when ALL steps for a pair succeed do we
-# rename the three temps into place (POSIX rename = atomic within one dir/fs).
-# Any failure leaves the live catalog entry byte-for-byte unchanged — an
-# interrupted or failing run can never leave a NEW spk beside a STALE
-# metadata/RELEASE (the corruption the old in-place `cp` produced).
-TMPS=()
-cleanup_tmps() { for t in "${TMPS[@]:-}"; do [[ -n "$t" ]] && rm -f "$t"; done; }
-trap cleanup_tmps EXIT
+# PACKAGE-ATOMIC STAGING (CODEX-G + CODEX-SDL F1).
+# A catalog package is the {app.spk, metadata.json, RELEASE.json} TRIPLE (plus
+# icon/screenshots). They must update as ONE unit — a reader / serve-gate must
+# never see a new app.spk against a stale metadata/RELEASE, or vice-versa.
+# Three separate per-file renames cannot guarantee that (a kill between them
+# leaves a mismatched package). So we build a complete SHADOW of the package
+# dir (hardlink-cloned from the live dir = instant, no 57 MB SPK data copy),
+# replace the triple INSIDE the shadow, validate there, then swap the WHOLE
+# package dir with a SINGLE atomic rename. Any failure/interruption leaves the
+# live package dir byte-for-byte unchanged; an interrupted swap is repaired by
+# the trap (live dir gone + saved prev present -> restore prev).
+#
+# Hardlink rule: cp -al shares inodes with the live dir, so every file we mutate
+# in the shadow is `rm`'d first (breaks the link -> fresh inode) and its SOURCE
+# is read from the live $PKG. Opening a shared inode for write would corrupt the
+# live file and defeat the whole guarantee.
+SHADOWS=()
+cleanup_shadows() {
+  local s
+  for s in "${SHADOWS[@]:-}"; do
+    [[ -z "$s" ]] && continue
+    rm -rf "$s.staging.$$" 2>/dev/null || true
+    if [[ ! -e "$s" && -d "$s.prev.$$" ]]; then mv "$s.prev.$$" "$s" 2>/dev/null || true; fi
+    rm -rf "$s.prev.$$" 2>/dev/null || true
+  done
+}
+trap cleanup_shadows EXIT
 
 FAILS=0
 while (( $# >= 2 )); do
@@ -78,29 +94,32 @@ while (( $# >= 2 )); do
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
   fi
 
-  # Same-dir temp targets so the final move is an atomic same-fs rename.
-  TMP_SPK="$PKG/.app.spk.staging.$$"
-  TMP_META="$PKG/.metadata.json.staging.$$"
-  TMP_REL="$PKG/.RELEASE.json.staging.$$"
-  TMPS+=("$TMP_SPK" "$TMP_META" "$TMP_REL")
-  rm -f "$TMP_SPK" "$TMP_META" "$TMP_REL"
+  SHADOWS+=("$PKG")
+  SHADOW="$PKG.staging.$$"
+  rm -rf "$SHADOW" "$PKG.prev.$$"
+  # Hardlink-clone the live package (sibling dir = same fs; shares inodes, no
+  # SPK data copy). Fall back to a full copy if the fs rejects hardlinks.
+  if ! cp -al "$PKG" "$SHADOW" 2>/dev/null; then
+    if ! cp -a "$PKG" "$SHADOW" 2>/dev/null; then
+      fail "  could not shadow package dir (live entry untouched)"; rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
 
-  # 1) copy SPK to TEMP (live app.spk untouched)
-  cp -f "$SPK" "$TMP_SPK"
-  FULL_SHA="$(sha256sum "$TMP_SPK" | cut -d' ' -f1)"
+  # 1) place the new SPK in the shadow (rm breaks the hardlink; live untouched)
+  rm -f "$SHADOW/app.spk"
+  cp -f "$SPK" "$SHADOW/app.spk"
+  FULL_SHA="$(sha256sum "$SHADOW/app.spk" | cut -d' ' -f1)"
   SHA="${FULL_SHA:0:12}"
-  SZ="$(stat -c%s "$TMP_SPK")"
+  SZ="$(stat -c%s "$SHADOW/app.spk")"
 
   # Extract authoritative version/versionNumber/packageId FROM THE SPK ITSELF.
-  # The SPK is the source of truth — pkgdef may have moved past the on-disk
-  # pack, and metadata.json drifts. spk verify output is Cap'n Proto text
-  # (JSON-like but not strict JSON), so we use a small python parser that
-  # tolerates the trailing-comma + LargeDataBlob syntax. Verifying the TEMP
-  # spk means a verify failure aborts the pair with the live entry intact.
-  SPK_INFO="$(spk verify -d "$TMP_SPK" 2>/dev/null)"
+  # spk verify output is Cap'n Proto text (JSON-like, not strict JSON); a small
+  # python parser tolerates the trailing-comma + LargeDataBlob syntax. Verifying
+  # the SHADOW spk means a verify failure aborts the pair with live intact.
+  SPK_INFO="$(spk verify -d "$SHADOW/app.spk" 2>/dev/null)"
   if [[ -z "$SPK_INFO" ]]; then
     fail "  spk verify -d failed on staged SPK ($SPK) — refusing to stage with unknown identity (live entry untouched)"
-    rm -f "$TMP_SPK"; FAILS=$((FAILS+1)); continue
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
   read -r PKG_ID NEW_NUM NEW_VER < <(python3 - <<PY
 import re, sys
@@ -115,11 +134,13 @@ PY
   : "${NEW_NUM:=0}"
   if [[ -z "$PKG_ID" ]]; then
     fail "  could not extract packageId from spk verify output — refusing to stage (live entry untouched)"
-    rm -f "$TMP_SPK"; FAILS=$((FAILS+1)); continue
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
-  # 2) build new metadata.json into TEMP (from the live metadata as base)
-  if ! python3 - "$CAT_META" "$TMP_META" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
+  # 2) rewrite metadata.json IN THE SHADOW (rm the linked copy first; read the
+  #    base from the LIVE metadata so the shared inode is never opened for write)
+  rm -f "$SHADOW/metadata.json"
+  if ! python3 - "$CAT_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
 import json, sys
 src, dst, ver, num, pkg_id, full_sha = sys.argv[1:7]
 d = json.load(open(src))
@@ -135,27 +156,30 @@ with open(dst, "w") as f:
 PY
   then
     fail "  metadata.json rebuild failed for $(basename "$PKG") (live entry untouched)"
-    rm -f "$TMP_SPK" "$TMP_META"; FAILS=$((FAILS+1)); continue
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
-  # 3) regenerate RELEASE.json offline-stub into TEMP against the TEMP SPK + TEMP metadata
-  if ! "$STUB" --spk "$TMP_SPK" --metadata "$TMP_META" --output "$TMP_REL" --version "$NEW_VER" >/dev/null 2>&1; then
+  # 3) regenerate RELEASE.json offline-stub in the shadow against the shadow SPK
+  #    + shadow metadata (rm the linked copy first so the stub writes a fresh file)
+  rm -f "$SHADOW/RELEASE.json"
+  if ! "$STUB" --spk "$SHADOW/app.spk" --metadata "$SHADOW/metadata.json" --output "$SHADOW/RELEASE.json" --version "$NEW_VER" >/dev/null 2>&1; then
     fail "  release-json-stub failed for $(basename "$PKG") (live entry untouched)"
-    rm -f "$TMP_SPK" "$TMP_META" "$TMP_REL"; FAILS=$((FAILS+1)); continue
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
-  if [[ ! -s "$TMP_REL" ]]; then
+  if [[ ! -s "$SHADOW/RELEASE.json" ]]; then
     fail "  release-json-stub produced empty RELEASE.json for $(basename "$PKG") (live entry untouched)"
-    rm -f "$TMP_SPK" "$TMP_META" "$TMP_REL"; FAILS=$((FAILS+1)); continue
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
-  # 4) COMMIT POINT — all artifacts built & verified; promote the three temps
-  #    into place with atomic same-dir renames. spk last so a reader never sees
-  #    a new spk against stale metadata.
-  REL_HASH="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['appHash'][:12])" "$TMP_REL")"
-  mv -f "$TMP_META" "$CAT_META"
-  mv -f "$TMP_REL"  "$PKG/RELEASE.json"
-  mv -f "$TMP_SPK"  "$PKG/app.spk"
-  ok "  $(basename "$PKG"): SPK $SHA size=$SZ  v$NEW_VER vN=$NEW_NUM  RELEASE.json $REL_HASH packageId=${PKG_ID:0:12} [atomic]"
+  # 4) COMMIT POINT — the whole package is built & verified in the shadow.
+  #    Swap the entire package dir with a SINGLE atomic rename pair; the trap
+  #    repairs an interrupted swap. Live is byte-for-byte unchanged until here.
+  REL_HASH="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['appHash'][:12])" "$SHADOW/RELEASE.json")"
+  rm -rf "$PKG.prev.$$"
+  mv "$PKG" "$PKG.prev.$$"
+  mv "$SHADOW" "$PKG"
+  rm -rf "$PKG.prev.$$"
+  ok "  $(basename "$PKG"): SPK $SHA size=$SZ  v$NEW_VER vN=$NEW_NUM  RELEASE.json $REL_HASH packageId=${PKG_ID:0:12} [package-atomic]"
 done
 
 if (( FAILS > 0 )); then exit 1; fi

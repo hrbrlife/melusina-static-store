@@ -290,6 +290,24 @@ cat > "$APP_DIR/RELEASE.json" <<JSON
 }
 JSON
 
+# --- Ceremony serialization (CODEX-SDL F2) -----------------------------------
+# next-index (read) -> propose -> submit -> finalize is a read-modify-write on a
+# SINGLE Squads multisig: two ceremonies racing the same multisig read the SAME
+# transactionIndex and collide (duplicate/stale proposal AFTER quorum is burned).
+# H6 names CT-SDL the sole catalog writer, but that is a convention, not a
+# mechanism. Enforce it with a per-multisig flock held across the whole on-chain
+# critical section (auto-released when this process exits). Different multisigs
+# may proceed concurrently; the same multisig is strictly serialized.
+command -v flock >/dev/null 2>&1 || { echo "[ceremony:$APP_SLUG] FATAL: flock (util-linux) not found — required to serialize the Squads tx-index critical section" >&2; exit 1; }
+CEREMONY_LOCK="${CEREMONY_LOCK:-$_SS_ROOT/.ceremony-$MULTISIG_PDA.lock}"
+exec {CEREMONY_LOCK_FD}>"$CEREMONY_LOCK" || { echo "[ceremony:$APP_SLUG] FATAL: cannot open ceremony lock $CEREMONY_LOCK" >&2; exit 1; }
+echo "[ceremony:$APP_SLUG] acquiring ceremony lock ($(basename "$CEREMONY_LOCK"))..."
+if ! flock -w "${CEREMONY_LOCK_WAIT:-600}" "$CEREMONY_LOCK_FD"; then
+  echo "[ceremony:$APP_SLUG] FATAL: another ceremony holds the lock for multisig $MULTISIG_PDA (waited ${CEREMONY_LOCK_WAIT:-600}s); refusing to race the Squads transactionIndex" >&2
+  exit 1
+fi
+echo "[ceremony:$APP_SLUG] ceremony lock held — entering read->propose->submit->finalize critical section"
+
 # --- RPC resilience: pick an endpoint that actually serves the multisig -------
 # The #1 documented ceremony flake is public/free-devnet 429s ("max usage
 # reached" / -32429) on getAccountInfo while getHealth still 200s

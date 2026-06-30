@@ -1,9 +1,9 @@
 {
   "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
   "name": "Cyberteller Config",
-  "version": "0.1.13",
-  "versionNumber": 22,
-  "packageId": "c2d14dd7e2b33fd4371433938854d675",
+  "version": "0.1.14",
+  "versionNumber": 23,
+  "packageId": "6191e901e4a7de022720a3b59f1bbde0",
   "shortDescription": "Cyberteller install-admin (boot env source)",
   "description": "Configures cyberteller's boot environment for every cyberteller grain in this Sandstorm install. Hosts the ConfigGate Grapple capability cyberteller claims at first launch \u2014 the single source of truth for AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, and FINREACT_COLD_WALLET_GLID. Admin-form gated on the Sandstorm `admin` permission bit (HT12: real UserInfo, no bypass). The credit privkey is operator-pasted from the offline-wallet ceremony (HT13).",
   "categories": [
@@ -25,7 +25,7 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.1.13",
+  "marketingVersion": "0.1.14",
   "appTitle": "Cyberteller Config",
-  "sha256": "c2d14dd7e2b33fd4371433938854d675f083b9eef22018f6cc69f53acea8dc08"
+  "sha256": "6191e901e4a7de022720a3b59f1bbde074dddf4ca674484e12d2c3b3df488323"
 }

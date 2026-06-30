@@ -1,6 +1,8 @@
 node_modules/
 dist/
 dist-publish/
+dist-publish.staging.*
+dist-publish.prev.*
 dist-melusina/
 .staging-tmp/
 .build-tmp/

@@ -20,7 +20,17 @@ cd "$SCRIPT_DIR"
 
 # --- Configuration -----------------------------------------------------------
 PACKAGES_DIR="packages"
-OUTPUT_DIR="dist-publish"
+# The published catalog directory the store sidecar serves + gates from.
+FINAL_DIR="dist-publish"
+# Assemble into a same-directory staging tree and atomically rename it over
+# FINAL_DIR at the very end (Step 8). The old in-place `rm -rf dist-publish`
+# + slow rebuild meant an interrupted/failed/timed-out assemble — it runs INSIDE
+# the sidecar /publish single-writer path under a 10-min ctx — left the LIVE
+# served catalog wiped or half-written, and the serve-gate then read a partial
+# apps/index.json and silently dropped apps (CODEX-G: non-atomic catalog write).
+# Staging localizes every write; the live tree is swapped in only on full
+# success, in microseconds. $$ isolates concurrent runs.
+OUTPUT_DIR="dist-publish.staging.$$"
 IMAGES_OUT="$OUTPUT_DIR/images"
 PACKAGES_OUT="$OUTPUT_DIR/packages"
 APPS_OUT="$OUTPUT_DIR/apps"
@@ -659,8 +669,20 @@ PY
   echo ""
 fi
 
-# --- Step 3: Assemble dist-publish/ ------------------------------------------
-info "Assembling $OUTPUT_DIR/..."
+# --- Step 3: Assemble the catalog (into staging; atomic flip in Step 8) -------
+info "Assembling $FINAL_DIR/ (staging: $OUTPUT_DIR)..."
+
+# Crash-safe staging trap: on ANY exit, remove the staging tree; and if a flip
+# was interrupted (FINAL_DIR gone but the saved previous tree survives), restore
+# the previous live catalog. Guarantees the served tree is never left absent.
+_stage_cleanup() {
+  rm -rf "$OUTPUT_DIR" 2>/dev/null || true
+  if [[ ! -e "$FINAL_DIR" && -d "$FINAL_DIR.prev.$$" ]]; then
+    mv "$FINAL_DIR.prev.$$" "$FINAL_DIR" 2>/dev/null || true
+  fi
+  rm -rf "$FINAL_DIR.prev.$$" 2>/dev/null || true
+}
+trap _stage_cleanup EXIT
 
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures"
@@ -1159,20 +1181,38 @@ else
   warn "deploy-ui Makefile not found at $DEPLOY_UI_SRC — skipping release build"
 fi
 
-# --- Step 8: Summary ---------------------------------------------------------
+# --- Step 8: Atomic publish — flip staging over the live catalog -------------
+# Every artifact is now built under $OUTPUT_DIR. Promote it to $FINAL_DIR with
+# rename(2)s (atomic within one filesystem) so a reader / serve-gate never
+# observes a partially-assembled catalog. Refuse to flip an obviously-incomplete
+# staging tree: keeping the prior live catalog beats publishing a broken one.
+if [[ ! -s "$APPS_OUT/index.json" ]]; then
+  fail "Staging $APPS_OUT/index.json missing/empty — refusing to publish a broken catalog ($FINAL_DIR/ left intact)"
+  exit 1
+fi
+PREV="$FINAL_DIR.prev.$$"
+rm -rf "$PREV"
+if [[ -e "$FINAL_DIR" ]]; then
+  mv "$FINAL_DIR" "$PREV"
+fi
+mv "$OUTPUT_DIR" "$FINAL_DIR"
+rm -rf "$PREV"
+ok "Published catalog atomically → $FINAL_DIR/"
+
+# --- Step 9: Summary ---------------------------------------------------------
 echo ""
 ok "Build complete!"
 echo ""
-info "Output in $OUTPUT_DIR/:"
+info "Output in $FINAL_DIR/:"
 # `head -30` would SIGPIPE sort/find under pipefail; materialize, then slice.
-ALL_FILES="$(find "$OUTPUT_DIR" -type f | sort)"
+ALL_FILES="$(find "$FINAL_DIR" -type f | sort)"
 echo "$ALL_FILES" | awk 'NR<=30'
 TOTAL_FILES="$(echo "$ALL_FILES" | wc -l)"
 if [[ "$TOTAL_FILES" -gt 30 ]]; then
   echo "  ... and $((TOTAL_FILES - 30)) more files"
 fi
 echo ""
-TOTAL_SIZE="$(du -sh "$OUTPUT_DIR" | cut -f1)"
+TOTAL_SIZE="$(du -sh "$FINAL_DIR" | cut -f1)"
 info "Total size: $TOTAL_SIZE"
 echo ""
 info "To deploy, run:"

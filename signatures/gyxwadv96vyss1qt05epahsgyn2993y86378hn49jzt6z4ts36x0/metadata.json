@@ -1,0 +1,30 @@
+{
+  "appId": "gyxwadv96vyss1qt05epahsgyn2993y86378hn49jzt6z4ts36x0",
+  "packageId": "e2711bdb4228af04b57c18f058bb3ef2",
+  "name": "cca.sh Organization",
+  "version": "0.1.0",
+  "versionNumber": 4,
+  "shortDescription": "Partner administration relay grain for cca.sh",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/ccash_organization",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776902400000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.0",
+  "sha256": "e2711bdb4228af04b57c18f058bb3ef2f4209210f76a74f79d02507315f2882a"
+}

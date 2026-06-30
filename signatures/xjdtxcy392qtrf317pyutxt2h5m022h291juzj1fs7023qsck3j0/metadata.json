@@ -1,0 +1,29 @@
+{
+  "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+  "name": "BotMother",
+  "version": "1.1.3",
+  "versionNumber": 19,
+  "packageId": "70005533f5c0002a90679cab56533e0c",
+  "sha256": "70005533f5c0002a90679cab56533e0ce0fc6a635cb7643556d304e177def44e",
+  "shortDescription": "Telegram bot manager with per-bot Pearl isolation and pinned chatroom snapshots.",
+  "categories": [
+    "Productivity",
+    "Social"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/melusina_botmother",
+  "codeLink": "https://github.com/hrbrlife/melusina_botmother",
+  "upstreamAuthor": "BotMother",
+  "createdAt": 1770857129000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "1.1.3"
+}

@@ -1,0 +1,31 @@
+{
+  "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
+  "packageId": "1ea51595d768be9d4fc51cc16c3c779d",
+  "name": "cca.sh Client",
+  "version": "0.1.1",
+  "versionNumber": 7,
+  "shortDescription": "Client seat for cca.sh — access financial services, submit approvals, view settled activity.",
+  "description": "",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina_ccash_client_app",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776851479051,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "sha256": "1ea51595d768be9d4fc51cc16c3c779d556f90c2b68085c8b652233088d34ec2",
+  "marketingVersion": "0.1.1"
+}

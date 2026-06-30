@@ -1,0 +1,39 @@
+{
+  "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
+  "name": "Doc Bureau",
+  "version": "2.0.17",
+  "versionNumber": 12,
+  "packageId": "d894bc368210a0c9ad38fb8c462d21b9",
+  "sha256": "d894bc368210a0c9ad38fb8c462d21b954b848526077334a3b9127be9dda8bd3",
+  "shortDescription": "Rich-text document editor with real-time collaboration, DOCX export \u2014 self-hosted.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/CHEESESPREAD",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1776663049,
+  "screenshots": [
+    {
+      "url": "screenshots/screenshot_docs.png",
+      "caption": "Collaborative document editing"
+    },
+    {
+      "url": "screenshots/screenshot_docs2.png",
+      "caption": "Multi-user document review"
+    }
+  ],
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "2.0.17"
+}

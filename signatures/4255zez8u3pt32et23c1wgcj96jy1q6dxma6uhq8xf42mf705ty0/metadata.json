@@ -1,0 +1,30 @@
+{
+  "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",
+  "packageId": "7ddf27ddfa3af21268c52f3ecb37251d",
+  "name": "TeleScreen Sidecar Configurator",
+  "version": "0.4.0",
+  "versionNumber": 5,
+  "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar — exposes config UI + Grapple cap.",
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/Melusina",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1777535000000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "Proprietary",
+  "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
+  "marketingVersion": "0.4.0"
+}

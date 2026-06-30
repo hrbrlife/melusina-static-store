@@ -401,15 +401,34 @@ echo "[ceremony:$APP_SLUG] next transactionIndex=$TX_INDEX"
   --author-keypair "$AUTHOR_KEYPAIR" \
   --transaction-index "$TX_INDEX"
 
-# Step 4: Squads submit.
-node "$TMP/submit.mjs" \
-  "$STATE_PATH" \
-  "$RPC_URL" \
-  "$PUBLISHER_KEYPAIR" \
-  "$REVIEWER1_KEYPAIR" \
-  "$REVIEWER2_KEYPAIR" \
-  "$RESULT_PATH" \
-  "$APP_SLUG"
+# Step 4: Squads submit — IDEMPOTENT. propose-release wrote the deterministic
+# ReleaseEntry PDA (= f(master, appHash)) into state.json. If that PDA ALREADY
+# exists on-chain (same content re-published, or a prior run whose execute landed
+# before a later step failed), VaultTransactionExecute would fail "account
+# already in use" AFTER burning a fresh proposal+quorum. Detect it and skip
+# straight to finalize, which syncs RELEASE.json from the existing entry. Makes
+# re-running a publish safe + cheap (no dangling proposals, no wasted quorum).
+REL_PDA="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("releaseEntryPda",""))' "$STATE_PATH" 2>/dev/null || true)"
+_re_exists=0
+if [[ -n "$REL_PDA" ]]; then
+  if curl -fsS --max-time 15 -H 'content-type: application/json' \
+       -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$REL_PDA\",{\"encoding\":\"base64\"}]}" \
+       "$RPC_URL" 2>/dev/null | grep -q "\"owner\":\"7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb\""; then
+    _re_exists=1
+  fi
+fi
+if [[ "$_re_exists" = "1" ]]; then
+  echo "[ceremony:$APP_SLUG] ReleaseEntry $REL_PDA already on-chain — skipping submit (idempotent re-publish); finalizing from the existing entry"
+else
+  node "$TMP/submit.mjs" \
+    "$STATE_PATH" \
+    "$RPC_URL" \
+    "$PUBLISHER_KEYPAIR" \
+    "$REVIEWER1_KEYPAIR" \
+    "$REVIEWER2_KEYPAIR" \
+    "$RESULT_PATH" \
+    "$APP_SLUG"
+fi
 
 # Step 5: finalize.
 "$PEARL_TOOL" finalize-release \

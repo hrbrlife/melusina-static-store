@@ -113,30 +113,9 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 
-	// (c) Derive the StoreOperatorAuthorization PDA for THIS license+domain,
-	// fetch it, and require: Active, its store_authority == our own operator
-	// signing key (proving this process is the authorized single writer for this
-	// store), and — if a FoundationApp tier is known — the allowed_tier_mask
-	// covers it. This is the WRITE-authority half: it needs the operator identity
-	// and is therefore NOT part of the serve-time (read-only) gate.
-	storeDomainHash := primitives.StoreDomainHash(cfg.Domain)
-	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
+	allowedTierMask, licenseMint, err := VerifyStoreOperator(ctx, cr, cfg, operatorPubkey, false /* requireRoot */)
 	if err != nil {
-		return fmt.Errorf("check=store_operator_authz: bad cfg.license_nft_mint: %w", err)
-	}
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, programID)
-	if err != nil {
-		return fmt.Errorf("check=store_operator_authz: derive PDA: %w", err)
-	}
-	authzStatus, storeAuthority, allowedTierMask, _, _, err := cr.FetchStoreOperatorAuthz(ctx, authzPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("check=store_operator_authz: fetch %s: %w", authzPDA.Base58(), err)
-	}
-	if err := authzStatus.RequireActive(); err != nil {
-		return fmt.Errorf("check=store_operator_authz: status %s not Active: %w", authzStatus, err)
-	}
-	if storeAuthority != verify.Pubkey(operatorPubkey) {
-		return fmt.Errorf("check=store_operator_authz: store_authority %x != sidecar operator %x", storeAuthority[:], operatorPubkey[:])
+		return err
 	}
 	// Tier ceiling (B1-05/B2-05): a Foundation app (tier != 0) must be covered by
 	// the operator's allowed_tier_mask. foundationTier is the on-chain-resolved
@@ -156,6 +135,41 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 	return nil
+}
+
+// VerifyStoreOperator is the WRITE-authority check shared by app publish and
+// installer publish. It proves this process is the authorized single writer for
+// cfg.Domain: an Active StoreOperatorAuthorization exists for cfg.LicenseNFTMint
+// + store_domain_hash(cfg.Domain), and its store_authority equals the sidecar's
+// derived operator signing pubkey. Installer/root artifacts additionally require
+// is_root=true so reseller/tenant stores cannot originate fleet-wide artifacts.
+func VerifyStoreOperator(ctx context.Context, cr chainReader, cfg Config, operatorPubkey [32]byte, requireRoot bool) (allowedTierMask uint8, licenseMint pda.Pubkey, err error) {
+	storeDomainHash := primitives.StoreDomainHash(cfg.Domain)
+	licenseMint, err = primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
+	if err != nil {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: bad cfg.license_nft_mint: %w", err)
+	}
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, programID)
+	if err != nil {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: derive PDA: %w", err)
+	}
+	authzStatus, storeAuthority, allowedTierMask, isRoot, onchainDomainHash, err := cr.FetchStoreOperatorAuthz(ctx, authzPDA.Base58())
+	if err != nil {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: fetch %s: %w", authzPDA.Base58(), err)
+	}
+	if err := authzStatus.RequireActive(); err != nil {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: status %s not Active: %w", authzStatus, err)
+	}
+	if storeAuthority != verify.Pubkey(operatorPubkey) {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: store_authority %x != sidecar operator %x", storeAuthority[:], operatorPubkey[:])
+	}
+	if onchainDomainHash != storeDomainHash {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: store_domain_hash %x != cfg domain hash %x", onchainDomainHash[:], storeDomainHash[:])
+	}
+	if requireRoot && !isRoot {
+		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: is_root=false; installer artifacts require root store authority")
+	}
+	return allowedTierMask, licenseMint, nil
 }
 
 // resolveFoundationTier reads the on-chain ReleaseEntry.app_id at relPDA, derives

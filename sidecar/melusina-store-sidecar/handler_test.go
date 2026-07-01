@@ -16,6 +16,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
 var enc = base64.StdEncoding
@@ -99,6 +100,39 @@ func doPublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.
 	return w
 }
 
+func jsonInstallerPublishBody(t *testing.T, class, name string, artifact []byte) *bytes.Buffer {
+	t.Helper()
+	req := installerPublishRequest{
+		Class:       class,
+		Name:        name,
+		ArtifactB64: b64(artifact),
+	}
+	b, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bytes.NewBuffer(b)
+}
+
+func doPublishInstaller(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.ResponseRecorder {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/publish/installer", body)
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	svc.handlePublishInstaller(w, r)
+	return w
+}
+
+func pinRootStoreOperator(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private) {
+	t.Helper()
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	f.pinAccept(m, operatorPub)
+	authz := m.storeAuthz[f.authzPDA]
+	authz.isRoot = true
+	m.storeAuthz[f.authzPDA] = authz
+}
+
 func TestHandlePublish_Accept(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -128,6 +162,142 @@ func TestHandlePublish_Accept(t *testing.T) {
 	}
 	if rc.OperatorSignature == "" {
 		t.Error("receipt missing operator signature")
+	}
+}
+
+func TestHandlePublishInstaller_Accept(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	m := newMockChainReader()
+	pinRootStoreOperator(t, cfg, m, op)
+
+	artifact := []byte("prebuilt sandstorm release bytes")
+	hash := sha256.Sum256(artifact)
+	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+	svc := newTestService(t, cfg, m, op)
+
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, "shell", "sandstorm-42.tar.xz", artifact))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	got, err := os.ReadFile(filepath.Join(cfg.DistDir, "releases", "shell", "sandstorm-42.tar.xz"))
+	if err != nil {
+		t.Fatalf("artifact not written: %v", err)
+	}
+	if !bytes.Equal(got, artifact) {
+		t.Fatalf("written artifact bytes changed")
+	}
+	if !strings.Contains(w.Body.String(), hex.EncodeToString(hash[:])) {
+		t.Fatalf("response does not include installer hash: %s", w.Body.String())
+	}
+}
+
+func TestHandlePublishInstaller_Rejects(t *testing.T) {
+	cases := []struct {
+		name     string
+		setup    func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte)
+		class    string
+		fileName string
+		wantCode int
+		wantBody string
+	}{
+		{
+			name: "installer_release_missing",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+			},
+			class:    "shell",
+			fileName: "sandstorm-42.tar.xz",
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "installer_release_revoked",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+				hash := sha256.Sum256(artifact)
+				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusRevoked}
+			},
+			class:    "shell",
+			fileName: "sandstorm-42.tar.xz",
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "non_root_store_operator",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				operatorPub := operatorSignPub32(t, op)
+				f := buildValidFixture(t, cfg, randPubkeyB58(t))
+				f.pinAccept(m, operatorPub) // isRoot=false
+				hash := sha256.Sum256(artifact)
+				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+			},
+			class:    "sidecar",
+			fileName: "store-sidecar",
+			wantCode: http.StatusForbidden,
+			wantBody: "is_root=false",
+		},
+		{
+			name: "invalid_path_segment",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+			},
+			class:    "shell",
+			fileName: "nested/artifact",
+			wantCode: http.StatusBadRequest,
+			wantBody: "name must be a single safe path segment",
+		},
+		{
+			name: "missing_master_mint_config",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+			},
+			class:    "shell",
+			fileName: "sandstorm-42.tar.xz",
+			wantCode: http.StatusServiceUnavailable,
+			wantBody: "release_master_nft_mint is required",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.DistDir = t.TempDir()
+			cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+			if tc.name == "missing_master_mint_config" {
+				cfg.ReleaseMasterNftMint = ""
+			}
+			op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+			m := newMockChainReader()
+			artifact := []byte("installer artifact " + tc.name)
+			tc.setup(t, cfg, m, op, artifact)
+			svc := newTestService(t, cfg, m, op)
+
+			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, tc.class, tc.fileName, artifact))
+			if w.Code != tc.wantCode {
+				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), tc.wantBody) {
+				t.Fatalf("body %q does not name %q", w.Body.String(), tc.wantBody)
+			}
+			if _, err := os.Stat(filepath.Join(cfg.DistDir, "releases", tc.class, tc.fileName)); err == nil {
+				t.Fatalf("rejected installer artifact was written")
+			}
+		})
+	}
+}
+
+func TestHandlePublishInstaller_NoOperatorFailsClosed(t *testing.T) {
+	cfg, _ := testConfig(t)
+	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(t), nonces: envelope.NewMemoryNonceCache()}
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, "shell", "sandstorm-42.tar.xz", []byte("artifact")))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
 	}
 }
 

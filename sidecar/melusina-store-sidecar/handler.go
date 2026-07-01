@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -51,6 +52,16 @@ type publishRequest struct {
 	// SPK they form the canonical tree the on-chain AppHash binds; the gate
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
+}
+
+// installerPublishRequest is the JSON wire form for POST /publish/installer.
+// ArtifactB64 is the raw whole-file artifact bytes (shell bundle, sidecar ELF,
+// Python/rootfs tarball, bootstrap tarball); class+name select the served
+// /releases/<class>/<name> path.
+type installerPublishRequest struct {
+	Class       string `json:"class"`
+	Name        string `json:"name"`
+	ArtifactB64 string `json:"artifact_b64"`
 }
 
 // newRouter builds the sidecar HTTP surface.
@@ -97,6 +108,7 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	})
 
 	mux.HandleFunc("/publish", svc.handlePublish)
+	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -131,10 +143,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fail-closed: there is no receive-side bypass. Reject loudly if a caller
-	// tries to smuggle the dev-only offline/skip escape hatches (spec §5 S7).
-	if os.Getenv("MELUSINA_ATTEST_OFFLINE") != "" || os.Getenv("SKIP_STEPS") != "" || os.Getenv("MELUSINA_SCAN_NOOP") != "" {
-		http.Error(w, "receive-path attest/scan bypass is disabled on the store sidecar", http.StatusBadRequest)
+	if rejectReceiveBypass(w) {
 		return
 	}
 
@@ -238,6 +247,75 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(receipt)
 }
 
+// handlePublishInstaller is the whole-file artifact publish path for
+// /releases/<class>/<name>. It is deliberately narrower than app /publish:
+// InstallerReleaseEntry binds sha256(artifact) on-chain, while a root
+// StoreOperatorAuthorization proves this store may originate installer artifacts.
+func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "installer publish gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
+		return
+	}
+
+	class, name, artifact, err := parseInstallerPublishBody(r)
+	if err != nil {
+		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	artifactHash := sha256.Sum256(artifact)
+	operatorPub, err := signPubkey32(s.operator.Public())
+	if err != nil {
+		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, _, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, true /* requireRoot */); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := VerifyInstallerReleaseHash(r.Context(), s.cr, s.cfg, artifactHash); err != nil {
+		code := http.StatusForbidden
+		if errors.Is(err, errReleaseMasterMintRequired) {
+			code = http.StatusServiceUnavailable
+		}
+		http.Error(w, err.Error(), code)
+		return
+	}
+	if err := writePublishedReleaseArtifact(s.cfg.DistDir, class, name, artifact); err != nil {
+		http.Error(w, "check=write_release: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"class":          class,
+		"name":           name,
+		"installer_hash": hex.EncodeToString(artifactHash[:]),
+		"path":           "/releases/" + class + "/" + name,
+	})
+}
+
+func rejectReceiveBypass(w http.ResponseWriter) bool {
+	// Fail-closed: there is no receive-side bypass. Reject loudly if a caller
+	// tries to smuggle the dev-only offline/skip escape hatches (spec §5 S7).
+	if os.Getenv("MELUSINA_ATTEST_OFFLINE") != "" || os.Getenv("SKIP_STEPS") != "" || os.Getenv("MELUSINA_SCAN_NOOP") != "" {
+		http.Error(w, "receive-path attest/scan bypass is disabled on the store sidecar", http.StatusBadRequest)
+		return true
+	}
+	return false
+}
+
 // publisherAccepted enforces the optional store policy.accept_publishers list
 // against the release's ReleaseEntry PDA. An empty list accepts any release
 // (the on-chain ReleaseEntry/StoreOperatorAuthorization gate is the authority).
@@ -322,6 +400,84 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 		return sig, nil, nil, nil, errors.New("metadata is empty")
 	}
 	return sig, release, spk, metadata, nil
+}
+
+func parseInstallerPublishBody(r *http.Request) (class string, name string, artifact []byte, err error) {
+	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+	ct := r.Header.Get("Content-Type")
+
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
+			return "", "", nil, fmt.Errorf("parse multipart: %w", perr)
+		}
+		class = strings.TrimSpace(r.FormValue("class"))
+		name = strings.TrimSpace(r.FormValue("name"))
+		artifact, err = readFormFile(r, "artifact")
+		if err != nil {
+			return "", "", nil, fmt.Errorf("artifact part: %w", err)
+		}
+	} else {
+		body, perr := io.ReadAll(r.Body)
+		if perr != nil {
+			return "", "", nil, fmt.Errorf("read body: %w", perr)
+		}
+		var req installerPublishRequest
+		if perr := json.Unmarshal(body, &req); perr != nil {
+			return "", "", nil, fmt.Errorf("decode JSON body: %w", perr)
+		}
+		class = strings.TrimSpace(req.Class)
+		name = strings.TrimSpace(req.Name)
+		artifact, err = stdB64(req.ArtifactB64)
+		if err != nil {
+			return "", "", nil, fmt.Errorf("artifact_b64: %w", err)
+		}
+	}
+
+	if !isSafePathSegment(class) {
+		return "", "", nil, errors.New("class must be a single safe path segment")
+	}
+	if !isSafePathSegment(name) {
+		return "", "", nil, errors.New("name must be a single safe path segment")
+	}
+	if len(artifact) == 0 {
+		return "", "", nil, errors.New("artifact is empty")
+	}
+	return class, name, artifact, nil
+}
+
+func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte) error {
+	dir := filepath.Join(distDir, "releases", class)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dir, err)
+	}
+	tmp, err := os.CreateTemp(dir, "."+name+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	tmpName := tmp.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.Remove(tmpName)
+		}
+	}()
+	if _, err := tmp.Write(artifact); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("write temp: %w", err)
+	}
+	if err := tmp.Chmod(0o644); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("chmod temp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp: %w", err)
+	}
+	dst := filepath.Join(dir, name)
+	if err := os.Rename(tmpName, dst); err != nil {
+		return fmt.Errorf("rename %s: %w", dst, err)
+	}
+	cleanup = false
+	return nil
 }
 
 func sha256Sum(b []byte) []byte {

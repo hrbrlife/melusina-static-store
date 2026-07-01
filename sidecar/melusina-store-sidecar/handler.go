@@ -113,6 +113,14 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 
+	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
+	// manifest the install-side melusina-update-checker.py fetches + verifies
+	// before applying an update. Registered as an EXACT route so it beats the
+	// catch-all FileServer (a dynamically re-signed manifest, not a static file);
+	// the handler write-throughs the same bytes to <DistDir>/update/manifest.json.
+	// Fail-closed 503 when the operator identity is unwired (no signer).
+	mux.HandleFunc("/update/manifest.json", svc.handleUpdateManifest)
+
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
 	// verifies. Registered BEFORE the catch-all FileServer so /root/* never falls

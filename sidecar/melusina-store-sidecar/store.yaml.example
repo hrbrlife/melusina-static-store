@@ -13,6 +13,7 @@ domain: "store.example.org"        # bare host only (no scheme/port/path); store
 store_id: "melusina-store"
 # reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
 root_store_url: "https://melusina-os.org"   # base binary + basic apps are MIRRORED from here when this is not the root
+public_base_url: "https://bazaar.melusina-os.org"  # THIS store's own public origin (behind the bazaar TLS edge). Used to build the signed update manifest's bundle_url; unset => GET /update/manifest.json fails closed (503). Set to https://bazaar.<domain>.
 
 policy:
   allowed_tiers: ["regular"]       # capability tiers this store may list

@@ -41,6 +41,19 @@ type Config struct {
 	StoreID         string `json:"store_id"`
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
 	RootStoreURL    string `json:"root_store_url"`
+	// PublicBaseURL is THIS store's own public origin — the absolute
+	// https://bazaar.<domain> URL the install-side melusina-update-checker.py
+	// fetches /update/manifest.json from and downloads bundles from. The sidecar
+	// listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
+	// behind the bazaar TLS edge, so it cannot derive its public origin from
+	// cfg.Domain or by sniffing the request Host (doctrine §2.10: network-facing
+	// endpoints are set explicitly in the deployer, sidecars never sniff their
+	// environment; signing an attacker-influenced Host into the manifest would
+	// also be a signing-oracle footgun). The signed update manifest's bundle_url
+	// is built from this base. Unset => GET /update/manifest.json fails closed
+	// (503): a bundle advertised on an internal/guessed host is unreachable.
+	// Example: "https://bazaar.melusina-os.org".
+	PublicBaseURL string `json:"public_base_url"`
 	// ReleaseMasterNftMint is the Master NFT mint used to derive
 	// InstallerReleaseEntry PDAs for whole-file artifacts served under
 	// /releases/<class>/<name>. Empty means the /releases serve gate fails closed

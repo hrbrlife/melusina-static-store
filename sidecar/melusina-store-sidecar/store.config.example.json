@@ -4,6 +4,7 @@
   "domain": "store.example.org",
   "store_id": "melusina-store",
   "root_store_url": "https://melusina-os.org",
+  "public_base_url": "https://bazaar.melusina-os.org",
   "policy": {
     "allowed_tiers": ["regular"],
     "require_scan_report": true,

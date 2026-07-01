@@ -41,10 +41,15 @@ type Config struct {
 	StoreID         string `json:"store_id"`
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
 	RootStoreURL    string `json:"root_store_url"`
-	Policy          Policy `json:"policy"`
-	RPCURL          string `json:"rpc_url"`
-	ListenAddr      string `json:"listen_addr"`
-	DistDir         string `json:"dist_dir"`
+	// ReleaseMasterNftMint is the Master NFT mint used to derive
+	// InstallerReleaseEntry PDAs for whole-file artifacts served under
+	// /releases/<class>/<name>. Empty means the /releases serve gate fails closed
+	// unless mirror.root_master_nft_mint is set as the legacy/root fallback.
+	ReleaseMasterNftMint string `json:"release_master_nft_mint,omitempty"`
+	Policy               Policy `json:"policy"`
+	RPCURL               string `json:"rpc_url"`
+	ListenAddr           string `json:"listen_addr"`
+	DistDir              string `json:"dist_dir"`
 	// CatalogRepoRoot is the static_store working tree from which the in-process
 	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
 	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —

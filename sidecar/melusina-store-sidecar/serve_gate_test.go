@@ -14,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // errMockRPC stands in for a genuine RPC/transport failure (fail-closed => REJECT).
@@ -434,5 +436,164 @@ func TestServeGate_CacheDisabledReverifies(t *testing.T) {
 	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusForbidden {
 		t.Fatalf("cache disabled: revoke must be immediately visible (403), got %d", w.Code)
+	}
+}
+
+func writeReleaseArtifact(t *testing.T, distDir, class, name string, body []byte) [32]byte {
+	t.Helper()
+	dir := filepath.Join(distDir, "releases", class)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return sha256.Sum256(body)
+}
+
+func installerReleasePDA(t *testing.T, masterMintB58 string, installerHash [32]byte) string {
+	t.Helper()
+	masterMint, err := primitives.PubkeyFromBase58(masterMintB58)
+	if err != nil {
+		t.Fatal(err)
+	}
+	relPDA, _, err := pda.InstallerRelease(masterMint, installerHash, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return relPDA.Base58()
+}
+
+func releaseSetup(t *testing.T) (Config, *mockChainReader, *serveGate, []byte, [32]byte, string, string, string) {
+	t.Helper()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	class := "shell"
+	name := "melusina-bundle-v42.tar.zst"
+	body := []byte("chain-pinned release artifact bytes")
+	hash := writeReleaseArtifact(t, cfg.DistDir, class, name, body)
+	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+	m := newMockChainReader()
+	g := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
+	return cfg, m, g, body, hash, pda, class, name
+}
+
+func TestServeGate_InstallerReleaseActive(t *testing.T) {
+	_, m, g, body, hash, pda, class, name := releaseSetup(t)
+	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+
+	w := serveGet(t, g, http.MethodGet, "/releases/"+class+"/"+name)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if !bytes.Equal(w.Body.Bytes(), body) {
+		t.Fatalf("served bytes != artifact bytes")
+	}
+	if got := w.Header().Get("X-Store-Gate"); got != "verified" {
+		t.Fatalf("X-Store-Gate=%q, want verified", got)
+	}
+	if got := w.Header().Get("X-Store-Release-Class"); got != class {
+		t.Fatalf("X-Store-Release-Class=%q, want %q", got, class)
+	}
+	if got, want := w.Header().Get("X-Store-InstallerHash"), hex.EncodeToString(hash[:]); got != want {
+		t.Fatalf("X-Store-InstallerHash=%q, want %q", got, want)
+	}
+}
+
+func TestServeGate_InstallerReleaseRefusals(t *testing.T) {
+	cases := []struct {
+		name     string
+		mutate   func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string)
+		wantCode int
+		wantBody string
+	}{
+		{
+			name:     "installer_release_missing",
+			mutate:   func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "installer_release_revoked",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusRevoked}
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "installer_hash_mismatch",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				var other [32]byte
+				other[0] = 0x42
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: other, status: verify.AttestationStatusActive}
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "rpc_error_fails_closed",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				m.installerErr = errMockRPC
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "missing_master_mint_config",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				cfg.ReleaseMasterNftMint = ""
+			},
+			wantCode: http.StatusServiceUnavailable,
+			wantBody: "release_master_nft_mint is required",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, m, g, _, hash, pda, class, artifactName := releaseSetup(t)
+			tc.mutate(t, &cfg, m, hash, pda)
+			g.cfg = cfg
+			w := serveGet(t, g, http.MethodGet, "/releases/"+class+"/"+artifactName)
+			if w.Code != tc.wantCode {
+				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), tc.wantBody) {
+				t.Fatalf("body %q does not name %q", w.Body.String(), tc.wantBody)
+			}
+		})
+	}
+}
+
+func TestServeGate_InstallerReleaseNoChainReaderFailsClosed(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	writeReleaseArtifact(t, cfg.DistDir, "sidecar", "store-sidecar", []byte("binary"))
+	g := newServeGate(cfg, nil, http.FileServer(http.Dir(cfg.DistDir)))
+
+	if w := serveGet(t, g, http.MethodGet, "/releases/sidecar/store-sidecar"); w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestServeGate_InstallerReleaseRejectsInvalidPathShape(t *testing.T) {
+	cfg, m, g, _, hash, pda, _, _ := releaseSetup(t)
+	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+
+	nestedDir := filepath.Join(cfg.DistDir, "releases", "shell", "nested")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nestedDir, "artifact"), []byte("nested"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := serveGet(t, g, http.MethodGet, "/releases/shell/nested/artifact")
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("nested release path must not fall through static server, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "invalid release path") {
+		t.Fatalf("want invalid path refusal, got %q", w.Body.String())
 	}
 }

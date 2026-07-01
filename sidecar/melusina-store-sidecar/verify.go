@@ -221,6 +221,46 @@ func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex
 	return verifyNotBlacklisted(ctx, cr, masterMint, "app")
 }
 
+// errReleaseMasterMintRequired marks an operator configuration that has not
+// declared the Master NFT mint used for InstallerReleaseEntry PDA derivation.
+var errReleaseMasterMintRequired = errors.New("release_master_nft_mint is required")
+
+// VerifyInstallerReleaseHash is the serve-time gate for whole-file artifacts
+// under /releases/<class>/<name>. It verifies that sha256(file bytes) has an
+// Active InstallerReleaseEntry under the configured Master NFT mint. This is the
+// binary-artifact sibling of VerifyServeHash: app SPKs use ReleaseEntry over the
+// canonical tree hash; shell bundles/sidecar binaries/venv bundles use
+// InstallerReleaseEntry over the exact file sha256.
+func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config, installerHash [32]byte) error {
+	masterMintB58 := strings.TrimSpace(cfg.ReleaseMasterNftMint)
+	if masterMintB58 == "" {
+		masterMintB58 = strings.TrimSpace(cfg.Mirror.RootMasterNftMint)
+	}
+	if masterMintB58 == "" {
+		return fmt.Errorf("check=installer_release: %w", errReleaseMasterMintRequired)
+	}
+	masterMint, err := primitives.PubkeyFromBase58(masterMintB58)
+	if err != nil {
+		return fmt.Errorf("check=installer_release: bad release_master_nft_mint: %w", err)
+	}
+	relPDA, _, err := pda.InstallerRelease(masterMint, installerHash, programID)
+	if err != nil {
+		return fmt.Errorf("check=installer_release: derive PDA: %w", err)
+	}
+	onchainHash, status, err := cr.FetchInstallerReleaseEntry(ctx, relPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("check=installer_release: fetch %s: %w", relPDA.Base58(), err)
+	}
+	if onchainHash != installerHash {
+		return fmt.Errorf("check=installer_release: on-chain installer_hash %x != served sha256 %x",
+			onchainHash[:], installerHash[:])
+	}
+	if err := status.RequireActive(); err != nil {
+		return fmt.Errorf("check=installer_release: status %s not Active: %w", status, err)
+	}
+	return nil
+}
+
 // verifyReleaseEntryHash performs the load-bearing checks given the PRECOMPUTED
 // app-hash hex of the bytes in hand (the tree-hash over {app.spk, metadata.json},
 // per apphash.Canonical): (a) it equals rel.AppHash, and (b) the on-chain

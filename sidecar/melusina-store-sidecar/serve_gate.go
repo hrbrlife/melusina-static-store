@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -26,8 +28,11 @@ import (
 // metadata.json} pair (apphash.Canonical; this is what the pearl ceremony registers,
 // NOT sha256(spk)) — over the EXACT bytes it is about to serve, and refuses to
 // write a single byte unless an Active on-chain ReleaseEntry pins that AppHash
-// (VerifyServeHash). Everything else (index.json, icons, attest/*, releases/*, the
-// SPA) is served byte-identically by the embedded FileServer.
+// (VerifyServeHash). Requests under /releases/<class>/<name> are whole-file
+// binary artifacts (shell bundle, sidecar binary, venv bundle): the gate hashes
+// the exact bytes and refuses unless an Active InstallerReleaseEntry pins that
+// sha256. Everything else (index.json, icons, attest/*, the SPA) is served
+// byte-identically by the embedded FileServer.
 //
 // CONTENT-BOUND: the cryptographic binding is "served bytes + their metadata.json
 // -> on-chain AppHash -> Active ReleaseEntry". The served packageId only SELECTS
@@ -38,11 +43,6 @@ import (
 //
 // FAIL-CLOSED: no chain reader (cr==nil) => every SPK fetch is 503 (never
 // unverified). There is no env/dev bypass (mirrors the /publish S7 stance).
-//
-// Scope: app SPKs under /packages/. The system/installer bundle (under
-// /releases/, gated by InstallerReleaseEntry via the host update-checker and the
-// reseller root-mirror) is a SEPARATE mechanism and is intentionally not gated
-// here.
 type serveGate struct {
 	cfg        Config
 	cr         chainReader
@@ -59,10 +59,11 @@ type serveGate struct {
 	// now is the clock (injectable in tests for deterministic TTL expiry).
 	now func() time.Time
 
-	mu           sync.RWMutex
-	apps         map[string]servedApp // packageId(lowerhex) -> anchored app
-	appsLoadedAt time.Time
-	verdict      map[string]time.Time // appHash(lowerhex) -> last on-chain-Active time
+	mu             sync.RWMutex
+	apps           map[string]servedApp // packageId(lowerhex) -> anchored app
+	appsLoadedAt   time.Time
+	verdict        map[string]time.Time // appHash(lowerhex) -> last on-chain-Active time
+	releaseVerdict map[string]time.Time // sha256(lowerhex) -> last InstallerRelease Active time
 
 	rebuildMu sync.Mutex // serializes resolve-index rebuilds
 }
@@ -103,10 +104,19 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler) *serveGat
 		releaseRefresh: refresh,
 		now:            time.Now,
 		verdict:        make(map[string]time.Time),
+		releaseVerdict: make(map[string]time.Time),
 	}
 }
 
 func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if class, name, isRelease := releaseBase(r.URL.Path); isRelease {
+		g.serveRelease(w, r, class, name)
+		return
+	}
+	if isReleasePrefix(r.URL.Path) {
+		http.Error(w, "store release-gate refused: invalid release path", http.StatusForbidden)
+		return
+	}
 	base, isPkg := packageBase(r.URL.Path)
 	if !isPkg {
 		// Non-SPK asset: serve byte-identically (the FileServer is itself
@@ -181,6 +191,65 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, base, st.ModTime(), f)
 }
 
+func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, name string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fp := filepath.Join(g.distDir, "releases", class, name)
+	f, err := os.Open(fp)
+	if err != nil {
+		// Missing/unreadable artifact: let the FileServer render the canonical 404.
+		g.fileServer.ServeHTTP(w, r)
+		return
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		http.Error(w, "store release-gate: stat error", http.StatusInternalServerError)
+		return
+	}
+	if st.IsDir() {
+		g.fileServer.ServeHTTP(w, r)
+		return
+	}
+
+	if g.cr == nil {
+		http.Error(w, "store release-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		http.Error(w, "store release-gate: hash error", http.StatusInternalServerError)
+		return
+	}
+	var fileHash [32]byte
+	copy(fileHash[:], hasher.Sum(nil))
+
+	hashHex, err := g.gateInstallerRelease(r.Context(), fileHash)
+	if err != nil {
+		code := http.StatusForbidden
+		if errors.Is(err, errReleaseMasterMintRequired) {
+			code = http.StatusServiceUnavailable
+		}
+		http.Error(w, "store release-gate refused: "+err.Error(), code)
+		return
+	}
+
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		http.Error(w, "store release-gate: seek error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Store-Gate", "verified")
+	w.Header().Set("X-Store-Release-Class", class)
+	w.Header().Set("X-Store-InstallerHash", hashHex)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeContent(w, r, name, st.ModTime(), f)
+}
+
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
 // served: either a fresh cached verdict, or a live on-chain re-verification
 // (Active ReleaseEntry pinning that AppHash + app not blacklisted). It is the
@@ -195,6 +264,18 @@ func (g *serveGate) gate(ctx context.Context, appHash string, rel ReleaseJSON) e
 	}
 	g.recordVerdict(h)
 	return nil
+}
+
+func (g *serveGate) gateInstallerRelease(ctx context.Context, installerHash [32]byte) (string, error) {
+	h := hex.EncodeToString(installerHash[:])
+	if g.releaseVerdictFresh(h) {
+		return h, nil
+	}
+	if err := VerifyInstallerReleaseHash(ctx, g.cr, g.cfg, installerHash); err != nil {
+		return h, err
+	}
+	g.recordReleaseVerdict(h)
+	return h, nil
 }
 
 func (g *serveGate) verdictFresh(appHash string) bool {
@@ -213,6 +294,25 @@ func (g *serveGate) verdictFresh(appHash string) bool {
 func (g *serveGate) recordVerdict(appHash string) {
 	g.mu.Lock()
 	g.verdict[appHash] = g.now()
+	g.mu.Unlock()
+}
+
+func (g *serveGate) releaseVerdictFresh(installerHash string) bool {
+	if g.verifyTTL <= 0 {
+		return false
+	}
+	g.mu.RLock()
+	at, ok := g.releaseVerdict[installerHash]
+	g.mu.RUnlock()
+	if !ok {
+		return false
+	}
+	return g.now().Sub(at) < g.verifyTTL
+}
+
+func (g *serveGate) recordReleaseVerdict(installerHash string) {
+	g.mu.Lock()
+	g.releaseVerdict[installerHash] = g.now()
 	g.mu.Unlock()
 }
 
@@ -345,4 +445,25 @@ func packageBase(urlPath string) (string, bool) {
 		return "", false
 	}
 	return base, true
+}
+
+// releaseBase classifies exact /releases/<class>/<name> artifact fetches. It
+// rejects nested paths and traversal so the caller can safely join the returned
+// segments under distDir/releases.
+func releaseBase(urlPath string) (class string, name string, ok bool) {
+	const prefix = "/releases/"
+	clean := path.Clean(urlPath)
+	if !strings.HasPrefix(clean, prefix) {
+		return "", "", false
+	}
+	rest := strings.TrimPrefix(clean, prefix)
+	parts := strings.Split(rest, "/")
+	if len(parts) != 2 || !isSafePathSegment(parts[0]) || !isSafePathSegment(parts[1]) {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
+}
+
+func isReleasePrefix(urlPath string) bool {
+	return strings.HasPrefix(path.Clean(urlPath), "/releases/")
 }

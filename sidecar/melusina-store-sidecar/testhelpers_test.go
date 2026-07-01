@@ -41,6 +41,7 @@ type mockChainReader struct {
 type mockReleaseEntry struct {
 	appHash [32]byte
 	appID   [32]byte
+	version string
 	status  verify.AttestationStatus
 	err     error
 }
@@ -67,6 +68,7 @@ type mockBlacklist struct {
 
 type mockInstallerEntry struct {
 	installerHash [32]byte
+	version       string
 	status        verify.AttestationStatus
 	err           error
 }
@@ -101,6 +103,48 @@ func (m *mockChainReader) FetchReleaseEntry(_ context.Context, addr string) ([32
 		return [32]byte{}, 0, e.err
 	}
 	return e.appHash, e.status, nil
+}
+
+func (m *mockChainReader) FetchReleaseEntryMeta(_ context.Context, addr string) (releaseEntryMeta, error) {
+	if m.releaseErr != nil {
+		return releaseEntryMeta{}, m.releaseErr
+	}
+	e, ok := m.releaseEntry[addr]
+	if !ok {
+		return releaseEntryMeta{}, verify.ErrPDANotFound
+	}
+	if e.err != nil {
+		return releaseEntryMeta{}, e.err
+	}
+	return releaseEntryMeta{
+		PDA:     addr,
+		AppHash: e.appHash,
+		AppID:   e.appID,
+		Version: e.version,
+		Status:  e.status,
+	}, nil
+}
+
+func (m *mockChainReader) FetchActiveReleaseEntriesByAppID(_ context.Context, appID [32]byte) ([]releaseEntryMeta, error) {
+	if m.releaseErr != nil {
+		return nil, m.releaseErr
+	}
+	out := []releaseEntryMeta{}
+	for pda, e := range m.releaseEntry {
+		if e.err != nil {
+			return nil, e.err
+		}
+		if e.appID == appID && e.status == verify.AttestationStatusActive {
+			out = append(out, releaseEntryMeta{
+				PDA:     pda,
+				AppHash: e.appHash,
+				AppID:   e.appID,
+				Version: e.version,
+				Status:  e.status,
+			})
+		}
+	}
+	return out, nil
 }
 
 func (m *mockChainReader) FetchReleaseEntryAppID(_ context.Context, addr string) ([32]byte, error) {
@@ -171,6 +215,25 @@ func (m *mockChainReader) FetchInstallerReleaseEntry(_ context.Context, addr str
 		return [32]byte{}, 0, e.err
 	}
 	return e.installerHash, e.status, nil
+}
+
+func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr string) (installerReleaseMeta, error) {
+	if m.installerErr != nil {
+		return installerReleaseMeta{}, m.installerErr
+	}
+	e, ok := m.installerEntry[addr]
+	if !ok {
+		return installerReleaseMeta{}, verify.ErrPDANotFound
+	}
+	if e.err != nil {
+		return installerReleaseMeta{}, e.err
+	}
+	return installerReleaseMeta{
+		PDA:           addr,
+		InstallerHash: e.installerHash,
+		Version:       e.version,
+		Status:        e.status,
+	}, nil
 }
 
 func (m *mockChainReader) FetchFoundationAppEntry(_ context.Context, addr string) ([32]byte, uint8, verify.ApprovalStatus, error) {
@@ -361,7 +424,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), no
 // blacklist entries.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive}
 	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
 		status:     verify.AuthorizationStatusActive,
 		authority:  verify.Pubkey(operatorPub),

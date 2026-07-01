@@ -27,8 +27,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
 // Version is set via -ldflags at build time.
@@ -59,7 +57,7 @@ func main() {
 	// satisfies the chainReader interface.
 	var cr chainReader
 	if cfg.RPCURL != "" {
-		cr = verify.NewRPCClient(cfg.RPCURL)
+		cr = newStoreRPCReader(cfg.RPCURL)
 	} else {
 		log.Printf("WARNING: rpc_url not set — /publish stays gated-closed (503) until an on-chain reader is configured")
 	}

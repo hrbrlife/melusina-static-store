@@ -59,9 +59,12 @@ type publishRequest struct {
 // Python/rootfs tarball, bootstrap tarball); class+name select the served
 // /releases/<class>/<name> path.
 type installerPublishRequest struct {
-	Class       string `json:"class"`
-	Name        string `json:"name"`
-	ArtifactB64 string `json:"artifact_b64"`
+	// Envelope is the publisher's signed artifact envelope (JSON object). It
+	// binds RequestHash to sha256(artifact), matching /publish's author gate.
+	Envelope    envelope.Signed `json:"envelope"`
+	Class       string          `json:"class"`
+	Name        string          `json:"name"`
+	ArtifactB64 string          `json:"artifact_b64"`
 }
 
 // newRouter builds the sidecar HTTP surface.
@@ -190,10 +193,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Optional policy: this store only accepts releases listed by configured
-	// publishers (by ReleaseEntry PDA). Empty list = accept any chain-attested
-	// release (the on-chain gate below is the real authority).
-	if !s.publisherAccepted(rel) {
+	// Optional policy: this store only accepts configured release PDAs or
+	// publisher identities. Empty list = accept any chain-attested release (the
+	// on-chain gate below remains the authority).
+	if !s.publisherAccepted(rel, sig.Payload.Source) {
 		http.Error(w, "check=accept_publishers: release publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
 	}
@@ -213,7 +216,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, metadata, rel, operatorSignPub); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
 
@@ -264,13 +267,29 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	class, name, artifact, err := parseInstallerPublishBody(r)
+	sig, class, name, artifact, err := parseInstallerPublishBody(r)
 	if err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	artifactHash := sha256.Sum256(artifact)
-	operatorPub, err := signPubkey32(s.operator.Public())
+	operatorIdentity := s.operator.Public()
+	artifactHashHex := hex.EncodeToString(artifactHash[:])
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedKind:        envelope.KindArtifact,
+		ExpectedDestination: &operatorIdentity,
+		ExpectedRequestHash: artifactHashHex,
+		NonceCache:          s.nonces,
+	}); err != nil {
+		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if !s.publisherIdentityAccepted(sig.Payload.Source) {
+		http.Error(w, "check=accept_publishers: installer publisher not in store policy accept_publishers", http.StatusForbidden)
+		return
+	}
+
+	operatorPub, err := signPubkey32(operatorIdentity)
 	if err != nil {
 		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -289,6 +308,10 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 			code = http.StatusServiceUnavailable
 		}
 		http.Error(w, err.Error(), code)
+		return
+	}
+	if err := s.verifyInstallerPublishForward(r.Context(), class, name, artifactHash); err != nil {
+		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
 	if err := writePublishedReleaseArtifact(s.cfg.DistDir, class, name, artifact); err != nil {
@@ -316,17 +339,42 @@ func rejectReceiveBypass(w http.ResponseWriter) bool {
 	return false
 }
 
+func publishErrorStatus(err error) int {
+	if errors.Is(err, errVersionConflict) || errors.Is(err, errSupersedeRequired) {
+		return http.StatusConflict
+	}
+	return http.StatusForbidden
+}
+
 // publisherAccepted enforces the optional store policy.accept_publishers list
-// against the release's ReleaseEntry PDA. An empty list accepts any release
-// (the on-chain ReleaseEntry/StoreOperatorAuthorization gate is the authority).
-func (s *publishService) publisherAccepted(rel ReleaseJSON) bool {
+// against either the release's ReleaseEntry PDA or the publisher identity. An
+// empty list accepts any release; the on-chain gate still decides validity.
+func (s *publishService) publisherAccepted(rel ReleaseJSON, publisher identity.Public) bool {
 	allow := s.cfg.Policy.AcceptPublishers
 	if len(allow) == 0 {
 		return true
 	}
 	pda := strings.TrimSpace(rel.ReleaseEntryPda)
+	pub := strings.TrimSpace(publisher.SignPubkeyB58)
+	digest := strings.TrimSpace(publisher.DigestHex())
 	for _, a := range allow {
-		if strings.TrimSpace(a) == pda {
+		item := strings.TrimSpace(a)
+		if item == pda || item == pub || item == digest {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bool {
+	if len(s.cfg.Policy.AcceptPublishers) == 0 {
+		return true
+	}
+	pub := strings.TrimSpace(publisher.SignPubkeyB58)
+	digest := strings.TrimSpace(publisher.DigestHex())
+	for _, a := range s.cfg.Policy.AcceptPublishers {
+		item := strings.TrimSpace(a)
+		if item == pub || item == digest {
 			return true
 		}
 	}
@@ -402,47 +450,55 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 	return sig, release, spk, metadata, nil
 }
 
-func parseInstallerPublishBody(r *http.Request) (class string, name string, artifact []byte, err error) {
+func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return "", "", nil, fmt.Errorf("parse multipart: %w", perr)
+			return sig, "", "", nil, fmt.Errorf("parse multipart: %w", perr)
+		}
+		envBytes, perr := readFormFile(r, "envelope")
+		if perr != nil {
+			return sig, "", "", nil, fmt.Errorf("envelope part: %w", perr)
+		}
+		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
+			return sig, "", "", nil, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		class = strings.TrimSpace(r.FormValue("class"))
 		name = strings.TrimSpace(r.FormValue("name"))
 		artifact, err = readFormFile(r, "artifact")
 		if err != nil {
-			return "", "", nil, fmt.Errorf("artifact part: %w", err)
+			return sig, "", "", nil, fmt.Errorf("artifact part: %w", err)
 		}
 	} else {
 		body, perr := io.ReadAll(r.Body)
 		if perr != nil {
-			return "", "", nil, fmt.Errorf("read body: %w", perr)
+			return sig, "", "", nil, fmt.Errorf("read body: %w", perr)
 		}
 		var req installerPublishRequest
 		if perr := json.Unmarshal(body, &req); perr != nil {
-			return "", "", nil, fmt.Errorf("decode JSON body: %w", perr)
+			return sig, "", "", nil, fmt.Errorf("decode JSON body: %w", perr)
 		}
+		sig = req.Envelope
 		class = strings.TrimSpace(req.Class)
 		name = strings.TrimSpace(req.Name)
 		artifact, err = stdB64(req.ArtifactB64)
 		if err != nil {
-			return "", "", nil, fmt.Errorf("artifact_b64: %w", err)
+			return sig, "", "", nil, fmt.Errorf("artifact_b64: %w", err)
 		}
 	}
 
 	if !isSafePathSegment(class) {
-		return "", "", nil, errors.New("class must be a single safe path segment")
+		return sig, "", "", nil, errors.New("class must be a single safe path segment")
 	}
 	if !isSafePathSegment(name) {
-		return "", "", nil, errors.New("name must be a single safe path segment")
+		return sig, "", "", nil, errors.New("name must be a single safe path segment")
 	}
 	if len(artifact) == 0 {
-		return "", "", nil, errors.New("artifact is empty")
+		return sig, "", "", nil, errors.New("artifact is empty")
 	}
-	return class, name, artifact, nil
+	return sig, class, name, artifact, nil
 }
 
 func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte) error {

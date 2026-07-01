@@ -39,6 +39,8 @@ func setProgramIDFromConfig(s string) {
 // melusina-devnet-rpc; we NEVER hit a live RPC in unit tests).
 type chainReader interface {
 	FetchReleaseEntry(ctx context.Context, addrB58 string) (appHash [32]byte, status verify.AttestationStatus, err error)
+	FetchReleaseEntryMeta(ctx context.Context, addrB58 string) (releaseEntryMeta, error)
+	FetchActiveReleaseEntriesByAppID(ctx context.Context, appID [32]byte) ([]releaseEntryMeta, error)
 	// FetchReleaseEntryAppID reads the on-chain ReleaseEntry.app_id (the stable
 	// per-application identity, distinct from app_hash). The publish gate derives
 	// the FoundationAppEntry from THIS app_id — never from the untrusted
@@ -53,6 +55,7 @@ type chainReader interface {
 	// reseller re-serves the root's mirrored bytes. FetchFoundationAppEntry is
 	// ALSO the publish-gate tier reader (B1-05/B2-05).
 	FetchInstallerReleaseEntry(ctx context.Context, addrB58 string) (installerHash [32]byte, status verify.AttestationStatus, err error)
+	FetchInstallerReleaseEntryMeta(ctx context.Context, addrB58 string) (installerReleaseMeta, error)
 	FetchFoundationAppEntry(ctx context.Context, addrB58 string) (appID [32]byte, tier uint8, status verify.ApprovalStatus, err error)
 	// FetchSidecarIdentity is the boot-identity ceremony's anchor read (B1-02):
 	// the derived operator's signing/encryption keys, served domain, TLS cert, and
@@ -61,8 +64,8 @@ type chainReader interface {
 	FetchSidecarIdentity(ctx context.Context, addrB58 string) (verify.SidecarIdentity, error)
 }
 
-// compile-time assertion: the production client satisfies the interface.
-var _ chainReader = (*verify.RPCClient)(nil)
+// compile-time assertion: the production wrapper satisfies the interface.
+var _ chainReader = (*storeRPCReader)(nil)
 
 // VerifyPublish is the trust gate for POST /publish. It is FAIL-CLOSED at every
 // step: any mismatch, missing PDA, or genuine RPC error returns a non-nil error
@@ -98,7 +101,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	if err != nil {
 		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
 	}
-	masterMint, _, relPDA, err := verifyReleaseEntryHash(ctx, cr, appHash, rel)
+	masterMint, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, appHash, rel)
 	if err != nil {
 		return err
 	}
@@ -123,6 +126,9 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	// no ceiling applies.
 	if foundationTier != 0 && (allowedTierMask&foundationTier) != foundationTier {
 		return fmt.Errorf("check=store_operator_authz: allowed_tier_mask 0x%02x does not cover Foundation app tier 0x%02x", allowedTierMask, foundationTier)
+	}
+	if err := verifyReleaseVersionForward(ctx, cr, submittedMeta); err != nil {
+		return err
 	}
 
 	// (d) Blacklist check. Neither the app master NFT mint nor the operator's own
@@ -228,7 +234,7 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // by the read-only serve checks today.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
 	_ = cfg
-	masterMint, _, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
+	masterMint, _, _, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
 	if err != nil {
 		return err
 	}
@@ -246,33 +252,45 @@ var errReleaseMasterMintRequired = errors.New("release_master_nft_mint is requir
 // canonical tree hash; shell bundles/sidecar binaries/venv bundles use
 // InstallerReleaseEntry over the exact file sha256.
 func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config, installerHash [32]byte) error {
+	meta, err := fetchInstallerReleaseMetaForHash(ctx, cr, cfg, installerHash)
+	if err != nil {
+		return err
+	}
+	if err := meta.Status.RequireActive(); err != nil {
+		return fmt.Errorf("check=installer_release: status %s not Active: %w", meta.Status, err)
+	}
+	return nil
+}
+
+func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg Config, installerHash [32]byte) (installerReleaseMeta, error) {
+	var zero installerReleaseMeta
 	masterMintB58 := strings.TrimSpace(cfg.ReleaseMasterNftMint)
 	if masterMintB58 == "" {
 		masterMintB58 = strings.TrimSpace(cfg.Mirror.RootMasterNftMint)
 	}
 	if masterMintB58 == "" {
-		return fmt.Errorf("check=installer_release: %w", errReleaseMasterMintRequired)
+		return zero, fmt.Errorf("check=installer_release: %w", errReleaseMasterMintRequired)
 	}
 	masterMint, err := primitives.PubkeyFromBase58(masterMintB58)
 	if err != nil {
-		return fmt.Errorf("check=installer_release: bad release_master_nft_mint: %w", err)
+		return zero, fmt.Errorf("check=installer_release: bad release_master_nft_mint: %w", err)
 	}
 	relPDA, _, err := pda.InstallerRelease(masterMint, installerHash, programID)
 	if err != nil {
-		return fmt.Errorf("check=installer_release: derive PDA: %w", err)
+		return zero, fmt.Errorf("check=installer_release: derive PDA: %w", err)
 	}
-	onchainHash, status, err := cr.FetchInstallerReleaseEntry(ctx, relPDA.Base58())
+	meta, err := cr.FetchInstallerReleaseEntryMeta(ctx, relPDA.Base58())
 	if err != nil {
-		return fmt.Errorf("check=installer_release: fetch %s: %w", relPDA.Base58(), err)
+		return zero, fmt.Errorf("check=installer_release: fetch %s: %w", relPDA.Base58(), err)
 	}
-	if onchainHash != installerHash {
-		return fmt.Errorf("check=installer_release: on-chain installer_hash %x != served sha256 %x",
-			onchainHash[:], installerHash[:])
+	if meta.InstallerHash != installerHash {
+		return zero, fmt.Errorf("check=installer_release: on-chain installer_hash %x != served sha256 %x",
+			meta.InstallerHash[:], installerHash[:])
 	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("check=installer_release: status %s not Active: %w", status, err)
+	if meta.PDA == "" {
+		meta.PDA = relPDA.Base58()
 	}
-	return nil
+	return meta, nil
 }
 
 // verifyReleaseEntryHash performs the load-bearing checks given the PRECOMPUTED
@@ -282,40 +300,44 @@ func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config,
 // and is Active. Returns the app master NFT mint + the 32-byte app_hash for the
 // caller's downstream (blacklist) checks. FAIL-CLOSED. (The author ed25519 sig was
 // verified on-chain at register — §1; we confirm the entry, not the sig.)
-func verifyReleaseEntryHash(ctx context.Context, cr chainReader, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, error) {
+func verifyReleaseEntryHash(ctx context.Context, cr chainReader, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
 	var zeroPDA pda.Pubkey
+	var zeroMeta releaseEntryMeta
 
 	gotHash := strings.ToLower(strings.TrimSpace(appHashHex))
 	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
 	if gotHash != wantHash {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", gotHash, wantHash)
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", gotHash, wantHash)
 	}
 	appHashBytes, err := hash32FromHex(wantHash)
 	if err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=app_hash: release.appHash not 32-byte hex: %w", err)
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=app_hash: release.appHash not 32-byte hex: %w", err)
 	}
 
 	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
 	if err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
 	}
 	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
 	if err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: derive PDA: %w", err)
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: derive PDA: %w", err)
 	}
-	onchainAppHash, relStatus, err := cr.FetchReleaseEntry(ctx, relPDA.Base58())
+	meta, err := cr.FetchReleaseEntryMeta(ctx, relPDA.Base58())
 	if err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: fetch %s: %w", relPDA.Base58(), err)
 	}
-	if onchainAppHash != appHashBytes {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", onchainAppHash[:], appHashBytes[:])
+	if meta.AppHash != appHashBytes {
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", meta.AppHash[:], appHashBytes[:])
 	}
-	if err := relStatus.RequireActive(); err != nil {
-		return zeroMint, zeroHash, zeroPDA, fmt.Errorf("check=release_entry: status %s not Active: %w", relStatus, err)
+	if err := meta.Status.RequireActive(); err != nil {
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
 	}
-	return masterMint, appHashBytes, relPDA, nil
+	if meta.PDA == "" {
+		meta.PDA = relPDA.Base58()
+	}
+	return masterMint, appHashBytes, relPDA, meta, nil
 }
 
 // verifyNotBlacklisted rejects when target has a BlacklistEntry PDA — its mere

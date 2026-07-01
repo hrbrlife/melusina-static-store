@@ -16,6 +16,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
@@ -68,6 +69,24 @@ func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity
 	return sig
 }
 
+func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte) envelope.Signed {
+	t.Helper()
+	artifactSum := sha256.Sum256(artifact)
+	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+		RequestHash: hex.EncodeToString(artifactSum[:]),
+		TTL:         5 * time.Minute,
+		Chain: envelope.ChainEvidence{
+			ChainID:      "solana:devnet",
+			ProgramID:    "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+			VerifiedSlot: 12345,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Sign installer: %v", err)
+	}
+	return sig
+}
+
 // jsonPublishBody assembles the JSON wire form for POST /publish.
 func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk, metadata []byte) *bytes.Buffer {
 	t.Helper()
@@ -100,9 +119,10 @@ func doPublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.
 	return w
 }
 
-func jsonInstallerPublishBody(t *testing.T, class, name string, artifact []byte) *bytes.Buffer {
+func jsonInstallerPublishBody(t *testing.T, sig envelope.Signed, class, name string, artifact []byte) *bytes.Buffer {
 	t.Helper()
 	req := installerPublishRequest{
+		Envelope:    sig,
 		Class:       class,
 		Name:        name,
 		ArtifactB64: b64(artifact),
@@ -176,10 +196,12 @@ func TestHandlePublishInstaller_Accept(t *testing.T) {
 	artifact := []byte("prebuilt sandstorm release bytes")
 	hash := sha256.Sum256(artifact)
 	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
-	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, version: "1.0.0", status: verify.AttestationStatusActive}
 	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signInstallerPublish(t, pub, op.Public(), artifact)
 
-	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, "shell", "sandstorm-42.tar.xz", artifact))
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-42.tar.xz", artifact))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -220,7 +242,34 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 				pinRootStoreOperator(t, cfg, m, op)
 				hash := sha256.Sum256(artifact)
 				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
-				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusRevoked}
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, version: "1.0.0", status: verify.AttestationStatusRevoked}
+			},
+			class:    "shell",
+			fileName: "sandstorm-42.tar.xz",
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "installer_release_superseded",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+				hash := sha256.Sum256(artifact)
+				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, version: "1.0.0", status: verify.AttestationStatusSuperseded}
+			},
+			class:    "shell",
+			fileName: "sandstorm-42.tar.xz",
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "installer_hash_mismatch",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
+				pinRootStoreOperator(t, cfg, m, op)
+				hash := sha256.Sum256(artifact)
+				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+				otherHash := sha256.Sum256([]byte("different installer bytes"))
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: otherHash, version: "1.0.0", status: verify.AttestationStatusActive}
 			},
 			class:    "shell",
 			fileName: "sandstorm-42.tar.xz",
@@ -235,7 +284,7 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 				f.pinAccept(m, operatorPub) // isRoot=false
 				hash := sha256.Sum256(artifact)
 				pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
-				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, version: "1.0.0", status: verify.AttestationStatusActive}
 			},
 			class:    "sidecar",
 			fileName: "store-sidecar",
@@ -277,8 +326,10 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			artifact := []byte("installer artifact " + tc.name)
 			tc.setup(t, cfg, m, op, artifact)
 			svc := newTestService(t, cfg, m, op)
+			pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+			sig := signInstallerPublish(t, pub, op.Public(), artifact)
 
-			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, tc.class, tc.fileName, artifact))
+			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, tc.class, tc.fileName, artifact))
 			if w.Code != tc.wantCode {
 				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
 			}
@@ -292,10 +343,173 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 	}
 }
 
+func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
+	cases := []struct {
+		name       string
+		setup      func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed
+		wantCode   int
+		wantBody   string
+		wantNoFile bool
+	}{
+		{
+			name: "no_envelope",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+				return envelope.Signed{}
+			},
+			wantCode:   http.StatusUnauthorized,
+			wantBody:   "check=envelope",
+			wantNoFile: true,
+		},
+		{
+			name: "bad_envelope_signature",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				sig := signInstallerPublish(t, pub, op.Public(), artifact)
+				sig.SignatureB58 = "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+				return sig
+			},
+			wantCode:   http.StatusUnauthorized,
+			wantBody:   "check=envelope",
+			wantNoFile: true,
+		},
+		{
+			name: "publisher_not_allowed",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode:   http.StatusForbidden,
+			wantBody:   "check=accept_publishers",
+			wantNoFile: true,
+		},
+		{
+			name: "current_version_equal",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.0", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=installer_version",
+		},
+		{
+			name: "current_version_lower",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "2.0.0", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=installer_version",
+		},
+		{
+			name: "current_active_not_superseded",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.0", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=installer_supersede",
+		},
+		{
+			name: "version_bumped_signed_witnessed",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.0", verify.AttestationStatusSuperseded)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.DistDir = t.TempDir()
+			cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+			op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+			m := newMockChainReader()
+			artifact := []byte("new installer artifact " + tc.name)
+			sig := tc.setup(t, cfg, m, op, artifact)
+			svc := newTestService(t, cfg, m, op)
+			if tc.name == "publisher_not_allowed" {
+				svc.cfg.Policy.AcceptPublishers = []string{"not-the-publisher"}
+			}
+
+			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-42.tar.xz", artifact))
+			if w.Code != tc.wantCode {
+				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
+			}
+			if tc.wantBody != "" && !strings.Contains(w.Body.String(), tc.wantBody) {
+				t.Fatalf("body %q does not name %q", w.Body.String(), tc.wantBody)
+			}
+			got, err := os.ReadFile(filepath.Join(cfg.DistDir, "releases", "shell", "sandstorm-42.tar.xz"))
+			if tc.wantCode == http.StatusOK {
+				if err != nil {
+					t.Fatalf("expected artifact written: %v", err)
+				}
+				if !bytes.Equal(got, artifact) {
+					t.Fatalf("written artifact mismatch")
+				}
+				return
+			}
+			if tc.wantNoFile {
+				if err == nil {
+					t.Fatalf("rejected installer artifact was written")
+				}
+			} else if err == nil && bytes.Equal(got, artifact) {
+				t.Fatalf("rejected installer artifact replaced current file")
+			}
+		})
+	}
+}
+
+func pinInstallerEntry(t *testing.T, cfg Config, m *mockChainReader, artifact []byte, version string, status verify.AttestationStatus) string {
+	t.Helper()
+	hash := sha256.Sum256(artifact)
+	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
+	m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, version: version, status: status}
+	return pda
+}
+
+func writeCurrentInstaller(t *testing.T, cfg Config, class, name string, artifact []byte) {
+	t.Helper()
+	dir := filepath.Join(cfg.DistDir, "releases", class)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), artifact, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestHandlePublishInstaller_NoOperatorFailsClosed(t *testing.T) {
 	cfg, _ := testConfig(t)
 	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(t), nonces: envelope.NewMemoryNonceCache()}
-	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, "shell", "sandstorm-42.tar.xz", []byte("artifact")))
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, envelope.Signed{}, "shell", "sandstorm-42.tar.xz", []byte("artifact")))
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
 	}
@@ -308,6 +522,15 @@ func TestHandlePublish_Rejects(t *testing.T) {
 		wantCode int
 		wantBody string
 	}{
+		{
+			name: "no_envelope",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				release := mustJSON(t, f.rel)
+				return release, f.spk, envelope.Signed{}
+			},
+			wantCode: http.StatusUnauthorized,
+			wantBody: "check=envelope",
+		},
 		{
 			name: "apphash_mismatch",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
@@ -324,15 +547,84 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			wantBody: "check=app_hash",
 		},
 		{
-			name: "release_entry_revoked",
+			name: "release_entry_missing",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: 1 /* Revoked */}
+				delete(m.releaseEntry, f.relPDA)
 				release := mustJSON(t, f.rel)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
 			},
 			wantCode: http.StatusForbidden,
 			wantBody: "check=release_entry",
+		},
+		{
+			name: "release_entry_revoked",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "1.0.0", status: verify.AttestationStatusRevoked}
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=release_entry",
+		},
+		{
+			name: "release_entry_superseded",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "1.0.0", status: verify.AttestationStatusSuperseded}
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=release_entry",
+		},
+		{
+			name: "release_entry_hash_mismatch",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				otherHash := sha256.Sum256([]byte("different app bytes"))
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: otherHash, appID: f.appID, version: "1.0.0", status: verify.AttestationStatusActive}
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=release_entry",
+		},
+		{
+			name: "version_equal_to_active",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				pinOtherActiveRelease(t, m, f, "1.0.0")
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=release_version",
+		},
+		{
+			name: "version_lower_than_active",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				pinOtherActiveRelease(t, m, f, "2.0.0")
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=release_version",
+		},
+		{
+			name: "prior_active_not_superseded",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
+				f.rel.Version = "2.0.0"
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "2.0.0", status: verify.AttestationStatusActive}
+				pinOtherActiveRelease(t, m, f, "1.0.0")
+				release := mustJSON(t, f.rel)
+				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=release_supersede",
 		},
 		{
 			name: "blacklisted",
@@ -393,6 +685,41 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlePublish_AcceptPublishersPolicy(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{"not-" + f.rel.ReleaseEntryPda}
+
+	release := mustJSON(t, f.rel)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signPublish(t, pub, op.Public(), f.spk, release)
+
+	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("got %d, want 403: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=accept_publishers") {
+		t.Fatalf("body %q does not name accept_publishers", w.Body.String())
+	}
+}
+
+func pinOtherActiveRelease(t *testing.T, m *mockChainReader, f *publishFixture, version string) string {
+	t.Helper()
+	otherHash := sha256.Sum256([]byte("other release " + version))
+	relPDA, _, err := pda.Release(f.masterMint, otherHash, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := relPDA.Base58()
+	m.releaseEntry[addr] = mockReleaseEntry{appHash: otherHash, appID: f.appID, version: version, status: verify.AttestationStatusActive}
+	return addr
 }
 
 // TestHandlePublish_NoOperatorFailsClosed asserts that when boot has not wired

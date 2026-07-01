@@ -79,6 +79,22 @@ per-install material):
 - `boot_identity.sidecar_id` / `chain_id` / `key_version` matching that on-chain
   registration, and `tls.cert_path` pointing at the cert whose DER was pinned.
 
+The helper command below generates or reuses the three shard files and prints
+the public `register_sidecar_identity` inputs without broadcasting any
+transaction or printing secret shard values:
+
+```sh
+go run ./cmd/boot-identity-prep \
+  -shards-dir /etc/melusina/store/shards \
+  -license-mint <store-license-nft-mint> \
+  -domain melusina-os.org \
+  -sidecar-id store \
+  -chain-id solana:devnet \
+  -program-id <license-registry-program-id> \
+  -binary ./melusina-store-sidecar \
+  -tls-cert /etc/melusina/store/tls/cert.pem
+```
+
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).
 

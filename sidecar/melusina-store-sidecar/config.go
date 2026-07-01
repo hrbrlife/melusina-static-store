@@ -31,6 +31,7 @@ type Policy struct {
 	// RequireScanReport: reject publishes lacking an attested clean scan report.
 	RequireScanReport bool `json:"require_scan_report"`
 	// AcceptPublishers: base58 ReleaseEntry PDAs / publisher identities trusted to submit.
+	// Empty fails closed on /publish and /publish/installer.
 	AcceptPublishers []string `json:"accept_publishers"`
 }
 

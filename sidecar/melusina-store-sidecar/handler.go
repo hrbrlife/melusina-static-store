@@ -201,9 +201,9 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Optional policy: this store only accepts configured release PDAs or
-	// publisher identities. Empty list = accept any chain-attested release (the
-	// on-chain gate below remains the authority).
+	// Store policy: this store only accepts configured release PDAs or publisher
+	// identities. Empty list is fail-closed; otherwise a root store with a boot
+	// identity but no allowlist becomes accept-any.
 	if !s.publisherAccepted(rel, sig.Payload.Source) {
 		http.Error(w, "check=accept_publishers: release publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
@@ -354,13 +354,13 @@ func publishErrorStatus(err error) int {
 	return http.StatusForbidden
 }
 
-// publisherAccepted enforces the optional store policy.accept_publishers list
-// against either the release's ReleaseEntry PDA or the publisher identity. An
-// empty list accepts any release; the on-chain gate still decides validity.
+// publisherAccepted enforces store policy.accept_publishers against either the
+// release's ReleaseEntry PDA or the publisher identity. An empty list fails
+// closed; the on-chain gate is necessary but not sufficient.
 func (s *publishService) publisherAccepted(rel ReleaseJSON, publisher identity.Public) bool {
 	allow := s.cfg.Policy.AcceptPublishers
 	if len(allow) == 0 {
-		return true
+		return false
 	}
 	pda := strings.TrimSpace(rel.ReleaseEntryPda)
 	pub := strings.TrimSpace(publisher.SignPubkeyB58)
@@ -376,7 +376,7 @@ func (s *publishService) publisherAccepted(rel ReleaseJSON, publisher identity.P
 
 func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bool {
 	if len(s.cfg.Policy.AcceptPublishers) == 0 {
-		return true
+		return false
 	}
 	pub := strings.TrimSpace(publisher.SignPubkeyB58)
 	digest := strings.TrimSpace(publisher.DigestHex())

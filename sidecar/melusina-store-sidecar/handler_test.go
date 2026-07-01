@@ -167,6 +167,7 @@ func TestHandlePublish_Accept(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
+	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusOK {
@@ -200,6 +201,7 @@ func TestHandlePublishInstaller_Accept(t *testing.T) {
 	svc := newTestService(t, cfg, m, op)
 	pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signInstallerPublish(t, pub, op.Public(), artifact)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 
 	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-42.tar.xz", artifact))
 	if w.Code != http.StatusOK {
@@ -328,6 +330,7 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			svc := newTestService(t, cfg, m, op)
 			pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 			sig := signInstallerPublish(t, pub, op.Public(), artifact)
+			svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 
 			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, tc.class, tc.fileName, artifact))
 			if w.Code != tc.wantCode {
@@ -457,6 +460,8 @@ func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
 			svc := newTestService(t, cfg, m, op)
 			if tc.name == "publisher_not_allowed" {
 				svc.cfg.Policy.AcceptPublishers = []string{"not-the-publisher"}
+			} else if sig.Payload.Source.SignPubkeyB58 != "" {
+				svc.cfg.Policy.AcceptPublishers = []string{sig.Payload.Source.SignPubkeyB58}
 			}
 
 			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-42.tar.xz", artifact))
@@ -674,6 +679,7 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			m := newMockChainReader()
 			f.pinAccept(m, operatorPub)
 			svc := newTestService(t, cfg, m, op)
+			svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 
 			release, spk, sig := tc.setup(t, cfg, m, op, &f, operatorPub)
 			w := doPublish(t, svc, jsonPublishBody(t, sig, release, spk, f.metadata))
@@ -707,6 +713,54 @@ func TestHandlePublish_AcceptPublishersPolicy(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "check=accept_publishers") {
 		t.Fatalf("body %q does not name accept_publishers", w.Body.String())
+	}
+}
+
+func TestHandlePublish_AcceptPublishersRequired(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+
+	release := mustJSON(t, f.rel)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signPublish(t, pub, op.Public(), f.spk, release)
+
+	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("got %d, want 403: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=accept_publishers") {
+		t.Fatalf("body %q does not name accept_publishers", w.Body.String())
+	}
+}
+
+func TestHandlePublishInstaller_AcceptPublishersRequired(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	m := newMockChainReader()
+	pinRootStoreOperator(t, cfg, m, op)
+
+	artifact := []byte("installer publish requires an allowlisted publisher")
+	pinInstallerEntry(t, cfg, m, artifact, "1.0.0", verify.AttestationStatusActive)
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signInstallerPublish(t, pub, op.Public(), artifact)
+
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-42.tar.xz", artifact))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("got %d, want 403: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=accept_publishers") {
+		t.Fatalf("body %q does not name accept_publishers", w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(cfg.DistDir, "releases", "shell", "sandstorm-42.tar.xz")); err == nil {
+		t.Fatalf("rejected installer artifact was written")
 	}
 }
 

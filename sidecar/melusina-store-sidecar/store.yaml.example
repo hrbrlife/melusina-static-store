@@ -18,7 +18,8 @@ public_base_url: "https://bazaar.melusina-os.org"  # THIS store's own public ori
 policy:
   allowed_tiers: ["regular"]       # capability tiers this store may list
   require_scan_report: true        # reject publishes without an attested clean scan report
-  accept_publishers: []            # base58 ReleaseEntry PDAs / publisher identities trusted to submit
+  accept_publishers:               # REQUIRED for /publish; empty fails closed
+    - "<allowed publisher signing pubkey or ReleaseEntry PDA>"
 
 rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
 listen_addr: ":8443"

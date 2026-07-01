@@ -59,6 +59,14 @@
 #
 set -euo pipefail
 
+# Reproducible pack (deterministic packageId): the patched `spk pack`
+# (sandstorm/src/sandstorm/spk.c++) honors SOURCE_DATE_EPOCH and pins archive mtimes
+# to it, so `make pack` of the same source+version yields the SAME packageId every
+# run. Without it, wall-clock mtimes made packageId a moving target — the root cause
+# of the freeze-verify break (Riker WHIP / CT-MSB 9085). Default here covers direct
+# invocations; publish-install-serve.sh also exports it. Overridable. CT-SDL 2026-07-01.
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1704067200}"   # 2024-01-01T00:00:00Z, fixed
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATIC_STORE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 

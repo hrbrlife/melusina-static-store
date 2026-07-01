@@ -180,6 +180,38 @@ func TestDeriveOperatorIdentity_FailClosed(t *testing.T) {
 	}
 }
 
+func TestBootIdentityTLSCertPathOverride(t *testing.T) {
+	dir := t.TempDir()
+	servingDir := filepath.Join(dir, "serving")
+	overrideDir := filepath.Join(dir, "override")
+	if err := os.MkdirAll(servingDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(overrideDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	servingCert, _ := writeTestTLSCert(t, servingDir)
+	overrideCert, overrideFP := writeTestTLSCert(t, overrideDir)
+	cfg := Config{
+		Domain: "store.example.org",
+		TLS:    TLSConfig{CertPath: servingCert, KeyPath: servingCert},
+		BootIdentity: BootIdentityConfig{
+			TLSCertPath: overrideCert,
+		},
+	}
+	if got := bootIdentityTLSCertPath(cfg); got != overrideCert {
+		t.Fatalf("bootIdentityTLSCertPath = %q, want override %q", got, overrideCert)
+	}
+	op := newTestIdentity(t, "store", randPubkeyB58(t), cfg.Domain)
+	facts, err := bootIdentityInputs(cfg, op)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if facts.tlsFingerprint != overrideFP {
+		t.Fatal("boot identity did not hash the override TLS certificate")
+	}
+}
+
 func TestDeriveOperatorIdentity_EndToEnd(t *testing.T) {
 	dir := t.TempDir()
 	writeTestShards(t, dir)

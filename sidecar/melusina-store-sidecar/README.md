@@ -77,7 +77,9 @@ per-install material):
   `sha256(serving leaf cert DER)`, `binary_hash` = `sha256(/proc/self/exe)` of the
   deployed sidecar binary.
 - `boot_identity.sidecar_id` / `chain_id` / `key_version` matching that on-chain
-  registration, and `tls.cert_path` pointing at the cert whose DER was pinned.
+  registration. By default the TLS fingerprint is read from `tls.cert_path`;
+  set `boot_identity.tls_cert_path` when the on-chain binding should pin a
+  public edge certificate while the sidecar listens with container-local TLS.
 
 The helper command below generates or reuses the three shard files and prints
 the public `register_sidecar_identity` inputs without broadcasting any
@@ -92,7 +94,7 @@ go run ./cmd/boot-identity-prep \
   -chain-id solana:devnet \
   -program-id <license-registry-program-id> \
   -binary ./melusina-store-sidecar \
-  -tls-cert /etc/melusina/store/tls/cert.pem
+  -tls-cert /etc/melusina/store/boot-identity-tls-cert.pem
 ```
 
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3

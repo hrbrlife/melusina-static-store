@@ -75,6 +75,9 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 	if report.ConfigBootIdentity.SidecarID != "store" || report.ConfigBootIdentity.KeyVersion != 1 {
 		t.Fatalf("bad config snippet: %+v", report.ConfigBootIdentity)
 	}
+	if report.ConfigBootIdentity.TLSCertPath != certPath {
+		t.Fatalf("config tls cert path = %q, want %q", report.ConfigBootIdentity.TLSCertPath, certPath)
+	}
 }
 
 func TestRunReusesCompleteShardSet(t *testing.T) {

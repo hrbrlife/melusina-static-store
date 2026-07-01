@@ -8,6 +8,7 @@
 # and the three attest shards differ between operators.
 
 license_nft_mint: "<base58 License NFT mint of the operating license>"
+program_id: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 domain: "store.example.org"        # bare host only (no scheme/port/path); store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 store_id: "melusina-store"
 # reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
@@ -26,5 +27,12 @@ tls:
   cert_path: "/etc/melusina/store/tls/cert.pem"
   key_path: "/etc/melusina/store/tls/key.pem"
 
-# Three attest shards are supplied via environment (never the config file):
-#   SIDECAR_AUTHOR_SHARD, SIDECAR_HOST_OBSERVATION_SHARD, SIDECAR_RELEASE_SHARD
+boot_identity:
+  # Omit this block for a read-only store (/publish 503).
+  shards_dir: "/etc/melusina/store/shards"
+  sidecar_id: "store"
+  chain_id: "solana:devnet"
+  key_version: 1
+  # Optional: bind the SidecarIdentityEntry to a public edge certificate while
+  # the sidecar still serves container-local TLS internally.
+  tls_cert_path: "/etc/melusina/store/boot-identity-tls-cert.pem"

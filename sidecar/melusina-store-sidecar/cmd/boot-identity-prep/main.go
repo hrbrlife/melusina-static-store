@@ -72,10 +72,11 @@ type registerSidecar struct {
 }
 
 type configSnippet struct {
-	ShardsDir  string `json:"shards_dir"`
-	SidecarID  string `json:"sidecar_id"`
-	ChainID    string `json:"chain_id"`
-	KeyVersion uint32 `json:"key_version"`
+	ShardsDir   string `json:"shards_dir"`
+	SidecarID   string `json:"sidecar_id"`
+	ChainID     string `json:"chain_id"`
+	KeyVersion  uint32 `json:"key_version"`
+	TLSCertPath string `json:"tls_cert_path,omitempty"`
 }
 
 func main() {
@@ -231,10 +232,11 @@ func prepare(opts options) (ceremonyReport, error) {
 			EncryptionPubkeyBase58: pub.BoxPubkeyB58,
 		},
 		ConfigBootIdentity: configSnippet{
-			ShardsDir:  opts.shardsDir,
-			SidecarID:  opts.sidecarID,
-			ChainID:    opts.chainID,
-			KeyVersion: keyVersion,
+			ShardsDir:   opts.shardsDir,
+			SidecarID:   opts.sidecarID,
+			ChainID:     opts.chainID,
+			KeyVersion:  keyVersion,
+			TLSCertPath: opts.tlsCertPath,
 		},
 	}, nil
 }

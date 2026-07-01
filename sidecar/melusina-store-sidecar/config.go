@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // Config is the per-operator configuration for the store sidecar.
@@ -33,6 +36,7 @@ type Policy struct {
 
 type Config struct {
 	LicenseNFTMint  string `json:"license_nft_mint"`
+	ProgramID       string `json:"program_id"`
 	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 	StoreID         string `json:"store_id"`
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
@@ -102,6 +106,11 @@ type BootIdentityConfig struct {
 	ChainID string `json:"chain_id"`
 	// KeyVersion is the SidecarIdentityEntry key_version seed. 0 => 1.
 	KeyVersion uint32 `json:"key_version"`
+	// TLSCertPath optionally overrides tls.cert_path for the on-chain
+	// SidecarIdentityEntry tls_cert_fingerprint binding. This lets a root store
+	// bind its public edge certificate while still serving container-local TLS.
+	// Empty => use tls.cert_path.
+	TLSCertPath string `json:"tls_cert_path,omitempty"`
 }
 
 // MirrorConfig parameterizes the reseller ROOT-MIRROR worker (§C2.6). All fields
@@ -136,6 +145,7 @@ func defaultConfig() Config {
 		ListenAddr:      ":8443",
 		DistDir:         "dist-publish",
 		CatalogRepoRoot: ".",
+		ProgramID:       defaultLicenseProgramID,
 	}
 }
 
@@ -154,6 +164,13 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.LicenseNFTMint == "" {
 		return cfg, fmt.Errorf("config: license_nft_mint is required")
+	}
+	cfg.ProgramID = strings.TrimSpace(cfg.ProgramID)
+	if cfg.ProgramID == "" {
+		cfg.ProgramID = defaultLicenseProgramID
+	}
+	if _, err := primitives.PubkeyFromBase58(cfg.ProgramID); err != nil {
+		return cfg, fmt.Errorf("config: program_id is invalid: %w", err)
 	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = "dist-publish"

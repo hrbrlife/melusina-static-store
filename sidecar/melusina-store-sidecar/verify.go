@@ -14,17 +14,23 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+const defaultLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+
 // programID is the license-registry program the federated store verifies
-// against (FEDERATED-STORE-MVP §1). Parsed once at init; a bad constant is a
-// build/boot bug, not a runtime condition.
-var programID = mustPubkey("7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb")
+// against (FEDERATED-STORE-MVP §1). It defaults to the current devnet registry
+// and is overwritten from validated operator config at process boot.
+var programID = mustPubkey(defaultLicenseProgramID)
 
 func mustPubkey(s string) pda.Pubkey {
 	p, err := primitives.PubkeyFromBase58(s)
 	if err != nil {
-		panic("melusina-store-sidecar: bad hard-coded programID: " + err.Error())
+		panic("melusina-store-sidecar: bad programID: " + err.Error())
 	}
 	return p
+}
+
+func setProgramIDFromConfig(s string) {
+	programID = mustPubkey(strings.TrimSpace(s))
 }
 
 // chainReader is the subset of *verify.RPCClient the /publish gate needs. It is

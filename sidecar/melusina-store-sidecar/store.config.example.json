@@ -1,5 +1,6 @@
 {
   "license_nft_mint": "<base58 License NFT mint of the operating license>",
+  "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "domain": "store.example.org",
   "store_id": "melusina-store",
   "root_store_url": "https://melusina-os.org",
@@ -21,6 +22,7 @@
     "shards_dir": "/etc/melusina/store/shards",
     "sidecar_id": "store",
     "chain_id": "solana:devnet",
-    "key_version": 1
+    "key_version": 1,
+    "tls_cert_path": "/etc/melusina/store/boot-identity-tls-cert.pem"
   }
 }

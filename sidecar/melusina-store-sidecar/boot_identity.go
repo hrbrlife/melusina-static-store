@@ -59,8 +59,8 @@ func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*i
 	if cr == nil {
 		return nil, errors.New("boot_identity.shards_dir is set but rpc_url is not — cannot bind the operator on-chain (refusing to enable /publish unverified)")
 	}
-	if strings.TrimSpace(cfg.TLS.CertPath) == "" {
-		return nil, errors.New("boot_identity.shards_dir is set but tls.cert_path is not — a publish-provisioned store MUST serve TLS so its cert binds the on-chain SidecarIdentityEntry.tls_cert_fingerprint")
+	if strings.TrimSpace(bootIdentityTLSCertPath(cfg)) == "" {
+		return nil, errors.New("boot_identity.shards_dir is set but neither boot_identity.tls_cert_path nor tls.cert_path is set — a publish-provisioned store MUST bind a TLS cert to the on-chain SidecarIdentityEntry.tls_cert_fingerprint")
 	}
 	sidecarID := strings.TrimSpace(bi.SidecarID)
 	if sidecarID == "" {
@@ -136,6 +136,13 @@ type bootIdentityFacts struct {
 	binaryHash       [32]byte
 }
 
+func bootIdentityTLSCertPath(cfg Config) string {
+	if strings.TrimSpace(cfg.BootIdentity.TLSCertPath) != "" {
+		return strings.TrimSpace(cfg.BootIdentity.TLSCertPath)
+	}
+	return strings.TrimSpace(cfg.TLS.CertPath)
+}
+
 // bootIdentityInputs computes the bindings: the derived operator's signing +
 // encryption pubkeys, this store's domain hash, the serving TLS cert
 // fingerprint (sha256 of the leaf cert DER — matches LicenseEntry.tls_cert_fingerprint),
@@ -151,7 +158,7 @@ func bootIdentityInputs(cfg Config, operator *identity.Private) (bootIdentityFac
 	if err != nil {
 		return in, err
 	}
-	tlsFP, err := tlsCertFingerprint(cfg.TLS.CertPath)
+	tlsFP, err := tlsCertFingerprint(bootIdentityTLSCertPath(cfg))
 	if err != nil {
 		return in, err
 	}

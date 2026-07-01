@@ -26,6 +26,9 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	if cfg.RootStoreURL != "https://melusina-os.org" {
 		t.Errorf("RootStoreURL default = %q", cfg.RootStoreURL)
 	}
+	if cfg.ProgramID != defaultLicenseProgramID {
+		t.Errorf("ProgramID default = %q", cfg.ProgramID)
+	}
 	if cfg.ListenAddr != ":8443" {
 		t.Errorf("ListenAddr default = %q", cfg.ListenAddr)
 	}
@@ -53,11 +56,21 @@ func TestLoadConfig_MissingFile(t *testing.T) {
 }
 
 func TestLoadConfig_OverridesApplied(t *testing.T) {
-	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"s.example.org","store_id":"reseller-store","listen_addr":":9000","dist_dir":"out"}`))
+	const bsenProgramID = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","program_id":"`+bsenProgramID+`","domain":"s.example.org","store_id":"reseller-store","listen_addr":":9000","dist_dir":"out"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.StoreID != "reseller-store" || cfg.ListenAddr != ":9000" || cfg.DistDir != "out" {
 		t.Errorf("overrides not applied: %+v", cfg)
+	}
+	if cfg.ProgramID != bsenProgramID {
+		t.Errorf("ProgramID override = %q", cfg.ProgramID)
+	}
+}
+
+func TestLoadConfig_RejectsInvalidProgramID(t *testing.T) {
+	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org","program_id":"not a pubkey"}`)); err == nil {
+		t.Fatal("expected error for invalid program_id")
 	}
 }

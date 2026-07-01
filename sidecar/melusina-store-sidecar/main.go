@@ -52,6 +52,7 @@ func main() {
 	if *distOverride != "" {
 		cfg.DistDir = *distOverride
 	}
+	setProgramIDFromConfig(cfg.ProgramID)
 
 	// The on-chain reader is the trust gate for /publish (VerifyPublish). It is
 	// always wired from cfg.RPCURL; the production client (*verify.RPCClient)

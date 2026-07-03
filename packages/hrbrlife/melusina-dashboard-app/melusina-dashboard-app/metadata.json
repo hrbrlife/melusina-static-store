@@ -1,10 +1,10 @@
 {
   "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
   "name": "Melusina Dashboard",
-  "version": "0.2.0",
-  "versionNumber": 4,
-  "packageId": "3ceadd0626c392d99ed0cdfac90091e2",
-  "sha256": "3ceadd0626c392d99ed0cdfac90091e26029afa3e00d33c3bf689b0afcd73e65",
+  "version": "0.2.2",
+  "versionNumber": 6,
+  "packageId": "73037d1a8f98086dc9729edefecaf45b",
+  "sha256": "73037d1a8f98086dc9729edefecaf45beb4a9f0b592c359cc80a24359871932b",
   "shortDescription": "Operator aggregation dashboard \u2014 treasury positions, GL, compliance across ccash + NamedCoin domain profiles.",
   "categories": [
     "Productivity"
@@ -25,6 +25,6 @@
   "description": "",
   "screenshots": [],
   "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.2.0",
+  "marketingVersion": "0.2.2",
   "createdAt": 1781826324919
 }

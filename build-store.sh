@@ -100,6 +100,11 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
 
+# A materialized tree (git-archive export, no .git) CANNOT refresh submodules;
+# route it to the guarded --no-refresh branch instead of aborting under
+# `set -euo pipefail` in the else-branch's unguarded update pipeline (:123).
+[[ -e .git ]] || { NO_REFRESH=true; info "No .git — materialized tree; forcing --no-refresh"; }
+
 # --- Step 0: Refresh submodules -----------------------------------------------
 if $DRY_RUN; then
   info "Dry run: skipping submodule refresh and staging"

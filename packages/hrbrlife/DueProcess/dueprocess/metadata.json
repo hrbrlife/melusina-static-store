@@ -1,9 +1,9 @@
 {
   "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
   "name": "DueProcess",
-  "version": "0.1.44",
-  "versionNumber": 48,
-  "packageId": "e5d9758487198248ca1e671151c5b934",
+  "version": "0.1.45",
+  "versionNumber": 49,
+  "packageId": "19977c13db30cee6386c91f04cc860b8",
   "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
   "categories": [
     "Productivity"
@@ -23,8 +23,8 @@
     "website": "https://hrbr.life"
   },
   "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-  "marketingVersion": "0.1.44",
-  "sha256": "e5d9758487198248ca1e671151c5b9340fc2f89a6740adab8f676b57145fc32f",
+  "marketingVersion": "0.1.45",
+  "sha256": "19977c13db30cee6386c91f04cc860b8c8354162681dad7170a63c8d8e9d5395",
   "description": "DueProcess is the Station pearl that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
   "screenshots": []
 }

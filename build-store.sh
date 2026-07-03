@@ -1181,6 +1181,22 @@ else
   warn "deploy-ui Makefile not found at $DEPLOY_UI_SRC — skipping release build"
 fi
 
+# --- Step 6.6/7.5: Preserve live update/ + releases/ artifacts not rebuilt ----
+# The root store's update/shell-release.json (deployer-provisioned descriptor,
+# HT15) and the witnessed /releases/<class>/ artifacts are owned by their OWN
+# ceremonies (InstallerReleaseEntry + deployer staging) — an aggregate run must
+# carry them across the atomic flip, never delete them. No-clobber: anything
+# this run DID rebuild (deploy-ui, bundle-update) wins over the live copy.
+if [[ -d "$FINAL_DIR/update" ]]; then
+  cp -an "$FINAL_DIR/update/." "$UPDATE_OUT/" 2>/dev/null || true
+  ok "Preserved live update/ artifacts not rebuilt this run"
+fi
+if [[ -d "$FINAL_DIR/releases" ]]; then
+  mkdir -p "$RELEASES_OUT"
+  cp -an "$FINAL_DIR/releases/." "$RELEASES_OUT/" 2>/dev/null || true
+  ok "Preserved live releases/ artifacts not rebuilt this run"
+fi
+
 # --- Step 8: Atomic publish — flip staging over the live catalog -------------
 # Every artifact is now built under $OUTPUT_DIR. Promote it to $FINAL_DIR with
 # rename(2)s (atomic within one filesystem) so a reader / serve-gate never

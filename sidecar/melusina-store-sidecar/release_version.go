@@ -24,6 +24,11 @@ type releaseEntryMeta struct {
 	AppID   [32]byte
 	Version string
 	Status  verify.AttestationStatus
+	// RegisteredAt is the on-chain-witnessed attestation time (i64 unix, from
+	// ReleaseEntry.registered_at). It is the tamper-proof anchor for the store
+	// hygiene proximity check (a) — the publisher-supplied RELEASE.json signedAtUnix
+	// must sit within tolerance of it.
+	RegisteredAt int64
 }
 
 type installerReleaseMeta struct {

@@ -39,11 +39,12 @@ type mockChainReader struct {
 }
 
 type mockReleaseEntry struct {
-	appHash [32]byte
-	appID   [32]byte
-	version string
-	status  verify.AttestationStatus
-	err     error
+	appHash      [32]byte
+	appID        [32]byte
+	version      string
+	status       verify.AttestationStatus
+	registeredAt int64 // on-chain witnessed attestation time (ReleaseEntry.registered_at)
+	err          error
 }
 
 type mockSidecarIdentity struct {
@@ -117,11 +118,12 @@ func (m *mockChainReader) FetchReleaseEntryMeta(_ context.Context, addr string) 
 		return releaseEntryMeta{}, e.err
 	}
 	return releaseEntryMeta{
-		PDA:     addr,
-		AppHash: e.appHash,
-		AppID:   e.appID,
-		Version: e.version,
-		Status:  e.status,
+		PDA:          addr,
+		AppHash:      e.appHash,
+		AppID:        e.appID,
+		Version:      e.version,
+		Status:       e.status,
+		RegisteredAt: e.registeredAt,
 	}, nil
 }
 
@@ -136,11 +138,12 @@ func (m *mockChainReader) FetchActiveReleaseEntriesByAppID(_ context.Context, ap
 		}
 		if e.appID == appID && e.status == verify.AttestationStatusActive {
 			out = append(out, releaseEntryMeta{
-				PDA:     pda,
-				AppHash: e.appHash,
-				AppID:   e.appID,
-				Version: e.version,
-				Status:  e.status,
+				PDA:          pda,
+				AppHash:      e.appHash,
+				AppID:        e.appID,
+				Version:      e.version,
+				Status:       e.status,
+				RegisteredAt: e.registeredAt,
 			})
 		}
 	}
@@ -341,7 +344,9 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	t.Helper()
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0"}`)
+	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)
+	// locates the prior published version under (attest/<appId>/RELEASE.json).
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","appId":"testapp0000000000000000000000000000000000000000000000"}`)
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
@@ -424,7 +429,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), no
 // blacklist entries.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
 	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
 		status:     verify.AuthorizationStatusActive,
 		authority:  verify.Pubkey(operatorPub),

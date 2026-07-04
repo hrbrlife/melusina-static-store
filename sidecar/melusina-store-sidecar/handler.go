@@ -228,6 +228,17 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// (b-time) STORE HYGIENE — monotonic release time. The claimed signedAtUnix must
+	// strictly advance past the version this app's slot currently serves (located by
+	// the Sandstorm appId from metadata.json — the served-slot key, stable across a
+	// master-NFT re-anchor), so a re-publish can never surface an older "updated" time
+	// than the version it replaces. READ-ONLY over the served tree; a first publish
+	// for the slot passes.
+	if err := verifyReleaseTimestampForward(s.cfg.DistDir, metadataAppID(metadata), rel); err != nil {
+		http.Error(w, err.Error(), publishErrorStatus(err))
+		return
+	}
+
 	// Gate passed → invoke the catalog assembler (convenience, not authority).
 	// First persist the SPK + RELEASE.json into the packages tree would be the
 	// publish-client's job (C3); here we run the aggregator over the working
@@ -348,7 +359,7 @@ func rejectReceiveBypass(w http.ResponseWriter) bool {
 }
 
 func publishErrorStatus(err error) int {
-	if errors.Is(err, errVersionConflict) || errors.Is(err, errSupersedeRequired) {
+	if errors.Is(err, errVersionConflict) || errors.Is(err, errSupersedeRequired) || errors.Is(err, errReleaseTimestampNotMonotonic) {
 		return http.StatusConflict
 	}
 	return http.StatusForbidden

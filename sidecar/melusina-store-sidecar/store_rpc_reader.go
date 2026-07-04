@@ -200,12 +200,21 @@ func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
 		{"signature", 64},
 		{"signed_payload_hash", 32},
 		{"registered_by", 32},
-		{"registered_at", 8},
 	} {
 		if offset, err = skipFixed(data, offset, step.n, "release_v2", step.name); err != nil {
 			return meta, err
 		}
 	}
+	// registered_at is the on-chain-WITNESSED attestation time (i64 unix, set by the
+	// license program's Clock at register). It is the tamper-proof anchor the publish
+	// gate uses to bound the publisher-supplied RELEASE.json signedAtUnix (store
+	// hygiene check a); the reader now surfaces it instead of skipping it.
+	registeredAt, next, err := readInt64LE(data, offset, "release_v2", "registered_at")
+	if err != nil {
+		return meta, err
+	}
+	meta.RegisteredAt = registeredAt
+	offset = next
 	status, err := verify.ReadAttestationStatusByte(data, offset)
 	if err != nil {
 		return meta, err
@@ -263,6 +272,16 @@ func copyFixed(data []byte, offset int, dst []byte, account, field string) (int,
 	}
 	copy(dst, data[offset:offset+len(dst)])
 	return offset + len(dst), nil
+}
+
+// readInt64LE reads a fixed 8-byte little-endian i64 (Borsh/Anchor encoding, e.g.
+// an on-chain Clock unix timestamp) at offset, returning the value and the next
+// offset. It fails closed when the buffer is too short.
+func readInt64LE(data []byte, offset int, account, field string) (int64, int, error) {
+	if offset+8 > len(data) {
+		return 0, -1, fmt.Errorf("%s: %s: buffer too short", account, field)
+	}
+	return int64(binary.LittleEndian.Uint64(data[offset : offset+8])), offset + 8, nil
 }
 
 func readBorshStringLocal(data []byte, offset int) (string, int, error) {

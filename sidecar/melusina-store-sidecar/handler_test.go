@@ -622,7 +622,7 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			name: "prior_active_not_superseded",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
 				f.rel.Version = "2.0.0"
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "2.0.0", status: verify.AttestationStatusActive}
+				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "2.0.0", status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
 				pinOtherActiveRelease(t, m, f, "1.0.0")
 				release := mustJSON(t, f.rel)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")

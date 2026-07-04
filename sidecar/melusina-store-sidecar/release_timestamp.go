@@ -86,27 +86,23 @@ func verifyReleaseTimestampForward(distDir, appID string, rel ReleaseJSON) error
 		// version-bump, supersede) still fully govern this publish.
 		return nil
 	}
-	priorSigned, found := currentPublishedSignedAt(distDir, appID)
-	if !found {
-		return nil // first publish for this app slot
+	prior, ok := readReleaseClaim(filepath.Join(distDir, "attest", appID, "RELEASE.json"))
+	if !ok {
+		return nil // first publish for this slot (or an unreadable/malformed prior)
 	}
-	if rel.SignedAtUnix <= priorSigned {
+	// If the served descriptor IS this exact release (same content app_hash), it is an
+	// idempotent re-publish — or a copy of THIS publish already staged into the served
+	// tree — not a distinct prior version to advance past. Skip, mirroring how the
+	// on-chain version gate skips the submitted release's own PDA. (A same-app_hash
+	// forgery with a different signedAtUnix is still caught by proximity check (a).)
+	if strings.EqualFold(strings.TrimSpace(prior.AppHash), strings.TrimSpace(rel.AppHash)) {
+		return nil
+	}
+	if rel.SignedAtUnix <= prior.SignedAtUnix {
 		return fmt.Errorf("check=release_timestamp_monotonic: %w: signedAtUnix=%d is not greater than current published %d",
-			errReleaseTimestampNotMonotonic, rel.SignedAtUnix, priorSigned)
+			errReleaseTimestampNotMonotonic, rel.SignedAtUnix, prior.SignedAtUnix)
 	}
 	return nil
-}
-
-// currentPublishedSignedAt reads the signedAtUnix of the RELEASE.json the catalog
-// currently serves for appID's slot. found=false means no served descriptor for
-// that slot (a first publish) OR an unreadable/malformed one (it can never be the
-// authoritative prior — treated as absent, non-destructive). READ-ONLY.
-func currentPublishedSignedAt(distDir, appID string) (int64, bool) {
-	claim, ok := readReleaseClaim(filepath.Join(distDir, "attest", appID, "RELEASE.json"))
-	if !ok {
-		return 0, false
-	}
-	return claim.SignedAtUnix, true
 }
 
 // metadataAppID extracts the Sandstorm appId the catalog serves this app under

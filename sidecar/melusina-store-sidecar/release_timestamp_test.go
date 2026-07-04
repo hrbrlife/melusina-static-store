@@ -116,6 +116,18 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 		}
 	})
 
+	t.Run("same_apphash_idempotent_passes", func(t *testing.T) {
+		dist := t.TempDir()
+		// The served descriptor IS this exact release (same app_hash) — an idempotent
+		// re-publish or a pre-staged copy of THIS publish. It must NOT be treated as a
+		// prior to advance past, even with an equal timestamp.
+		writeServedReleaseClaim(t, dist, appID, 2000) // writes appHash = "aaaa...a" (64)
+		rel := ReleaseJSON{AppHash: strings.Repeat("a", 64), SignedAtUnix: 2000}
+		if err := verifyReleaseTimestampForward(dist, appID, rel); err != nil {
+			t.Fatalf("same-app_hash idempotent re-publish must pass, got: %v", err)
+		}
+	})
+
 	t.Run("different_slot_no_bar", func(t *testing.T) {
 		dist := t.TempDir()
 		// A served release under a DIFFERENT appId slot must not bar this app's

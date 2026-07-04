@@ -56,13 +56,21 @@ func verifyAttestationProximity(rel ReleaseJSON, meta releaseEntryMeta) error {
 	if meta.RegisteredAt <= 0 {
 		return fmt.Errorf("check=release_attestation_proximity: on-chain registered_at is unset (%d); cannot anchor release time", meta.RegisteredAt)
 	}
-	delta := rel.SignedAtUnix - meta.RegisteredAt
-	if delta < 0 {
-		delta = -delta
+	tol := releaseAttestationToleranceSeconds
+	// OVERFLOW-SAFE |signedAtUnix - registered_at| <= tol. signedAtUnix is fully
+	// attacker-controlled (a plain int64 in RELEASE.json); it is only COMPARED, never
+	// abs()'d or subtracted with an unbounded operand — so a crafted math.MinInt64
+	// cannot wrap an absolute value or a subtraction into a false ACCEPT (the classic
+	// -MinInt64==MinInt64 fail-open). registered_at is gated >0, so registered_at-tol
+	// cannot underflow, and the upper-bound subtraction runs only when signedAtUnix >
+	// registered_at (both positive, difference fits int64).
+	if rel.SignedAtUnix < meta.RegisteredAt-tol {
+		return fmt.Errorf("check=release_attestation_proximity: %w: signedAtUnix=%d is more than %ds before on-chain registered_at=%d",
+			errAttestationProximity, rel.SignedAtUnix, tol, meta.RegisteredAt)
 	}
-	if delta > releaseAttestationToleranceSeconds {
-		return fmt.Errorf("check=release_attestation_proximity: %w: signedAtUnix=%d on-chain registered_at=%d delta=%ds tolerance=%ds",
-			errAttestationProximity, rel.SignedAtUnix, meta.RegisteredAt, delta, releaseAttestationToleranceSeconds)
+	if rel.SignedAtUnix > meta.RegisteredAt && rel.SignedAtUnix-meta.RegisteredAt > tol {
+		return fmt.Errorf("check=release_attestation_proximity: %w: signedAtUnix=%d is more than %ds after on-chain registered_at=%d",
+			errAttestationProximity, rel.SignedAtUnix, tol, meta.RegisteredAt)
 	}
 	return nil
 }

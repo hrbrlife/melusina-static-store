@@ -106,15 +106,6 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 
-	// (a-time) STORE HYGIENE — attestation proximity. The publisher-supplied release
-	// time (rel.SignedAtUnix, surfaced by the catalog as the app's "updated N ago")
-	// must sit within +/-24h of the on-chain registered_at that WITNESSED this
-	// ReleaseEntry. The chain-witnessed time (submittedMeta.RegisteredAt, just read
-	// from the confirmed-Active entry) is the unforgeable anchor. FAIL-CLOSED.
-	if err := verifyAttestationProximity(rel, submittedMeta); err != nil {
-		return err
-	}
-
 	// (b2) Resolve the FoundationApp tier from the CHAIN (B1-05/B2-05). app_id is
 	// read from the on-chain ReleaseEntry (just confirmed Active) — NOT from the
 	// untrusted RELEASE.json — and the FoundationAppEntry is derived from it. A
@@ -147,6 +138,17 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 	if err := verifyNotBlacklisted(ctx, cr, licenseMint, "license"); err != nil {
+		return err
+	}
+
+	// (a-time) STORE HYGIENE — attestation proximity. Runs LAST, after every
+	// security-relevant on-chain refusal (authz, tier ceiling, version/supersede,
+	// blacklist), so those take error precedence over this display-integrity check.
+	// The publisher-supplied release time (rel.SignedAtUnix, surfaced by the catalog
+	// as the app's "updated N ago") must sit within +/-24h of the on-chain
+	// registered_at that WITNESSED this ReleaseEntry — the unforgeable anchor
+	// (submittedMeta.RegisteredAt). FAIL-CLOSED.
+	if err := verifyAttestationProximity(rel, submittedMeta); err != nil {
 		return err
 	}
 	return nil

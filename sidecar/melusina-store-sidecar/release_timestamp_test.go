@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,12 @@ func TestVerifyAttestationProximity(t *testing.T) {
 		{"signed_unset", 0, base, true},
 		{"registered_unset", base, 0, true},
 		{"registered_negative", base, -1, true},
+		// Overflow bypass guard: signedAtUnix crafted so signedAtUnix-registeredAt ==
+		// math.MinInt64 (whose negation stays negative) must NOT slip past the window.
+		{"minint64_overflow_bypass", math.MinInt64 + base, base, true},
+		// signedAtUnix at the int64 extremes must reject (far outside +/-24h).
+		{"max_int64", math.MaxInt64, base, true},
+		{"min_int64", math.MinInt64, base, true},
 	}
 
 	for _, tc := range cases {

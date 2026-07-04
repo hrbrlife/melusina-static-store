@@ -19,7 +19,13 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 
-const APP_INDEX_BASE = "https://hrbrlife.github.io/melusina-static-store";
+// Self-hosted origin: every catalog asset AND the app-install package-download
+// URL resolve from the bazaar origin that served this SPA (the market popup is
+// opened from Sandstorm's appMarketUrl = the root bazaar, which serves
+// /packages|/apps|/icons|/images|/screenshots). The retired gh-pages origin
+// (hrbrlife.github.io/melusina-static-store) is DELETED — bazaar is the sole
+// origin (DEPLOY DOCTRINE); no stale fallback (greenfield).
+const APP_INDEX_BASE = window.location.origin;
 const LOGO_URL = `${APP_INDEX_BASE}/icons/melulogo-cyan.svg`;
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
@@ -2473,8 +2479,27 @@ function App() {
   const [appNotFound, setAppNotFound] = useState(null);
 
   useEffect(() => {
-    const src = Array.isArray(data) ? data : data.apps || [];
-    setApps(src.map((a) => ({ ...a, categories: a.categories || [] })));
+    let cancelled = false;
+    const normalize = (arr) => arr.map((a) => ({ ...a, categories: a.categories || [] }));
+    // Paint instantly from the baked catalog (no empty flash, no regression if offline).
+    setApps(normalize(Array.isArray(data) ? data : data.apps || []));
+    // Then refresh from the live served catalog so card version + packageId are never
+    // stale — no rebuild-per-publish crutch (HT15). Same-origin path first (the store
+    // serving this page), then the published mirror; on any failure we keep the baked
+    // paint above, so cards never vanish.
+    const sources = ["/apps/index.json", `${APP_INDEX_BASE}/apps/index.json`];
+    (async () => {
+      for (const url of sources) {
+        try {
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          const src = Array.isArray(j) ? j : j.apps || [];
+          if (src.length && !cancelled) { setApps(normalize(src)); return; }
+        } catch { /* try next source, else keep baked */ }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
 

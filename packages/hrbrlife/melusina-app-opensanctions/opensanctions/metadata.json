@@ -1,9 +1,9 @@
 {
   "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-  "packageId": "b211ec4ef13381a118fb7a4bf3b06faa",
+  "packageId": "3a3edd8d4db64449eb4e41c1f6903aee",
   "name": "OpenSanctions",
-  "version": "0.1.12",
-  "versionNumber": 14,
+  "version": "0.1.13",
+  "versionNumber": 15,
   "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
   "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
   "categories": [
@@ -26,6 +26,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.1.12",
-  "sha256": "b211ec4ef13381a118fb7a4bf3b06faaf0eec7cc3f1a59d610ed19ebebf46e01"
+  "marketingVersion": "0.1.13",
+  "sha256": "3a3edd8d4db64449eb4e41c1f6903aee11b5c337b358a2058395be8807c034e2"
 }

@@ -3368,6 +3368,313 @@
         }
       },
       "capabilities": null
+    },
+    {
+      "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
+      "packageId": "75181d409aeccd93fef7eacab6146851",
+      "name": "CanBoard",
+      "version": "0.1.0",
+      "versionNumber": 6,
+      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
+      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** \u2014 each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776836028848,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "sha256": "75181d409aeccd93fef7eacab61468515028ac4558e9c34e452ceea1bc06f332",
+      "marketingVersion": "0.1.0",
+      "imageId": "d1094f6e2253f02fda782364633d7705.svg",
+      "updatedAt": 1781724875000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "2ee0dba23219715657e76e778774a2eb79c47c8ec20167ad498f57611a7c13a8",
+        "releaseHash": "520af7e13ea0e28f83d869c75ce56de1b09a124c63bc23f61d9538b5e62c2fe3",
+        "releaseNonce": "391892973bf32d0685706f755056183e",
+        "releaseEntryPda": "D78nymmb4wJmaXD1hLpzpXgabmXc6FGCKQsxQDdsTqha",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1781724875,
+        "authorSig": "oxDATrGB9UV40j6Imm7hhe6fNpaA5v5Ltr3Tb0EpYk/K0nuvx+CZZjk7bdN5Q+1XOEHTjTRtfuihGG4UBTM+Dg==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "canboard",
+        "appName": "CanBoard",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "canboard",
+            "pearlName": "Kanban Board",
+            "pearlType": "user-pearl",
+            "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from agentchat) without giving the source pearl read access to other cards.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "card-create",
+                  "interface": "CanBoard.CardCreate@1",
+                  "purpose": "Drop a card into a specific board's intake column from a peer pearl."
+                },
+                {
+                  "name": "board-read",
+                  "interface": "CanBoard.BoardRead@1",
+                  "purpose": "Read a specific board's state for embedding / dashboard use."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Boards + cards + comments",
+                "Attachments"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Board admin",
+                  "purpose": "Create / archive boards; manage members."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Edit cards",
+                  "purpose": "Standard kanban editing."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "Solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "CanBoard.CardCreate@1",
+                  "purpose": "Drop a card into a specific board's intake column from a peer pearl.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CanBoard.BoardRead@1",
+                  "purpose": "Read a specific board's state for embedding / dashboard use.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
+      "packageId": "d884341d4fd51d8d3976590d44485c5e",
+      "name": "CrateLink",
+      "version": "0.1.1",
+      "versionNumber": 6,
+      "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
+      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776836094911,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "marketingVersion": "0.1.1",
+      "sha256": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a",
+      "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
+      "updatedAt": 1781725012000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "b8c12c3196249957e2c3ea2369a471517303e7d397d576b49b5a5a5406c2df0d",
+        "releaseHash": "99a6050880f5d93f43dfb51519bd648aab7e4acbb3a845adf016b4a58a8dd1ea",
+        "releaseNonce": "073dc3c1f19b58371e818daefce58a1c",
+        "releaseEntryPda": "3Hgn5bLXVt4w1bVKgvDXGg6jwVzu5uJf2CxCtCsnwTob",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1781725012,
+        "authorSig": "DpbyefsAJY0zrBUNOGhXeRkiIORAUCH2WH1DnGwBnnicuFXu0uOCUdao6xbgbz/jh0pYVElseBeTmWTLPwCECQ==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "cratelink",
+        "appName": "CrateLink",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "cratelink",
+            "pearlName": "CrateLink",
+            "pearlType": "user-pearl",
+            "purpose": "Per-user shipment tracker / supply-chain pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "custody-accept",
+                  "interface": "CrateLink.Accept@1",
+                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate."
+                },
+                {
+                  "name": "shipment-read",
+                  "interface": "CrateLink.Read@1",
+                  "purpose": "Read a shipment's history (only your participation slice)."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Shipment manifests",
+                "Custody handoff signatures",
+                "Per-party private notes"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Configure crate templates",
+                  "purpose": "Owner-only: define crate types + handoff rules."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Create shipment",
+                  "purpose": "Start a new shipment + set initial custodian."
+                },
+                {
+                  "name": "Sign handoff",
+                  "purpose": "OTP-gated custody transfer."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "pearlRegister",
+                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
+                },
+                {
+                  "bit": "audit",
+                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
+                }
+              ],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "Solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation; custody handoffs are off-chain ed25519 over canonical handoff payloads."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "CrateLink.Accept@1",
+                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CrateLink.Read@1",
+                  "purpose": "Read a shipment's history (only your participation slice).",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      }
     }
   ]
 }

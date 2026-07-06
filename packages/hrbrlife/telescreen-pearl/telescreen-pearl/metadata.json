@@ -1,0 +1,13 @@
+{
+  "appId": "cpz5eny8kwmcqmh42n1cjmchddap37y4s92u1ge3sq3243uag9qh",
+  "packageId": "97163d44ce7ede3efb131e63e5843f56",
+  "name": "TeleScreen Pearl",
+  "version": "0.4.2",
+  "versionNumber": 11,
+  "shortDescription": "United TeleScreen aggregator \u2014 no http-out; grabs opensanctions/creeper/ai-lagoon leaf caps and fuses a holistic screening verdict.",
+  "description": "R-TS6 united TeleScreen capability pearl. Holds Grapple caps to the opensanctions, creeper, and ai-lagoon leaf pearls and fuses their sanctions + OSINT + adverse-media results into one holistic verdict. Zero http-out; the DueProcess station claims its WebSession capability.",
+  "categories": [
+    "Productivity"
+  ],
+  "marketingVersion": "0.4.2"
+}

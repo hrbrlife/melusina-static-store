@@ -183,52 +183,6 @@
       }
     },
     {
-      "appId": "qmg51xrjd1psztwd5pf48gqn9r4qak8vs3896zw4y2djhnpq523h",
-      "name": "BLOOM Identity",
-      "version": "1.0.2-kb6",
-      "versionNumber": 2,
-      "packageId": "c722f714a275c19ada6e85fe6198aa5f",
-      "shortDescription": "KYC Identity Verification",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-bloom-app",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1780547798071,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": ""
-      },
-      "marketingVersion": "1.0.2-kb6",
-      "sha256": "c722f714a275c19ada6e85fe6198aa5fc9556eb4ca484878f41ba0f61ac5c651",
-      "imageId": "0f49fef712b20df3c349d93e7764f4bb.svg",
-      "updatedAt": 1781671039000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "637059b5c01f196dac32cadaa86976e9e762ed38be83cda88eb6dfc66d8916ea",
-        "releaseHash": "0329c852f65f9b8a3ebb88b42024c79a86bd901b8dc327c8149e2db7fad0c1d4",
-        "releaseNonce": "57a1d6db8f0d06fe15354bfbf8c303ff",
-        "releaseEntryPda": "FoTF9LhJypQNRZEYubZ2GHQs3f7nWsS4vKxn7wxDZeNa",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781671039,
-        "authorSig": "pcG1LP2StWlI7SsrLaL832Un2UYkiXOoS6ZDEn6yHoslZA6fqKVigRGyE2IiNGAwyR6St7Dez26JIbwXBaxSAQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "BLOOM Identity is a self-hosted KYC (Know Your Customer) identity verification platform for Sandstorm. It lets you run compliant identity checks entirely on your own server \u2014 no third-party data processors, no cloud dependencies.\n\n## How It Works\n\nAn administrator creates a **Station** grain, configures the verification workflow, and shares a link. Recipients open the link and complete the verification steps in their own **Identity** grain. Results flow back to the Station for review.\n\n### For Administrators\n\n- Create verification workflows with configurable steps\n- Share invite links to respondents \u2014 no account needed on their end\n- Review submitted cases from the Station dashboard\n- AI-assisted document and identity analysis (optional, via local Ollama or configured endpoint)\n- Case notes, status tracking, and audit logs\n\n### For Respondents\n\nThe verification flow guides users through each step:\n\n1. **Terms & Conditions** \u2014 Accept the verification terms\n2. **Contact Verification** \u2014 Email and phone OTP confirmation\n3. **Document Upload** \u2014 Government ID, passport, or other identity documents\n4. **Facial Verification** \u2014 Live selfie capture with liveness detection\n5. **Personal Details** \u2014 Identity form with occupation, source of funds, etc.\n6. **Review & Submit** \u2014 Confirm all information before submission\n\nEach step is completed in-browser with no app installation required.\n\n## Key Features\n\n- **Privacy-First** \u2014 All data stays on your Sandstorm server. Documents, photos, and personal data never leave your infrastructure.\n- **Two-Grain Architecture** \u2014 Station (admin) and Identity (respondent) grains communicate via Sandstorm's capability system, enforcing strict access control.\n- **AI-Powered Analysis** \u2014 Optional integration with local LLMs for document OCR, face matching, and risk scoring.\n- **Workflow Engine** \u2014 YAML-defined verification workflows with conditional steps, configurable per use case.\n- **Multi-Language** \u2014 Internationalized interface supporting multiple languages.\n- **Audit Trail** \u2014 Complete journal of all actions for compliance reporting.\n- **Responsive Design** \u2014 Works on desktop and mobile browsers.\n\n## Screenshots\n\n![Admin Dashboard](screenshots/01-admin-dashboard.png)\n*Station admin dashboard showing active verification cases*\n\n![Share Link](screenshots/02-share-link.png)\n*Creating a shareable verification link for respondents*\n\n![KYC Start](screenshots/03-kyc-start.png)\n*Respondent begins the identity verification process*\n\n![Terms Acceptance](screenshots/04-terms-accepted.png)\n*Terms and conditions step*\n\n![Document Upload](screenshots/05-document-upload.png)\n*Document upload with supported ID types*\n\n![Face Capture](screenshots/06-face-capture.png)\n*Live facial verification capture*\n\n![Verification Complete](screenshots/07-verification-complete.png)\n*Respondent completes all verification steps*\n\n![Admin Review](screenshots/08-admin-final-review.png)\n*Administrator reviews completed verification case*",
-      "screenshots": []
-    },
-    {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
       "name": "BotMother",
       "version": "1.1.3",
@@ -736,294 +690,6 @@
       }
     },
     {
-      "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
-      "packageId": "75181d409aeccd93fef7eacab6146851",
-      "name": "CanBoard",
-      "version": "0.1.0",
-      "versionNumber": 6,
-      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
-      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** \u2014 each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836028848,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "sha256": "75181d409aeccd93fef7eacab61468515028ac4558e9c34e452ceea1bc06f332",
-      "marketingVersion": "0.1.0",
-      "imageId": "d1094f6e2253f02fda782364633d7705.svg",
-      "updatedAt": 1781724875000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "2ee0dba23219715657e76e778774a2eb79c47c8ec20167ad498f57611a7c13a8",
-        "releaseHash": "520af7e13ea0e28f83d869c75ce56de1b09a124c63bc23f61d9538b5e62c2fe3",
-        "releaseNonce": "391892973bf32d0685706f755056183e",
-        "releaseEntryPda": "D78nymmb4wJmaXD1hLpzpXgabmXc6FGCKQsxQDdsTqha",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724875,
-        "authorSig": "oxDATrGB9UV40j6Imm7hhe6fNpaA5v5Ltr3Tb0EpYk/K0nuvx+CZZjk7bdN5Q+1XOEHTjTRtfuihGG4UBTM+Dg==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "canboard",
-        "appName": "CanBoard",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "canboard",
-            "pearlName": "Kanban Board",
-            "pearlType": "user-pearl",
-            "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from agentchat) without giving the source pearl read access to other cards.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "card-create",
-                  "interface": "CanBoard.CardCreate@1",
-                  "purpose": "Drop a card into a specific board's intake column from a peer pearl."
-                },
-                {
-                  "name": "board-read",
-                  "interface": "CanBoard.BoardRead@1",
-                  "purpose": "Read a specific board's state for embedding / dashboard use."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Boards + cards + comments",
-                "Attachments"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Board admin",
-                  "purpose": "Create / archive boards; manage members."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Edit cards",
-                  "purpose": "Standard kanban editing."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "CanBoard.CardCreate@1",
-                  "purpose": "Drop a card into a specific board's intake column from a peer pearl.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "CanBoard.BoardRead@1",
-                  "purpose": "Read a specific board's state for embedding / dashboard use.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
-      "appId": "fa9m63d4e5x5aqvnu8xmc69x0ts53vg0pfkf4196p1f319zqp93h",
-      "packageId": "1ea51595d768be9d4fc51cc16c3c779d",
-      "name": "cca.sh Client",
-      "version": "0.1.1",
-      "versionNumber": 7,
-      "shortDescription": "Client seat for cca.sh \u2014 access financial services, submit approvals, view settled activity.",
-      "description": "cca.sh Client is the client-facing mode of cca.sh \u2014 the MSB/PSP/VASP operator console. As a client you can view balances, submit transactions for approval, and reconcile statements against your organisation's books.\n\n## Why cca.sh Client\n\n- **Wallet-rooted transaction receipts** \u2014 cryptographically anchor any transaction receipt to your Solana wallet; receipts are tamper-evident, citable across Pearls via Grapple, and usable as legal proof of settlement\n- **Scoped to your seat** \u2014 see only what your organisation grants; read + write permissions limited to your role; no cross-client visibility\n- **Non-repudiation by design** \u2014 every action you take is signed with your Solana key; the audit log proves you requested it, when you requested it, and what you requested\n\n## Features\n\n- **View Balances** \u2014 see your account balance and transaction history\n- **Submit Transactions** \u2014 request debits, transfers, or settlements; routes through the Admin approval gate\n- **Reconciliation** \u2014 compare transactions against your books; download statements\n- **Solana-signed Actions** \u2014 every action non-repudiable; no \"I didn't request that\" plausible deniability\n- **No Stored Payment Instruments** \u2014 contacts are identity-only, not stored cards\n- **Privacy-first** \u2014 your transaction history lives on the operator's pearl, not a vendor cloud\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (approval and sign authority)\n- **cca.sh Org Member** \u2014 team collaboration (draft transactions, shared resources)\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live client UI lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_ccash_client_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776851479051,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "sha256": "1ea51595d768be9d4fc51cc16c3c779d556f90c2b68085c8b652233088d34ec2",
-      "marketingVersion": "0.1.1",
-      "imageId": "d3599b206f5c5eae2ddfc7816cf2ee87.svg",
-      "updatedAt": 1781724909000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "a80730271df06e68419a2f96318176ee99d9d8c85f082453f1d37373bb1958a5",
-        "releaseHash": "ab630a6d1de31a07a940ef0cc36aee7ae87ab68ed1c48bb0181297d9f45589f4",
-        "releaseNonce": "d533787475ea3dd09c1fbf5ef2478d7a",
-        "releaseEntryPda": "6A7mwErqfmV9KU7wMY6wbjXpANMQY9d1F8R51zLFzEQP",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724909,
-        "authorSig": "3zDhFpafReRA7ZSlZt7nMx932A2cKKv77bMDYVJxkIFQLrBbPMGk7JxXywYQto9NgTVIQ4QK0s53pb0FMBaUBA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "ccash-client",
-        "appName": "cca.sh Client",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "ccash-client",
-            "pearlName": "Client Portal",
-            "pearlType": "user-pearl",
-            "purpose": "End-customer-facing pearl for a ccash operator's clientele. The client sees only their own OTC deals, balances, and tickets \u2014 never operator-private state. The client claims a ClientCap from the operator's ccash grain (issued during onboarding); the cap defines exactly which records the client can see.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "ccash-client-cap",
-                  "interface": "ccash.ClientCap@1",
-                  "purpose": "The capability that scopes this pearl to a specific client + operator pair.",
-                  "required": true
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope; client wallet anchored",
-              "fields": [
-                "Per-client deal cache",
-                "Draft messages",
-                "Local notes / scratch state"
-              ]
-            },
-            "roles": {
-              "adminOnly": [],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "View own deals + balances",
-                  "purpose": "Standard client view \u2014 restricted to records the operator's ClientCap exposes."
-                },
-                {
-                  "name": "Sign a deal",
-                  "purpose": "Requires Identity Gate Ed25519 OTP."
-                },
-                {
-                  "name": "Open ticket",
-                  "purpose": "Send a support message to the operator."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation; client signing wallet is per-install, not shared."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
       "packageId": "394b241462b07967c90ccec897ec7d12",
       "name": "cca.sh Config",
@@ -1199,9 +865,9 @@
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
       "name": "cca.sh Domain Template",
-      "version": "0.5.28",
-      "versionNumber": 50,
-      "packageId": "29c371ebb52d5889857d95c85d2f902f",
+      "version": "0.5.51",
+      "versionNumber": 73,
+      "packageId": "14581d3da740bae6ecf8ce40884d4e05",
       "shortDescription": "Domain configuration authority for cca.sh grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
@@ -1223,20 +889,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.5.28",
-      "sha256": "29c371ebb52d5889857d95c85d2f902ffabbda9e74c5d506942e2654948d7ddd",
+      "marketingVersion": "0.5.51",
+      "sha256": "14581d3da740bae6ecf8ce40884d4e05e586b07e7f5d4bd1d34f8646210284df",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1782785388000,
+      "updatedAt": 1782964237000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "5de40c2fe34105c48ca69e0f9758ee5e29e94a513e32420fca30dc60d2556cab",
-        "releaseHash": "d23472da0e099a327f3e9a8400b7c7fc1a449d4b1e10aceab4b9adc6690043e8",
-        "releaseNonce": "cde225a28e9d8b6f28a9a77eb23ba47a",
-        "releaseEntryPda": "9qkxeyRUWwRxVX2TqSgtxRgCajkDNbn5oaWAzzDCpHPY",
+        "appHash": "0dfb9f28c4766903ca21d9e7087df3782ee90f6bca27bbd7a30974bf88b3e00c",
+        "releaseHash": "f7e226dbb0c2658003bd3874d123701849e98c72a64c06c46c221c78d99463a3",
+        "releaseNonce": "aade7fa7d08fc72d4912eda8dcaefac5",
+        "releaseEntryPda": "5szdfh7Ume468TawtCbwfsNrwhLVx5pXH89B875q8ycr",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782785388,
-        "authorSig": "g49UPkmiXPsOqQP9yCWUqj0NKxPWS6oYAaHRGES7DYnFfBpaFWTjs/BEIm7kOU3Fn2GPukxaV7yRSA5yLVJXBw==",
+        "signedAtUnix": 1782964237,
+        "authorSig": "reiLUNzsEJTbBTON7zGRbz7Q6NGaQK8WuxiZy44tJ4Hky++PQcifsq93sssUqSw/CtCrO7xhVl+ligvAp/q0Cg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1342,356 +1008,6 @@
       "screenshots": []
     },
     {
-      "appId": "g5kzmttt0092pw3mrqg96yu5z13y0jg0p5cmc2yymkzr3g220z9h",
-      "packageId": "45ad6f8e01fe22f126a78fb55f77cea1",
-      "name": "cca.sh Org Member",
-      "version": "0.1.2",
-      "versionNumber": 3,
-      "shortDescription": "Team collaboration for cca.sh \u2014 draft transactions, share contacts, track approvals.",
-      "description": "cca.sh Org Member is the collaborator mode of cca.sh. Team members share operational resources, view pending approvals, draft transactions, and coordinate via per-team Pearls \u2014 without the admin's sign-off capability.\n\n## Why cca.sh Org Member\n\n- **Team-scoped pearl isolation** \u2014 each team has its own sealed container; separate storage, separate permissions; no cross-team visibility; a member of Team A cannot see Team B's drafts or decisions\n- **Pinned member-proposed cases** \u2014 cryptographically anchor any transaction draft to your Solana wallet; drafts are tamper-evident, citable across Pearls via Grapple, and provide an audit trail of who proposed what and when\n- **Audit log read-through with role separation** \u2014 trace any transaction back to the signer without exposing sensitive decision paths; members see what was decided and by whom, not why or under what discussion\n\n## Features\n\n- **Team-scoped visibility** \u2014 see what's pending, what's settled, who owes what\n- **Draft + propose** \u2014 prepare transactions for the Admin to sign; no execute authority; no accidental debits\n- **Shared contacts + notes** \u2014 a light CRM over your organisation's counterparties\n- **Audit log read-through** \u2014 trace any entry back to the signer; see the chain of decision\n- **Role-separated from Admin** \u2014 no sign authority; confined to draft and propose; no escalation without approval\n- **Solana-signed actions** \u2014 every draft signed with your key; non-repudiable; audit-ready\n\n## Sibling Apps\n\n- **cca.sh Admin** \u2014 full operator console (sign + approve authority)\n- **cca.sh Client** \u2014 the client-facing seat\n\n## Status\n\n*Pre-release.* The pearl installs today as a Coming Soon stub; the live member UI lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_ccash_org_member_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836094911,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "marketingVersion": "0.1.2",
-      "sha256": "45ad6f8e01fe22f126a78fb55f77cea1dd888111e6dd8d299a26a6ba83ada51b",
-      "imageId": "272778a6f471a5d19fb9e09431d95ccf.svg",
-      "updatedAt": 1781724942000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "777632d588ff9320a0835fcee4f325bf4348a8858a6465d7f6aa3d7082434b18",
-        "releaseHash": "ef8730daf72c27d431f7de30b0984b7e45854cd7e11bf4ce7cda027ad96a92cd",
-        "releaseNonce": "dccd9abb753c01f268381565076a5187",
-        "releaseEntryPda": "76ztxm112BqTbD52VEFJjqTCVzNcAaRpLMvR54W8zzoe",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724942,
-        "authorSig": "KS7UpfKfCn/S7b6O7060uXH5xKB3bI50YhGdTqELqbRyIpETRONtT9zeFU3RqZywrbCfmLFFBWybEnOuQVONDQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "ccash-org-member",
-        "appName": "cca.sh Org Member",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "ccash-org-member",
-            "pearlName": "Organization Member",
-            "pearlType": "user-pearl",
-            "purpose": "Per-organization-member pearl for an operator's internal team \u2014 a relationship manager, a settlement clerk, a compliance reviewer. Sees the org-scoped subset of ccash state the operator's Org policy permits. Org-member actions feed into the operator console's review queue.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "org-member-scope",
-                  "interface": "ccash.OrgMemberScope@1",
-                  "purpose": "Capability issued by the operator's ccash grain that scopes which org-records this member can see + edit.",
-                  "required": true
-                }
-              ]
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Per-member workspace",
-                "Draft messages + notes"
-              ]
-            },
-            "roles": {
-              "adminOnly": [],
-              "organizationOnly": [
-                {
-                  "name": "Approve client-tier change",
-                  "purpose": "Org-member-only: 2-of-N internal sign-off for tier promotion."
-                },
-                {
-                  "name": "Add note to deal",
-                  "purpose": "Internal annotation visible to the operator console."
-                }
-              ],
-              "anyMember": [
-                {
-                  "name": "View permitted records",
-                  "purpose": "Read-only access to the org-scoped subset."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.MainView",
-                  "purpose": "Standard Sandstorm grain interface \u2014 UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
-      "appId": "gyxwadv96vyss1qt05epahsgyn2993y86378hn49jzt6z4ts36x0",
-      "packageId": "e2711bdb4228af04b57c18f058bb3ef2",
-      "name": "cca.sh Organization",
-      "version": "0.1.0",
-      "versionNumber": 4,
-      "shortDescription": "Partner administration relay grain for cca.sh",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/ccash_organization",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776902400000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.0",
-      "sha256": "e2711bdb4228af04b57c18f058bb3ef2f4209210f76a74f79d02507315f2882a",
-      "imageId": "2d943653b992171c8bf186a1ebda77e5.svg",
-      "updatedAt": 1781268496000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "3e026c0f9bdd0a8b0606fa7568e8a2afa714bd2a446444f3b66bef798c5d5722",
-        "releaseHash": "38e7acd47c61923c9dd8c30b9f83ab929c4e59c55cffd27fc48c945991ca074a",
-        "releaseNonce": "f2c84c035703666051c3bc1a78896a27",
-        "releaseEntryPda": "D2876h3dqRStgAuFjZzktQ3DuJBCXrRdDBJSdQU7Z5ZK",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781268496,
-        "authorSig": "zjpYR7McBNqfy9jeqhYKgExxFOxHfBELLdosaHa3HVqV8PPnsl6ZKyfGdcsuPGr+E8NdRchWvGRzKrjDywgtDw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "Partner-admin relay pearl for the cca.sh constellation. Adopts\nwholesale sub-account capabilities, records organization-local grant\nand member metadata, mints scoped operator and per-member capabilities,\nand forwards settlement escrows upstream after four-eyes capture.\nShips an admin web UI for member invite + role-change (CLAUDE.md\nTask #34) with the `client` role first-class."
-    },
-    {
-      "appId": "3gd0393f45qrn3evmx4uf4kczvea61wp9ymt4gk98ngm5hhdvvfh",
-      "packageId": "5c7513afb234e63633617fa134b974c5",
-      "name": "cca.sh Wholesale",
-      "version": "0.2.4",
-      "versionNumber": 9,
-      "shortDescription": "Institutional wholesale pearl \u2014 owns SWIFT/SEPA/crypto-custodian/exchange correspondent capabilities",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/ccash_wholesale",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1745366400000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.2.4",
-      "sha256": "5c7513afb234e63633617fa134b974c5e9546a2163f287e1f9138aa074d23d0c",
-      "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1781969927000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "567648bb97689cfc3a5e6d9141257f3058d0e11f2f51a393dde929b84faeb902",
-        "releaseHash": "aeaef03152cae9a6d101c469458b1e153b166a24f0ea32dff1e3badc7bc417dc",
-        "releaseNonce": "c81da6194bc5086905c88bef68bf2a9b",
-        "releaseEntryPda": "8CZsoiNF9hXLZJpZVU5SySUr3A2JTq9Y8Kxq7YQBd2e1",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781969927,
-        "authorSig": "PVfIZ3vyDOfGV9oo8A+BqmQneMB40CBsMNjII6KT/JjMq7VKzYg+pQNqq8T5sHJjwPhS4JB44jLKlVQdTeqSDw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "cca-sh-wholesale",
-        "appName": "cca.sh Wholesale",
-        "tier": "admin",
-        "pearls": [
-          {
-            "pearlId": "cca-sh-wholesale",
-            "pearlName": "Wholesale Operator",
-            "pearlType": "admin-pearl",
-            "purpose": "Wholesale-tier operator console \u2014 manages a fleet of operator ccash installs (sub-accounts, correspondent ledger, revocation registry). Issues SubAccountCap capabilities to operator Pearls so they can settle through the wholesale ledger. Storage is plain JSON for the correspondent ledger (no operator-private secrets); identity is delegated to the wholesale Squads vault.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "wholesale-admin",
-                  "interface": "ccash.WholesaleAdmin@1",
-                  "purpose": "Surface wholesale admin to a peer admin grain (manage operator allowlist, correspondent rules)."
-                },
-                {
-                  "name": "sub-account-cap",
-                  "interface": "ccash.SubAccountCap@1",
-                  "purpose": "Issue a scoped sub-account capability to an operator pearl so it can settle through this wholesale install."
-                }
-              ],
-              "requests": [
-                {
-                  "name": "domain-template",
-                  "interface": "ccash.DomainTemplate@1",
-                  "purpose": "Resolve the wholesale's domain template (regulatory profile, allowed currencies).",
-                  "required": true
-                }
-              ]
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Add/remove operator install",
-                  "purpose": "Squads-signed; adds an operator to the wholesale's allowlist."
-                },
-                {
-                  "name": "Issue revocation",
-                  "purpose": "Revoke a sub-account cap; effective on next claim."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": []
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry",
-                      "approve_global_sidecar"
-                    ]
-                  },
-                  {
-                    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-                    "label": "Squads v4 multisig",
-                    "calls": [
-                      "proposalApprove",
-                      "vaultTransactionExecute"
-                    ]
-                  }
-                ],
-                "purpose": "Wholesale admin actions are Squads-vault-signed; sub-account caps reference a license-registry-anchored authority chain."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "ccash.WholesaleAdmin@1",
-                  "purpose": "Surface wholesale admin to a peer admin grain (manage operator allowlist, correspondent rules).",
-                  "roleGate": "adminOnly"
-                },
-                {
-                  "name": "ccash.SubAccountCap@1",
-                  "purpose": "Issue a scoped sub-account capability to an operator pearl so it can settle through this wholesale install.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "description": "cca.sh Wholesale is the institutional pearl of the cca.sh constellation. It owns the four correspondent relationships \u2014 SWIFT, SEPA, crypto-custodian, crypto-exchange \u2014 at the Fineract / sidecar boundary, and grants per-sub-account capabilities to whitelabel-partner operator Pearls (the popaye / cca.sh-Admin family) over Grapple. End-clients never see this pearl directly; their operator sees it as a Grapple-grant of \"settle this envelope to that correspondent at this rate\".\n\n## Why cca.sh Wholesale\n\n- **Pinned settlement envelopes** \u2014 every settlement request is signed at draft time, pinned to the operator's Solana wallet at approval time, and recorded as an immutable, citable artifact. Disputes between wholesale and a whitelabel partner are resolved against the signed envelope, not a database row that either side could mutate\n- **Per-correspondent Grapple capability scoping** \u2014 a whitelabel partner's operator pearl claims a sub-account capability scoped to one correspondent + one rate sheet. They cannot see other partners' correspondents; they cannot escalate to the wholesale-admin role; they cannot enumerate the full correspondent topology. Capability surface is enforced at the Cap'n Proto boundary, not at a SaaS endpoint\n- **Operator-accountability through wallet signatures** \u2014 every wholesale-admin action (correspondent CRUD, rate-sheet edit, sub-account grant) is non-repudiable; the wholesale operator's Solana wallet signs the change. The audit log is provably theirs, not a vendor-database table they can claim was tampered with\n\n## Topology\n\n```\nG-ccash Wholesale (this pearl) \u2500\u2500\u2500 grants sub-account caps \u2500\u2500\u25b6 G-organization (whitelabel partner)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   \u25bc\nfinreact-sidecar                                                  G-popaye (operator console)\n     \u2502                                                                   \u2502\n     \u25bc                                                                   drafts sends\nFineract GL                                                       emits envelopes\n```\n\n## Status\n\n*Pre-release v0.2.0.* The institutional correspondent surface and sub-account grant flow are scaffolded; first end-to-end SWIFT settlement against the live finreact-sidecar lands in v0.3."
-    },
-    {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "name": "clientspace",
       "version": "0.1.3",
@@ -1738,163 +1054,6 @@
       "capabilities": null,
       "description": "BLOOM Client Collection \u2014 a sturdyref-based container pearl for end clients.\n\nThis app acts as a personal portal for end clients. Administrators can add\nprocess grains, document grains, apps, and tools to a client's portal via\nthe Sandstorm Grapple. Clients see their assigned processes with progress\ntracking (kanban board), available apps, and status updates \u2014 all without\nexposing any PII.\n\nBuilt on the same pattern as Sandstorm's Collections app: the portal stores\nonly sturdyref tokens and metadata, never direct data.",
       "screenshots": []
-    },
-    {
-      "appId": "pjqare81cxtxjz411jsr4r35fsdpgrwnem6qm82deycfhzw1xz70",
-      "packageId": "c7bf146520e6ee18cc5d173db2f1eb64",
-      "name": "Consilium",
-      "version": "0.1.0",
-      "versionNumber": 6,
-      "shortDescription": "Unified messaging hub \u2014 bridge Telegram, WhatsApp, Signal, Discord, Teams, IMAP with pinned threads.",
-      "description": "Consilium is a unified messaging hub for Melusina. Bridge Telegram, WhatsApp, Signal, IMAP/SMTP, Microsoft Teams, and Discord \u2014 manage all conversations in one place without vendor lock-in.\n\n## Why Consilium\n\n- **Pinned cross-platform threads** \u2014 cryptographically anchor any conversation to your Solana wallet; threads are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-bridge pearl isolation** \u2014 each messaging connection is a sealed container; bridges don't leak metadata across platforms\n- **No vendor lock-in** \u2014 swappable Cap'n Proto bridges; replace a protocol gateway anytime; your conversation archive stays with you\n\n## Features\n\n- **Multi-protocol support** \u2014 Telegram, WhatsApp, Signal, Discord, Teams, IMAP, SMTP\n- **Unified inbox** \u2014 view all conversations in one interface; no context switching\n- **Per-protocol thread history** \u2014 keep full audit trail per channel\n- **Grapple integrations** \u2014 connect Consilium to other Pearls; route messages into Bureau Docs, trigger CanBoard cards from notifications, log escalations to Mermail\n- **Search across protocols** \u2014 full-text search in all bridged conversations\n- **Privacy-first** \u2014 no third-party message storage; all conversations stay local\n\n## Setup\n\n1. Create a new Consilium pearl\n2. Add messaging connections \u2014 one per bridge (Telegram, Discord, etc.)\n3. Authenticate once with each platform (OAuth or token-based)\n4. All conversations flow through your pearl\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live message hub lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Social"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_consilium_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836058122,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "sha256": "c7bf146520e6ee18cc5d173db2f1eb649332b5c3e5e2b917c656d56028fcb43e",
-      "marketingVersion": "0.1.0",
-      "imageId": "bf3059900d8fd5c80f7e63af53b011a5.svg",
-      "updatedAt": 1781724977000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "00c1bcd419a3e7f268f2fb4e4c44b3e18a4ce3de49acfc1ee3309007e0e65362",
-        "releaseHash": "0ced8147ba2e0ac22a368319e129c96f13e62371ffb0a66d5f29ff592dd0ff32",
-        "releaseNonce": "639ffb23a26b12aac045a2369ec238b8",
-        "releaseEntryPda": "CqB5q7fVwK2DZc28vTD4CddKNGsPHsiwHqugYmXr46r2",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724977,
-        "authorSig": "B0Xc2fgMnU4cEtVEh2+43oQ3FsudosYMjFUYDnJLcjiwIYattLGYDlRjOaI6ulK5mipFd9UttkbEn7Hj3x4/BA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "consilium",
-        "appName": "Consilium",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "consilium",
-            "pearlName": "Consilium",
-            "pearlType": "user-pearl",
-            "purpose": "Decision-tracking pearl \u2014 capture motions, votes, quorum rules, and signed resolutions. Each motion is anchored to the participants' wallets; resolutions are off-chain ed25519-signed records that downstream Pearls (ccash for governance, dueprocess for audit trail) can read via Grapple.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "resolution-read",
-                  "interface": "Consilium.ResolutionRead@1",
-                  "purpose": "Read the final resolution + signed vote tally for a motion."
-                },
-                {
-                  "name": "motion-pick",
-                  "interface": "Consilium.MotionPick@1",
-                  "purpose": "Interactive picker \u2014 peer pearl raises UI; user picks which motion / resolution to attach."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Motion text",
-                "Per-voter audit trail",
-                "Final resolution payload (pre-signature)"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Configure quorum / membership",
-                  "purpose": "Owner-only: define quorum rules + roster."
-                }
-              ],
-              "organizationOnly": [
-                {
-                  "name": "Open motion",
-                  "purpose": "Members in good standing can propose motions."
-                },
-                {
-                  "name": "Cast vote",
-                  "purpose": "OTP-gated; logged + Squads-attested."
-                }
-              ],
-              "anyMember": [
-                {
-                  "name": "Read motion text",
-                  "purpose": "Members can read motion summaries before voting."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation; resolutions are off-chain ed25519 over the canonical motion payload."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "Consilium.ResolutionRead@1",
-                  "purpose": "Read the final resolution + signed vote tally for a motion.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "Consilium.MotionPick@1",
-                  "purpose": "Interactive picker \u2014 peer pearl raises UI; user picks which motion / resolution to attach.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
     },
     {
       "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
@@ -2035,167 +1194,6 @@
       }
     },
     {
-      "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
-      "packageId": "d884341d4fd51d8d3976590d44485c5e",
-      "name": "CrateLink",
-      "version": "0.1.1",
-      "versionNumber": 6,
-      "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
-      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836094911,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "marketingVersion": "0.1.1",
-      "sha256": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a",
-      "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
-      "updatedAt": 1781725012000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "b8c12c3196249957e2c3ea2369a471517303e7d397d576b49b5a5a5406c2df0d",
-        "releaseHash": "99a6050880f5d93f43dfb51519bd648aab7e4acbb3a845adf016b4a58a8dd1ea",
-        "releaseNonce": "073dc3c1f19b58371e818daefce58a1c",
-        "releaseEntryPda": "3Hgn5bLXVt4w1bVKgvDXGg6jwVzu5uJf2CxCtCsnwTob",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781725012,
-        "authorSig": "DpbyefsAJY0zrBUNOGhXeRkiIORAUCH2WH1DnGwBnnicuFXu0uOCUdao6xbgbz/jh0pYVElseBeTmWTLPwCECQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "cratelink",
-        "appName": "CrateLink",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "cratelink",
-            "pearlName": "CrateLink",
-            "pearlType": "user-pearl",
-            "purpose": "Per-user shipment tracker / supply-chain pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "custody-accept",
-                  "interface": "CrateLink.Accept@1",
-                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate."
-                },
-                {
-                  "name": "shipment-read",
-                  "interface": "CrateLink.Read@1",
-                  "purpose": "Read a shipment's history (only your participation slice)."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Shipment manifests",
-                "Custody handoff signatures",
-                "Per-party private notes"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Configure crate templates",
-                  "purpose": "Owner-only: define crate types + handoff rules."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Create shipment",
-                  "purpose": "Start a new shipment + set initial custodian."
-                },
-                {
-                  "name": "Sign handoff",
-                  "purpose": "OTP-gated custody transfer."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "pearlRegister",
-                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
-                },
-                {
-                  "bit": "audit",
-                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation; custody handoffs are off-chain ed25519 over canonical handoff payloads."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "CrateLink.Accept@1",
-                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "CrateLink.Read@1",
-                  "purpose": "Read a shipment's history (only your participation slice).",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
       "packageId": "f8c8101d5ed7d9c5d80ff623d6bac0d1",
       "name": "Creeper",
@@ -2249,10 +1247,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.73",
-      "versionNumber": 146,
-      "packageId": "6557757d0447f5f52753917a839a1331",
-      "sha256": "6557757d0447f5f52753917a839a1331e3336627ccd3571bc301920ff3b9ee3f",
+      "version": "0.1.78",
+      "versionNumber": 155,
+      "packageId": "fd890b3797a878286c45257d5a8098df",
+      "sha256": "fd890b3797a878286c45257d5a8098dfffc3ec765b29e3e86cff6c657a4dd78b",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -2273,19 +1271,19 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.73",
+      "marketingVersion": "0.1.78",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1782787322000,
+      "updatedAt": 1782978061000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e32d928a3b4d3755b587bd05173df6e61e8d291e9c2647cbb04a3f037e09e180",
-        "releaseHash": "e216a6cc896851a26017dfc8904745639d898ba5af90c3de68747d6fca71e8aa",
-        "releaseNonce": "102cc7f30078ca894c2782625df2ca6a",
-        "releaseEntryPda": "29Aj14MJtwfN2xYDDJQD5CdFuCL4bEZfCZFdzTGpmzJb",
+        "appHash": "6ddfd073b554a7a27bf71718ba658d9b50de610e799da77bfb1e89c33ca8b1b2",
+        "releaseHash": "0c0ce69a8d706e0378f0594ff93fbb68b42421146cf0ac3fa6f59a6a7af75bc0",
+        "releaseNonce": "e5f7a1617eaa5b941ffa2518596d7201",
+        "releaseEntryPda": "BDESdnJdDbmKUiYYqxUjb3tcNaW4Eqk5JAN4SvBNZ2FK",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782787322,
-        "authorSig": "D5DmAZpk3CG9e2uIwGSY7woM7873EQMwiC7kFgBLrp+7vEt2AZkBY461KZTVzRUKBLLvQhWWg3AC7DwWftGSAw==",
+        "signedAtUnix": 1782978061,
+        "authorSig": "Aaauseda7+wg8hdROz0w20lYBim33K+ZHkS3UEwfj+1GSKzYl2zgl+86im+b2EndiWZW/T1KfJshDvDb5DEzAg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2872,9 +1870,9 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess",
-      "version": "0.1.43",
-      "versionNumber": 47,
-      "packageId": "f0d0c0dfa849a844c9de3d88286ba35b",
+      "version": "0.1.44",
+      "versionNumber": 48,
+      "packageId": "e5d9758487198248ca1e671151c5b934",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -2893,22 +1891,22 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.43",
-      "sha256": "f0d0c0dfa849a844c9de3d88286ba35b3c3a2afa0e67af3c104b2bd3d88d3dc6",
+      "marketingVersion": "0.1.44",
+      "sha256": "e5d9758487198248ca1e671151c5b9340fc2f89a6740adab8f676b57145fc32f",
       "description": "DueProcess is the Station pearl that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
       "screenshots": [],
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1781997573000,
+      "updatedAt": 1782791784000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9534d91620c80fa602926807abf308cc669ba08ccc84d287b755aaf73abda5ab",
-        "releaseHash": "f0b5ab7541c99bb88ecd593529b7d1d5a57f9ef6d6f95fc01300e9793aa2d8f7",
-        "releaseNonce": "c122e0b1bb52b21c881bc21189e93c91",
-        "releaseEntryPda": "EZkSj3hK3vQXut27nff1VzqFJVeEPPm5zRud3ybXrFyW",
+        "appHash": "3db8c92f039a7beb635b801e50f583a9471ed0e1b500f4483c612714b707a9d9",
+        "releaseHash": "7e054f13159e9876416e6bebb37f7644bb7d0e6232d3b5b4bfbde700ac4858e9",
+        "releaseNonce": "c5cae4c90f5a7d319dec55684879a59d",
+        "releaseEntryPda": "FHZzMkQJSdAP9Qf1g666WtwgLKSuQdqTqJFzdwqCATq3",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781997573,
-        "authorSig": "5Gi6tIOqVtCF/wzDT0UyXsZkPomZYvDJFj0R9UI2xVSg4fdNSfiC5/18AI683Hh1O05bVR4oiLpeqtKIBmiVBw==",
+        "signedAtUnix": 1782791784,
+        "authorSig": "rm8Be+xUUToWDRRX8c+uuClYwakePRxLfxMr3XQUc/15f8L0SIc9RG/POX3RpKYUUx8KT7x8yD3bdyOsmVJcAw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3061,153 +2059,6 @@
       }
     },
     {
-      "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
-      "name": "instaco",
-      "version": "0.1.3",
-      "versionNumber": 8,
-      "packageId": "892d9b65d205c5387fa8b16980023c6f",
-      "shortDescription": "Montana series-LLC management Pearl \u2014 form, hold, operate entities end-to-end.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": true,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776618664000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "MIT",
-      "sha256": "892d9b65d205c5387fa8b16980023c6f9861985973da3a43184035a408379f8d",
-      "marketingVersion": "0.1.3",
-      "imageId": "8b9eca39ba100eca66b057648720ddf4.svg",
-      "updatedAt": 1781724431000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "fd10893fc988388402c6744a91c41fbe83ea4a8158bf2e79cf14e76ae9b02ef5",
-        "releaseHash": "1d8449ba496178bc1807b4f4427fbb39f15aff4f2e806a2533670a41ab988f8e",
-        "releaseNonce": "ab43e84ebac8e67382c06da4ed543331",
-        "releaseEntryPda": "AvKuW5Uxs6VpVibUJEGucHRd2HApHPzktjUkmYec4oJe",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724431,
-        "authorSig": "+A11tkGd4tGezffEZZjGOp0NkQ7oDmPRlrPj3IOlu9XiJhyanlz7eIqgDOC3ZZ5Xvn8BUu9HWihjzbgRa/0ODw==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "instaco-app",
-        "appName": "instaco",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "instaco-app",
-            "pearlName": "instaco",
-            "pearlType": "user-pearl",
-            "purpose": "Instant-collaboration Pearl \u2014 drop-in spaces with members, threaded discussions, decision capture. Designed as the lightweight surface that other Pearls (consilium, dueprocess) Grapple into when they need a quick collaborative review without spinning up a full procedure.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "space-create",
-                  "interface": "Instaco.SpaceCreate@1",
-                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap."
-                },
-                {
-                  "name": "space-read",
-                  "interface": "Instaco.SpaceRead@1",
-                  "purpose": "Read-only thread embeds for downstream Pearls."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Spaces",
-                "Thread messages",
-                "Decision capture"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Manage spaces",
-                  "purpose": "Owner-only: create / archive / set retention."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Participate in spaces",
-                  "purpose": "Read + post in invited spaces."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "Instaco.SpaceCreate@1",
-                  "purpose": "Issue a one-shot collab space scoped to a specific topic \u2014 peer Pearl claims to spin up a thread, captures the outcome, then releases the cap.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "Instaco.SpaceRead@1",
-                  "purpose": "Read-only thread embeds for downstream Pearls.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      },
-      "description": "instaco is the self-sovereign Montana series-LLC management Pearl. Form, hold, and operate a Montana series LLC end-to-end \u2014 articles, EIN, registered-agent address, operating agreement, member ledger, capital calls, distributions \u2014 without leaving your own server.\n\n## Why instaco\n\n- **Pinned entity formation milestones** \u2014 cryptographically anchor each entity milestone (formation, first capital call, distribution, amendment) to your Solana wallet; milestones are tamper-evident, citable across Pearls via Grapple, and provide an immutable record of the entity's lifecycle\n- **Solana-wallet member identification** \u2014 members are identified by their Solana wallet; transfers, capital calls, and distributions emit signed envelopes that double as on-chain attestations; non-repudiable membership changes\n- **All documents generated locally** \u2014 operating agreement, member roll, capital account, K-1 prep, registered-agent letters \u2014 all generated in-Pearl from templates you can edit; no cloud storage; no vendor middleware\n\n## Features\n\n- **Cell-level liability separation** \u2014 each \"child\" series under the master LLC is its own asset partition; instaco lays out the cells, ledgers, and inter-series receivables\n- **Local-first document generation** \u2014 operating agreement templates editable; member roll tracked; capital account ledger; K-1 prep\n- **State filing integration** \u2014 Montana SOS API wired in for new entity registrations, annual reports, and member updates; everything else is paper-prep your registered agent can mail\n- **Right-to-export** \u2014 the entire entity record (resolutions, ledger, K-1s, member roll) exports as a single signed bundle\n\n## What instaco Does NOT Do\n\n- It is not a tax preparer. K-1 prep generates the inputs a CPA needs; it does not file your 1065\n- It is not a registered agent. Montana law requires a physical Montana street address; instaco helps you draft the engagement letter, then hands off to your agent\n- It is not legal advice. The operating agreement template was reviewed by counsel, but your specific cell structure is yours\n\n## Why Montana Series LLCs\n\nMontana is one of the few US states with a clean series LLC statute, no public member registry, and a Solana-friendly attorney bench. The form-and-fee structure is favorable for asset-protection use cases that need many cells and few annual filings.\n\n## Status\n\nOpen-source MIT. Production-ready for new entity formation; the K-1 prep module is in active testing for tax year 2026.",
-      "screenshots": []
-    },
-    {
       "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
       "name": "InstaDAO",
       "version": "1.0.8",
@@ -3300,54 +2151,6 @@
         }
       },
       "capabilities": null
-    },
-    {
-      "appId": "mjgmurff66jn7m1xtr6hk106m867vvxuhsaf3dezzze78znu027h",
-      "name": "Melusina OpenClaw",
-      "version": "0.1.13",
-      "versionNumber": 15,
-      "packageId": "7b13c3a70625d7aa67ac71b251b007fb",
-      "shortDescription": "Personal AI assistant with Grapple tool discovery and pinned session transcripts.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/openclaw-melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1776987130000,
-      "author": {
-        "name": "hrbr.life",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.13",
-      "sha256": "7b13c3a70625d7aa67ac71b251b007fb2839b5dcfcb7229612e0e7a3a403e382",
-      "imageId": "4e1ce49de968c16427d8315e8ecf98df.png",
-      "updatedAt": 1781725098000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "537d1945cce8934671f40e3e597585e9f0f6c8886ba7286f248019e01b09da26",
-        "releaseHash": "ed4d0e3b2bbd2f321a9d04dbca9e641a50bfaf0a90f9e330645db3a49225deee",
-        "releaseNonce": "6ac59cd1219d41a7397b70d0f70c74c9",
-        "releaseEntryPda": "dnmvX6c8x6wrxJJhwevavVPR5tfmuBwVtohs9hGnKCX",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781725098,
-        "authorSig": "lpjYlzRH555wtPie+EgqTFo7HGZ5l+hNPRBvtFZvKmJdUl4U2XYvoDt00RHF3C9+avZ0K9yFB//sc/5y5HNHAg==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": null,
-      "description": "# OpenClaw\n\nA personal AI assistant pearl for Melusina.\n\nOpenClaw is one **Sandstorm pearl**, two processes:\n\n- a **Go capability sidecar** (`openclaw-bridge`) that owns the pearl's\n  Cap'n Proto control socket, handles Grapple grants, and exposes a\n  loopback HTTP API to the runtime;\n- a **Node.js runtime** (the OpenClaw agent) that serves the chat UI,\n  runs the inference loop through your AiLagoon pearl, and discovers\n  tools from any other Melusina pearl you connect over Grapple.\n\nThe two processes are bundled in a single SPK and started together by\n`launcher.sh`. There is no `bridgeConfig` \u2014 permissions and roles are\ndefined programmatically in the bridge's `GetViewInfo()`, the same way\nAiLagoon, AITX, and BLOOM_FINAL do it.\n\n## Setup\n\n1. Install the SPK on your Melusina instance.\n2. Open the **New OpenClaw assistant** action.\n3. Use Grapple to grant the new pearl access to an **AiLagoon** pearl\n   so the agent can think.\n4. Use Grapple to connect any other Melusina grains you want OpenClaw\n   to read or act on (Bureau spreadsheets and documents, AITX\n   Procedures stations, Mermail mailboxes, Vintage desktops, anything\n   that implements the `GrainContext` Cap'n Proto interface).\n5. Chat with the assistant to configure monitors, schedules, and\n   behaviour. Configuration is conversational and incremental \u2014 there\n   is no global YAML to author.\n\n## Features\n\n- **Native Melusina pearl** \u2014 raw Cap'n Proto, programmatic ViewInfo,\n  Grapple-driven capability discovery, persistent state in `/var`.\n- **AiLagoon-routed inference** \u2014 every LLM call goes through your own\n  AiLagoon grain. OpenClaw never holds API keys directly.\n- **Per-pearl permission scoping** \u2014 each connected pearl decides what\n  the agent can see and do, based on the scope of the Grapple grant.\n  OpenClaw never interprets app permission tables itself.\n- **Wallet-signed critical actions** \u2014 operations marked\n  `walletSignature` or `threshold` in a pearl's `describe()` must be\n  approved by the user's connected Solana wallet via the Melusina\n  shell's `requestChainSign()` flow.\n- **Two pearl types** \u2014 `assistant` (full runtime) and `dev-bridge`\n  (sidecar with the demo pearl registered, for testing).\n\nSee `MELUSINA_OPENCLAW_INTEGRATION_FINAL.md` in the OpenClaw repository\nfor the full architecture document and `capnp/graincontext.capnp` for\nthe universal Cap'n Proto interface every Melusina app implements to\nbecome legible to OpenClaw.",
-      "screenshots": []
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
@@ -3799,140 +2602,6 @@
       "screenshots": []
     },
     {
-      "appId": "pywzhp2ajsmpj1zttsmw1j3mvzz4qw69nyx14gu0699x58492h70",
-      "name": "Notes Bureau",
-      "version": "0.1.1",
-      "versionNumber": 7,
-      "shortDescription": "Markdown notebooks with live preview, per-notebook isolation, search, pinned snapshots \u2014 self-hosted.",
-      "description": "Bureau Notes is the notebook pearl of the Melusina Bureau office suite. Quick Markdown captures, code snippets, daily notes, and pinned references \u2014 all hosted on your own server. Each notebook is a sealed pearl with its own storage and permissions; there is no central index that crosses notebooks unless you grant it.\n\n## Why Notes\n\n- **Pinned versions** \u2014 cryptographically anchor any notebook snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-notebook isolation** \u2014 share by pearl, not by user; search inside a notebook without indexing your other Pearls\n- **Markdown-first** with live preview, code highlighting, and embedded images; export to Markdown, PDF, HTML, plain text\n\n## Additional features\n\n- **Privacy-first** \u2014 no telemetry, no third-party CDNs, no AI scraping\n- **Easy restore** \u2014 jump to any saved point in seconds\n\n## Suite integration\n\nBureau Notes shares the Bureau suite's real-time sync layer with Docs, Sheets, Diagram, Paint, and Calendar. Embed a sheet, link a contact, reference a calendar event \u2014 all via Grapple, all opt-in.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub served by sandstorm-http-bridge; the live editor lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_bureau_notes_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776835959665,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "marketingVersion": "0.1.1",
-      "packageId": "630f3dcdfd88882049eb566908402f64",
-      "sha256": "630f3dcdfd88882049eb566908402f64899e767dba276fe27452b52534ebd1f1",
-      "imageId": "e1eea7542528c8855253068f1cf9b1f2.svg",
-      "updatedAt": 1781724765000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "1446f04d1b780c90437ec565690f8b56e2f2eb5147f968f5bea7b965c8d036ea",
-        "releaseHash": "12cb748b0c6a9c8da37f938d56673fee16917442ca064cc347731f8aad014dc4",
-        "releaseNonce": "5a98e72ec6f4646dff3df6934a250c53",
-        "releaseEntryPda": "5KKhs6cWcvJoJnzqe5K48kB15McibSkXJsbBbyeY6Fum",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724765,
-        "authorSig": "hr+0tBgguJ/1QVGibV/agH+j4ttD9k2ipwXdokWnGj4kMSxkngvtgaJyhGwToKBM62BK4w9ZwJciQIh/ZM+hDg==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "bureau-notes",
-        "appName": "Notes Bureau",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "bureau-notes",
-            "pearlName": "Notes Bureau",
-            "pearlType": "user-pearl",
-            "purpose": "Lightweight note-taking pearl \u2014 fast-capture markdown, daily-journal mode, hierarchical notebooks. Storage is per-pearl; sharing notes with peer Pearls (Doc, Calendar) goes through Grapple per-note or per-tag.",
-            "hostShell": {
-              "id": "BUREAU_SHELL",
-              "label": "Bureau Shell",
-              "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
-              "purpose": "Hosts the SPA + file I/O."
-            },
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "note-read",
-                  "interface": "BureauNotes.Read@1",
-                  "purpose": "Read scoped notes by tag/notebook for downstream embedding or search."
-                },
-                {
-                  "name": "note-write",
-                  "interface": "BureauNotes.Write@1",
-                  "purpose": "Append a note from a peer pearl (e.g. quick-capture from Calendar)."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Notebook permissions",
-                  "purpose": "Owner-only: which notebooks/tags can be Grappled by which peers."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Read / write notes",
-                  "purpose": "Standard note-taking."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "BureauNotes.Read@1",
-                  "purpose": "Read scoped notes by tag/notebook for downstream embedding or search.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "BureauNotes.Write@1",
-                  "purpose": "Append a note from a peer pearl (e.g. quick-capture from Calendar).",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
       "packageId": "362cefead23d3b042ddc55e35beee4cd",
       "name": "OpenSanctions",
@@ -4123,10 +2792,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "527e2c9aff17e4eaea44ea880a350d9b",
+      "packageId": "861725ee01185b8b18fce7862883849b",
       "name": "popaye",
-      "version": "0.3.134",
-      "versionNumber": 126,
+      "version": "0.3.144",
+      "versionNumber": 136,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -4149,20 +2818,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.134",
-      "sha256": "527e2c9aff17e4eaea44ea880a350d9b856cba93af11e73bdf1a9fc3126c7cde",
+      "marketingVersion": "0.3.144",
+      "sha256": "861725ee01185b8b18fce7862883849b8fe08a805e8b88e926820429457708d8",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1782786949000,
+      "updatedAt": 1782965775000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a5b7cdab00fc5f49e0a1418bed403c7466c75c5fb9675598b87a7b01b1e55e62",
-        "releaseHash": "8b194ae5f6060e9cd6374b7a30c539d0b1a43899c98932ab0605909b3ff1da9f",
-        "releaseNonce": "9a5d5611a31d50b6a7c1f7b5a7c3a8d7",
-        "releaseEntryPda": "BQ789Sgi4yoPaHhJAnJA3Jtm4ESwZhDSzEu8asbZxMWC",
+        "appHash": "2ccc8ecf4e99cde0598c5fbd48c1164cb9e9d9726ea9e21567c1c69d6a0f2aeb",
+        "releaseHash": "74714e8114b4e4a5cfe50830ee3ed279585a5cb6942d5425672c27b8e6480641",
+        "releaseNonce": "7cf85faf233918eef4ac96b4481e89bf",
+        "releaseEntryPda": "BioqraonmmuJmwgXatCJictgGuJZHuh9YvDHXmYP2ULJ",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782786949,
-        "authorSig": "5Rm5tTrpYa/3vrEpGVM9hJ2gkVpBNFHCV4uw0nHzyNxu+yOQP021f7vuRyYYaAHd7XkA2jApvT5lU7zMuWEUCw==",
+        "signedAtUnix": 1782965775,
+        "authorSig": "Dw5X11q6kPKKJEBQ2qywoXYSryrphbUEKcqBnV9DV2QIQrsiL87DKv/b+GglwSeVd8iY8bD29+9YZoxIs0PaCw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -4527,145 +3196,6 @@
       "screenshots": []
     },
     {
-      "appId": "4255zez8u3pt32et23c1wgcj96jy1q6dxma6uhq8xf42mf705ty0",
-      "packageId": "7ddf27ddfa3af21268c52f3ecb37251d",
-      "name": "TeleScreen Sidecar Configurator",
-      "version": "0.4.0",
-      "versionNumber": 5,
-      "shortDescription": "Cap-routed configurator pearl for the TeleScreen companion sidecar \u2014 exposes config UI + Grapple cap.",
-      "categories": [
-        "Productivity",
-        "Developer Tools"
-      ],
-      "isOpenSource": false,
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/Melusina",
-      "upstreamAuthor": "hrbr.life",
-      "createdAt": 1777535000000,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "license": "Proprietary",
-      "sha256": "7ddf27ddfa3af21268c52f3ecb37251d1c2df1af516ebcea764654c74589c960",
-      "marketingVersion": "0.4.0",
-      "imageId": "df03c4e64b721c5bf7fa9c294a6887ab.png",
-      "updatedAt": 1781725063000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "41b535bed49e19c0a424d55992589ac3c5639fd2e3a514b45d1c41e63470fe76",
-        "releaseHash": "df954a87297dc60939b3d7b5b9745d08c5c4d7a995d907df5ac496931d467571",
-        "releaseNonce": "8ad920d7a38b826700ea08a644748f2e",
-        "releaseEntryPda": "2b48FBoRcdXz4h62Cs4A8i7auBuo7wqGBxEPJ7JDBJUq",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781725063,
-        "authorSig": "O480J3yHSSyKMYJoBsJXsK66O+IhhLwqqhcNuuxr6MR8P3AIZo8ekopIiqqQUeJn1KaV12m8+ESY/c1ytIBFBA==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "telescreen-sidecar-configurator",
-        "appName": "TeleScreen Sidecar Configurator",
-        "tier": "infrastructure",
-        "pearls": [
-          {
-            "pearlId": "telescreen-sidecar-configurator",
-            "pearlName": "TeleScreen Sidecar Configurator",
-            "pearlType": "infrastructure-pearl",
-            "purpose": "Admin-only configuration pearl for the TeleScreen sidecar. It stores sidecar config and secrets inside the grain, claims HTTP-out to the sidecar host through Sandstorm Grapple, and pushes signed config updates. It is not a screening app and offers no consumer-facing capability.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [],
-              "requests": [
-                {
-                  "name": "telescreen-sidecar-http-out",
-                  "interface": "sandstorm.ApiSession",
-                  "purpose": "HTTP-out capability for https://telescreen.sidecar.host so the configurator can read status and push sidecar configuration.",
-                  "required": true
-                }
-              ]
-            },
-            "encryption": {
-              "supported": false,
-              "scheme": "",
-              "fields": []
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Configure TeleScreen sidecar",
-                  "purpose": "Edit sidecar settings, secrets, platform toggles, crawl settings, and push signed configuration to the sidecar."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": []
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only. The Configurator does not perform on-chain actions at runtime."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": true,
-              "via": "sidecar:HTTP_COMPONENT",
-              "purpose": "Read status from and push configuration to the TeleScreen sidecar.",
-              "endpoints": [
-                "https://telescreen.sidecar.host/*"
-              ]
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "grain.UiView",
-                  "purpose": "Standard Sandstorm grain interface for opening the configurator UI. No matchRequests or consumer-facing offers are advertised.",
-                  "roleGate": "adminOnly"
-                }
-              ],
-              "http": [
-                {
-                  "name": "GET /, GET /status, POST /api/push",
-                  "purpose": "Configurator UI and signed sidecar configuration push endpoints inside the grain WebSession.",
-                  "roleGate": "adminOnly",
-                  "auth": "Sandstorm WebSession role"
-                }
-              ]
-            }
-          }
-        ]
-      },
-      "description": "# TeleScreen Sidecar Configurator\n\nThis Sandstorm pearl is the operator-facing configuration UI for the\n**TeleScreen sidecar**. It lets you set every knob the\nsidecar exposes \u2014 secrets, platform toggles, AiLagoon routing, crawl\nparameters, storage paths, search providers, product context \u2014 entirely\nthrough the browser, with no SSH-into-container required.\n\nThe pearl stores its configuration inside its own Sandstorm sandbox\n(`/var`) and pushes the merged config to the live sidecar via an\nauthenticated HTTP-out capability claimed once through the Grapple.\nSecrets never touch the sidecar's disk: the sidecar holds them in\nprocess memory, where they are flushed on restart.\n\nThis is an admin-only grain. Non-admin users see a read-only landing\npage explaining that they need the `admin` permission.\n\nScope lock: this app is configuration-only and advertises no Cap'n Proto\ncapabilities. The separate TeleScreen Hub app owns team screening history,\nVintage/AiLagoon/sidecar claims, and the consumer-facing screening service."
-    },
-    {
       "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
       "name": "Vintage Remote Desktop",
       "version": "1.2.1",
@@ -4794,10 +3324,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome pearl",
-      "version": "0.1.13",
-      "versionNumber": 14,
-      "packageId": "9197622739981da40e8657c28118061e",
-      "sha256": "9197622739981da40e8657c28118061ec263d44d0b1a30cdbb9cf9c6f31c1b99",
+      "version": "0.1.16",
+      "versionNumber": 17,
+      "packageId": "8853278ab680218838c9e0a81dffae5a",
+      "sha256": "8853278ab680218838c9e0a81dffae5a0e8b8baa9426aad3be49f4c155cd8e5d",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -4818,19 +3348,19 @@
       "description": "Welcome pearl is a multi-tenant visitor intake pearl for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account pearl in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "Proprietary",
-      "marketingVersion": "0.1.13",
+      "marketingVersion": "0.1.16",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1782787152000,
+      "updatedAt": 1782852470000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "941d7d9ca7a116f7f4399791119a434e25265593c4415276509d1b31cb3fb2d5",
-        "releaseHash": "c06efbd8e4faa39d3c469e24e93385bac60e23b304bb3eb1c5d0533d2bbfcfe4",
-        "releaseNonce": "5d34c254edf7037483aeb3270086cf57",
-        "releaseEntryPda": "72PCXHFpCoUsPo1qTipNQjwdbvvwS7ZECqSnfrmKj7bd",
+        "appHash": "74624cf0431ad76b3b90b3419ecbc0dbdd5ed6c9a400537beec029dd2f942184",
+        "releaseHash": "8cce606e56e60f6ea567351ec3d35fbec5ccc0b14525dfb4fa195523a98a3c44",
+        "releaseNonce": "b051ab804540c98b6e35e54b866c54d0",
+        "releaseEntryPda": "7LdScnNd3MJTwYAJLte4qLgGoPVjLK8URzaLQk3SAcDp",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782787152,
-        "authorSig": "fz8oWf0obplkPrOa7Ha7P04YahqLPaULu7a2ULqOYuF9BnnN4hXLz7iSVgOeqYOE24OuJFJBjQhuM/MTumOFAQ==",
+        "signedAtUnix": 1782852470,
+        "authorSig": "Oi4TmDCCkLPKaFr1cMz14MycQr+ZULslVjfn31+tUmaF/+6+F4Mu1AaIwk8eg2ws+ZlNRgF84f2ZPXgAbHxlDg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,

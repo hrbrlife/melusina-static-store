@@ -239,7 +239,16 @@ func run(args []string, stdout, stderr io.Writer) error {
 	// the on-chain evidence (ReleaseEntry PDA, program, slot). BodyHash is set
 	// explicitly to sha256(release) — the sidecar requires sha256(release) ==
 	// envelope.body_hash.
-	sig, err := buildEnvelope(pubPriv, dst, spk, releaseBytes, claims, o.verifiedSlot)
+	//
+	// The envelope must outlive the upload: the sidecar verifies it only after
+	// the full body arrives, so on a slow uplink a large SPK can take longer to
+	// transfer than a short-lived envelope survives. Size the TTL to the
+	// operator-declared -timeout window plus verify margin, floored at 5m.
+	envTTL := o.timeout + 2*time.Minute
+	if envTTL < 5*time.Minute {
+		envTTL = 5 * time.Minute
+	}
+	sig, err := buildEnvelope(pubPriv, dst, spk, releaseBytes, claims, o.verifiedSlot, envTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
 	}
@@ -276,7 +285,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 // buildEnvelope constructs the sealed-v3 signed artifact envelope. The sidecar's
 // envelope.Verify requires Kind==artifact, Destination==operator, RequestHash==
 // sha256(SPK), and sha256(Body)==BodyHash; we set all of them here.
-func buildEnvelope(src *identity.Private, dst identity.Public, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64) (envelope.Signed, error) {
+func buildEnvelope(src *identity.Private, dst identity.Public, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
 	spkSum := sha256.Sum256(spk)
 	relSum := sha256.Sum256(releaseBytes)
 
@@ -302,7 +311,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, spk, releaseBytes
 		Body:        releaseBytes,
 		BodyHash:    hex.EncodeToString(relSum[:]),
 		RequestHash: hex.EncodeToString(spkSum[:]),
-		TTL:         5 * time.Minute,
+		TTL:         ttl,
 		Chain:       chain,
 	})
 }

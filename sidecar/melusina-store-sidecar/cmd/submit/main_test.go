@@ -176,7 +176,7 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 12345)
+	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 12345, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	other := newTestIdentity(t, "other-operator", randPubkeyB58(t), "other.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1)
+	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 999)
+	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 999, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -605,7 +605,7 @@ func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 	spk, metadata, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1)
+	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

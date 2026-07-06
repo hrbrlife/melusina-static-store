@@ -155,11 +155,13 @@ func pinRootStoreOperator(t *testing.T, cfg Config, m *mockChainReader, op *iden
 
 func TestHandlePublish_Accept(t *testing.T) {
 	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	operatorPub := operatorSignPub32(t, op)
 	master := randPubkeyB58(t)
 
 	f := buildValidFixture(t, cfg, master)
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
 	svc := newTestService(t, cfg, m, op)

@@ -52,6 +52,13 @@ type publishRequest struct {
 	// SPK they form the canonical tree the on-chain AppHash binds; the gate
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
+	// Developer/Repo/Slug OPTIONALLY name the catalog slot
+	// (packages/<developer>/<repo>/<slug>) for the FIRST publish of a new app.
+	// A re-publish resolves its existing slot by the appId in metadata.json and
+	// may omit these (if present they must agree with the resolved slot).
+	Developer string `json:"developer,omitempty"`
+	Repo      string `json:"repo,omitempty"`
+	Slug      string `json:"slug,omitempty"`
 }
 
 // installerPublishRequest is the JSON wire form for POST /publish/installer.
@@ -165,7 +172,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sig, releaseBytes, spk, metadata, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, hint, err := parsePublishBody(r)
 	if err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
@@ -239,10 +246,21 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gate passed → invoke the catalog assembler (convenience, not authority).
-	// First persist the SPK + RELEASE.json into the packages tree would be the
-	// publish-client's job (C3); here we run the aggregator over the working
-	// tree. A failed assembly is a 500 (verified-but-not-written).
+	// Gate passed → persist the verified bytes into the catalog slot (C3: the
+	// store itself writes what it verified; the served tree's inputs come from
+	// this gate and nowhere else), then invoke the catalog assembler
+	// (convenience, not authority). A failed assembly is a 500
+	// (verified-and-persisted-but-not-assembled; the next successful publish or
+	// assembler run picks the slot up — the receipt is only issued on success).
+	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
+	if err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata); err != nil {
+		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if out, err := s.assembler.Assemble(r.Context()); err != nil {
 		log.Printf("publish: catalog assemble failed: %v\n%s", err, out)
 		http.Error(w, "check=assemble: catalog assembler failed: "+err.Error(), http.StatusInternalServerError)
@@ -401,72 +419,84 @@ func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bo
 }
 
 // parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw
-// SPK bytes, and the metadata.json bytes from either a multipart/form-data request
-// (fields: envelope, release, spk, metadata) or a JSON request (publishRequest).
-// metadata is REQUIRED (the on-chain AppHash binds {app.spk, metadata.json}); a
-// publish without it cannot recompute the AppHash and is malformed.
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, err error) {
+// SPK bytes, the metadata.json bytes, and the optional catalog-slot hint from
+// either a multipart/form-data request (file fields: envelope, release, spk,
+// metadata; value fields: developer, repo, slug) or a JSON request
+// (publishRequest). metadata is REQUIRED (the on-chain AppHash binds
+// {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
+// and is malformed.
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, hint slotHint, err error) {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
 		}
 		metadata, perr = readFormFile(r, "metadata")
 		if perr != nil {
-			return sig, nil, nil, nil, fmt.Errorf("metadata part: %w", perr)
+			return sig, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
 		}
 		if len(metadata) == 0 {
-			return sig, nil, nil, nil, errors.New("metadata is empty")
+			return sig, nil, nil, nil, hint, errors.New("metadata is empty")
 		}
-		return sig, release, spk, metadata, nil
+		hint = slotHint{
+			Developer: strings.TrimSpace(r.FormValue("developer")),
+			Repo:      strings.TrimSpace(r.FormValue("repo")),
+			Slug:      strings.TrimSpace(r.FormValue("slug")),
+		}
+		return sig, release, spk, metadata, hint, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, nil, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, nil, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, nil, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, nil, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, nil, errors.New("spk is empty")
+		return sig, nil, nil, nil, hint, errors.New("spk is empty")
 	}
 	metadata, perr = stdB64(req.MetadataB64)
 	if perr != nil {
-		return sig, nil, nil, nil, fmt.Errorf("metadata_b64: %w", perr)
+		return sig, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
 	}
 	if len(metadata) == 0 {
-		return sig, nil, nil, nil, errors.New("metadata is empty")
+		return sig, nil, nil, nil, hint, errors.New("metadata is empty")
 	}
-	return sig, release, spk, metadata, nil
+	hint = slotHint{
+		Developer: strings.TrimSpace(req.Developer),
+		Repo:      strings.TrimSpace(req.Repo),
+		Slug:      strings.TrimSpace(req.Slug),
+	}
+	return sig, release, spk, metadata, hint, nil
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {
@@ -525,34 +555,7 @@ func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
 	}
-	tmp, err := os.CreateTemp(dir, "."+name+".tmp-*")
-	if err != nil {
-		return fmt.Errorf("create temp: %w", err)
-	}
-	tmpName := tmp.Name()
-	cleanup := true
-	defer func() {
-		if cleanup {
-			_ = os.Remove(tmpName)
-		}
-	}()
-	if _, err := tmp.Write(artifact); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write temp: %w", err)
-	}
-	if err := tmp.Chmod(0o644); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("chmod temp: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp: %w", err)
-	}
-	dst := filepath.Join(dir, name)
-	if err := os.Rename(tmpName, dst); err != nil {
-		return fmt.Errorf("rename %s: %w", dst, err)
-	}
-	cleanup = false
-	return nil
+	return atomicWriteInto(dir, name, artifact)
 }
 
 func sha256Sum(b []byte) []byte {

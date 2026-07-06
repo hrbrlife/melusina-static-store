@@ -250,6 +250,7 @@ func TestHandlePublish_MonotonicTimestampReject(t *testing.T) {
 func TestHandlePublish_MonotonicTimestampAccept(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
+	cfg.CatalogRepoRoot = t.TempDir()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	operatorPub := operatorSignPub32(t, op)
 	master := randPubkeyB58(t)
@@ -258,6 +259,7 @@ func TestHandlePublish_MonotonicTimestampAccept(t *testing.T) {
 	f.pinAccept(m, operatorPub)
 	// Served prior claims an OLDER time -> the submitted publish strictly advances.
 	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix-1000)
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	svc := newTestService(t, cfg, m, op)
 	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 

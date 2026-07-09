@@ -630,8 +630,23 @@ echo ""
 info "Scan complete: $TOTAL apps found, $VALID valid, $ERRORS errors"
 
 if [[ "$ERRORS" -gt 0 ]]; then
-  fail "Fix the errors above before building."
-  exit 1
+  if $DRY_RUN; then
+    # --dry-run is the LINTER surface: surface every error and fail hard so a
+    # human/CI sees the full list before a real build.
+    fail "Fix the errors above before building ($ERRORS app(s) failed validation)."
+    exit 1
+  fi
+  # A broken app is ALREADY excluded from the served index — the `else` branch
+  # above only bumps ERRORS and never appends it to APP_JSON_FILE. One malformed
+  # app must NOT wall every OTHER app's publish: build-store.sh runs INSIDE the
+  # store sidecar's POST /publish single-writer path (catalog.go →
+  # CatalogAssembler.Assemble), so aborting here turns a fully on-chain-verified
+  # publish into a 500 that never reaches the served catalog (the root cause of
+  # "published on-chain but store still serves the old version"). Skip the broken
+  # app(s), warn loudly, and build the catalog from the valid set. The install
+  # re-verifies every served artifact against its Active on-chain entry, so a
+  # skipped-and-excluded app is fail-safe.
+  warn "$ERRORS app(s) failed validation and were SKIPPED (excluded from the served index) — see the [FAIL] lines above. Building the catalog from the $VALID valid app(s); broken apps never block another app's publish."
 fi
 
 if $DRY_RUN; then

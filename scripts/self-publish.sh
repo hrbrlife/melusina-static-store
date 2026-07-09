@@ -74,9 +74,14 @@ BUMP="patch"
 SKIP=""
 CATALOG_PATH_OVERRIDE=""
 DRY_RUN=false
+REVOKE_STALE=false
 STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
 STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
 STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN}"
+# The core-app-team Squads vault's master-NFT ATA — constant across every app
+# (all apps share master mint B7Bby… + vault 3jfN9rc…, so the ATA is fixed).
+# revoke_release_entry's authority-owns-master constraint keys on it.
+MASTER_NFT_ATA="${MELUSINA_MASTER_NFT_ATA:-EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -84,6 +89,7 @@ while [[ $# -gt 0 ]]; do
     --bump)         BUMP="$2"; shift 2 ;;
     --skip)         SKIP="$2"; shift 2 ;;
     --catalog-path) CATALOG_PATH_OVERRIDE="$2"; shift 2 ;;
+    --revoke-stale) REVOKE_STALE=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     -h|--help) sed -n '/^# Usage:/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
     *) [[ -z "$APP_DIR" ]] || { echo "unknown arg: $1" >&2; exit 2; }; APP_DIR="$1"; shift ;;
@@ -180,6 +186,53 @@ else
 fi
 echo
 
+RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
+[[ -n "$RPC_URL" ]] || fail "  MELUSINA_STORE_RPC_URL (or MELUSINA_RPC_URL) required for receipt verification"
+
+# ---- Step 4b: revoke stale Active ReleaseEntries (OPT-IN) --------------------
+# Apps have NO atomic on-chain supersede (unlike installers). The store's
+# verifyReleaseVersionForward gate rejects a publish while ANY other Active
+# ReleaseEntry exists for the same app_id — so a version-bump publish needs the
+# PRIOR version's entry revoked first. This step registers-then-revokes: the
+# ceremony (Step 4) already registered the NEW entry, so here we revoke every
+# OTHER Active entry for this app_id, keeping only the just-registered one.
+#
+# WHY OPT-IN (--revoke-stale), NOT default: it is only SAFE when the store
+# actually PERSISTS-on-publish (store-sidecar >= commit b471999f). On an older
+# store binary the POST returns a valid receipt but never writes the new bytes,
+# so revoking the prior entry FIRST would strand the still-served old bytes with
+# a Revoked on-chain entry → the serve-gate then 403s the live app. Only pass
+# --revoke-stale once the deployed store persists on publish (verify: a prior
+# self-publish actually changed /apps/index.json). See dev-publish-keys/README.
+if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
+  step 4b "revoke stale Active ReleaseEntries (--revoke-stale)"
+  NEW_PDA="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/RELEASE.json")).get("releaseEntryPda",""))' 2>/dev/null || true)"
+  [[ -n "$NEW_PDA" ]] || fail "  --revoke-stale: could not read the just-registered releaseEntryPda from $CAT_PATH/RELEASE.json"
+  LIST_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/list-active-releases"
+  if [[ ! -x "$LIST_BIN" ]]; then
+    info "  building list-active-releases"
+    (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/list-active-releases ./cmd/list-active-releases) \
+      || fail "  list-active-releases build failed"
+  fi
+  ACTIVES="$("$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" 2>/dev/null | python3 -c 'import json,sys
+for line in sys.stdin:
+    line=line.strip()
+    if line:
+        print(json.loads(line)["pda"])' 2>/dev/null || true)"
+  for pda in $ACTIVES; do
+    [[ "$pda" == "$NEW_PDA" ]] && continue
+    info "  revoking stale Active ReleaseEntry $pda"
+    STALE_RELEASE_ENTRY_PDA="$pda" MASTER_NFT_ATA="$MASTER_NFT_ATA" MELUSINA_RPC_URL="$RPC_URL" \
+      MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
+      MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
+      MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
+      MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
+      "$STATIC_STORE_ROOT/scripts/revoke-release-ceremony.sh" "$APP_SLUG-revoke" \
+      || fail "  revoke of stale $pda failed"
+  done
+  echo
+fi
+
 # ---- Step 5: POST /publish (sealed-v3, single writer, chain-verified) -------
 step 5 "POST $STORE_URL/publish"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
@@ -189,8 +242,6 @@ if [[ ! -x "$SUBMIT_BIN" ]]; then
     mkdir -p bin && go build -o bin/submit ./cmd/submit) \
     || fail "  submit-build failed"
 fi
-RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
-[[ -n "$RPC_URL" ]] || fail "  MELUSINA_STORE_RPC_URL (or MELUSINA_RPC_URL) required for receipt verification"
 if $DRY_RUN; then
   info "  DRY RUN — would POST $CAT_PATH/{app.spk,metadata.json,RELEASE.json} to $STORE_URL/publish"
 else

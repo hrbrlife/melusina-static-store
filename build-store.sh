@@ -987,9 +987,15 @@ if mismatches:
     for m in mismatches:
         print(f'  {m}', file=sys.stderr)
     print(f'  metadata.packageId must equal sha256(app.spk)[:32] (K13). Re-pack/re-stage so metadata matches the shipped SPK.', file=sys.stderr)
+    # Drift (metadata.packageId != sha256(app.spk)[:32]) is a per-app
+    # publish-sync bug. It must NOT wall the whole catalog: build-store runs
+    # INSIDE the store sidecar's POST /publish single-writer path, so aborting
+    # here 500s every OTHER app's fully on-chain-verified publish. Warn loudly
+    # and continue — a drifted app's own install fails its on-chain re-verify
+    # (self fail-safe), while every other app ships. --dry-run (the linter)
+    # exits before this block, so strict CI still catches drift up front.
     if not allow_drift:
-        print(f'  Set MELUSINA_ALLOW_PACKAGEID_DRIFT=1 to bypass (test-only).', file=sys.stderr)
-        sys.exit(1)
+        print(f'  WARN(K13): {len(mismatches)} app(s) drift metadata.packageId vs shipped SPK — serving the rest; re-pack/re-stage the drifted app(s) to clear. (Set MELUSINA_ALLOW_PACKAGEID_DRIFT=1 to silence.)', file=sys.stderr)
 else:
     print(f'  OK: 0 metadata.packageId drift')
 PY

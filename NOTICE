@@ -1,0 +1,39 @@
+NOTICE — Melusina public tool (Tier 3)
+
+This repository is a Melusina public-good utility, licensed under the GNU Affero
+General Public License, version 3 or later (AGPL-3.0-or-later); see LICENSE for
+the full canonical text.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Brand reservation: the AGPL grant covers CODE ONLY. The Melusina, TrustMaster,
+NamedCoin, and pBay names and marks are NOT licensed and remain proprietary — a
+fork must be renamed.
+
+The Melusina Public Tools License Notice (M11) follows in full.
+
+===============================================================================
+
+# M11 — MELUSINA PUBLIC TOOLS LICENSE NOTICE (Tier 3)
+
+<!-- schema:doc DOC:M11 version:1.0 -->
+
+**Document Code:** M11
+**Version:** 1.0
+**Effective Date:** 2026-07-09
+**Applies to:** Melusina's public-good utilities — the **TrustMaster** trust-chain verifier (`melusina-os/trustmaster`), any public client-side cryptographic verifier, and the public "what is Melusina" / marketing-explainer surfaces. It does **not** apply to Melusina OS, the Melusina apps, or the smart contracts (those are Tier 1 / Tier 2, `DOC:M06` / `DOC:M10`).
+
+## License
+
+The public tools are licensed under the **GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later)**.
+
+- Anyone may use, study, modify, and redistribute them.
+- Any modified version made available over a network **must** offer its complete corresponding source under AGPL v3 (the network-copyleft condition).
+- This is deliberate: the trust verifier and public explainers are public infrastructure and must stay inspectable and forkable, so that a user can independently verify a Melusina deployment's trust chain without trusting Melusina.
+
+**Brand reservation.** The AGPL grant covers code only. The Melusina, TrustMaster, NamedCoin, and pBay names and marks are not licensed and remain proprietary; a fork must be renamed.
+
+**Repo requirements (propagation):**
+- Ship the full `LICENSE` file containing the canonical AGPL-3.0 text.
+- Add `SPDX-License-Identifier: AGPL-3.0-or-later` to source headers.
+- Add a short `NOTICE` referencing this M11 and the brand reservation.

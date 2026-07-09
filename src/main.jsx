@@ -1,3 +1,10 @@
+/*
+ * static_store — the Melusina App Bazaar store SPA (Tier 3 public tool).
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Melusina Coop LU & Melusina Colorado LCA (joint co-owners).
+ * Licensed under the GNU Affero General Public License v3.0-or-later; see
+ * LICENSE for the full text and NOTICE for the Melusina brand reservation (M11).
+ */
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { format, formatDistanceToNow } from "date-fns";
@@ -1448,40 +1455,45 @@ const APP_FAQ = {
     { q: 'Can I contribute to the source code?', a: 'Absolutely. Check the SOURCE link on the app page to find the GitHub repository. Pull requests and issues are welcome.' },
     { q: 'What license is this under?', a: 'This app is open source. Check the repository for the specific license file (commonly AGPLv3, MIT, or Apache 2.0).' },
   ],
-  _hlsl: [
-    { q: 'What is the HLSL license?', a: 'HLSL (Harbor Life Software License) is a source-available license that allows you to use and deploy the software on your own server. After 3 years, the code automatically converts to AGPLv3 open source.' },
-    { q: 'Will this become open source?', a: 'Yes. Under the HLSL license, all code automatically converts to AGPLv3 after 3 years from the release date. You can view and audit the source code at any time.' },
-    { q: 'Can I modify the source code?', a: 'You have full access to the source code for auditing. Modifications for personal use on your own server are permitted. Redistribution requires the HLSL terms.' },
+  _sourceAvailable: [
+    { q: 'What is the Melusina Public License (MPL-MEL)?', a: 'The Melusina Public License v3.0 (MPL-MEL-3.0) is a source-available license that lets you read, run, and deploy the software on your own server. Each version automatically converts to AGPLv3 open source five years after its own publish date.' },
+    { q: 'Will this become open source?', a: "Yes. Under MPL-MEL-3.0, each released version automatically converts to AGPLv3 five years after that version's own publish date. You can view and audit the source code at any time." },
+    { q: 'Can I modify the source code?', a: 'You have full access to the source for auditing and for deployment on your own server. Republishing, forking, or using AI or human effort to clone or compete with it is restricted until that version converts (the anti-clone terms).' },
   ],
 };
 
 /* ─── License Texts ─────────────────────────────────────────────────────────── */
-const HLSL_LICENSE_TEXT = `HARBOR LIFE SOFTWARE LICENSE (HLSL) v1.0
+const SOURCE_AVAILABLE_LICENSE_TEXT = `MELUSINA PUBLIC LICENSE v3.0 (MPL-MEL-3.0)
+Source-available · AI-clone-protected · per-version AGPLv3 conversion
 
-Copyright (c) 2025 Harbor Life / hrbrlife
+Copyright (c) 2026 Melusina Coop LU (Luxembourg) & Melusina Colorado LCA (USA),
+joint 50/50 co-owners of the Melusina commons.
 
-1. GRANT OF LICENSE
-Permission is hereby granted to any person obtaining a copy of this software and associated documentation files (the "Software") to use, copy, and deploy the Software on their own self-hosted infrastructure (including Melusina or compatible platforms) for personal, educational, or internal business purposes.
+1. GRANT
+This software is source-available. You may read, run, and — for security research — inspect the source we published, and deploy it on your own Melusina infrastructure for lawful internal or approved business use.
 
 2. SOURCE AVAILABILITY
-The source code of the Software is made available for inspection, auditing, and personal modification. You may modify the Software for use on your own server. Redistribution of modified versions requires compliance with this license.
+The source is published for inspection and audit. You may deploy and modify it for use on your own server.
 
-3. RESTRICTIONS
-a) The Software may not be redistributed, sublicensed, or sold as a standalone product without prior written permission from the copyright holder.
-b) The Software may not be used to provide a competing hosted service without a separate commercial agreement.
-c) Attribution to the original author must be preserved in all copies and derivative works.
+3. RESTRICTIONS (before AGPLv3 conversion)
+a) No use of AI systems or human effort to port, distill, retrain, or otherwise clone the software into an open, competing, or derivative product.
+b) No republication, redistribution, or public forking of the source.
+c) No sublicensing, and no claiming of platform, registry, or issuer authority.
+d) Provenance, attribution, and license notices must be preserved.
 
-4. AUTOMATIC OPEN SOURCE CONVERSION
-Three (3) years after the initial public release date of each version, the license for that version automatically and irrevocably converts to the GNU Affero General Public License version 3 (AGPLv3). The conversion date for each version is calculated from its first public distribution date.
+4. AUTOMATIC OPEN-SOURCE CONVERSION
+Every version converts to the GNU Affero General Public License version 3 (AGPLv3) automatically five (5) years after that version's own publish date, on a per-version clock.
 
 5. DATA OWNERSHIP
 All data created, stored, or processed by the Software on your infrastructure is owned entirely by you. The Software includes no telemetry, analytics, or data collection mechanisms. Your server, your data.
 
-6. WARRANTY DISCLAIMER
+6. BRAND
+The Melusina, NamedCoin, and pBay names and marks remain proprietary in perpetuity and never convert to AGPLv3.
+
+7. WARRANTY DISCLAIMER
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
 
-7. TERMINATION
-This license is effective until terminated. It will terminate automatically if you fail to comply with any term. Upon termination, you must destroy all copies of the Software.`;
+Full license: Melusina Public License v3.0 (MPL-MEL-3.0), DOC:M06.`;
 
 const OPEN_SOURCE_LICENSE_TEXT = `GNU AFFERO GENERAL PUBLIC LICENSE
 Version 3, 19 November 2007
@@ -1609,7 +1621,7 @@ function getConnectivityBadges(appId) {
 
 function getAppFAQ(app) {
   const specific = (APP_FAQ[app.appId] || []).map((item, i) => i === 0 ? { ...item, featured: true } : item);
-  const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._hlsl).map((item, i) => i === 0 ? { ...item, featured: true } : item);
+  const license = (app.isOpenSource ? APP_FAQ._openSource : APP_FAQ._sourceAvailable).map((item, i) => i === 0 ? { ...item, featured: true } : item);
   const common = APP_FAQ._common.map((item, i) => i === 1 ? { ...item, featured: true } : item);
   return [...specific, ...license, ...common];
 }
@@ -2100,7 +2112,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
               color: app.isOpenSource ? T.green : T.magenta,
               fontFamily: "'Orbitron', sans-serif",
               textShadow: `0 0 8px ${app.isOpenSource ? T.greenGlow : T.magentaGlow}`,
-            }}>{app.isOpenSource ? 'AGPLv3 License' : 'HLSL License'}</div>
+            }}>{app.isOpenSource ? 'AGPLv3 License' : 'MPL-MEL License'}</div>
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
               Self-hosted · No subscription · Full data ownership
             </div>
@@ -2112,7 +2124,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             '✓ No usage fees or limits',
             '✓ Full data ownership',
             app.isOpenSource ? '✓ Fork and modify freely' : '✓ Source-available for audit',
-            app.isOpenSource ? '✓ Community contributions welcome' : '✓ Converts to AGPLv3 after 3 years',
+            app.isOpenSource ? '✓ Community contributions welcome' : '✓ Converts to AGPLv3 after 5 years',
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: app.isOpenSource ? T.green : T.magenta, fontFamily: "'JetBrains Mono', monospace" }}>{item}</span>
@@ -2128,7 +2140,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
           fontSize: 11, lineHeight: 1.8, color: T.textSec,
           whiteSpace: 'pre-wrap', wordBreak: 'break-word',
         }}>
-          {app.isOpenSource ? OPEN_SOURCE_LICENSE_TEXT : HLSL_LICENSE_TEXT}
+          {app.isOpenSource ? OPEN_SOURCE_LICENSE_TEXT : SOURCE_AVAILABLE_LICENSE_TEXT}
         </div>
       </div>
 
@@ -2386,7 +2398,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             }}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-            >{app.isOpenSource ? 'Open Source' : 'HLSL'}</button>
+            >{app.isOpenSource ? 'Open Source' : 'MPL-MEL'}</button>
           </div>
         </div>
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # stage-into-catalog.sh — copy a freshly-built SPK from a source repo into
-# its static_store catalog package dir, regenerate RELEASE.json offline-stub
-# so the appHash matches, sync metadata.json (version + versionNumber).
+# its static_store catalog package dir, regenerate RELEASE.json offline-stub,
+# and merge committed source metadata with SPK-derived release fields.
 #
 # Used as the bridge between per-app `make pack` (which produced an SPK in
 # the source repo with a possibly-app-specific filename like clientspace.spk
@@ -74,6 +74,7 @@ while (( $# >= 2 )); do
     fail "  catalog pkg dir missing: $PKG"; FAILS=$((FAILS+1)); continue
   fi
   CAT_META="$PKG/metadata.json"
+  SOURCE_META="$(dirname "$SPK")/metadata.json"
   if [[ ! -f "$CAT_META" ]]; then
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
   fi
@@ -159,14 +160,33 @@ PY
     fail "  unpacked appId $STAGED_APP_ID != catalog appId ${CATALOG_APP_ID:-<empty>} (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
+  if [[ -f "$SOURCE_META" ]]; then
+    SOURCE_APP_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appId",""))' "$SOURCE_META")"
+    if [[ -z "$SOURCE_APP_ID" || "$STAGED_APP_ID" != "$SOURCE_APP_ID" ]]; then
+      fail "  unpacked appId $STAGED_APP_ID != source metadata appId ${SOURCE_APP_ID:-<empty>} (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
 
-  # 2) rewrite metadata.json IN THE SHADOW (rm the linked copy first; read the
-  #    base from the LIVE metadata so the shared inode is never opened for write)
+  # 2) rewrite metadata.json IN THE SHADOW. Catalog-only presentation fields
+  #    survive, but committed source metadata wins for product-owned fields
+  #    (license, links, author, descriptions). The signed SPK remains
+  #    authoritative for version/packageId, and its full sha256 is always
+  #    recomputed here. This prevents a clean source release from being bound to
+  #    stale catalog metadata in the canonical AppHash.
   rm -f "$SHADOW/metadata.json"
-  if ! python3 - "$CAT_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
+  if ! python3 - "$CAT_META" "$SOURCE_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
 import json, sys
-src, dst, ver, num, pkg_id, full_sha = sys.argv[1:7]
-d = json.load(open(src))
+catalog, source, dst, ver, num, pkg_id, full_sha = sys.argv[1:8]
+d = json.load(open(catalog))
+try:
+    with open(source) as f:
+        committed = json.load(f)
+except FileNotFoundError:
+    committed = {}
+if not isinstance(committed, dict):
+    raise SystemExit("source metadata must be a JSON object")
+d.update(committed)
 d["version"] = ver
 d["marketingVersion"] = ver
 d["versionNumber"] = int(num)

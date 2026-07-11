@@ -304,7 +304,7 @@ JS
 # app directory also contains the provisional RELEASE.json created by prepare;
 # including that ceremony state would recursively change the hash and make
 # every stage-before-chain publication impossible to resume.
-APP_HASH="$("$SCRIPT_DIR/compute-app-candidate-hash.sh" "$PEARL_TOOL" "$APP_DIR")"
+APP_HASH="$("$_SS_ROOT/scripts/compute-app-candidate-hash.sh" "$PEARL_TOOL" "$APP_DIR")"
 if [[ "$CEREMONY_MODE" = "execute" ]]; then
   readarray -t _prepared < <(python3 - "$APP_DIR/RELEASE.json" <<'PY'
 import json, sys

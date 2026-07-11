@@ -315,19 +315,11 @@ else
 	SERVED_INDEX="$PUBLISH_RUN_DIR/served-index.json"
 	curl -fsS --max-time 20 -o "$SERVED_INDEX" "$STORE_URL/apps/index.json" \
 		|| fail "  GET $STORE_URL/apps/index.json failed"
-	SERVED_JSON="$(cat "$SERVED_INDEX")"
-	SERVED_INDEX_SHA="$(sha256sum "$SERVED_INDEX" | awk '{print $1}')"
-	APP_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("appId",""))')"
-	PACKAGE_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("packageId",""))')"
-  SERVED_VER="$(python3 -c "
-import json,sys
-d=json.loads(sys.argv[1])
-apps=d.get('apps', d if isinstance(d,list) else [])
-for a in apps:
-    if a.get('appId')=='$APP_ID':
-        print(a.get('marketingVersion') or a.get('version') or '')
-        break
-" "$SERVED_JSON" 2>/dev/null || true)"
+		SERVED_INDEX_SHA="$(sha256sum "$SERVED_INDEX" | awk '{print $1}')"
+		APP_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("appId",""))')"
+		PACKAGE_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("packageId",""))')"
+	  SERVED_VER="$(python3 "$SCRIPT_DIR/read-served-app-version.py" "$SERVED_INDEX" "$APP_ID")" \
+		  || fail "  served index.json is invalid or has no unique appId '$APP_ID'"
   [[ "$SERVED_VER" == "$EXPECT_VER" ]] \
     || fail "  served index.json version '$SERVED_VER' != expected '$EXPECT_VER' — publish did not reach the served catalog"
 	ok "  served index.json shows $APP_SLUG $SERVED_VER (matches)"

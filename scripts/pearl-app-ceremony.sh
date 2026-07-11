@@ -300,8 +300,11 @@ fs.writeFileSync(resultPath, JSON.stringify(result, null, 2) + "\n");
 console.log(JSON.stringify(result, null, 2));
 JS
 
-# Step 1: appHash (over the staged tree).
-APP_HASH="$("$PEARL_TOOL" compute-app-hash --app-dir "$APP_DIR" | tail -n 1)"
+# Step 1: appHash over the immutable candidate pair only. In execute mode the
+# app directory also contains the provisional RELEASE.json created by prepare;
+# including that ceremony state would recursively change the hash and make
+# every stage-before-chain publication impossible to resume.
+APP_HASH="$("$SCRIPT_DIR/compute-app-candidate-hash.sh" "$PEARL_TOOL" "$APP_DIR")"
 if [[ "$CEREMONY_MODE" = "execute" ]]; then
   readarray -t _prepared < <(python3 - "$APP_DIR/RELEASE.json" <<'PY'
 import json, sys

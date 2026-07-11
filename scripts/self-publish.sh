@@ -41,6 +41,8 @@
 #     [--skip ceremony] \
 #     [--catalog-path <dir>]           # override auto-detected static_store
 #                                       #   packages/<dev>/<repo>/<slug> dir
+#     [--source-metadata <file>]        # committed product metadata when it is
+#                                       #   not beside app.spk
 #     [--shell-url <url>]               # target Melusina shell
 #     [--shell-domain <host>]           # wallet-login envelope domain
 #     [--admin-wallet <keypair.json>]   # on-chain install admin
@@ -78,6 +80,7 @@ KEYS_DIR=""
 BUMP="none"
 SKIP=""
 CATALOG_PATH_OVERRIDE=""
+SOURCE_METADATA_OVERRIDE=""
 DRY_RUN=false
 REVOKE_STALE=false
 PUBLISH_ONLY=false
@@ -100,6 +103,7 @@ while [[ $# -gt 0 ]]; do
     --bump)         BUMP="$2"; shift 2 ;;
     --skip)         SKIP="$2"; shift 2 ;;
     --catalog-path) CATALOG_PATH_OVERRIDE="$2"; shift 2 ;;
+    --source-metadata) SOURCE_METADATA_OVERRIDE="$2"; shift 2 ;;
     --revoke-stale) REVOKE_STALE=true; shift ;;
     --shell-url)     SHELL_URL="$2"; shift 2 ;;
     --shell-domain)  SHELL_DOMAIN="$2"; shift 2 ;;
@@ -114,6 +118,13 @@ done
 
 [[ -n "$APP_DIR" ]] || { echo "FATAL: app source dir required" >&2; exit 2; }
 [[ -d "$APP_DIR" ]] || { echo "FATAL: not a directory: $APP_DIR" >&2; exit 2; }
+if [[ -n "$SOURCE_METADATA_OVERRIDE" && "$SOURCE_METADATA_OVERRIDE" != /* ]]; then
+  SOURCE_METADATA_OVERRIDE="$APP_DIR/$SOURCE_METADATA_OVERRIDE"
+fi
+if [[ -n "$SOURCE_METADATA_OVERRIDE" ]]; then
+  [[ -f "$SOURCE_METADATA_OVERRIDE" ]] \
+    || { echo "FATAL: source metadata not found: $SOURCE_METADATA_OVERRIDE" >&2; exit 2; }
+fi
 [[ "$BUMP" == "none" ]] || {
   echo "FATAL: release-time version mutation is disabled. Run version-bump.sh, test, commit, then publish with --bump none." >&2
   exit 2
@@ -232,7 +243,8 @@ if skip_step ceremony; then
 	}
 else
 	info "  staging fresh SPK into catalog"
-	$DRY_RUN || "$STATIC_STORE_ROOT/scripts/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH" \
+	$DRY_RUN || SOURCE_METADATA_PATH="$SOURCE_METADATA_OVERRIDE" \
+		"$STATIC_STORE_ROOT/scripts/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH" \
 		|| fail "  stage-into-catalog failed"
 	CEREMONY_VER="$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d.get("marketingVersion") or d.get("version") or "")' "$CAT_PATH/metadata.json")"
 	[[ -n "$CEREMONY_VER" ]] || fail "  staged catalog metadata has no release version"

@@ -79,3 +79,27 @@ assert d["version"] == "2.0.0" and d["versionNumber"] == 2
 assert d["packageId"] == "11111111111111111111111111111111"
 PY
 printf 'ok  stage binds committed source metadata and retains store-only fields\n'
+
+mkdir -p "$TMP/explicit"
+mv "$TMP/source/metadata.json" "$TMP/explicit/product.json"
+python3 - "$TMP/explicit/product.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["name"] = "Explicit Metadata Name"
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+
+if ! PATH="$TMP/bin:$PATH" RELEASE_JSON_STUB="$ROOT/scripts/make-offline-release.py" \
+  SOURCE_METADATA_PATH="$TMP/explicit/product.json" \
+  "$ROOT/scripts/stage-into-catalog.sh" "$TMP/source/right.spk" "$TMP/catalog" \
+  >"$TMP/explicit-output" 2>&1; then
+  cat "$TMP/explicit-output" >&2
+  exit 1
+fi
+python3 - "$TMP/catalog/metadata.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["name"] == "Explicit Metadata Name"
+PY
+printf 'ok  stage accepts an explicit committed source metadata path\n'

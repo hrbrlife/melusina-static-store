@@ -15,6 +15,10 @@
 #
 # Exit 0 on success; 1 on any per-pair failure (continues processing the rest).
 #
+# Optional env:
+#   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
+#                         Defaults to metadata.json beside the source SPK.
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -74,9 +78,12 @@ while (( $# >= 2 )); do
     fail "  catalog pkg dir missing: $PKG"; FAILS=$((FAILS+1)); continue
   fi
   CAT_META="$PKG/metadata.json"
-  SOURCE_META="$(dirname "$SPK")/metadata.json"
+  SOURCE_META="${SOURCE_METADATA_PATH:-$(dirname "$SPK")/metadata.json}"
   if [[ ! -f "$CAT_META" ]]; then
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -n "${SOURCE_METADATA_PATH:-}" && ! -f "$SOURCE_META" ]]; then
+    fail "  explicit source metadata missing: $SOURCE_META"; FAILS=$((FAILS+1)); continue
   fi
 
   SHADOWS+=("$PKG")

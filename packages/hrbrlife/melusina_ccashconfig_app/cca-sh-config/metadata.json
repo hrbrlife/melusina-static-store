@@ -1,14 +1,13 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "9bb75189156a40a9f774107fcd242a9c",
+  "packageId": "2d352dac7254c29607a7e3cd8956c548",
   "name": "cca.sh Config",
-  "version": "0.0.44",
-  "versionNumber": 52,
-  "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
+  "version": "0.0.45",
+  "versionNumber": 53,
+  "shortDescription": "cca.sh companion admin app",
   "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
   "categories": [
-    "Productivity",
-    "Office"
+    "productivity"
   ],
   "isOpenSource": false,
   "webLink": "https://hrbr.life",
@@ -30,6 +29,12 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.0.44",
-  "sha256": "9bb75189156a40a9f774107fcd242a9c26f2320cf3190852a1de96afd758884c"
+  "marketingVersion": "0.0.45",
+  "sha256": "2d352dac7254c29607a7e3cd8956c54845170a3b52bef9c45e3edd8f0d850043",
+  "appTitle": "cca.sh Config",
+  "authorName": "Melusina",
+  "authorEmail": "support@bloom.identity",
+  "website": "https://sails.to/melusina",
+  "codeUrl": "https://github.com/hrbrlife/melusina_ccashconfig_app",
+  "licenseType": "source-available"
 }

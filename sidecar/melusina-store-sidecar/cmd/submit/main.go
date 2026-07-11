@@ -1035,11 +1035,22 @@ func verifyInstallerArtifactReceipt(ctx context.Context, cr storeOperatorAuthzFe
 	if err != nil {
 		return err
 	}
-	if receipt.Schema != installerArtifactReceiptSchema || receipt.Class != class ||
-		receipt.Name != name || receipt.Path != "/releases/"+class+"/"+name ||
-		receipt.InstallerHash != hex.EncodeToString(artifactHash[:]) ||
-		receipt.ServingDomainHash != hex.EncodeToString(storeDomainHash[:]) {
-		return errors.New("check=installer_receipt: receipt does not bind requested path, hash, or serving domain")
+	checks := []struct {
+		field string
+		got   string
+		want  string
+	}{
+		{"schema", receipt.Schema, installerArtifactReceiptSchema},
+		{"class", receipt.Class, class},
+		{"name", receipt.Name, name},
+		{"path", receipt.Path, "/releases/" + class + "/" + name},
+		{"installerHash", receipt.InstallerHash, hex.EncodeToString(artifactHash[:])},
+		{"servingDomainHash", receipt.ServingDomainHash, hex.EncodeToString(storeDomainHash[:])},
+	}
+	for _, check := range checks {
+		if check.got != check.want {
+			return fmt.Errorf("check=installer_receipt: %s got %q want %q", check.field, check.got, check.want)
+		}
 	}
 	message, err := installerArtifactReceiptMessage(receipt)
 	if err != nil {

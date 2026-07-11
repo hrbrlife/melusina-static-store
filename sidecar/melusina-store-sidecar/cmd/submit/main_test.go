@@ -445,10 +445,14 @@ func TestVerifyInstallerArtifactReceipt_AcceptsOnlyAuthorizedUntamperedReceipt(t
 		t.Fatalf("valid receipt rejected: %v", err)
 	}
 	receipt.Path = "/releases/deployer/other.tar.zst"
-	if err := verifyInstallerArtifactReceipt(
+	err = verifyInstallerArtifactReceipt(
 		context.Background(), reader, licenseMint, domain, "deployer",
-		"full-deploy-abc123.tar.zst", artifactHash, receipt); err == nil {
+		"full-deploy-abc123.tar.zst", artifactHash, receipt)
+	if err == nil {
 		t.Fatal("tampered installer artifact receipt was accepted")
+	}
+	if !strings.Contains(err.Error(), "path got") {
+		t.Fatalf("mismatch error does not identify the path field: %v", err)
 	}
 }
 

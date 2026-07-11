@@ -209,6 +209,29 @@ PY
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
+  # Product metadata may refer to catalog assets that are not part of the SPK
+  # triple. Refuse a promotion that would leave the signed catalog card pointing
+  # at a missing screenshot. Paths must remain relative to the package root.
+  if ! python3 - "$SHADOW" "$SHADOW/metadata.json" <<'PY'
+import json, pathlib, sys
+
+root = pathlib.Path(sys.argv[1]).resolve()
+metadata = json.load(open(sys.argv[2]))
+for item in metadata.get("screenshots", []):
+    if not isinstance(item, dict) or not item.get("url"):
+        continue
+    relative = pathlib.PurePosixPath(item["url"])
+    if relative.is_absolute() or ".." in relative.parts:
+        raise SystemExit(f"unsafe screenshot path: {relative}")
+    target = (root / pathlib.Path(*relative.parts)).resolve()
+    if root not in target.parents or not target.is_file():
+        raise SystemExit(f"missing catalog screenshot: {relative}")
+PY
+  then
+    fail "  metadata references a missing or unsafe screenshot (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+
   # 3) regenerate RELEASE.json offline-stub in the shadow against the shadow SPK
   #    + shadow metadata (rm the linked copy first so the stub writes a fresh file)
   rm -f "$SHADOW/RELEASE.json"

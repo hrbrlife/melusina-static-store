@@ -103,3 +103,21 @@ d = json.load(open(sys.argv[1]))
 assert d["name"] == "Explicit Metadata Name"
 PY
 printf 'ok  stage accepts an explicit committed source metadata path\n'
+
+python3 - "$TMP/explicit/product.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["screenshots"] = [{"url": "screenshots/missing.png", "caption": "missing"}]
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+set +e
+PATH="$TMP/bin:$PATH" RELEASE_JSON_STUB="$ROOT/scripts/make-offline-release.py" \
+  SOURCE_METADATA_PATH="$TMP/explicit/product.json" \
+  "$ROOT/scripts/stage-into-catalog.sh" "$TMP/source/right.spk" "$TMP/catalog" \
+  >"$TMP/missing-asset-output" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]] || { echo "missing screenshot was accepted" >&2; exit 1; }
+grep -q "metadata references a missing or unsafe screenshot" "$TMP/missing-asset-output"
+printf 'ok  stage rejects metadata that points at a missing screenshot\n'

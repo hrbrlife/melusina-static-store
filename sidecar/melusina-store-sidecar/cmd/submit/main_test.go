@@ -158,12 +158,60 @@ func pinAuthz(t *testing.T, m *mockAuthzReader, licenseMintB58, domain string, o
 func signReceipt(operator *identity.Private, appHash, releaseHash, servingDomainHash [32]byte) Receipt {
 	msg := receiptMessage(appHash, releaseHash, servingDomainHash)
 	sig := operator.Sign(msg)
+	stageID := sha256.Sum256([]byte("test-stage"))
+	storedAt := time.Now().Unix()
+	stage := signStageReceipt(operator, stageID, appHash, releaseHash, servingDomainHash, storedAt)
+	rollout := AppRolloutReceipt{
+		Schema:            "melusina-app-rollout-v1",
+		AppID:             stage.AppID,
+		CurrentStageID:    stage.StageID,
+		CurrentAppHash:    stage.AppHash,
+		CurrentVersion:    "1.0.0",
+		ActivatedAt:       storedAt,
+		ServingDomainHash: hex.EncodeToString(servingDomainHash[:]),
+	}
+	rolloutMsg, _ := rolloutReceiptMessage(rollout, servingDomainHash)
+	rollout.OperatorSignature = primitives.EncodeBase58(operator.Sign(rolloutMsg))
+	packageHash := sha256.Sum256([]byte("test-package"))
+	catalogHash := sha256.Sum256([]byte("test-catalog"))
+	catalog := AppCatalogPointer{
+		Schema:            "melusina-app-catalog-pointer-v1",
+		AppID:             stage.AppID,
+		PackageID:         hex.EncodeToString(packageHash[:])[:32],
+		Version:           rollout.CurrentVersion,
+		AppHash:           stage.AppHash,
+		ReleaseHash:       stage.ReleaseHash,
+		StageID:           stage.StageID,
+		CatalogSHA256:     hex.EncodeToString(catalogHash[:]),
+		ServingDomainHash: hex.EncodeToString(servingDomainHash[:]),
+		PublishedAt:       storedAt,
+	}
+	catalogMsg, _ := catalogPointerMessage(catalog, servingDomainHash)
+	catalog.OperatorSignature = primitives.EncodeBase58(operator.Sign(catalogMsg))
 	return Receipt{
+		Schema:            "melusina-app-promotion-receipt-v1",
 		AppHash:           hex.EncodeToString(appHash[:]),
 		ReleaseHash:       hex.EncodeToString(releaseHash[:]),
 		ServingDomainHash: hex.EncodeToString(servingDomainHash[:]),
 		OperatorSignature: primitives.EncodeBase58(sig),
-		StoredAt:          time.Now().Unix(),
+		StoredAt:          storedAt,
+		Stage:             &stage,
+		Rollout:           &rollout,
+		Catalog:           &catalog,
+	}
+}
+
+func signStageReceipt(operator *identity.Private, stageID, appHash, releaseHash, servingDomainHash [32]byte, storedAt int64) StageReceipt {
+	msg := stageReceiptMessage(stageID, appHash, releaseHash, servingDomainHash, storedAt)
+	return StageReceipt{
+		Schema:            "melusina-app-stage-receipt-v1",
+		StageID:           hex.EncodeToString(stageID[:]),
+		AppID:             "test-app",
+		AppHash:           hex.EncodeToString(appHash[:]),
+		ReleaseHash:       hex.EncodeToString(releaseHash[:]),
+		ServingDomainHash: hex.EncodeToString(servingDomainHash[:]),
+		StoredAt:          storedAt,
+		OperatorSignature: primitives.EncodeBase58(operator.Sign(msg)),
 	}
 }
 
@@ -176,13 +224,16 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 12345, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 12345, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
 
 	if sig.Payload.Kind != envelope.KindArtifact {
 		t.Errorf("kind = %q, want %q", sig.Payload.Kind, envelope.KindArtifact)
+	}
+	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != appPromoteTarget {
+		t.Errorf("purpose = %s %q, want POST %q", sig.Payload.Method, sig.Payload.Target, appPromoteTarget)
 	}
 
 	wantSPK := sha256.Sum256(spk)
@@ -222,7 +273,7 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	other := newTestIdentity(t, "other-operator", randPubkeyB58(t), "other.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -233,6 +284,93 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 		ExpectedDestination: &otherPub,
 	}); err == nil {
 		t.Fatal("expected destination mismatch to fail verification")
+	}
+}
+
+func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
+	master := randPubkeyB58(t)
+	spk, _, releaseBytes, claims := testRelease(t, master)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
+	opPub := op.Public()
+
+	for _, tc := range []struct {
+		name, target, other string
+	}{
+		{name: "stage-refuses-promote", target: appStageTarget, other: appPromoteTarget},
+		{name: "promote-refuses-stage", target: appPromoteTarget, other: appStageTarget},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			signed, err := buildEnvelope(pub, opPub, tc.target, spk, releaseBytes, claims, 1, 5*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if signed.Payload.Method != http.MethodPost || signed.Payload.Target != tc.target {
+				t.Fatalf("purpose = %s %q, want POST %q", signed.Payload.Method, signed.Payload.Target, tc.target)
+			}
+
+			// Target is inside the signed canonical payload. Reusing the envelope
+			// in the other direction requires changing Target, which invalidates
+			// the signature rather than becoming an empty-target compatibility path.
+			tampered := signed
+			tampered.Payload.Target = tc.other
+			if err := envelope.Verify(tampered, envelope.VerifyOptions{
+				ExpectedKind:        envelope.KindArtifact,
+				ExpectedDestination: &opPub,
+			}); err == nil {
+				t.Fatalf("envelope for %q remained valid after retargeting to %q", tc.target, tc.other)
+			}
+		})
+	}
+
+	for _, target := range []string{"", "/publish/installer", "/publish/"} {
+		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, 1, 5*time.Minute); err == nil {
+			t.Fatalf("buildEnvelope accepted non-app target %q", target)
+		}
+	}
+}
+
+func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
+	master := randPubkeyB58(t)
+	spk, metadata, releaseBytes, claims := testRelease(t, master)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
+
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	opts := options{store: server.URL, timeout: time.Second}
+
+	for _, tc := range []struct {
+		name, signedTarget, postTarget string
+	}{
+		{name: "stage-envelope-to-promote", signedTarget: appStageTarget, postTarget: appPromoteTarget},
+		{name: "promote-envelope-to-stage", signedTarget: appPromoteTarget, postTarget: appStageTarget},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := postPublish(context.Background(), opts, tc.postTarget, signed, releaseBytes, spk, metadata); err == nil {
+				t.Fatalf("POST %q accepted envelope signed for %q", tc.postTarget, tc.signedTarget)
+			}
+		})
+	}
+
+	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	promote.Payload.Method = http.MethodGet
+	if _, _, err := postPublish(context.Background(), opts, appPromoteTarget, promote, releaseBytes, spk, metadata); err == nil {
+		t.Fatal("POST /publish accepted an envelope whose signed method was not POST")
+	}
+	if requests != 0 {
+		t.Fatalf("purpose mismatches reached server %d time(s)", requests)
 	}
 }
 
@@ -259,6 +397,92 @@ func TestVerifyReceipt_ValidReceiptVerifies(t *testing.T) {
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
 	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
 		t.Fatalf("expected valid receipt to verify, got: %v", err)
+	}
+}
+
+func TestDecodePublishReceiptRequiresExactSignedProofCopies(t *testing.T) {
+	appHash, releaseHash, servingDomainHash, _, domain := receiptInputs(t)
+	operator := newTestIdentity(t, "store-operator", randPubkeyB58(t), domain)
+	promotion := signReceipt(operator, appHash, releaseHash, servingDomainHash)
+	wrapper := PublishReceipt{
+		Schema: "melusina-app-publish-receipt-v1",
+		App: PublishReceiptApp{
+			AppID:     promotion.Catalog.AppID,
+			PackageID: promotion.Catalog.PackageID,
+			Version:   promotion.Catalog.Version,
+		},
+		Stage:        promotion.Stage,
+		Promotion:    &promotion,
+		RolloutProof: promotion.Rollout,
+		CatalogProof: promotion.Catalog,
+	}
+	raw, err := json.Marshal(wrapper)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeReceiptForVerification(raw)
+	if err != nil {
+		t.Fatalf("valid publish receipt rejected: %v", err)
+	}
+	if decoded.AppHash != promotion.AppHash {
+		t.Fatalf("decoded promotion appHash = %s, want %s", decoded.AppHash, promotion.AppHash)
+	}
+
+	tampered := wrapper
+	copyOfRollout := *wrapper.RolloutProof
+	copyOfRollout.CurrentVersion = "9.9.9"
+	tampered.RolloutProof = &copyOfRollout
+	raw, err = json.Marshal(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeReceiptForVerification(raw); err == nil ||
+		!strings.Contains(err.Error(), "duplicated proofs differ") {
+		t.Fatalf("tampered duplicate proof was not rejected: %v", err)
+	}
+}
+
+func TestParseFlagsVerifyReceiptMode(t *testing.T) {
+	base := []string{
+		"--verify-receipt", "/tmp/publish-receipt.json",
+		"--license-mint", randPubkeyB58(t),
+		"--domain", "store.example.org",
+		"--rpc-url", "https://rpc.example.org",
+	}
+	parsed, err := parseFlags(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.verifyReceiptPath != "/tmp/publish-receipt.json" {
+		t.Fatalf("unexpected receipt path: %q", parsed.verifyReceiptPath)
+	}
+	if _, err := parseFlags(append(base, "--publisher-key", "/tmp/publisher.json")); err == nil {
+		t.Fatal("verify mode accepted a publish credential")
+	}
+	withoutDomain := []string{
+		"--verify-receipt", "/tmp/publish-receipt.json",
+		"--license-mint", randPubkeyB58(t),
+		"--rpc-url", "https://rpc.example.org",
+	}
+	if _, err := parseFlags(withoutDomain); err == nil {
+		t.Fatal("verify mode accepted a receipt without a serving domain")
+	}
+}
+
+func TestVerifyStageReceipt_AcceptsOnlyAuthorizedUntamperedReceipt(t *testing.T) {
+	appHash, releaseHash, domainHash, licenseMint, domain := receiptInputs(t)
+	op := newTestIdentity(t, "store-operator", licenseMint, domain)
+	opKey := signPub32(t, op)
+	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, m, licenseMint, domain, opKey)
+	stageID := sha256.Sum256([]byte("candidate"))
+	receipt := signStageReceipt(op, stageID, appHash, releaseHash, domainHash, 1_700_000_000)
+	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+		t.Fatal(err)
+	}
+	receipt.StoredAt++
+	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+		t.Fatal("tampered stage receipt was accepted")
 	}
 }
 
@@ -325,6 +549,34 @@ func TestVerifyReceipt_TamperedTupleFails(t *testing.T) {
 
 	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
 		t.Fatal("expected a tampered appHash to fail verification")
+	}
+}
+
+func TestVerifyReceipt_TamperedNestedCatalogPointerFails(t *testing.T) {
+	appHash, releaseHash, servingDomainHash, licenseMint, domain := receiptInputs(t)
+	op := newTestIdentity(t, "store-operator", licenseMint, domain)
+	opKey := signPub32(t, op)
+	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, m, licenseMint, domain, opKey)
+
+	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
+	receipt.Catalog.PackageID = "00000000000000000000000000000000"
+	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "check=catalog_pointer") {
+		t.Fatalf("tampered catalog pointer was not rejected at catalog check: %v", err)
+	}
+}
+
+func TestVerifyReceipt_MissingNestedProofFails(t *testing.T) {
+	appHash, releaseHash, servingDomainHash, licenseMint, domain := receiptInputs(t)
+	op := newTestIdentity(t, "store-operator", licenseMint, domain)
+	opKey := signPub32(t, op)
+	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, m, licenseMint, domain, opKey)
+
+	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
+	receipt.Rollout = nil
+	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "signed stage, rollout and catalog") {
+		t.Fatalf("missing rollout proof was not rejected: %v", err)
 	}
 }
 
@@ -544,6 +796,10 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 		// Re-verify the envelope as the C2.3 handler does.
 		spkSum := sha256.Sum256(spk)
 		opPub := op.Public()
+		if sigIn.Payload.Method != r.Method || sigIn.Payload.Target != r.URL.Path {
+			http.Error(w, "check=envelope_purpose", http.StatusUnauthorized)
+			return
+		}
 		// Fresh nonce cache per request: the e2e reuses one signed envelope
 		// across the JSON + multipart POSTs, which a shared cache would reject as
 		// a replay. The replay path is covered by the handler's own tests.
@@ -568,7 +824,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 999, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 999, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -576,7 +832,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 		store: srv.URL, timeout: 10 * time.Second,
 		developer: wantDeveloper, repo: wantRepo, slug: wantSlug,
 	}
-	body, status, err := postPublish(context.Background(), publishOptions, sig, releaseBytes, spk, metadata)
+	body, status, err := postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish: %v", err)
 	}
@@ -599,7 +855,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 
 	// Also exercise the multipart path against the same server.
 	publishOptions.useMultipart = true
-	body, status, err = postPublish(context.Background(), publishOptions, sig, releaseBytes, spk, metadata)
+	body, status, err = postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish(multipart): %v", err)
 	}
@@ -641,11 +897,11 @@ func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 	spk, metadata, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
+	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, appPromoteTarget, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}

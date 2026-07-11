@@ -74,10 +74,11 @@ func TestHandlePublish_PersistsIntoResolvedSlot(t *testing.T) {
 
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	sig := signPublish(t, pub, op.Public(), f.spk, release)
 	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 
-	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	w := stageThenPromote(t, svc, pub, op.Public(), f.spk, release, func(sig envelope.Signed) *bytes.Buffer {
+		return jsonPublishBody(t, sig, release, f.spk, f.metadata)
+	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -124,10 +125,11 @@ func TestHandlePublish_FirstPublishWithHintCreatesSlot(t *testing.T) {
 
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	sig := signPublish(t, pub, op.Public(), f.spk, release)
 	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 
-	w := doPublish(t, svc, jsonPublishBodyWithSlot(t, sig, release, f.spk, f.metadata, "hrbrlife", "new-repo", "new-app"))
+	w := stageThenPromote(t, svc, pub, op.Public(), f.spk, release, func(sig envelope.Signed) *bytes.Buffer {
+		return jsonPublishBodyWithSlot(t, sig, release, f.spk, f.metadata, "hrbrlife", "new-repo", "new-app")
+	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}

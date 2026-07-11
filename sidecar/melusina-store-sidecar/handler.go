@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
@@ -125,6 +126,7 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	})
 
 	mux.HandleFunc("/publish", svc.handlePublish)
+	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
@@ -157,6 +159,107 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
 	}
 	return mux
+}
+
+// handleStagePublish durably stores a candidate in the private content-addressed
+// stage before its ReleaseEntry exists. It verifies the signed publisher
+// envelope, exact app hash, store operator authority, path policy, and
+// blacklists, but deliberately does not assemble or expose the candidate.
+func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "publish stage gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
+		return
+	}
+
+	sig, releaseBytes, spk, metadata, hint, err := parsePublishBody(r)
+	if err != nil {
+		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	operatorIdentity := s.operator.Public()
+	spkHashHex := hex.EncodeToString(sha256Sum(spk))
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedKind:        envelope.KindArtifact,
+		ExpectedDestination: &operatorIdentity,
+		ExpectedRequestHash: spkHashHex,
+		NonceCache:          s.nonces,
+	}); err != nil {
+		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	bodyHashHex := hex.EncodeToString(sha256Sum(releaseBytes))
+	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
+		http.Error(w, fmt.Sprintf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex), http.StatusBadRequest)
+		return
+	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
+		http.Error(w, "check=release_json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !s.publisherAccepted(rel, sig.Payload.Source) {
+		http.Error(w, "check=accept_publishers: release publisher not in store policy accept_publishers", http.StatusForbidden)
+		return
+	}
+
+	operatorPub, err := signPubkey32(operatorIdentity)
+	if err != nil {
+		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, licenseMint, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
+	if err != nil {
+		http.Error(w, "check=release_entry: bad release.masterNftMint: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, masterMint, "app"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, licenseMint, "license"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if _, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint); err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+	manifest, err := buildStagedAppManifest(spk, metadata, releaseBytes, rel, hint, time.Now())
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := persistStagedApp(s.cfg.PrivateStageDir, manifest, spk, metadata, releaseBytes); err != nil {
+		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	stored, _, _, _, err := loadStagedApp(s.cfg.PrivateStageDir, manifest.StageID)
+	if err != nil {
+		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt, err := signStageReceipt(s.operator, stored, primitives.StoreDomainHash(s.cfg.Domain))
+	if err != nil {
+		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(receipt)
 }
 
 // handlePublish is the gated write path. It fails closed and names the failing
@@ -252,6 +355,37 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
+	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
+	if err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+
+	// Promotion is permitted only for the exact candidate durably staged before
+	// the chain mutation. Recompute its content address from the submitted bytes,
+	// load the private copy, and promote those persisted bytes rather than the
+	// request body. A direct register→POST flow now fails closed.
+	wantStage, err := buildStagedAppManifest(spk, metadata, releaseBytes, rel, hint, time.Now())
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	staged, stagedSPK, stagedMetadata, _, err := loadStagedApp(s.cfg.PrivateStageDir, wantStage.StageID)
+	if err != nil {
+		http.Error(w, "check=stage: candidate was not durably staged before activation: "+err.Error(), http.StatusConflict)
+		return
+	}
+	if !sameStagedReleaseIntent(staged, wantStage) {
+		http.Error(w, "check=stage: persisted candidate does not match promotion request", http.StatusConflict)
+		return
+	}
+	spk, metadata = stagedSPK, stagedMetadata
+	promotedAt := time.Now().UTC()
+	rollout, err := prepareAppRollout(s.cfg, staged, promotedAt)
+	if err != nil {
+		http.Error(w, "check=rollout_prepare: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Gate passed → persist the verified bytes into the catalog slot (C3: the
 	// store itself writes what it verified; the served tree's inputs come from
@@ -259,11 +393,6 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// (convenience, not authority). A failed assembly is a 500
 	// (verified-and-persisted-but-not-assembled; the next successful publish or
 	// assembler run picks the slot up — the receipt is only issued on success).
-	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
-	if err != nil {
-		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
-		return
-	}
 	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -273,6 +402,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=assemble: catalog assembler failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	catalogPointers, err := writeSignedAppCatalogPointers(s.cfg, s.operator, staged.AppID, promotedAt)
+	if err != nil {
+		http.Error(w, "check=catalog_pointer: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	catalogPointer := catalogPointers[staged.AppID]
 
 	// Compute the receipt tuple from the now-verified facts.
 	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.AppHash)))
@@ -288,8 +423,22 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	servingDomainHash := primitives.StoreDomainHash(s.cfg.Domain)
 
 	receipt := SignReceipt(s.operator, appHash, releaseHash, servingDomainHash)
+	stageReceipt, err := signStageReceipt(s.operator, staged, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: stage: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rolloutReceipt, err := signAppRolloutReceipt(s.operator, rollout, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: rollout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt.Stage = &stageReceipt
+	receipt.Rollout = &rolloutReceipt
+	receipt.Catalog = &catalogPointer
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
 }

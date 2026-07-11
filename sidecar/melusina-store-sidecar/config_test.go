@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,6 +35,9 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	}
 	if cfg.DistDir != "dist-publish" {
 		t.Errorf("DistDir default = %q", cfg.DistDir)
+	}
+	if cfg.PrivateStageDir != filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage") {
+		t.Errorf("PrivateStageDir default = %q", cfg.PrivateStageDir)
 	}
 }
 
@@ -72,5 +76,15 @@ func TestLoadConfig_OverridesApplied(t *testing.T) {
 func TestLoadConfig_RejectsInvalidProgramID(t *testing.T) {
 	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org","program_id":"not a pubkey"}`)); err == nil {
 		t.Fatal("expected error for invalid program_id")
+	}
+}
+
+func TestLoadConfig_RejectsPublicPrivateStage(t *testing.T) {
+	root := t.TempDir()
+	dist := filepath.Join(root, "public")
+	stage := filepath.Join(dist, "private-candidates")
+	content := fmt.Sprintf(`{"license_nft_mint":"LIC","domain":"store.example.org","dist_dir":%q,"private_stage_dir":%q}`, dist, stage)
+	if _, err := LoadConfig(writeTmpConfig(t, content)); err == nil {
+		t.Fatal("expected private_stage_dir nested under dist_dir to fail")
 	}
 }

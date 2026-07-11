@@ -24,6 +24,8 @@ policy:
 rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
 listen_addr: ":8443"
 dist_dir: "dist-publish"           # the build output to serve (relative to CWD or absolute)
+private_stage_dir: "/var/lib/melusina-store/private-app-candidates"  # MUST be outside dist_dir; mode 0700
+app_rollback_window_seconds: 86400  # previous Active app remains chain-gated/servable for rollback; negative disables
 
 tls:
   cert_path: "/etc/melusina/store/tls/cert.pem"

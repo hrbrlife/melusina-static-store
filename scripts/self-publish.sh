@@ -73,7 +73,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATIC_STORE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1704067200}"
 
 APP_DIR=""
 KEYS_DIR=""
@@ -163,6 +162,11 @@ fi
 
 cd "$APP_DIR"
 APP_SLUG="$(basename "$APP_DIR")"
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$APP_DIR" log -1 --format=%ct HEAD)}"
+export SOURCE_DATE_EPOCH
+PUBLISH_RUN_DIR="${MELUSINA_PUBLISH_RUN_DIR:-/tmp/melusina-publish-$APP_SLUG-$$}"
+PACK_RECEIPT="$PUBLISH_RUN_DIR/candidate-receipt.json"
+$DRY_RUN || mkdir -p "$PUBLISH_RUN_DIR"
 info "App: $APP_SLUG ($APP_DIR)"
 info "Keys: $KEYS_DIR"
 info "Store: $STORE_URL   Bump: $BUMP   Dry-run: $DRY_RUN"
@@ -184,11 +188,12 @@ if [[ ! -e "$APP_DIR/sandstorm-pkgdef.capnp" && -f "$APP_DIR/.sandstorm/sandstor
   $DRY_RUN || ln -sf .sandstorm/sandstorm-pkgdef.capnp "$APP_DIR/sandstorm-pkgdef.capnp"
 fi
 if $DRY_RUN; then
-  info "  DRY RUN — would: make -C $APP_DIR build pack"
+  info "  DRY RUN — would build a clean pack-local candidate and verify its package receipt"
 else
-  make -C "$APP_DIR" build
-  make -C "$APP_DIR" pack || warn "  make pack non-zero (often benign verify-strict drift) — checking SPK presence"
-  [[ -f "$APP_DIR/app.spk" ]] || fail "  no app.spk produced"
+  pack_args=("$APP_DIR" --receipt-out "$PACK_RECEIPT")
+  [[ -z "$SOURCE_METADATA_OVERRIDE" ]] || pack_args+=(--metadata "$SOURCE_METADATA_OVERRIDE")
+  "$STATIC_STORE_ROOT/scripts/pack-app-candidate.sh" "${pack_args[@]}" \
+    || fail "  candidate build failed before chain mutation"
 fi
 echo
 
@@ -220,7 +225,6 @@ CAT_REL="${CAT_PATH#"$STATIC_STORE_ROOT/packages/"}"
 IFS=/ read -r CAT_DEVELOPER CAT_REPO CAT_SLUG CAT_EXTRA <<<"$CAT_REL"
 [[ -n "$CAT_DEVELOPER" && -n "$CAT_REPO" && -n "$CAT_SLUG" && -z "${CAT_EXTRA:-}" ]] \
   || fail "  catalog path must be exactly packages/<developer>/<repo>/<slug>: $CAT_PATH"
-PUBLISH_RUN_DIR="${MELUSINA_PUBLISH_RUN_DIR:-/tmp/melusina-publish-$APP_SLUG-$$}"
 CEREMONY_DIR="$PUBLISH_RUN_DIR/ceremony"
 STAGE_RECEIPT="$PUBLISH_RUN_DIR/stage-receipt.json"
 PROMOTION_RECEIPT="$PUBLISH_RUN_DIR/promotion-receipt.json"
@@ -356,11 +360,11 @@ PY
 		SOURCE_REV="$(git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || true)"
 		SOURCE_DIRTY=false
 		[[ -z "$(git -C "$APP_DIR" status --porcelain 2>/dev/null || true)" ]] || SOURCE_DIRTY=true
-		python3 - "$STAGE_RECEIPT" "$PROMOTION_RECEIPT" "$CEREMONY_DIR/result.json" "$FINAL_RECEIPT" \
+		python3 - "$PACK_RECEIPT" "$STAGE_RECEIPT" "$PROMOTION_RECEIPT" "$CEREMONY_DIR/result.json" "$FINAL_RECEIPT" \
 			"$APP_SLUG" "$APP_ID" "$PACKAGE_ID" "$SERVED_VER" "$SERVED_SHA" "$SERVED_INDEX_SHA" \
 			"$SOURCE_REV" "$SOURCE_DIRTY" "$SOURCE_DATE_EPOCH" <<'PY'
 import json, os, sys, time
-stage_path, promotion_path, ceremony_path, out_path, slug, app_id, package_id, version, served_sha, index_sha, source_rev, source_dirty, source_epoch = sys.argv[1:]
+candidate_path, stage_path, promotion_path, ceremony_path, out_path, slug, app_id, package_id, version, served_sha, index_sha, source_rev, source_dirty, source_epoch = sys.argv[1:]
 def load(path):
     if not path or not os.path.exists(path):
         return None
@@ -375,6 +379,7 @@ doc = {
         "sourceDirty": source_dirty == "true",
         "sourceDateEpoch": int(source_epoch),
         "spkSha256": served_sha,
+        "candidateReceipt": load(candidate_path),
     },
     "stage": load(stage_path),
     "squads": load(ceremony_path),

@@ -24,6 +24,16 @@ SPK_BIN="${MELUSINA_SPK_BIN:-spk}"
 [[ -f "$METADATA" ]] || { echo "metadata not found: $METADATA" >&2; exit 2; }
 command -v "$SPK_BIN" >/dev/null 2>&1 || { echo "spk verifier not found: $SPK_BIN" >&2; exit 2; }
 
+created_pkgdef_link=false
+cleanup_pkgdef_link() {
+  if $created_pkgdef_link \
+     && [[ -L "$APP_DIR/sandstorm-pkgdef.capnp" ]] \
+     && [[ "$(readlink "$APP_DIR/sandstorm-pkgdef.capnp")" == ".sandstorm/sandstorm-pkgdef.capnp" ]]; then
+    rm -f "$APP_DIR/sandstorm-pkgdef.capnp"
+  fi
+}
+trap cleanup_pkgdef_link EXIT
+
 if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
@@ -35,11 +45,24 @@ else
 fi
 export SOURCE_DATE_EPOCH="$source_epoch"
 
+# The Sandstorm packer expects the pkgdef at the repository root, while some
+# apps keep the committed file under .sandstorm/. Create that compatibility
+# link only after the clean-source gate and remove it before the post-build
+# gate. The source tree therefore remains immutable from the publisher's point
+# of view, including on interrupted builds.
+if [[ ! -e "$APP_DIR/sandstorm-pkgdef.capnp" \
+   && -f "$APP_DIR/.sandstorm/sandstorm-pkgdef.capnp" ]]; then
+  ln -s .sandstorm/sandstorm-pkgdef.capnp "$APP_DIR/sandstorm-pkgdef.capnp"
+  created_pkgdef_link=true
+fi
+
 rm -f "$SPK_OUT"
 make -C "$APP_DIR" build
 make -C "$APP_DIR" pack-local
 [[ -f "$SPK_OUT" ]] || { echo "pack-local did not create $SPK_OUT" >&2; exit 2; }
 
+cleanup_pkgdef_link
+created_pkgdef_link=false
 dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
 [[ -z "$dirty" ]] || {
   echo "candidate build mutated committed source; refusing to publish" >&2

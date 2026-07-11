@@ -184,9 +184,6 @@ if [[ -f "$APP_DIR/.gitmodules" ]] \
    && [[ ! -f "$APP_DIR/spkmodule/mk/core.mk" ]]; then
   $DRY_RUN || git -C "$APP_DIR" submodule update --init --depth 1 spkmodule
 fi
-if [[ ! -e "$APP_DIR/sandstorm-pkgdef.capnp" && -f "$APP_DIR/.sandstorm/sandstorm-pkgdef.capnp" ]]; then
-  $DRY_RUN || ln -sf .sandstorm/sandstorm-pkgdef.capnp "$APP_DIR/sandstorm-pkgdef.capnp"
-fi
 if $DRY_RUN; then
   info "  DRY RUN — would build a clean pack-local candidate and verify its package receipt"
 else

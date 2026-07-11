@@ -262,6 +262,10 @@ func writeUpdateManifestFile(distDir string, signed []byte) error {
 		_ = tmp.Close()
 		return fmt.Errorf("write temp: %w", err)
 	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("fsync temp: %w", err)
+	}
 	if err := tmp.Chmod(0o644); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("chmod temp: %w", err)
@@ -272,6 +276,9 @@ func writeUpdateManifestFile(distDir string, signed []byte) error {
 	dst := filepath.Join(dir, "manifest.json")
 	if err := os.Rename(tmpName, dst); err != nil {
 		return fmt.Errorf("rename %s: %w", dst, err)
+	}
+	if err := syncDir(dir); err != nil {
+		return fmt.Errorf("fsync update dir: %w", err)
 	}
 	cleanup = false
 	return nil

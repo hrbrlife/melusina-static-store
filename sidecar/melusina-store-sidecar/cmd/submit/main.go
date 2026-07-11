@@ -62,6 +62,7 @@ const defaultChainID = "solana:devnet"
 const (
 	installerArtifactClaimsSchema  = "melusina-installer-artifact-claims-v1"
 	installerArtifactReceiptSchema = "melusina-installer-artifact-receipt-v1"
+	shellReleasePromotionSchema    = "melusina-shell-release-promotion-v1"
 )
 
 var installerArtifactReceiptDomain = []byte(installerArtifactReceiptSchema + "\x00")
@@ -206,6 +207,28 @@ type installerPublishRequest struct {
 	ArtifactB64 string          `json:"artifact_b64"`
 }
 
+type shellRelease struct {
+	Build   int    `json:"build"`
+	Version string `json:"version"`
+	Tarball string `json:"tarball"`
+	SHA256  string `json:"sha256"`
+	Size    int64  `json:"size"`
+	Class   string `json:"class"`
+	Channel string `json:"channel"`
+}
+
+type shellReleasePromotion struct {
+	Schema               string       `json:"schema"`
+	Action               string       `json:"action"`
+	ExpectedCurrentBuild int          `json:"expectedCurrentBuild"`
+	Release              shellRelease `json:"release"`
+}
+
+type shellReleasePromotionRequest struct {
+	Envelope  envelope.Signed `json:"envelope"`
+	ClaimsB64 string          `json:"claims_b64"`
+}
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "submit: %v\n", err)
@@ -214,27 +237,30 @@ func main() {
 }
 
 type options struct {
-	store             string
-	spkPath           string
-	metadataPath      string
-	releasePath       string
-	artifactPath      string
-	artifactClass     string
-	artifactName      string
-	publisherKey      string // path; or env name via --publisher-key env:NAME
-	storePubkey       string // path to the sidecar operator identity.Public JSON
-	licenseMint       string // store operator's license_nft_mint (StoreOperatorAuthz seed)
-	domain            string // store serving domain (store_domain_hash seed)
-	rpcURL            string // Solana JSON-RPC for receipt verification
-	verifiedSlot      uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
-	useMultipart      bool
-	stageOnly         bool
-	developer         string
-	repo              string
-	slug              string
-	receiptOut        string
-	verifyReceiptPath string
-	timeout           time.Duration
+	store              string
+	spkPath            string
+	metadataPath       string
+	releasePath        string
+	artifactPath       string
+	artifactClass      string
+	artifactName       string
+	shellReleasePath   string
+	shellAction        string
+	expectedShellBuild int
+	publisherKey       string // path; or env name via --publisher-key env:NAME
+	storePubkey        string // path to the sidecar operator identity.Public JSON
+	licenseMint        string // store operator's license_nft_mint (StoreOperatorAuthz seed)
+	domain             string // store serving domain (store_domain_hash seed)
+	rpcURL             string // Solana JSON-RPC for receipt verification
+	verifiedSlot       uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	useMultipart       bool
+	stageOnly          bool
+	developer          string
+	repo               string
+	slug               string
+	receiptOut         string
+	verifyReceiptPath  string
+	timeout            time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -247,6 +273,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.artifactPath, "installer-artifact", "", "path to an immutable deploy component for /publish/installer")
 	fs.StringVar(&o.artifactClass, "class", "", "immutable deploy component class, e.g. deployer, shell, authz, manifest")
 	fs.StringVar(&o.artifactName, "name", "", "immutable deploy component filename (must never be reused for different bytes)")
+	fs.StringVar(&o.shellReleasePath, "shell-release", "", "signed shell release descriptor to atomically promote or roll back")
+	fs.StringVar(&o.shellAction, "shell-action", "promote", "shell pointer action: promote or rollback")
+	fs.IntVar(&o.expectedShellBuild, "expected-current-build", 0, "compare-and-swap guard for --shell-release")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
@@ -269,7 +298,7 @@ func parseFlags(args []string) (options, error) {
 	verifyMode := o.verifyReceiptPath != ""
 	if verifyMode {
 		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" ||
-			o.artifactPath != "" || o.artifactClass != "" || o.artifactName != "" ||
+			o.artifactPath != "" || o.artifactClass != "" || o.artifactName != "" || o.shellReleasePath != "" || o.expectedShellBuild != 0 ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
 			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" {
 			return o, errors.New("--verify-receipt cannot be combined with publish, stage, artifact, catalog, or receipt-output flags")
@@ -295,7 +324,22 @@ func parseFlags(args []string) (options, error) {
 		missing = append(missing, "--store")
 	}
 	artifactMode := o.artifactPath != ""
-	if artifactMode {
+	shellMode := o.shellReleasePath != ""
+	if artifactMode && shellMode {
+		return o, errors.New("--installer-artifact and --shell-release are mutually exclusive")
+	}
+	if shellMode {
+		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.stageOnly || o.useMultipart ||
+			o.artifactClass != "" || o.artifactName != "" {
+			return o, errors.New("--shell-release cannot be combined with app, stage, multipart, class, or artifact flags")
+		}
+		if o.shellAction != "promote" && o.shellAction != "rollback" {
+			return o, errors.New("--shell-action must be promote or rollback")
+		}
+		if o.expectedShellBuild < 0 {
+			return o, errors.New("--expected-current-build must be non-negative")
+		}
+	} else if artifactMode {
 		if o.artifactClass == "" {
 			missing = append(missing, "--class")
 		}
@@ -309,6 +353,9 @@ func parseFlags(args []string) (options, error) {
 			return o, errors.New("--class and --name must each be one safe immutable path segment")
 		}
 	} else {
+		if o.expectedShellBuild != 0 || o.shellAction != "promote" {
+			return o, errors.New("--shell-action/--expected-current-build require --shell-release")
+		}
 		if o.artifactClass != "" || o.artifactName != "" {
 			return o, errors.New("--class/--name require --installer-artifact")
 		}
@@ -346,8 +393,8 @@ func parseFlags(args []string) (options, error) {
 	if hintCount != 0 && hintCount != 3 {
 		return o, errors.New("--developer, --repo, and --slug must be supplied together")
 	}
-	if artifactMode && hintCount != 0 {
-		return o, errors.New("catalog slot hints do not apply to immutable deploy components")
+	if (artifactMode || shellMode) && hintCount != 0 {
+		return o, errors.New("catalog slot hints do not apply to immutable deploy components or shell pointers")
 	}
 	if o.verifiedSlot == 0 {
 		// envelope.ChainEvidence.Validate rejects verified_slot==0.
@@ -366,6 +413,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 	if o.verifyReceiptPath != "" {
 		return runVerifyReceipt(o, stdout)
+	}
+	if o.shellReleasePath != "" {
+		return runShellReleasePromotion(o, stdout)
 	}
 	if o.artifactPath != "" {
 		return runInstallerArtifact(o, stdout)
@@ -590,6 +640,204 @@ func runInstallerArtifact(o options, stdout io.Writer) error {
 	}
 	out, _ := json.MarshalIndent(receipt, "", "  ")
 	fmt.Fprintf(stdout, "ARTIFACT PUBLISH OK — immutable path and store-authority receipt verified\n%s\n", out)
+	return nil
+}
+
+func runShellReleasePromotion(o options, stdout io.Writer) error {
+	release, err := loadShellReleaseDescriptor(o.shellReleasePath)
+	if err != nil {
+		return fmt.Errorf("shell release descriptor: %w", err)
+	}
+	claims := shellReleasePromotion{
+		Schema:               shellReleasePromotionSchema,
+		Action:               o.shellAction,
+		ExpectedCurrentBuild: o.expectedShellBuild,
+		Release:              release,
+	}
+	claimsRaw, err := json.Marshal(claims)
+	if err != nil {
+		return fmt.Errorf("marshal shell release claims: %w", err)
+	}
+	targetHash, err := hash32FromHex(release.SHA256)
+	if err != nil {
+		return fmt.Errorf("shell release sha256: %w", err)
+	}
+	publisher, err := loadPublisherKey(o.publisherKey)
+	if err != nil {
+		return fmt.Errorf("publisher key: %w", err)
+	}
+	destination, err := loadStorePubkey(o.storePubkey)
+	if err != nil {
+		return fmt.Errorf("store pubkey: %w", err)
+	}
+	envTTL := o.timeout + 2*time.Minute
+	if envTTL < 5*time.Minute {
+		envTTL = 5 * time.Minute
+	}
+	signed, err := envelope.Sign(envelope.KindArtifact, publisher, destination, envelope.SignOptions{
+		Body:        claimsRaw,
+		RequestHash: hex.EncodeToString(targetHash[:]),
+		TTL:         envTTL,
+		Chain: envelope.ChainEvidence{
+			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, defaultChainID),
+			ProgramID:    firstNonEmpty(publisher.Public().Ref.ProgramID, programIDB58),
+			VerifiedSlot: o.verifiedSlot,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("shell release envelope: %w", err)
+	}
+	response, status, err := postShellReleasePromotion(context.Background(), o, signed, claimsRaw)
+	if err != nil {
+		return fmt.Errorf("shell release POST: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("store rejected shell release %s: HTTP %d: %s", o.shellAction, status, strings.TrimSpace(string(response)))
+	}
+	if err := verifyPromotedShellManifest(context.Background(), o, destination, release, response); err != nil {
+		return err
+	}
+	if err := writeReceiptFile(o.receiptOut, response); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "SHELL RELEASE %s OK — compare-and-swap pointer and store signature verified (build %d)\n", strings.ToUpper(o.shellAction), release.Build)
+	return nil
+}
+
+func loadShellReleaseDescriptor(path string) (shellRelease, error) {
+	var release shellRelease
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return release, err
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&release); err != nil {
+		return release, err
+	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return release, errors.New("descriptor must contain exactly one JSON value")
+	}
+	if release.Build <= 0 || release.Size <= 0 {
+		return release, errors.New("build and size must be positive")
+	}
+	if !safeArtifactSegment(release.Class) || !safeArtifactSegment(release.Tarball) {
+		return release, errors.New("class and tarball must be safe path segments")
+	}
+	if release.Class != "shell" {
+		return release, errors.New("class must be shell")
+	}
+	if strings.TrimSpace(release.Version) == "" {
+		return release, errors.New("version must not be empty")
+	}
+	if release.SHA256 != strings.ToLower(release.SHA256) {
+		return release, errors.New("sha256 must be lowercase hex")
+	}
+	if release.Channel != "dev" && release.Channel != "stable" {
+		return release, errors.New("channel must be dev or stable")
+	}
+	if _, err := hash32FromHex(release.SHA256); err != nil {
+		return release, fmt.Errorf("sha256: %w", err)
+	}
+	return release, nil
+}
+
+func postShellReleasePromotion(ctx context.Context, o options, signed envelope.Signed, claims []byte) ([]byte, int, error) {
+	body, err := json.Marshal(shellReleasePromotionRequest{
+		Envelope: signed, ClaimsB64: base64.StdEncoding.EncodeToString(claims),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(o.store, "/")+"/publish/shell-release", bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := (&http.Client{Timeout: o.timeout}).Do(request)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer response.Body.Close()
+	raw, err := io.ReadAll(response.Body)
+	return raw, response.StatusCode, err
+}
+
+func verifyPromotedShellManifest(ctx context.Context, o options, destination identity.Public, release shellRelease, response []byte) error {
+	return verifyPromotedShellManifestWithAuthority(
+		ctx, o, destination, release, response, verify.NewRPCClient(o.rpcURL))
+}
+
+func verifyPromotedShellManifestWithAuthority(ctx context.Context, o options, destination identity.Public, release shellRelease, response []byte, authority storeOperatorAuthzFetcher) error {
+	dec := json.NewDecoder(bytes.NewReader(response))
+	dec.UseNumber()
+	var manifest map[string]any
+	if err := dec.Decode(&manifest); err != nil {
+		return fmt.Errorf("decode promoted shell manifest: %w", err)
+	}
+	signatureB64, ok := manifest["signature"].(string)
+	if !ok || signatureB64 == "" {
+		return errors.New("promoted shell manifest has no signature")
+	}
+	signature, err := base64.StdEncoding.DecodeString(signatureB64)
+	if err != nil || len(signature) != ed25519.SignatureSize {
+		return errors.New("promoted shell manifest signature is malformed")
+	}
+	delete(manifest, "signature")
+	var canonical bytes.Buffer
+	encoder := json.NewEncoder(&canonical)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(manifest); err != nil {
+		return fmt.Errorf("canonicalize promoted shell manifest: %w", err)
+	}
+	canonicalBytes := bytes.TrimSuffix(canonical.Bytes(), []byte("\n"))
+	storePub, err := destination.SignPublicKey()
+	if err != nil {
+		return fmt.Errorf("store signing key: %w", err)
+	}
+	if !ed25519.Verify(storePub, canonicalBytes, signature) {
+		return errors.New("promoted shell manifest signature does not verify against the store operator")
+	}
+	onChainPub, _, err := receiptAuthority(ctx, authority, o.licenseMint, o.domain)
+	if err != nil {
+		return fmt.Errorf("shell manifest store authority: %w", err)
+	}
+	if !bytes.Equal(onChainPub, storePub) {
+		return errors.New("shell manifest signer differs from on-chain store_authority")
+	}
+	build, ok := manifest["build"].(json.Number)
+	if !ok || build.String() != fmt.Sprintf("%d", release.Build) {
+		return fmt.Errorf("promoted manifest build does not select %d", release.Build)
+	}
+	size, ok := manifest["size"].(json.Number)
+	if !ok || size.String() != fmt.Sprintf("%d", release.Size) {
+		return fmt.Errorf("promoted manifest size does not select %d", release.Size)
+	}
+	expectedURL := strings.TrimRight(o.store, "/") + "/releases/" + release.Class + "/" + release.Tarball
+	for field, want := range map[string]string{
+		"sha256": release.SHA256, "version": release.Version, "channel": release.Channel,
+		"tarball": release.Tarball, "bundle_url": expectedURL,
+	} {
+		if got, _ := manifest[field].(string); got != want {
+			return fmt.Errorf("promoted manifest %s=%q, want %q", field, got, want)
+		}
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(o.store, "/")+"/update/manifest.json", nil)
+	if err != nil {
+		return err
+	}
+	live, err := (&http.Client{Timeout: o.timeout}).Do(request)
+	if err != nil {
+		return fmt.Errorf("read back promoted manifest: %w", err)
+	}
+	defer live.Body.Close()
+	liveRaw, err := io.ReadAll(live.Body)
+	if err != nil {
+		return fmt.Errorf("read back promoted manifest body: %w", err)
+	}
+	if live.StatusCode != http.StatusOK || !bytes.Equal(liveRaw, response) {
+		return fmt.Errorf("promoted manifest read-back mismatch (HTTP %d)", live.StatusCode)
+	}
 	return nil
 }
 

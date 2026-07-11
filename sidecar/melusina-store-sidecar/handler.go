@@ -140,6 +140,7 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
+	mux.HandleFunc("/publish/shell-release", svc.handlePublishShellRelease)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
 	// manifest the install-side melusina-update-checker.py fetches + verifies

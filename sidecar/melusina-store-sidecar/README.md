@@ -60,6 +60,15 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   deployer and large sidecar artifacts must use multipart. Multipart streams
   end to end and is bounded at 512 MiB, avoiding a second in-memory copy of a
   200+ MiB shell bundle.
+- **SHELL POINTER PROMOTION / ROLLBACK:** `POST /publish/shell-release` is the
+  only write path for `update/shell-release.json`. A publisher-sealed claim
+  binds the action, expected current build and exact target descriptor. The
+  store requires the target bundle to exist byte-for-byte under `/releases`,
+  requires its `InstallerReleaseEntry` Active, and atomically compare-and-swaps
+  the pointer. Normal promotion is monotonic; downgrade requires an explicit
+  signed `rollback` action. The response is the operator-signed update manifest
+  and the paired `submit --shell-release ...` client verifies both its on-chain
+  store authority and exact live read-back.
 - **Ops:** `GET /healthz`
 
 ## Status

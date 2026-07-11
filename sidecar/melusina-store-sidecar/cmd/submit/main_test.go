@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -304,6 +305,81 @@ func TestBuildInstallerArtifactEnvelopeBindsPathAndHash(t *testing.T) {
 	if signed.Payload.RequestHashHex != hex.EncodeToString(artifactHash[:]) ||
 		signed.Payload.BodyHashHex != hex.EncodeToString(claimsHash[:]) {
 		t.Fatal("installer envelope did not bind exact bytes and immutable path claims")
+	}
+}
+
+func TestParseFlagsShellReleaseModeIsDistinctAndCASGuarded(t *testing.T) {
+	base := []string{
+		"--store", "https://store.example.org",
+		"--shell-release", "/tmp/shell-release.json",
+		"--expected-current-build", "51",
+		"--publisher-key", "/tmp/publisher.json",
+		"--store-pubkey", "/tmp/store.json",
+		"--license-mint", randPubkeyB58(t),
+		"--rpc-url", "https://api.devnet.solana.com",
+	}
+	opts, err := parseFlags(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.shellAction != "promote" || opts.expectedShellBuild != 51 {
+		t.Fatalf("unexpected shell options: %+v", opts)
+	}
+	if _, err := parseFlags(append(append([]string{}, base...), "--spk", "/tmp/app.spk")); err == nil {
+		t.Fatal("shell release mode accepted app publish flags")
+	}
+	rollback := append(append([]string{}, base...), "--shell-action", "rollback")
+	if opts, err := parseFlags(rollback); err != nil || opts.shellAction != "rollback" {
+		t.Fatalf("rollback mode rejected: opts=%+v err=%v", opts, err)
+	}
+}
+
+func TestVerifyPromotedShellManifestChecksSignatureAuthorityAndReadback(t *testing.T) {
+	licenseMint := randPubkeyB58(t)
+	domain := "store.example.org"
+	operator := newTestIdentity(t, "store-operator", licenseMint, domain)
+	releaseBytes := []byte("shell build 52")
+	digest := sha256.Sum256(releaseBytes)
+	release := shellRelease{
+		Build: 52, Version: "build-52", Tarball: "sandstorm-52.tar.xz",
+		SHA256: hex.EncodeToString(digest[:]), Size: int64(len(releaseBytes)),
+		Class: "shell", Channel: "dev",
+	}
+	var response []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/update/manifest.json" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write(response)
+	}))
+	defer server.Close()
+	payload := map[string]any{
+		"build": release.Build, "version": release.Version, "channel": release.Channel,
+		"tarball": release.Tarball, "sha256": release.SHA256, "size": release.Size,
+		"bundle_url": server.URL + "/releases/shell/" + release.Tarball,
+	}
+	canonical, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload["signature"] = base64.StdEncoding.EncodeToString(operator.Sign(canonical))
+	response, err = json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, reader, licenseMint, domain, signPub32(t, operator))
+	o := options{store: server.URL, timeout: 10 * time.Second, licenseMint: licenseMint, domain: domain}
+	if err := verifyPromotedShellManifestWithAuthority(
+		context.Background(), o, operator.Public(), release, response, reader); err != nil {
+		t.Fatal(err)
+	}
+
+	other := newTestIdentity(t, "other-store", licenseMint, domain)
+	if err := verifyPromotedShellManifestWithAuthority(
+		context.Background(), o, other.Public(), release, response, reader); err == nil {
+		t.Fatal("manifest verified under an unauthorized store key")
 	}
 }
 

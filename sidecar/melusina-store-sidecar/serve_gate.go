@@ -72,8 +72,10 @@ type serveGate struct {
 // SPK: its on-chain-anchored RELEASE.json claim and the EXACT metadata.json bytes
 // the on-chain AppHash binds (both are part of the catalog the operator serves).
 type servedApp struct {
-	rel      ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
-	metadata []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	rel        ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
+	metadata   []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	spkPath    string      // current dist package or private retained candidate
+	validUntil int64       // rollback release deadline; 0 for current catalog entries
 }
 
 // errServeNoChainReader marks the fail-closed "no chain configured" condition,
@@ -129,7 +131,35 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fp := filepath.Join(g.distDir, "packages", base)
+	defaultPath := filepath.Join(g.distDir, "packages", base)
+
+	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
+	// reader to verify it (503, distinct from a 403 verification refusal).
+	if g.cr == nil {
+		http.Error(w, "store serve-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	// Resolve current catalog packages and rollback-window packages. A retained
+	// previous release lives outside the public dist tree and is reachable only
+	// through this authenticated resolver while its rollout deadline is live.
+	app, ok := g.lookupApp(base)
+	if !ok {
+		if _, err := os.Stat(defaultPath); errors.Is(err, os.ErrNotExist) {
+			g.fileServer.ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
+		return
+	}
+	if app.validUntil > 0 && g.now().UTC().Unix() >= app.validUntil {
+		http.NotFound(w, r)
+		return
+	}
+	fp := app.spkPath
+	if fp == "" {
+		fp = defaultPath
+	}
 	f, err := os.Open(fp)
 	if err != nil {
 		// Missing/unreadable SPK: let the FileServer render the canonical 404.
@@ -145,22 +175,6 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if st.IsDir() {
 		// A directory under /packages/ is not an SPK — preserve static behavior.
 		g.fileServer.ServeHTTP(w, r)
-		return
-	}
-
-	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
-	// reader to verify it (503, distinct from a 403 verification refusal).
-	if g.cr == nil {
-		http.Error(w, "store serve-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
-		return
-	}
-
-	// Resolve the on-chain-anchored catalog app for this packageId. A miss means
-	// these bytes are not an anchored catalog app (orphan / drifted under a fresh
-	// packageId) — fail closed.
-	app, ok := g.lookupApp(base)
-	if !ok {
-		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
 		return
 	}
 
@@ -391,8 +405,46 @@ func (g *serveGate) rebuildAppIndex() {
 				if err != nil {
 					continue
 				}
-				idx[pkgID] = servedApp{rel: rel, metadata: meta}
+				idx[pkgID] = servedApp{
+					rel:      rel,
+					metadata: meta,
+					spkPath:  filepath.Join(g.distDir, "packages", pkgID),
+				}
 			}
+		}
+	}
+	// Add only the immediately previous release from each bounded rollout record.
+	// The current public index wins on packageId collision. loadStagedApp verifies
+	// the private bytes against their content-addressed manifest before they enter
+	// the resolver; gate() still requires the previous ReleaseEntry to be Active.
+	rolloutFiles, _ := filepath.Glob(filepath.Join(rolloutStateDir(g.cfg), "*.json"))
+	for _, stateFile := range rolloutFiles {
+		appID := strings.TrimSuffix(filepath.Base(stateFile), ".json")
+		state, err := loadAppRollout(g.cfg, appID)
+		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
+			continue
+		}
+		manifest, spk, meta, releaseBytes, err := loadStagedApp(g.cfg.PrivateStageDir, state.PreviousStageID)
+		if err != nil || manifest.AppID != appID {
+			continue
+		}
+		pkgID := strings.ToLower(metadataPackageID(meta))
+		if !isSafePathSegment(pkgID) {
+			continue
+		}
+		var rel ReleaseJSON
+		if json.Unmarshal(releaseBytes, &rel) != nil {
+			continue
+		}
+		if _, exists := idx[pkgID]; exists {
+			continue
+		}
+		_ = spk // loadStagedApp already verified the exact private SPK bytes.
+		idx[pkgID] = servedApp{
+			rel:        rel,
+			metadata:   meta,
+			spkPath:    filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
+			validUntil: state.PreviousValidUntil,
 		}
 	}
 	g.mu.Lock()

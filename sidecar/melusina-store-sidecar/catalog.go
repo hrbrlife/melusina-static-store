@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+type catalogAssembler interface {
+	Assemble(context.Context) (string, error)
+}
+
 // CatalogAssembler runs build-store.sh — the static_store catalog assembler —
 // from the repo root after a publish has PASSED the on-chain gate. It is a
 // CONVENIENCE assembler that aggregates submodule metadata + SPKs into

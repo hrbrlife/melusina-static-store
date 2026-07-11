@@ -37,10 +37,15 @@
 # Usage:
 #   self-publish.sh <app-source-dir> \
 #     --keys <dev-publish-keys-dir> \
-#     [--bump patch|minor|major|none] \
+#     [--bump none]                    # versions must already be committed \
 #     [--skip ceremony] \
 #     [--catalog-path <dir>]           # override auto-detected static_store
 #                                       #   packages/<dev>/<repo>/<slug> dir
+#     [--shell-url <url>]               # target Melusina shell
+#     [--shell-domain <host>]           # wallet-login envelope domain
+#     [--admin-wallet <keypair.json>]   # on-chain install admin
+#     [--canary-grain <grainId>]        # optional deterministic canary
+#     [--publish-only]                  # stop before install/canary
 #     [--dry-run]
 #
 # <dev-publish-keys-dir> must contain (see dev-publish-keys/README.md in
@@ -70,11 +75,12 @@ export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1704067200}"
 
 APP_DIR=""
 KEYS_DIR=""
-BUMP="patch"
+BUMP="none"
 SKIP=""
 CATALOG_PATH_OVERRIDE=""
 DRY_RUN=false
 REVOKE_STALE=false
+PUBLISH_ONLY=false
 STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
 STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
 STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN}"
@@ -82,6 +88,11 @@ STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2
 # (all apps share master mint B7Bby… + vault 3jfN9rc…, so the ATA is fixed).
 # revoke_release_entry's authority-owns-master constraint keys on it.
 MASTER_NFT_ATA="${MELUSINA_MASTER_NFT_ATA:-EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn}"
+SHELL_URL="${MELUSINA_SHELL_URL:-${SHELL_URL:-}}"
+SHELL_DOMAIN="${MELUSINA_DOMAIN:-${DOMAIN:-}}"
+ADMIN_WALLET="${ADMIN_WALLET_KEYPAIR:-}"
+CANARY_GRAIN="${MELUSINA_APP_CANARY_GRAIN_ID:-}"
+ROLLOUT_DRIVER="${MELUSINA_APP_ROLLOUT_DRIVER:-$(dirname "$STATIC_STORE_ROOT")/Melusina/deployer/scripts/rollout-app-release.mjs}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -90,6 +101,11 @@ while [[ $# -gt 0 ]]; do
     --skip)         SKIP="$2"; shift 2 ;;
     --catalog-path) CATALOG_PATH_OVERRIDE="$2"; shift 2 ;;
     --revoke-stale) REVOKE_STALE=true; shift ;;
+    --shell-url)     SHELL_URL="$2"; shift 2 ;;
+    --shell-domain)  SHELL_DOMAIN="$2"; shift 2 ;;
+    --admin-wallet)  ADMIN_WALLET="$2"; shift 2 ;;
+    --canary-grain)  CANARY_GRAIN="$2"; shift 2 ;;
+    --publish-only)  PUBLISH_ONLY=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     -h|--help) sed -n '/^# Usage:/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
     *) [[ -z "$APP_DIR" ]] || { echo "unknown arg: $1" >&2; exit 2; }; APP_DIR="$1"; shift ;;
@@ -98,6 +114,17 @@ done
 
 [[ -n "$APP_DIR" ]] || { echo "FATAL: app source dir required" >&2; exit 2; }
 [[ -d "$APP_DIR" ]] || { echo "FATAL: not a directory: $APP_DIR" >&2; exit 2; }
+[[ "$BUMP" == "none" ]] || {
+  echo "FATAL: release-time version mutation is disabled. Run version-bump.sh, test, commit, then publish with --bump none." >&2
+  exit 2
+}
+if ! $DRY_RUN && git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  [[ -z "$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)" ]] || {
+    echo "FATAL: app source tree is dirty; publish only from an exact committed revision: $APP_DIR" >&2
+    git -C "$APP_DIR" status --short >&2
+    exit 2
+  }
+fi
 [[ -n "$KEYS_DIR" ]] || { echo "FATAL: --keys <dev-publish-keys-dir> required" >&2; exit 2; }
 [[ -d "$KEYS_DIR" ]] || { echo "FATAL: --keys dir not found: $KEYS_DIR" >&2; exit 2; }
 for f in publisher.json reviewer-1.json reviewer-2.json core-app-team-squads.json publisher.key.json store-pubkey.json; do
@@ -111,6 +138,18 @@ warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
 fail() { printf '\033[0;31m[FAIL]\033[0m %s\n' "$*"; exit 1; }
 step() { printf '\033[1;36m[STEP %s]\033[0m %s\n' "$1" "$2"; }
 
+$REVOKE_STALE && fail "--revoke-stale is retired: the prior release must remain Active through canary rollout and the rollback window"
+if ! $PUBLISH_ONLY && ! $DRY_RUN; then
+  [[ -n "$SHELL_URL" ]] || fail "--shell-url (or MELUSINA_SHELL_URL) is required for verified install/canary"
+  if [[ -z "$SHELL_DOMAIN" ]]; then
+    SHELL_DOMAIN="$(python3 -c 'import sys,urllib.parse;print(urllib.parse.urlparse(sys.argv[1]).hostname or "")' "$SHELL_URL")"
+  fi
+  [[ -n "$SHELL_DOMAIN" ]] || fail "--shell-domain (or MELUSINA_DOMAIN) is required"
+  [[ -n "$ADMIN_WALLET" && -f "$ADMIN_WALLET" ]] \
+    || fail "--admin-wallet (or ADMIN_WALLET_KEYPAIR) must name the install-admin keypair"
+  [[ -f "$ROLLOUT_DRIVER" ]] || fail "app rollout driver not found: $ROLLOUT_DRIVER"
+fi
+
 cd "$APP_DIR"
 APP_SLUG="$(basename "$APP_DIR")"
 info "App: $APP_SLUG ($APP_DIR)"
@@ -119,14 +158,8 @@ info "Store: $STORE_URL   Bump: $BUMP   Dry-run: $DRY_RUN"
 echo
 
 # ---- Step 1: version bump ---------------------------------------------------
-step 1 "version bump"
-if [[ "$BUMP" == "none" ]]; then
-  info "  skipping (--bump none)"
-elif $DRY_RUN; then
-  "$SCRIPT_DIR/version-bump.sh" "$APP_DIR" "$BUMP" --dry-run
-else
-  "$SCRIPT_DIR/version-bump.sh" "$APP_DIR" "$BUMP"
-fi
+step 1 "verify committed version"
+info "  source version is immutable during publish (--bump none)"
 echo
 
 # ---- Step 2: build + pack ---------------------------------------------------
@@ -163,78 +196,8 @@ fi
 info "  catalog staging dir: $CAT_PATH"
 echo
 
-# ---- Step 4: pearl ceremony (Squads sign, in-repo dev keys) -----------------
-step 4 "pearl ceremony (3-of-4 Squads, in-repo dev keys)"
-if skip_step ceremony; then
-  warn "  --skip ceremony"
-else
-  info "  staging fresh SPK into catalog"
-  $DRY_RUN || "$STATIC_STORE_ROOT/scripts/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH" \
-    || fail "  stage-into-catalog failed"
-  CEREMONY_VER="$(python3 -c 'import json;print(json.load(open("'"$APP_DIR"'/metadata.json")).get("marketingVersion","0.0.0"))' 2>/dev/null || echo 0.0.0)"
-  if $DRY_RUN; then
-    info "  DRY RUN — would run pearl-app-ceremony.sh version=$CEREMONY_VER"
-  else
-    APP_CATALOG_PATH="$CAT_PATH" APP_SLUG="$APP_SLUG" MELUSINA_VERSION="$CEREMONY_VER" \
-      MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
-      MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
-      MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
-      MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
-      "$STATIC_STORE_ROOT/scripts/pearl-app-ceremony.sh" \
-      || fail "  pearl-app-ceremony.sh failed — see /tmp/pearl-ceremony-$APP_SLUG/"
-  fi
-fi
-echo
-
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "  MELUSINA_STORE_RPC_URL (or MELUSINA_RPC_URL) required for receipt verification"
-
-# ---- Step 4b: revoke stale Active ReleaseEntries (OPT-IN) --------------------
-# Apps have NO atomic on-chain supersede (unlike installers). The store's
-# verifyReleaseVersionForward gate rejects a publish while ANY other Active
-# ReleaseEntry exists for the same app_id — so a version-bump publish needs the
-# PRIOR version's entry revoked first. This step registers-then-revokes: the
-# ceremony (Step 4) already registered the NEW entry, so here we revoke every
-# OTHER Active entry for this app_id, keeping only the just-registered one.
-#
-# WHY OPT-IN (--revoke-stale), NOT default: it is only SAFE when the store
-# actually PERSISTS-on-publish (store-sidecar >= commit b471999f). On an older
-# store binary the POST returns a valid receipt but never writes the new bytes,
-# so revoking the prior entry FIRST would strand the still-served old bytes with
-# a Revoked on-chain entry → the serve-gate then 403s the live app. Only pass
-# --revoke-stale once the deployed store persists on publish (verify: a prior
-# self-publish actually changed /apps/index.json). See dev-publish-keys/README.
-if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
-  step 4b "revoke stale Active ReleaseEntries (--revoke-stale)"
-  NEW_PDA="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/RELEASE.json")).get("releaseEntryPda",""))' 2>/dev/null || true)"
-  [[ -n "$NEW_PDA" ]] || fail "  --revoke-stale: could not read the just-registered releaseEntryPda from $CAT_PATH/RELEASE.json"
-  LIST_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/list-active-releases"
-  if [[ ! -x "$LIST_BIN" ]]; then
-    info "  building list-active-releases"
-    (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/list-active-releases ./cmd/list-active-releases) \
-      || fail "  list-active-releases build failed"
-  fi
-  ACTIVES="$("$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" 2>/dev/null | python3 -c 'import json,sys
-for line in sys.stdin:
-    line=line.strip()
-    if line:
-        print(json.loads(line)["pda"])' 2>/dev/null || true)"
-  for pda in $ACTIVES; do
-    [[ "$pda" == "$NEW_PDA" ]] && continue
-    info "  revoking stale Active ReleaseEntry $pda"
-    STALE_RELEASE_ENTRY_PDA="$pda" MASTER_NFT_ATA="$MASTER_NFT_ATA" MELUSINA_RPC_URL="$RPC_URL" \
-      MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
-      MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
-      MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
-      MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
-      "$STATIC_STORE_ROOT/scripts/revoke-release-ceremony.sh" "$APP_SLUG-revoke" \
-      || fail "  revoke of stale $pda failed"
-  done
-  echo
-fi
-
-# ---- Step 5: POST /publish (sealed-v3, single writer, chain-verified) -------
-step 5 "POST $STORE_URL/publish"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 if [[ ! -x "$SUBMIT_BIN" ]]; then
   info "  building submit client"
@@ -242,6 +205,70 @@ if [[ ! -x "$SUBMIT_BIN" ]]; then
     mkdir -p bin && go build -o bin/submit ./cmd/submit) \
     || fail "  submit-build failed"
 fi
+CAT_REL="${CAT_PATH#"$STATIC_STORE_ROOT/packages/"}"
+IFS=/ read -r CAT_DEVELOPER CAT_REPO CAT_SLUG CAT_EXTRA <<<"$CAT_REL"
+[[ -n "$CAT_DEVELOPER" && -n "$CAT_REPO" && -n "$CAT_SLUG" && -z "${CAT_EXTRA:-}" ]] \
+  || fail "  catalog path must be exactly packages/<developer>/<repo>/<slug>: $CAT_PATH"
+PUBLISH_RUN_DIR="${MELUSINA_PUBLISH_RUN_DIR:-/tmp/melusina-publish-$APP_SLUG-$$}"
+CEREMONY_DIR="$PUBLISH_RUN_DIR/ceremony"
+STAGE_RECEIPT="$PUBLISH_RUN_DIR/stage-receipt.json"
+PROMOTION_RECEIPT="$PUBLISH_RUN_DIR/promotion-receipt.json"
+FINAL_RECEIPT="$PUBLISH_RUN_DIR/publish-receipt.json"
+INSTALL_ROLLOUT_RECEIPT="$PUBLISH_RUN_DIR/install-rollout-receipt.json"
+$DRY_RUN || mkdir -p "$PUBLISH_RUN_DIR"
+
+# ---- Step 4: pearl ceremony (Squads sign, in-repo dev keys) -----------------
+step 4 "private stage → pearl ceremony (3-of-4 Squads)"
+if skip_step ceremony; then
+	warn "  --skip ceremony (using the existing RELEASE.json; chain entry must already be Active)"
+	$DRY_RUN || {
+		[[ -f "$CAT_PATH/RELEASE.json" ]] || fail "  --skip ceremony requires $CAT_PATH/RELEASE.json"
+		"$SUBMIT_BIN" --stage \
+			--store "$STORE_URL" --spk "$CAT_PATH/app.spk" --metadata "$CAT_PATH/metadata.json" --release "$CAT_PATH/RELEASE.json" \
+			--publisher-key "$KEYS_DIR/publisher.key.json" --store-pubkey "$KEYS_DIR/store-pubkey.json" \
+			--license-mint "$STORE_LICENSE_MINT" --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL" --timeout 480s \
+			--developer "$CAT_DEVELOPER" --repo "$CAT_REPO" --slug "$CAT_SLUG" --receipt-out "$STAGE_RECEIPT" \
+			|| fail "  private stage rejected"
+	}
+else
+	info "  staging fresh SPK into catalog"
+	$DRY_RUN || "$STATIC_STORE_ROOT/scripts/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH" \
+		|| fail "  stage-into-catalog failed"
+	CEREMONY_VER="$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d.get("marketingVersion") or d.get("version") or "")' "$CAT_PATH/metadata.json")"
+	[[ -n "$CEREMONY_VER" ]] || fail "  staged catalog metadata has no release version"
+	if $DRY_RUN; then
+		info "  DRY RUN — would prepare RELEASE.json, privately stage it, then execute the Squads ceremony"
+	else
+		OUTPUT_DIR="$CEREMONY_DIR" COPY_TO_CATALOG=0 CEREMONY_MODE=prepare \
+			APP_CATALOG_PATH="$CAT_PATH" APP_SLUG="$CAT_SLUG" MELUSINA_VERSION="$CEREMONY_VER" \
+			MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
+			MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
+			MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
+			MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
+			"$STATIC_STORE_ROOT/scripts/pearl-app-ceremony.sh" \
+			|| fail "  pearl-app-ceremony prepare failed"
+
+		"$SUBMIT_BIN" --stage \
+			--store "$STORE_URL" --spk "$CEREMONY_DIR/app/app.spk" --metadata "$CEREMONY_DIR/app/metadata.json" --release "$CEREMONY_DIR/app/RELEASE.json" \
+			--publisher-key "$KEYS_DIR/publisher.key.json" --store-pubkey "$KEYS_DIR/store-pubkey.json" \
+			--license-mint "$STORE_LICENSE_MINT" --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL" --timeout 480s \
+			--developer "$CAT_DEVELOPER" --repo "$CAT_REPO" --slug "$CAT_SLUG" --receipt-out "$STAGE_RECEIPT" \
+			|| fail "  private stage rejected — chain was NOT mutated"
+
+		OUTPUT_DIR="$CEREMONY_DIR" COPY_TO_CATALOG=1 CEREMONY_MODE=execute \
+		APP_CATALOG_PATH="$CAT_PATH" APP_SLUG="$CAT_SLUG" MELUSINA_VERSION="$CEREMONY_VER" \
+		MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
+      MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
+      MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
+      MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
+		"$STATIC_STORE_ROOT/scripts/pearl-app-ceremony.sh" \
+			|| fail "  pearl-app-ceremony.sh failed — see $CEREMONY_DIR"
+	fi
+fi
+echo
+
+# ---- Step 5: POST /publish (sealed-v3, single writer, chain-verified) -------
+step 5 "POST $STORE_URL/publish"
 if $DRY_RUN; then
   info "  DRY RUN — would POST $CAT_PATH/{app.spk,metadata.json,RELEASE.json} to $STORE_URL/publish"
 else
@@ -254,9 +281,11 @@ else
     --store-pubkey "$KEYS_DIR/store-pubkey.json" \
     --license-mint "$STORE_LICENSE_MINT" \
     --domain "$STORE_DOMAIN" \
-    --rpc-url "$RPC_URL" \
-    --timeout 480s \
-    || fail "  sealed submit rejected by $STORE_URL — see output above (check=... names the failing gate)"
+		--rpc-url "$RPC_URL" \
+		--timeout 480s \
+		--developer "$CAT_DEVELOPER" --repo "$CAT_REPO" --slug "$CAT_SLUG" \
+		--receipt-out "$PROMOTION_RECEIPT" \
+		|| fail "  sealed submit rejected by $STORE_URL — see output above (check=... names the failing gate)"
 fi
 echo
 
@@ -267,9 +296,13 @@ if $DRY_RUN; then
 else
   EXPECT_VER="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("marketingVersion",""))')"
   EXPECT_SHA="$(sha256sum "$CAT_PATH/app.spk" | awk '{print $1}')"
-  SERVED_JSON="$(curl -fsS --max-time 20 "$STORE_URL/apps/index.json")" \
-    || fail "  GET $STORE_URL/apps/index.json failed"
-  APP_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("appId",""))')"
+	SERVED_INDEX="$PUBLISH_RUN_DIR/served-index.json"
+	curl -fsS --max-time 20 -o "$SERVED_INDEX" "$STORE_URL/apps/index.json" \
+		|| fail "  GET $STORE_URL/apps/index.json failed"
+	SERVED_JSON="$(cat "$SERVED_INDEX")"
+	SERVED_INDEX_SHA="$(sha256sum "$SERVED_INDEX" | awk '{print $1}')"
+	APP_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("appId",""))')"
+	PACKAGE_ID="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/metadata.json")).get("packageId",""))')"
   SERVED_VER="$(python3 -c "
 import json,sys
 d=json.loads(sys.argv[1])
@@ -281,9 +314,134 @@ for a in apps:
 " "$SERVED_JSON" 2>/dev/null || true)"
   [[ "$SERVED_VER" == "$EXPECT_VER" ]] \
     || fail "  served index.json version '$SERVED_VER' != expected '$EXPECT_VER' — publish did not reach the served catalog"
-  ok "  served index.json shows $APP_SLUG $SERVED_VER (matches)"
-  info "  expected app.spk sha256: $EXPECT_SHA (compare against the Active on-chain ReleaseEntry AppHash before declaring HT14 done)"
+	ok "  served index.json shows $APP_SLUG $SERVED_VER (matches)"
+	SERVED_SPK="$PUBLISH_RUN_DIR/served.spk"
+	SERVED_HEADERS="$PUBLISH_RUN_DIR/served.headers"
+	curl -fsS --max-time 120 -D "$SERVED_HEADERS" -o "$SERVED_SPK" "$STORE_URL/packages/$PACKAGE_ID" \
+		|| fail "  served package fetch failed for $PACKAGE_ID"
+	SERVED_SHA="$(sha256sum "$SERVED_SPK" | awk '{print $1}')"
+	[[ "$SERVED_SHA" == "$EXPECT_SHA" ]] || fail "  served package sha256 $SERVED_SHA != expected $EXPECT_SHA"
+	grep -qi '^x-store-gate:[[:space:]]*verified' "$SERVED_HEADERS" \
+		|| fail "  served package lacks X-Store-Gate: verified"
+	ok "  served package bytes + on-chain serve gate verified"
+	SERVED_POINTER="$PUBLISH_RUN_DIR/served-catalog-pointer.json"
+	curl -fsS --max-time 20 -o "$SERVED_POINTER" "$STORE_URL/apps/pointers/$APP_ID.json" \
+		|| fail "  signed catalog pointer is not publicly served for $APP_ID"
+	python3 - "$PROMOTION_RECEIPT" "$SERVED_POINTER" "$SERVED_INDEX_SHA" "$APP_ID" "$PACKAGE_ID" <<'PY' \
+		|| fail "  public catalog pointer does not match the verified promotion receipt/index"
+import json, sys
+promotion_path, pointer_path, index_sha, app_id, package_id = sys.argv[1:]
+promotion = json.load(open(promotion_path))
+pointer = json.load(open(pointer_path))
+assert promotion.get("catalog") == pointer, "served pointer differs from store-signed promotion pointer"
+assert pointer.get("catalogSha256") == index_sha, "pointer does not bind exact served apps/index.json"
+assert pointer.get("appId") == app_id, "pointer appId mismatch"
+assert pointer.get("packageId") == package_id, "pointer packageId mismatch"
+assert pointer.get("operatorSignature"), "pointer signature missing"
+PY
+	ok "  signed catalog pointer binds exact index + appId/packageId"
+
+		SOURCE_REV="$(git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || true)"
+		SOURCE_DIRTY=false
+		[[ -z "$(git -C "$APP_DIR" status --porcelain 2>/dev/null || true)" ]] || SOURCE_DIRTY=true
+		python3 - "$STAGE_RECEIPT" "$PROMOTION_RECEIPT" "$CEREMONY_DIR/result.json" "$FINAL_RECEIPT" \
+			"$APP_SLUG" "$APP_ID" "$PACKAGE_ID" "$SERVED_VER" "$SERVED_SHA" "$SERVED_INDEX_SHA" \
+			"$SOURCE_REV" "$SOURCE_DIRTY" "$SOURCE_DATE_EPOCH" <<'PY'
+import json, os, sys, time
+stage_path, promotion_path, ceremony_path, out_path, slug, app_id, package_id, version, served_sha, index_sha, source_rev, source_dirty, source_epoch = sys.argv[1:]
+def load(path):
+    if not path or not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return json.load(f)
+doc = {
+    "schema": "melusina-app-publish-receipt-v1",
+    "createdAt": int(time.time()),
+    "app": {"slug": slug, "appId": app_id, "packageId": package_id, "version": version},
+    "buildProof": {
+        "sourceRevision": source_rev or None,
+        "sourceDirty": source_dirty == "true",
+        "sourceDateEpoch": int(source_epoch),
+        "spkSha256": served_sha,
+    },
+    "stage": load(stage_path),
+    "squads": load(ceremony_path),
+    "promotion": load(promotion_path),
+    "serveProof": {"sha256": served_sha, "storeGate": "verified", "catalogSha256": index_sha},
+    "catalogProof": None,
+    "rolloutProof": None,
+    "installProof": None,
+    "grainCanaryProof": None,
+    "pearlUpgradeProof": None,
+    "acceptance": {"status": "pending-install-canary"},
+}
+if isinstance(doc["promotion"], dict):
+    doc["catalogProof"] = doc["promotion"].get("catalog")
+    doc["rolloutProof"] = doc["promotion"].get("rollout")
+tmp = out_path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(doc, f, indent=2, sort_keys=True)
+    f.write("\n")
+os.chmod(tmp, 0o600)
+os.replace(tmp, out_path)
+PY
+		ok "  machine receipt: $FINAL_RECEIPT"
 fi
 echo
 
-ok "self-publish done for $APP_SLUG"
+# ---- Step 7: verified install + canary + remaining pearls --------------------
+step 7 "verified appId install + authz canary rollout"
+if $PUBLISH_ONLY; then
+  warn "  --publish-only: release is catalog-current but NOT accepted; prior release remains Active"
+elif $DRY_RUN; then
+  info "  DRY RUN — would run $ROLLOUT_DRIVER against $SHELL_URL for appId=$APP_ID"
+else
+  APP_HASH="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["appHash"])' "$SERVED_POINTER")"
+  rollout_args=(
+    --shell-url "$SHELL_URL"
+    --domain "$SHELL_DOMAIN"
+    --wallet "$ADMIN_WALLET"
+    --catalog-base "$STORE_URL"
+    --app-id "$APP_ID"
+    --app-hash "$APP_HASH"
+    --version "$SERVED_VER"
+    --out "$INSTALL_ROLLOUT_RECEIPT"
+  )
+  [[ -z "$CANARY_GRAIN" ]] || rollout_args+=(--canary-grain "$CANARY_GRAIN")
+  node "$ROLLOUT_DRIVER" "${rollout_args[@]}" \
+    || fail "  verified install/canary rollout failed; prior release remains Active for rollback"
+
+  python3 - "$FINAL_RECEIPT" "$INSTALL_ROLLOUT_RECEIPT" <<'PY'
+import json, os, sys, time
+publish_path, rollout_path = sys.argv[1:]
+with open(publish_path) as f:
+    publish = json.load(f)
+with open(rollout_path) as f:
+    rollout = json.load(f)
+assert rollout.get("schema") == "melusina-app-install-rollout-receipt-v1"
+assert rollout.get("app", {}).get("appId") == publish.get("app", {}).get("appId")
+assert rollout.get("app", {}).get("packageId") == publish.get("app", {}).get("packageId")
+publish["installProof"] = rollout.get("installProof")
+publish["grainCanaryProof"] = rollout.get("grainCanaryProof")
+publish["pearlUpgradeProof"] = rollout.get("upgradeProof")
+publish["acceptance"] = {
+    "status": "accepted",
+    "acceptedAt": int(time.time()),
+    "installer": rollout.get("installer"),
+}
+tmp = publish_path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(publish, f, indent=2, sort_keys=True)
+    f.write("\n")
+os.chmod(tmp, 0o600)
+os.replace(tmp, publish_path)
+PY
+  ok "  verified install + canary acceptance appended to $FINAL_RECEIPT"
+fi
+echo
+
+if $PUBLISH_ONLY; then
+  ok "self-publish staged + activated for $APP_SLUG; acceptance remains pending"
+else
+  ok "self-publish accepted for $APP_SLUG; prior release remains Active through the signed rollback window"
+fi

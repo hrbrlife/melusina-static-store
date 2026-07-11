@@ -20,7 +20,7 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
 
 ## Surfaces
 - **READ** (public, unauthenticated): static assets — `GET /`, `/apps/index.json`,
-  `/attest/<appId>/RELEASE.json`, `/verifier/*` — are byte-identical to the static
+  `/apps/pointers/<appId>.json`, `/attest/<appId>/RELEASE.json`, `/verifier/*` — are byte-identical to the static
   store. **SPK fetches `/packages/<packageId>` are GATED AT SERVE TIME** (`serve_gate.go`,
   B1-01): the gate resolves the served packageId → its `signatures/<appId>/metadata.json`
   + `attest/<appId>/RELEASE.json`, recomputes the on-chain **AppHash** — the TREE-HASH over
@@ -31,22 +31,48 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   SPK or tampered `metadata.json` (recomputed AppHash ≠ the on-chain-anchored `appHash`) is
   refused. A verified verdict is cached per-appHash for `serve_verify_ttl_seconds` (default
   60s; the revoke-visibility window).
-- **WRITE** (gated; the sidecar is the SINGLE WRITER): `POST /publish`
-  — sealed-v3 envelope from an attested publisher (+ the `metadata.json`) → recompute the
+- **WRITE / STAGE** (gated; private): `POST /publish/stage` verifies the publisher
+  envelope, exact SPK+metadata AppHash, store authority, blacklist and slot policy,
+  then fsyncs the candidate under `private_stage_dir/<stageId>/` (0700/0600) and
+  returns a domain-separated, operator-signed staging receipt. It never assembles
+  or serves the candidate and does not require the not-yet-created ReleaseEntry.
+- **WRITE / PROMOTE** (gated; the sidecar is the SINGLE WRITER): `POST /publish`
+  requires the exact candidate to have been privately staged, then recomputes the
   AppHash (tree-hash over `{app.spk, metadata.json}`) == on-chain `ReleaseEntry.app_hash`,
-  PDA Active, blacklist clear, version floor → invoke `build-store.sh` as an in-process
-  assembler → return a store-signed provenance receipt. **No `MELUSINA_ATTEST_OFFLINE`/
+  requires the new PDA Active, blacklist clear, and a strictly newer version. An
+  older release intentionally remains Active during `app_rollback_window_seconds`:
+  the public catalog selects the new package for installs while the serve gate can
+  still resolve the retained previous package from private storage, re-checking its
+  own Active ReleaseEntry on every uncached fetch. The store also writes
+  `apps/pointers/<appId>.json`: an operator-signed pointer binding appId,
+  packageId, AppHash, ReleaseHash and rollout window to the exact SHA-256 of the
+  assembled `apps/index.json`. Legacy catalog rows receive no pointer until they
+  pass this promotion path. Promotion returns signed stage, catalog, rollout and
+  provenance receipts. **No `MELUSINA_ATTEST_OFFLINE`/
   `SKIP_STEPS`/`SCAN_NOOP` bypass exists on this path.**
+- **IMMUTABLE DEPLOYMENT ARTIFACTS:** `POST /publish/installer` accepts a
+  publisher-sealed envelope plus `{class,name,artifact}` and requires an
+  **Active `InstallerReleaseEntry` for the exact artifact SHA-256**. It fsyncs
+  the bytes and publishes them at `/releases/<class>/<name>` with create-only
+  semantics: a byte-identical replay is idempotent, while different bytes at an
+  existing name are rejected. The store signs a domain-separated receipt that
+  binds class, name, hash and size. JSON uploads are capped at 64 MiB; shell,
+  deployer and large sidecar artifacts must use multipart. Multipart streams
+  end to end and is bounded at 512 MiB, avoiding a second in-memory copy of a
+  200+ MiB shell bundle.
 - **Ops:** `GET /healthz`
 
 ## Status
-Phase-1 spine: READ surface + **gated `/publish`** (C2.3). The receive path now
+Phase-1 spine: READ surface + **two-phase gated stage/promote** (C2.3). The receive path now
 verifies the publisher's signed artifact envelope, recomputes the AppHash (the
 tree-hash over `{app.spk, metadata.json}`) and requires it == the on-chain
 `ReleaseEntry.app_hash`, requires an Active `StoreOperatorAuthorization`
 whose `store_authority` is this sidecar's own operator key, requires a clear
-`BlacklistEntry`, then (single writer, under a mutex) runs `build-store.sh` as a
-convenience assembler and returns a store-signed provenance receipt over the raw
+`BlacklistEntry`, proves the exact bytes were privately persisted before chain
+activation, captures the prior release for a bounded rollback window, then (single
+writer, under a mutex) runs `build-store.sh` as a convenience assembler, signs the
+exact app catalog pointer selected by that assembly, and returns
+a store-signed provenance receipt over the raw
 96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify
 is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
 `SKIP_STEPS` / `SCAN_NOOP` bypass is reachable on this path (spec §5 S7).

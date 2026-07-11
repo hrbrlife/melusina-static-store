@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -64,6 +65,12 @@ type Config struct {
 	RPCURL               string `json:"rpc_url"`
 	ListenAddr           string `json:"listen_addr"`
 	DistDir              string `json:"dist_dir"`
+	// PrivateStageDir is the non-public, content-addressed candidate store used by
+	// the two-phase app release path. Candidate bytes land here before any chain
+	// mutation and are promoted only after the matching ReleaseEntry is Active.
+	// It MUST NOT be equal to, or nested below, DistDir because DistDir is served
+	// publicly. Empty defaults to <catalog_repo_root>/.melusina-private-stage.
+	PrivateStageDir string `json:"private_stage_dir,omitempty"`
 	// CatalogRepoRoot is the static_store working tree from which the in-process
 	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
 	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —
@@ -78,6 +85,12 @@ type Config struct {
 	// long — the documented revoke-visibility window. 0/unset => 60s default;
 	// negative => disable the cache (re-verify on every GET).
 	ServeVerifyTTLSeconds int `json:"serve_verify_ttl_seconds"`
+	// AppRollbackWindowSeconds is how long the immediately previous Active app
+	// release remains eligible for authenticated package serving after catalog
+	// promotion. 0/unset defaults to 24h; negative disables previous-release
+	// serving. Chain status is still authoritative: a revoked previous release is
+	// refused immediately (subject to ServeVerifyTTLSeconds).
+	AppRollbackWindowSeconds int `json:"app_rollback_window_seconds"`
 
 	// Mirror is the reseller-only ROOT-MIRROR worker config (FEDERATED-STORE-MVP
 	// §C2.6). A reseller sidecar serves the base Melusina installer + basic
@@ -196,6 +209,24 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.CatalogRepoRoot == "" {
 		cfg.CatalogRepoRoot = "."
+	}
+	if cfg.PrivateStageDir == "" {
+		cfg.PrivateStageDir = filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage")
+	}
+	stageAbs, err := filepath.Abs(cfg.PrivateStageDir)
+	if err != nil {
+		return cfg, fmt.Errorf("config: resolve private_stage_dir: %w", err)
+	}
+	distAbs, err := filepath.Abs(cfg.DistDir)
+	if err != nil {
+		return cfg, fmt.Errorf("config: resolve dist_dir: %w", err)
+	}
+	rel, err := filepath.Rel(distAbs, stageAbs)
+	if err != nil {
+		return cfg, fmt.Errorf("config: compare private_stage_dir and dist_dir: %w", err)
+	}
+	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
+		return cfg, fmt.Errorf("config: private_stage_dir must be outside public dist_dir")
 	}
 	return cfg, nil
 }

@@ -20,9 +20,9 @@ import (
 // scans). Required only for the FIRST publish of a new app; a re-publish
 // resolves its existing slot by the Sandstorm appId in metadata.json.
 type slotHint struct {
-	Developer string
-	Repo      string
-	Slug      string
+	Developer string `json:"developer,omitempty"`
+	Repo      string `json:"repo,omitempty"`
+	Slug      string `json:"slug,omitempty"`
 }
 
 func (h slotHint) empty() bool { return h.Developer == "" && h.Repo == "" && h.Slug == "" }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
@@ -24,6 +26,11 @@ import (
 // allow some envelope/release overhead on top.
 const maxPublishBody = 110 << 20 // 110 MiB
 
+// Shell bundles are currently about 277 MiB. The installer endpoint accepts
+// bounded multipart uploads up to 512 MiB and streams them from multipart's
+// disk-backed file instead of retaining another full copy in memory.
+const maxInstallerPublishBody = 512 << 20 // 512 MiB
+
 // publishService holds the single-writer state for POST /publish: the on-chain
 // reader (the trust gate), the operator's signing identity (receipt signer +
 // envelope destination), the catalog assembler, and a replay-protection nonce
@@ -33,7 +40,7 @@ type publishService struct {
 	cfg       Config
 	cr        chainReader
 	operator  *identity.Private
-	assembler *CatalogAssembler
+	assembler catalogAssembler
 	nonces    envelope.NonceCache
 
 	mu sync.Mutex // SINGLE WRITER: serializes the verify→assemble→receipt path
@@ -72,6 +79,19 @@ type installerPublishRequest struct {
 	Class       string          `json:"class"`
 	Name        string          `json:"name"`
 	ArtifactB64 string          `json:"artifact_b64"`
+}
+
+type installerArtifactUpload struct {
+	reader  io.ReadSeeker
+	hash    [32]byte
+	size    int64
+	cleanup func()
+}
+
+func (upload *installerArtifactUpload) close() {
+	if upload != nil && upload.cleanup != nil {
+		upload.cleanup()
+	}
 }
 
 // newRouter builds the sidecar HTTP surface.
@@ -118,6 +138,7 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	})
 
 	mux.HandleFunc("/publish", svc.handlePublish)
+	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
@@ -150,6 +171,107 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
 	}
 	return mux
+}
+
+// handleStagePublish durably stores a candidate in the private content-addressed
+// stage before its ReleaseEntry exists. It verifies the signed publisher
+// envelope, exact app hash, store operator authority, path policy, and
+// blacklists, but deliberately does not assemble or expose the candidate.
+func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "publish stage gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
+		return
+	}
+
+	sig, releaseBytes, spk, metadata, hint, err := parsePublishBody(r)
+	if err != nil {
+		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	operatorIdentity := s.operator.Public()
+	spkHashHex := hex.EncodeToString(sha256Sum(spk))
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedKind:        envelope.KindArtifact,
+		ExpectedDestination: &operatorIdentity,
+		ExpectedRequestHash: spkHashHex,
+		NonceCache:          s.nonces,
+	}); err != nil {
+		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	bodyHashHex := hex.EncodeToString(sha256Sum(releaseBytes))
+	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
+		http.Error(w, fmt.Sprintf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex), http.StatusBadRequest)
+		return
+	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
+		http.Error(w, "check=release_json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !s.publisherAccepted(rel, sig.Payload.Source) {
+		http.Error(w, "check=accept_publishers: release publisher not in store policy accept_publishers", http.StatusForbidden)
+		return
+	}
+
+	operatorPub, err := signPubkey32(operatorIdentity)
+	if err != nil {
+		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, licenseMint, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
+	if err != nil {
+		http.Error(w, "check=release_entry: bad release.masterNftMint: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, masterMint, "app"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, licenseMint, "license"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if _, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint); err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+	manifest, err := buildStagedAppManifest(spk, metadata, releaseBytes, rel, hint, time.Now())
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := persistStagedApp(s.cfg.PrivateStageDir, manifest, spk, metadata, releaseBytes); err != nil {
+		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	stored, _, _, _, err := loadStagedApp(s.cfg.PrivateStageDir, manifest.StageID)
+	if err != nil {
+		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt, err := signStageReceipt(s.operator, stored, primitives.StoreDomainHash(s.cfg.Domain))
+	if err != nil {
+		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(receipt)
 }
 
 // handlePublish is the gated write path. It fails closed and names the failing
@@ -245,6 +367,37 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
+	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
+	if err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+
+	// Promotion is permitted only for the exact candidate durably staged before
+	// the chain mutation. Recompute its content address from the submitted bytes,
+	// load the private copy, and promote those persisted bytes rather than the
+	// request body. A direct register→POST flow now fails closed.
+	wantStage, err := buildStagedAppManifest(spk, metadata, releaseBytes, rel, hint, time.Now())
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	staged, stagedSPK, stagedMetadata, _, err := loadStagedApp(s.cfg.PrivateStageDir, wantStage.StageID)
+	if err != nil {
+		http.Error(w, "check=stage: candidate was not durably staged before activation: "+err.Error(), http.StatusConflict)
+		return
+	}
+	if !sameStagedReleaseIntent(staged, wantStage) {
+		http.Error(w, "check=stage: persisted candidate does not match promotion request", http.StatusConflict)
+		return
+	}
+	spk, metadata = stagedSPK, stagedMetadata
+	promotedAt := time.Now().UTC()
+	rollout, err := prepareAppRollout(s.cfg, staged, promotedAt)
+	if err != nil {
+		http.Error(w, "check=rollout_prepare: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Gate passed → persist the verified bytes into the catalog slot (C3: the
 	// store itself writes what it verified; the served tree's inputs come from
@@ -252,11 +405,6 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// (convenience, not authority). A failed assembly is a 500
 	// (verified-and-persisted-but-not-assembled; the next successful publish or
 	// assembler run picks the slot up — the receipt is only issued on success).
-	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
-	if err != nil {
-		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
-		return
-	}
 	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -266,6 +414,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=assemble: catalog assembler failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	catalogPointers, err := writeSignedAppCatalogPointers(s.cfg, s.operator, staged.AppID, promotedAt)
+	if err != nil {
+		http.Error(w, "check=catalog_pointer: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	catalogPointer := catalogPointers[staged.AppID]
 
 	// Compute the receipt tuple from the now-verified facts.
 	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.AppHash)))
@@ -281,8 +435,22 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	servingDomainHash := primitives.StoreDomainHash(s.cfg.Domain)
 
 	receipt := SignReceipt(s.operator, appHash, releaseHash, servingDomainHash)
+	stageReceipt, err := signStageReceipt(s.operator, staged, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: stage: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rolloutReceipt, err := signAppRolloutReceipt(s.operator, rollout, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: rollout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt.Stage = &stageReceipt
+	receipt.Rollout = &rolloutReceipt
+	receipt.Catalog = &catalogPointer
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
 }
@@ -304,12 +472,13 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	sig, class, name, artifact, err := parseInstallerPublishBody(r)
+	sig, class, name, upload, err := parseInstallerPublishBody(r)
 	if err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	artifactHash := sha256.Sum256(artifact)
+	defer upload.close()
+	artifactHash := upload.hash
 	operatorIdentity := s.operator.Public()
 	artifactHashHex := hex.EncodeToString(artifactHash[:])
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
@@ -319,6 +488,16 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		NonceCache:          s.nonces,
 	}); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	claimsBody, err := installerArtifactEnvelopeBody(class, name, artifactHash)
+	if err != nil {
+		http.Error(w, "check=artifact_claims: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	claimsHash := sha256.Sum256(claimsBody)
+	if !strings.EqualFold(hex.EncodeToString(claimsHash[:]), sig.Payload.BodyHashHex) {
+		http.Error(w, "check=artifact_claims: envelope does not bind class, name and installer hash", http.StatusUnauthorized)
 		return
 	}
 	if !s.publisherIdentityAccepted(sig.Payload.Source) {
@@ -351,19 +530,26 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
-	if err := writePublishedReleaseArtifact(s.cfg.DistDir, class, name, artifact); err != nil {
-		http.Error(w, "check=write_release: "+err.Error(), http.StatusInternalServerError)
+	if err := writePublishedReleaseArtifactFromReader(
+		s.cfg.DistDir, class, name, upload.reader, upload.hash, upload.size); err != nil {
+		code := http.StatusInternalServerError
+		check := "write_release"
+		if errors.Is(err, errImmutableReleaseArtifact) {
+			code = http.StatusConflict
+			check = "immutable_release"
+		}
+		http.Error(w, "check="+check+": "+err.Error(), code)
+		return
+	}
+	receipt, err := signInstallerArtifactReceipt(s.operator, class, name, artifactHash, primitives.StoreDomainHash(s.cfg.Domain), time.Now())
+	if err != nil {
+		http.Error(w, "check=receipt: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"class":          class,
-		"name":           name,
-		"installer_hash": hex.EncodeToString(artifactHash[:]),
-		"path":           "/releases/" + class + "/" + name,
-	})
+	_ = json.NewEncoder(w).Encode(receipt)
 }
 
 func rejectReceiveBypass(w http.ResponseWriter) bool {
@@ -499,11 +685,11 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 	return sig, release, spk, metadata, hint, nil
 }
 
-func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, upload *installerArtifactUpload, err error) {
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
+		r.Body = http.MaxBytesReader(nil, r.Body, maxInstallerPublishBody)
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
 			return sig, "", "", nil, fmt.Errorf("parse multipart: %w", perr)
 		}
@@ -516,11 +702,36 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		}
 		class = strings.TrimSpace(r.FormValue("class"))
 		name = strings.TrimSpace(r.FormValue("name"))
-		artifact, err = readFormFile(r, "artifact")
-		if err != nil {
-			return sig, "", "", nil, fmt.Errorf("artifact part: %w", err)
+		file, _, perr := r.FormFile("artifact")
+		if perr != nil {
+			_ = r.MultipartForm.RemoveAll()
+			return sig, "", "", nil, fmt.Errorf("artifact part: %w", perr)
+		}
+		hasher := sha256.New()
+		size, perr := io.Copy(hasher, file)
+		if perr != nil {
+			_ = file.Close()
+			_ = r.MultipartForm.RemoveAll()
+			return sig, "", "", nil, fmt.Errorf("hash artifact part: %w", perr)
+		}
+		if _, perr := file.Seek(0, io.SeekStart); perr != nil {
+			_ = file.Close()
+			_ = r.MultipartForm.RemoveAll()
+			return sig, "", "", nil, fmt.Errorf("rewind artifact part: %w", perr)
+		}
+		var digest [32]byte
+		copy(digest[:], hasher.Sum(nil))
+		upload = &installerArtifactUpload{
+			reader: file,
+			hash:   digest,
+			size:   size,
+			cleanup: func() {
+				_ = file.Close()
+				_ = r.MultipartForm.RemoveAll()
+			},
 		}
 	} else {
+		r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
 		body, perr := io.ReadAll(r.Body)
 		if perr != nil {
 			return sig, "", "", nil, fmt.Errorf("read body: %w", perr)
@@ -532,30 +743,111 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		sig = req.Envelope
 		class = strings.TrimSpace(req.Class)
 		name = strings.TrimSpace(req.Name)
-		artifact, err = stdB64(req.ArtifactB64)
-		if err != nil {
-			return sig, "", "", nil, fmt.Errorf("artifact_b64: %w", err)
+		artifact, decodeErr := stdB64(req.ArtifactB64)
+		if decodeErr != nil {
+			return sig, "", "", nil, fmt.Errorf("artifact_b64: %w", decodeErr)
+		}
+		digest := sha256.Sum256(artifact)
+		upload = &installerArtifactUpload{
+			reader: bytes.NewReader(artifact), hash: digest, size: int64(len(artifact)),
 		}
 	}
 
 	if !isSafePathSegment(class) {
+		if upload != nil {
+			upload.close()
+		}
 		return sig, "", "", nil, errors.New("class must be a single safe path segment")
 	}
 	if !isSafePathSegment(name) {
+		if upload != nil {
+			upload.close()
+		}
 		return sig, "", "", nil, errors.New("name must be a single safe path segment")
 	}
-	if len(artifact) == 0 {
+	if upload == nil || upload.size == 0 {
+		if upload != nil {
+			upload.close()
+		}
 		return sig, "", "", nil, errors.New("artifact is empty")
 	}
-	return sig, class, name, artifact, nil
+	return sig, class, name, upload, nil
 }
 
+var errImmutableReleaseArtifact = errors.New("immutable release artifact already exists with different bytes")
+
 func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte) error {
+	digest := sha256.Sum256(artifact)
+	return writePublishedReleaseArtifactFromReader(
+		distDir, class, name, bytes.NewReader(artifact), digest, int64(len(artifact)))
+}
+
+func writePublishedReleaseArtifactFromReader(distDir, class, name string, reader io.ReadSeeker, expectedHash [32]byte, expectedSize int64) error {
 	dir := filepath.Join(distDir, "releases", class)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
 	}
-	return atomicWriteInto(dir, name, artifact)
+	target := filepath.Join(dir, name)
+	if existing, err := os.Open(target); err == nil {
+		defer existing.Close()
+		info, statErr := existing.Stat()
+		if statErr != nil {
+			return fmt.Errorf("stat existing release artifact %s: %w", target, statErr)
+		}
+		hasher := sha256.New()
+		if _, hashErr := io.Copy(hasher, existing); hashErr != nil {
+			return fmt.Errorf("hash existing release artifact %s: %w", target, hashErr)
+		}
+		if info.Size() == expectedSize && bytes.Equal(hasher.Sum(nil), expectedHash[:]) {
+			return nil
+		}
+		return fmt.Errorf("%w: %s", errImmutableReleaseArtifact, target)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("read existing release artifact %s: %w", target, err)
+	}
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("rewind installer artifact: %w", err)
+	}
+	tmp, err := os.CreateTemp(dir, ".artifact-*")
+	if err != nil {
+		return fmt.Errorf("create installer artifact temp: %w", err)
+	}
+	tmpPath := tmp.Name()
+	cleanup := true
+	defer func() {
+		_ = tmp.Close()
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	hasher := sha256.New()
+	written, err := io.Copy(io.MultiWriter(tmp, hasher), io.LimitReader(reader, expectedSize+1))
+	if err != nil {
+		return fmt.Errorf("stream installer artifact: %w", err)
+	}
+	if written != expectedSize || !bytes.Equal(hasher.Sum(nil), expectedHash[:]) {
+		return errors.New("streamed installer artifact size/hash changed during publish")
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("sync installer artifact: %w", err)
+	}
+	if err := tmp.Chmod(0o644); err != nil {
+		return fmt.Errorf("chmod installer artifact: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close installer artifact: %w", err)
+	}
+	if err := os.Link(tmpPath, target); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("%w: %s", errImmutableReleaseArtifact, target)
+		}
+		return fmt.Errorf("publish installer artifact: %w", err)
+	}
+	if err := os.Remove(tmpPath); err != nil {
+		return fmt.Errorf("remove installer artifact temp link: %w", err)
+	}
+	cleanup = false
+	return syncDir(dir)
 }
 
 func sha256Sum(b []byte) []byte {

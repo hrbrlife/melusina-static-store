@@ -28,6 +28,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -58,17 +59,108 @@ const programIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 // itself, but envelope.ChainEvidence.Validate requires a non-empty value.
 const defaultChainID = "solana:devnet"
 
+const (
+	installerArtifactClaimsSchema  = "melusina-installer-artifact-claims-v1"
+	installerArtifactReceiptSchema = "melusina-installer-artifact-receipt-v1"
+)
+
+var installerArtifactReceiptDomain = []byte(installerArtifactReceiptSchema + "\x00")
+
 // Receipt mirrors the store-signed provenance receipt JSON returned by the C2.3
 // /publish handler (sidecar provenance.go). It is re-declared here (NOT imported
 // from the sidecar's package main) so cmd/submit can PARSE the response. The
 // operator signs the RAW 96 bytes appHash||releaseHash||servingDomainHash; the
 // hex/base58 below are presentation only.
 type Receipt struct {
-	AppHash           string `json:"appHash"`           // lowercase hex of [32]byte
-	ReleaseHash       string `json:"releaseHash"`       // lowercase hex of [32]byte
-	ServingDomainHash string `json:"servingDomainHash"` // lowercase hex of [32]byte
-	OperatorSignature string `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
-	StoredAt          int64  `json:"storedAt"`          // unix seconds
+	Schema            string             `json:"schema"`
+	AppHash           string             `json:"appHash"`           // lowercase hex of [32]byte
+	ReleaseHash       string             `json:"releaseHash"`       // lowercase hex of [32]byte
+	ServingDomainHash string             `json:"servingDomainHash"` // lowercase hex of [32]byte
+	OperatorSignature string             `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
+	StoredAt          int64              `json:"storedAt"`          // unix seconds
+	Stage             *StageReceipt      `json:"stage"`
+	Rollout           *AppRolloutReceipt `json:"rollout"`
+	Catalog           *AppCatalogPointer `json:"catalog"`
+}
+
+// PublishReceipt is the machine receipt assembled by self-publish.sh after the
+// store promotion, served-byte checks, and install acceptance. The promotion
+// object is the cryptographic source of truth; the duplicated top-level proofs
+// are checked for exact equality before a finalizer may consume them.
+type PublishReceipt struct {
+	Schema       string             `json:"schema"`
+	App          PublishReceiptApp  `json:"app"`
+	Stage        *StageReceipt      `json:"stage"`
+	Promotion    *Receipt           `json:"promotion"`
+	RolloutProof *AppRolloutReceipt `json:"rolloutProof"`
+	CatalogProof *AppCatalogPointer `json:"catalogProof"`
+}
+
+type PublishReceiptApp struct {
+	AppID     string `json:"appId"`
+	PackageID string `json:"packageId"`
+	Version   string `json:"version"`
+}
+
+type StageReceipt struct {
+	Schema            string `json:"schema"`
+	StageID           string `json:"stageId"`
+	AppID             string `json:"appId"`
+	AppHash           string `json:"appHash"`
+	ReleaseHash       string `json:"releaseHash"`
+	ServingDomainHash string `json:"servingDomainHash"`
+	StoredAt          int64  `json:"storedAt"`
+	OperatorSignature string `json:"operatorSignature"`
+}
+
+type AppRolloutReceipt struct {
+	Schema             string `json:"schema"`
+	AppID              string `json:"appId"`
+	CurrentStageID     string `json:"currentStageId"`
+	CurrentAppHash     string `json:"currentAppHash"`
+	CurrentVersion     string `json:"currentVersion"`
+	PreviousStageID    string `json:"previousStageId,omitempty"`
+	PreviousAppHash    string `json:"previousAppHash,omitempty"`
+	PreviousVersion    string `json:"previousVersion,omitempty"`
+	ActivatedAt        int64  `json:"activatedAt"`
+	PreviousValidUntil int64  `json:"previousValidUntil,omitempty"`
+	ServingDomainHash  string `json:"servingDomainHash"`
+	OperatorSignature  string `json:"operatorSignature"`
+}
+
+type AppCatalogPointer struct {
+	Schema             string `json:"schema"`
+	AppID              string `json:"appId"`
+	PackageID          string `json:"packageId"`
+	Version            string `json:"version"`
+	AppHash            string `json:"appHash"`
+	ReleaseHash        string `json:"releaseHash"`
+	StageID            string `json:"stageId"`
+	CatalogSHA256      string `json:"catalogSha256"`
+	PreviousAppHash    string `json:"previousAppHash,omitempty"`
+	PreviousVersion    string `json:"previousVersion,omitempty"`
+	PreviousValidUntil int64  `json:"previousValidUntil,omitempty"`
+	ServingDomainHash  string `json:"servingDomainHash"`
+	PublishedAt        int64  `json:"publishedAt"`
+	OperatorSignature  string `json:"operatorSignature"`
+}
+
+type InstallerArtifactReceipt struct {
+	Schema            string `json:"schema"`
+	Class             string `json:"class"`
+	Name              string `json:"name"`
+	InstallerHash     string `json:"installerHash"`
+	Path              string `json:"path"`
+	ServingDomainHash string `json:"servingDomainHash"`
+	StoredAt          int64  `json:"storedAt"`
+	OperatorSignature string `json:"operatorSignature"`
+}
+
+type installerArtifactClaims struct {
+	Schema        string `json:"schema"`
+	Class         string `json:"class"`
+	Name          string `json:"name"`
+	InstallerHash string `json:"installerHash"`
 }
 
 // ReleaseClaims is the subset of the canonical RELEASE.json (melusina-release-v1)
@@ -102,6 +194,16 @@ type publishRequest struct {
 	ReleaseB64  string          `json:"release_b64"`
 	SPKB64      string          `json:"spk_b64"`
 	MetadataB64 string          `json:"metadata_b64"`
+	Developer   string          `json:"developer,omitempty"`
+	Repo        string          `json:"repo,omitempty"`
+	Slug        string          `json:"slug,omitempty"`
+}
+
+type installerPublishRequest struct {
+	Envelope    envelope.Signed `json:"envelope"`
+	Class       string          `json:"class"`
+	Name        string          `json:"name"`
+	ArtifactB64 string          `json:"artifact_b64"`
 }
 
 func main() {
@@ -112,18 +214,27 @@ func main() {
 }
 
 type options struct {
-	store        string
-	spkPath      string
-	metadataPath string
-	releasePath  string
-	publisherKey string // path; or env name via --publisher-key env:NAME
-	storePubkey  string // path to the sidecar operator identity.Public JSON
-	licenseMint  string // store operator's license_nft_mint (StoreOperatorAuthz seed)
-	domain       string // store serving domain (store_domain_hash seed)
-	rpcURL       string // Solana JSON-RPC for receipt verification
-	verifiedSlot uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
-	useMultipart bool
-	timeout      time.Duration
+	store             string
+	spkPath           string
+	metadataPath      string
+	releasePath       string
+	artifactPath      string
+	artifactClass     string
+	artifactName      string
+	publisherKey      string // path; or env name via --publisher-key env:NAME
+	storePubkey       string // path to the sidecar operator identity.Public JSON
+	licenseMint       string // store operator's license_nft_mint (StoreOperatorAuthz seed)
+	domain            string // store serving domain (store_domain_hash seed)
+	rpcURL            string // Solana JSON-RPC for receipt verification
+	verifiedSlot      uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	useMultipart      bool
+	stageOnly         bool
+	developer         string
+	repo              string
+	slug              string
+	receiptOut        string
+	verifyReceiptPath string
+	timeout           time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -133,6 +244,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
+	fs.StringVar(&o.artifactPath, "installer-artifact", "", "path to an immutable deploy component for /publish/installer")
+	fs.StringVar(&o.artifactClass, "class", "", "immutable deploy component class, e.g. deployer, shell, authz, manifest")
+	fs.StringVar(&o.artifactName, "name", "", "immutable deploy component filename (must never be reused for different bytes)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
@@ -140,23 +254,73 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
 	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
+	fs.BoolVar(&o.stageOnly, "stage", false, "privately stage the candidate before chain mutation; return a signed staging receipt")
+	fs.StringVar(&o.developer, "developer", "", "catalog developer path segment (required with --repo/--slug for a first publish)")
+	fs.StringVar(&o.repo, "repo", "", "catalog repository path segment (required with --developer/--slug for a first publish)")
+	fs.StringVar(&o.slug, "slug", "", "catalog app path segment (required with --developer/--repo for a first publish)")
+	fs.StringVar(&o.receiptOut, "receipt-out", "", "write the verified raw receipt JSON to this path")
+	fs.StringVar(&o.verifyReceiptPath, "verify-receipt", "", "verify a saved promotion or app-publish receipt against the on-chain store authority without publishing")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "HTTP request timeout")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
 
 	var missing []string
+	verifyMode := o.verifyReceiptPath != ""
+	if verifyMode {
+		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" ||
+			o.artifactPath != "" || o.artifactClass != "" || o.artifactName != "" ||
+			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
+			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" {
+			return o, errors.New("--verify-receipt cannot be combined with publish, stage, artifact, catalog, or receipt-output flags")
+		}
+		if o.licenseMint == "" {
+			missing = append(missing, "--license-mint")
+		}
+		if o.rpcURL == "" {
+			missing = append(missing, "--rpc-url")
+		}
+		if o.domain == "" && o.store != "" {
+			o.domain = hostFromURL(o.store)
+		}
+		if o.domain == "" {
+			missing = append(missing, "--domain (or --store)")
+		}
+		if len(missing) > 0 {
+			return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
+		}
+		return o, nil
+	}
 	if o.store == "" {
 		missing = append(missing, "--store")
 	}
-	if o.spkPath == "" {
-		missing = append(missing, "--spk")
-	}
-	if o.metadataPath == "" {
-		missing = append(missing, "--metadata")
-	}
-	if o.releasePath == "" {
-		missing = append(missing, "--release")
+	artifactMode := o.artifactPath != ""
+	if artifactMode {
+		if o.artifactClass == "" {
+			missing = append(missing, "--class")
+		}
+		if o.artifactName == "" {
+			missing = append(missing, "--name")
+		}
+		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.stageOnly {
+			return o, errors.New("--installer-artifact cannot be combined with --spk, --metadata, --release, or --stage")
+		}
+		if !safeArtifactSegment(o.artifactClass) || !safeArtifactSegment(o.artifactName) {
+			return o, errors.New("--class and --name must each be one safe immutable path segment")
+		}
+	} else {
+		if o.artifactClass != "" || o.artifactName != "" {
+			return o, errors.New("--class/--name require --installer-artifact")
+		}
+		if o.spkPath == "" {
+			missing = append(missing, "--spk")
+		}
+		if o.metadataPath == "" {
+			missing = append(missing, "--metadata")
+		}
+		if o.releasePath == "" {
+			missing = append(missing, "--release")
+		}
 	}
 	if o.publisherKey == "" {
 		missing = append(missing, "--publisher-key")
@@ -173,6 +337,18 @@ func parseFlags(args []string) (options, error) {
 	if len(missing) > 0 {
 		return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
 	}
+	hintCount := 0
+	for _, value := range []string{o.developer, o.repo, o.slug} {
+		if value != "" {
+			hintCount++
+		}
+	}
+	if hintCount != 0 && hintCount != 3 {
+		return o, errors.New("--developer, --repo, and --slug must be supplied together")
+	}
+	if artifactMode && hintCount != 0 {
+		return o, errors.New("catalog slot hints do not apply to immutable deploy components")
+	}
 	if o.verifiedSlot == 0 {
 		// envelope.ChainEvidence.Validate rejects verified_slot==0.
 		return o, errors.New("--verified-slot must be > 0 (envelope chain evidence requires it)")
@@ -187,6 +363,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 	o, err := parseFlags(args)
 	if err != nil {
 		return err
+	}
+	if o.verifyReceiptPath != "" {
+		return runVerifyReceipt(o, stdout)
+	}
+	if o.artifactPath != "" {
+		return runInstallerArtifact(o, stdout)
 	}
 
 	spk, err := os.ReadFile(o.spkPath)
@@ -253,8 +435,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("envelope: %w", err)
 	}
 
-	// POST to <store>/publish.
-	resp, status, err := postPublish(context.Background(), o, sig, releaseBytes, spk, metadata)
+	endpoint := "/publish"
+	if o.stageOnly {
+		endpoint = "/publish/stage"
+	}
+	resp, status, err := postPublish(context.Background(), o, endpoint, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		return fmt.Errorf("publish POST: %w", err)
 	}
@@ -263,23 +448,205 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("store rejected publish: HTTP %d: %s", status, strings.TrimSpace(string(resp)))
 	}
 
-	var receipt Receipt
-	if err := json.Unmarshal(resp, &receipt); err != nil {
-		return fmt.Errorf("decode receipt: %w", err)
-	}
-
-	// Verify the store-signed provenance receipt against the ON-CHAIN
+	// Verify the store-signed receipt against the ON-CHAIN
 	// store_authority. A store that returns 200 but a receipt the chain does not
 	// vouch for is a FAILURE — the install-side trust (C4) depends on this exact
 	// check, so the publish client refuses to call it a success.
 	cr := verify.NewRPCClient(o.rpcURL)
+	if o.stageOnly {
+		var receipt StageReceipt
+		if err := json.Unmarshal(resp, &receipt); err != nil {
+			return fmt.Errorf("decode stage receipt: %w", err)
+		}
+		if err := verifyStageReceipt(context.Background(), cr, o.licenseMint, o.domain, receipt); err != nil {
+			return fmt.Errorf("stage receipt verification: %w", err)
+		}
+		if err := writeReceiptFile(o.receiptOut, resp); err != nil {
+			return err
+		}
+		out, _ := json.MarshalIndent(receipt, "", "  ")
+		fmt.Fprintf(stdout, "STAGE OK — private persistence receipt verified against on-chain store_authority\n%s\n", out)
+		return nil
+	}
+	var receipt Receipt
+	if err := json.Unmarshal(resp, &receipt); err != nil {
+		return fmt.Errorf("decode receipt: %w", err)
+	}
 	if err := verifyReceipt(context.Background(), cr, o.licenseMint, o.domain, receipt); err != nil {
 		return fmt.Errorf("receipt verification: %w", err)
+	}
+	if err := writeReceiptFile(o.receiptOut, resp); err != nil {
+		return err
 	}
 
 	out, _ := json.MarshalIndent(receipt, "", "  ")
 	fmt.Fprintf(stdout, "PUBLISH OK — store-signed provenance receipt verified against on-chain store_authority\n%s\n", out)
 	return nil
+}
+
+func runVerifyReceipt(o options, stdout io.Writer) error {
+	raw, err := os.ReadFile(o.verifyReceiptPath)
+	if err != nil {
+		return fmt.Errorf("read receipt %s: %w", o.verifyReceiptPath, err)
+	}
+	receipt, err := decodeReceiptForVerification(raw)
+	if err != nil {
+		return fmt.Errorf("decode receipt %s: %w", o.verifyReceiptPath, err)
+	}
+	client := verify.NewRPCClient(o.rpcURL)
+	if err := verifyReceipt(context.Background(), client, o.licenseMint, o.domain, receipt); err != nil {
+		return fmt.Errorf("receipt verification: %w", err)
+	}
+	fmt.Fprintf(stdout, "RECEIPT OK — saved promotion proof verified against on-chain store_authority\n")
+	return nil
+}
+
+func decodeReceiptForVerification(raw []byte) (Receipt, error) {
+	var header struct {
+		Schema string `json:"schema"`
+	}
+	if err := json.Unmarshal(raw, &header); err != nil {
+		return Receipt{}, err
+	}
+	switch header.Schema {
+	case "melusina-app-promotion-receipt-v1":
+		var receipt Receipt
+		if err := json.Unmarshal(raw, &receipt); err != nil {
+			return Receipt{}, err
+		}
+		return receipt, nil
+	case "melusina-app-publish-receipt-v1":
+		var wrapper PublishReceipt
+		if err := json.Unmarshal(raw, &wrapper); err != nil {
+			return Receipt{}, err
+		}
+		if wrapper.Promotion == nil || wrapper.Promotion.Stage == nil ||
+			wrapper.Promotion.Rollout == nil || wrapper.Promotion.Catalog == nil {
+			return Receipt{}, errors.New("publish receipt lacks complete signed promotion proof")
+		}
+		if wrapper.Stage == nil || wrapper.RolloutProof == nil || wrapper.CatalogProof == nil {
+			return Receipt{}, errors.New("publish receipt lacks duplicated stage, rollout, or catalog proof")
+		}
+		if *wrapper.Stage != *wrapper.Promotion.Stage ||
+			*wrapper.RolloutProof != *wrapper.Promotion.Rollout ||
+			*wrapper.CatalogProof != *wrapper.Promotion.Catalog {
+			return Receipt{}, errors.New("publish receipt duplicated proofs differ from signed promotion")
+		}
+		catalog := wrapper.Promotion.Catalog
+		if wrapper.App.AppID != catalog.AppID || wrapper.App.PackageID != catalog.PackageID ||
+			wrapper.App.Version != catalog.Version {
+			return Receipt{}, errors.New("publish receipt app identity differs from signed catalog pointer")
+		}
+		return *wrapper.Promotion, nil
+	default:
+		return Receipt{}, fmt.Errorf("unsupported schema %q", header.Schema)
+	}
+}
+
+func runInstallerArtifact(o options, stdout io.Writer) error {
+	artifactHash, artifactSize, err := hashInstallerArtifactFile(o.artifactPath)
+	if err != nil {
+		return fmt.Errorf("read installer artifact %s: %w", o.artifactPath, err)
+	}
+	if artifactSize == 0 {
+		return fmt.Errorf("installer artifact %s is empty", o.artifactPath)
+	}
+	pubPriv, err := loadPublisherKey(o.publisherKey)
+	if err != nil {
+		return fmt.Errorf("publisher key: %w", err)
+	}
+	destination, err := loadStorePubkey(o.storePubkey)
+	if err != nil {
+		return fmt.Errorf("store pubkey: %w", err)
+	}
+	envTTL := o.timeout + 2*time.Minute
+	if envTTL < 5*time.Minute {
+		envTTL = 5 * time.Minute
+	}
+	signed, err := buildInstallerArtifactEnvelopeHash(
+		pubPriv, destination, o.artifactClass, o.artifactName, artifactHash, o.verifiedSlot, envTTL)
+	if err != nil {
+		return fmt.Errorf("installer artifact envelope: %w", err)
+	}
+	response, status, err := postInstallerArtifact(context.Background(), o, signed, o.artifactPath)
+	if err != nil {
+		return fmt.Errorf("installer artifact POST: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("store rejected installer artifact: HTTP %d: %s", status, strings.TrimSpace(string(response)))
+	}
+	var receipt InstallerArtifactReceipt
+	if err := json.Unmarshal(response, &receipt); err != nil {
+		return fmt.Errorf("decode installer artifact receipt: %w", err)
+	}
+	reader := verify.NewRPCClient(o.rpcURL)
+	if err := verifyInstallerArtifactReceipt(
+		context.Background(), reader, o.licenseMint, o.domain, o.artifactClass,
+		o.artifactName, artifactHash, receipt); err != nil {
+		return fmt.Errorf("installer artifact receipt verification: %w", err)
+	}
+	if err := writeReceiptFile(o.receiptOut, response); err != nil {
+		return err
+	}
+	out, _ := json.MarshalIndent(receipt, "", "  ")
+	fmt.Fprintf(stdout, "ARTIFACT PUBLISH OK — immutable path and store-authority receipt verified\n%s\n", out)
+	return nil
+}
+
+func safeArtifactSegment(value string) bool {
+	return value != "" && value != "." && value != ".." &&
+		!strings.ContainsAny(value, "/\\") && !strings.Contains(value, "..")
+}
+
+func installerArtifactEnvelopeBody(class, name string, artifactHash [32]byte) ([]byte, error) {
+	if !safeArtifactSegment(class) || !safeArtifactSegment(name) {
+		return nil, errors.New("installer artifact class/name must be safe path segments")
+	}
+	return json.Marshal(installerArtifactClaims{
+		Schema:        installerArtifactClaimsSchema,
+		Class:         class,
+		Name:          name,
+		InstallerHash: hex.EncodeToString(artifactHash[:]),
+	})
+}
+
+func buildInstallerArtifactEnvelope(src *identity.Private, dst identity.Public, class, name string, artifact []byte, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
+	artifactHash := sha256.Sum256(artifact)
+	return buildInstallerArtifactEnvelopeHash(src, dst, class, name, artifactHash, verifiedSlot, ttl)
+}
+
+func buildInstallerArtifactEnvelopeHash(src *identity.Private, dst identity.Public, class, name string, artifactHash [32]byte, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
+	claims, err := installerArtifactEnvelopeBody(class, name, artifactHash)
+	if err != nil {
+		return envelope.Signed{}, err
+	}
+	chain := envelope.ChainEvidence{
+		ChainID:      firstNonEmpty(src.Public().Ref.ChainID, defaultChainID),
+		ProgramID:    firstNonEmpty(src.Public().Ref.ProgramID, programIDB58),
+		VerifiedSlot: verifiedSlot,
+	}
+	return envelope.Sign(envelope.KindArtifact, src, dst, envelope.SignOptions{
+		Body:        claims,
+		RequestHash: hex.EncodeToString(artifactHash[:]),
+		TTL:         ttl,
+		Chain:       chain,
+	})
+}
+
+func hashInstallerArtifactFile(path string) ([32]byte, int64, error) {
+	var digest [32]byte
+	file, err := os.Open(path)
+	if err != nil {
+		return digest, 0, err
+	}
+	defer file.Close()
+	hasher := sha256.New()
+	size, err := io.Copy(hasher, file)
+	if err != nil {
+		return digest, 0, err
+	}
+	copy(digest[:], hasher.Sum(nil))
+	return digest, size, nil
 }
 
 // buildEnvelope constructs the sealed-v3 signed artifact envelope. The sidecar's
@@ -338,8 +705,8 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 // postPublish sends the publish to <store>/publish in either the JSON wire form
 // or multipart/form-data, returning the raw body + status code. metadata is the
 // app's metadata.json bytes, bound into the on-chain appHash the sidecar recomputes.
-func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
-	url := strings.TrimRight(o.store, "/") + "/publish"
+func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
+	url := strings.TrimRight(o.store, "/") + endpoint
 	client := &http.Client{Timeout: o.timeout}
 
 	var (
@@ -365,6 +732,13 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
 			return nil, 0, werr
 		}
+		for name, value := range map[string]string{"developer": o.developer, "repo": o.repo, "slug": o.slug} {
+			if value != "" {
+				if werr := mw.WriteField(name, value); werr != nil {
+					return nil, 0, fmt.Errorf("write %s field: %w", name, werr)
+				}
+			}
+		}
 		if cerr := mw.Close(); cerr != nil {
 			return nil, 0, cerr
 		}
@@ -379,6 +753,9 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 			ReleaseB64:  stdB64(releaseBytes),
 			SPKB64:      stdB64(spk),
 			MetadataB64: stdB64(metadata),
+			Developer:   o.developer,
+			Repo:        o.repo,
+			Slug:        o.slug,
 		})
 		if merr != nil {
 			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)
@@ -400,6 +777,130 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 		return nil, resp.StatusCode, err
 	}
 	return out, resp.StatusCode, nil
+}
+
+func postInstallerArtifact(ctx context.Context, o options, sig envelope.Signed, artifactPath string) ([]byte, int, error) {
+	url := strings.TrimRight(o.store, "/") + "/publish/installer"
+	client := &http.Client{Timeout: o.timeout}
+	var request *http.Request
+	var err error
+	var writerDone chan error
+	var pipeReader *io.PipeReader
+	if o.useMultipart {
+		artifact, openErr := os.Open(artifactPath)
+		if openErr != nil {
+			return nil, 0, openErr
+		}
+		reader, pipeWriter := io.Pipe()
+		pipeReader = reader
+		writer := multipart.NewWriter(pipeWriter)
+		envelopeBytes, marshalErr := json.Marshal(sig)
+		if marshalErr != nil {
+			_ = artifact.Close()
+			_ = reader.Close()
+			_ = pipeWriter.Close()
+			return nil, 0, fmt.Errorf("marshal envelope: %w", marshalErr)
+		}
+		writerDone = make(chan error, 1)
+		go func() {
+			defer artifact.Close()
+			writeErr := writePart(writer, "envelope", "envelope.json", envelopeBytes)
+			if writeErr == nil {
+				writeErr = writer.WriteField("class", o.artifactClass)
+			}
+			if writeErr == nil {
+				writeErr = writer.WriteField("name", o.artifactName)
+			}
+			if writeErr == nil {
+				var part io.Writer
+				part, writeErr = writer.CreateFormFile("artifact", o.artifactName)
+				if writeErr == nil {
+					_, writeErr = io.Copy(part, artifact)
+				}
+			}
+			if closeErr := writer.Close(); writeErr == nil {
+				writeErr = closeErr
+			}
+			_ = pipeWriter.CloseWithError(writeErr)
+			writerDone <- writeErr
+		}()
+		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, reader)
+		if err == nil {
+			request.Header.Set("Content-Type", writer.FormDataContentType())
+		}
+	} else {
+		artifact, readErr := os.ReadFile(artifactPath)
+		if readErr != nil {
+			return nil, 0, readErr
+		}
+		if len(artifact) > 64<<20 {
+			return nil, 0, errors.New("JSON installer upload exceeds 64 MiB; use --multipart")
+		}
+		body, marshalErr := json.Marshal(installerPublishRequest{
+			Envelope:    sig,
+			Class:       o.artifactClass,
+			Name:        o.artifactName,
+			ArtifactB64: stdB64(artifact),
+		})
+		if marshalErr != nil {
+			return nil, 0, fmt.Errorf("marshal installer publish: %w", marshalErr)
+		}
+		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err == nil {
+			request.Header.Set("Content-Type", "application/json")
+		}
+	}
+	if err != nil {
+		if pipeReader != nil && writerDone != nil {
+			_ = pipeReader.CloseWithError(err)
+			<-writerDone
+		}
+		return nil, 0, err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		if writerDone != nil {
+			_ = request.Body.Close()
+			<-writerDone
+		}
+		return nil, 0, err
+	}
+	if writerDone != nil {
+		if writeErr := <-writerDone; writeErr != nil && response.StatusCode == http.StatusOK {
+			_ = response.Body.Close()
+			return nil, 0, fmt.Errorf("stream installer artifact: %w", writeErr)
+		}
+	}
+	defer response.Body.Close()
+	out, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, response.StatusCode, err
+	}
+	return out, response.StatusCode, nil
+}
+
+func writeReceiptFile(path string, raw []byte) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return fmt.Errorf("receipt-out: decode verified response: %w", err)
+	}
+	pretty, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return fmt.Errorf("receipt-out: encode: %w", err)
+	}
+	pretty = append(pretty, '\n')
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, pretty, 0o600); err != nil {
+		return fmt.Errorf("receipt-out: write temp: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("receipt-out: rename: %w", err)
+	}
+	return nil
 }
 
 func writePart(mw *multipart.Writer, field, filename string, data []byte) error {
@@ -430,30 +931,9 @@ var _ storeOperatorAuthzFetcher = (*verify.RPCClient)(nil)
 // that key. FAIL-CLOSED: a missing/non-Active authz, a domain-hash mismatch, a
 // malformed receipt field, or an invalid signature all return an error.
 func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string, receipt Receipt) error {
-	programID, err := primitives.PubkeyFromBase58(programIDB58)
+	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, licenseMintB58, domain)
 	if err != nil {
-		return fmt.Errorf("check=program_id: %w", err)
-	}
-	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(licenseMintB58))
-	if err != nil {
-		return fmt.Errorf("check=license_mint: bad --license-mint: %w", err)
-	}
-	storeDomainHash := primitives.StoreDomainHash(domain)
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, programID)
-	if err != nil {
-		return fmt.Errorf("check=store_operator_authz: derive PDA: %w", err)
-	}
-	status, storeAuthority, _, _, onchainDomainHash, err := cr.FetchStoreOperatorAuthz(ctx, authzPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("check=store_operator_authz: fetch %s: %w", authzPDA.Base58(), err)
-	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("check=store_operator_authz: status %s not Active: %w", status, err)
-	}
-	// Bind the store_domain_hash the chain pins to the domain we derived the PDA
-	// from (defends against a confused-domain receipt).
-	if onchainDomainHash != storeDomainHash {
-		return fmt.Errorf("check=store_operator_authz: on-chain store_domain_hash %x != derived %x", onchainDomainHash[:], storeDomainHash[:])
+		return err
 	}
 
 	appHash, err := hash32FromHex(receipt.AppHash)
@@ -468,8 +948,6 @@ func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMin
 	if err != nil {
 		return fmt.Errorf("check=receipt: servingDomainHash: %w", err)
 	}
-	// The receipt's servingDomainHash MUST be the store's domain hash; otherwise
-	// the operator signed a tuple for a different store.
 	if servingDomainHash != storeDomainHash {
 		return fmt.Errorf("check=receipt: servingDomainHash %x != store_domain_hash %x", servingDomainHash[:], storeDomainHash[:])
 	}
@@ -483,11 +961,313 @@ func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMin
 	}
 
 	msg := receiptMessage(appHash, releaseHash, servingDomainHash)
-	pubKey := ed25519.PublicKey(storeAuthority[:])
 	if !ed25519.Verify(pubKey, msg, sigBytes) {
 		return errors.New("check=receipt: operatorSignature does not verify against on-chain store_authority")
 	}
+	if receipt.Schema != "melusina-app-promotion-receipt-v1" {
+		return fmt.Errorf("check=receipt: schema %q is not melusina-app-promotion-receipt-v1", receipt.Schema)
+	}
+	if receipt.Stage == nil || receipt.Rollout == nil || receipt.Catalog == nil {
+		return errors.New("check=receipt: signed stage, rollout and catalog proofs are required")
+	}
+	if err := verifyStageReceiptWithAuthority(pubKey, storeDomainHash, *receipt.Stage); err != nil {
+		return err
+	}
+	if err := verifyRolloutReceiptWithAuthority(pubKey, storeDomainHash, *receipt.Rollout); err != nil {
+		return err
+	}
+	if err := verifyCatalogPointerWithAuthority(pubKey, storeDomainHash, *receipt.Catalog); err != nil {
+		return err
+	}
+	if receipt.Stage.AppHash != receipt.AppHash || receipt.Stage.ReleaseHash != receipt.ReleaseHash {
+		return errors.New("check=receipt: stage proof does not match provenance tuple")
+	}
+	if receipt.Rollout.AppID != receipt.Stage.AppID ||
+		receipt.Rollout.CurrentStageID != receipt.Stage.StageID ||
+		receipt.Rollout.CurrentAppHash != receipt.Stage.AppHash {
+		return errors.New("check=receipt: rollout proof does not select staged candidate")
+	}
+	if receipt.Catalog.AppID != receipt.Rollout.AppID ||
+		receipt.Catalog.StageID != receipt.Rollout.CurrentStageID ||
+		receipt.Catalog.AppHash != receipt.Rollout.CurrentAppHash ||
+		receipt.Catalog.Version != receipt.Rollout.CurrentVersion ||
+		receipt.Catalog.ReleaseHash != receipt.ReleaseHash ||
+		receipt.Catalog.PreviousAppHash != receipt.Rollout.PreviousAppHash ||
+		receipt.Catalog.PreviousVersion != receipt.Rollout.PreviousVersion ||
+		receipt.Catalog.PreviousValidUntil != receipt.Rollout.PreviousValidUntil {
+		return errors.New("check=receipt: catalog pointer does not match promoted rollout")
+	}
 	return nil
+}
+
+func receiptAuthority(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string) (ed25519.PublicKey, [32]byte, error) {
+	var zero [32]byte
+	programID, err := primitives.PubkeyFromBase58(programIDB58)
+	if err != nil {
+		return nil, zero, fmt.Errorf("check=program_id: %w", err)
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(licenseMintB58))
+	if err != nil {
+		return nil, zero, fmt.Errorf("check=license_mint: bad --license-mint: %w", err)
+	}
+	storeDomainHash := primitives.StoreDomainHash(domain)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, programID)
+	if err != nil {
+		return nil, zero, fmt.Errorf("check=store_operator_authz: derive PDA: %w", err)
+	}
+	status, storeAuthority, _, _, onchainDomainHash, err := cr.FetchStoreOperatorAuthz(ctx, authzPDA.Base58())
+	if err != nil {
+		return nil, zero, fmt.Errorf("check=store_operator_authz: fetch %s: %w", authzPDA.Base58(), err)
+	}
+	if err := status.RequireActive(); err != nil {
+		return nil, zero, fmt.Errorf("check=store_operator_authz: status %s not Active: %w", status, err)
+	}
+	// Bind the store_domain_hash the chain pins to the domain we derived the PDA
+	// from (defends against a confused-domain receipt).
+	if onchainDomainHash != storeDomainHash {
+		return nil, zero, fmt.Errorf("check=store_operator_authz: on-chain store_domain_hash %x != derived %x", onchainDomainHash[:], storeDomainHash[:])
+	}
+	return ed25519.PublicKey(storeAuthority[:]), storeDomainHash, nil
+}
+
+func verifyInstallerArtifactReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain, class, name string, artifactHash [32]byte, receipt InstallerArtifactReceipt) error {
+	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, licenseMintB58, domain)
+	if err != nil {
+		return err
+	}
+	if receipt.Schema != installerArtifactReceiptSchema || receipt.Class != class ||
+		receipt.Name != name || receipt.Path != "/releases/"+class+"/"+name ||
+		receipt.InstallerHash != hex.EncodeToString(artifactHash[:]) ||
+		receipt.ServingDomainHash != hex.EncodeToString(storeDomainHash[:]) {
+		return errors.New("check=installer_receipt: receipt does not bind requested path, hash, or serving domain")
+	}
+	message, err := installerArtifactReceiptMessage(receipt)
+	if err != nil {
+		return fmt.Errorf("check=installer_receipt: %w", err)
+	}
+	signature, err := primitives.DecodeBase58(receipt.OperatorSignature)
+	if err != nil {
+		return fmt.Errorf("check=installer_receipt: signature: %w", err)
+	}
+	if len(signature) != ed25519.SignatureSize || !ed25519.Verify(pubKey, message, signature) {
+		return errors.New("check=installer_receipt: signature does not verify against on-chain store_authority")
+	}
+	return nil
+}
+
+func installerArtifactReceiptMessage(receipt InstallerArtifactReceipt) ([]byte, error) {
+	if receipt.Schema != installerArtifactReceiptSchema {
+		return nil, errors.New("installer artifact receipt schema mismatch")
+	}
+	if !safeArtifactSegment(receipt.Class) || !safeArtifactSegment(receipt.Name) ||
+		receipt.Path != "/releases/"+receipt.Class+"/"+receipt.Name {
+		return nil, errors.New("installer artifact receipt path invalid")
+	}
+	artifactHash, err := hash32FromHex(receipt.InstallerHash)
+	if err != nil {
+		return nil, fmt.Errorf("installer hash: %w", err)
+	}
+	domainHash, err := hash32FromHex(receipt.ServingDomainHash)
+	if err != nil {
+		return nil, fmt.Errorf("serving domain hash: %w", err)
+	}
+	if receipt.StoredAt < 0 {
+		return nil, errors.New("storedAt must be non-negative")
+	}
+	classHash := sha256.Sum256([]byte(receipt.Class))
+	nameHash := sha256.Sum256([]byte(receipt.Name))
+	message := make([]byte, 0, len(installerArtifactReceiptDomain)+32*4+8)
+	message = append(message, installerArtifactReceiptDomain...)
+	message = append(message, classHash[:]...)
+	message = append(message, nameHash[:]...)
+	message = append(message, artifactHash[:]...)
+	message = append(message, domainHash[:]...)
+	var storedAt [8]byte
+	binary.BigEndian.PutUint64(storedAt[:], uint64(receipt.StoredAt))
+	message = append(message, storedAt[:]...)
+	return message, nil
+}
+
+func verifyStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string, receipt StageReceipt) error {
+	if receipt.Schema != "melusina-app-stage-receipt-v1" {
+		return errors.New("check=stage_receipt: schema mismatch")
+	}
+	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, licenseMintB58, domain)
+	if err != nil {
+		return err
+	}
+	return verifyStageReceiptWithAuthority(pubKey, storeDomainHash, receipt)
+}
+
+func verifyStageReceiptWithAuthority(pubKey ed25519.PublicKey, storeDomainHash [32]byte, receipt StageReceipt) error {
+	if receipt.Schema != "melusina-app-stage-receipt-v1" {
+		return errors.New("check=stage_receipt: schema mismatch")
+	}
+	stageID, err := hash32FromHex(receipt.StageID)
+	if err != nil {
+		return fmt.Errorf("check=stage_receipt: stageId: %w", err)
+	}
+	appHash, err := hash32FromHex(receipt.AppHash)
+	if err != nil {
+		return fmt.Errorf("check=stage_receipt: appHash: %w", err)
+	}
+	releaseHash, err := hash32FromHex(receipt.ReleaseHash)
+	if err != nil {
+		return fmt.Errorf("check=stage_receipt: releaseHash: %w", err)
+	}
+	domainHash, err := hash32FromHex(receipt.ServingDomainHash)
+	if err != nil {
+		return fmt.Errorf("check=stage_receipt: servingDomainHash: %w", err)
+	}
+	if domainHash != storeDomainHash {
+		return errors.New("check=stage_receipt: serving domain mismatch")
+	}
+	sig, err := primitives.DecodeBase58(receipt.OperatorSignature)
+	if err != nil {
+		return fmt.Errorf("check=stage_receipt: signature: %w", err)
+	}
+	msg := stageReceiptMessage(stageID, appHash, releaseHash, domainHash, receipt.StoredAt)
+	if !ed25519.Verify(pubKey, msg, sig) {
+		return errors.New("check=stage_receipt: signature does not verify against on-chain store_authority")
+	}
+	return nil
+}
+
+func stageReceiptMessage(stageID, appHash, releaseHash, domainHash [32]byte, storedAt int64) []byte {
+	msg := make([]byte, 0, len("melusina-app-stage-receipt-v1\x00")+32*4+8)
+	msg = append(msg, []byte("melusina-app-stage-receipt-v1\x00")...)
+	msg = append(msg, stageID[:]...)
+	msg = append(msg, appHash[:]...)
+	msg = append(msg, releaseHash[:]...)
+	msg = append(msg, domainHash[:]...)
+	var ts [8]byte
+	binary.BigEndian.PutUint64(ts[:], uint64(storedAt))
+	return append(msg, ts[:]...)
+}
+
+func verifyRolloutReceiptWithAuthority(pubKey ed25519.PublicKey, storeDomainHash [32]byte, receipt AppRolloutReceipt) error {
+	if receipt.Schema != "melusina-app-rollout-v1" {
+		return errors.New("check=rollout_receipt: schema mismatch")
+	}
+	domainHash, err := hash32FromHex(receipt.ServingDomainHash)
+	if err != nil || domainHash != storeDomainHash {
+		return errors.New("check=rollout_receipt: serving domain mismatch")
+	}
+	msg, err := rolloutReceiptMessage(receipt, domainHash)
+	if err != nil {
+		return fmt.Errorf("check=rollout_receipt: %w", err)
+	}
+	sig, err := primitives.DecodeBase58(receipt.OperatorSignature)
+	if err != nil || !ed25519.Verify(pubKey, msg, sig) {
+		return errors.New("check=rollout_receipt: signature does not verify against on-chain store_authority")
+	}
+	return nil
+}
+
+func rolloutReceiptMessage(receipt AppRolloutReceipt, domainHash [32]byte) ([]byte, error) {
+	currentStage, err := hash32FromHex(receipt.CurrentStageID)
+	if err != nil {
+		return nil, fmt.Errorf("current stage id: %w", err)
+	}
+	currentHash, err := hash32FromHex(receipt.CurrentAppHash)
+	if err != nil {
+		return nil, fmt.Errorf("current app hash: %w", err)
+	}
+	var previousStage, previousHash [32]byte
+	if receipt.PreviousStageID != "" {
+		previousStage, err = hash32FromHex(receipt.PreviousStageID)
+		if err != nil {
+			return nil, fmt.Errorf("previous stage id: %w", err)
+		}
+	}
+	if receipt.PreviousAppHash != "" {
+		previousHash, err = hash32FromHex(receipt.PreviousAppHash)
+		if err != nil {
+			return nil, fmt.Errorf("previous app hash: %w", err)
+		}
+	}
+	appIDHash := sha256.Sum256([]byte(receipt.AppID))
+	currentVersionHash := sha256.Sum256([]byte(receipt.CurrentVersion))
+	previousVersionHash := sha256.Sum256([]byte(receipt.PreviousVersion))
+	msg := make([]byte, 0, len("melusina-app-rollout-receipt-v1\x00")+32*8+16)
+	msg = append(msg, []byte("melusina-app-rollout-receipt-v1\x00")...)
+	msg = append(msg, appIDHash[:]...)
+	msg = append(msg, currentVersionHash[:]...)
+	msg = append(msg, currentStage[:]...)
+	msg = append(msg, currentHash[:]...)
+	msg = append(msg, previousVersionHash[:]...)
+	msg = append(msg, previousStage[:]...)
+	msg = append(msg, previousHash[:]...)
+	msg = append(msg, domainHash[:]...)
+	var times [16]byte
+	binary.BigEndian.PutUint64(times[0:8], uint64(receipt.ActivatedAt))
+	binary.BigEndian.PutUint64(times[8:16], uint64(receipt.PreviousValidUntil))
+	return append(msg, times[:]...), nil
+}
+
+func verifyCatalogPointerWithAuthority(pubKey ed25519.PublicKey, storeDomainHash [32]byte, pointer AppCatalogPointer) error {
+	if pointer.Schema != "melusina-app-catalog-pointer-v1" {
+		return errors.New("check=catalog_pointer: schema mismatch")
+	}
+	domainHash, err := hash32FromHex(pointer.ServingDomainHash)
+	if err != nil || domainHash != storeDomainHash {
+		return errors.New("check=catalog_pointer: serving domain mismatch")
+	}
+	msg, err := catalogPointerMessage(pointer, domainHash)
+	if err != nil {
+		return fmt.Errorf("check=catalog_pointer: %w", err)
+	}
+	sig, err := primitives.DecodeBase58(pointer.OperatorSignature)
+	if err != nil || !ed25519.Verify(pubKey, msg, sig) {
+		return errors.New("check=catalog_pointer: signature does not verify against on-chain store_authority")
+	}
+	return nil
+}
+
+func catalogPointerMessage(pointer AppCatalogPointer, domainHash [32]byte) ([]byte, error) {
+	appHash, err := hash32FromHex(pointer.AppHash)
+	if err != nil {
+		return nil, fmt.Errorf("app hash: %w", err)
+	}
+	releaseHash, err := hash32FromHex(pointer.ReleaseHash)
+	if err != nil {
+		return nil, fmt.Errorf("release hash: %w", err)
+	}
+	stageID, err := hash32FromHex(pointer.StageID)
+	if err != nil {
+		return nil, fmt.Errorf("stage id: %w", err)
+	}
+	catalogHash, err := hash32FromHex(pointer.CatalogSHA256)
+	if err != nil {
+		return nil, fmt.Errorf("catalog hash: %w", err)
+	}
+	var previousHash [32]byte
+	if pointer.PreviousAppHash != "" {
+		previousHash, err = hash32FromHex(pointer.PreviousAppHash)
+		if err != nil {
+			return nil, fmt.Errorf("previous app hash: %w", err)
+		}
+	}
+	appIDHash := sha256.Sum256([]byte(pointer.AppID))
+	packageIDHash := sha256.Sum256([]byte(pointer.PackageID))
+	versionHash := sha256.Sum256([]byte(pointer.Version))
+	previousVersionHash := sha256.Sum256([]byte(pointer.PreviousVersion))
+	msg := make([]byte, 0, len("melusina-app-catalog-pointer-v1\x00")+32*10+16)
+	msg = append(msg, []byte("melusina-app-catalog-pointer-v1\x00")...)
+	msg = append(msg, appIDHash[:]...)
+	msg = append(msg, packageIDHash[:]...)
+	msg = append(msg, versionHash[:]...)
+	msg = append(msg, appHash[:]...)
+	msg = append(msg, releaseHash[:]...)
+	msg = append(msg, stageID[:]...)
+	msg = append(msg, catalogHash[:]...)
+	msg = append(msg, previousVersionHash[:]...)
+	msg = append(msg, previousHash[:]...)
+	msg = append(msg, domainHash[:]...)
+	var times [16]byte
+	binary.BigEndian.PutUint64(times[0:8], uint64(pointer.PublishedAt))
+	binary.BigEndian.PutUint64(times[8:16], uint64(pointer.PreviousValidUntil))
+	return append(msg, times[:]...), nil
 }
 
 // receiptMessage assembles the EXACT bytes the operator signs / a verifier

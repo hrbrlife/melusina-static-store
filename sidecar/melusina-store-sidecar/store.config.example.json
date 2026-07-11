@@ -13,6 +13,8 @@
   "rpc_url": "<Solana RPC endpoint>",
   "listen_addr": ":8443",
   "dist_dir": "dist-publish",
+  "private_stage_dir": "/var/lib/melusina-store/private-app-candidates",
+  "app_rollback_window_seconds": 86400,
   "catalog_repo_root": "../..",
   "tls": {
     "cert_path": "/etc/melusina/store/tls/cert.pem",

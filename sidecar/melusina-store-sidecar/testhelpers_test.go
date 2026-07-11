@@ -333,6 +333,7 @@ func testConfig(t *testing.T) (Config, string) {
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",
+		DistDir:         t.TempDir(),
 	}, licenseMint
 }
 
@@ -344,9 +345,11 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	t.Helper()
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
+	spkSum := sha256.Sum256(spk)
+	packageID := hex.EncodeToString(spkSum[:])[:32]
 	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)
 	// locates the prior published version under (attest/<appId>/RELEASE.json).
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","appId":"testapp0000000000000000000000000000000000000000000000"}`)
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"testapp0000000000000000000000000000000000000000000000"}`)
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)

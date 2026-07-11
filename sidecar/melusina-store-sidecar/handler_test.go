@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -22,28 +25,96 @@ import (
 
 var enc = base64.StdEncoding
 
-// stubAssembler writes a trivial build-store.sh into a temp dir so the handler's
-// post-gate catalog step runs (and succeeds) without invoking the real heavy
-// aggregator.
-func stubAssembler(t *testing.T) *CatalogAssembler {
-	t.Helper()
-	dir := t.TempDir()
-	script := filepath.Join(dir, "build-store.sh")
-	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\necho assembled\n"), 0o755); err != nil {
-		t.Fatal(err)
+type stubCatalogAssembler struct {
+	cfg Config
+}
+
+// Assemble mirrors the small catalog subset the publish handler consumes. It
+// keeps handler tests independent of the real Vite/submodule assembler while
+// still exercising the signed-pointer boundary against actual assembled bytes.
+func (a *stubCatalogAssembler) Assemble(ctx context.Context) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
 	}
-	return &CatalogAssembler{RepoRoot: dir, Script: "build-store.sh", Args: nil, Timeout: 30 * time.Second}
+	for _, dir := range []string{"apps", "packages", "signatures", "attest"} {
+		if err := os.RemoveAll(filepath.Join(a.cfg.DistDir, dir)); err != nil {
+			return "", err
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(a.cfg.DistDir, "apps"), 0o755); err != nil {
+		return "", err
+	}
+	metas, err := filepath.Glob(filepath.Join(a.cfg.CatalogRepoRoot, "packages", "*", "*", "*", "metadata.json"))
+	if err != nil {
+		return "", err
+	}
+	index := catalogIndex{}
+	for _, metadataPath := range metas {
+		metadata, readErr := os.ReadFile(metadataPath)
+		if readErr != nil {
+			return "", readErr
+		}
+		appID := metadataAppID(metadata)
+		packageID := metadataPackageID(metadata)
+		if !isSafePathSegment(appID) || !isSafePathSegment(packageID) {
+			continue
+		}
+		slot := filepath.Dir(metadataPath)
+		spk, readErr := os.ReadFile(filepath.Join(slot, "app.spk"))
+		if readErr != nil {
+			return "", readErr
+		}
+		release, readErr := os.ReadFile(filepath.Join(slot, "RELEASE.json"))
+		if readErr != nil {
+			return "", readErr
+		}
+		for path, body := range map[string][]byte{
+			filepath.Join(a.cfg.DistDir, "packages", packageID):                spk,
+			filepath.Join(a.cfg.DistDir, "signatures", appID, "metadata.json"): metadata,
+			filepath.Join(a.cfg.DistDir, "attest", appID, "RELEASE.json"):      release,
+		} {
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				return "", err
+			}
+			if err := os.WriteFile(path, body, 0o644); err != nil {
+				return "", err
+			}
+		}
+		index.Apps = append(index.Apps, catalogIndexApp{AppID: appID, PackageID: packageID})
+	}
+	sort.Slice(index.Apps, func(i, j int) bool { return index.Apps[i].AppID < index.Apps[j].AppID })
+	indexBytes, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	indexBytes = append(indexBytes, '\n')
+	if err := os.WriteFile(filepath.Join(a.cfg.DistDir, "apps", "index.json"), indexBytes, 0o644); err != nil {
+		return "", err
+	}
+	return "assembled", nil
+}
+
+func stubAssembler(cfg Config) catalogAssembler {
+	return &stubCatalogAssembler{cfg: cfg}
 }
 
 // newTestService builds a publishService with the given mock reader + operator
 // and a stub assembler.
 func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private) *publishService {
 	t.Helper()
+	if cfg.PrivateStageDir == "" {
+		cfg.PrivateStageDir = t.TempDir()
+	}
+	if cfg.DistDir == "" {
+		cfg.DistDir = t.TempDir()
+	}
 	return &publishService{
 		cfg:       cfg,
 		cr:        m,
 		operator:  op,
-		assembler: stubAssembler(t),
+		assembler: stubAssembler(cfg),
 		nonces:    envelope.NewMemoryNonceCache(),
 	}
 }
@@ -70,9 +141,18 @@ func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity
 }
 
 func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte) envelope.Signed {
+	return signInstallerPublishAt(t, publisher, operatorPub, "shell", "sandstorm-42.tar.xz", artifact)
+}
+
+func signInstallerPublishAt(t *testing.T, publisher *identity.Private, operatorPub identity.Public, class, name string, artifact []byte) envelope.Signed {
 	t.Helper()
 	artifactSum := sha256.Sum256(artifact)
+	claims, err := installerArtifactEnvelopeBody(class, name, artifactSum)
+	if err != nil {
+		t.Fatalf("installer claims: %v", err)
+	}
 	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+		Body:        claims,
 		RequestHash: hex.EncodeToString(artifactSum[:]),
 		TTL:         5 * time.Minute,
 		Chain: envelope.ChainEvidence{
@@ -117,6 +197,24 @@ func doPublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.
 	w := httptest.NewRecorder()
 	svc.handlePublish(w, r)
 	return w
+}
+
+func doStagePublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.ResponseRecorder {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/publish/stage", body)
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	svc.handleStagePublish(w, r)
+	return w
+}
+
+func stageThenPromote(t *testing.T, svc *publishService, publisher *identity.Private, operator identity.Public, spk, release []byte, body func(envelope.Signed) *bytes.Buffer) *httptest.ResponseRecorder {
+	t.Helper()
+	stage := doStagePublish(t, svc, body(signPublish(t, publisher, operator, spk, release)))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
+	}
+	return doPublish(t, svc, body(signPublish(t, publisher, operator, spk, release)))
 }
 
 func jsonInstallerPublishBody(t *testing.T, sig envelope.Signed, class, name string, artifact []byte) *bytes.Buffer {
@@ -170,6 +268,22 @@ func TestHandlePublish_Accept(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
 	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	stageSig := signPublish(t, pub, op.Public(), f.spk, release)
+	stage := doStagePublish(t, svc, jsonPublishBody(t, stageSig, release, f.spk, f.metadata))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
+	}
+	var stageReceipt StageReceipt
+	if err := json.Unmarshal(stage.Body.Bytes(), &stageReceipt); err != nil {
+		t.Fatalf("decode stage receipt: %v", err)
+	}
+	operatorKey, err := op.Public().SignPublicKey()
+	if err != nil {
+		t.Fatalf("operator public key: %v", err)
+	}
+	if err := verifyStageReceipt(ed25519.PublicKey(operatorKey), stageReceipt); err != nil {
+		t.Fatalf("verify stage receipt: %v", err)
+	}
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusOK {
@@ -185,6 +299,93 @@ func TestHandlePublish_Accept(t *testing.T) {
 	}
 	if rc.OperatorSignature == "" {
 		t.Error("receipt missing operator signature")
+	}
+	if rc.Catalog == nil || rc.Catalog.AppID != metadataAppID(f.metadata) || rc.Catalog.PackageID != metadataPackageID(f.metadata) {
+		t.Fatalf("receipt missing exact signed catalog pointer: %+v", rc.Catalog)
+	}
+	if err := verifyAppCatalogPointer(ed25519.PublicKey(operatorKey), *rc.Catalog); err != nil {
+		t.Fatalf("verify catalog pointer: %v", err)
+	}
+}
+
+func TestHandlePublish_RequiresPrivateStage(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	release := mustJSON(t, f.rel)
+
+	w := doPublish(t, svc, jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "check=stage") {
+		t.Fatalf("expected unstaged promotion to fail 409 at stage gate, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandlePublish_AllowsOlderActiveReleaseDuringRollout(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	f.rel.Version = "2.0.0"
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
+	pinOtherActiveRelease(t, m, &f, "1.0.0")
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	release := mustJSON(t, f.rel)
+
+	stage := doStagePublish(t, svc, jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
+	}
+	promote := doPublish(t, svc, jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata))
+	if promote.Code != http.StatusOK {
+		t.Fatalf("overlap promotion expected 200, got %d: %s", promote.Code, promote.Body.String())
+	}
+}
+
+func TestHandlePublish_PromotesFinalizedReleaseFromProvisionalStage(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix-1000)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+
+	provisional := f.rel
+	provisional.SignedAtUnix = 0
+	provisional.ReleaseEntryPda = ""
+	provisional.AuthorSig = ""
+	provisional.QuorumPolicy = QuorumPolicy{}
+	provisionalBytes := mustJSON(t, provisional)
+	stage := doStagePublish(t, svc, jsonPublishBody(t,
+		signPublish(t, pub, op.Public(), f.spk, provisionalBytes), provisionalBytes, f.spk, f.metadata))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("provisional stage expected 200, got %d: %s", stage.Code, stage.Body.String())
+	}
+
+	finalBytes := mustJSON(t, f.rel)
+	promote := doPublish(t, svc, jsonPublishBody(t,
+		signPublish(t, pub, op.Public(), f.spk, finalBytes), finalBytes, f.spk, f.metadata))
+	if promote.Code != http.StatusOK {
+		t.Fatalf("finalized promotion expected 200, got %d: %s", promote.Code, promote.Body.String())
 	}
 }
 
@@ -332,6 +533,9 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			svc := newTestService(t, cfg, m, op)
 			pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 			sig := signInstallerPublish(t, pub, op.Public(), artifact)
+			if isSafePathSegment(tc.class) && isSafePathSegment(tc.fileName) {
+				sig = signInstallerPublishAt(t, pub, op.Public(), tc.class, tc.fileName, artifact)
+			}
 			svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 
 			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, tc.class, tc.fileName, artifact))
@@ -436,13 +640,24 @@ func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
 			wantBody: "check=installer_supersede",
 		},
 		{
-			name: "version_bumped_signed_witnessed",
+			name: "version_bumped_cannot_overwrite_immutable_name",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
 				pinRootStoreOperator(t, cfg, m, op)
 				pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
 				old := []byte("old installer artifact")
 				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
 				pinInstallerEntry(t, cfg, m, old, "1.0.0", verify.AttestationStatusSuperseded)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusConflict,
+			wantBody: "check=immutable_release",
+		},
+		{
+			name: "first_publish_signed_witnessed",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
 				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 				return signInstallerPublish(t, pub, op.Public(), artifact)
 			},
@@ -494,6 +709,28 @@ func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
 	}
 }
 
+func TestHandlePublishInstaller_IdempotentSameBytes(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	m := newMockChainReader()
+	artifact := []byte("immutable installer artifact")
+	pinRootStoreOperator(t, cfg, m, op)
+	pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
+	pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		sig := signInstallerPublishAt(t, pub, op.Public(), "shell", "sandstorm-build-42.tar.xz", artifact)
+		w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "shell", "sandstorm-build-42.tar.xz", artifact))
+		if w.Code != http.StatusOK {
+			t.Fatalf("attempt %d: got %d, want 200: %s", attempt, w.Code, w.Body.String())
+		}
+	}
+}
+
 func pinInstallerEntry(t *testing.T, cfg Config, m *mockChainReader, artifact []byte, version string, status verify.AttestationStatus) string {
 	t.Helper()
 	hash := sha256.Sum256(artifact)
@@ -515,7 +752,7 @@ func writeCurrentInstaller(t *testing.T, cfg Config, class, name string, artifac
 
 func TestHandlePublishInstaller_NoOperatorFailsClosed(t *testing.T) {
 	cfg, _ := testConfig(t)
-	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(t), nonces: envelope.NewMemoryNonceCache()}
+	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(cfg), nonces: envelope.NewMemoryNonceCache()}
 	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, envelope.Signed{}, "shell", "sandstorm-42.tar.xz", []byte("artifact")))
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
@@ -619,19 +856,6 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			},
 			wantCode: http.StatusConflict,
 			wantBody: "check=release_version",
-		},
-		{
-			name: "prior_active_not_superseded",
-			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
-				f.rel.Version = "2.0.0"
-				m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: "2.0.0", status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
-				pinOtherActiveRelease(t, m, f, "1.0.0")
-				release := mustJSON(t, f.rel)
-				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
-			},
-			wantCode: http.StatusConflict,
-			wantBody: "check=release_supersede",
 		},
 		{
 			name: "blacklisted",
@@ -783,7 +1007,7 @@ func pinOtherActiveRelease(t *testing.T, m *mockChainReader, f *publishFixture, 
 // accepts an unverified upload.
 func TestHandlePublish_NoOperatorFailsClosed(t *testing.T) {
 	cfg, _ := testConfig(t)
-	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(t), nonces: envelope.NewMemoryNonceCache()}
+	svc := &publishService{cfg: cfg, cr: nil, operator: nil, assembler: stubAssembler(cfg), nonces: envelope.NewMemoryNonceCache()}
 	w := doPublish(t, svc, bytes.NewBufferString("{}"))
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
@@ -819,4 +1043,24 @@ func mustJSON(t *testing.T, v any) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func TestWritePublishedReleaseArtifactIsImmutable(t *testing.T) {
+	dist := t.TempDir()
+	if err := writePublishedReleaseArtifact(dist, "deployer", "full-deploy-deadbeef.tar.zst", []byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writePublishedReleaseArtifact(dist, "deployer", "full-deploy-deadbeef.tar.zst", []byte("first")); err != nil {
+		t.Fatalf("idempotent write failed: %v", err)
+	}
+	if err := writePublishedReleaseArtifact(dist, "deployer", "full-deploy-deadbeef.tar.zst", []byte("replacement")); err == nil || !strings.Contains(err.Error(), "immutable release artifact") {
+		t.Fatalf("different-byte overwrite was not rejected: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(dist, "releases", "deployer", "full-deploy-deadbeef.tar.zst"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "first" {
+		t.Fatalf("immutable artifact changed to %q", got)
+	}
 }

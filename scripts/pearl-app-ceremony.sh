@@ -42,6 +42,9 @@
 #   OUTPUT_DIR                        /tmp/pearl-ceremony-$APP_SLUG
 #   ATTEST_REPO                       /home/user/Desktop/melusina-attestdeployer-tool
 #   COPY_TO_CATALOG                   1 (set 0 to skip the catalog overwrite)
+#   CEREMONY_MODE                     full (default), prepare, or execute
+#     prepare: build the provisional RELEASE.json and exit before chain mutation
+#     execute: reuse a prior prepare output and run Squads+finalize+verify
 
 set -euo pipefail
 
@@ -66,6 +69,11 @@ REVIEWER2_KEYPAIR="${MELUSINA_REVIEWER2_KEYPAIR:-/home/user/Desktop/Melusina/tes
 VERSION="${MELUSINA_VERSION:-0.1.0}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/pearl-ceremony-$APP_SLUG}"
 COPY_TO_CATALOG="${COPY_TO_CATALOG:-1}"
+CEREMONY_MODE="${CEREMONY_MODE:-full}"
+case "$CEREMONY_MODE" in
+  full|prepare|execute) ;;
+  *) echo "invalid CEREMONY_MODE=$CEREMONY_MODE (want full|prepare|execute)" >&2; exit 2 ;;
+esac
 
 APP_DIR="$OUTPUT_DIR/app"
 STATE_PATH="$APP_DIR/.melusina/release-ceremony/state.json"
@@ -78,13 +86,20 @@ for f in "$PEARL_TOOL" "$APP_CATALOG_PATH/app.spk" "$APP_CATALOG_PATH/metadata.j
   [[ -e "$f" ]] || { echo "missing required path: $f" >&2; exit 1; }
 done
 
-rm -rf "$OUTPUT_DIR"
-mkdir -p "$APP_DIR/.melusina/release-ceremony"
+if [[ "$CEREMONY_MODE" = "execute" ]]; then
+  [[ -f "$APP_DIR/app.spk" && -f "$APP_DIR/metadata.json" && -f "$APP_DIR/RELEASE.json" ]] || {
+    echo "[ceremony:$APP_SLUG] execute requires prior prepare output under $APP_DIR" >&2
+    exit 1
+  }
+else
+  rm -rf "$OUTPUT_DIR"
+  mkdir -p "$APP_DIR/.melusina/release-ceremony"
 
-# Stage a clean app tree: SPK + metadata only (description.md, icon.svg,
-# release-tag.txt left out — appHash binds to the canonical pair).
-cp "$APP_CATALOG_PATH/app.spk" "$APP_DIR/app.spk"
-cp "$APP_CATALOG_PATH/metadata.json" "$APP_DIR/metadata.json"
+  # Stage a clean app tree: SPK + metadata only (description.md, icon.svg,
+  # release-tag.txt left out — appHash binds to the canonical pair).
+  cp "$APP_CATALOG_PATH/app.spk" "$APP_DIR/app.spk"
+  cp "$APP_CATALOG_PATH/metadata.json" "$APP_DIR/metadata.json"
+fi
 
 # Squads config → variables.
 readarray -t squads_cfg < <(
@@ -287,12 +302,27 @@ JS
 
 # Step 1: appHash (over the staged tree).
 APP_HASH="$("$PEARL_TOOL" compute-app-hash --app-dir "$APP_DIR" | tail -n 1)"
-NONCE="$(openssl rand -hex 16)"
-RELEASE_HASH="$(printf '%s%s%s' "$APP_HASH" "$VERSION" "$NONCE" | sha256sum | awk '{print $1}')"
-echo "[ceremony:$APP_SLUG] appHash=$APP_HASH version=$VERSION nonce=$NONCE"
+if [[ "$CEREMONY_MODE" = "execute" ]]; then
+  readarray -t _prepared < <(python3 - "$APP_DIR/RELEASE.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+print(d.get("appHash", ""))
+print(d.get("releaseHash", ""))
+print(d.get("releaseNonce", ""))
+print(d.get("version", ""))
+PY
+  )
+  [[ "${_prepared[0]}" = "$APP_HASH" ]] || { echo "[ceremony:$APP_SLUG] prepared appHash drift" >&2; exit 1; }
+  [[ "${_prepared[3]}" = "$VERSION" ]] || { echo "[ceremony:$APP_SLUG] prepared version ${_prepared[3]} != requested $VERSION" >&2; exit 1; }
+  RELEASE_HASH="${_prepared[1]}"
+  NONCE="${_prepared[2]}"
+else
+  NONCE="$(openssl rand -hex 16)"
+  RELEASE_HASH="$(printf '%s%s%s' "$APP_HASH" "$VERSION" "$NONCE" | sha256sum | awk '{print $1}')"
 
-# Step 2: provisional RELEASE.json.
-cat > "$APP_DIR/RELEASE.json" <<JSON
+  # Step 2: provisional RELEASE.json. These exact package bytes + release intent
+  # can now be privately staged before CEREMONY_MODE=execute mutates the chain.
+  cat > "$APP_DIR/RELEASE.json" <<JSON
 {
   "\$schema": "melusina-release-v1",
   "appHash": "$APP_HASH",
@@ -311,6 +341,15 @@ cat > "$APP_DIR/RELEASE.json" <<JSON
   "releaseNonce": "$NONCE"
 }
 JSON
+fi
+echo "[ceremony:$APP_SLUG] appHash=$APP_HASH version=$VERSION nonce=$NONCE"
+
+if [[ "$CEREMONY_MODE" = "prepare" ]]; then
+  cp "$APP_DIR/RELEASE.json" "$FINAL_RELEASE_JSON"
+  echo "[ceremony:$APP_SLUG] PREPARED — no chain mutation"
+  echo "RELEASE.json:   $FINAL_RELEASE_JSON"
+  exit 0
+fi
 
 # --- Ceremony serialization (CODEX-SDL F2) -----------------------------------
 # next-index (read) -> propose -> submit -> finalize is a read-modify-write on a

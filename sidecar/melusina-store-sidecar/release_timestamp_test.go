@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"math"
 	"net/http"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
@@ -203,7 +205,6 @@ func TestHandlePublish_AttestationProximityReject(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("got %d, want 403: %s", w.Code, w.Body.String())
@@ -234,7 +235,6 @@ func TestHandlePublish_MonotonicTimestampReject(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusConflict {
 		t.Fatalf("got %d, want 409: %s", w.Code, w.Body.String())
@@ -265,9 +265,9 @@ func TestHandlePublish_MonotonicTimestampAccept(t *testing.T) {
 
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	sig := signPublish(t, pub, op.Public(), f.spk, release)
-
-	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	w := stageThenPromote(t, svc, pub, op.Public(), f.spk, release, func(sig envelope.Signed) *bytes.Buffer {
+		return jsonPublishBody(t, sig, release, f.spk, f.metadata)
+	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("got %d, want 200: %s", w.Code, w.Body.String())
 	}

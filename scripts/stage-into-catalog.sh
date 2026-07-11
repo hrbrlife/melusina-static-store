@@ -19,24 +19,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-STUB="${RELEASE_JSON_STUB:-}"
-if [[ -z "$STUB" ]]; then
-  # Probe canonical spkmodule copies on this host. Any reachable copy works
-  # — release-json-stub is a pure script in the shared spkmodule component.
-  for cand in \
-    /home/user/Desktop/welcome-pearl/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/_killlist_staging/melusina-spkmodule-component/bin/release-json-stub \
-    /home/user/Desktop/melusina_botmother/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/ccash_wholesale/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/ccash_domain_template/spkmodule/bin/release-json-stub; do
-    if [[ -x "$cand" ]]; then STUB="$cand"; break; fi
-  done
-  # Recursive fallback: scan /home/user/Desktop for any spkmodule checkout
-  if [[ -z "$STUB" ]]; then
-    STUB="$(find /home/user/Desktop -maxdepth 5 -path '*/spkmodule/bin/release-json-stub' -executable -type f 2>/dev/null | head -1)"
-  fi
-fi
-[[ -n "$STUB" && -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB, 5 canonical spkmodule paths, and recursive scan of /home/user/Desktop. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+STUB="${RELEASE_JSON_STUB:-$SCRIPT_DIR/make-offline-release.py}"
+[[ -f "$STUB" ]] || { echo "FATAL: canonical release stub generator missing: $STUB" >&2; exit 2; }
 
 # Pre-flight: spk CLI required for extracting package metadata
 command -v spk >/dev/null 2>&1 || { echo "FATAL: spk CLI not found on PATH — required by stage-into-catalog.sh. Install sandstorm bin/spk." >&2; exit 2; }
@@ -116,12 +100,16 @@ while (( $# >= 2 )); do
   # spk verify output is Cap'n Proto text (JSON-like, not strict JSON); a small
   # python parser tolerates the trailing-comma + LargeDataBlob syntax. Verifying
   # the SHADOW spk means a verify failure aborts the pair with live intact.
-  SPK_INFO="$(spk verify -d "$SHADOW/app.spk" 2>/dev/null)"
-  if [[ -z "$SPK_INFO" ]]; then
-    fail "  spk verify -d failed on staged SPK ($SPK) — refusing to stage with unknown identity (live entry untouched)"
+  SPK_INFO="$(spk verify -d "$SHADOW/app.spk" 2>/dev/null || true)"
+  PKG_ID=""; NEW_NUM=""; NEW_VER=""; STAGED_APP_ID=""
+  _unpack_dir="$(mktemp -d)"
+  if ! STAGED_APP_ID="$(spk unpack "$SHADOW/app.spk" "$_unpack_dir/app" 2>/dev/null)"; then
+    rm -rf "$_unpack_dir"
+    fail "  signature-checked spk unpack failed (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
-  read -r PKG_ID NEW_NUM NEW_VER < <(python3 - <<PY
+  if [[ -n "$SPK_INFO" ]]; then
+    read -r PKG_ID NEW_NUM NEW_VER < <(python3 - <<PY
 import re, sys
 s = """$SPK_INFO"""
 pkg = re.search(r'"packageId"\s*:\s*"([0-9a-f]+)"', s)
@@ -129,11 +117,46 @@ ver_num = re.search(r'"version"\s*:\s*(\d+)', s)
 mkt = re.search(r'"marketingVersion"\s*:\s*\{\s*"defaultText"\s*:\s*"([^"]+)"', s)
 print(pkg.group(1) if pkg else "", ver_num.group(1) if ver_num else "0", mkt.group(1) if mkt else "0.0.0")
 PY
-  )
+    )
+  else
+    # Some valid packages make `spk verify -d` invoke GPG pinentry, which has no
+    # /dev/tty in CI/deployer sessions. `spk unpack` still verifies the Sandstorm
+    # app signature and emits the stable appId. Decode the unpacked binary
+    # manifest for version fields, and derive packageId from the exact package
+    # SHA (Sandstorm packageId = first 16 SHA-256 bytes). This is a strict
+    # verification fallback, not an offline/unsigned bypass.
+    _package_schema="${SANDSTORM_PACKAGE_SCHEMA:-/usr/include/sandstorm/package.capnp}"
+    if [[ ! -f "$_package_schema" ]] || ! capnp decode "$_package_schema" Manifest \
+        < "$_unpack_dir/app/sandstorm-manifest" > "$_unpack_dir/manifest.txt" 2>/dev/null; then
+      rm -rf "$_unpack_dir"
+      fail "  unpacked SPK manifest could not be decoded (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+    read -r NEW_NUM NEW_VER < <(python3 - "$_unpack_dir/manifest.txt" <<'PY'
+import re, sys
+s = open(sys.argv[1]).read()
+num = re.search(r'appVersion\s*=\s*(\d+)', s)
+ver = re.search(r'appMarketingVersion\s*=\s*\(defaultText\s*=\s*"([^"]+)"', s)
+print(num.group(1) if num else "", ver.group(1) if ver else "")
+PY
+    )
+    PKG_ID="${FULL_SHA:0:32}"
+    warn "  spk verify -d unavailable; used signature-checked unpack + decoded manifest"
+  fi
+  rm -rf "$_unpack_dir"
   : "${NEW_VER:=0.0.0}"
   : "${NEW_NUM:=0}"
-  if [[ -z "$PKG_ID" ]]; then
-    fail "  could not extract packageId from spk verify output — refusing to stage (live entry untouched)"
+  if [[ -z "$PKG_ID" || -z "$NEW_VER" || "$NEW_NUM" == "0" ]]; then
+    fail "  could not establish packageId/version from the staged SPK — refusing to stage (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+
+  # Bind the package's signature-derived appId to the existing catalog slot on
+  # every path. A valid package for another app must never inherit this slot's
+  # metadata and release authority.
+  CATALOG_APP_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appId",""))' "$CAT_META")"
+  if [[ -z "$CATALOG_APP_ID" || "$STAGED_APP_ID" != "$CATALOG_APP_ID" ]]; then
+    fail "  unpacked appId $STAGED_APP_ID != catalog appId ${CATALOG_APP_ID:-<empty>} (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
@@ -162,7 +185,7 @@ PY
   # 3) regenerate RELEASE.json offline-stub in the shadow against the shadow SPK
   #    + shadow metadata (rm the linked copy first so the stub writes a fresh file)
   rm -f "$SHADOW/RELEASE.json"
-  if ! "$STUB" --spk "$SHADOW/app.spk" --metadata "$SHADOW/metadata.json" --output "$SHADOW/RELEASE.json" --version "$NEW_VER" >/dev/null 2>&1; then
+  if ! python3 "$STUB" --spk "$SHADOW/app.spk" --metadata "$SHADOW/metadata.json" --output "$SHADOW/RELEASE.json" --version "$NEW_VER" >/dev/null 2>&1; then
     fail "  release-json-stub failed for $(basename "$PKG") (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi

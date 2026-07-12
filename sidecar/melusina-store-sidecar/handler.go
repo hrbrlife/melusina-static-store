@@ -23,7 +23,7 @@ const (
 	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK).
 	// Catalog SPKs stay under 100 MiB; keep this narrow because app publication
 	// has no reason to accept shell-sized payloads.
-	maxAppPublishBody int64 = 110 << 20 // 110 MiB
+	maxAppPublishBody int64 = 256 << 20 // 256 MiB
 
 	// maxInstallerPublishBody bounds /publish/installer. Shell bundles are
 	// currently about 280 MiB, so the app limit cannot also be the installer
@@ -110,7 +110,7 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 		cfg:       cfg,
 		cr:        cr,
 		operator:  operator,
-		assembler: NewCatalogAssembler(cfg.CatalogRepoRoot),
+		assembler: NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
 		nonces:    envelope.NewMemoryNonceCache(),
 	}
 
@@ -268,8 +268,8 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if out, err := s.assembler.Assemble(r.Context()); err != nil {
-		log.Printf("publish: catalog assemble failed: %v\n%s", err, out)
+	if err := s.assembler.AssemblePublishedApp(spk, releaseBytes, metadata); err != nil {
+		log.Printf("publish: catalog assemble failed: %v", err)
 		http.Error(w, "check=assemble: catalog assembler failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

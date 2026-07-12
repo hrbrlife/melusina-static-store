@@ -22,17 +22,10 @@ import (
 
 var enc = base64.StdEncoding
 
-// stubAssembler writes a trivial build-store.sh into a temp dir so the handler's
-// post-gate catalog step runs (and succeeds) without invoking the real heavy
-// aggregator.
+// stubAssembler gives each handler test an isolated in-process read surface.
 func stubAssembler(t *testing.T) *CatalogAssembler {
 	t.Helper()
-	dir := t.TempDir()
-	script := filepath.Join(dir, "build-store.sh")
-	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\necho assembled\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return &CatalogAssembler{RepoRoot: dir, Script: "build-store.sh", Args: nil, Timeout: 30 * time.Second}
+	return &CatalogAssembler{DistDir: t.TempDir()}
 }
 
 // newTestService builds a publishService with the given mock reader + operator

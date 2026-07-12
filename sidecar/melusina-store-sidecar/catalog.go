@@ -1,74 +1,150 @@
 package main
 
 import (
-	"bytes"
-	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"os/exec"
+	"os"
 	"path/filepath"
-	"time"
+	"sort"
+	"strings"
 )
 
-// CatalogAssembler runs build-store.sh — the static_store catalog assembler —
-// from the repo root after a publish has PASSED the on-chain gate. It is a
-// CONVENIENCE assembler that aggregates submodule metadata + SPKs into
-// dist-publish/; it is NOT the trust authority. The trust gate is the Go
-// VerifyPublish in verify.go. The sidecar is the single writer (the /publish
-// handler serializes calls under a mutex), so this never runs concurrently.
+// CatalogAssembler materializes the read surface directly from bytes that have
+// already passed the publisher, on-chain, version, and timestamp gates. It does
+// not need a Git checkout or build-store.sh on the serving machine.
 type CatalogAssembler struct {
-	// RepoRoot is the static_store working tree containing build-store.sh.
-	RepoRoot string
-	// Script is the assembler filename relative to RepoRoot (default build-store.sh).
-	Script string
-	// Args passed to the assembler (e.g. ["--aggregate"] to skip the vite build).
-	Args []string
-	// Timeout bounds a single assembly run.
-	Timeout time.Duration
+	DistDir string
 }
 
-// NewCatalogAssembler returns an assembler rooted at repoRoot. An empty repoRoot
-// falls back to "." (the sidecar's working directory).
-func NewCatalogAssembler(repoRoot string) *CatalogAssembler {
-	if repoRoot == "" {
-		repoRoot = "."
+func NewCatalogAssembler(_ string, distDir string) *CatalogAssembler {
+	if strings.TrimSpace(distDir) == "" {
+		distDir = "."
 	}
-	return &CatalogAssembler{
-		RepoRoot: repoRoot,
-		Script:   "build-store.sh",
-		Args:     []string{"--aggregate"},
-		Timeout:  10 * time.Minute,
-	}
+	return &CatalogAssembler{DistDir: distDir}
 }
 
-// Assemble invokes the catalog assembler, capturing combined stdout+stderr. The
-// returned string is the captured output (always returned, even on error, so
-// the caller can surface it). A non-nil error means the assembler failed and the
-// publish MUST be reported as not-written. The receive-path attest/scan bypass
-// env vars are deliberately NOT propagated here — they are rejected upstream in
-// the /publish handler and play no role in the trust gate.
-func (a *CatalogAssembler) Assemble(ctx context.Context) (string, error) {
-	timeout := a.Timeout
-	if timeout <= 0 {
-		timeout = 10 * time.Minute
+// AssemblePublishedApp writes immutable package/signature/attestation bytes,
+// then atomically updates apps/index.json last. Readers therefore see either
+// the old complete catalog or the new complete catalog, never a partial row.
+func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) error {
+	if strings.TrimSpace(a.DistDir) == "" {
+		return fmt.Errorf("catalog dist dir is empty")
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	script := a.Script
-	if script == "" {
-		script = "build-store.sh"
+	var meta map[string]any
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		return fmt.Errorf("decode metadata: %w", err)
 	}
-	scriptPath := filepath.Join(a.RepoRoot, script)
+	var attest map[string]any
+	if err := json.Unmarshal(release, &attest); err != nil {
+		return fmt.Errorf("decode release: %w", err)
+	}
+	appID, _ := meta["appId"].(string)
+	packageID, _ := meta["packageId"].(string)
+	if strings.TrimSpace(appID) == "" {
+		return fmt.Errorf("metadata requires appId")
+	}
+	packageSum := sha256.Sum256(spk)
+	packageSHA := hex.EncodeToString(packageSum[:])
+	if strings.TrimSpace(packageID) == "" {
+		packageID = packageSHA[:32]
+		meta["packageId"] = packageID
+	}
+	if !strings.HasPrefix(packageSHA, packageID) {
+		return fmt.Errorf("packageId %s does not prefix package sha256 %s", packageID, packageSHA)
+	}
 
-	cmd := exec.CommandContext(ctx, scriptPath, a.Args...)
-	cmd.Dir = a.RepoRoot
+	for _, dir := range []string{
+		filepath.Join(a.DistDir, "packages"),
+		filepath.Join(a.DistDir, "signatures", appID),
+		filepath.Join(a.DistDir, "attest", appID),
+		filepath.Join(a.DistDir, "apps"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("mkdir %s: %w", dir, err)
+		}
+	}
+	if err := atomicWriteInto(filepath.Join(a.DistDir, "packages"), packageID, spk); err != nil {
+		return err
+	}
+	if err := atomicWriteInto(filepath.Join(a.DistDir, "signatures", appID), "metadata.json", metadata); err != nil {
+		return err
+	}
+	if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RELEASE.json", release); err != nil {
+		return err
+	}
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
+	row := make(map[string]any, len(meta)+8)
+	for key, value := range meta {
+		row[key] = value
+	}
+	if _, ok := row["name"]; !ok {
+		row["name"] = row["appTitle"]
+	}
+	if _, ok := row["version"]; !ok {
+		row["version"] = row["appVersion"]
+	}
+	if _, ok := row["marketingVersion"]; !ok {
+		row["marketingVersion"] = row["version"]
+	}
+	if _, ok := row["tier"]; !ok {
+		row["tier"] = "regular"
+	}
+	if _, ok := row["domains"]; !ok {
+		row["domains"] = []string{"*"}
+	}
+	if _, ok := row["capabilities"]; !ok {
+		row["capabilities"] = nil
+	}
+	row["sha256"] = packageSHA
+	row["attest"] = attest
+	if signedAt, ok := numberAsInt64(attest["signedAtUnix"]); ok {
+		row["updatedAt"] = signedAt * 1000
+	}
+
+	indexPath := filepath.Join(a.DistDir, "apps", "index.json")
+	index := struct {
+		Apps []map[string]any `json:"apps"`
+	}{}
+	if body, err := os.ReadFile(indexPath); err == nil {
+		if err := json.Unmarshal(body, &index); err != nil {
+			return fmt.Errorf("decode existing app index: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("read existing app index: %w", err)
+	}
+	kept := index.Apps[:0]
+	for _, existing := range index.Apps {
+		if existingID, _ := existing["appId"].(string); existingID != appID {
+			kept = append(kept, existing)
+		}
+	}
+	index.Apps = append(kept, row)
+	sort.Slice(index.Apps, func(i, j int) bool {
+		left := strings.ToLower(fmt.Sprint(index.Apps[i]["name"]))
+		right := strings.ToLower(fmt.Sprint(index.Apps[j]["name"]))
+		if left == right {
+			return fmt.Sprint(index.Apps[i]["appId"]) < fmt.Sprint(index.Apps[j]["appId"])
+		}
+		return left < right
+	})
+	body, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
-		return out.String(), fmt.Errorf("catalog assembler %s: %w", scriptPath, err)
+		return fmt.Errorf("encode app index: %w", err)
 	}
-	return out.String(), nil
+	body = append(body, '\n')
+	return atomicWriteInto(filepath.Dir(indexPath), filepath.Base(indexPath), body)
+}
+
+func numberAsInt64(value any) (int64, bool) {
+	switch typed := value.(type) {
+	case float64:
+		return int64(typed), typed >= 0
+	case json.Number:
+		result, err := typed.Int64()
+		return result, err == nil && result >= 0
+	default:
+		return 0, false
+	}
 }

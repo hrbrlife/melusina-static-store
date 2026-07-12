@@ -19,10 +19,17 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// maxPublishBody bounds the total /publish request body (envelope + RELEASE.json
-// + SPK). SPKs in the gh-pages catalog are kept under 100 MiB (build-store.sh);
-// allow some envelope/release overhead on top.
-const maxPublishBody = 110 << 20 // 110 MiB
+const (
+	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK).
+	// Catalog SPKs stay under 100 MiB; keep this narrow because app publication
+	// has no reason to accept shell-sized payloads.
+	maxAppPublishBody int64 = 110 << 20 // 110 MiB
+
+	// maxInstallerPublishBody bounds /publish/installer. Shell bundles are
+	// currently about 280 MiB, so the app limit cannot also be the installer
+	// limit. Keep a finite ceiling while leaving room for signed release growth.
+	maxInstallerPublishBody int64 = 512 << 20 // 512 MiB
+)
 
 // publishService holds the single-writer state for POST /publish: the on-chain
 // reader (the trust gate), the operator's signing identity (receipt signer +
@@ -426,7 +433,9 @@ func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bo
 // {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
 // and is malformed.
 func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, hint slotHint, err error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
+		return sig, nil, nil, nil, hint, err
+	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
@@ -500,7 +509,9 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+	if err := limitPublishBody(r, maxInstallerPublishBody); err != nil {
+		return sig, "", "", nil, err
+	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
@@ -548,6 +559,14 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		return sig, "", "", nil, errors.New("artifact is empty")
 	}
 	return sig, class, name, artifact, nil
+}
+
+func limitPublishBody(r *http.Request, limit int64) error {
+	if r.ContentLength > limit {
+		return fmt.Errorf("request body is %d bytes; limit is %d", r.ContentLength, limit)
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, limit)
+	return nil
 }
 
 func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte) error {

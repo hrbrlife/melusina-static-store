@@ -24,6 +24,8 @@
     "sidecar_id": "store",
     "chain_id": "solana:devnet",
     "key_version": 1,
+    "operator_key_version": 1,
+    "operator_domain": "store.example.org",
     "tls_cert_path": "/etc/melusina/store/boot-identity-tls-cert.pem"
   }
 }

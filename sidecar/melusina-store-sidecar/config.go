@@ -125,6 +125,20 @@ type BootIdentityConfig struct {
 	ChainID string `json:"chain_id"`
 	// KeyVersion is the SidecarIdentityEntry key_version seed. 0 => 1.
 	KeyVersion uint32 `json:"key_version"`
+	// OperatorKeyVersion optionally keeps the long-lived signing/encryption
+	// identity anchored to an earlier SidecarIdentityEntry PDA while KeyVersion
+	// advances to bind a renewed TLS certificate or replacement binary. Zero
+	// preserves the legacy behavior: derive the operator from KeyVersion.
+	//
+	// This separation is required because StoreOperatorAuthorization pins the
+	// operator public key, while SidecarIdentityEntry also pins rotatable
+	// deployment facts. Rotating those facts must not silently rotate the store
+	// authority that already owns its release listings.
+	OperatorKeyVersion uint32 `json:"operator_key_version,omitempty"`
+	// OperatorDomain is the domain in the stable operator identity Ref. Empty
+	// preserves the legacy behavior: use cfg.Domain. This exists for stores that
+	// normalized their serving domain after the operator was authorized.
+	OperatorDomain string `json:"operator_domain,omitempty"`
 	// TLSCertPath optionally overrides tls.cert_path for the on-chain
 	// SidecarIdentityEntry tls_cert_fingerprint binding. This lets a root store
 	// bind its public edge certificate while still serving container-local TLS.

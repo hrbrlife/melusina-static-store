@@ -279,6 +279,70 @@ func TestDeriveOperatorIdentity_EndToEnd(t *testing.T) {
 	}
 }
 
+func TestDeriveOperatorIdentity_RotatesBindingWithoutRotatingOperator(t *testing.T) {
+	dir := t.TempDir()
+	writeTestShards(t, dir)
+	certPath, tlsFP := writeTestTLSCert(t, dir)
+	cfg := Config{
+		LicenseNFTMint: randPubkeyB58(t),
+		Domain:         "melusina-os.org",
+		TLS:            TLSConfig{CertPath: certPath, KeyPath: certPath},
+		BootIdentity: BootIdentityConfig{
+			ShardsDir:          dir,
+			SidecarID:          "store",
+			ChainID:            "solana:devnet",
+			KeyVersion:         3,
+			OperatorKeyVersion: 1,
+			OperatorDomain:     "bazaar.melusina-os.org",
+		},
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindingPDA, _, err := pda.SidecarIdentity(licenseMint, "store", 3, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operatorRef, err := operatorIdentityRef(cfg, licenseMint, "store", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if operatorRef.KeyVersion != 1 || operatorRef.Domain != "bazaar.melusina-os.org" {
+		t.Fatalf("operator Ref did not preserve stable coordinates: %+v", operatorRef)
+	}
+	shards, err := loadSidecarShards(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := derive.DeriveSidecar(operatorRef, shards)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signPub, _ := signPubkey32(want.Public())
+	boxPub, _ := boxPubkey32(want.Public())
+	binHash, err := sha256OfFile(shardExeProc)
+	if err != nil {
+		t.Skipf("cannot hash self exe (%v) — skipping end-to-end on this platform", err)
+	}
+	m := newMockChainReader()
+	m.sidecarIdentity[bindingPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{
+		BinaryHash:         binHash,
+		DomainHash:         primitives.StoreDomainHash(cfg.Domain),
+		TLSCertFingerprint: tlsFP,
+		SigningPubkey:      signPub,
+		EncryptionPubkey:   boxPub,
+		Status:             verify.AttestationStatusActive,
+	}}
+	got, err := deriveOperatorIdentity(context.Background(), cfg, m)
+	if err != nil {
+		t.Fatalf("expected rotated binding to ACCEPT: %v", err)
+	}
+	if got.Public().SignPubkeyB58 != want.Public().SignPubkeyB58 {
+		t.Fatalf("operator rotated with binding: got %s want %s", got.Public().SignPubkeyB58, want.Public().SignPubkeyB58)
+	}
+}
+
 // ── test helpers ──────────────────────────────────────────────────────────
 
 func bytes32sidecar(b byte) [32]byte {

@@ -143,6 +143,32 @@ func doPublishInstaller(t *testing.T, svc *publishService, body *bytes.Buffer) *
 	return w
 }
 
+func TestPublishBodyLimitsAreEndpointSpecific(t *testing.T) {
+	appRequest := httptest.NewRequest(http.MethodPost, "/publish", http.NoBody)
+	appRequest.Header.Set("Content-Type", "application/json")
+	appRequest.ContentLength = maxAppPublishBody + 1
+	if _, _, _, _, _, err := parsePublishBody(appRequest); err == nil ||
+		!strings.Contains(err.Error(), "limit is") {
+		t.Fatalf("app publish did not reject a body above its limit: %v", err)
+	}
+
+	installerRequest := httptest.NewRequest(http.MethodPost, "/publish/installer", http.NoBody)
+	installerRequest.Header.Set("Content-Type", "application/json")
+	installerRequest.ContentLength = maxAppPublishBody + 1
+	if _, _, _, _, err := parseInstallerPublishBody(installerRequest); err == nil ||
+		strings.Contains(err.Error(), "limit is") {
+		t.Fatalf("installer endpoint incorrectly reused the app limit: %v", err)
+	}
+
+	oversizedInstaller := httptest.NewRequest(http.MethodPost, "/publish/installer", http.NoBody)
+	oversizedInstaller.Header.Set("Content-Type", "application/json")
+	oversizedInstaller.ContentLength = maxInstallerPublishBody + 1
+	if _, _, _, _, err := parseInstallerPublishBody(oversizedInstaller); err == nil ||
+		!strings.Contains(err.Error(), "limit is") {
+		t.Fatalf("installer publish did not reject a body above its limit: %v", err)
+	}
+}
+
 func pinRootStoreOperator(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private) {
 	t.Helper()
 	operatorPub := operatorSignPub32(t, op)

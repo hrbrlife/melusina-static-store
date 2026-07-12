@@ -499,6 +499,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 
 	servingDomainHash := primitives.StoreDomainHash(domain)
+	wantDeveloper, wantRepo, wantSlug := "hrbrlife", "melusina_botmother", "botmother"
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/publish" || r.Method != http.MethodPost {
@@ -523,6 +524,11 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 				http.Error(w, "bad envelope part", http.StatusBadRequest)
 				return
 			}
+			if r.FormValue("developer") != wantDeveloper ||
+				r.FormValue("repo") != wantRepo || r.FormValue("slug") != wantSlug {
+				http.Error(w, "missing multipart slot hint", http.StatusBadRequest)
+				return
+			}
 		} else {
 			var req publishRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -530,6 +536,10 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 				return
 			}
 			sigIn = req.Envelope
+			if req.Developer != wantDeveloper || req.Repo != wantRepo || req.Slug != wantSlug {
+				http.Error(w, "missing JSON slot hint", http.StatusBadRequest)
+				return
+			}
 		}
 		// Re-verify the envelope as the C2.3 handler does.
 		spkSum := sha256.Sum256(spk)
@@ -562,7 +572,11 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
-	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
+	publishOptions := options{
+		store: srv.URL, timeout: 10 * time.Second,
+		developer: wantDeveloper, repo: wantRepo, slug: wantSlug,
+	}
+	body, status, err := postPublish(context.Background(), publishOptions, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish: %v", err)
 	}
@@ -584,12 +598,34 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}
 
 	// Also exercise the multipart path against the same server.
-	body, status, err = postPublish(context.Background(), options{store: srv.URL, useMultipart: true, timeout: 10 * time.Second}, sig, releaseBytes, spk, metadata)
+	publishOptions.useMultipart = true
+	body, status, err = postPublish(context.Background(), publishOptions, sig, releaseBytes, spk, metadata)
 	if err != nil {
 		t.Fatalf("postPublish(multipart): %v", err)
 	}
 	if status != http.StatusOK {
 		t.Fatalf("multipart: expected 200, got %d: %s", status, string(body))
+	}
+}
+
+func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
+	required := []string{
+		"--store", "https://store.example", "--spk", "app.spk",
+		"--metadata", "metadata.json", "--release", "RELEASE.json",
+		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
+	}
+	if _, err := parseFlags(append(required, "--developer", "hrbrlife")); err == nil || !strings.Contains(err.Error(), "must be supplied together") {
+		t.Fatalf("partial slot hint error = %v", err)
+	}
+	full := append(required,
+		"--developer", "hrbrlife", "--repo", "repo", "--slug", "app")
+	got, err := parseFlags(full)
+	if err != nil {
+		t.Fatalf("complete slot hint rejected: %v", err)
+	}
+	if got.developer != "hrbrlife" || got.repo != "repo" || got.slug != "app" {
+		t.Fatalf("slot hint not preserved: %+v", got)
 	}
 }
 

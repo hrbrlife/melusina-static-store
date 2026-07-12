@@ -102,6 +102,9 @@ type publishRequest struct {
 	ReleaseB64  string          `json:"release_b64"`
 	SPKB64      string          `json:"spk_b64"`
 	MetadataB64 string          `json:"metadata_b64"`
+	Developer   string          `json:"developer,omitempty"`
+	Repo        string          `json:"repo,omitempty"`
+	Slug        string          `json:"slug,omitempty"`
 }
 
 func main() {
@@ -122,6 +125,9 @@ type options struct {
 	domain       string // store serving domain (store_domain_hash seed)
 	rpcURL       string // Solana JSON-RPC for receipt verification
 	verifiedSlot uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	developer    string // first-publish slot: packages/<developer>/<repo>/<slug>
+	repo         string
+	slug         string
 	useMultipart bool
 	timeout      time.Duration
 }
@@ -139,6 +145,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.domain, "domain", "", "store serving domain (bare host); store_domain_hash seed for receipt verification (defaults to the host in --store)")
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
+	fs.StringVar(&o.developer, "developer", "", "catalog developer segment (required with --repo and --slug on first publish)")
+	fs.StringVar(&o.repo, "repo", "", "catalog repository segment (required with --developer and --slug on first publish)")
+	fs.StringVar(&o.slug, "slug", "", "catalog app slug segment (required with --developer and --repo on first publish)")
 	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "HTTP request timeout")
 	if err := fs.Parse(args); err != nil {
@@ -176,6 +185,15 @@ func parseFlags(args []string) (options, error) {
 	if o.verifiedSlot == 0 {
 		// envelope.ChainEvidence.Validate rejects verified_slot==0.
 		return o, errors.New("--verified-slot must be > 0 (envelope chain evidence requires it)")
+	}
+	slotFields := 0
+	for _, value := range []string{o.developer, o.repo, o.slug} {
+		if strings.TrimSpace(value) != "" {
+			slotFields++
+		}
+	}
+	if slotFields != 0 && slotFields != 3 {
+		return o, errors.New("--developer, --repo, and --slug must be supplied together")
 	}
 	if o.domain == "" {
 		o.domain = hostFromURL(o.store)
@@ -365,6 +383,17 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
 			return nil, 0, werr
 		}
+		for name, value := range map[string]string{
+			"developer": o.developer,
+			"repo":      o.repo,
+			"slug":      o.slug,
+		} {
+			if value != "" {
+				if werr := mw.WriteField(name, value); werr != nil {
+					return nil, 0, fmt.Errorf("write %s field: %w", name, werr)
+				}
+			}
+		}
 		if cerr := mw.Close(); cerr != nil {
 			return nil, 0, cerr
 		}
@@ -379,6 +408,9 @@ func postPublish(ctx context.Context, o options, sig envelope.Signed, releaseByt
 			ReleaseB64:  stdB64(releaseBytes),
 			SPKB64:      stdB64(spk),
 			MetadataB64: stdB64(metadata),
+			Developer:   o.developer,
+			Repo:        o.repo,
+			Slug:        o.slug,
 		})
 		if merr != nil {
 			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)

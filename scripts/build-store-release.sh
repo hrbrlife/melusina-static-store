@@ -8,14 +8,25 @@ VERSION=""
 OUT_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version) VERSION="$2"; shift 2 ;;
-    --out-dir) OUT_DIR="$2"; shift 2 ;;
+    --version)
+      [[ $# -ge 2 ]] || { echo "--version requires a value" >&2; exit 2; }
+      VERSION="$2"; shift 2 ;;
+    --out-dir)
+      [[ $# -ge 2 ]] || { echo "--out-dir requires a value" >&2; exit 2; }
+      OUT_DIR="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 [[ "$VERSION" == "1.0.4" ]] || { echo "--version must be exact governed version 1.0.4" >&2; exit 2; }
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
 OUT_DIR="$(realpath -m "$OUT_DIR")"
+OUT_PARENT="$(dirname "$OUT_DIR")"
+mkdir -p "$OUT_PARENT"
+if [[ -e "$OUT_DIR" || -L "$OUT_DIR" ]]; then
+  [[ -d "$OUT_DIR" && ! -L "$OUT_DIR" ]] || { echo "output path must be an absent or empty real directory: $OUT_DIR" >&2; exit 2; }
+  [[ -z "$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]] || { echo "output directory must be empty: $OUT_DIR" >&2; exit 2; }
+  rmdir "$OUT_DIR"
+fi
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || { echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
 mapfile -t REMOTES < <(git -C "$ROOT" remote | LC_ALL=C sort)
@@ -32,10 +43,12 @@ WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-release-1.0.4.XXXXXX")"
 W1="$TMP/build-1"
 W2="$TMP/build-2"
+PUBLISH_TMP=""
 cleanup() {
   git -C "$ROOT" worktree remove --force "$W1" >/dev/null 2>&1 || true
   git -C "$ROOT" worktree remove --force "$W2" >/dev/null 2>&1 || true
   rm -rf "$TMP"
+  [[ -z "$PUBLISH_TMP" ]] || rm -rf "$PUBLISH_TMP"
 }
 trap cleanup EXIT
 git -C "$ROOT" worktree add --detach "$W1" "$HEAD" >/dev/null
@@ -74,15 +87,19 @@ cmp "$TMP/out-1/stage/apply-store-update" "$TMP/out-2/stage/apply-store-update"
 cmp "$TMP/out-1/store-$VERSION.tar.xz" "$TMP/out-2/store-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
 
-mkdir -p "$OUT_DIR"
-[[ -z "$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]] || {
-  echo "output directory must be empty: $OUT_DIR" >&2; exit 2;
-}
-cp "$TMP/out-1/stage/melusina-store-sidecar" "$OUT_DIR/"
-cp "$TMP/out-1/stage/apply-store-update" "$OUT_DIR/"
-cp "$TMP/out-1/store-$VERSION.tar.xz" "$TMP/out-1/SHA256SUMS" "$OUT_DIR/"
-cat >"$OUT_DIR/BUILD-PROVENANCE.json" <<JSON
+PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-$VERSION.output.XXXXXX")"
+chmod 0755 "$PUBLISH_TMP"
+install -m 0755 "$TMP/out-1/stage/melusina-store-sidecar" "$PUBLISH_TMP/melusina-store-sidecar"
+install -m 0755 "$TMP/out-1/stage/apply-store-update" "$PUBLISH_TMP/apply-store-update"
+install -m 0644 "$TMP/out-1/store-$VERSION.tar.xz" "$PUBLISH_TMP/store-$VERSION.tar.xz"
+install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
+cat >"$PUBLISH_TMP/BUILD-PROVENANCE.json" <<JSON
 {"schema":"melusina-store-deterministic-build-v1","sourceCommit":"$HEAD","version":"$VERSION","sourceDateEpoch":$SOURCE_EPOCH,"goos":"linux","goarch":"amd64","cgoEnabled":false,"archiveMembers":["apply-store-update","melusina-store-sidecar"],"builds":2,"byteIdentical":true}
 JSON
-chmod 0644 "$OUT_DIR/SHA256SUMS" "$OUT_DIR/BUILD-PROVENANCE.json"
+chmod 0644 "$PUBLISH_TMP/BUILD-PROVENANCE.json"
+for artifact in "$PUBLISH_TMP"/*; do sync -f "$artifact"; done
+sync -f "$PUBLISH_TMP"
+mv -T "$PUBLISH_TMP" "$OUT_DIR"
+PUBLISH_TMP=""
+sync -f "$OUT_PARENT"
 echo "deterministic x2 release ready: $OUT_DIR"

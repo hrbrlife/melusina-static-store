@@ -63,6 +63,12 @@ s = pathlib.Path(sys.argv[1]).read_text()
 ordered = '  local work="$1"\n  local out="$2"\n  local stage="$out/stage"'
 assert ordered in s
 assert 'local work="$1" out="$2" stage="$out/stage"' not in s
+assert 'install -m 0755' in s
+assert 'install -m 0644' in s
+assert 'PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/' in s
+assert 'for artifact in "$PUBLISH_TMP"/*; do sync -f "$artifact"; done' in s
+assert 'mv -T "$PUBLISH_TMP" "$OUT_DIR"' in s
+assert s.index('install -m 0755') < s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"')
 PY
 
 echo "self-publish contract PASS"

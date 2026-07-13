@@ -139,22 +139,45 @@ func sameStagedReleaseIntent(staged, submitted stagedAppManifest) bool {
 		staged.SlotHint == submitted.SlotHint
 }
 
-func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, release []byte) error {
+type stagePersistencePlan struct{ alreadyPresent bool }
+
+func planStagePersistence(root string, manifest stagedAppManifest) (stagePersistencePlan, error) {
+	var plan stagePersistencePlan
 	if err := requireSecureDirectory(root, 0o700); err != nil {
-		return fmt.Errorf("private stage root is not initialized: %w", err)
+		return plan, fmt.Errorf("private stage root is not initialized: %w", err)
 	}
 	target := filepath.Join(root, manifest.StageID)
 	if info, err := os.Lstat(target); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-			return errors.New("existing staged candidate is not a real directory")
+			return plan, errors.New("existing staged candidate is not a real directory")
 		}
-		return verifyStagedApp(target, manifest)
+		if err := verifyStagedApp(target, manifest); err != nil {
+			return plan, err
+		}
+		plan.alreadyPresent = true
+		return plan, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("stat staged candidate: %w", err)
+		return plan, fmt.Errorf("stat staged candidate: %w", err)
 	}
 	if err := ensureDirectoryEntryCapacity(root, 1); err != nil {
-		return fmt.Errorf("private stage capacity: %w", err)
+		return plan, fmt.Errorf("private stage capacity: %w", err)
 	}
+	return plan, nil
+}
+
+func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, release []byte) error {
+	plan, err := planStagePersistence(root, manifest)
+	if err != nil {
+		return err
+	}
+	return persistStagedAppPlanned(root, manifest, spk, metadata, release, plan)
+}
+
+func persistStagedAppPlanned(root string, manifest stagedAppManifest, spk, metadata, release []byte, plan stagePersistencePlan) error {
+	if plan.alreadyPresent {
+		return nil
+	}
+	target := filepath.Join(root, manifest.StageID)
 
 	tmp, err := os.MkdirTemp(root, ".candidate-")
 	if err != nil {
@@ -191,9 +214,6 @@ func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, re
 		return err
 	}
 	if err := os.Rename(tmp, target); err != nil {
-		if _, statErr := os.Stat(target); statErr == nil {
-			return verifyStagedApp(target, manifest)
-		}
 		return fmt.Errorf("commit staged candidate: %w", err)
 	}
 	cleanup = false

@@ -43,7 +43,8 @@ type appRolloutState struct {
 	// an app that is already present in the public catalog. It deliberately is
 	// not serialized: preparation is a read-only pre-claim operation, while
 	// commitAppRollout durably retains these exact bytes after nonce claim.
-	capturedPrevious *capturedAppRelease
+	capturedPrevious            *capturedAppRelease
+	capturedPreviousPersistence stagePersistencePlan
 }
 
 type capturedAppRelease struct {
@@ -250,7 +251,7 @@ func commitAppRollout(cfg Config, state appRolloutState) error {
 		if state.PreviousStageID == "" || captured.manifest.StageID != state.PreviousStageID {
 			return errors.New("captured previous release does not match rollout state")
 		}
-		if err := persistStagedApp(cfg.PrivateStageDir, captured.manifest, captured.spk, captured.metadata, captured.release); err != nil {
+		if err := persistStagedAppPlanned(cfg.PrivateStageDir, captured.manifest, captured.spk, captured.metadata, captured.release, state.capturedPreviousPersistence); err != nil {
 			return fmt.Errorf("retain current release: %w", err)
 		}
 	}

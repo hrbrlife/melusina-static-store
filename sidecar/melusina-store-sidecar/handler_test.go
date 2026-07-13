@@ -532,6 +532,45 @@ func TestAppStageCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
 	}
 }
 
+func TestAppStageExistingCorruptCandidateRefusesBeforeNonceClaim(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "stage-freeze-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "freeze", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "stage-freeze-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	release := mustJSON(t, fixture.rel)
+	first := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "stage-freeze-first")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, first, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("first stage = %d: %s", got.Code, got.Body.String())
+	}
+	manifest, err := buildStagedAppManifest(fixture.spk, fixture.metadata, release, fixture.rel, slotHint{}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stageRoot := filepath.Join(svc.cfg.PrivateStageDir, manifest.StageID)
+	if err := os.WriteFile(filepath.Join(stageRoot, "metadata.json"), []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	retryEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "stage-freeze-retry")
+	refused := doStagePublish(t, svc, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
+	if refused.Code != http.StatusInsufficientStorage || !strings.Contains(refused.Body.String(), "stage_capacity") {
+		t.Fatalf("corrupt existing stage refusal = %d: %s", refused.Code, refused.Body.String())
+	}
+	if err := os.RemoveAll(stageRoot); err != nil {
+		t.Fatal(err)
+	}
+	if got := doStagePublish(t, svc, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by corrupt existing stage: %d %s", got.Code, got.Body.String())
+	}
+}
+
 func TestAppPromotionCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
 	for _, tc := range []struct {
 		name      string

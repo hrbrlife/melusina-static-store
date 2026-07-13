@@ -33,6 +33,13 @@ func jsonPublishBodyWithSlot(t *testing.T, sig envelope.Signed, release, spk, me
 	return bytes.NewBuffer(b)
 }
 
+func TestSlotHintRejectsOverlongFilesystemComponent(t *testing.T) {
+	hint := slotHint{Developer: strings.Repeat("d", 256), Repo: "repo", Slug: "app"}
+	if err := hint.validate(); err == nil || !strings.Contains(err.Error(), "filesystem component limit") {
+		t.Fatalf("overlong slot component accepted: %v", err)
+	}
+}
+
 func seedSlot(t *testing.T, catalogRoot, dev, repo, slug string, metadata []byte) string {
 	t.Helper()
 	dir := filepath.Join(catalogRoot, "packages", dev, repo, slug)

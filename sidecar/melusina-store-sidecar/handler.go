@@ -347,7 +347,8 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := ensureStagePersistenceCapacity(s.cfg.PrivateStageDir, manifest.StageID); err != nil {
+	stagePlan, err := planStagePersistence(s.cfg.PrivateStageDir, manifest)
+	if err != nil {
 		http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
@@ -356,7 +357,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistStagedApp(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes); err != nil {
+	if err := persistStagedAppPlanned(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, stagePlan); err != nil {
 		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -486,10 +487,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rollout.capturedPrevious != nil {
-		if err := ensureStagePersistenceCapacity(s.cfg.PrivateStageDir, rollout.capturedPrevious.manifest.StageID); err != nil {
+		capturedPlan, err := planStagePersistence(s.cfg.PrivateStageDir, rollout.capturedPrevious.manifest)
+		if err != nil {
 			http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
 			return
 		}
+		rollout.capturedPreviousPersistence = capturedPlan
 	}
 	// Promotion needs one committed generation plus one transient .current-*
 	// selector, and rollout commit needs one temporary state member.

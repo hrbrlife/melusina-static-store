@@ -34,6 +34,11 @@ func (h slotHint) validate() error {
 	if !isSafePathSegment(h.Developer) || !isSafePathSegment(h.Repo) || !isSafePathSegment(h.Slug) {
 		return errors.New("developer/repo/slug must each be a single safe path segment")
 	}
+	for _, part := range []string{h.Developer, h.Repo, h.Slug} {
+		if len(part) > 255 {
+			return errors.New("developer/repo/slug exceeds filesystem component limit")
+		}
+	}
 	return nil
 }
 

@@ -41,6 +41,36 @@ func TestAppCatalogRecoveryInvalidCurrentSelectsNewestValidPrior(t *testing.T) {
 	}
 }
 
+func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	oldID := appCatalogGenerationPrefix + strings.Repeat("0", 32)
+	preparedID := appCatalogGenerationPrefix + strings.Repeat("f", 32)
+	writeRecoveryGeneration(t, root, oldID, []string{"app-one"}, priv)
+	writeRecoveryGeneration(t, root, preparedID, []string{"app-one"}, priv)
+	prepared := appRolloutState{
+		Schema:         appRolloutSchema,
+		AppID:          "app-one",
+		CurrentStageID: strings.Repeat("e", 64),
+		CurrentAppHash: strings.Repeat("f", 64),
+		CurrentVersion: "2.0.0",
+	}
+	rewriteRecoveryPointerSelection(t, filepath.Join(root, preparedID), prepared, priv)
+	setGenerationTime(t, filepath.Join(root, oldID), time.Unix(10, 0))
+	setGenerationTime(t, filepath.Join(root, preparedID), time.Unix(20, 0))
+	if err := os.Symlink(oldID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(
+		map[string]appRolloutState{"app-one": prepared}, pub, recoveryDomainHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != preparedID {
+		t.Fatalf("recovered %s, want prepared generation %s", got.ID, preparedID)
+	}
+}
+
 func TestAppCatalogRecoveryNoValidGenerationFailsWithoutCleanup(t *testing.T) {
 	root := t.TempDir()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
@@ -215,6 +245,30 @@ func corruptRecoveryPointer(t *testing.T, generation, appID string) {
 	}
 	pointer.OperatorSignature = "1"
 	body, _ := json.Marshal(pointer)
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func rewriteRecoveryPointerSelection(t *testing.T, generation string, rollout appRolloutState, private ed25519.PrivateKey) {
+	t.Helper()
+	path := filepath.Join(generation, "apps", "pointers", rollout.AppID+".json")
+	var pointer AppCatalogPointer
+	if err := json.Unmarshal([]byte(readFile(t, path)), &pointer); err != nil {
+		t.Fatal(err)
+	}
+	pointer.StageID = rollout.CurrentStageID
+	pointer.AppHash = rollout.CurrentAppHash
+	pointer.Version = rollout.CurrentVersion
+	message, err := appCatalogPointerMessage(pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointer.OperatorSignature = primitives.EncodeBase58(ed25519.Sign(private, message))
+	body, err := json.Marshal(pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, body, 0o644); err != nil {
 		t.Fatal(err)
 	}

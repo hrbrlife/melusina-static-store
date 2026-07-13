@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/hrbrlife/melusina-attest/identity"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
@@ -136,7 +137,7 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 			if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
 				return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
 			}
-			ledger, err := validateCommittedCatalogBootstrap(runtime.catalogGenerations, ledgerRoot, state, opts)
+			ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
 			if err != nil {
 				return catalogRuntime{}, fmt.Errorf("catalog bootstrap initializing-current recovery: %w", err)
 			}
@@ -179,7 +180,7 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		}); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap generation: %w", err)
 		}
-		ledger, err := validateCommittedCatalogBootstrap(runtime.catalogGenerations, ledgerRoot, state, opts)
+		ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
 		if err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap post-switch validation: %w", err)
 		}
@@ -193,7 +194,7 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
 		}
-		ledger, err := validateCommittedCatalogBootstrap(runtime.catalogGenerations, ledgerRoot, state, opts)
+		ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
 		if err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap committed validation: %w", err)
 		}
@@ -224,12 +225,14 @@ func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID u
 	return requireOwnedSecureDirectory(root, 0o700, expectedUID)
 }
 
-func validateCommittedCatalogBootstrap(store AppCatalogGenerationStore, ledgerRoot string, state catalogMigrationState, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
-	rollouts, err := exactRolloutStates(Config{PrivateStageDir: filepath.Dir(ledgerRoot)})
+func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationStore, ledgerRoot string, state catalogMigrationState, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
+	rollouts, err := exactRolloutStates(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey); err != nil {
+	domainHash := primitives.StoreDomainHash(cfg.Domain)
+	servingDomainHash := hex.EncodeToString(domainHash[:])
+	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash); err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
 	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {

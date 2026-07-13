@@ -152,7 +152,19 @@ type AppCatalogPointer struct {
 type ReleaseClaims struct {
 	AppHash       string `json:"appHash"`
 	ReleaseHash   string `json:"releaseHash"`
+	Version       string `json:"version"`
 	MasterNftMint string `json:"masterNftMint"`
+}
+
+// submittedReceiptIntent is the exact local candidate identity a store receipt
+// must acknowledge. Signature verification proves who signed a receipt; this
+// binding separately proves that the signer acknowledged this invocation's
+// candidate rather than returning a valid stale receipt for another publish.
+type submittedReceiptIntent struct {
+	AppID       string
+	AppHash     string
+	ReleaseHash string
+	StageID     string
 }
 
 // publisherKeyFile is the on-disk publisher signing identity. It is the
@@ -346,6 +358,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if appHashHex != wantAppHash {
 		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
+	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug)
+	if err != nil {
+		return fmt.Errorf("check=receipt_submission: %w", err)
+	}
 
 	pubPriv, err := loadPublisherKey(o.publisherKey)
 	if err != nil {
@@ -397,34 +413,117 @@ func run(args []string, stdout, stderr io.Writer) error {
 	// check, so the publish client refuses to call it a success.
 	cr := verify.NewRPCClient(o.rpcURL)
 	if o.stageOnly {
-		var receipt StageReceipt
-		if err := json.Unmarshal(resp, &receipt); err != nil {
-			return fmt.Errorf("decode stage receipt: %w", err)
-		}
-		if err := verifyStageReceipt(context.Background(), cr, o.licenseMint, o.domain, receipt); err != nil {
+		receipt, err := acceptStageReceipt(context.Background(), cr, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+		if err != nil {
 			return fmt.Errorf("stage receipt verification: %w", err)
-		}
-		if err := writeReceiptFile(o.receiptOut, resp); err != nil {
-			return err
 		}
 		out, _ := json.MarshalIndent(receipt, "", "  ")
 		fmt.Fprintf(stdout, "STAGE OK — private persistence receipt verified against on-chain store_authority\n%s\n", out)
 		return nil
 	}
-	var receipt Receipt
-	if err := json.Unmarshal(resp, &receipt); err != nil {
-		return fmt.Errorf("decode receipt: %w", err)
-	}
-	if err := verifyReceipt(context.Background(), cr, o.licenseMint, o.domain, receipt); err != nil {
+	receipt, err := acceptPromotionReceipt(context.Background(), cr, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+	if err != nil {
 		return fmt.Errorf("receipt verification: %w", err)
-	}
-	if err := writeReceiptFile(o.receiptOut, resp); err != nil {
-		return err
 	}
 
 	out, _ := json.MarshalIndent(receipt, "", "  ")
 	fmt.Fprintf(stdout, "PUBLISH OK — store-signed provenance receipt verified against on-chain store_authority\n%s\n", out)
 	return nil
+}
+
+func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
+	var metadataIdentity struct {
+		AppID string `json:"appId"`
+	}
+	if err := json.Unmarshal(metadata, &metadataIdentity); err != nil {
+		return submittedReceiptIntent{}, fmt.Errorf("parse metadata.json identity: %w", err)
+	}
+	appID := strings.TrimSpace(metadataIdentity.AppID)
+	if appID == "" {
+		return submittedReceiptIntent{}, errors.New("metadata.json appId is required")
+	}
+	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(claims.AppHash)))
+	if err != nil {
+		return submittedReceiptIntent{}, fmt.Errorf("appHash: %w", err)
+	}
+	releaseHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(claims.ReleaseHash)))
+	if err != nil {
+		return submittedReceiptIntent{}, fmt.Errorf("releaseHash: %w", err)
+	}
+	version := strings.TrimSpace(claims.Version)
+	if version == "" {
+		return submittedReceiptIntent{}, errors.New("release version is required")
+	}
+	masterMint := strings.TrimSpace(claims.MasterNftMint)
+	if masterMint == "" {
+		return submittedReceiptIntent{}, errors.New("release masterNftMint is required")
+	}
+
+	spkHash := sha256.Sum256(spk)
+	metadataHash := sha256.Sum256(metadata)
+	versionHash := sha256.Sum256([]byte(version))
+	masterMintHash := sha256.Sum256([]byte(masterMint))
+	stageHasher := sha256.New()
+	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
+	_, _ = stageHasher.Write(spkHash[:])
+	_, _ = stageHasher.Write(metadataHash[:])
+	_, _ = stageHasher.Write(releaseHash[:])
+	_, _ = stageHasher.Write(versionHash[:])
+	_, _ = stageHasher.Write(masterMintHash[:])
+	for _, part := range []string{developer, repo, slug} {
+		var size [4]byte
+		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
+		_, _ = stageHasher.Write(size[:])
+		_, _ = stageHasher.Write([]byte(part))
+	}
+
+	return submittedReceiptIntent{
+		AppID:       appID,
+		AppHash:     hex.EncodeToString(appHash[:]),
+		ReleaseHash: hex.EncodeToString(releaseHash[:]),
+		StageID:     hex.EncodeToString(stageHasher.Sum(nil)),
+	}, nil
+}
+
+func acceptStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (StageReceipt, error) {
+	var receipt StageReceipt
+	if err := json.Unmarshal(raw, &receipt); err != nil {
+		return StageReceipt{}, fmt.Errorf("decode stage receipt: %w", err)
+	}
+	if err := verifyStageReceipt(ctx, cr, licenseMint, domain, receipt); err != nil {
+		return StageReceipt{}, err
+	}
+	if receipt.AppID != expected.AppID ||
+		!strings.EqualFold(receipt.AppHash, expected.AppHash) ||
+		!strings.EqualFold(receipt.ReleaseHash, expected.ReleaseHash) ||
+		!strings.EqualFold(receipt.StageID, expected.StageID) {
+		return StageReceipt{}, fmt.Errorf("check=receipt_submission: signed stage receipt does not match submitted appId/appHash/releaseHash/stageId")
+	}
+	if err := writeReceiptFile(receiptOut, raw); err != nil {
+		return StageReceipt{}, err
+	}
+	return receipt, nil
+}
+
+func acceptPromotionReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (Receipt, error) {
+	var receipt Receipt
+	if err := json.Unmarshal(raw, &receipt); err != nil {
+		return Receipt{}, fmt.Errorf("decode receipt: %w", err)
+	}
+	if err := verifyReceipt(ctx, cr, licenseMint, domain, receipt); err != nil {
+		return Receipt{}, err
+	}
+	if receipt.Stage == nil || receipt.Catalog == nil ||
+		receipt.Stage.AppID != expected.AppID || receipt.Catalog.AppID != expected.AppID ||
+		!strings.EqualFold(receipt.AppHash, expected.AppHash) ||
+		!strings.EqualFold(receipt.ReleaseHash, expected.ReleaseHash) ||
+		!strings.EqualFold(receipt.Stage.StageID, expected.StageID) {
+		return Receipt{}, fmt.Errorf("check=receipt_submission: signed promotion receipt does not match submitted appId/appHash/releaseHash/stageId")
+	}
+	if err := writeReceiptFile(receiptOut, raw); err != nil {
+		return Receipt{}, err
+	}
+	return receipt, nil
 }
 
 func runVerifyReceipt(o options, stdout io.Writer) error {

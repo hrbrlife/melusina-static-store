@@ -113,6 +113,7 @@ type result struct {
 
 type securityPolicy struct {
 	expectedUID          uint32
+	expectedGID          uint32
 	requireEffectiveRoot bool
 	afterWriterLock      func() error
 	newChainVerifier     func(string) installerReleaseVerifier
@@ -125,6 +126,7 @@ type installerReleaseVerifier interface {
 func productionSecurityPolicy() securityPolicy {
 	return securityPolicy{
 		expectedUID:          0,
+		expectedGID:          0,
 		requireEffectiveRoot: true,
 		newChainVerifier: func(endpoint string) installerReleaseVerifier {
 			return verify.NewRPCClient(endpoint)
@@ -276,6 +278,19 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 	receiptPath := filepath.Join(opts.updateReceiptDir, catalogStateName)
 	migrationPath := filepath.Join(opts.migrationStateDir, catalogStateName)
 	lockPath := filepath.Join(opts.migrationStateDir, writerLockName)
+	if err := createOrValidateWriterLock(lockPath, policy.expectedUID, policy.expectedGID); err != nil {
+		return result{}, fmt.Errorf("writer lock: %w", err)
+	}
+	writerLock, err := acquireWriterLock(lockPath, policy.expectedUID, policy.expectedGID)
+	if err != nil {
+		return result{}, fmt.Errorf("writer lock ownership: %w", err)
+	}
+	defer writerLock.Close()
+	if policy.afterWriterLock != nil {
+		if err := policy.afterWriterLock(); err != nil {
+			return result{}, err
+		}
+	}
 
 	var receipt applyReceipt
 	receiptExists, err := readSecureJSONIfExists(receiptPath, policy.expectedUID, &receipt)
@@ -299,7 +314,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 	}
 
 	if receipt.State == "seeded" {
-		if err := validateWriterLock(lockPath, policy.expectedUID); err != nil {
+		if err := validateWriterLock(lockPath, policy.expectedUID, policy.expectedGID); err != nil {
 			return result{}, fmt.Errorf("seeded receipt has invalid writer lock: %w", err)
 		}
 		var migration migrationState
@@ -319,15 +334,6 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 		return result{}, fmt.Errorf("unsupported apply receipt state %q", receipt.State)
 	}
 
-	if err := createOrValidateWriterLock(lockPath, policy.expectedUID); err != nil {
-		return result{}, fmt.Errorf("writer lock: %w", err)
-	}
-	if policy.afterWriterLock != nil {
-		if err := policy.afterWriterLock(); err != nil {
-			return result{}, err
-		}
-	}
-
 	desiredMigration := desiredMigrationState(receipt)
 	var migration migrationState
 	migrationExists, err := readSecureJSONIfExists(migrationPath, policy.expectedUID, &migration)
@@ -341,7 +347,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 		if err := fsyncDir(opts.migrationStateDir); err != nil {
 			return result{}, fmt.Errorf("fsync migration-state directory: %w", err)
 		}
-	} else if err := validateMigrationState(migration, receipt, false); err != nil {
+	} else if err := validateMigrationState(migration, receipt, true); err != nil {
 		return result{}, fmt.Errorf("seeding migration state mismatch: %w", err)
 	}
 
@@ -851,7 +857,7 @@ func writeAllAndSync(f *os.File, raw []byte) error {
 	return f.Sync()
 }
 
-func createOrValidateWriterLock(path string, expectedUID uint32) error {
+func createOrValidateWriterLock(path string, expectedUID, expectedGID uint32) error {
 	fd, err := syscall.Open(path, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_EXCL|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0600)
 	if err == nil {
 		f := os.NewFile(uintptr(fd), path)
@@ -865,16 +871,56 @@ func createOrValidateWriterLock(path string, expectedUID uint32) error {
 		if err := fsyncDir(filepath.Dir(path)); err != nil {
 			return err
 		}
-		return validateWriterLock(path, expectedUID)
+		return validateWriterLock(path, expectedUID, expectedGID)
 	}
 	if !errors.Is(err, syscall.EEXIST) {
 		return err
 	}
-	return validateWriterLock(path, expectedUID)
+	return validateWriterLock(path, expectedUID, expectedGID)
 }
 
-func validateWriterLock(path string, expectedUID uint32) error {
-	return validateSecureFile(path, expectedUID, true)
+func validateWriterLock(path string, expectedUID, expectedGID uint32) error {
+	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer syscall.Close(fd)
+	var st syscall.Stat_t
+	if err := syscall.Fstat(fd, &st); err != nil {
+		return err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFREG || st.Mode&07777 != 0600 ||
+		st.Uid != expectedUID || st.Gid != expectedGID || st.Size != 0 {
+		return fmt.Errorf("must be uid:gid %d:%d mode-0600 empty regular no-follow file", expectedUID, expectedGID)
+	}
+	return nil
+}
+
+func acquireWriterLock(path string, expectedUID, expectedGID uint32) (*os.File, error) {
+	fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(fd), path)
+	closeOnError := true
+	defer func() {
+		if closeOnError {
+			_ = f.Close()
+		}
+	}()
+	var st syscall.Stat_t
+	if err := syscall.Fstat(fd, &st); err != nil {
+		return nil, err
+	}
+	if st.Mode&syscall.S_IFMT != syscall.S_IFREG || st.Mode&07777 != 0600 ||
+		st.Uid != expectedUID || st.Gid != expectedGID || st.Size != 0 {
+		return nil, fmt.Errorf("must be uid:gid %d:%d mode-0600 empty regular no-follow file", expectedUID, expectedGID)
+	}
+	if err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return nil, err
+	}
+	closeOnError = false
+	return f, nil
 }
 
 func validateSecureFile(path string, expectedUID uint32, requireEmpty bool) error {

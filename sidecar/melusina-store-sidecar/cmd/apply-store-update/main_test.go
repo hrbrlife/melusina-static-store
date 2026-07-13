@@ -90,7 +90,7 @@ func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing
 	}
 }
 
-func TestPrepareCatalogV104ResumesOnlyMatchingSeeding(t *testing.T) {
+func TestPrepareCatalogV104LocksBeforeCreatingPersistentState(t *testing.T) {
 	f := newTestFixture(t)
 	crashCount := 0
 	f.policy.afterWriterLock = func() error {
@@ -103,10 +103,8 @@ func TestPrepareCatalogV104ResumesOnlyMatchingSeeding(t *testing.T) {
 	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "injected crash") {
 		t.Fatalf("expected injected failure, got %v", err)
 	}
-	var seeding applyReceipt
-	readTestJSON(t, filepath.Join(f.receipts, catalogStateName), &seeding)
-	if seeding.State != "seeding" {
-		t.Fatalf("state after crash = %q, want seeding", seeding.State)
+	if _, err := os.Stat(filepath.Join(f.receipts, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("apply receipt created before writer ownership: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(f.migrations, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("migration state created before injected crash: %v", err)
@@ -116,8 +114,46 @@ func TestPrepareCatalogV104ResumesOnlyMatchingSeeding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resume: %v", err)
 	}
-	if res.LedgerID != seeding.LedgerID || res.State != "seeded" {
-		t.Fatalf("resume did not preserve seeding identity: %+v vs %+v", res, seeding)
+	if res.State != "seeded" || res.LedgerID == "" {
+		t.Fatalf("retry did not seed a fresh identity: %+v", res)
+	}
+}
+
+func TestPrepareCatalogV104RefusesHeldWriterLockWithoutStateMutation(t *testing.T) {
+	f := newTestFixture(t)
+	lockPath := filepath.Join(f.migrations, writerLockName)
+	if err := ensureSecureDir(f.migrations, f.policy.expectedUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := createOrValidateWriterLock(lockPath, f.policy.expectedUID, f.policy.expectedGID); err != nil {
+		t.Fatal(err)
+	}
+	held, err := acquireWriterLock(lockPath, f.policy.expectedUID, f.policy.expectedGID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Close()
+	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "writer lock ownership") {
+		t.Fatalf("helper entered while writer lock held: %v", err)
+	}
+	for _, path := range []string{
+		filepath.Join(f.receipts, catalogStateName),
+		filepath.Join(f.migrations, catalogStateName),
+	} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("persistent state changed while lock held at %s: %v", path, err)
+		}
+	}
+}
+
+func TestPrepareCatalogV104RejectsWriterLockGIDMismatch(t *testing.T) {
+	f := newTestFixture(t)
+	f.policy.expectedGID++
+	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "uid:gid") {
+		t.Fatalf("helper accepted writer.lock GID mismatch: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(f.receipts, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("receipt created despite writer.lock GID mismatch: %v", err)
 	}
 }
 
@@ -135,6 +171,34 @@ func TestSeededMissingMigrationRefusesWithoutReseed(t *testing.T) {
 	}
 	if _, err := os.Stat(migrationPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing migration was recreated: %v", err)
+	}
+}
+
+func TestSeedingReceiptReconcilesIdentityExactProgressedMigration(t *testing.T) {
+	f := newTestFixture(t)
+	if _, err := prepareCatalogV104(f.opts, f.policy); err != nil {
+		t.Fatal(err)
+	}
+	receiptPath := filepath.Join(f.receipts, catalogStateName)
+	migrationPath := filepath.Join(f.migrations, catalogStateName)
+	var receipt applyReceipt
+	readTestJSON(t, receiptPath, &receipt)
+	receipt.State = "seeding"
+	if err := replaceJSONDurable(receiptPath, receipt, f.policy.expectedUID); err != nil {
+		t.Fatal(err)
+	}
+	var migration migrationState
+	readTestJSON(t, migrationPath, &migration)
+	migration.State = "committed"
+	if err := replaceJSONDurable(migrationPath, migration, f.policy.expectedUID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := prepareCatalogV104(f.opts, f.policy)
+	if err != nil {
+		t.Fatalf("reconcile progressed migration: %v", err)
+	}
+	if got.State != "seeded" || got.LedgerID != receipt.LedgerID {
+		t.Fatalf("progressed migration changed identity: %+v", got)
 	}
 }
 
@@ -306,7 +370,7 @@ func newTestFixture(t *testing.T) testFixture {
 	return testFixture{
 		opts: opts, args: args, migrations: migrations, receipts: receipts,
 		chain:  mock,
-		policy: securityPolicy{expectedUID: uint32(os.Geteuid()), newChainVerifier: func(string) installerReleaseVerifier { return mock }},
+		policy: securityPolicy{expectedUID: uint32(os.Geteuid()), expectedGID: uint32(os.Getegid()), newChainVerifier: func(string) installerReleaseVerifier { return mock }},
 	}
 }
 

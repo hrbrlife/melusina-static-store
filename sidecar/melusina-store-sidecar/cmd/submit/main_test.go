@@ -486,6 +486,99 @@ func TestVerifyStageReceipt_AcceptsOnlyAuthorizedUntamperedReceipt(t *testing.T)
 	}
 }
 
+func TestBuildSubmittedReceiptIntentMatchesStageContract(t *testing.T) {
+	appHash := sha256.Sum256([]byte("app"))
+	releaseHash := sha256.Sum256([]byte("release"))
+	got, err := buildSubmittedReceiptIntent(
+		[]byte("spk"),
+		[]byte(`{"appId":"app-1"}`),
+		ReleaseClaims{
+			AppHash:       hex.EncodeToString(appHash[:]),
+			ReleaseHash:   hex.EncodeToString(releaseHash[:]),
+			Version:       "1.2.3",
+			MasterNftMint: "mint",
+		},
+		"dev", "repo", "slug",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AppID != "app-1" || got.AppHash != hex.EncodeToString(appHash[:]) ||
+		got.ReleaseHash != "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829" ||
+		got.StageID != "d10636930b00d9f52209fe99e7b99501c614feb37472955b8e83b9f96f69352c" {
+		t.Fatalf("submitted receipt intent drifted from stage contract: %+v", got)
+	}
+}
+
+func TestAcceptStageReceiptRejectsValidOtherCandidateBeforeReceiptOut(t *testing.T) {
+	appHash, releaseHash, domainHash, licenseMint, domain := receiptInputs(t)
+	op := newTestIdentity(t, "store-operator", licenseMint, domain)
+	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, m, licenseMint, domain, signPub32(t, op))
+	stageID := sha256.Sum256([]byte("candidate"))
+	receipt := signStageReceipt(op, stageID, appHash, releaseHash, domainHash, 1_700_000_000)
+	raw, err := json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	otherAppHash := sha256.Sum256([]byte("other candidate"))
+	expected := submittedReceiptIntent{
+		AppID:       receipt.AppID,
+		AppHash:     hex.EncodeToString(otherAppHash[:]),
+		ReleaseHash: receipt.ReleaseHash,
+		StageID:     receipt.StageID,
+	}
+	out := filepath.Join(t.TempDir(), "stage-receipt.json")
+	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+		t.Fatalf("valid signed receipt for another candidate was not rejected: %v", err)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatalf("mismatched stage receipt reached receipt-out: %v", err)
+	}
+	expected.AppHash = receipt.AppHash
+	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+		t.Fatalf("exact submitted stage receipt was rejected: %v", err)
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("exact stage receipt was not written: %v", err)
+	}
+}
+
+func TestAcceptPromotionReceiptRejectsValidStaleReceiptBeforeReceiptOut(t *testing.T) {
+	appHash, releaseHash, domainHash, licenseMint, domain := receiptInputs(t)
+	op := newTestIdentity(t, "store-operator", licenseMint, domain)
+	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
+	pinAuthz(t, m, licenseMint, domain, signPub32(t, op))
+	receipt := signReceipt(op, appHash, releaseHash, domainHash)
+	raw, err := json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newReleaseHash := sha256.Sum256([]byte("new release"))
+	expected := submittedReceiptIntent{
+		AppID:       receipt.Catalog.AppID,
+		AppHash:     receipt.AppHash,
+		ReleaseHash: hex.EncodeToString(newReleaseHash[:]),
+		StageID:     receipt.Stage.StageID,
+	}
+	out := filepath.Join(t.TempDir(), "promotion-receipt.json")
+	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+		t.Fatalf("valid signed stale promotion receipt was not rejected: %v", err)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatalf("mismatched promotion receipt reached receipt-out: %v", err)
+	}
+	expected.ReleaseHash = receipt.ReleaseHash
+	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+		t.Fatalf("exact submitted promotion receipt was rejected: %v", err)
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("exact promotion receipt was not written: %v", err)
+	}
+}
+
 func TestVerifyReceipt_TamperedSignatureFails(t *testing.T) {
 	appHash, releaseHash, servingDomainHash, licenseMint, domain := receiptInputs(t)
 	op := newTestIdentity(t, "store-operator", licenseMint, domain)

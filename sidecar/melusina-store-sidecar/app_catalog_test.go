@@ -52,7 +52,7 @@ func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRel
 	}
 
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	pointers, rolloutIDs, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, current.manifest.AppID, now)
+	pointers, rolloutIDs, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, current.manifest.AppID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestWriteSignedAppCatalogPointersForGeneration_RequiredPromotionMustAppearI
 		t.Fatal(err)
 	}
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	if _, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, current.manifest.AppID, now); err == nil {
+	if _, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, current.manifest.AppID, now); err == nil {
 		t.Fatal("promotion succeeded without an exact catalog pointer")
 	}
 }

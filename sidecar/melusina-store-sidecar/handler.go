@@ -483,24 +483,20 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := commitAppRollout(s.cfg, rollout); err != nil {
-		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
 	if err := persistPublishedApp(slotDir, spk, preflight.releaseBytes, metadata); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var catalogPointers map[string]AppCatalogPointer
 	var rolloutAppIDs []string
-	_, err = s.catalogGenerations.buildFromWith(activeGeneration.Root, func(candidateRoot string) error {
+	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
 		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
 		if err := candidateAssembler.AssemblePublishedApp(spk, preflight.releaseBytes, metadata); err != nil {
 			return fmt.Errorf("assemble: %w", err)
 		}
 		var pointerErr error
 		catalogPointers, rolloutAppIDs, pointerErr = WriteSignedAppCatalogPointersForGeneration(
-			s.cfg, candidateRoot, s.operator, staged.AppID, promotedAt)
+			s.cfg, candidateRoot, s.operator, &rollout, staged.AppID, promotedAt)
 		return pointerErr
 	}, func(snapshot AppCatalogSnapshot) error {
 		return ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
@@ -511,6 +507,21 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		log.Printf("publish: catalog generation failed: %v", err)
 		http.Error(w, "check=catalog_generation: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if err := commitAppRollout(s.cfg, rollout); err != nil {
+		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.catalogGenerations.SwitchCurrent(committedGeneration); err != nil {
+		// Rename may have committed current before a post-rename hook/fsync
+		// reported uncertainty. Re-resolve the selector and fsync its parent;
+		// continue only when the exact prepared generation is selected durably.
+		selected, resolveErr := s.catalogGenerations.ResolveCurrent()
+		if resolveErr != nil || selected.ID != committedGeneration.ID || syncDir(s.catalogGenerations.Root) != nil {
+			http.Error(w, "check=catalog_switch: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("publish: reconciled post-switch uncertainty for generation %s: %v", committedGeneration.ID, err)
 	}
 	catalogPointer := catalogPointers[staged.AppID]
 

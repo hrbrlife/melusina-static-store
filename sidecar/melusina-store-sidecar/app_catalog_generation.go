@@ -132,14 +132,22 @@ func (s AppCatalogGenerationStore) BuildAndSwitch(build func(candidateRoot strin
 	if err != nil {
 		return AppCatalogSnapshot{}, err
 	}
-	return s.buildFromWith(active.Root, build, validate)
+	return s.buildFromWith(active.Root, build, validate, true)
+}
+
+// BuildCommittedFrom creates and validates an immutable direct-child
+// generation without selecting it. Callers can durably commit private rollout
+// state after this returns and then SwitchCurrent last. This ordering leaves a
+// recoverable matching generation if the process exits between those steps.
+func (s AppCatalogGenerationStore) BuildCommittedFrom(source string, build func(candidateRoot string) error, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
+	return s.buildFromWith(source, build, validate, false)
 }
 
 func (s AppCatalogGenerationStore) buildFrom(source string, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
-	return s.buildFromWith(source, nil, validate)
+	return s.buildFromWith(source, nil, validate, true)
 }
 
-func (s AppCatalogGenerationStore) buildFromWith(source string, build func(string) error, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) buildFromWith(source string, build func(string) error, validate func(AppCatalogSnapshot) error, selectCurrent bool) (AppCatalogSnapshot, error) {
 	if err := s.validateRoot(); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
@@ -210,8 +218,10 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 			return AppCatalogSnapshot{}, fmt.Errorf("validate committed app catalog generation: %w", err)
 		}
 	}
-	if err := s.switchCurrent(committed); err != nil {
-		return AppCatalogSnapshot{}, err
+	if selectCurrent {
+		if err := s.switchCurrent(committed); err != nil {
+			return AppCatalogSnapshot{}, err
+		}
 	}
 	return committed, nil
 }
@@ -364,7 +374,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 // set inside an unpublished candidate generation. Unlike the retired direct
 // DistDir writer, every rollout member is mandatory and invalid state aborts
 // the whole candidate; no rollout is silently skipped.
-func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot string, operator *identity.Private, requiredAppID string, now time.Time) (map[string]AppCatalogPointer, []string, error) {
+func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot string, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (map[string]AppCatalogPointer, []string, error) {
 	indexBytes, err := os.ReadFile(filepath.Join(generationRoot, "apps", "index.json"))
 	if err != nil {
 		return nil, nil, fmt.Errorf("read candidate app catalog: %w", err)
@@ -392,8 +402,7 @@ func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot strin
 	}
 	catalogHash := sha256.Sum256(indexBytes)
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	pointers := make(map[string]AppCatalogPointer, len(rolloutEntries))
-	rolloutAppIDs := make([]string, 0, len(rolloutEntries))
+	rollouts := make(map[string]appRolloutState, len(rolloutEntries)+1)
 	for _, entry := range rolloutEntries {
 		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
 			return nil, nil, fmt.Errorf("invalid rollout state member %s", entry.Name())
@@ -406,6 +415,17 @@ func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot strin
 		if err != nil {
 			return nil, nil, fmt.Errorf("load rollout %s: %w", appID, err)
 		}
+		rollouts[appID] = state
+	}
+	if pending != nil {
+		if pending.AppID != requiredAppID || !isSafePathSegment(pending.AppID) {
+			return nil, nil, errors.New("pending rollout does not match required appId")
+		}
+		rollouts[pending.AppID] = *pending
+	}
+	pointers := make(map[string]AppCatalogPointer, len(rollouts))
+	rolloutAppIDs := make([]string, 0, len(rollouts))
+	for appID, state := range rollouts {
 		manifest, _, metadata, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load staged release for rollout %s: %w", appID, err)

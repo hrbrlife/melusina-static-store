@@ -21,7 +21,7 @@ type appCatalogRecoveryCandidate struct {
 // ties), switches to the first fully verified generation using the normal
 // relative-current protocol, and only then removes safe interrupted-write
 // artifacts. No valid generation means startup fails without cleanup.
-func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash string) (AppCatalogSnapshot, error) {
 	if len(operatorKey) != ed25519.PublicKeySize {
 		return AppCatalogSnapshot{}, errors.New("app catalog recovery requires an ed25519 operator public key")
 	}
@@ -44,7 +44,8 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 			}
 			if pointer.StageID != rollout.CurrentStageID ||
 				pointer.AppHash != rollout.CurrentAppHash ||
-				pointer.Version != rollout.CurrentVersion {
+				pointer.Version != rollout.CurrentVersion ||
+				pointer.ServingDomainHash != servingDomainHash {
 				return errors.New("catalog pointer does not match durable rollout selection")
 			}
 			return nil
@@ -234,7 +235,36 @@ func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 		if err != nil {
 			return nil, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
+		if err := validateRolloutStagedSelections(cfg, rollout); err != nil {
+			return nil, fmt.Errorf("validate rollout %s staged selection: %w", appID, err)
+		}
 		rollouts[appID] = rollout
 	}
 	return rollouts, nil
+}
+
+func validateRolloutStagedSelections(cfg Config, rollout appRolloutState) error {
+	current, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, rollout.CurrentStageID)
+	if err != nil {
+		return fmt.Errorf("load current stage: %w", err)
+	}
+	if current.AppID != rollout.AppID || current.StageID != rollout.CurrentStageID ||
+		current.AppHash != rollout.CurrentAppHash || current.Version != rollout.CurrentVersion {
+		return errors.New("current staged candidate does not match rollout")
+	}
+	if rollout.PreviousStageID == "" {
+		if rollout.PreviousAppHash != "" || rollout.PreviousVersion != "" || rollout.PreviousValidUntil != 0 {
+			return errors.New("empty previous stage has non-empty previous selection")
+		}
+		return nil
+	}
+	previous, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, rollout.PreviousStageID)
+	if err != nil {
+		return fmt.Errorf("load previous stage: %w", err)
+	}
+	if previous.AppID != rollout.AppID || previous.StageID != rollout.PreviousStageID ||
+		previous.AppHash != rollout.PreviousAppHash || previous.Version != rollout.PreviousVersion {
+		return errors.New("previous staged candidate does not match rollout")
+	}
+	return nil
 }

@@ -57,8 +57,11 @@ build_once() {
       --mode='u=rwx,go=rx' --format=gnu -cf - apply-store-update melusina-store-sidecar \
       | xz --threads=1 --check=crc64 --lzma2=preset=9e -c >"$out/store-$VERSION.tar.xz"
   )
-  sha256sum "$stage/melusina-store-sidecar" "$stage/apply-store-update" "$out/store-$VERSION.tar.xz" \
-    | sed "s|$out/||" >"$out/SHA256SUMS"
+  (
+    cd "$out"
+    sha256sum stage/melusina-store-sidecar stage/apply-store-update "store-$VERSION.tar.xz" \
+      | sed 's|  stage/|  |' >SHA256SUMS
+  )
 }
 
 mkdir -p "$TMP/out-1" "$TMP/out-2"

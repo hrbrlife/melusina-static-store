@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,7 +24,7 @@ type appCatalogRecoveryCandidate struct {
 // ties), switches to the first fully verified generation using the normal
 // relative-current protocol, and only then removes safe interrupted-write
 // artifacts. No valid generation means startup fails without cleanup.
-func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash string) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string) (AppCatalogSnapshot, error) {
 	if len(operatorKey) != ed25519.PublicKeySize {
 		return AppCatalogSnapshot{}, errors.New("app catalog recovery requires an ed25519 operator public key")
 	}
@@ -37,7 +40,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		if err := validateSealedCatalogTree(snapshot.Root); err != nil {
 			return err
 		}
-		return ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
+		if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
 			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
 				return err
 			}
@@ -52,7 +55,13 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 				return errors.New("catalog pointer does not match durable rollout selection")
 			}
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
+		if stagedRoot != "" {
+			return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
+		}
+		return nil
 	}
 
 	current, currentErr := s.ResolveCurrent()
@@ -92,6 +101,49 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		currentErr = errors.New("current app catalog generation is unavailable")
 	}
 	return AppCatalogSnapshot{}, fmt.Errorf("no fully verified app catalog generation (current: %v; rejected: %s)", currentErr, strings.Join(rejected, ","))
+}
+
+func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) error {
+	for appID, rollout := range rollouts {
+		_, stagedSPK, stagedMetadata, stagedRelease, err := loadStagedApp(stagedRoot, rollout.CurrentStageID)
+		if err != nil {
+			return fmt.Errorf("load exact staged bytes for %s: %w", appID, err)
+		}
+		pointerBytes, err := readSnapshotFile(snapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")))
+		if err != nil {
+			return err
+		}
+		var pointer AppCatalogPointer
+		if err := json.Unmarshal(pointerBytes, &pointer); err != nil {
+			return err
+		}
+		for name, check := range map[string]struct {
+			path string
+			want []byte
+		}{
+			"SPK":      {path: filepath.ToSlash(filepath.Join("packages", pointer.PackageID)), want: stagedSPK},
+			"metadata": {path: filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), want: stagedMetadata},
+			"release":  {path: filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), want: stagedRelease},
+		} {
+			got, err := readSnapshotFile(snapshot, check.path)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(got, check.want) {
+				return fmt.Errorf("generation %s bytes differ from exact staged candidate for %s", name, appID)
+			}
+		}
+	}
+	return nil
+}
+
+func readSnapshotFile(snapshot AppCatalogSnapshot, relativePath string) ([]byte, error) {
+	f, err := snapshot.Open(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(f)
 }
 
 func (s AppCatalogGenerationStore) recoveryCandidates() ([]appCatalogRecoveryCandidate, error) {

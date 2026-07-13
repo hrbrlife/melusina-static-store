@@ -32,7 +32,7 @@ func TestAppCatalogRecoveryInvalidCurrentSelectsNewestValidPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash())
+	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testi
 		t.Fatal(err)
 	}
 	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(
-		map[string]appRolloutState{"app-one": prepared}, pub, recoveryDomainHash())
+		map[string]appRolloutState{"app-one": prepared}, pub, recoveryDomainHash(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestAppCatalogRecoveryNoValidGenerationFailsWithoutCleanup(t *testing.T) {
 	if err := os.Mkdir(orphan, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash()); err == nil {
+	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil {
 		t.Fatal("recovery accepted a catalog with no valid generation")
 	}
 	if _, err := os.Lstat(orphan); err != nil {
@@ -115,7 +115,7 @@ func TestAppCatalogRecoveryRejectsInvalidPointerAndPartialCurrent(t *testing.T) 
 			if err := os.Symlink(currentID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
 				t.Fatal(err)
 			}
-			got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one", "app-two"), pub, recoveryDomainHash())
+			got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one", "app-two"), pub, recoveryDomainHash(), "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,7 +141,7 @@ func TestAppCatalogRecoveryCleansOnlySafeOrphansAfterVerification(t *testing.T) 
 	if err := os.Symlink(appCatalogGenerationPrefix+strings.Repeat("9", 32), currentTmp); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash()); err != nil {
+	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{tmp, currentTmp} {
@@ -157,7 +157,7 @@ func TestAppCatalogRecoveryCleansOnlySafeOrphansAfterVerification(t *testing.T) 
 	if err := os.Symlink("/etc/passwd", filepath.Join(unsafe, "escape")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash()); err == nil || !strings.Contains(err.Error(), "symlink") {
+	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), "symlink") {
 		t.Fatalf("unsafe orphan accepted: %v", err)
 	}
 }
@@ -174,7 +174,7 @@ func TestAppCatalogRecoveryRejectsSignedGenerationThatContradictsDurableRollout(
 	state := rollouts["app-one"]
 	state.CurrentStageID = strings.Repeat("e", 64)
 	rollouts["app-one"] = state
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(rollouts, pub, recoveryDomainHash()); err == nil || !strings.Contains(err.Error(), "durable rollout selection") {
+	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(rollouts, pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), "durable rollout selection") {
 		t.Fatalf("accepted signed stale generation after rollout commit: %v", err)
 	}
 }
@@ -221,7 +221,7 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 				t.Fatal(err)
 			}
 			tc.mutate(t, filepath.Join(root, id))
-			if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash()); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("unsafe generation accepted: %v", err)
 			}
 		})

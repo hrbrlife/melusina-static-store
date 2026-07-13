@@ -232,7 +232,7 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	}
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	servingDomainHash := hex.EncodeToString(domainHash[:])
-	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash); err != nil {
+	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir); err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
 	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {

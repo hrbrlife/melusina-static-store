@@ -20,6 +20,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 var enc = base64.StdEncoding
@@ -413,9 +414,40 @@ func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing
 			if first.Code != http.StatusInternalServerError || !fired {
 				t.Fatalf("faulted promote = %d fired=%v: %s", first.Code, fired, first.Body.String())
 			}
-			svc.afterAppMutation = nil
+
+			// Simulate a real process exit: discard the service and its mutex/cache,
+			// reopen the durable ledger, run the same cold recovery selection used
+			// before listener startup, and construct a fresh service instance.
+			ledgerOpts := defaultPublishNonceLedgerOptions()
+			ledgerOpts.Now = func() time.Time { return now }
+			reopened, err := openPublishNonceLedger(filepath.Join(svc.cfg.PrivateStageDir, publishNonceLedgerDirName), testPublishNonceLedgerID, ledgerOpts)
+			if err != nil {
+				t.Fatalf("restart ledger: %v", err)
+			}
+			rollouts, err := exactRolloutStates(svc.cfg)
+			if err != nil {
+				t.Fatalf("restart rollout validation: %v", err)
+			}
+			operatorKey, err := op.Public().SignPublicKey()
+			if err != nil {
+				t.Fatal(err)
+			}
+			domainHash := primitives.StoreDomainHash(svc.cfg.Domain)
+			if _, err := svc.catalogGenerations.RecoverCurrent(rollouts, ed25519.PublicKey(operatorKey), hex.EncodeToString(domainHash[:]), svc.cfg.PrivateStageDir); err != nil {
+				t.Fatalf("restart generation recovery: %v", err)
+			}
+			restarted := &publishService{
+				cfg:                svc.cfg,
+				cr:                 chain,
+				operator:           op,
+				assembler:          NewCatalogAssembler(svc.cfg.CatalogRepoRoot, svc.cfg.DistDir),
+				nonces:             envelope.NewMemoryNonceCache(),
+				appNonces:          reopened,
+				catalogGenerations: svc.catalogGenerations,
+				now:                func() time.Time { return now },
+			}
 			retryEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "fault-retry-"+step)
-			retry := doPublish(t, svc, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
+			retry := doPublish(t, restarted, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
 			if retry.Code != http.StatusOK {
 				t.Fatalf("fresh-envelope retry = %d: %s", retry.Code, retry.Body.String())
 			}

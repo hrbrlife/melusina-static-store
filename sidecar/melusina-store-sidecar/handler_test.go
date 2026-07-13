@@ -610,6 +610,86 @@ func TestAppPromotionCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.
 	}
 }
 
+func TestAppPromotionCatalogMemberCapacityRefusesBeforeClaimOrSourceMutation(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "member-capacity-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "capacity", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "member-capacity-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "member-capacity-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+
+	current, err := svc.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	members := 0
+	if err := walkTreeBounded(current.Root, maxCatalogGenerationMembers, func(string, os.FileInfo) error {
+		members++
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	appsDir := filepath.Join(current.Root, "apps")
+	var fillers []string
+	for i := members; i < maxCatalogGenerationMembers-6; i++ {
+		path := filepath.Join(appsDir, fmt.Sprintf("member-capacity-fill-%03d", i))
+		if err := os.WriteFile(path, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		fillers = append(fillers, path)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "member-capacity-promote")
+	full := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if full.Code != http.StatusInsufficientStorage || !strings.Contains(full.Body.String(), "catalog_member_capacity") {
+		t.Fatalf("member-capacity refusal = %d: %s", full.Code, full.Body.String())
+	}
+	sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(sourceBefore, sourceAfter) {
+		t.Fatal("catalog capacity refusal mutated the governed source before nonce claim")
+	}
+
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range fillers {
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by member-capacity refusal: %d %s", retry.Code, retry.Body.String())
+	}
+}
+
 func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,11 +108,11 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	index := struct {
 		Apps []map[string]any `json:"apps"`
 	}{}
-	if body, err := os.ReadFile(indexPath); err == nil {
+	if body, err := readSnapshotFileBounded(AppCatalogSnapshot{Root: a.DistDir}, "apps/index.json", maxAppCatalogJSONBytes); err == nil {
 		if err := json.Unmarshal(body, &index); err != nil {
 			return fmt.Errorf("decode existing app index: %w", err)
 		}
-	} else if !os.IsNotExist(err) {
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("read existing app index: %w", err)
 	}
 	kept := index.Apps[:0]

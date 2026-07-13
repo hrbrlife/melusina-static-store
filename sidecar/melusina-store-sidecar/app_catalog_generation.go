@@ -479,6 +479,76 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 	return nil
 }
 
+// ensureCatalogPromotionMemberCapacity computes the exact peak member count of
+// cloning the immutable current tree, assembling this app, and materializing the
+// complete replacement pointer directory. It runs before nonce claim; the active
+// generation cannot change under the service writer lock.
+func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, cfg Config, appID, packageID string) error {
+	if !isSafePathSegment(appID) || !isSafePathSegment(packageID) {
+		return errors.New("unsafe appId/packageId for catalog capacity reservation")
+	}
+	members := 0
+	present := make(map[string]struct{})
+	oldPointerMembers := 0
+	if err := walkTreeBounded(snapshot.Root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
+		if info.Mode()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) {
+			return fmt.Errorf("unsafe current catalog member %s", path)
+		}
+		members++
+		relative, err := filepath.Rel(snapshot.Root, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		present[relative] = struct{}{}
+		if relative == "apps/pointers" || strings.HasPrefix(relative, "apps/pointers/") {
+			oldPointerMembers++
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	steadyAdds := 0
+	for _, relative := range []string{
+		filepath.ToSlash(filepath.Join("packages", packageID)),
+		filepath.ToSlash(filepath.Join("signatures", appID)),
+		filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")),
+		filepath.ToSlash(filepath.Join("attest", appID)),
+		filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")),
+	} {
+		if _, exists := present[relative]; !exists {
+			steadyAdds++
+		}
+	}
+
+	rolloutEntries, err := readDirBounded(rolloutStateDir(cfg), maxRetentionRootEntries)
+	if err != nil {
+		return fmt.Errorf("reserve rollout pointers: %w", err)
+	}
+	pointerApps := make(map[string]struct{}, len(rolloutEntries)+1)
+	for _, entry := range rolloutEntries {
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
+			return fmt.Errorf("invalid rollout state member %s", entry.Name())
+		}
+		rolloutAppID := strings.TrimSuffix(entry.Name(), ".json")
+		if !isSafePathSegment(rolloutAppID) {
+			return fmt.Errorf("invalid rollout state appId %q", rolloutAppID)
+		}
+		pointerApps[rolloutAppID] = struct{}{}
+	}
+	pointerApps[appID] = struct{}{}
+
+	// Pointer materialization creates one temporary directory plus its complete
+	// new pointer set while the copied old pointer subtree still exists.
+	peak := members + steadyAdds + 1 + len(pointerApps)
+	final := members + steadyAdds - oldPointerMembers + 1 + len(pointerApps)
+	if peak > maxCatalogGenerationMembers || final > maxCatalogGenerationMembers {
+		return fmt.Errorf("catalog promotion needs peak/final %d/%d members, cap is %d", peak, final, maxCatalogGenerationMembers)
+	}
+	return nil
+}
+
 // WriteSignedAppCatalogPointersForGeneration materializes the complete pointer
 // set inside an unpublished candidate generation. Unlike the retired direct
 // DistDir writer, every rollout member is mandatory and invalid state aborts

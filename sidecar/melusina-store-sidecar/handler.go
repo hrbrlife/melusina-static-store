@@ -450,7 +450,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// master-NFT re-anchor), so a re-publish can never surface an older "updated" time
 	// than the version it replaces. READ-ONLY over the served tree; a first publish
 	// for the slot passes.
-	if err := verifyReleaseTimestampForward(activeGeneration.Root, metadataAppID(preflight.metadata), preflight.release); err != nil {
+	if err := verifyReleaseTimestampForward(activeGeneration, metadataAppID(preflight.metadata), preflight.release); err != nil {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
@@ -504,6 +504,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := ensureDirectoryEntryCapacity(rolloutStateDir(s.cfg), 1); err != nil {
 		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, s.cfg, staged.AppID, metadataPackageID(metadata)); err != nil {
+		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
 

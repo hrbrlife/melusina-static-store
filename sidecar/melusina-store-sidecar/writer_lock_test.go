@@ -74,6 +74,17 @@ func TestAcquireExistingWriterLock_RequiresExactMode0600(t *testing.T) {
 	}
 }
 
+func TestAcquireExistingWriterLock_RequiresEmptyFile(t *testing.T) {
+	path := makeWriterLock(t, 0o600)
+	if err := os.WriteFile(path, []byte("not-empty"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if lock, err := acquireTestWriterLock(path); err == nil {
+		_ = lock.Close()
+		t.Fatal("nonempty writer.lock unexpectedly acquired")
+	}
+}
+
 func TestAcquireExistingWriterLock_RefusesNonRegularFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "writer.lock")
 	if err := os.Mkdir(path, 0o600); err != nil {

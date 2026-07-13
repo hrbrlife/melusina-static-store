@@ -46,8 +46,16 @@ type publishService struct {
 	appNonces          *publishNonceLedger
 	catalogGenerations AppCatalogGenerationStore
 	now                func() time.Time
+	afterAppMutation   func(string) error // test-only crash seam; production nil
 
 	mu sync.Mutex // SINGLE WRITER: serializes the verify→assemble→receipt path
+}
+
+func (s *publishService) appMutationStep(step string) error {
+	if s.afterAppMutation == nil {
+		return nil
+	}
+	return s.afterAppMutation(step)
 }
 
 const maxAppEnvelopeTTL = 30 * time.Minute
@@ -487,6 +495,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if err := s.appMutationStep("after-source-persist"); err != nil {
+		http.Error(w, "check=fault_after_source_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	var catalogPointers map[string]AppCatalogPointer
 	var rolloutAppIDs []string
 	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
@@ -508,8 +520,16 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_generation: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if err := s.appMutationStep("after-generation-commit"); err != nil {
+		http.Error(w, "check=fault_after_generation_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if err := commitAppRollout(s.cfg, rollout); err != nil {
 		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.appMutationStep("after-rollout-commit"); err != nil {
+		http.Error(w, "check=fault_after_rollout_commit: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err := s.catalogGenerations.SwitchCurrent(committedGeneration); err != nil {
@@ -522,6 +542,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("publish: reconciled post-switch uncertainty for generation %s: %v", committedGeneration.ID, err)
+	}
+	if err := s.appMutationStep("after-current-switch"); err != nil {
+		http.Error(w, "check=fault_after_current_switch: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 	catalogPointer := catalogPointers[staged.AppID]
 

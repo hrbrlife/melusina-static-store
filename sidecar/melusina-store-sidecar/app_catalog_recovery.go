@@ -34,6 +34,9 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 	}
 	sort.Strings(rolloutAppIDs)
 	validate := func(snapshot AppCatalogSnapshot) error {
+		if err := validateSealedCatalogTree(snapshot.Root); err != nil {
+			return err
+		}
 		return ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
 			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
 				return err

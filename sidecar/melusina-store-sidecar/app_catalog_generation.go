@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -354,6 +356,34 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 			return fmt.Errorf("app catalog pointer %s does not select indexed package", appID)
 		}
 		if verifyPointer != nil {
+			spk, err := os.ReadFile(filepath.Join(snapshot.Root, "packages", pointer.PackageID))
+			if err != nil {
+				return fmt.Errorf("read selected package for %s: %w", appID, err)
+			}
+			metadata, err := os.ReadFile(filepath.Join(snapshot.Root, "signatures", appID, "metadata.json"))
+			if err != nil {
+				return fmt.Errorf("read selected metadata for %s: %w", appID, err)
+			}
+			releaseBytes, err := os.ReadFile(filepath.Join(snapshot.Root, "attest", appID, "RELEASE.json"))
+			if err != nil {
+				return fmt.Errorf("read selected release for %s: %w", appID, err)
+			}
+			computedAppHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+			if err != nil || computedAppHash != pointer.AppHash {
+				return fmt.Errorf("selected package/metadata appHash mismatch for %s", appID)
+			}
+			if metadataAppID(metadata) != appID || metadataPackageID(metadata) != pointer.PackageID {
+				return fmt.Errorf("selected metadata identity mismatch for %s", appID)
+			}
+			var release ReleaseJSON
+			if err := json.Unmarshal(releaseBytes, &release); err != nil {
+				return fmt.Errorf("decode selected release for %s: %w", appID, err)
+			}
+			if strings.TrimSpace(release.AppHash) != pointer.AppHash ||
+				strings.TrimSpace(release.ReleaseHash) != pointer.ReleaseHash ||
+				strings.TrimSpace(release.Version) != pointer.Version {
+				return fmt.Errorf("selected release intent mismatch for %s", appID)
+			}
 			if err := verifyPointer(pointer); err != nil {
 				return fmt.Errorf("verify app catalog pointer %s: %w", appID, err)
 			}
@@ -668,6 +698,27 @@ func validateCatalogTree(root string) error {
 		}
 	}
 	return nil
+}
+
+func validateSealedCatalogTree(root string) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("sealed app catalog contains symlink %s", path)
+		}
+		if info.IsDir() {
+			if info.Mode().Perm() != 0o555 {
+				return fmt.Errorf("sealed app catalog directory %s mode is %04o, want 0555", path, info.Mode().Perm())
+			}
+			return nil
+		}
+		if !info.Mode().IsRegular() || info.Mode().Perm() != 0o444 {
+			return fmt.Errorf("sealed app catalog file %s is not mode-0444 regular", path)
+		}
+		return nil
+	})
 }
 
 func walkCatalogTree(root string, visitFile func(string, os.FileInfo) error) error {

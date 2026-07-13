@@ -1,17 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -48,13 +51,9 @@ func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testi
 	preparedID := appCatalogGenerationPrefix + strings.Repeat("f", 32)
 	writeRecoveryGeneration(t, root, oldID, []string{"app-one"}, priv)
 	writeRecoveryGeneration(t, root, preparedID, []string{"app-one"}, priv)
-	prepared := appRolloutState{
-		Schema:         appRolloutSchema,
-		AppID:          "app-one",
-		CurrentStageID: strings.Repeat("e", 64),
-		CurrentAppHash: strings.Repeat("f", 64),
-		CurrentVersion: "2.0.0",
-	}
+	prepared := recoveryRollouts("app-one")["app-one"]
+	prepared.CurrentStageID = strings.Repeat("e", 64)
+	prepared.CurrentVersion = "2.0.0"
 	rewriteRecoveryPointerSelection(t, filepath.Join(root, preparedID), prepared, priv)
 	setGenerationTime(t, filepath.Join(root, oldID), time.Unix(10, 0))
 	setGenerationTime(t, filepath.Join(root, preparedID), time.Unix(20, 0))
@@ -180,16 +179,68 @@ func TestAppCatalogRecoveryRejectsSignedGenerationThatContradictsDurableRollout(
 	}
 }
 
+func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*testing.T, string)
+		want   string
+	}{
+		{
+			name: "writable-generation",
+			mutate: func(t *testing.T, generation string) {
+				if err := os.Chmod(filepath.Join(generation, "packages"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "mode is 0755",
+		},
+		{
+			name: "substituted-package",
+			mutate: func(t *testing.T, generation string) {
+				packageID := recoveryPackageID("app-one")
+				path := filepath.Join(generation, "packages", packageID)
+				if err := os.Chmod(path, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte("substituted"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0o444); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "appHash mismatch",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+			id := appCatalogGenerationPrefix + strings.Repeat("a", 32)
+			writeRecoveryGeneration(t, root, id, []string{"app-one"}, priv)
+			if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+				t.Fatal(err)
+			}
+			tc.mutate(t, filepath.Join(root, id))
+			if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("unsafe generation accepted: %v", err)
+			}
+		})
+	}
+}
+
 func recoveryDomainHash() string { return strings.Repeat("d", 64) }
 
 func recoveryRollouts(appIDs ...string) map[string]appRolloutState {
 	rollouts := make(map[string]appRolloutState, len(appIDs))
 	for _, appID := range appIDs {
+		spk, metadata, _, appHash := recoveryReleaseBytes(appID, "1.0.0")
+		_ = spk
+		_ = metadata
 		rollouts[appID] = appRolloutState{
 			Schema:         appRolloutSchema,
 			AppID:          appID,
 			CurrentStageID: strings.Repeat("c", 64),
-			CurrentAppHash: strings.Repeat("a", 64),
+			CurrentAppHash: appHash,
 			CurrentVersion: "1.0.0",
 		}
 	}
@@ -199,18 +250,36 @@ func recoveryRollouts(appIDs ...string) map[string]appRolloutState {
 func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, private ed25519.PrivateKey) {
 	t.Helper()
 	generation := filepath.Join(root, id)
+	t.Cleanup(func() {
+		_ = filepath.Walk(generation, func(path string, info os.FileInfo, err error) error {
+			if err == nil && info != nil {
+				if info.IsDir() {
+					_ = os.Chmod(path, 0o755)
+				} else {
+					_ = os.Chmod(path, 0o644)
+				}
+			}
+			return nil
+		})
+	})
 	for _, namespace := range appCatalogNamespaces {
 		if err := os.MkdirAll(filepath.Join(generation, namespace), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	index := catalogIndex{}
-	for i, appID := range appIDs {
-		packageID := strings.Repeat(string(rune('1'+i)), 32)
+	packageIDs := make(map[string]string, len(appIDs))
+	appHashes := make(map[string]string, len(appIDs))
+	for _, appID := range appIDs {
+		spk, metadata, release, appHash := recoveryReleaseBytes(appID, "1.0.0")
+		spkHash := sha256.Sum256(spk)
+		packageID := hex.EncodeToString(spkHash[:])[:32]
+		packageIDs[appID] = packageID
+		appHashes[appID] = appHash
 		index.Apps = append(index.Apps, catalogIndexApp{AppID: appID, PackageID: packageID})
-		writeFile(t, filepath.Join(generation, "packages", packageID), []byte(appID))
-		writeFile(t, filepath.Join(generation, "signatures", appID, "metadata.json"), []byte("{}"))
-		writeFile(t, filepath.Join(generation, "attest", appID, "RELEASE.json"), []byte("{}"))
+		writeFile(t, filepath.Join(generation, "packages", packageID), spk)
+		writeFile(t, filepath.Join(generation, "signatures", appID, "metadata.json"), metadata)
+		writeFile(t, filepath.Join(generation, "attest", appID, "RELEASE.json"), release)
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
@@ -218,11 +287,11 @@ func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, pri
 	}
 	writeFile(t, filepath.Join(generation, "apps", "index.json"), indexBytes)
 	digest := sha256.Sum256(indexBytes)
-	for i, appID := range appIDs {
+	for _, appID := range appIDs {
 		pointer := AppCatalogPointer{
 			Schema: appCatalogPointerSchema, AppID: appID,
-			PackageID: strings.Repeat(string(rune('1'+i)), 32), Version: "1.0.0",
-			AppHash: strings.Repeat("a", 64), ReleaseHash: strings.Repeat("b", 64),
+			PackageID: packageIDs[appID], Version: "1.0.0",
+			AppHash: appHashes[appID], ReleaseHash: strings.Repeat("b", 64),
 			StageID: strings.Repeat("c", 64), CatalogSHA256: hex.EncodeToString(digest[:]),
 			ServingDomainHash: strings.Repeat("d", 64), PublishedAt: 1,
 		}
@@ -234,6 +303,27 @@ func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, pri
 		body, _ := json.Marshal(pointer)
 		writeFile(t, filepath.Join(generation, "apps", "pointers", appID+".json"), body)
 	}
+	if err := syncAndSealCatalogTree(generation); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func recoveryReleaseBytes(appID, version string) ([]byte, []byte, []byte, string) {
+	spk := []byte("recovery-spk:" + appID)
+	spkHash := sha256.Sum256(spk)
+	packageID := hex.EncodeToString(spkHash[:])[:32]
+	metadata := []byte(fmt.Sprintf(`{"appId":%q,"packageId":%q}`, appID, packageID))
+	appHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		panic(err)
+	}
+	release := []byte(fmt.Sprintf(`{"appHash":%q,"releaseHash":%q,"version":%q}`, appHash, strings.Repeat("b", 64), version))
+	return spk, metadata, release, appHash
+}
+
+func recoveryPackageID(appID string) string {
+	hash := sha256.Sum256([]byte("recovery-spk:" + appID))
+	return hex.EncodeToString(hash[:])[:32]
 }
 
 func corruptRecoveryPointer(t *testing.T, generation, appID string) {
@@ -245,7 +335,13 @@ func corruptRecoveryPointer(t *testing.T, generation, appID string) {
 	}
 	pointer.OperatorSignature = "1"
 	body, _ := json.Marshal(pointer)
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o444); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -260,6 +356,17 @@ func rewriteRecoveryPointerSelection(t *testing.T, generation string, rollout ap
 	pointer.StageID = rollout.CurrentStageID
 	pointer.AppHash = rollout.CurrentAppHash
 	pointer.Version = rollout.CurrentVersion
+	releasePath := filepath.Join(generation, "attest", rollout.AppID, "RELEASE.json")
+	_, _, release, _ := recoveryReleaseBytes(rollout.AppID, rollout.CurrentVersion)
+	if err := os.Chmod(releasePath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(releasePath, release, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(releasePath, 0o444); err != nil {
+		t.Fatal(err)
+	}
 	message, err := appCatalogPointerMessage(pointer)
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +376,13 @@ func rewriteRecoveryPointerSelection(t *testing.T, generation string, rollout ap
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o444); err != nil {
 		t.Fatal(err)
 	}
 }

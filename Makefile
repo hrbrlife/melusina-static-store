@@ -19,7 +19,11 @@ MAX_FILE_SIZE  := $$((100 * 1024 * 1024 - 4096))
 CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
-        plan apply build-from-source publish-app sync bump-version icon-qc submit-build
+        plan apply build-from-source publish-app sync bump-version icon-qc submit-build store-release
+
+store-release:
+	@test -n "$(OUT)" || { echo "ERROR: OUT=<empty output directory> required"; exit 2; }
+	bash scripts/build-store-release.sh --version 1.0.4 --out-dir "$(OUT)"
 
 # --- Sealed-v3 submit client (FEDERATED-STORE-MVP §C3) -----------------------
 # The submit client REPLACES the gh-pages force-push: it wraps the canonical

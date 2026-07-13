@@ -66,7 +66,23 @@ type requestScopedStatic struct {
 
 func (h requestScopedStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if snapshot, ok := appCatalogSnapshotFromRequest(r); ok {
-		http.FileServer(http.Dir(snapshot.Root)).ServeHTTP(w, r)
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		relativePath := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		f, err := snapshot.Open(relativePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		info, err := f.Stat()
+		if err != nil {
+			http.Error(w, "app catalog stat failed", http.StatusInternalServerError)
+			return
+		}
+		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 		return
 	}
 	h.flat.ServeHTTP(w, r)

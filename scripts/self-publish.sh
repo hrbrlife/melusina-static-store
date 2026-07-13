@@ -165,7 +165,7 @@ info "EXACT-CURRENT: no app chain write; existing Active ReleaseEntry remains au
 KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("releaseEntryPda") or "")' "$CAT_PATH/RELEASE.json")"
 [[ -n "$KNOWN_RELEASE_PDA" ]] || fail "exact-current release has no releaseEntryPda"
 "$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_BEFORE"
-[[ -s "$ACTIVE_BEFORE" ]] || fail "exact-current Active set is empty"
+[[ "$(wc -l <"$ACTIVE_BEFORE" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry before promotion"
 
 # Envelope P is freshly generated here and is valid only at /publish. It never
 # reuses the stage nonce or purpose.
@@ -174,6 +174,7 @@ KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))
   --store "$STORE_URL" --license-mint "$STORE_LICENSE_MINT" \
   --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL"
 "$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_AFTER"
+[[ "$(wc -l <"$ACTIVE_AFTER" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry after promotion"
 cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER" || fail "Active ReleaseEntry set changed during exact-current promotion"
 
 APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"

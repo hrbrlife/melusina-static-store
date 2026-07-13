@@ -204,6 +204,9 @@ func acquireExistingWriterLockOwned(path string, expectedUID, expectedGID uint32
 	if openedInfo.Mode().Perm() != 0o600 {
 		return nil, fmt.Errorf("writer.lock mode is %04o, want 0600", openedInfo.Mode().Perm())
 	}
+	if openedInfo.Size() != 0 {
+		return nil, errors.New("writer.lock must be empty")
+	}
 	stat, ok := openedInfo.Sys().(*syscall.Stat_t)
 	if !ok {
 		return nil, errors.New("writer.lock ownership metadata unavailable")

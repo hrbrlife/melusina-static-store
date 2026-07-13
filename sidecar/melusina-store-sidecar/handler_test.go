@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -369,6 +370,56 @@ func TestAppPublishPurposeRefusalDoesNotConsumeAcrossRoutes(t *testing.T) {
 	promoteReplay := doPublish(t, restarted, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
 	if promoteReplay.Code != http.StatusUnauthorized || !strings.Contains(promoteReplay.Body.String(), "nonce already consumed") {
 		t.Fatalf("promote replay after restart = %d %s", promoteReplay.Code, promoteReplay.Body.String())
+	}
+}
+
+func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing.T) {
+	for _, step := range []string{
+		"after-source-persist",
+		"after-generation-commit",
+		"after-rollout-commit",
+		"after-current-switch",
+	} {
+		t.Run(step, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.CatalogRepoRoot = t.TempDir()
+			op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+			fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+			seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "fault-retry", "app", fixture.metadata)
+			chain := newMockChainReader()
+			fixture.pinAccept(chain, operatorSignPub32(t, op))
+			svc := newTestService(t, cfg, chain, op)
+			publisher := newTestIdentity(t, "fault-retry-publisher", randPubkeyB58(t), "publisher.example.org")
+			svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+			release := mustJSON(t, fixture.rel)
+			now := time.Now().UTC().Add(time.Second)
+			svc.now = func() time.Time { return now }
+
+			stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "fault-stage-"+step)
+			stage := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata))
+			if stage.Code != http.StatusOK {
+				t.Fatalf("stage = %d: %s", stage.Code, stage.Body.String())
+			}
+			fired := false
+			svc.afterAppMutation = func(got string) error {
+				if got == step && !fired {
+					fired = true
+					return errors.New("injected post-claim exit")
+				}
+				return nil
+			}
+			firstEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "fault-first-"+step)
+			first := doPublish(t, svc, jsonPublishBody(t, firstEnvelope, release, fixture.spk, fixture.metadata))
+			if first.Code != http.StatusInternalServerError || !fired {
+				t.Fatalf("faulted promote = %d fired=%v: %s", first.Code, fired, first.Body.String())
+			}
+			svc.afterAppMutation = nil
+			retryEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "fault-retry-"+step)
+			retry := doPublish(t, svc, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
+			if retry.Code != http.StatusOK {
+				t.Fatalf("fresh-envelope retry = %d: %s", retry.Code, retry.Body.String())
+			}
+		})
 	}
 }
 

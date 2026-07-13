@@ -703,10 +703,7 @@ func validateCatalogTree(root string) error {
 }
 
 func validateSealedCatalogTree(root string, expectedUID, expectedGID uint32) error {
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("sealed app catalog contains symlink %s", path)
 		}
@@ -728,10 +725,7 @@ func validateSealedCatalogTree(root string, expectedUID, expectedGID uint32) err
 }
 
 func walkCatalogTree(root string, visitFile func(string, os.FileInfo) error) error {
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("app catalog contains symlink %s", path)
 		}
@@ -764,10 +758,7 @@ func syncAndSealCatalogTree(root string) error {
 	}); err != nil {
 		return err
 	}
-	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	if err := walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
 		if info.IsDir() {
 			dirs = append(dirs, path)
 		}

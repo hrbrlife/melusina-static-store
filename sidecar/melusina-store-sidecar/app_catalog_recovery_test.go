@@ -227,6 +227,25 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 			},
 			want: "bytes differ from exact staged candidate",
 		},
+		{
+			name: "nested-member-owner-mismatch",
+			mutate: func(t *testing.T, generation string) {
+				path := filepath.Join(generation, "packages", recoveryPackageID("app-one"))
+				if err := os.Chown(path, -1, alternateTestGID(t)); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "owner is not",
+		},
+		{
+			name: "nested-directory-owner-mismatch",
+			mutate: func(t *testing.T, generation string) {
+				if err := os.Chown(filepath.Join(generation, "packages"), -1, alternateTestGID(t)); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "owner is not",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -242,6 +261,21 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 			}
 		})
 	}
+}
+
+func alternateTestGID(t *testing.T) int {
+	t.Helper()
+	groups, err := os.Getgroups()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, gid := range groups {
+		if gid != os.Getgid() {
+			return gid
+		}
+	}
+	t.Skip("nested owner mismatch requires a secondary group")
+	return -1
 }
 
 func TestAppCatalogRecoveryRequiresStageAndExactOwner(t *testing.T) {

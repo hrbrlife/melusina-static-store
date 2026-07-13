@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
@@ -200,8 +202,12 @@ func loadStagedApp(root, stageID string) (stagedAppManifest, []byte, []byte, []b
 	if _, err := hex.DecodeString(stageID); err != nil || strings.ToLower(stageID) != stageID {
 		return zero, nil, nil, nil, errors.New("stageId must be 32-byte lowercase hex")
 	}
-	dir := filepath.Join(root, stageID)
-	manifestBytes, err := os.ReadFile(filepath.Join(dir, "stage.json"))
+	stageFD, err := openStagedAppDir(root, stageID)
+	if err != nil {
+		return zero, nil, nil, nil, err
+	}
+	defer syscall.Close(stageFD)
+	manifestBytes, err := readStagedAppFile(stageFD, "stage.json", maxCatalogBootstrapJSON, false)
 	if err != nil {
 		return zero, nil, nil, nil, fmt.Errorf("read staged manifest: %w", err)
 	}
@@ -209,15 +215,19 @@ func loadStagedApp(root, stageID string) (stagedAppManifest, []byte, []byte, []b
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		return zero, nil, nil, nil, fmt.Errorf("decode staged manifest: %w", err)
 	}
-	spk, err := os.ReadFile(filepath.Join(dir, "app.spk"))
+	if manifest.SPKSize < 0 || manifest.MetadataSize < 0 || manifest.ReleaseSize < 0 ||
+		int64(manifest.SPKSize)+int64(manifest.MetadataSize)+int64(manifest.ReleaseSize) > maxAppPublishBody {
+		return zero, nil, nil, nil, errors.New("staged candidate sizes exceed app publish bound")
+	}
+	spk, err := readStagedAppFile(stageFD, "app.spk", int64(manifest.SPKSize), true)
 	if err != nil {
 		return zero, nil, nil, nil, fmt.Errorf("read staged SPK: %w", err)
 	}
-	metadata, err := os.ReadFile(filepath.Join(dir, "metadata.json"))
+	metadata, err := readStagedAppFile(stageFD, "metadata.json", int64(manifest.MetadataSize), true)
 	if err != nil {
 		return zero, nil, nil, nil, fmt.Errorf("read staged metadata: %w", err)
 	}
-	release, err := os.ReadFile(filepath.Join(dir, "RELEASE.json"))
+	release, err := readStagedAppFile(stageFD, "RELEASE.json", int64(manifest.ReleaseSize), true)
 	if err != nil {
 		return zero, nil, nil, nil, fmt.Errorf("read staged release: %w", err)
 	}
@@ -229,6 +239,46 @@ func loadStagedApp(root, stageID string) (stagedAppManifest, []byte, []byte, []b
 		return zero, nil, nil, nil, errors.New("staged candidate manifest/content mismatch")
 	}
 	return manifest, spk, metadata, release, nil
+}
+
+func openStagedAppDir(root, stageID string) (int, error) {
+	rootFD, err := syscall.Open(root, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, fmt.Errorf("open private-stage root without following links: %w", err)
+	}
+	defer syscall.Close(rootFD)
+	stageFD, err := syscall.Openat(rootFD, stageID, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, fmt.Errorf("open staged candidate without following links: %w", err)
+	}
+	return stageFD, nil
+}
+
+func readStagedAppFile(stageFD int, name string, sizeLimit int64, requireExact bool) ([]byte, error) {
+	if sizeLimit < 0 || sizeLimit > maxAppPublishBody {
+		return nil, errors.New("invalid staged file size")
+	}
+	fd, err := syscall.Openat(stageFD, name, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(fd), name)
+	defer f.Close()
+	var stat syscall.Stat_t
+	if err := syscall.Fstat(fd, &stat); err != nil {
+		return nil, err
+	}
+	if stat.Mode&syscall.S_IFMT != syscall.S_IFREG || stat.Size > sizeLimit || (requireExact && stat.Size != sizeLimit) {
+		return nil, fmt.Errorf("staged file type/size mismatch: got %d bytes, limit/want %d", stat.Size, sizeLimit)
+	}
+	body, err := io.ReadAll(io.LimitReader(f, sizeLimit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) != stat.Size || (requireExact && int64(len(body)) != sizeLimit) {
+		return nil, errors.New("staged file changed during bounded read")
+	}
+	return body, nil
 }
 
 func verifyStagedApp(dir string, want stagedAppManifest) error {

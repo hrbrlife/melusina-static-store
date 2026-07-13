@@ -148,7 +148,7 @@ func readSnapshotFile(snapshot AppCatalogSnapshot, relativePath string) ([]byte,
 }
 
 func (s AppCatalogGenerationStore) recoveryCandidates() ([]appCatalogRecoveryCandidate, error) {
-	entries, err := os.ReadDir(s.Root)
+	entries, err := readDirBounded(s.Root, maxRetentionRootEntries)
 	if err != nil {
 		return nil, fmt.Errorf("read app catalog generation root: %w", err)
 	}
@@ -191,7 +191,7 @@ func (s AppCatalogGenerationStore) recoveryCandidates() ([]appCatalogRecoveryCan
 }
 
 func (s AppCatalogGenerationStore) cleanupRecoveryOrphans() error {
-	entries, err := os.ReadDir(s.Root)
+	entries, err := readDirBounded(s.Root, maxRetentionRootEntries)
 	if err != nil {
 		return err
 	}
@@ -249,10 +249,7 @@ func validateRemovableCatalogTree(root string) error {
 	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 		return errors.New("temporary generation is not a real directory")
 	}
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("temporary generation contains symlink %s", path)
 		}
@@ -272,7 +269,7 @@ func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 
 func exactRolloutStatesAt(cfg Config, now time.Time) (map[string]appRolloutState, error) {
 	root := rolloutStateDir(cfg)
-	entries, err := os.ReadDir(root)
+	entries, err := readDirBounded(root, maxRetentionRootEntries)
 	if err != nil {
 		return nil, fmt.Errorf("read exact rollout set: %w", err)
 	}

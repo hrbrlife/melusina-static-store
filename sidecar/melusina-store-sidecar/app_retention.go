@@ -4,10 +4,12 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -51,6 +53,11 @@ func selectVerifiedRetentionPredecessor(store AppCatalogGenerationStore, current
 
 const (
 	appStageUnreferencedRetention = 7 * 24 * time.Hour
+	maxRetentionRootEntries       = 256
+	maxPrivateStageTreeMembers    = 16
+	maxCatalogGenerationMembers   = 512
+	maxRetentionDeletes           = 128
+	maxRetentionTreeDepth         = 64
 )
 
 type appRetentionPlan struct {
@@ -88,7 +95,7 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 		}
 	}
 
-	entries, err := os.ReadDir(cfg.PrivateStageDir)
+	entries, err := readDirBounded(cfg.PrivateStageDir, maxRetentionRootEntries)
 	if err != nil {
 		return plan, fmt.Errorf("read private-stage retention root: %w", err)
 	}
@@ -120,7 +127,7 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 		}
 	}
 
-	generationEntries, err := os.ReadDir(store.Root)
+	generationEntries, err := readDirBounded(store.Root, maxRetentionRootEntries)
 	if err != nil {
 		return plan, fmt.Errorf("read generation retention root: %w", err)
 	}
@@ -144,6 +151,9 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 	sort.Strings(plan.stageDirs)
 	sort.Strings(plan.stageTempDirs)
 	sort.Strings(plan.generationDirs)
+	if len(plan.stageDirs)+len(plan.stageTempDirs)+len(plan.generationDirs) > maxRetentionDeletes {
+		return appRetentionPlan{}, fmt.Errorf("retention deletion plan exceeds %d members", maxRetentionDeletes)
+	}
 	return plan, nil
 }
 
@@ -226,10 +236,7 @@ func validCandidateTempName(name string) bool {
 }
 
 func validatePrivateStageTree(root string, expectedUID, expectedGID uint32) error {
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return walkTreeBounded(root, maxPrivateStageTreeMembers, func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("private stage contains symlink %s", path)
 		}
@@ -253,7 +260,7 @@ func validateCommittedStageTree(root string, expectedUID, expectedGID uint32) er
 	if err := validatePrivateStageTree(root, expectedUID, expectedGID); err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(root)
+	entries, err := readDirBounded(root, 4)
 	if err != nil {
 		return err
 	}
@@ -271,10 +278,7 @@ func validateCommittedStageTree(root string, expectedUID, expectedGID uint32) er
 
 func makeCatalogTreeRemovable(root string) error {
 	var dirs []string
-	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	if err := walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("refuse to remove catalog tree containing a symlink")
 		}
@@ -291,4 +295,57 @@ func makeCatalogTreeRemovable(root string) error {
 		}
 	}
 	return nil
+}
+
+func readDirBounded(root string, max int) ([]os.DirEntry, error) {
+	fd, err := syscall.Open(root, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(fd), root)
+	defer f.Close()
+	entries, err := f.ReadDir(max + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	if len(entries) > max {
+		return nil, fmt.Errorf("directory %s exceeds %d entries", root, max)
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	return entries, nil
+}
+
+func walkTreeBounded(root string, max int, visit func(string, os.FileInfo) error) error {
+	count := 0
+	var walk func(string, int) error
+	walk = func(path string, depth int) error {
+		if depth > maxRetentionTreeDepth {
+			return fmt.Errorf("retention tree exceeds depth %d", maxRetentionTreeDepth)
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		count++
+		if count > max {
+			return fmt.Errorf("retention tree %s exceeds %d members", root, max)
+		}
+		if err := visit(path, info); err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return nil
+		}
+		entries, err := readDirBounded(path, max-count)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := walk(filepath.Join(path, entry.Name()), depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return walk(root, 0)
 }

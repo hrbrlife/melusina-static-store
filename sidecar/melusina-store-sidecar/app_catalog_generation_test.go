@@ -203,6 +203,39 @@ func TestAppCatalogGenerationFaultBeforeCurrentRenameLeavesOldCurrent(t *testing
 	}
 }
 
+func TestAppCatalogGenerationFaultAfterCurrentRenameLeavesNewCurrentRecoverable(t *testing.T) {
+	root := t.TempDir()
+	flat := filepath.Join(root, "dist")
+	generations := filepath.Join(root, "app-generations")
+	cleanupImmutableCatalog(t, generations)
+	writeGenerationFixture(t, flat, "app-one", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "old")
+	store := AppCatalogGenerationStore{Root: generations}
+	old, err := store.BootstrapFromFlat(flat, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := store.BuildCommittedFrom(old.Root, nil, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.Hook = func(step string) error {
+		if step == "after-current-rename" {
+			return errors.New("injected crash before parent fsync")
+		}
+		return nil
+	}
+	if err := store.SwitchCurrent(prepared); err == nil {
+		t.Fatal("injected post-rename fault was ignored")
+	}
+	selected, err := store.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.ID != prepared.ID {
+		t.Fatalf("post-rename uncertainty lost selected generation: got %s want %s", selected.ID, prepared.ID)
+	}
+}
+
 func TestAppCatalogGenerationPromotionNeverRecreatesMissingRoot(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "missing-generations")
 	store := AppCatalogGenerationStore{Root: root}

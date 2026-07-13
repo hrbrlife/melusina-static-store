@@ -4,8 +4,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -15,8 +19,8 @@ import (
 func TestAppRetentionStageWindowAndStrictSevenDayBoundary(t *testing.T) {
 	now := time.Unix(2_000_000_000, 0).UTC()
 	cfg, store, currentGeneration := newRetentionFixture(t)
-	current := persistRetentionStage(t, cfg.PrivateStageDir, "current-app", now.Add(-30*24*time.Hour))
-	previous := persistRetentionStage(t, cfg.PrivateStageDir, "previous-app", now.Add(-30*24*time.Hour))
+	current := persistRetentionStageVersion(t, cfg.PrivateStageDir, "same-app", "2.0.0", now.Add(-30*24*time.Hour))
+	previous := persistRetentionStageVersion(t, cfg.PrivateStageDir, "same-app", "1.0.0", now.Add(-30*24*time.Hour))
 	equality := persistRetentionStage(t, cfg.PrivateStageDir, "equality-app", now.Add(-appStageUnreferencedRetention))
 	old := persistRetentionStage(t, cfg.PrivateStageDir, "old-app", now.Add(-appStageUnreferencedRetention-time.Second))
 	rollout := appRolloutState{
@@ -81,6 +85,50 @@ func TestAppRetentionUnsafeStageRefusesBeforeAnyDeletion(t *testing.T) {
 	}
 }
 
+func TestAppRetentionUnsafeIDAndInnerSymlinkRefuseBeforeDeletion(t *testing.T) {
+	now := time.Unix(2_000_000_000, 0).UTC()
+	for _, tc := range []struct {
+		name   string
+		mutate func(*testing.T, Config)
+		want   string
+	}{
+		{
+			name: "unsafe-id",
+			mutate: func(t *testing.T, cfg Config) {
+				if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "not-a-stage-id"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "unsafe private-stage retention member",
+		},
+		{
+			name: "inner-symlink",
+			mutate: func(t *testing.T, cfg Config) {
+				stage := persistRetentionStage(t, cfg.PrivateStageDir, "symlink-stage", now.Add(-8*24*time.Hour))
+				path := filepath.Join(cfg.PrivateStageDir, stage.StageID, "metadata.json")
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("/etc/passwd", path); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "symlink",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, store, currentID := newRetentionFixture(t)
+			old := persistRetentionStage(t, cfg.PrivateStageDir, "old-before-unsafe", now.Add(-8*24*time.Hour))
+			tc.mutate(t, cfg)
+			err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("unsafe stage did not refuse: %v", err)
+			}
+			assertStageExists(t, cfg.PrivateStageDir, old.StageID)
+		})
+	}
+}
+
 func TestAppRetentionGenerationBoundAndRequestBarrier(t *testing.T) {
 	now := time.Unix(2_000_000_000, 0).UTC()
 	cfg, store, currentID := newRetentionFixture(t)
@@ -113,6 +161,144 @@ func TestAppRetentionGenerationBoundAndRequestBarrier(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(store.Root, oldID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("older committed generation remains: %v", err)
+	}
+}
+
+func TestGenerationHTTPRequestHoldsRetentionBarrier(t *testing.T) {
+	now := time.Unix(2_000_000_000, 0).UTC()
+	cfg, store, oldID := newRetentionFixture(t)
+	newID := appCatalogGenerationPrefix + strings.Repeat("7", 32)
+	createRetentionGeneration(t, store.Root, newID)
+	entered := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	requestDone := make(chan struct{})
+	handler := newGenerationHTTP(store, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		close(entered)
+		<-releaseRequest
+		close(requestDone)
+	}))
+	go handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/apps/index.json", nil))
+	<-entered
+	if err := store.SwitchCurrent(AppCatalogSnapshot{ID: newID, Root: filepath.Join(store.Root, newID)}); err != nil {
+		t.Fatal(err)
+	}
+	gcDone := make(chan error, 1)
+	go func() {
+		gcDone <- runAppRetentionGC(cfg, store, nil, newID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+	}()
+	select {
+	case err := <-gcDone:
+		t.Fatalf("real HTTP request did not hold retention barrier: %v", err)
+	case <-time.After(25 * time.Millisecond):
+	}
+	close(releaseRequest)
+	<-requestDone
+	if err := <-gcDone; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(store.Root, oldID)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("released request generation was not collected: %v", err)
+	}
+}
+
+func TestAppRetentionResourceCapsRefuseBeforeDeletion(t *testing.T) {
+	now := time.Unix(2_000_000_000, 0).UTC()
+	t.Run("root-entries", func(t *testing.T) {
+		cfg, store, currentID := newRetentionFixture(t)
+		old := persistRetentionStage(t, cfg.PrivateStageDir, "old-before-root-cap", now.Add(-8*24*time.Hour))
+		entries, err := os.ReadDir(cfg.PrivateStageDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := len(entries); i <= maxRetentionRootEntries; i++ {
+			if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, fmt.Sprintf("overflow-%03d", i)), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		err = runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+		if err == nil || !strings.Contains(err.Error(), "exceeds 256 entries") {
+			t.Fatalf("root entry cap did not refuse: %v", err)
+		}
+		assertStageExists(t, cfg.PrivateStageDir, old.StageID)
+	})
+
+	t.Run("stage-tree-members", func(t *testing.T) {
+		cfg, store, currentID := newRetentionFixture(t)
+		old := persistRetentionStage(t, cfg.PrivateStageDir, "old-before-tree-cap", now.Add(-8*24*time.Hour))
+		tmp := filepath.Join(cfg.PrivateStageDir, ".candidate-1")
+		if err := os.Mkdir(tmp, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < maxPrivateStageTreeMembers; i++ {
+			if err := os.WriteFile(filepath.Join(tmp, fmt.Sprintf("member-%02d", i)), nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+		if err == nil || !strings.Contains(err.Error(), "exceeds") {
+			t.Fatalf("stage tree cap did not refuse: %v", err)
+		}
+		assertStageExists(t, cfg.PrivateStageDir, old.StageID)
+	})
+
+	t.Run("deletion-plan", func(t *testing.T) {
+		cfg, store, currentID := newRetentionFixture(t)
+		var stages []stagedAppManifest
+		for i := 0; i <= maxRetentionDeletes; i++ {
+			stages = append(stages, persistRetentionStage(t, cfg.PrivateStageDir, fmt.Sprintf("expired-%03d", i), now.Add(-8*24*time.Hour)))
+		}
+		err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+		if err == nil || !strings.Contains(err.Error(), "deletion plan exceeds") {
+			t.Fatalf("deletion cap did not refuse: %v", err)
+		}
+		for _, stage := range stages {
+			assertStageExists(t, cfg.PrivateStageDir, stage.StageID)
+		}
+	})
+
+	t.Run("generation-tree-members", func(t *testing.T) {
+		cfg, store, currentID := newRetentionFixture(t)
+		oldID := appCatalogGenerationPrefix + strings.Repeat("1", 32)
+		createRetentionGeneration(t, store.Root, oldID)
+		overID := appCatalogGenerationPrefix + strings.Repeat("8", 32)
+		overRoot := filepath.Join(store.Root, overID)
+		for _, namespace := range appCatalogNamespaces {
+			if err := os.MkdirAll(filepath.Join(overRoot, namespace), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for i := 0; i < maxCatalogGenerationMembers; i++ {
+			if err := os.WriteFile(filepath.Join(overRoot, "apps", fmt.Sprintf("member-%03d", i)), nil, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		sealCatalogTreeUnboundedForTest(t, overRoot)
+		t.Cleanup(func() { forceCatalogTreeCleanup(overRoot) })
+		err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+		if err == nil || !strings.Contains(err.Error(), "exceeds") {
+			t.Fatalf("generation tree cap did not refuse: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(store.Root, oldID)); err != nil {
+			t.Fatalf("generation cap refusal deleted older candidate: %v", err)
+		}
+	})
+}
+
+func TestAppRetentionUnsafeGenerationRefusesBeforeDeletion(t *testing.T) {
+	now := time.Unix(2_000_000_000, 0).UTC()
+	cfg, store, currentID := newRetentionFixture(t)
+	oldID := appCatalogGenerationPrefix + strings.Repeat("1", 32)
+	createRetentionGeneration(t, store.Root, oldID)
+	unsafeID := appCatalogGenerationPrefix + strings.Repeat("9", 32)
+	if err := os.Symlink("/etc", filepath.Join(store.Root, unsafeID)); err != nil {
+		t.Fatal(err)
+	}
+	err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
+	if err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("unsafe generation did not refuse: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(store.Root, oldID)); err != nil {
+		t.Fatalf("unsafe generation validation deleted older candidate: %v", err)
 	}
 }
 
@@ -193,8 +379,12 @@ func createRetentionGeneration(t *testing.T, root, id string) {
 }
 
 func persistRetentionStage(t *testing.T, root, appID string, storedAt time.Time) stagedAppManifest {
+	return persistRetentionStageVersion(t, root, appID, "1.0.0", storedAt)
+}
+
+func persistRetentionStageVersion(t *testing.T, root, appID, version string, storedAt time.Time) stagedAppManifest {
 	t.Helper()
-	spk, metadata, release, _ := recoveryReleaseBytes(appID, "1.0.0")
+	spk, metadata, release, _ := recoveryReleaseBytes(appID, version)
 	manifest, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), slotHint{}, storedAt)
 	if err != nil {
 		t.Fatal(err)
@@ -203,4 +393,43 @@ func persistRetentionStage(t *testing.T, root, appID string, storedAt time.Time)
 		t.Fatal(err)
 	}
 	return manifest
+}
+
+func assertStageExists(t *testing.T, root, stageID string) {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(root, stageID)); err != nil {
+		t.Fatalf("stage %s was deleted before cap refusal: %v", stageID, err)
+	}
+}
+
+func forceCatalogTreeCleanup(root string) {
+	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err == nil && info != nil && info.IsDir() {
+			_ = os.Chmod(path, 0o700)
+		}
+		return nil
+	})
+}
+
+func sealCatalogTreeUnboundedForTest(t *testing.T, root string) {
+	t.Helper()
+	var dirs []string
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			dirs = append(dirs, path)
+			return nil
+		}
+		return os.Chmod(path, 0o444)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	sort.Slice(dirs, func(i, j int) bool { return len(dirs[i]) > len(dirs[j]) })
+	for _, dir := range dirs {
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

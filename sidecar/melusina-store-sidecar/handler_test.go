@@ -39,24 +39,71 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 	if cfg.DistDir == "" {
 		cfg.DistDir = t.TempDir()
 	}
+	for _, namespace := range appCatalogNamespaces {
+		if err := os.MkdirAll(filepath.Join(cfg.DistDir, namespace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cfg.DistDir, "apps", "index.json")); os.IsNotExist(err) {
+		if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), []byte("{\"apps\":[]}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	nonceRoot := filepath.Join(cfg.PrivateStageDir, publishNonceLedgerDirName)
+	if err := initializePublishNonceLedger(nonceRoot, testPublishNonceLedgerID, defaultPublishNonceLedgerOptions()); err != nil {
+		t.Fatalf("initialize app nonce ledger: %v", err)
+	}
+	appNonces, err := openPublishNonceLedger(nonceRoot, testPublishNonceLedgerID, defaultPublishNonceLedgerOptions())
+	if err != nil {
+		t.Fatalf("open app nonce ledger: %v", err)
+	}
+	if cfg.CatalogGenerationRoot == "" {
+		cfg.CatalogGenerationRoot = t.TempDir()
+	}
+	t.Cleanup(func() {
+		_ = filepath.Walk(cfg.CatalogGenerationRoot, func(path string, info os.FileInfo, err error) error {
+			if err == nil && info != nil {
+				if info.IsDir() {
+					_ = os.Chmod(path, 0o755)
+				} else {
+					_ = os.Chmod(path, 0o644)
+				}
+			}
+			return nil
+		})
+	})
+	generations := AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot}
+	if _, err := generations.BootstrapFromFlat(cfg.DistDir, nil); err != nil {
+		t.Fatalf("bootstrap app catalog generation: %v", err)
+	}
 	return &publishService{
-		cfg:       cfg,
-		cr:        m,
-		operator:  op,
-		assembler: &CatalogAssembler{DistDir: cfg.DistDir},
-		nonces:    envelope.NewMemoryNonceCache(),
+		cfg:                cfg,
+		cr:                 m,
+		operator:           op,
+		assembler:          &CatalogAssembler{DistDir: cfg.DistDir},
+		nonces:             envelope.NewMemoryNonceCache(),
+		appNonces:          appNonces,
+		catalogGenerations: generations,
 	}
 }
 
 // signPublish builds a valid signed artifact envelope from the publisher,
 // addressed to the operator, binding RequestHash=sha256(spk) and Body=release.
 func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, spk, release []byte) envelope.Signed {
+	return signPublishForRoute(t, publisher, operatorPub, spk, release, "/publish", time.Now().UTC(), 5*time.Minute, "")
+}
+
+func signPublishForRoute(t *testing.T, publisher *identity.Private, operatorPub identity.Public, spk, release []byte, route string, now time.Time, ttl time.Duration, nonce string) envelope.Signed {
 	t.Helper()
 	spkSum := sha256.Sum256(spk)
 	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
 		Body:        release,
 		RequestHash: hex.EncodeToString(spkSum[:]),
-		TTL:         5 * time.Minute,
+		Method:      http.MethodPost,
+		Target:      route,
+		Now:         now,
+		TTL:         ttl,
+		Nonce:       nonce,
 		Chain: envelope.ChainEvidence{
 			ChainID:      "solana:devnet",
 			ProgramID:    "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
@@ -130,7 +177,7 @@ func doStagePublish(t *testing.T, svc *publishService, body *bytes.Buffer) *http
 
 func stageThenPromote(t *testing.T, svc *publishService, publisher *identity.Private, operator identity.Public, spk, release []byte, body func(envelope.Signed) *bytes.Buffer) *httptest.ResponseRecorder {
 	t.Helper()
-	stage := doStagePublish(t, svc, body(signPublish(t, publisher, operator, spk, release)))
+	stage := doStagePublish(t, svc, body(signPublishForRoute(t, publisher, operator, spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, "")))
 	if stage.Code != http.StatusOK {
 		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
 	}
@@ -213,8 +260,8 @@ func TestHandlePublish_Accept(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
-	stageSig := signPublish(t, pub, op.Public(), f.spk, release)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	stageSig := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, "")
 	stage := doStagePublish(t, svc, jsonPublishBody(t, stageSig, release, f.spk, f.metadata))
 	if stage.Code != http.StatusOK {
 		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
@@ -251,6 +298,123 @@ func TestHandlePublish_Accept(t *testing.T) {
 	}
 	if err := verifyAppCatalogPointer(ed25519.PublicKey(operatorKey), *rc.Catalog); err != nil {
 		t.Fatalf("verify catalog pointer: %v", err)
+	}
+}
+
+func TestAppPublishPurposeRefusalDoesNotConsumeAcrossRoutes(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	clock := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return clock }
+	pub := newTestIdentity(t, "purpose-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	release := mustJSON(t, f.rel)
+
+	stageEnvelope := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", clock, 5*time.Minute, "purpose-stage")
+	wrongPromote := doPublish(t, svc, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata))
+	if wrongPromote.Code != http.StatusUnauthorized || !strings.Contains(wrongPromote.Body.String(), "check=envelope_purpose") {
+		t.Fatalf("stage envelope on promote route = %d %s", wrongPromote.Code, wrongPromote.Body.String())
+	}
+	stage := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("wrong-route refusal consumed stage envelope: %d %s", stage.Code, stage.Body.String())
+	}
+
+	promoteEnvelope := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish", clock, 5*time.Minute, "purpose-promote")
+	wrongStage := doStagePublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
+	if wrongStage.Code != http.StatusUnauthorized || !strings.Contains(wrongStage.Body.String(), "check=envelope_purpose") {
+		t.Fatalf("promote envelope on stage route = %d %s", wrongStage.Code, wrongStage.Body.String())
+	}
+	promote := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
+	if promote.Code != http.StatusOK {
+		t.Fatalf("wrong-route refusal consumed promote envelope: %d %s", promote.Code, promote.Body.String())
+	}
+
+	// Re-open the durable ledger as a restarted service. Both route nonces stay
+	// consumed across the process boundary even though installer replay state is
+	// intentionally a separate in-memory cache.
+	opts := defaultPublishNonceLedgerOptions()
+	opts.Now = func() time.Time { return clock }
+	reopened, err := openPublishNonceLedger(filepath.Join(svc.cfg.PrivateStageDir, publishNonceLedgerDirName), testPublishNonceLedgerID, opts)
+	if err != nil {
+		t.Fatalf("reopen app nonce ledger: %v", err)
+	}
+	restarted := *svc
+	restarted.appNonces = reopened
+	restarted.nonces = envelope.NewMemoryNonceCache()
+	stageReplay := doStagePublish(t, &restarted, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata))
+	if stageReplay.Code != http.StatusUnauthorized || !strings.Contains(stageReplay.Body.String(), "nonce already consumed") {
+		t.Fatalf("stage replay after restart = %d %s", stageReplay.Code, stageReplay.Body.String())
+	}
+	promoteReplay := doPublish(t, &restarted, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
+	if promoteReplay.Code != http.StatusUnauthorized || !strings.Contains(promoteReplay.Body.String(), "nonce already consumed") {
+		t.Fatalf("promote replay after restart = %d %s", promoteReplay.Code, promoteReplay.Body.String())
+	}
+}
+
+func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "expiry-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	release := mustJSON(t, f.rel)
+	signedAt := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
+	expiresAt := signedAt.Add(time.Second)
+	clock := expiresAt
+	svc.now = func() time.Time { return clock }
+
+	exact := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", signedAt, time.Second, "expiry-exact")
+	accepted := doStagePublish(t, svc, jsonPublishBody(t, exact, release, f.spk, f.metadata))
+	if accepted.Code != http.StatusOK {
+		t.Fatalf("exact raw expiry must be accepted: %d %s", accepted.Code, accepted.Body.String())
+	}
+	clock = expiresAt.Add(time.Millisecond)
+	after := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", signedAt, time.Second, "expiry-after")
+	refused := doStagePublish(t, svc, jsonPublishBody(t, after, release, f.spk, f.metadata))
+	if refused.Code != http.StatusUnauthorized || !strings.Contains(refused.Body.String(), "check=envelope_expiry") {
+		t.Fatalf("raw expiry +1ms must refuse: %d %s", refused.Code, refused.Body.String())
+	}
+}
+
+func TestAppPublishPDAOnlyAllowlistRefusesWithoutNonceAllocation(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "unlisted-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	release := mustJSON(t, f.rel)
+	sig := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, "pda-only")
+
+	refused := doStagePublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	if refused.Code != http.StatusForbidden || !strings.Contains(refused.Body.String(), "check=accept_publishers") {
+		t.Fatalf("PDA-only allowlist = %d %s", refused.Code, refused.Body.String())
+	}
+	entries, err := os.ReadDir(filepath.Join(svc.cfg.PrivateStageDir, publishNonceLedgerDirName, publishNonceClaimsDirName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("PDA-only refusal allocated %d durable nonce markers", len(entries))
 	}
 }
 
@@ -291,7 +455,7 @@ func TestHandlePublish_AllowsOlderActiveReleaseDuringRollout(t *testing.T) {
 	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	release := mustJSON(t, f.rel)
 
-	stage := doStagePublish(t, svc, jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata))
+	stage := doStagePublish(t, svc, jsonPublishBody(t, signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, ""), release, f.spk, f.metadata))
 	if stage.Code != http.StatusOK {
 		t.Fatalf("stage expected 200, got %d: %s", stage.Code, stage.Body.String())
 	}
@@ -322,7 +486,7 @@ func TestHandlePublish_PromotesFinalizedReleaseFromProvisionalStage(t *testing.T
 	provisional.QuorumPolicy = QuorumPolicy{}
 	provisionalBytes := mustJSON(t, provisional)
 	stage := doStagePublish(t, svc, jsonPublishBody(t,
-		signPublish(t, pub, op.Public(), f.spk, provisionalBytes), provisionalBytes, f.spk, f.metadata))
+		signPublishForRoute(t, pub, op.Public(), f.spk, provisionalBytes, "/publish/stage", time.Now().UTC(), 5*time.Minute, ""), provisionalBytes, f.spk, f.metadata))
 	if stage.Code != http.StatusOK {
 		t.Fatalf("provisional stage expected 200, got %d: %s", stage.Code, stage.Body.String())
 	}
@@ -818,6 +982,9 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
 
 			release, spk, sig := tc.setup(t, cfg, m, op, &f, operatorPub)
+			if sig.Payload.Source.SignPubkeyB58 != "" {
+				svc.cfg.Policy.AcceptPublishers = []string{sig.Payload.Source.SignPubkeyB58}
+			}
 			w := doPublish(t, svc, jsonPublishBody(t, sig, release, spk, f.metadata))
 			if w.Code != tc.wantCode {
 				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())

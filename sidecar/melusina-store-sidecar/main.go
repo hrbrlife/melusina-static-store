@@ -21,10 +21,12 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -49,6 +51,9 @@ func main() {
 	}
 	if *distOverride != "" {
 		cfg.DistDir = *distOverride
+	}
+	if err := validateCatalogStorageRoots(cfg); err != nil {
+		log.Fatalf("config after overrides: %v", err)
 	}
 	setProgramIDFromConfig(cfg.ProgramID)
 
@@ -84,6 +89,29 @@ func main() {
 		log.Printf("boot identity: operator %s bound to on-chain SidecarIdentityEntry (Active) — /publish enabled", operator.Public().SignPubkeyB58)
 	}
 
+	// Write-mode process exclusion is acquired immediately after the operator is
+	// derived and before constructors inspect bootstrap state or a listener can
+	// start. The verified apply helper, never this process, creates writer.lock.
+	// Holding its descriptor until shutdown makes the OS lock process-lifetime.
+	var writerLock *os.File
+	if operator != nil {
+		writerLockPath := filepath.Join(cfg.CatalogMigrationStateDir, "writer.lock")
+		writerLock, err = acquireExistingWriterLock(writerLockPath)
+		if err != nil {
+			log.Fatalf("catalog writer exclusion: %v", err)
+		}
+		defer writerLock.Close()
+		log.Printf("catalog writer exclusion acquired: %s", writerLockPath)
+	}
+
+	// Bootstrap/recover persistent app-catalog and replay state only after the
+	// process-lifetime writer lock is held and before any listener is opened.
+	// Read-only mode deliberately does not inspect or create write state.
+	catalogState, err := bootstrapCatalogRuntime(cfg, operator != nil)
+	if err != nil {
+		log.Fatalf("catalog bootstrap: %v", err)
+	}
+
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker
 	// re-verifies on-chain pins every cycle). The worker itself self-disables if
@@ -110,7 +138,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newRouter(cfg, operator, cr, mirror),
+		Handler:           newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogState),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -140,4 +168,41 @@ func main() {
 	}
 	<-idleClosed
 	log.Printf("stopped")
+}
+
+// acquireExistingWriterLock opens an apply-helper-created lock without
+// following symlinks or creating state, validates its exact type/mode, and
+// acquires non-blocking exclusive ownership. The caller must retain the returned
+// descriptor for its entire write-capable lifetime; closing it releases flock.
+func acquireExistingWriterLock(path string) (*os.File, error) {
+	f, err := os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open existing writer.lock: %w", err)
+	}
+	ok := false
+	defer func() {
+		if !ok {
+			_ = f.Close()
+		}
+	}()
+
+	openedInfo, err := f.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat opened writer.lock: %w", err)
+	}
+	pathInfo, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("lstat writer.lock: %w", err)
+	}
+	if !openedInfo.Mode().IsRegular() || !pathInfo.Mode().IsRegular() || !os.SameFile(openedInfo, pathInfo) {
+		return nil, fmt.Errorf("writer.lock must be the same no-follow regular file opened at %s", path)
+	}
+	if openedInfo.Mode().Perm() != 0o600 {
+		return nil, fmt.Errorf("writer.lock mode is %04o, want 0600", openedInfo.Mode().Perm())
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return nil, fmt.Errorf("lock writer.lock exclusively: %w", err)
+	}
+	ok = true
+	return f, nil
 }

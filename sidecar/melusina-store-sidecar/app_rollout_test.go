@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -132,6 +133,19 @@ func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {
 	if state.PreviousValidUntil != now.Add(5*time.Minute).Unix() {
 		t.Fatalf("rollback deadline=%d want=%d", state.PreviousValidUntil, now.Add(5*time.Minute).Unix())
 	}
+	if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, state.PreviousStageID)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("prepare mutated private stage before claim: %v", err)
+	}
+	rolloutPath, err := rolloutStatePath(cfg, current.manifest.AppID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(rolloutPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("prepare wrote rollout state before claim: %v", err)
+	}
+	if err := commitAppRollout(cfg, state); err != nil {
+		t.Fatal(err)
+	}
 	retained, gotSPK, _, _, err := loadStagedApp(cfg.PrivateStageDir, state.PreviousStageID)
 	if err != nil {
 		t.Fatal(err)
@@ -175,6 +189,9 @@ func TestPrepareAppRollout_RefusesToReplacePendingFailedPromotion(t *testing.T) 
 	if pendingState.PreviousAppHash != served.manifest.AppHash {
 		t.Fatalf("pending rollout did not retain served release: %+v", pendingState)
 	}
+	if err := commitAppRollout(cfg, pendingState); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := prepareAppRollout(cfg, replacement.manifest, now.Add(time.Minute)); err == nil ||
 		!strings.Contains(err.Error(), "pending rollout") {
 		t.Fatalf("replacement displaced a never-published pending rollout: %v", err)
@@ -185,9 +202,24 @@ func TestPrepareAppRollout_RefusesToReplacePendingFailedPromotion(t *testing.T) 
 	}
 
 	writeRolloutDist(t, cfg, pending)
-	operator := newTestIdentity(t, "rollout-operator", randPubkeyB58(t), cfg.Domain)
-	if _, err := writeSignedAppCatalogPointers(cfg, operator, pending.manifest.AppID, now); err != nil {
-		t.Fatalf("publish pending catalog pointer: %v", err)
+	indexBytes, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexHash := sha256.Sum256(indexBytes)
+	pointer := AppCatalogPointer{
+		AppID:         pending.manifest.AppID,
+		PackageID:     pending.packageID,
+		Version:       pending.manifest.Version,
+		AppHash:       pending.manifest.AppHash,
+		StageID:       pending.manifest.StageID,
+		CatalogSHA256: hex.EncodeToString(indexHash[:]),
+	}
+	if err := os.MkdirAll(filepath.Join(cfg.DistDir, "apps", "pointers"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "pointers", pending.manifest.AppID+".json"), mustJSON(t, pointer), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	next, err := prepareAppRollout(cfg, replacement.manifest, now.Add(time.Minute))
 	if err != nil {
@@ -214,6 +246,9 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	}
 	state, err := prepareAppRollout(cfg, current.manifest, now)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := commitAppRollout(cfg, state); err != nil {
 		t.Fatal(err)
 	}
 	// Simulate successful catalog promotion: current is public; old survives only

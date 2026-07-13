@@ -5,11 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -147,108 +144,4 @@ func verifyAppCatalogPointer(pub ed25519.PublicKey, pointer AppCatalogPointer) e
 		return errors.New("catalog pointer signature invalid")
 	}
 	return nil
-}
-
-// writeSignedAppCatalogPointers regenerates signed pointers for every app that
-// has been promoted through the private rollout state. The required app must be
-// present in the exact assembled index; otherwise promotion fails closed.
-func writeSignedAppCatalogPointers(cfg Config, operator *identity.Private, requiredAppID string, now time.Time) (map[string]AppCatalogPointer, error) {
-	indexPath := filepath.Join(cfg.DistDir, "apps", "index.json")
-	indexBytes, err := os.ReadFile(indexPath)
-	if err != nil {
-		return nil, fmt.Errorf("read assembled app catalog: %w", err)
-	}
-	var index catalogIndex
-	if err := json.Unmarshal(indexBytes, &index); err != nil {
-		return nil, fmt.Errorf("decode assembled app catalog: %w", err)
-	}
-	packageByApp := make(map[string]string, len(index.Apps))
-	for _, app := range index.Apps {
-		appID := strings.TrimSpace(app.AppID)
-		packageID := strings.ToLower(strings.TrimSpace(app.PackageID))
-		if !isSafePathSegment(appID) || packageID == "" {
-			continue
-		}
-		if _, duplicate := packageByApp[appID]; duplicate {
-			return nil, fmt.Errorf("assembled app catalog contains duplicate appId %s", appID)
-		}
-		packageByApp[appID] = packageID
-	}
-
-	catalogHash := sha256.Sum256(indexBytes)
-	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	pointers := make(map[string]AppCatalogPointer)
-	rolloutFiles, _ := filepath.Glob(filepath.Join(rolloutStateDir(cfg), "*.json"))
-	for _, rolloutFile := range rolloutFiles {
-		appID := strings.TrimSuffix(filepath.Base(rolloutFile), ".json")
-		state, loadErr := loadAppRollout(cfg, appID)
-		if loadErr != nil {
-			if appID == requiredAppID {
-				return nil, loadErr
-			}
-			continue
-		}
-		manifest, _, metadata, _, loadErr := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID)
-		if loadErr != nil {
-			if appID == requiredAppID {
-				return nil, loadErr
-			}
-			continue
-		}
-		packageID := metadataPackageID(metadata)
-		if packageByApp[appID] != packageID {
-			if appID == requiredAppID {
-				return nil, fmt.Errorf("assembled catalog does not select promoted appId %s packageId %s", appID, packageID)
-			}
-			continue
-		}
-		pointer, signErr := signAppCatalogPointer(operator, state, manifest, packageID, catalogHash, domainHash, now)
-		if signErr != nil {
-			if appID == requiredAppID {
-				return nil, signErr
-			}
-			continue
-		}
-		pointers[appID] = pointer
-	}
-	if _, ok := pointers[requiredAppID]; !ok {
-		return nil, fmt.Errorf("assembled catalog has no signable pointer for promoted appId %s", requiredAppID)
-	}
-
-	appsDir := filepath.Join(cfg.DistDir, "apps")
-	tmpDir, err := os.MkdirTemp(appsDir, ".pointers-")
-	if err != nil {
-		return nil, fmt.Errorf("create catalog pointer staging dir: %w", err)
-	}
-	cleanup := true
-	defer func() {
-		if cleanup {
-			_ = os.RemoveAll(tmpDir)
-		}
-	}()
-	for appID, pointer := range pointers {
-		body, marshalErr := json.MarshalIndent(pointer, "", "  ")
-		if marshalErr != nil {
-			return nil, marshalErr
-		}
-		body = append(body, '\n')
-		if err := writeSyncedFile(filepath.Join(tmpDir, appID+".json"), body, 0o644); err != nil {
-			return nil, err
-		}
-	}
-	if err := syncDir(tmpDir); err != nil {
-		return nil, err
-	}
-	pointerDir := filepath.Join(appsDir, "pointers")
-	if err := os.RemoveAll(pointerDir); err != nil {
-		return nil, fmt.Errorf("remove prior catalog pointers: %w", err)
-	}
-	if err := os.Rename(tmpDir, pointerDir); err != nil {
-		return nil, fmt.Errorf("publish catalog pointers: %w", err)
-	}
-	cleanup = false
-	if err := syncDir(appsDir); err != nil {
-		return nil, err
-	}
-	return pointers, nil
 }

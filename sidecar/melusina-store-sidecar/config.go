@@ -69,8 +69,20 @@ type Config struct {
 	// the two-phase app release path. Candidate bytes land here before any chain
 	// mutation and are promoted only after the matching ReleaseEntry is Active.
 	// It MUST NOT be equal to, or nested below, DistDir because DistDir is served
-	// publicly. Empty defaults to <catalog_repo_root>/.melusina-private-stage.
+	// publicly. A write-capable store MUST set it explicitly. An operator-less,
+	// read-only store retains the legacy <catalog_repo_root>/.melusina-private-stage
+	// default because it cannot accept or promote candidates.
 	PrivateStageDir string `json:"private_stage_dir,omitempty"`
+	// CatalogGenerationRoot owns immutable app-catalog generations and the
+	// relative "current" symlink. It is never served directly and must be
+	// lexically disjoint from DistDir, PrivateStageDir, and
+	// CatalogMigrationStateDir. Required for a write-capable store.
+	CatalogGenerationRoot string `json:"catalog_generation_root,omitempty"`
+	// CatalogMigrationStateDir is the externally initialized migration-state
+	// directory. Its existing mode-0600 writer.lock is acquired for the complete
+	// lifetime of every write-capable process. Startup never creates this root or
+	// the lock. Required for a write-capable store.
+	CatalogMigrationStateDir string `json:"catalog_migration_state_dir,omitempty"`
 	// CatalogRepoRoot is the static_store working tree from which the in-process
 	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
 	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —
@@ -224,23 +236,66 @@ func LoadConfig(path string) (Config, error) {
 	if cfg.CatalogRepoRoot == "" {
 		cfg.CatalogRepoRoot = "."
 	}
+	writeCapable := strings.TrimSpace(cfg.BootIdentity.ShardsDir) != ""
+	if writeCapable && strings.TrimSpace(cfg.PrivateStageDir) == "" {
+		return cfg, fmt.Errorf("config: private_stage_dir is required when boot_identity.shards_dir is set")
+	}
+	if writeCapable && strings.TrimSpace(cfg.CatalogGenerationRoot) == "" {
+		return cfg, fmt.Errorf("config: catalog_generation_root is required when boot_identity.shards_dir is set")
+	}
+	if writeCapable && strings.TrimSpace(cfg.CatalogMigrationStateDir) == "" {
+		return cfg, fmt.Errorf("config: catalog_migration_state_dir is required when boot_identity.shards_dir is set")
+	}
 	if cfg.PrivateStageDir == "" {
 		cfg.PrivateStageDir = filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage")
 	}
-	stageAbs, err := filepath.Abs(cfg.PrivateStageDir)
-	if err != nil {
-		return cfg, fmt.Errorf("config: resolve private_stage_dir: %w", err)
-	}
-	distAbs, err := filepath.Abs(cfg.DistDir)
-	if err != nil {
-		return cfg, fmt.Errorf("config: resolve dist_dir: %w", err)
-	}
-	rel, err := filepath.Rel(distAbs, stageAbs)
-	if err != nil {
-		return cfg, fmt.Errorf("config: compare private_stage_dir and dist_dir: %w", err)
-	}
-	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
-		return cfg, fmt.Errorf("config: private_stage_dir must be outside public dist_dir")
+	if err := validateCatalogStorageRoots(cfg); err != nil {
+		return cfg, err
 	}
 	return cfg, nil
+}
+
+// validateCatalogStorageRoots performs lexical containment checks only. The
+// write bootstrap performs filesystem/device checks after it owns writer.lock;
+// doing those here would inspect bootstrap state before process exclusion.
+func validateCatalogStorageRoots(cfg Config) error {
+	type namedRoot struct {
+		name string
+		path string
+	}
+	roots := []namedRoot{
+		{name: "dist_dir", path: cfg.DistDir},
+		{name: "private_stage_dir", path: cfg.PrivateStageDir},
+	}
+	if cfg.CatalogGenerationRoot != "" {
+		roots = append(roots, namedRoot{name: "catalog_generation_root", path: cfg.CatalogGenerationRoot})
+	}
+	if cfg.CatalogMigrationStateDir != "" {
+		roots = append(roots, namedRoot{name: "catalog_migration_state_dir", path: cfg.CatalogMigrationStateDir})
+	}
+
+	for i := range roots {
+		absolute, err := filepath.Abs(roots[i].path)
+		if err != nil {
+			return fmt.Errorf("config: resolve %s: %w", roots[i].name, err)
+		}
+		roots[i].path = filepath.Clean(absolute)
+	}
+	for i := 0; i < len(roots); i++ {
+		for j := i + 1; j < len(roots); j++ {
+			if pathsLexicallyOverlap(roots[i].path, roots[j].path) {
+				return fmt.Errorf("config: %s and %s must be lexically disjoint", roots[i].name, roots[j].name)
+			}
+		}
+	}
+	return nil
+}
+
+func pathsLexicallyOverlap(a, b string) bool {
+	return pathContains(a, b) || pathContains(b, a)
+}
+
+func pathContains(parent, child string) bool {
+	rel, err := filepath.Rel(parent, child)
+	return err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))))
 }

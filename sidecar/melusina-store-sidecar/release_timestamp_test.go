@@ -199,11 +199,10 @@ func TestHandlePublish_AttestationProximityReject(t *testing.T) {
 		status:       verify.AttestationStatusActive,
 		registeredAt: f.rel.SignedAtUnix + 48*3600,
 	}
-	svc := newTestService(t, cfg, m, op)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusForbidden {
@@ -229,11 +228,10 @@ func TestHandlePublish_MonotonicTimestampReject(t *testing.T) {
 	f.pinAccept(m, operatorPub) // registeredAt = signedAtUnix -> proximity passes
 	// Serve a prior version of THIS app's slot (same appId) with an EQUAL claim.
 	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix)
-	svc := newTestService(t, cfg, m, op)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusConflict {
@@ -260,11 +258,10 @@ func TestHandlePublish_MonotonicTimestampAccept(t *testing.T) {
 	// Served prior claims an OLDER time -> the submitted publish strictly advances.
 	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix-1000)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
-	svc := newTestService(t, cfg, m, op)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	w := stageThenPromote(t, svc, pub, op.Public(), f.spk, release, func(sig envelope.Signed) *bytes.Buffer {
 		return jsonPublishBody(t, sig, release, f.spk, f.metadata)
 	})

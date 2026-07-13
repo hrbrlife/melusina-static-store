@@ -36,6 +36,19 @@ type appRolloutState struct {
 	PreviousVersion    string `json:"previousVersion,omitempty"`
 	ActivatedAt        int64  `json:"activatedAt"`
 	PreviousValidUntil int64  `json:"previousValidUntil,omitempty"`
+
+	// capturedPrevious is populated only while preparing the first rollout for
+	// an app that is already present in the public catalog. It deliberately is
+	// not serialized: preparation is a read-only pre-claim operation, while
+	// commitAppRollout durably retains these exact bytes after nonce claim.
+	capturedPrevious *capturedAppRelease
+}
+
+type capturedAppRelease struct {
+	manifest stagedAppManifest
+	spk      []byte
+	metadata []byte
+	release  []byte
 }
 
 // AppRolloutReceipt is the operator-signed current/previous activation record
@@ -145,10 +158,11 @@ func writeAppRollout(cfg Config, state appRolloutState) error {
 	return syncDir(dir)
 }
 
-// prepareAppRollout captures the currently served release (if any) before its
-// source slot is overwritten, then records new/current and old/previous. It is
-// called before catalog assembly, so a failed assembly leaves the still-live old
-// catalog plus a harmless, retryable rollout record.
+// prepareAppRollout computes the new/current and old/previous rollout plan. It
+// is intentionally read-only so callers may run every rollout check before the
+// durable nonce claim without consuming the request or mutating store state.
+// If the public release must be retained, its exact bytes are carried only in
+// the returned in-memory state until commitAppRollout is called post-claim.
 func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (appRolloutState, error) {
 	if prior, err := loadAppRollout(cfg, current.AppID); err == nil && prior.CurrentStageID == current.StageID {
 		return prior, nil // idempotent promotion retry
@@ -157,6 +171,7 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 	}
 
 	var previous stagedAppManifest
+	var previousCapture *capturedAppRelease
 	if prior, err := loadAppRollout(cfg, current.AppID); err == nil && prior.CurrentStageID != "" {
 		published, publishedErr := rolloutStateIsCatalogCurrent(cfg, prior)
 		if publishedErr != nil {
@@ -178,7 +193,8 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 			return appRolloutState{}, captureErr
 		}
 		if ok {
-			previous = captured
+			previous = captured.manifest
+			previousCapture = &captured
 		}
 	}
 
@@ -197,10 +213,28 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 		state.PreviousVersion = previous.Version
 		state.PreviousValidUntil = now.Add(window).UTC().Unix()
 	}
-	if err := writeAppRollout(cfg, state); err != nil {
-		return appRolloutState{}, err
+	if previousCapture != nil && previousCapture.manifest.StageID == state.PreviousStageID {
+		state.capturedPrevious = previousCapture
 	}
 	return state, nil
+}
+
+// commitAppRollout performs the durable half of a prepared rollout. It must be
+// called only after the request's nonce has been durably claimed. Retaining the
+// prior bytes before the rollout record makes a partial failure retryable: the
+// retained candidate is immutable and still is not selected for serving until
+// the rollout state is committed.
+func commitAppRollout(cfg Config, state appRolloutState) error {
+	if state.capturedPrevious != nil {
+		captured := state.capturedPrevious
+		if state.PreviousStageID == "" || captured.manifest.StageID != state.PreviousStageID {
+			return errors.New("captured previous release does not match rollout state")
+		}
+		if err := persistStagedApp(cfg.PrivateStageDir, captured.manifest, captured.spk, captured.metadata, captured.release); err != nil {
+			return fmt.Errorf("retain current release: %w", err)
+		}
+	}
+	return writeAppRollout(cfg, state)
 }
 
 // rolloutStateIsCatalogCurrent proves that a prior rollout record reached the
@@ -247,8 +281,8 @@ func rolloutStateIsCatalogCurrent(cfg Config, state appRolloutState) (bool, erro
 	return false, nil
 }
 
-func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (stagedAppManifest, bool, error) {
-	var zero stagedAppManifest
+func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (capturedAppRelease, bool, error) {
+	var zero capturedAppRelease
 	b, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return zero, false, nil
@@ -290,14 +324,12 @@ func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (sta
 	if err != nil {
 		return zero, false, fmt.Errorf("capture current release: %w", err)
 	}
-	if err := persistStagedApp(cfg.PrivateStageDir, manifest, spk, metadata, release); err != nil {
-		return zero, false, fmt.Errorf("retain current release: %w", err)
-	}
-	stored, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, manifest.StageID)
-	if err != nil {
-		return zero, false, fmt.Errorf("reload retained release: %w", err)
-	}
-	return stored, true, nil
+	return capturedAppRelease{
+		manifest: manifest,
+		spk:      append([]byte(nil), spk...),
+		metadata: append([]byte(nil), metadata...),
+		release:  append([]byte(nil), release...),
+	}, true, nil
 }
 
 func metadataPackageID(metadata []byte) string {

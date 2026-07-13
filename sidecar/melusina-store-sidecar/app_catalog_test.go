@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestWriteSignedAppCatalogPointers_BindsExactIndexAndCurrentRelease(t *testing.T) {
+func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRelease(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
@@ -46,9 +46,12 @@ func TestWriteSignedAppCatalogPointers_BindsExactIndexAndCurrentRelease(t *testi
 	}
 
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	pointers, err := writeSignedAppCatalogPointers(cfg, op, current.manifest.AppID, now)
+	pointers, rolloutIDs, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, current.manifest.AppID, now)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(rolloutIDs) != 1 || rolloutIDs[0] != current.manifest.AppID {
+		t.Fatalf("rollout IDs = %v", rolloutIDs)
 	}
 	pointer := pointers[current.manifest.AppID]
 	wantIndexHash := sha256.Sum256(indexBytes)
@@ -71,7 +74,7 @@ func TestWriteSignedAppCatalogPointers_BindsExactIndexAndCurrentRelease(t *testi
 	}
 }
 
-func TestWriteSignedAppCatalogPointers_RequiredPromotionMustAppearInIndex(t *testing.T) {
+func TestWriteSignedAppCatalogPointersForGeneration_RequiredPromotionMustAppearInIndex(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
@@ -97,7 +100,7 @@ func TestWriteSignedAppCatalogPointers_RequiredPromotionMustAppearInIndex(t *tes
 		t.Fatal(err)
 	}
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	if _, err := writeSignedAppCatalogPointers(cfg, op, current.manifest.AppID, now); err == nil {
+	if _, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, current.manifest.AppID, now); err == nil {
 		t.Fatal("promotion succeeded without an exact catalog pointer")
 	}
 }

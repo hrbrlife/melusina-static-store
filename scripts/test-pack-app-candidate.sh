@@ -34,6 +34,9 @@ git -C "$APP" config user.email test@example.invalid
 git -C "$APP" config user.name test
 git -C "$APP" add .
 git -C "$APP" commit -qm fixture
+git init --bare -q "$WORK/origin.git"
+git -C "$APP" remote add origin "$WORK/origin.git"
+git -C "$APP" push -qu origin HEAD:main
 
 PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/receipt.json"
@@ -42,10 +45,23 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["schema"] == "melusina-app-candidate-receipt-v1"
 assert d["source"]["dirty"] is False
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/main"
 assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+printf 'local-only\n' >> "$APP/tracked.txt"
+git -C "$APP" add tracked.txt
+git -C "$APP" commit -qm local-only
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/unpushed.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'not reachable from any fetched remote ref' "$WORK/unpushed.log"
+git -C "$APP" reset -q --hard refs/remotes/origin/main
 
 cp "$APP/metadata.json" "$APP/ignored-metadata.json"
 set +e

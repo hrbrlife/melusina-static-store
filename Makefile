@@ -237,6 +237,8 @@ plan: preflight
 #   - staging tree fingerprint has changed (someone touched $(PLAN_STAGING))
 # Cleans up $(PLAN_DIR) on success so the next call requires a fresh plan.
 apply:
+	@echo "ERROR: legacy flat-catalog apply is retired; app publication is store-mediated via make publish-app"
+	exit 2
 	@echo "=== apply: acquiring exclusive publish lock (.publish.lock, K08) ==="
 	@flock -w 600 "$(CURDIR)/.publish.lock" $(MAKE) --no-print-directory apply-locked
 
@@ -334,8 +336,8 @@ apply-locked:
 # Pre-v0.4 callers run `make build && make deploy`. Keep that working by
 # chaining the new verbs.
 deploy:
-	@$(MAKE) plan
-	@$(MAKE) apply
+	@echo "ERROR: legacy deploy is retired; no direct publish/gh-pages writer remains"
+	exit 2
 
 # --- publish: legacy flat-catalog deployment only ----------------------------
 # This target is retained solely for exact 1.0.3 rollback/catalog maintenance.
@@ -343,19 +345,8 @@ deploy:
 # publication has exactly one entry point: `make publish-app`, which delegates
 # to the serialized PUBLISH-TZAR driver below.
 publish:
-	@echo "╔══════════════════════════════════════════════╗"
-	@echo "║   Legacy flat catalog: refresh → build → plan → apply"
-	@echo "╚══════════════════════════════════════════════╝"
-	@test -z "$(APPS)$(REBUILD)$(STORE_URL)$(SPK)$(RELEASE)" || { \
-	  echo "ERROR: make publish cannot publish apps; use make publish-app"; exit 2; }
-	$(MAKE) refresh
-	@echo ""
-	bash build-store.sh --no-refresh
-	@test -d "$(OUTPUT_DIR)" || { echo "Build failed — no $(OUTPUT_DIR)/"; exit 1; }
-	@echo ""
-	$(MAKE) plan
-	@echo ""
-	$(MAKE) apply
+	@echo "ERROR: legacy flat-catalog publish is retired; use make publish-app"
+	exit 2
 
 # --- submit-build: compile the sealed-v3 submit client -----------------------
 # NB: under .ONESHELL a `cd` would persist into the test line, so build with an
@@ -367,8 +358,8 @@ submit-build:
 
 # --- publish-app: sole serialized two-phase app entry point -----------------
 # Default stops after private stage. Set PROMOTE_EXISTING=1 for G2's exact-
-# current, zero-chain-write path, or AUTHORIZATION=<Riker receipt> for an
-# explicitly authorized new-release ceremony.
+# current, zero-chain-write path. New app-chain releases are finalized by the
+# separate governed ceremony before their exact bytes enter this driver.
 publish-app:
 	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
 	@test -n "$(KEYS)" || { echo "ERROR: KEYS=<publisher key dir> required"; exit 2; }
@@ -376,7 +367,6 @@ publish-app:
 	  --bump "$(or $(BUMP),none)" \
 	  $(if $(CATALOG_PATH),--catalog-path "$(CATALOG_PATH)") \
 	  $(if $(PROMOTE_EXISTING),--promote-existing-active) \
-	  $(if $(AUTHORIZATION),--new-release-authorized "$(AUTHORIZATION)") \
 	  $(if $(DRY_RUN),--dry-run)
 
 # --- sync: refresh submodules + rebuild dist-publish (no plan/apply) ---------

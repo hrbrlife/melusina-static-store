@@ -235,6 +235,35 @@ func cleanupImmutableCatalog(t *testing.T, root string) {
 	})
 }
 
+func TestAppCatalogSnapshotOpenRefusesSymlinkAtEveryComponent(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "target")
+	if err := os.MkdirAll(filepath.Join(target, "packages"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "packages", "real"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(target, "packages"), filepath.Join(root, "packages")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (AppCatalogSnapshot{Root: root}).Open("packages/real"); err == nil {
+		t.Fatal("snapshot Open followed a symlinked namespace")
+	}
+	if err := os.Remove(filepath.Join(root, "packages")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "packages"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(target, "packages", "real"), filepath.Join(root, "packages", "real")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (AppCatalogSnapshot{Root: root}).Open("packages/real"); err == nil {
+		t.Fatal("snapshot Open followed a symlinked file")
+	}
+}
+
 func writeGenerationFixture(t *testing.T, root, appID, packageID, packageBody string) {
 	t.Helper()
 	for _, namespace := range appCatalogNamespaces {

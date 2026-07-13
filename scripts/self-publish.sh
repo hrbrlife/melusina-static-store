@@ -5,14 +5,14 @@
 # Default execution is deliberately PRE-CHAIN: build a clean candidate, stage
 # it privately with a purpose-bound POST+/publish/stage envelope, verify and
 # save the signed stage receipt, then stop. Promotion uses a separately signed
-# POST+/publish envelope. New-release chain mutation is reachable only with an
-# explicit Riker authorization receipt; exact-current G2 migration uses
-# --promote-existing-active and performs no app chain write.
+# POST+/publish envelope. This repository exposes no app-chain writer:
+# exact-current G2 migration uses --promote-existing-active and performs no app
+# chain write; a new ReleaseEntry must be finalized by the separate governed
+# ceremony before its exact bytes enter this stage/promote driver.
 #
 # Usage:
 #   self-publish.sh <app-source-dir> --keys <dir> [--catalog-path <dir>] \
-#     [--bump patch|minor|major|none] [--promote-existing-active] \
-#     [--new-release-authorized <riker-receipt>] [--dry-run]
+#     [--bump patch|minor|major|none] [--promote-existing-active] [--dry-run]
 #
 # The driver never writes dist-publish, calls sync-catalog.sh, revokes a
 # release, installs a store, or treats dry-run as proof.
@@ -27,7 +27,6 @@ KEYS_DIR=""
 CATALOG_PATH_OVERRIDE=""
 BUMP="none"
 PROMOTE_EXISTING=false
-AUTHORIZATION_RECEIPT=""
 DRY_RUN=false
 STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
 STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
@@ -39,7 +38,6 @@ while [[ $# -gt 0 ]]; do
     --catalog-path) CATALOG_PATH_OVERRIDE="$2"; shift 2 ;;
     --bump) BUMP="$2"; shift 2 ;;
     --promote-existing-active) PROMOTE_EXISTING=true; shift ;;
-    --new-release-authorized) AUTHORIZATION_RECEIPT="$2"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h|--help) sed -n '2,14p' "$0" | sed 's/^# \?//'; exit 0 ;;
     *) [[ -z "$APP_DIR" ]] || { echo "unknown argument: $1" >&2; exit 2; }; APP_DIR="$1"; shift ;;
@@ -53,22 +51,30 @@ need_file() { [[ -f "$1" ]] || fail "required file missing: $1"; }
 [[ -n "$APP_DIR" && -d "$APP_DIR" ]] || fail "app source directory is required"
 [[ -n "$KEYS_DIR" && -d "$KEYS_DIR" ]] || fail "--keys directory is required"
 case "$BUMP" in patch|minor|major|none) ;; *) fail "--bump must be patch, minor, major, or none" ;; esac
-if $PROMOTE_EXISTING && [[ -n "$AUTHORIZATION_RECEIPT" ]]; then
-  fail "choose exact-current --promote-existing-active OR authorized new release, never both"
+
+# Canonicalize before the later cd, and reject every symlink component. This
+# keeps app/key/catalog references stable for the whole invocation.
+canonical_dir() {
+  python3 - "$1" <<'PY'
+import os, stat, sys
+p=os.path.abspath(sys.argv[1])
+cur=os.path.sep
+for part in [x for x in p.split(os.path.sep) if x]:
+    cur=os.path.join(cur, part)
+    st=os.lstat(cur)
+    if stat.S_ISLNK(st.st_mode):
+        raise SystemExit(f"symlink path component refused: {cur}")
+if not os.path.isdir(p):
+    raise SystemExit(f"not a directory: {p}")
+print(os.path.realpath(p))
+PY
+}
+APP_DIR="$(canonical_dir "$APP_DIR")" || fail "app source path is not canonical"
+KEYS_DIR="$(canonical_dir "$KEYS_DIR")" || fail "key path is not canonical"
+if [[ -n "$CATALOG_PATH_OVERRIDE" ]]; then
+  CATALOG_PATH_OVERRIDE="$(canonical_dir "$CATALOG_PATH_OVERRIDE")" || fail "catalog path is not canonical"
 fi
 for name in publisher.key.json store-pubkey.json; do need_file "$KEYS_DIR/$name"; done
-if [[ -n "$AUTHORIZATION_RECEIPT" ]]; then
-  need_file "$AUTHORIZATION_RECEIPT"
-  for name in publisher.json reviewer-1.json reviewer-2.json core-app-team-squads.json; do need_file "$KEYS_DIR/$name"; done
-  python3 - "$AUTHORIZATION_RECEIPT" <<'PY' || fail "invalid Riker ceremony authorization receipt"
-import json,sys
-d=json.load(open(sys.argv[1], encoding="utf-8"))
-assert d.get("schema") == "melusina-riker-app-ceremony-authorization-v1"
-assert d.get("authorized") is True
-assert isinstance(d.get("authorizedAt"), str) and d["authorizedAt"]
-assert isinstance(d.get("appId"), str) and d["appId"]
-PY
-fi
 
 # One workstation driver owns the app ceremony/promotion seam at a time. The
 # service has its own process/nonce locks; this lock governs human ceremony
@@ -104,9 +110,10 @@ if [[ -z "$CAT_PATH" ]]; then
   [[ -n "$APP_ID" ]] || fail "could not extract appId from app.spk"
   mapfile -t matches < <(grep -rl --include=metadata.json "\"appId\": *\"$APP_ID\"" "$STATIC_STORE_ROOT/packages" 2>/dev/null || true)
   [[ ${#matches[@]} -eq 1 ]] || fail "expected exactly one catalog slot for appId=$APP_ID; pass --catalog-path only for a governed first publish"
-  CAT_PATH="${matches[0]%/metadata.json}"
+  CAT_PATH="$(canonical_dir "${matches[0]%/metadata.json}")" || fail "catalog path is not canonical"
 fi
-[[ "$CAT_PATH" == "$STATIC_STORE_ROOT"/packages/* ]] || fail "catalog path must be inside static_store/packages"
+PACKAGES_ROOT="$(canonical_dir "$STATIC_STORE_ROOT/packages")" || fail "packages root is not canonical"
+case "$CAT_PATH" in "$PACKAGES_ROOT"/*) ;; *) fail "catalog path must resolve inside static_store/packages" ;; esac
 
 # The exact candidate above is used for both private stage and any later
 # ceremony; no rebuild is permitted between these gates.
@@ -123,11 +130,17 @@ SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 if [[ ! -x "$SUBMIT_BIN" ]]; then
   (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/submit ./cmd/submit)
 fi
+ACTIVE_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/list-active-releases"
+if [[ ! -x "$ACTIVE_BIN" ]]; then
+  (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/list-active-releases ./cmd/list-active-releases)
+fi
 RECEIPT_DIR="${MELUSINA_PUBLISH_RECEIPT_DIR:-/tmp/melusina-publish-receipts/$APP_SLUG}"
 mkdir -p "$RECEIPT_DIR"
 chmod 700 "$RECEIPT_DIR"
 STAGE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-stage.json"
 PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-promote.json"
+ACTIVE_BEFORE="$RECEIPT_DIR/$APP_SLUG-active-before.jsonl"
+ACTIVE_AFTER="$RECEIPT_DIR/$APP_SLUG-active-after.jsonl"
 
 submit_common=(
   --store "$STORE_URL" --spk "$CAT_PATH/app.spk"
@@ -143,26 +156,16 @@ submit_common=(
 "$SUBMIT_BIN" "${submit_common[@]}" --stage --receipt-out "$STAGE_RECEIPT"
 info "private stage verified: $STAGE_RECEIPT"
 
-if ! $PROMOTE_EXISTING && [[ -z "$AUTHORIZATION_RECEIPT" ]]; then
-  info "STOP PRE-CHAIN: candidate is staged; obtain Riker ceremony authorization or rerun with --promote-existing-active for the exact-current G2 path"
+if ! $PROMOTE_EXISTING; then
+  info "STOP PRE-CHAIN: candidate is staged; this repository has no app-chain writer. Finalize any new ReleaseEntry externally, then restage its exact governed bytes; use --promote-existing-active only for an already-Active exact-current release"
   exit 0
 fi
 
-if [[ -n "$AUTHORIZATION_RECEIPT" ]]; then
-  APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"
-  AUTH_APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$AUTHORIZATION_RECEIPT")"
-  [[ "$AUTH_APP_ID" == "$APP_ID" ]] || fail "authorization appId does not match staged candidate"
-  info "AUTHORIZED CHAIN CEREMONY: $AUTHORIZATION_RECEIPT"
-  CEREMONY_VER="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("marketingVersion") or d.get("version") or "")' "$CAT_PATH/metadata.json")"
-  APP_CATALOG_PATH="$CAT_PATH" APP_SLUG="$APP_SLUG" MELUSINA_VERSION="$CEREMONY_VER" \
-    MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
-    MELUSINA_REVIEWER1_KEYPAIR="$KEYS_DIR/reviewer-1.json" \
-    MELUSINA_REVIEWER2_KEYPAIR="$KEYS_DIR/reviewer-2.json" \
-    MELUSINA_SQUADS_CONFIG="$KEYS_DIR/core-app-team-squads.json" \
-    "$SCRIPT_DIR/pearl-app-ceremony.sh"
-else
-  info "EXACT-CURRENT: no app chain write; existing Active ReleaseEntry remains authoritative"
-fi
+info "EXACT-CURRENT: no app chain write; existing Active ReleaseEntry remains authoritative"
+KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("releaseEntryPda") or "")' "$CAT_PATH/RELEASE.json")"
+[[ -n "$KNOWN_RELEASE_PDA" ]] || fail "exact-current release has no releaseEntryPda"
+"$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_BEFORE"
+[[ -s "$ACTIVE_BEFORE" ]] || fail "exact-current Active set is empty"
 
 # Envelope P is freshly generated here and is valid only at /publish. It never
 # reuses the stage nonce or purpose.
@@ -170,6 +173,8 @@ fi
 "$SUBMIT_BIN" --verify-receipt "$PROMOTE_RECEIPT" \
   --store "$STORE_URL" --license-mint "$STORE_LICENSE_MINT" \
   --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL"
+"$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_AFTER"
+cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER" || fail "Active ReleaseEntry set changed during exact-current promotion"
 
 APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"
 POINTER_URL="$STORE_URL/apps/pointers/$APP_ID.json"

@@ -41,34 +41,32 @@ func (s AppCatalogSnapshot) Open(relativePath string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	path := s.Root
+	fd, err := syscall.Open(s.Root, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open app catalog snapshot root: %w", err)
+	}
 	for i, part := range parts {
-		path = filepath.Join(path, part)
-		info, err := os.Lstat(path)
-		if err != nil {
-			return nil, err
+		flags := syscall.O_RDONLY | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+		if i < len(parts)-1 {
+			flags |= syscall.O_DIRECTORY
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return nil, fmt.Errorf("app catalog path contains symlink: %s", relativePath)
+		next, openErr := syscall.Openat(fd, part, flags, 0)
+		_ = syscall.Close(fd)
+		if openErr != nil {
+			return nil, fmt.Errorf("open app catalog path without following links: %w", openErr)
 		}
-		if i < len(parts)-1 && !info.IsDir() {
-			return nil, fmt.Errorf("app catalog path component is not a directory: %s", relativePath)
-		}
+		fd = next
 	}
-	f, err := os.Open(path)
-	if err != nil {
+	var st syscall.Stat_t
+	if err := syscall.Fstat(fd, &st); err != nil {
+		_ = syscall.Close(fd)
 		return nil, err
 	}
-	info, err := f.Stat()
-	if err != nil {
-		_ = f.Close()
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		_ = f.Close()
+	if st.Mode&syscall.S_IFMT != syscall.S_IFREG {
+		_ = syscall.Close(fd)
 		return nil, fmt.Errorf("app catalog target is not a regular file: %s", relativePath)
 	}
-	return f, nil
+	return os.NewFile(uintptr(fd), filepath.Join(s.Root, relativePath)), nil
 }
 
 // AppCatalogGenerationStore owns atomic app-catalog generations. Hook is a

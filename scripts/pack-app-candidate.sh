@@ -38,6 +38,9 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
+  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
+    | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
+  [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
   source_epoch="${SOURCE_DATE_EPOCH:-$(git -C "$APP_DIR" log -1 --format=%ct HEAD)}"
 else
   echo "candidate builds require a committed Git source tree" >&2
@@ -82,13 +85,13 @@ PY
 
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
-  python3 - "$RECEIPT_OUT" "$source_revision" "$source_epoch" "$app_id" "$package_id" \
+  python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_epoch" "$app_id" "$package_id" \
     "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
 import json, os, sys
-out, revision, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
+out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
 doc = {
     "schema": "melusina-app-candidate-receipt-v1",
-    "source": {"revision": revision, "dirty": False, "sourceDateEpoch": int(epoch)},
+    "source": {"revision": revision, "pushedRemoteRef": pushed_ref, "dirty": False, "sourceDateEpoch": int(epoch)},
     "app": {"appId": app_id, "packageId": package_id, "version": version},
     "artifact": {"sha256": sha, "size": int(size)},
     "verification": {"spk": "valid", "packageIdMatchesSha256": True},

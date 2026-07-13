@@ -97,22 +97,59 @@ build_once() {
   mkdir -p "$stage"
   (
     cd "$work/sidecar/melusina-store-sidecar"
-    export GOOS=linux GOARCH=amd64 CGO_ENABLED=0 SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
+    unset GOEXPERIMENT GODEBUG
+    export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GOFLAGS= GOENV=off GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
     go build -mod=vendor -trimpath -ldflags "-buildid= -X main.Version=$VERSION" -o "$stage/melusina-store-sidecar" .
     go build -mod=vendor -trimpath -ldflags "-buildid=" -o "$stage/apply-store-update" ./cmd/apply-store-update
   )
   chmod 0755 "$stage/melusina-store-sidecar" "$stage/apply-store-update"
   (
     cd "$stage"
-    LC_ALL=C tar --sort=name --mtime="@$SOURCE_EPOCH" --owner=0 --group=0 --numeric-owner \
+    LC_ALL=C env -u TAR_OPTIONS tar --sort=name --mtime="@$SOURCE_EPOCH" --owner=0 --group=0 --numeric-owner \
       --mode='u=rwx,go=rx' --format=gnu -cf - apply-store-update melusina-store-sidecar \
-      | xz --threads=1 --check=crc64 --lzma2=preset=9e -c >"$out/store-$VERSION.tar.xz"
+      | env -u XZ_OPT -u XZ_DEFAULTS xz --threads=1 --check=crc64 --lzma2=preset=9e -c >"$out/store-$VERSION.tar.xz"
   )
   (
     cd "$out"
     sha256sum stage/melusina-store-sidecar stage/apply-store-update "store-$VERSION.tar.xz" \
       | sed 's|  stage/|  |' >SHA256SUMS
   )
+  validate_built_archive "$out/store-$VERSION.tar.xz" "$stage"
+}
+
+validate_built_archive() {
+  local archive="$1"
+  local stage="$2"
+  local listing check_dir
+  listing="$(LC_ALL=C env -u TAR_OPTIONS -u XZ_OPT -u XZ_DEFAULTS tar --numeric-owner -tvJf "$archive")" || return 1
+  printf '%s\n' "$listing" | awk -v epoch="$SOURCE_EPOCH" '
+    BEGIN { ok = 1; count = 0 }
+    {
+      count++
+      if ($1 != "-rwxr-xr-x" || $2 != "0/0") ok = 0
+      name = $NF
+      if (name != "apply-store-update" && name != "melusina-store-sidecar") ok = 0
+      seen[name]++
+    }
+    END {
+      if (count != 2 || seen["apply-store-update"] != 1 || seen["melusina-store-sidecar"] != 1) ok = 0
+      exit(ok ? 0 : 1)
+    }
+  ' || return 1
+  check_dir="$(mktemp -d "$(dirname "$archive")/.archive-check.XXXXXX")"
+  LC_ALL=C env -u TAR_OPTIONS -u XZ_OPT -u XZ_DEFAULTS tar -xJf "$archive" -C "$check_dir" --no-same-owner --no-same-permissions || {
+    rm -rf "$check_dir" || true
+    return 1
+  }
+  cmp -s "$check_dir/apply-store-update" "$stage/apply-store-update" || {
+    rm -rf "$check_dir" || true
+    return 1
+  }
+  cmp -s "$check_dir/melusina-store-sidecar" "$stage/melusina-store-sidecar" || {
+    rm -rf "$check_dir" || true
+    return 1
+  }
+  rm -rf "$check_dir"
 }
 
 mkdir -p "$TMP/out-1" "$TMP/out-2"

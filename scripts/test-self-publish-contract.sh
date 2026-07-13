@@ -85,6 +85,24 @@ publish = s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"')
 publish_sync = s.index('sync -f "$OUT_PARENT"', publish)
 assert publish < publish_sync < s.rindex('PUBLISH_TMP=""')
 assert 'rm -rf "$TMP" || true' in s
+assert 'env -u TAR_OPTIONS tar' in s
+assert 'env -u XZ_OPT -u XZ_DEFAULTS xz' in s
+assert 'GOAMD64=v1' in s and 'GOFLAGS=' in s and 'GOENV=off' in s
+assert 'GOWORK=off' in s and 'GOTOOLCHAIN=local' in s and 'unset GOEXPERIMENT GODEBUG' in s
+assert 'validate_built_archive "$out/store-$VERSION.tar.xz" "$stage"' in s
 PY
+
+ambient_tmp="$(mktemp -d)"
+trap 'rm -rf "$ambient_tmp"' EXIT
+printf updater >"$ambient_tmp/apply-store-update"
+printf sidecar >"$ambient_tmp/melusina-store-sidecar"
+(
+  cd "$ambient_tmp"
+  TAR_OPTIONS='--transform=s/apply-store-update/renamed-updater/' \
+    env -u TAR_OPTIONS tar -cf archive.tar apply-store-update melusina-store-sidecar
+  [[ "$(tar -tf archive.tar | LC_ALL=C sort)" == $'apply-store-update\nmelusina-store-sidecar' ]]
+)
+rm -rf "$ambient_tmp"
+trap - EXIT
 
 echo "self-publish contract PASS"

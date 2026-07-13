@@ -25,6 +25,16 @@ SPK_BIN="${MELUSINA_SPK_BIN:-spk}"
 command -v "$SPK_BIN" >/dev/null 2>&1 || { echo "spk verifier not found: $SPK_BIN" >&2; exit 2; }
 
 if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  source_root="$(git -C "$APP_DIR" rev-parse --show-toplevel)"
+  metadata_path="$(realpath -e "$METADATA")"
+  case "$metadata_path" in
+    "$source_root"/*) metadata_rel="${metadata_path#"$source_root"/}" ;;
+    *) echo "source metadata must be inside the source Git tree: $METADATA" >&2; exit 2 ;;
+  esac
+  if ! git -C "$source_root" ls-files --error-unmatch -- "$metadata_rel" >/dev/null 2>&1; then
+    echo "source metadata must be tracked at the candidate revision: $METADATA" >&2
+    exit 2
+  fi
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"

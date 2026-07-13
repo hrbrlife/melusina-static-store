@@ -19,7 +19,7 @@ cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
 JSON
 printf 'baseline\n' > "$APP/tracked.txt"
-printf 'app.spk\n' > "$APP/.gitignore"
+printf 'app.spk\nignored-metadata.json\n' > "$APP/.gitignore"
 cat > "$BIN/spk" <<'SPK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -46,6 +46,16 @@ assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+cp "$APP/metadata.json" "$APP/ignored-metadata.json"
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata "$APP/ignored-metadata.json" \
+  >"$WORK/untracked-metadata.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'source metadata must be tracked at the candidate revision' "$WORK/untracked-metadata.log"
 
 set +e
 PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MUTATE_SOURCE=1 \

@@ -385,7 +385,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 	for _, app := range index.Apps {
 		appID := strings.TrimSpace(app.AppID)
 		packageID := strings.TrimSpace(app.PackageID)
-		if !isSafePathSegment(appID) || packageID == "" {
+		if !isSafePathSegment(appID) || !validCatalogPackageID(packageID) {
 			return errors.New("app catalog contains an invalid appId/packageId row")
 		}
 		if _, exists := packageByApp[appID]; exists {
@@ -556,8 +556,8 @@ func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, p
 	packageByApp := make(map[string]string, len(index.Apps))
 	for _, app := range index.Apps {
 		appID := strings.TrimSpace(app.AppID)
-		packageID := strings.ToLower(strings.TrimSpace(app.PackageID))
-		if !isSafePathSegment(appID) || packageID == "" {
+		packageID := strings.TrimSpace(app.PackageID)
+		if !isSafePathSegment(appID) || !validCatalogPackageID(packageID) {
 			return zero, errors.New("projected app catalog contains invalid appId/packageId")
 		}
 		if _, duplicate := packageByApp[appID]; duplicate {
@@ -604,12 +604,15 @@ func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, p
 		if packageID == "" || packageByApp[appID] != packageID {
 			return zero, fmt.Errorf("projected catalog does not select rollout %s packageId %s", appID, packageID)
 		}
-		candidateSPK, candidateMetadata, candidateRelease := projectedSPK, projectedMetadata, projectedRelease
-		if appID != projection.appID {
+		candidateSPK := projectedSPK
+		if packageID != projection.packageID {
 			candidateSPK, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("packages", packageID)), maxAppPublishBody)
 			if err != nil {
 				return zero, fmt.Errorf("read projected package for rollout %s: %w", appID, err)
 			}
+		}
+		candidateMetadata, candidateRelease := projectedMetadata, projectedRelease
+		if appID != projection.appID {
 			candidateMetadata, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), maxAppPublishBody)
 			if err != nil {
 				return zero, fmt.Errorf("read projected metadata for rollout %s: %w", appID, err)

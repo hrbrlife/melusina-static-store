@@ -73,6 +73,30 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 	return atomicWriteInto(filepath.Join(a.DistDir, "apps"), "index.json", projection.indexBytes)
 }
 
+// validateCatalogAssemblyTargets proves that every path the postclaim
+// candidate assembler replaces is absent or already a regular no-follow file.
+// Parent type/symlink conflicts are surfaced by Snapshot.Open as well.
+func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection) error {
+	for _, relative := range []string{
+		filepath.ToSlash(filepath.Join("packages", projection.packageID)),
+		filepath.ToSlash(filepath.Join("signatures", projection.appID, "metadata.json")),
+		filepath.ToSlash(filepath.Join("attest", projection.appID, "RELEASE.json")),
+		"apps/index.json",
+	} {
+		f, err := snapshot.Open(relative)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("catalog assembly target %s: %w", relative, err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("close catalog assembly target %s: %w", relative, err)
+		}
+	}
+	return nil
+}
+
 // projectCatalogIndex is the shared, mutation-free source of truth for both
 // pre-claim capacity admission and candidate assembly.
 func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []byte) (catalogProjection, error) {
@@ -96,7 +120,7 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 		packageID = packageSHA[:32]
 		meta["packageId"] = packageID
 	}
-	if !strings.HasPrefix(packageSHA, packageID) {
+	if !validCatalogPackageID(packageID) || packageSHA[:32] != packageID {
 		return zero, fmt.Errorf("packageId %s does not prefix package sha256 %s", packageID, packageSHA)
 	}
 

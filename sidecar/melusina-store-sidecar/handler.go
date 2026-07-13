@@ -518,6 +518,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
 		return
 	}
+	if err := validateCatalogAssemblyTargets(activeGeneration, projection); err != nil {
+		http.Error(w, "check=catalog_assembly_plan: "+err.Error(), http.StatusConflict)
+		return
+	}
 	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, activeGeneration, projection, spk, metadata, preflight.releaseBytes, s.operator, &rollout, staged.AppID, promotedAt)
 	if err != nil {
 		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)

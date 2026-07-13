@@ -48,10 +48,7 @@ func signAppCatalogPointer(operator *identity.Private, state appRolloutState, ma
 		return AppCatalogPointer{}, errors.New("rollout state does not select the staged current release")
 	}
 	packageID = strings.TrimSpace(packageID)
-	if len(packageID) != 32 {
-		return AppCatalogPointer{}, errors.New("packageId must be 16-byte lowercase hex")
-	}
-	if _, err := hex.DecodeString(packageID); err != nil || packageID != strings.ToLower(packageID) {
+	if !validCatalogPackageID(packageID) {
 		return AppCatalogPointer{}, errors.New("packageId must be 16-byte lowercase hex")
 	}
 	pointer := AppCatalogPointer{
@@ -75,6 +72,14 @@ func signAppCatalogPointer(operator *identity.Private, state appRolloutState, ma
 	}
 	pointer.OperatorSignature = primitives.EncodeBase58(operator.Sign(msg))
 	return pointer, nil
+}
+
+func validCatalogPackageID(packageID string) bool {
+	if len(packageID) != 32 || packageID != strings.ToLower(packageID) {
+		return false
+	}
+	_, err := hex.DecodeString(packageID)
+	return err == nil
 }
 
 func appCatalogPointerMessage(pointer AppCatalogPointer) ([]byte, error) {

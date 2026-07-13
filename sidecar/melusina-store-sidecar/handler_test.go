@@ -1137,6 +1137,69 @@ func TestAppPromotionCorruptCapturedPreviousStageRefusesBeforeClaim(t *testing.T
 	}
 }
 
+func TestAppPromotionAssemblyTargetTypeRefusesBeforeClaim(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "assembly-target-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "assembly-target", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "assembly-target-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	current, err := svc.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	badTarget := filepath.Join(current.Root, "packages", metadataPackageID(fixture.metadata))
+	if err := os.Mkdir(badTarget, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "assembly-target-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+	sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "assembly-target-promote")
+	refused := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if refused.Code != http.StatusConflict || !strings.Contains(refused.Body.String(), "catalog_assembly_plan") {
+		t.Fatalf("assembly target refusal = %d: %s", refused.Code, refused.Body.String())
+	}
+	sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(sourceBefore, sourceAfter) {
+		t.Fatal("assembly target refusal mutated source before nonce claim")
+	}
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(badTarget); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by assembly-target refusal: %d %s", retry.Code, retry.Body.String())
+	}
+}
+
 func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()

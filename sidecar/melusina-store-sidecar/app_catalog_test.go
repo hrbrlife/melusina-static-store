@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 )
 
 func TestWriteSignedAppCatalogPointersRejectsOverCapRolloutEnumeration(t *testing.T) {
@@ -115,6 +118,73 @@ func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRel
 	}
 	if _, err := os.Stat(filepath.Join(cfg.DistDir, "apps", "pointers", current.manifest.AppID+".json")); err != nil {
 		t.Fatalf("public catalog pointer missing: %v", err)
+	}
+}
+
+func TestBuildSignedAppCatalogPointerPlanUsesFinalOverlaidPackageForEveryRollout(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	snapshotRoot := t.TempDir()
+	for _, namespace := range appCatalogNamespaces {
+		if err := os.MkdirAll(filepath.Join(snapshotRoot, namespace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	const appID = "overlay-unrelated-app"
+	packageID := strings.Repeat("a", 32)
+	projectedSPK := []byte("final overlaid package bytes")
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + packageID + `","version":"1.0.0"}`)
+	appHash, err := apphash.Canonical(bytes.NewReader(projectedSPK), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseHash := sha256.Sum256([]byte("overlay release intent"))
+	release := mustJSON(t, ReleaseJSON{AppHash: appHash, ReleaseHash: hex.EncodeToString(releaseHash[:]), Version: "1.0.0"})
+	manifest, err := buildStagedAppManifest(projectedSPK, metadata, release, mustReleaseJSON(release), slotHint{}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistStagedApp(cfg.PrivateStageDir, manifest, projectedSPK, metadata, release); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAppRollout(cfg, appRolloutState{
+		Schema: appRolloutSchema, AppID: appID, CurrentStageID: manifest.StageID,
+		CurrentAppHash: manifest.AppHash, CurrentVersion: manifest.Version, ActivatedAt: now.Unix(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshotRoot, "packages", packageID), []byte("old package bytes that the overlay replaces"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(snapshotRoot, "signatures", appID), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshotRoot, "signatures", appID, "metadata.json"), metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(snapshotRoot, "attest", appID), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshotRoot, "attest", appID, "RELEASE.json"), release, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	indexBytes := mustJSON(t, catalogIndex{Apps: []catalogIndexApp{{AppID: appID, PackageID: packageID}}})
+	projection := catalogProjection{appID: "promoted-other-app", packageID: packageID, indexBytes: indexBytes}
+	op := newTestIdentity(t, "overlay-plan-operator", randPubkeyB58(t), cfg.Domain)
+	plan, err := buildSignedAppCatalogPointerPlan(cfg, AppCatalogSnapshot{Root: snapshotRoot}, projection, projectedSPK, nil, nil, op, nil, appID, now)
+	if err != nil {
+		t.Fatalf("final package overlay was not applied to unrelated rollout: %v", err)
+	}
+	if got := plan.pointers[appID].AppHash; got != manifest.AppHash {
+		t.Fatalf("pointer appHash = %s, want overlaid %s", got, manifest.AppHash)
 	}
 }
 

@@ -19,13 +19,29 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$VERSION" == "1.0.4" ]] || { echo "--version must be exact governed version 1.0.4" >&2; exit 2; }
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
-OUT_DIR="$(realpath -m "$OUT_DIR")"
+OUT_DIR="$(realpath -ms -- "$OUT_DIR")"
 OUT_PARENT="$(dirname "$OUT_DIR")"
+require_real_directory_ancestry() {
+  local path="$1"
+  local current="/"
+  local part
+  local -a parts
+  IFS='/' read -r -a parts <<<"${path#/}"
+  for part in "${parts[@]}"; do
+    [[ -n "$part" ]] || continue
+    current="${current%/}/$part"
+    [[ ! -L "$current" ]] || { echo "output ancestry contains a symlink: $current" >&2; return 1; }
+    [[ ! -e "$current" || -d "$current" ]] || { echo "output ancestry is not a directory: $current" >&2; return 1; }
+  done
+}
+require_real_directory_ancestry "$OUT_PARENT"
 mkdir -p "$OUT_PARENT"
+require_real_directory_ancestry "$OUT_PARENT"
 if [[ -e "$OUT_DIR" || -L "$OUT_DIR" ]]; then
   [[ -d "$OUT_DIR" && ! -L "$OUT_DIR" ]] || { echo "output path must be an absent or empty real directory: $OUT_DIR" >&2; exit 2; }
-  [[ -z "$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]] || { echo "output directory must be empty: $OUT_DIR" >&2; exit 2; }
-  rmdir "$OUT_DIR"
+  if [[ -z "$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    rmdir "$OUT_DIR"
+  fi
 fi
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || { echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
@@ -39,6 +55,35 @@ git -C "$ROOT" for-each-ref --format='%(objectname)' --contains "$HEAD" refs/rem
     echo "source HEAD is not reachable from a refreshed remote ref: $HEAD" >&2; exit 2; }
 }
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
+EXPECTED_PROVENANCE="{\"schema\":\"melusina-store-deterministic-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"archiveMembers\":[\"apply-store-update\",\"melusina-store-sidecar\"],\"builds\":2,\"byteIdentical\":true}"
+validate_completed_output() {
+  local entries sum_names archive_members file
+  entries="$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
+  [[ "$entries" == $'BUILD-PROVENANCE.json\nSHA256SUMS\napply-store-update\nmelusina-store-sidecar\nstore-1.0.4.tar.xz' ]] || return 1
+  for file in melusina-store-sidecar apply-store-update SHA256SUMS BUILD-PROVENANCE.json "store-$VERSION.tar.xz"; do
+    [[ -f "$OUT_DIR/$file" && ! -L "$OUT_DIR/$file" ]] || return 1
+  done
+  [[ "$(stat -c '%a' "$OUT_DIR")" == "755" ]] || return 1
+  [[ "$(stat -c '%a' "$OUT_DIR/melusina-store-sidecar")" == "755" ]] || return 1
+  [[ "$(stat -c '%a' "$OUT_DIR/apply-store-update")" == "755" ]] || return 1
+  for file in SHA256SUMS BUILD-PROVENANCE.json "store-$VERSION.tar.xz"; do
+    [[ "$(stat -c '%a' "$OUT_DIR/$file")" == "644" ]] || return 1
+  done
+  [[ "$(cat "$OUT_DIR/BUILD-PROVENANCE.json")" == "$EXPECTED_PROVENANCE" ]] || return 1
+  sum_names="$(awk 'NF == 2 {print $2}' "$OUT_DIR/SHA256SUMS")"
+  [[ "$sum_names" == $'melusina-store-sidecar\napply-store-update\nstore-1.0.4.tar.xz' ]] || return 1
+  (cd "$OUT_DIR" && sha256sum --strict -c SHA256SUMS >/dev/null) || return 1
+  archive_members="$(tar -tJf "$OUT_DIR/store-$VERSION.tar.xz" | LC_ALL=C sort)"
+  [[ "$archive_members" == $'apply-store-update\nmelusina-store-sidecar' ]] || return 1
+}
+if [[ -d "$OUT_DIR" ]]; then
+  if validate_completed_output; then
+    echo "deterministic x2 release already complete: $OUT_DIR"
+    exit 0
+  fi
+  echo "existing output directory is not an exact completed release: $OUT_DIR" >&2
+  exit 2
+fi
 WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-release-1.0.4.XXXXXX")"
 W1="$TMP/build-1"
@@ -47,8 +92,8 @@ PUBLISH_TMP=""
 cleanup() {
   git -C "$ROOT" worktree remove --force "$W1" >/dev/null 2>&1 || true
   git -C "$ROOT" worktree remove --force "$W2" >/dev/null 2>&1 || true
-  rm -rf "$TMP"
-  [[ -z "$PUBLISH_TMP" ]] || rm -rf "$PUBLISH_TMP"
+  rm -rf "$TMP" || true
+  [[ -z "$PUBLISH_TMP" ]] || rm -rf "$PUBLISH_TMP" || true
 }
 trap cleanup EXIT
 git -C "$ROOT" worktree add --detach "$W1" "$HEAD" >/dev/null
@@ -87,19 +132,18 @@ cmp "$TMP/out-1/stage/apply-store-update" "$TMP/out-2/stage/apply-store-update"
 cmp "$TMP/out-1/store-$VERSION.tar.xz" "$TMP/out-2/store-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
 
+require_real_directory_ancestry "$OUT_PARENT"
 PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-$VERSION.output.XXXXXX")"
 chmod 0755 "$PUBLISH_TMP"
 install -m 0755 "$TMP/out-1/stage/melusina-store-sidecar" "$PUBLISH_TMP/melusina-store-sidecar"
 install -m 0755 "$TMP/out-1/stage/apply-store-update" "$PUBLISH_TMP/apply-store-update"
 install -m 0644 "$TMP/out-1/store-$VERSION.tar.xz" "$PUBLISH_TMP/store-$VERSION.tar.xz"
 install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
-cat >"$PUBLISH_TMP/BUILD-PROVENANCE.json" <<JSON
-{"schema":"melusina-store-deterministic-build-v1","sourceCommit":"$HEAD","version":"$VERSION","sourceDateEpoch":$SOURCE_EPOCH,"goos":"linux","goarch":"amd64","cgoEnabled":false,"archiveMembers":["apply-store-update","melusina-store-sidecar"],"builds":2,"byteIdentical":true}
-JSON
+printf '%s\n' "$EXPECTED_PROVENANCE" >"$PUBLISH_TMP/BUILD-PROVENANCE.json"
 chmod 0644 "$PUBLISH_TMP/BUILD-PROVENANCE.json"
 for artifact in "$PUBLISH_TMP"/*; do sync -f "$artifact"; done
 sync -f "$PUBLISH_TMP"
 mv -T "$PUBLISH_TMP" "$OUT_DIR"
-PUBLISH_TMP=""
 sync -f "$OUT_PARENT"
+PUBLISH_TMP=""
 echo "deterministic x2 release ready: $OUT_DIR"

@@ -69,6 +69,11 @@ assert 'PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/' in s
 assert 'for artifact in "$PUBLISH_TMP"/*; do sync -f "$artifact"; done' in s
 assert 'mv -T "$PUBLISH_TMP" "$OUT_DIR"' in s
 assert s.index('install -m 0755') < s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"')
+assert 'realpath -ms -- "$OUT_DIR"' in s
+assert 'validate_completed_output' in s
+assert 'sha256sum --strict -c SHA256SUMS' in s
+assert s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"') < s.index('sync -f "$OUT_PARENT"') < s.rindex('PUBLISH_TMP=""')
+assert 'rm -rf "$TMP" || true' in s
 PY
 
 echo "self-publish contract PASS"

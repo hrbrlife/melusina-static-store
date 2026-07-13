@@ -138,11 +138,8 @@ func sameStagedReleaseIntent(staged, submitted stagedAppManifest) bool {
 }
 
 func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, release []byte) error {
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return fmt.Errorf("mkdir private stage root: %w", err)
-	}
-	if err := os.Chmod(root, 0o700); err != nil {
-		return fmt.Errorf("chmod private stage root: %w", err)
+	if err := requireSecureDirectory(root, 0o700); err != nil {
+		return fmt.Errorf("private stage root is not initialized: %w", err)
 	}
 	target := filepath.Join(root, manifest.StageID)
 	if _, err := os.Stat(target); err == nil {

@@ -10,7 +10,9 @@
 #   sync-catalog.sh --no-build            # only refresh, don't rebuild
 #   sync-catalog.sh --deploy              # also run plan + apply (force-push)
 #
-# Designed to be called as the last step of publish-app-full.sh, but is
+# Retained for exact 1.0.3 rollback/catalog maintenance only. The serialized
+# two-phase app driver never calls this script; app generations switch inside
+# the store sidecar after verified promotion.
 # also a useful standalone "sync the catalog with whatever publish
 # branches have moved upstream."
 #

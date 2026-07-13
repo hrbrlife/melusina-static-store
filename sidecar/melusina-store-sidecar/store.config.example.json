@@ -14,6 +14,8 @@
   "listen_addr": ":8443",
   "dist_dir": "dist-publish",
   "private_stage_dir": "/var/lib/melusina-store/private-app-candidates",
+  "catalog_generation_root": "/var/lib/melusina-store/app-catalog-generations",
+  "catalog_migration_state_dir": "/var/lib/melusina-store/migrations",
   "app_rollback_window_seconds": 86400,
   "catalog_repo_root": "../..",
   "tls": {

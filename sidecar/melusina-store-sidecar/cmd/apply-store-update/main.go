@@ -4,7 +4,9 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,10 +15,18 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
+
+	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
@@ -28,29 +38,34 @@ const (
 	toVersion                 = "1.0.4"
 	catalogStateName          = "catalog-v104.json"
 	writerLockName            = "writer.lock"
+	canonicalLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	xzExecutable              = "/usr/bin/xz"
 	maxChainReceiptBytes      = 64 << 10
 	maxPersistentJSONBytes    = 64 << 10
 	maxArchiveBytes           = int64(8 << 30)
 	maxELFBytes               = int64(1 << 30)
+	maxArchiveExpandedBytes   = int64(16 << 30)
+	chainVerificationTimeout  = 15 * time.Second
 )
 
 type options struct {
 	archive              string
 	archiveSHA256        string
 	chainReceipt         string
+	rpcURL               string
+	masterNFTMint        string
 	installedELF         string
 	expectedOldELFSHA256 string
 	newELF               string
+	newELFMember         string
 	newELFSHA256         string
 	migrationStateDir    string
 	updateReceiptDir     string
 }
 
-// chainVerificationReceipt is a bounded handoff from the governed pull/chain
-// verification step. This command validates its exact schema, Active verdict,
-// slot, and archive-hash binding. There is currently no shared cryptographic
-// verifier for this receipt in the repository; callers must treat the receipt
-// file as root-controlled evidence produced by that earlier verification step.
+// chainVerificationReceipt is bounded audit evidence from the governed pull
+// step. It is never authority: this command independently derives and fetches
+// the InstallerReleaseEntry before matching every receipt identity field.
 type chainVerificationReceipt struct {
 	Schema              string `json:"schema"`
 	InstallerSHA256     string `json:"installerSha256"`
@@ -100,10 +115,21 @@ type securityPolicy struct {
 	expectedUID          uint32
 	requireEffectiveRoot bool
 	afterWriterLock      func() error
+	newChainVerifier     func(string) installerReleaseVerifier
+}
+
+type installerReleaseVerifier interface {
+	FetchInstallerReleaseEntry(context.Context, string) ([32]byte, verify.AttestationStatus, error)
 }
 
 func productionSecurityPolicy() securityPolicy {
-	return securityPolicy{expectedUID: 0, requireEffectiveRoot: true}
+	return securityPolicy{
+		expectedUID:          0,
+		requireEffectiveRoot: true,
+		newChainVerifier: func(endpoint string) installerReleaseVerifier {
+			return verify.NewRPCClient(endpoint)
+		},
+	}
 }
 
 func main() {
@@ -136,9 +162,12 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.archive, "archive", "", "pulled store 1.0.4 archive")
 	fs.StringVar(&opts.archiveSHA256, "archive-sha256", "", "verified archive sha256")
 	fs.StringVar(&opts.chainReceipt, "chain-receipt", "", "bounded InstallerReleaseEntry verification receipt")
+	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
+	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
 	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed 1.0.3 store ELF")
 	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed 1.0.3 ELF sha256")
 	fs.StringVar(&opts.newELF, "new-elf", "", "pulled 1.0.4 store ELF")
+	fs.StringVar(&opts.newELFMember, "new-elf-member", "", "exact clean tar member containing the 1.0.4 store ELF")
 	fs.StringVar(&opts.newELFSHA256, "new-elf-sha256", "", "verified 1.0.4 ELF sha256")
 	fs.StringVar(&opts.migrationStateDir, "migration-state-dir", "", "persistent migration-state directory")
 	fs.StringVar(&opts.updateReceiptDir, "update-receipt-dir", "", "persistent update-receipt directory")
@@ -150,9 +179,11 @@ func parseOptions(args []string) (options, error) {
 	}
 	for name, value := range map[string]string{
 		"--archive": opts.archive, "--archive-sha256": opts.archiveSHA256,
-		"--chain-receipt": opts.chainReceipt, "--installed-elf": opts.installedELF,
+		"--chain-receipt": opts.chainReceipt, "--rpc-url": opts.rpcURL,
+		"--master-nft-mint": opts.masterNFTMint, "--installed-elf": opts.installedELF,
 		"--expected-old-elf-sha256": opts.expectedOldELFSHA256,
-		"--new-elf":                 opts.newELF, "--new-elf-sha256": opts.newELFSHA256,
+		"--new-elf":                 opts.newELF, "--new-elf-member": opts.newELFMember,
+		"--new-elf-sha256":      opts.newELFSHA256,
 		"--migration-state-dir": opts.migrationStateDir, "--update-receipt-dir": opts.updateReceiptDir,
 	} {
 		if strings.TrimSpace(value) == "" {
@@ -178,6 +209,17 @@ func parseOptions(args []string) (options, error) {
 	if opts.migrationStateDir == opts.updateReceiptDir || filepath.Dir(opts.migrationStateDir) != filepath.Dir(opts.updateReceiptDir) {
 		return options{}, errors.New("migration-state and update-receipt directories must be distinct siblings")
 	}
+	parsedRPC, err := url.Parse(opts.rpcURL)
+	if err != nil || (parsedRPC.Scheme != "http" && parsedRPC.Scheme != "https") || parsedRPC.Host == "" || parsedRPC.User != nil {
+		return options{}, errors.New("--rpc-url must be an absolute http(s) URL without userinfo")
+	}
+	masterMint, err := primitives.PubkeyFromBase58(opts.masterNFTMint)
+	if err != nil || masterMint.Base58() != opts.masterNFTMint {
+		return options{}, errors.New("--master-nft-mint must be a canonical base58 Solana pubkey")
+	}
+	if err := validateArchiveMemberName(opts.newELFMember); err != nil {
+		return options{}, fmt.Errorf("--new-elf-member: %w", err)
+	}
 	return opts, nil
 }
 
@@ -185,7 +227,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 	if policy.requireEffectiveRoot && os.Geteuid() != 0 {
 		return result{}, errors.New("must run as root")
 	}
-	archiveHash, err := hashRegularNoFollow(opts.archive, maxArchiveBytes)
+	archiveHash, memberHash, err := hashArchiveAndXZTarMember(opts.archive, opts.newELFMember)
 	if err != nil {
 		return result{}, fmt.Errorf("archive: %w", err)
 	}
@@ -206,6 +248,9 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 	if newHash != opts.newELFSHA256 {
 		return result{}, fmt.Errorf("new ELF sha256 mismatch: got %s want %s", newHash, opts.newELFSHA256)
 	}
+	if memberHash != opts.newELFSHA256 {
+		return result{}, fmt.Errorf("archive member %q sha256 mismatch: got %s want %s", opts.newELFMember, memberHash, opts.newELFSHA256)
+	}
 
 	chainRaw, err := readRegularNoFollow(opts.chainReceipt, maxChainReceiptBytes)
 	if err != nil {
@@ -215,7 +260,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 	if err := decodeStrictJSON(chainRaw, &chain); err != nil {
 		return result{}, fmt.Errorf("chain receipt: %w", err)
 	}
-	if err := validateChainReceipt(chain, opts.archiveSHA256); err != nil {
+	if err := verifyChainAndReceipt(opts, policy, chain); err != nil {
 		return result{}, fmt.Errorf("chain receipt: %w", err)
 	}
 	chainHashBytes := sha256.Sum256(chainRaw)
@@ -311,7 +356,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 func preparedResult(receipt applyReceipt) result {
 	return result{
 		Schema: applyReceiptSchema, State: receipt.State, LedgerID: receipt.LedgerID,
-		ChainReceiptVerification: "strict-schema-and-archive-hash-binding",
+		ChainReceiptVerification: "independent-active-pda-fetch-and-strict-receipt-binding",
 	}
 }
 
@@ -334,7 +379,7 @@ func desiredMigrationState(receipt applyReceipt) migrationState {
 	}
 }
 
-func validateChainReceipt(receipt chainVerificationReceipt, archiveHash string) error {
+func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVerificationReceipt) error {
 	if receipt.Schema != chainReceiptSchema {
 		return fmt.Errorf("schema %q is not %q", receipt.Schema, chainReceiptSchema)
 	}
@@ -342,17 +387,57 @@ func validateChainReceipt(receipt chainVerificationReceipt, archiveHash string) 
 	if err != nil || h != receipt.InstallerSHA256 {
 		return errors.New("installerSha256 must be canonical lowercase sha256")
 	}
-	if h != archiveHash {
+	if h != opts.archiveSHA256 {
 		return errors.New("installerSha256 does not bind the verified archive")
 	}
-	if strings.TrimSpace(receipt.InstallerReleasePDA) == "" || strings.TrimSpace(receipt.ProgramID) == "" || strings.TrimSpace(receipt.MasterNFTMint) == "" {
-		return errors.New("installerReleasePda, programId and masterNftMint are required")
+	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	if err != nil {
+		return fmt.Errorf("internal canonical program id: %w", err)
 	}
-	if receipt.Status != "active" {
-		return fmt.Errorf("status %q is not active", receipt.Status)
+	masterMint, err := primitives.PubkeyFromBase58(opts.masterNFTMint)
+	if err != nil {
+		return fmt.Errorf("master NFT mint: %w", err)
+	}
+	var archiveHash [32]byte
+	decodedHash, err := hex.DecodeString(opts.archiveSHA256)
+	if err != nil || len(decodedHash) != len(archiveHash) {
+		return errors.New("internal archive sha256 is invalid")
+	}
+	copy(archiveHash[:], decodedHash)
+	releasePDA, _, err := pda.InstallerRelease(masterMint, archiveHash, programID)
+	if err != nil {
+		return fmt.Errorf("derive InstallerReleaseEntry PDA: %w", err)
+	}
+	if receipt.ProgramID != canonicalLicenseProgramID || receipt.MasterNFTMint != opts.masterNFTMint || receipt.InstallerReleasePDA != releasePDA.Base58() {
+		return errors.New("programId, masterNftMint, or installerReleasePda does not match independently derived identity")
+	}
+	if receipt.Status != verify.AttestationStatusActive.String() {
+		return fmt.Errorf("status %q is not canonical Active", receipt.Status)
 	}
 	if receipt.VerifiedSlot == 0 || receipt.VerifiedAtUnix <= 0 {
 		return errors.New("verifiedSlot and verifiedAtUnix must be positive")
+	}
+	if policy.newChainVerifier == nil {
+		return errors.New("independent chain verifier is unavailable")
+	}
+	verifier := policy.newChainVerifier(opts.rpcURL)
+	if verifier == nil {
+		return errors.New("independent chain verifier is nil")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), chainVerificationTimeout)
+	defer cancel()
+	onChainHash, status, err := verifier.FetchInstallerReleaseEntry(ctx, releasePDA.Base58())
+	if err != nil {
+		return fmt.Errorf("independent fetch %s: %w", releasePDA.Base58(), err)
+	}
+	if onChainHash != archiveHash {
+		return fmt.Errorf("on-chain installer hash %x does not match archive sha256 %x", onChainHash, archiveHash)
+	}
+	if err := status.RequireActive(); err != nil {
+		return fmt.Errorf("on-chain status %s is not Active: %w", status, err)
+	}
+	if receipt.Status != status.String() {
+		return fmt.Errorf("receipt status %q does not match independently fetched status %q", receipt.Status, status.String())
 	}
 	return nil
 }
@@ -402,6 +487,164 @@ func isCanonicalHex(value string, byteLen int) bool {
 	}
 	decoded, err := hex.DecodeString(value)
 	return err == nil && len(decoded) == byteLen
+}
+
+func validateArchiveMemberName(name string) error {
+	if name == "" || strings.ContainsRune(name, '\x00') || strings.Contains(name, "\\") || strings.HasPrefix(name, "/") {
+		return errors.New("must be a non-empty relative POSIX path")
+	}
+	clean := path.Clean(name)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || clean != name {
+		return errors.New("must be an exact clean non-traversing POSIX path")
+	}
+	return nil
+}
+
+// hashArchiveAndXZTarMember computes both bindings from one O_NOFOLLOW-opened
+// inode, preventing a path swap between the governed outer hash and member hash.
+func hashArchiveAndXZTarMember(archivePath, wanted string) (string, string, error) {
+	if err := validateArchiveMemberName(wanted); err != nil {
+		return "", "", err
+	}
+	f, size, err := openRegularNoFollow(archivePath)
+	if err != nil {
+		return "", "", err
+	}
+	defer f.Close()
+	if size > maxArchiveBytes {
+		return "", "", fmt.Errorf("archive exceeds %d-byte bound", maxArchiveBytes)
+	}
+	outer := sha256.New()
+	n, err := io.Copy(outer, io.LimitReader(f, maxArchiveBytes+1))
+	if err != nil {
+		return "", "", err
+	}
+	if n != size || n > maxArchiveBytes {
+		return "", "", fmt.Errorf("archive size changed or exceeds %d-byte bound", maxArchiveBytes)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return "", "", fmt.Errorf("rewind archive: %w", err)
+	}
+	memberHash, err := hashXZTarMemberFromFile(f, wanted)
+	if err != nil {
+		return "", "", fmt.Errorf("new ELF member: %w", err)
+	}
+	return hex.EncodeToString(outer.Sum(nil)), memberHash, nil
+}
+
+func hashXZTarMember(archivePath, wanted string) (string, error) {
+	_, memberHash, err := hashArchiveAndXZTarMember(archivePath, wanted)
+	return memberHash, err
+}
+
+func hashXZTarMemberFromFile(f *os.File, wanted string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, xzExecutable, "--decompress", "--stdout")
+	cmd.Stdin = f
+	var stderr boundedBuffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("start xz: %w", err)
+	}
+	waited := false
+	defer func() {
+		if !waited {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
+
+	limited := &io.LimitedReader{R: stdout, N: maxArchiveExpandedBytes + 1}
+	tr := tar.NewReader(limited)
+	found := false
+	memberHash := ""
+	for {
+		hdr, nextErr := tr.Next()
+		if errors.Is(nextErr, io.EOF) {
+			break
+		}
+		if nextErr != nil {
+			return "", fmt.Errorf("read tar: %w", nextErr)
+		}
+		entryName := strings.TrimSuffix(hdr.Name, "/")
+		if err := validateArchiveMemberName(entryName); err != nil {
+			return "", fmt.Errorf("unsafe member %q: %w", hdr.Name, err)
+		}
+		if hdr.Name != wanted {
+			continue
+		}
+		if found {
+			return "", fmt.Errorf("duplicate member %q", wanted)
+		}
+		if hdr.Typeflag != tar.TypeReg && hdr.Typeflag != tar.TypeRegA {
+			return "", fmt.Errorf("member %q is not a regular file", wanted)
+		}
+		if hdr.Size < 0 || hdr.Size > maxELFBytes {
+			return "", fmt.Errorf("member %q exceeds %d-byte bound", wanted, maxELFBytes)
+		}
+		h := sha256.New()
+		n, copyErr := io.Copy(h, io.LimitReader(tr, maxELFBytes+1))
+		if copyErr != nil {
+			return "", fmt.Errorf("hash member %q: %w", wanted, copyErr)
+		}
+		if n != hdr.Size || n > maxELFBytes {
+			return "", fmt.Errorf("member %q size mismatch or overflow", wanted)
+		}
+		memberHash = hex.EncodeToString(h.Sum(nil))
+		found = true
+	}
+	// A valid tar may have zero padding after its end markers, but another
+	// concatenated payload is ambiguous and therefore refused.
+	var trailing zeroOnlyWriter
+	if _, err := io.Copy(&trailing, limited); err != nil {
+		return "", fmt.Errorf("drain xz output: %w", err)
+	}
+	if maxArchiveExpandedBytes+1-limited.N > maxArchiveExpandedBytes {
+		return "", fmt.Errorf("expanded archive exceeds %d-byte bound", maxArchiveExpandedBytes)
+	}
+	if trailing.nonZero {
+		return "", errors.New("non-zero data follows tar end markers")
+	}
+	if err := cmd.Wait(); err != nil {
+		waited = true
+		return "", fmt.Errorf("xz failed: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	waited = true
+	if !found {
+		return "", fmt.Errorf("member %q not found", wanted)
+	}
+	return memberHash, nil
+}
+
+type boundedBuffer struct{ bytes.Buffer }
+
+func (b *boundedBuffer) Write(p []byte) (int, error) {
+	want := len(p)
+	if b.Len() < 4096 {
+		keep := 4096 - b.Len()
+		if keep > len(p) {
+			keep = len(p)
+		}
+		_, _ = b.Buffer.Write(p[:keep])
+	}
+	return want, nil
+}
+
+type zeroOnlyWriter struct{ nonZero bool }
+
+func (w *zeroOnlyWriter) Write(p []byte) (int, error) {
+	for _, b := range p {
+		if b != 0 {
+			w.nonZero = true
+			break
+		}
+	}
+	return len(p), nil
 }
 
 func hashRegularNoFollow(path string, maxBytes int64) (string, error) {

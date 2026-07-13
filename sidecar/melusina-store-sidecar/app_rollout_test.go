@@ -114,6 +114,12 @@ func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	cfg.AppRollbackWindowSeconds = 300
 	master := randPubkeyB58(t)
 	old := makeRolloutFixture(t, master, "rollout-app", "1.0.0", "old", now.Add(-time.Hour))
@@ -171,6 +177,12 @@ func TestPrepareAppRollout_RefusesToReplacePendingFailedPromotion(t *testing.T) 
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	cfg.AppRollbackWindowSeconds = 300
 	master := randPubkeyB58(t)
 	served := makeRolloutFixture(t, master, "pending-app", "1.0.0", "served", now.Add(-time.Hour))
@@ -235,6 +247,12 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	cfg.AppRollbackWindowSeconds = 300
 	cfg.ServeVerifyTTLSeconds = -1
 	master := randPubkeyB58(t)

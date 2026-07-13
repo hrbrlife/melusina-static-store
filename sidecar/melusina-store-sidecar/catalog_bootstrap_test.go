@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -94,6 +95,30 @@ func TestCatalogBootstrapInitializingResumesPartialLedgerBeforeSwitch(t *testing
 	}
 }
 
+func TestCatalogBootstrapInitializingSentinelForbidsLedgerReseed(t *testing.T) {
+	cfg, opts, state := newCatalogBootstrapFixture(t, "initializing")
+	ledgerRoot := filepath.Join(cfg.PrivateStageDir, publishNonceLedgerDirName)
+	if err := initializePublishNonceLedger(ledgerRoot, state.LedgerID, opts.nonce); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(cfg.CatalogGenerationRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := initializeOrValidateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(ledgerRoot); err != nil {
+		t.Fatal(err)
+	}
+	_, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts)
+	if err == nil || !strings.Contains(err.Error(), "sentinel-bound ledger is unavailable") {
+		t.Fatalf("error = %v", err)
+	}
+	if _, err := os.Lstat(ledgerRoot); !os.IsNotExist(err) {
+		t.Fatalf("sentinel-bound missing ledger was recreated: %v", err)
+	}
+}
+
 func TestCatalogBootstrapCommittedNeverRecreatesMissingLedger(t *testing.T) {
 	cfg, opts, _ := newCatalogBootstrapFixture(t, "authorized")
 	if _, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts); err != nil {
@@ -112,6 +137,40 @@ func TestCatalogBootstrapCommittedNeverRecreatesMissingLedger(t *testing.T) {
 	}
 }
 
+func TestCatalogBootstrapCommittedRecoversInvalidCurrentBeforeRuntime(t *testing.T) {
+	cfg, opts, _ := newCatalogBootstrapFixture(t, "authorized")
+	runtime, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid, err := runtime.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid, err := runtime.catalogGenerations.BuildAndSwitch(func(candidateRoot string) error {
+		writeFile(t, filepath.Join(candidateRoot, "apps", "pointers", "unexpected.json"), []byte("{}"))
+		return nil
+	}, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if invalid.ID == valid.ID {
+		t.Fatal("test did not advance to invalid generation")
+	}
+
+	recovered, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := recovered.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.ID != valid.ID {
+		t.Fatalf("bootstrap recovered %s, want %s", current.ID, valid.ID)
+	}
+}
+
 func TestCatalogBootstrapCommittedNeverRecreatesDeletedAllBindings(t *testing.T) {
 	cfg, opts, _ := newCatalogBootstrapFixture(t, "authorized")
 	if _, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts); err != nil {
@@ -127,7 +186,7 @@ func TestCatalogBootstrapCommittedNeverRecreatesDeletedAllBindings(t *testing.T)
 		t.Fatal(err)
 	}
 	_, err := bootstrapCatalogRuntimeWithOptions(cfg, true, opts)
-	if err == nil || !strings.Contains(err.Error(), "committed state has no current") {
+	if err == nil || !strings.Contains(err.Error(), "nonce sentinel") {
 		t.Fatalf("error = %v", err)
 	}
 	if _, err := os.Lstat(filepath.Join(cfg.PrivateStageDir, publishNonceLedgerDirName)); !os.IsNotExist(err) {
@@ -180,7 +239,11 @@ func newCatalogBootstrapFixture(t *testing.T, migrationState string) (Config, ca
 	writeCatalogMigrationFixture(t, cfg, state)
 	uid := uint32(os.Getuid())
 	now := time.Unix(1_800_000_000, 0).UTC()
-	opts := catalogBootstrapOptions{expectedUID: uid, nonce: defaultPublishNonceLedgerOptions()}
+	opts := catalogBootstrapOptions{
+		expectedUID:       uid,
+		nonce:             defaultPublishNonceLedgerOptions(),
+		operatorPublicKey: make(ed25519.PublicKey, ed25519.PublicKeySize),
+	}
 	opts.nonce.Now = func() time.Time { return now }
 	return cfg, opts, state
 }

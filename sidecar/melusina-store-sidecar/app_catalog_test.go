@@ -16,6 +16,12 @@ func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRel
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	current := makeRolloutFixture(t, randPubkeyB58(t), "catalog-pointer-app", "2.0.0", "current", now)
 	if err := persistStagedApp(cfg.PrivateStageDir, current.manifest, current.spk, current.metadata, current.release); err != nil {
 		t.Fatal(err)
@@ -79,6 +85,12 @@ func TestWriteSignedAppCatalogPointersForGeneration_RequiredPromotionMustAppearI
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	current := makeRolloutFixture(t, randPubkeyB58(t), "missing-pointer-app", "1.0.0", "current", now)
 	if err := persistStagedApp(cfg.PrivateStageDir, current.manifest, current.spk, current.metadata, current.release); err != nil {
 		t.Fatal(err)

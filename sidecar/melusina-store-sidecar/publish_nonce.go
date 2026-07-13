@@ -80,6 +80,31 @@ type publishNonceLedger struct {
 	mu       sync.Mutex
 }
 
+// CheckClock refuses a wall-clock rollback before envelope verification. It
+// does not advance state or collect markers; Claim repeats this check and
+// persists the high-water at the final acceptance instant.
+func (l *publishNonceLedger) CheckClock(now time.Time) error {
+	if l == nil {
+		return errors.New("durable app nonce ledger is not initialized")
+	}
+	nowMs := now.UTC().UnixMilli()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.withLock(func() error {
+		if err := l.validateLayoutLocked(); err != nil {
+			return err
+		}
+		state, err := l.loadStateLocked()
+		if err != nil {
+			return err
+		}
+		if nowMs < state.HighWaterUnixMs {
+			return errPublishNonceClockRollback
+		}
+		return nil
+	})
+}
+
 func defaultPublishNonceLedgerOptions() publishNonceLedgerOptions {
 	return publishNonceLedgerOptions{
 		Capacity: maxAppNonceMarkers,

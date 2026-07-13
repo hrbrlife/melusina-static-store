@@ -19,8 +19,7 @@ MAX_FILE_SIZE  := $$((100 * 1024 * 1024 - 4096))
 CHUNK_SIZE     := 90M
 
 .PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
-        plan apply build-from-source publish-apps publish-app sync \
-        bump-version icon-qc publish-sealed submit-build
+        plan apply build-from-source publish-app sync bump-version icon-qc submit-build
 
 # --- Sealed-v3 submit client (FEDERATED-STORE-MVP §C3) -----------------------
 # The submit client REPLACES the gh-pages force-push: it wraps the canonical
@@ -338,45 +337,17 @@ deploy:
 	@$(MAKE) plan
 	@$(MAKE) apply
 
-# --- publish: all-in-one (refresh + build + plan + apply) --------------------
-# Optional APPS=  (or REBUILD=, alias for back-compat) chains
-# scripts/publish-apps.sh before the catalog sweep so a single command does:
-# per-app bump+pack+sign+push, then catalog rebuild + plan + apply.
-#
-#   make publish                                       # catalog only (current)
-#   make publish APPS=all                              # rebuild every resolvable source
-#   make publish APPS="teleport openclaw-main"         # subset
-#   make publish APPS=all SKIP_STEPS=ceremony,push     # offline-stub, no remote push
-#   make publish APPS=all BUMP=minor                   # minor version bump everywhere
-#
-# Cardinal rule: this single command must produce a fully signed, version-
-# bumped, on-chain-attested release that auto-syncs into the catalog and
-# deploys gh-pages — no manual stages.
-#
-# SEALED MODE (C3): `make publish STORE_URL=https://store... SPK=... RELEASE=...`
-# dispatches to the sealed-v3 submit client instead of the legacy gh-pages
-# force-push. This is the federated single-writer path: see `publish-sealed`.
-publish: REBUILD ?= $(APPS)
+# --- publish: legacy flat-catalog deployment only ----------------------------
+# This target is retained solely for exact 1.0.3 rollback/catalog maintenance.
+# It cannot publish an app and never invokes the two-phase store API. App
+# publication has exactly one entry point: `make publish-app`, which delegates
+# to the serialized PUBLISH-TZAR driver below.
 publish:
-	@if [ -n "$(STORE_URL)" ]; then \
-	   $(MAKE) --no-print-directory publish-sealed; \
-	   exit $$?; \
-	 fi
 	@echo "╔══════════════════════════════════════════════╗"
-	@echo "║   Full publish: $(if $(REBUILD),per-app rebuild → )refresh → build → plan → apply"
+	@echo "║   Legacy flat catalog: refresh → build → plan → apply"
 	@echo "╚══════════════════════════════════════════════╝"
-	@echo ""
-	@if [ -n "$(REBUILD)" ]; then \
-	   echo "=== Per-app rebuild (APPS='$(REBUILD)') ==="; \
-	   if [ "$(REBUILD)" = "all" ]; then \
-	     BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
-	       bash scripts/publish-apps.sh || exit 1; \
-	   else \
-	     BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
-	       bash scripts/publish-apps.sh --apps "$(REBUILD)" || exit 1; \
-	   fi; \
-	   echo ""; \
-	 fi
+	@test -z "$(APPS)$(REBUILD)$(STORE_URL)$(SPK)$(RELEASE)" || { \
+	  echo "ERROR: make publish cannot publish apps; use make publish-app"; exit 2; }
 	$(MAKE) refresh
 	@echo ""
 	bash build-store.sh --no-refresh
@@ -394,80 +365,18 @@ submit-build:
 	go build -C $(SIDECAR_DIR) -o "$(CURDIR)/$(SUBMIT_BIN)" ./cmd/submit
 	@test -x "$(CURDIR)/$(SUBMIT_BIN)" || { echo "submit build failed — no $(SUBMIT_BIN)"; exit 1; }
 
-# --- publish-sealed: sealed-v3 POST to a store sidecar's /publish (C3) --------
-# REPLACES the gh-pages force-push. Packs the SPK + canonical RELEASE.json into a
-# signed artifact envelope, POSTs to <STORE_URL>/publish (the C2.3 single-writer
-# sidecar), and verifies the returned store-signed provenance receipt against the
-# on-chain store_authority. Force-push never happens on this path — the sidecar
-# is the only writer.
-#
-# Required:
-#   STORE_URL       store sidecar base URL (e.g. https://melusina-os.org)
-#   SPK             path to the .spk package bytes
-#   RELEASE         path to the canonical RELEASE.json
-#   PUBLISHER_KEY   publisher signing identity (path, or env:NAME)
-#   STORE_PUBKEY    path to the sidecar operator identity.Public JSON (envelope destination)
-#   LICENSE_MINT    store operator license_nft_mint (base58; StoreOperatorAuthorization seed)
-#   RPC_URL         Solana JSON-RPC endpoint (reads the on-chain store_authority for receipt verify)
-# Optional:
-#   DOMAIN          store serving domain (defaults to the host in STORE_URL)
-#   VERIFIED_SLOT   ChainEvidence verified_slot (default 1)
-#   MULTIPART=1     POST multipart/form-data instead of the JSON wire form
-#
-#   make publish-sealed STORE_URL=https://melusina-os.org \
-#     SPK=app.spk RELEASE=RELEASE.json \
-#     PUBLISHER_KEY=~/.melusina/publisher.key.json \
-#     STORE_PUBKEY=store-operator.pub.json \
-#     LICENSE_MINT=<base58> RPC_URL=https://devnet.helius-rpc.com/?api-key=...
-publish-sealed: submit-build
-	@test -n "$(STORE_URL)"      || { echo "ERROR: STORE_URL=... required";      exit 2; }
-	@test -n "$(SPK)"            || { echo "ERROR: SPK=<app.spk> required";       exit 2; }
-	@test -n "$(RELEASE)"        || { echo "ERROR: RELEASE=<RELEASE.json> required"; exit 2; }
-	@test -n "$(PUBLISHER_KEY)"  || { echo "ERROR: PUBLISHER_KEY=... required";   exit 2; }
-	@test -n "$(STORE_PUBKEY)"   || { echo "ERROR: STORE_PUBKEY=... required";    exit 2; }
-	@test -n "$(LICENSE_MINT)"   || { echo "ERROR: LICENSE_MINT=... required";    exit 2; }
-	@test -n "$(RPC_URL)"        || { echo "ERROR: RPC_URL=... required";         exit 2; }
-	@echo "=== Sealed-v3 publish → $(STORE_URL)/publish (single writer; NO force-push) ==="
-	"$(CURDIR)/$(SUBMIT_BIN)" \
-	  --store "$(STORE_URL)" \
-	  --spk "$(SPK)" \
-	  --release "$(RELEASE)" \
-	  --publisher-key "$(PUBLISHER_KEY)" \
-	  --store-pubkey "$(STORE_PUBKEY)" \
-	  --license-mint "$(LICENSE_MINT)" \
-	  --rpc-url "$(RPC_URL)" \
-	  $(if $(DOMAIN),--domain "$(DOMAIN)") \
-	  $(if $(VERIFIED_SLOT),--verified-slot "$(VERIFIED_SLOT)") \
-	  $(if $(MULTIPART),--multipart)
-
-# --- publish-apps: rebuild + sign + push N source apps (no catalog deploy) ---
-# Useful when you want to ship app changes upstream but stage the catalog
-# rebuild for a later, batched `make refresh && make plan && make apply`.
-#   make publish-apps                                   # all resolvable sources
-#   make publish-apps APPS="teleport openclaw-main"     # subset
-#   make publish-apps APPS=all SKIP_STEPS=ceremony      # offline-stub only
-#   make publish-apps DRY_RUN=1                         # show plan, no execution
-publish-apps:
-	@if [ -n "$(APPS)" ] && [ "$(APPS)" != "all" ]; then \
-	   BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
-	     bash scripts/publish-apps.sh --apps "$(APPS)" \
-	       $(if $(DRY_RUN),--dry-run) $(if $(STRICT),--strict); \
-	 else \
-	   BUMP="$${BUMP:-patch}" SKIP_STEPS="$(SKIP_STEPS)" \
-	     bash scripts/publish-apps.sh \
-	       $(if $(DRY_RUN),--dry-run) $(if $(STRICT),--strict); \
-	 fi
-
-# --- publish-app: same as above but for a single app source (any path) ------
-# Lets the operator point at any source dir, even one not currently a
-# package submodule.
-#   make publish-app SRC=/home/user/Desktop/openclaw-main
-#   make publish-app SRC=... BUMP=minor SKIP_STEPS=ceremony,push
+# --- publish-app: sole serialized two-phase app entry point -----------------
+# Default stops after private stage. Set PROMOTE_EXISTING=1 for G2's exact-
+# current, zero-chain-write path, or AUTHORIZATION=<Riker receipt> for an
+# explicitly authorized new-release ceremony.
 publish-app:
 	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
-	bash scripts/publish-app-full.sh "$(SRC)" \
-	  --bump "$(or $(BUMP),patch)" \
-	  $(if $(SKIP_STEPS),--skip "$(SKIP_STEPS)") \
+	@test -n "$(KEYS)" || { echo "ERROR: KEYS=<publisher key dir> required"; exit 2; }
+	bash scripts/self-publish.sh "$(SRC)" --keys "$(KEYS)" \
+	  --bump "$(or $(BUMP),none)" \
+	  $(if $(CATALOG_PATH),--catalog-path "$(CATALOG_PATH)") \
+	  $(if $(PROMOTE_EXISTING),--promote-existing-active) \
+	  $(if $(AUTHORIZATION),--new-release-authorized "$(AUTHORIZATION)") \
 	  $(if $(DRY_RUN),--dry-run)
 
 # --- sync: refresh submodules + rebuild dist-publish (no plan/apply) ---------

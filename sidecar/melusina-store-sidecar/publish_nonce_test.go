@@ -92,6 +92,9 @@ func TestPublishNonceLedgerClockRollbackFailsClosed(t *testing.T) {
 	if err := ledger.Claim("scope", "other", strings.Repeat("e", 64), now.Add(time.Hour).UnixMilli(), now.Add(-time.Millisecond)); !errors.Is(err, errPublishNonceClockRollback) {
 		t.Fatalf("rollback claim = %v", err)
 	}
+	if err := ledger.CheckClock(now.Add(-time.Millisecond)); !errors.Is(err, errPublishNonceClockRollback) {
+		t.Fatalf("pre-verification rollback check = %v", err)
+	}
 }
 
 func TestPublishNonceLedgerManifestDetectsMissingAndReplaced(t *testing.T) {

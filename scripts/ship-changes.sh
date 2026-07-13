@@ -69,7 +69,7 @@ skip()  { printf '\033[0;90m[SKIP]\033[0m %s\n' "$*"; }
 step()  { printf '\033[1;36m[STEP]\033[0m %s\n' "$*"; }
 
 # --- alias map: catalog dir-name -> path under $DESKTOP_ROOT ------------------
-# Mirrors scripts/publish-apps.sh and the user's auto-memory dir-mapping.
+# Historical source-shipping helper only; it is not an app publish entry point.
 # Add aliases here as repos move.
 declare -A ALIAS_MAP=(
   [ccash]="ccash_go_htmx"

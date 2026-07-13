@@ -79,6 +79,12 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 		return out, fmt.Errorf("check=request: %w", err)
 	}
 	now := s.currentTime()
+	if s.appNonces == nil {
+		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
+	}
+	if err := s.appNonces.CheckClock(now); err != nil {
+		return out, fmt.Errorf("check=nonce_clock: %w", err)
+	}
 	operator := s.operator.Public()
 	spkHashHex := hex.EncodeToString(sha256Sum(spk))
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
@@ -407,6 +413,20 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
+	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
+		http.Error(w, "check=catalog_generation: generation store is not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	// Resolve the mutable selector before every route-local catalog decision.
+	// The resulting root is immutable and supplies timestamp, rollout/current,
+	// previous-release capture and the post-claim candidate copy.
+	activeGeneration, err := s.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		http.Error(w, "check=catalog_generation: resolve current: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	activeCfg := s.cfg
+	activeCfg.DistDir = activeGeneration.Root
 
 	// (b-time) STORE HYGIENE — monotonic release time. The claimed signedAtUnix must
 	// strictly advance past the version this app's slot currently serves (located by
@@ -414,7 +434,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// master-NFT re-anchor), so a re-publish can never surface an older "updated" time
 	// than the version it replaces. READ-ONLY over the served tree; a first publish
 	// for the slot passes.
-	if err := verifyReleaseTimestampForward(s.cfg.DistDir, metadataAppID(preflight.metadata), preflight.release); err != nil {
+	if err := verifyReleaseTimestampForward(activeGeneration.Root, metadataAppID(preflight.metadata), preflight.release); err != nil {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
@@ -444,21 +464,9 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 	spk, metadata := stagedSPK, stagedMetadata
 	promotedAt := lockedNow
-	rollout, err := prepareAppRollout(s.cfg, staged, promotedAt)
+	rollout, err := prepareAppRollout(activeCfg, staged, promotedAt)
 	if err != nil {
 		http.Error(w, "check=rollout_prepare: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
-		http.Error(w, "check=catalog_generation: generation store is not initialized", http.StatusServiceUnavailable)
-		return
-	}
-	// Resolve the mutable current selector before the final claim. The returned
-	// generation is immutable; s.mu plus the process-lifetime writer lock means
-	// no competing writer can switch it before this transaction commits.
-	activeGeneration, err := s.catalogGenerations.ResolveCurrent()
-	if err != nil {
-		http.Error(w, "check=catalog_generation: resolve current: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	operatorKey, err := s.operator.Public().SignPublicKey()
@@ -638,6 +646,8 @@ func appPreflightErrorStatus(err error) int {
 		return http.StatusBadRequest
 	case strings.HasPrefix(message, "check=accept_publishers:"):
 		return http.StatusForbidden
+	case strings.HasPrefix(message, "check=nonce_ledger:"), strings.HasPrefix(message, "check=nonce_clock:"):
+		return http.StatusServiceUnavailable
 	default:
 		return http.StatusUnauthorized
 	}

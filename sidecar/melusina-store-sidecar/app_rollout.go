@@ -116,11 +116,8 @@ func writeAppRollout(cfg Config, state appRolloutState) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("mkdir rollout state: %w", err)
-	}
-	if err := os.Chmod(dir, 0o700); err != nil {
-		return fmt.Errorf("chmod rollout state: %w", err)
+	if err := requireSecureDirectory(dir, 0o700); err != nil {
+		return fmt.Errorf("rollout state is not initialized: %w", err)
 	}
 	b, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {

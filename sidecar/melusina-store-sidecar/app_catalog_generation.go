@@ -314,7 +314,11 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 	}
 	entries, err := os.ReadDir(filepath.Join(snapshot.Root, "apps", "pointers"))
 	if err != nil {
-		return fmt.Errorf("read app catalog pointers: %w", err)
+		if errors.Is(err, os.ErrNotExist) && len(want) == 0 {
+			entries = nil
+		} else {
+			return fmt.Errorf("read app catalog pointers: %w", err)
+		}
 	}
 	indexHash := sha256.Sum256(indexBytes)
 	wantDigest := hex.EncodeToString(indexHash[:])

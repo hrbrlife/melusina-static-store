@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/hrbrlife/melusina-attest/identity"
 )
 
 const (
@@ -55,16 +58,25 @@ type catalogRuntime struct {
 }
 
 type catalogBootstrapOptions struct {
-	expectedUID uint32
-	nonce       publishNonceLedgerOptions
+	expectedUID       uint32
+	nonce             publishNonceLedgerOptions
+	operatorPublicKey ed25519.PublicKey
 }
 
 func productionCatalogBootstrapOptions() catalogBootstrapOptions {
 	return catalogBootstrapOptions{expectedUID: 0, nonce: defaultPublishNonceLedgerOptions()}
 }
 
-func bootstrapCatalogRuntime(cfg Config, writeCapable bool) (catalogRuntime, error) {
-	return bootstrapCatalogRuntimeWithOptions(cfg, writeCapable, productionCatalogBootstrapOptions())
+func bootstrapCatalogRuntime(cfg Config, operator *identity.Private) (catalogRuntime, error) {
+	opts := productionCatalogBootstrapOptions()
+	if operator != nil {
+		publicKey, err := operator.Public().SignPublicKey()
+		if err != nil {
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap operator key: %w", err)
+		}
+		opts.operatorPublicKey = ed25519.PublicKey(publicKey)
+	}
+	return bootstrapCatalogRuntimeWithOptions(cfg, operator != nil, opts)
 }
 
 func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts catalogBootstrapOptions) (catalogRuntime, error) {
@@ -83,6 +95,9 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 	}
 	if err := requireOwnedSecureDirectory(cfg.CatalogMigrationStateDir, 0o700, opts.expectedUID); err != nil {
 		return catalogRuntime{}, fmt.Errorf("catalog bootstrap migration directory: %w", err)
+	}
+	if err := requireOwnedSecureDirectory(cfg.PrivateStageDir, 0o700, opts.expectedUID); err != nil {
+		return catalogRuntime{}, fmt.Errorf("catalog bootstrap private-stage directory: %w", err)
 	}
 	statePath := filepath.Join(cfg.CatalogMigrationStateDir, catalogMigrationStateName)
 	state, err := readCatalogMigrationState(statePath, opts.expectedUID)
@@ -108,6 +123,9 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		if err := validateCatalogTree(cfg.DistDir); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap flat 1.0.3 validation: %w", err)
 		}
+		if err := initializeOrValidateRolloutRoot(cfg, true, opts.expectedUID); err != nil {
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
+		}
 		state.State = "initializing"
 		if err := writeCatalogMigrationState(statePath, state, opts.expectedUID); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap authorize-to-initializing: %w", err)
@@ -115,6 +133,9 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		fallthrough
 	case "initializing":
 		if currentExists {
+			if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
+				return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
+			}
 			ledger, err := validateCommittedCatalogBootstrap(runtime.catalogGenerations, ledgerRoot, state, opts)
 			if err != nil {
 				return catalogRuntime{}, fmt.Errorf("catalog bootstrap initializing-current recovery: %w", err)
@@ -129,7 +150,22 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		if err := validateCatalogTree(cfg.DistDir); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap flat 1.0.3 validation: %w", err)
 		}
-		if err := initializeOrResumeCatalogLedger(ledgerRoot, state.LedgerID, opts); err != nil {
+		if err := initializeOrValidateRolloutRoot(cfg, true, opts.expectedUID); err != nil {
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
+		}
+		sentinelPath := filepath.Join(cfg.CatalogGenerationRoot, catalogNonceSentinelName)
+		sentinelExists, err := lstatExists(sentinelPath)
+		if err != nil {
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap inspect nonce sentinel: %w", err)
+		}
+		if sentinelExists {
+			if err := validateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
+				return catalogRuntime{}, fmt.Errorf("catalog bootstrap existing nonce sentinel: %w", err)
+			}
+			if _, err := openPublishNonceLedger(ledgerRoot, state.LedgerID, opts.nonce); err != nil {
+				return catalogRuntime{}, fmt.Errorf("catalog bootstrap sentinel-bound ledger is unavailable: %w", err)
+			}
+		} else if err := initializeOrResumeCatalogLedger(ledgerRoot, state.LedgerID, opts); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap nonce ledger: %w", err)
 		}
 		if err := runtime.catalogGenerations.ensureRoot(); err != nil {
@@ -154,8 +190,8 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		runtime.appNonces = ledger
 		return runtime, nil
 	case "committed":
-		if !currentExists {
-			return catalogRuntime{}, errors.New("catalog bootstrap: committed state has no current")
+		if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
 		}
 		ledger, err := validateCommittedCatalogBootstrap(runtime.catalogGenerations, ledgerRoot, state, opts)
 		if err != nil {
@@ -168,9 +204,33 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 	}
 }
 
+func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID uint32) error {
+	root := rolloutStateDir(cfg)
+	exists, err := lstatExists(root)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if !allowCreate {
+			return errors.New("rollout state directory is missing")
+		}
+		if err := os.Mkdir(root, 0o700); err != nil {
+			return err
+		}
+		if err := publishNonceSyncDir(cfg.PrivateStageDir); err != nil {
+			return fmt.Errorf("fsync private-stage after rollout init: %w", err)
+		}
+	}
+	return requireOwnedSecureDirectory(root, 0o700, expectedUID)
+}
+
 func validateCommittedCatalogBootstrap(store AppCatalogGenerationStore, ledgerRoot string, state catalogMigrationState, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
-	if _, err := store.ResolveCurrent(); err != nil {
-		return nil, fmt.Errorf("validate current generation: %w", err)
+	rolloutAppIDs, err := exactRolloutAppIDs(Config{PrivateStageDir: filepath.Dir(ledgerRoot)})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := store.RecoverCurrent(rolloutAppIDs, opts.operatorPublicKey); err != nil {
+		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
 	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
 		return nil, err

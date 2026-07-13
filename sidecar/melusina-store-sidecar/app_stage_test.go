@@ -40,6 +40,9 @@ func testStageMaterial(t *testing.T, label string, at time.Time) (stagedAppManif
 
 func TestStagedApp_DurableIdempotentAndTamperEvident(t *testing.T) {
 	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	at := time.Unix(1_700_000_000, 0).UTC()
 	manifest, spk, metadata, release := testStageMaterial(t, "v1", at)
 	if err := persistStagedApp(root, manifest, spk, metadata, release); err != nil {

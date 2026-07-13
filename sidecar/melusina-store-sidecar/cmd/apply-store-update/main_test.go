@@ -1,16 +1,23 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 type testFixture struct {
@@ -19,6 +26,23 @@ type testFixture struct {
 	policy     securityPolicy
 	migrations string
 	receipts   string
+	chain      *mockInstallerVerifier
+}
+
+type mockInstallerVerifier struct {
+	hash    [32]byte
+	status  verify.AttestationStatus
+	err     error
+	wantPDA string
+	calls   int
+}
+
+func (m *mockInstallerVerifier) FetchInstallerReleaseEntry(_ context.Context, got string) ([32]byte, verify.AttestationStatus, error) {
+	m.calls++
+	if m.wantPDA != "" && got != m.wantPDA {
+		return [32]byte{}, 0, errors.New("unexpected derived PDA: " + got)
+	}
+	return m.hash, m.status, m.err
 }
 
 func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing.T) {
@@ -34,7 +58,7 @@ func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing
 	if got.State != "seeded" || !isCanonicalHex(got.LedgerID, 32) {
 		t.Fatalf("unexpected result: %+v", got)
 	}
-	if got.ChainReceiptVerification != "strict-schema-and-archive-hash-binding" {
+	if got.ChainReceiptVerification != "independent-active-pda-fetch-and-strict-receipt-binding" {
 		t.Fatalf("receipt trust seam not explicit: %+v", got)
 	}
 
@@ -60,6 +84,9 @@ func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing
 	}
 	if again.LedgerID != got.LedgerID {
 		t.Fatalf("idempotent run changed ledger ID: %s != %s", again.LedgerID, got.LedgerID)
+	}
+	if f.chain.calls != 2 {
+		t.Fatalf("independent chain fetch calls = %d, want 2", f.chain.calls)
 	}
 }
 
@@ -116,14 +143,54 @@ func TestExistingReceiptMismatchRefuses(t *testing.T) {
 	if _, err := prepareCatalogV104(f.opts, f.policy); err != nil {
 		t.Fatal(err)
 	}
-	other := filepath.Join(filepath.Dir(f.opts.newELF), "other-new-elf")
-	if err := os.WriteFile(other, []byte("different 1.0.4 binary"), 0755); err != nil {
+	other := filepath.Join(filepath.Dir(f.opts.installedELF), "other-old-elf")
+	if err := os.WriteFile(other, []byte("different installed 1.0.3 binary"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	f.opts.newELF = other
-	f.opts.newELFSHA256 = fileSHA256(t, other)
+	f.opts.installedELF = other
+	f.opts.expectedOldELFSHA256 = fileSHA256(t, other)
 	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "existing apply receipt mismatch") {
 		t.Fatalf("mismatched reapply was accepted: %v", err)
+	}
+}
+
+func TestIndependentChainVerificationRefusesWrongHashOrInactive(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*mockInstallerVerifier)
+		want   string
+	}{
+		{"wrong hash", func(m *mockInstallerVerifier) { m.hash[0] ^= 0xff }, "on-chain installer hash"},
+		{"revoked", func(m *mockInstallerVerifier) { m.status = verify.AttestationStatusRevoked }, "on-chain status Revoked"},
+		{"rpc failure", func(m *mockInstallerVerifier) { m.err = errors.New("rpc unavailable") }, "independent fetch"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			tc.mutate(f.chain)
+			if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("untrusted chain state accepted: %v", err)
+			}
+		})
+	}
+}
+
+func TestArchiveELFBindingRefusesMissingDuplicateAndTraversal(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		entries []tarEntry
+		want    string
+	}{
+		{"missing", []tarEntry{{"bin/other", "elf"}}, "not found"},
+		{"duplicate", []tarEntry{{"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}, {"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}}, "duplicate member"},
+		{"traversal", []tarEntry{{"../escape", "bad"}, {"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}}, "unsafe member"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			writeTarXZ(t, f.opts.archive, tc.entries)
+			if _, err := hashXZTarMember(f.opts.archive, f.opts.newELFMember); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("unsafe archive accepted: %v", err)
+			}
+		})
 	}
 }
 
@@ -185,18 +252,33 @@ func newTestFixture(t *testing.T) testFixture {
 	oldELF := filepath.Join(root, "installed-1.0.3")
 	newELF := filepath.Join(root, "melusina-store-sidecar")
 	for path, contents := range map[string]string{
-		archive: "governed store archive", oldELF: "installed 1.0.3 binary", newELF: "deterministic 1.0.4 binary",
+		oldELF: "installed 1.0.3 binary", newELF: "deterministic 1.0.4 binary",
 	} {
 		if err := os.WriteFile(path, []byte(contents), 0755); err != nil {
 			t.Fatal(err)
 		}
 	}
+	member := "bin/melusina-store-sidecar"
+	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.4 binary"}})
 	archiveHash := fileSHA256(t, archive)
+	archiveHashBytes := mustHash32(t, archiveHash)
+	masterMint, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releasePDA, _, err := pda.InstallerRelease(masterMint, archiveHashBytes, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	chainPath := filepath.Join(root, "verified-InstallerReleaseEntry-receipt.json")
 	writeTestJSON(t, chainPath, chainVerificationReceipt{
 		Schema: chainReceiptSchema, InstallerSHA256: archiveHash,
-		InstallerReleasePDA: "installer-release-pda", ProgramID: "program-id", MasterNFTMint: "master-mint",
-		Status: "active", VerifiedSlot: 12345, VerifiedAtUnix: 1_700_000_000,
+		InstallerReleasePDA: releasePDA.Base58(), ProgramID: canonicalLicenseProgramID, MasterNFTMint: masterMint.Base58(),
+		Status: "Active", VerifiedSlot: 12345, VerifiedAtUnix: 1_700_000_000,
 	}, 0600)
 	persist := filepath.Join(root, "persist")
 	if err := os.Mkdir(persist, 0700); err != nil {
@@ -206,22 +288,65 @@ func newTestFixture(t *testing.T) testFixture {
 	receipts := filepath.Join(persist, "update-receipts")
 	opts := options{
 		archive: archive, archiveSHA256: archiveHash, chainReceipt: chainPath,
+		rpcURL: "https://rpc.example.invalid", masterNFTMint: masterMint.Base58(),
 		installedELF: oldELF, expectedOldELFSHA256: fileSHA256(t, oldELF),
-		newELF: newELF, newELFSHA256: fileSHA256(t, newELF),
+		newELF: newELF, newELFMember: member, newELFSHA256: fileSHA256(t, newELF),
 		migrationStateDir: migrations, updateReceiptDir: receipts,
 	}
 	args := []string{
 		prepareCatalogV104Command,
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
+		"--rpc-url", opts.rpcURL, "--master-nft-mint", opts.masterNFTMint,
 		"--installed-elf", opts.installedELF, "--expected-old-elf-sha256", opts.expectedOldELFSHA256,
-		"--new-elf", opts.newELF, "--new-elf-sha256", opts.newELFSHA256,
+		"--new-elf", opts.newELF, "--new-elf-member", opts.newELFMember, "--new-elf-sha256", opts.newELFSHA256,
 		"--migration-state-dir", opts.migrationStateDir, "--update-receipt-dir", opts.updateReceiptDir,
 	}
+	mock := &mockInstallerVerifier{hash: archiveHashBytes, status: verify.AttestationStatusActive, wantPDA: releasePDA.Base58()}
 	return testFixture{
 		opts: opts, args: args, migrations: migrations, receipts: receipts,
-		policy: securityPolicy{expectedUID: uint32(os.Geteuid())},
+		chain:  mock,
+		policy: securityPolicy{expectedUID: uint32(os.Geteuid()), newChainVerifier: func(string) installerReleaseVerifier { return mock }},
 	}
+}
+
+type tarEntry struct{ name, contents string }
+
+func writeTarXZ(t *testing.T, dst string, entries []tarEntry) {
+	t.Helper()
+	var raw bytes.Buffer
+	tw := tar.NewWriter(&raw)
+	for _, entry := range entries {
+		if err := tw.WriteHeader(&tar.Header{Name: entry.name, Mode: 0755, Size: int64(len(entry.contents)), Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(entry.contents)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(xzExecutable, "--compress", "--stdout")
+	cmd.Stdin = bytes.NewReader(raw.Bytes())
+	compressed, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("create xz fixture: %v", err)
+	}
+	if err := os.WriteFile(dst, compressed, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustHash32(t *testing.T, value string) [32]byte {
+	t.Helper()
+	raw, err := hex.DecodeString(value)
+	if err != nil || len(raw) != 32 {
+		t.Fatalf("bad test hash %q: %v", value, err)
+	}
+	var out [32]byte
+	copy(out[:], raw)
+	return out
 }
 
 func fileSHA256(t *testing.T, path string) string {

@@ -36,8 +36,14 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 	if cfg.PrivateStageDir == "" {
 		cfg.PrivateStageDir = t.TempDir()
 	}
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = t.TempDir()
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil && !os.IsExist(err) {
+		t.Fatal(err)
 	}
 	for _, namespace := range appCatalogNamespaces {
 		if err := os.MkdirAll(filepath.Join(cfg.DistDir, namespace), 0o755); err != nil {

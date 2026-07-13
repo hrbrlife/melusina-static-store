@@ -107,7 +107,7 @@ func main() {
 	// Bootstrap/recover persistent app-catalog and replay state only after the
 	// process-lifetime writer lock is held and before any listener is opened.
 	// Read-only mode deliberately does not inspect or create write state.
-	catalogState, err := bootstrapCatalogRuntime(cfg, operator != nil)
+	catalogState, err := bootstrapCatalogRuntime(cfg, operator)
 	if err != nil {
 		log.Fatalf("catalog bootstrap: %v", err)
 	}
@@ -175,6 +175,10 @@ func main() {
 // acquires non-blocking exclusive ownership. The caller must retain the returned
 // descriptor for its entire write-capable lifetime; closing it releases flock.
 func acquireExistingWriterLock(path string) (*os.File, error) {
+	return acquireExistingWriterLockOwned(path, 0, 0)
+}
+
+func acquireExistingWriterLockOwned(path string, expectedUID, expectedGID uint32) (*os.File, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, fmt.Errorf("open existing writer.lock: %w", err)
@@ -199,6 +203,13 @@ func acquireExistingWriterLock(path string) (*os.File, error) {
 	}
 	if openedInfo.Mode().Perm() != 0o600 {
 		return nil, fmt.Errorf("writer.lock mode is %04o, want 0600", openedInfo.Mode().Perm())
+	}
+	stat, ok := openedInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil, errors.New("writer.lock ownership metadata unavailable")
+	}
+	if stat.Uid != expectedUID || stat.Gid != expectedGID {
+		return nil, fmt.Errorf("writer.lock owner is %d:%d, want %d:%d", stat.Uid, stat.Gid, expectedUID, expectedGID)
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return nil, fmt.Errorf("lock writer.lock exclusively: %w", err)

@@ -347,6 +347,10 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	if err := ensureStagePersistenceCapacity(s.cfg.PrivateStageDir, manifest.StageID); err != nil {
+		http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
 	claimNow := s.currentTime()
 	if err := s.claimAppEnvelope(preflight.sig, claimNow); err != nil {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
@@ -484,6 +488,16 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	operatorKey, err := s.operator.Public().SignPublicKey()
 	if err != nil {
 		http.Error(w, "check=catalog_pointer: operator key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rollout.capturedPrevious != nil {
+		if err := ensureStagePersistenceCapacity(s.cfg.PrivateStageDir, rollout.capturedPrevious.manifest.StageID); err != nil {
+			http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
+			return
+		}
+	}
+	if err := ensureDirectoryEntryCapacity(s.catalogGenerations.Root, 1); err != nil {
+		http.Error(w, "check=generation_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
 

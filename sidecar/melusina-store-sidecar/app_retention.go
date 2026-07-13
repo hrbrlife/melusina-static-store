@@ -151,10 +151,22 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 	sort.Strings(plan.stageDirs)
 	sort.Strings(plan.stageTempDirs)
 	sort.Strings(plan.generationDirs)
-	if len(plan.stageDirs)+len(plan.stageTempDirs)+len(plan.generationDirs) > maxRetentionDeletes {
-		return appRetentionPlan{}, fmt.Errorf("retention deletion plan exceeds %d members", maxRetentionDeletes)
-	}
+	remaining := maxRetentionDeletes
+	plan.stageTempDirs = takeRetentionBatch(plan.stageTempDirs, &remaining)
+	plan.stageDirs = takeRetentionBatch(plan.stageDirs, &remaining)
+	plan.generationDirs = takeRetentionBatch(plan.generationDirs, &remaining)
 	return plan, nil
+}
+
+func takeRetentionBatch(paths []string, remaining *int) []string {
+	if *remaining <= 0 {
+		return nil
+	}
+	if len(paths) > *remaining {
+		paths = paths[:*remaining]
+	}
+	*remaining -= len(paths)
+	return paths
 }
 
 func applyAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, plan appRetentionPlan) error {
@@ -199,11 +211,25 @@ func runAppRetentionGC(cfg Config, store AppCatalogGenerationStore, rollouts map
 		store.Barrier.Lock()
 		defer store.Barrier.Unlock()
 	}
-	plan, err := collectAppRetentionPlan(cfg, store, rollouts, currentID, predecessorID, now, expectedUID, expectedGID)
-	if err != nil {
-		return err
+	const maxBatches = (2*maxRetentionRootEntries)/maxRetentionDeletes + 1
+	for batch := 0; batch < maxBatches; batch++ {
+		plan, err := collectAppRetentionPlan(cfg, store, rollouts, currentID, predecessorID, now, expectedUID, expectedGID)
+		if err != nil {
+			return err
+		}
+		deleted := len(plan.stageDirs) + len(plan.stageTempDirs) + len(plan.generationDirs)
+		if err := applyAppRetentionPlan(cfg, store, plan); err != nil {
+			return err
+		}
+		if deleted < maxRetentionDeletes {
+			return nil
+		}
+		rollouts, err = exactRolloutStatesAt(cfg, now)
+		if err != nil {
+			return fmt.Errorf("reload rollout state between retention batches: %w", err)
+		}
 	}
-	return applyAppRetentionPlan(cfg, store, plan)
+	return errors.New("retention batching did not converge within bounded root capacity")
 }
 
 func validStageID(name string) bool {
@@ -336,16 +362,36 @@ func walkTreeBounded(root string, max int, visit func(string, os.FileInfo) error
 		if !info.IsDir() {
 			return nil
 		}
-		entries, err := readDirBounded(path, max-count)
+		fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 		if err != nil {
 			return err
 		}
-		for _, entry := range entries {
-			if err := walk(filepath.Join(path, entry.Name()), depth+1); err != nil {
+		dir := os.NewFile(uintptr(fd), path)
+		defer dir.Close()
+		for {
+			entries, readErr := dir.ReadDir(1)
+			if readErr != nil && !errors.Is(readErr, io.EOF) {
+				return readErr
+			}
+			if len(entries) == 0 {
+				break
+			}
+			if err := walk(filepath.Join(path, entries[0].Name()), depth+1); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 	return walk(root, 0)
+}
+
+func ensureDirectoryEntryCapacity(root string, reserve int) error {
+	entries, err := readDirBounded(root, maxRetentionRootEntries)
+	if err != nil {
+		return err
+	}
+	if reserve < 0 || len(entries)+reserve > maxRetentionRootEntries {
+		return fmt.Errorf("directory %s has no capacity for %d reserved members", root, reserve)
+	}
+	return nil
 }

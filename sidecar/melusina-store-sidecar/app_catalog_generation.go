@@ -156,8 +156,8 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 	if err := requireSameFilesystem(source, s.Root); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
-	if err := requireSameFilesystem(source, s.Root); err != nil {
-		return AppCatalogSnapshot{}, err
+	if err := ensureDirectoryEntryCapacity(s.Root, 1); err != nil {
+		return AppCatalogSnapshot{}, fmt.Errorf("app catalog generation capacity: %w", err)
 	}
 	id, err := newAppCatalogGenerationID()
 	if err != nil {
@@ -695,11 +695,8 @@ func validateCatalogTree(root string) error {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return fmt.Errorf("app catalog namespace %s is not a real directory", namespace)
 		}
-		if err := walkCatalogTree(path, nil); err != nil {
-			return err
-		}
 	}
-	return nil
+	return walkCatalogTree(root, nil)
 }
 
 func validateSealedCatalogTree(root string, expectedUID, expectedGID uint32) error {
@@ -740,8 +737,25 @@ func walkCatalogTree(root string, visitFile func(string, os.FileInfo) error) err
 }
 
 func syncAndSealCatalogTree(root string) error {
+	var files []string
 	var dirs []string
+	// Discover and validate the complete bounded tree before chmod/fsync mutates
+	// any member. A cap/type/symlink refusal therefore leaves the candidate as-is.
 	if err := walkCatalogTree(root, func(path string, _ os.FileInfo) error {
+		files = append(files, path)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
+		if info.IsDir() {
+			dirs = append(dirs, path)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	for _, path := range files {
 		f, err := os.Open(path)
 		if err != nil {
 			return err
@@ -754,17 +768,9 @@ func syncAndSealCatalogTree(root string) error {
 			_ = f.Close()
 			return err
 		}
-		return f.Close()
-	}); err != nil {
-		return err
-	}
-	if err := walkTreeBounded(root, maxCatalogGenerationMembers, func(path string, info os.FileInfo) error {
-		if info.IsDir() {
-			dirs = append(dirs, path)
+		if err := f.Close(); err != nil {
+			return err
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 	sort.Slice(dirs, func(i, j int) bool {
 		return strings.Count(dirs[i], string(os.PathSeparator)) > strings.Count(dirs[j], string(os.PathSeparator))

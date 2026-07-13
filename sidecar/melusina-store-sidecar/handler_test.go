@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -485,6 +486,49 @@ func TestAppPublishRunsPostSuccessRetention(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(svc.cfg.PrivateStageDir, old.StageID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("post-success retention did not delete old unreferenced stage: %v", err)
+	}
+}
+
+func TestAppStageCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "capacity-store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "capacity", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "capacity-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	entries, err := readDirBounded(svc.cfg.PrivateStageDir, maxRetentionRootEntries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fillers []string
+	for i := len(entries); i < maxRetentionRootEntries; i++ {
+		path := filepath.Join(svc.cfg.PrivateStageDir, fmt.Sprintf("capacity-fill-%03d", i))
+		if err := os.Mkdir(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		fillers = append(fillers, path)
+	}
+	release := mustJSON(t, fixture.rel)
+	envelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "capacity-stage-nonce")
+	full := doStagePublish(t, svc, jsonPublishBody(t, envelope, release, fixture.spk, fixture.metadata))
+	if full.Code != http.StatusInsufficientStorage || !strings.Contains(full.Body.String(), "stage_capacity") {
+		t.Fatalf("full stage root = %d: %s", full.Code, full.Body.String())
+	}
+	if len(fillers) == 0 {
+		t.Fatal("capacity fixture unexpectedly began full")
+	}
+	if err := os.Remove(fillers[len(fillers)-1]); err != nil {
+		t.Fatal(err)
+	}
+	retry := doStagePublish(t, svc, jsonPublishBody(t, envelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by capacity refusal: %d %s", retry.Code, retry.Body.String())
 	}
 }
 

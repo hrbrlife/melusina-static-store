@@ -144,10 +144,16 @@ func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, re
 		return fmt.Errorf("private stage root is not initialized: %w", err)
 	}
 	target := filepath.Join(root, manifest.StageID)
-	if _, err := os.Stat(target); err == nil {
+	if info, err := os.Lstat(target); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("existing staged candidate is not a real directory")
+		}
 		return verifyStagedApp(target, manifest)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("stat staged candidate: %w", err)
+	}
+	if err := ensureDirectoryEntryCapacity(root, 1); err != nil {
+		return fmt.Errorf("private stage capacity: %w", err)
 	}
 
 	tmp, err := os.MkdirTemp(root, ".candidate-")
@@ -192,6 +198,23 @@ func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, re
 	}
 	cleanup = false
 	return syncDir(root)
+}
+
+func ensureStagePersistenceCapacity(root, stageID string) error {
+	if !validStageID(stageID) {
+		return errors.New("invalid stage ID for capacity reservation")
+	}
+	info, err := os.Lstat(filepath.Join(root, stageID))
+	if err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("existing staged candidate is not a real directory")
+		}
+		return nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return ensureDirectoryEntryCapacity(root, 1)
 }
 
 func loadStagedApp(root, stageID string) (stagedAppManifest, []byte, []byte, []byte, error) {

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -233,6 +234,34 @@ func TestAppCatalogGenerationFaultAfterCurrentRenameLeavesNewCurrentRecoverable(
 	}
 	if selected.ID != prepared.ID {
 		t.Fatalf("post-rename uncertainty lost selected generation: got %s want %s", selected.ID, prepared.ID)
+	}
+}
+
+func TestSyncAndSealCatalogTreeCapRefusesBeforeMutation(t *testing.T) {
+	root := t.TempDir()
+	for _, namespace := range appCatalogNamespaces {
+		if err := os.MkdirAll(filepath.Join(root, namespace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := filepath.Join(root, "apps", "000-first")
+	if err := os.WriteFile(first, []byte("unchanged"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < maxCatalogGenerationMembers; i++ {
+		if err := os.WriteFile(filepath.Join(root, "apps", fmt.Sprintf("member-%03d", i)), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := syncAndSealCatalogTree(root); err == nil || !strings.Contains(err.Error(), "exceeds 512 members") {
+		t.Fatalf("oversized catalog tree did not refuse: %v", err)
+	}
+	info, err := os.Stat(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Fatalf("cap refusal mutated earlier file mode to %04o", info.Mode().Perm())
 	}
 }
 

@@ -247,12 +247,16 @@ func TestAppRetentionResourceCapsRefuseBeforeDeletion(t *testing.T) {
 		for i := 0; i <= maxRetentionDeletes; i++ {
 			stages = append(stages, persistRetentionStage(t, cfg.PrivateStageDir, fmt.Sprintf("expired-%03d", i), now.Add(-8*24*time.Hour)))
 		}
-		err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid()))
-		if err == nil || !strings.Contains(err.Error(), "deletion plan exceeds") {
-			t.Fatalf("deletion cap did not refuse: %v", err)
+		if err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid())); err != nil {
+			t.Fatalf("bounded deletion batches did not converge: %v", err)
 		}
 		for _, stage := range stages {
-			assertStageExists(t, cfg.PrivateStageDir, stage.StageID)
+			if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, stage.StageID)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("batched deletion left stage %s: %v", stage.StageID, err)
+			}
+		}
+		if err := runAppRetentionGC(cfg, store, nil, currentID, "", now, uint32(os.Getuid()), uint32(os.Getgid())); err != nil {
+			t.Fatalf("restart after backlog convergence failed: %v", err)
 		}
 	})
 
@@ -282,6 +286,33 @@ func TestAppRetentionResourceCapsRefuseBeforeDeletion(t *testing.T) {
 			t.Fatalf("generation cap refusal deleted older candidate: %v", err)
 		}
 	})
+}
+
+func TestWalkTreeBoundedUsesOneGlobalMemberBudget(t *testing.T) {
+	root := t.TempDir()
+	branch := filepath.Join(root, "a-branch")
+	if err := os.Mkdir(branch, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < maxPrivateStageTreeMembers; i++ {
+		if err := os.WriteFile(filepath.Join(branch, fmt.Sprintf("nested-%02d", i)), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("sibling-%02d", i)), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	visited := 0
+	err := walkTreeBounded(root, maxPrivateStageTreeMembers, func(string, os.FileInfo) error {
+		visited++
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "exceeds 16 members") {
+		t.Fatalf("branching tree did not hit global cap: %v", err)
+	}
+	if visited != maxPrivateStageTreeMembers {
+		t.Fatalf("global visitor count = %d, want exactly bounded %d", visited, maxPrivateStageTreeMembers)
+	}
 }
 
 func TestAppRetentionUnsafeGenerationRefusesBeforeDeletion(t *testing.T) {

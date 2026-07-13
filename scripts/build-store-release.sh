@@ -42,7 +42,9 @@ git -C "$ROOT" worktree add --detach "$W1" "$HEAD" >/dev/null
 git -C "$ROOT" worktree add --detach "$W2" "$HEAD" >/dev/null
 
 build_once() {
-  local work="$1" out="$2" stage="$out/stage"
+  local work="$1"
+  local out="$2"
+  local stage="$out/stage"
   mkdir -p "$stage"
   (
     cd "$work/sidecar/melusina-store-sidecar"

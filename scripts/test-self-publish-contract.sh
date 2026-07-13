@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRIVER="$ROOT/scripts/self-publish.sh"
+RELEASE_BUILDER="$ROOT/scripts/build-store-release.sh"
 
 for retired in \
   scripts/publish-app-full.sh scripts/publish-apps.sh scripts/ship-changes.sh \
@@ -54,6 +55,14 @@ compare = s.index('cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER"')
 assert stage < stop < readonly < active_before < promote < active_after < compare
 assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --stage') == 1
 assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"') == 1
+PY
+
+python3 - "$RELEASE_BUILDER" <<'PY'
+import pathlib, sys
+s = pathlib.Path(sys.argv[1]).read_text()
+ordered = '  local work="$1"\n  local out="$2"\n  local stage="$out/stage"'
+assert ordered in s
+assert 'local work="$1" out="$2" stage="$out/stage"' not in s
 PY
 
 echo "self-publish contract PASS"

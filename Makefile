@@ -245,6 +245,8 @@ apply:
 # Real apply body — only ever entered while holding the .publish.lock flock so it
 # cannot race another make apply / rollback / sync on the same host.
 apply-locked:
+	@echo "ERROR: legacy apply-locked is retired; direct catalog force-push is forbidden"
+	exit 2
 	@test -f "$(PLAN_MARKER)" || { \
 	  echo "✗ apply aborted: no plan marker at $(PLAN_MARKER)"; \
 	  echo "  Run 'make plan' first."; \

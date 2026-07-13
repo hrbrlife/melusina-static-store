@@ -38,6 +38,11 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
+  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
+  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
+  for remote in "${source_remotes[@]}"; do
+    git -C "$source_root" fetch --prune "$remote" || { echo "cannot refresh source remote: $remote" >&2; exit 2; }
+  done
   pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }

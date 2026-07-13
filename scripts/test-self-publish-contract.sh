@@ -8,7 +8,9 @@ for retired in \
   scripts/publish-app-full.sh scripts/publish-apps.sh scripts/ship-changes.sh \
   scripts/pearl-app-ceremony.sh scripts/pearl-batch-submit.sh \
   scripts/pearl-onchain-submit.js scripts/revoke-release-ceremony.sh \
-  scripts/_quarantine/welcome-pearl-ceremony.sh batch-reanchor.sh; do
+  scripts/_quarantine/welcome-pearl-ceremony.sh scripts/rollback-all.sh \
+  scripts/rollback-app.sh scripts/_rollback.py scripts/admin-server.py \
+  batch-reanchor.sh; do
   [[ ! -e "$ROOT/$retired" ]] || { echo "retired writer remains: $retired" >&2; exit 1; }
 done
 ! grep -qE 'publish-app-full\.sh|publish-apps\.sh|publish-sealed' "$ROOT/Makefile"
@@ -21,7 +23,7 @@ grep -q 'PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
 grep -q 'no app-chain writer' "$DRIVER"
 grep -q 'Active ReleaseEntry set changed' "$DRIVER"
 
-for target in apply deploy publish; do
+for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then
     echo "legacy make $target unexpectedly succeeded" >&2
     exit 1

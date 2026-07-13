@@ -352,14 +352,21 @@ func TestAppPublishPurposeRefusalDoesNotConsumeAcrossRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen app nonce ledger: %v", err)
 	}
-	restarted := *svc
-	restarted.appNonces = reopened
-	restarted.nonces = envelope.NewMemoryNonceCache()
-	stageReplay := doStagePublish(t, &restarted, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata))
+	restarted := &publishService{
+		cfg:                svc.cfg,
+		cr:                 svc.cr,
+		operator:           svc.operator,
+		assembler:          svc.assembler,
+		nonces:             envelope.NewMemoryNonceCache(),
+		appNonces:          reopened,
+		catalogGenerations: svc.catalogGenerations,
+		now:                svc.now,
+	}
+	stageReplay := doStagePublish(t, restarted, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata))
 	if stageReplay.Code != http.StatusUnauthorized || !strings.Contains(stageReplay.Body.String(), "nonce already consumed") {
 		t.Fatalf("stage replay after restart = %d %s", stageReplay.Code, stageReplay.Body.String())
 	}
-	promoteReplay := doPublish(t, &restarted, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
+	promoteReplay := doPublish(t, restarted, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata))
 	if promoteReplay.Code != http.StatusUnauthorized || !strings.Contains(promoteReplay.Body.String(), "nonce already consumed") {
 		t.Fatalf("promote replay after restart = %d %s", promoteReplay.Code, promoteReplay.Body.String())
 	}

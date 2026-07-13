@@ -97,8 +97,8 @@ build_once() {
   mkdir -p "$stage"
   (
     cd "$work/sidecar/melusina-store-sidecar"
-    unset GOEXPERIMENT GODEBUG
-    export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GOFLAGS= GOENV=off GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
+    unset GOEXPERIMENT GODEBUG GOROOT
+    export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GO111MODULE=on GOFIPS140=off GO_EXTLINK_ENABLED=0 GOCACHEPROG= GOFLAGS= GOENV=off GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
     go build -mod=vendor -trimpath -ldflags "-buildid= -X main.Version=$VERSION" -o "$stage/melusina-store-sidecar" .
     go build -mod=vendor -trimpath -ldflags "-buildid=" -o "$stage/apply-store-update" ./cmd/apply-store-update
   )
@@ -122,7 +122,7 @@ validate_built_archive() {
   local stage="$2"
   local listing check_dir
   listing="$(LC_ALL=C env -u TAR_OPTIONS -u XZ_OPT -u XZ_DEFAULTS tar --numeric-owner -tvJf "$archive")" || return 1
-  printf '%s\n' "$listing" | awk -v epoch="$SOURCE_EPOCH" '
+  printf '%s\n' "$listing" | awk '
     BEGIN { ok = 1; count = 0 }
     {
       count++
@@ -138,6 +138,11 @@ validate_built_archive() {
   ' || return 1
   check_dir="$(mktemp -d "$(dirname "$archive")/.archive-check.XXXXXX")"
   LC_ALL=C env -u TAR_OPTIONS -u XZ_OPT -u XZ_DEFAULTS tar -xJf "$archive" -C "$check_dir" --no-same-owner --no-same-permissions || {
+    rm -rf "$check_dir" || true
+    return 1
+  }
+  [[ "$(stat -c '%Y' "$check_dir/apply-store-update")" == "$SOURCE_EPOCH" &&
+     "$(stat -c '%Y' "$check_dir/melusina-store-sidecar")" == "$SOURCE_EPOCH" ]] || {
     rm -rf "$check_dir" || true
     return 1
   }

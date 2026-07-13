@@ -88,9 +88,24 @@ assert 'rm -rf "$TMP" || true' in s
 assert 'env -u TAR_OPTIONS tar' in s
 assert 'env -u XZ_OPT -u XZ_DEFAULTS xz' in s
 assert 'GOAMD64=v1' in s and 'GOFLAGS=' in s and 'GOENV=off' in s
-assert 'GOWORK=off' in s and 'GOTOOLCHAIN=local' in s and 'unset GOEXPERIMENT GODEBUG' in s
+assert 'GOWORK=off' in s and 'GOTOOLCHAIN=local' in s and 'unset GOEXPERIMENT GODEBUG GOROOT' in s
+assert 'GO111MODULE=on' in s and 'GOFIPS140=off' in s
+assert 'GO_EXTLINK_ENABLED=0' in s and 'GOCACHEPROG=' in s
 assert 'validate_built_archive "$out/store-$VERSION.tar.xz" "$stage"' in s
+assert '''stat -c '%Y' "$check_dir/apply-store-update"''' in s
 PY
+
+mapfile -t go_env < <(
+  GOFIPS140=latest GO111MODULE=off GOROOT=/nonexistent GO_EXTLINK_ENABLED=1 GOCACHEPROG=/nonexistent \
+    env -u GOROOT GOFIPS140=off GO111MODULE=on GO_EXTLINK_ENABLED=0 GOCACHEPROG= \
+    GOENV=off GOFLAGS= GOWORK=off GOTOOLCHAIN=local \
+    go env GOFIPS140 GO111MODULE GO_EXTLINK_ENABLED GOCACHEPROG GOROOT
+)
+[[ "${go_env[0]}" == "off" ]]
+[[ "${go_env[1]}" == "on" ]]
+[[ "${go_env[2]}" == "0" ]]
+[[ -z "${go_env[3]}" ]]
+[[ -n "${go_env[4]}" && "${go_env[4]}" != "/nonexistent" ]]
 
 ambient_tmp="$(mktemp -d)"
 trap 'rm -rf "$ambient_tmp"' EXIT

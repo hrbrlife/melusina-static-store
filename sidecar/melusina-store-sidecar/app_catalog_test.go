@@ -37,7 +37,7 @@ func TestWriteSignedAppCatalogPointersRejectsOverCapRolloutEnumeration(t *testin
 		}
 	}
 	op := newTestIdentity(t, "catalog-overcap-operator", randPubkeyB58(t), cfg.Domain)
-	_, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, "required-app", time.Now().UTC())
+	_, err := buildSignedAppCatalogPointerPlan(cfg, []byte("{\"apps\":[]}\n"), op, nil, "required-app", time.Now().UTC())
 	if err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("over-cap rollout enumeration was accepted: %v", err)
 	}
@@ -84,10 +84,14 @@ func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRel
 	}
 
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	pointers, rolloutIDs, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, current.manifest.AppID, now)
+	plan, err := buildSignedAppCatalogPointerPlan(cfg, indexBytes, op, nil, current.manifest.AppID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := WriteSignedAppCatalogPointersForGeneration(cfg.DistDir, plan); err != nil {
+		t.Fatal(err)
+	}
+	pointers, rolloutIDs := plan.pointers, plan.rolloutAppIDs
 	if len(rolloutIDs) != 1 || rolloutIDs[0] != current.manifest.AppID {
 		t.Fatalf("rollout IDs = %v", rolloutIDs)
 	}
@@ -144,7 +148,7 @@ func TestWriteSignedAppCatalogPointersForGeneration_RequiredPromotionMustAppearI
 		t.Fatal(err)
 	}
 	op := newTestIdentity(t, "catalog-operator", randPubkeyB58(t), cfg.Domain)
-	if _, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, current.manifest.AppID, now); err == nil {
+	if _, err := buildSignedAppCatalogPointerPlan(cfg, []byte("{\"apps\":[]}\n"), op, nil, current.manifest.AppID, now); err == nil {
 		t.Fatal("promotion succeeded without an exact catalog pointer")
 	}
 }

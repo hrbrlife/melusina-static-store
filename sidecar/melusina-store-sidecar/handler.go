@@ -360,12 +360,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	stored, _, _, _, err := loadStagedApp(s.cfg.PrivateStageDir, manifest.StageID)
-	if err != nil {
-		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	receipt, err := signStageReceipt(s.operator, stored, primitives.StoreDomainHash(s.cfg.Domain))
+	receipt, err := signStageReceipt(s.operator, manifest, primitives.StoreDomainHash(s.cfg.Domain))
 	if err != nil {
 		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -506,7 +501,8 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
-	if _, err := projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata); err != nil {
+	projection, err := projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata)
+	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, errCatalogIndexCapacity) {
 			status = http.StatusInsufficientStorage
@@ -514,7 +510,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
 		return
 	}
-	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, s.cfg, staged.AppID, metadataPackageID(metadata)); err != nil {
+	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, projection.indexBytes, s.operator, &rollout, staged.AppID, promotedAt)
+	if err != nil {
+		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs)); err != nil {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
@@ -535,19 +536,14 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=fault_after_source_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var catalogPointers map[string]AppCatalogPointer
-	var rolloutAppIDs []string
 	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
 		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
-		if err := candidateAssembler.AssemblePublishedApp(spk, preflight.releaseBytes, metadata); err != nil {
+		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection); err != nil {
 			return fmt.Errorf("assemble: %w", err)
 		}
-		var pointerErr error
-		catalogPointers, rolloutAppIDs, pointerErr = WriteSignedAppCatalogPointersForGeneration(
-			s.cfg, candidateRoot, s.operator, &rollout, staged.AppID, promotedAt)
-		return pointerErr
+		return WriteSignedAppCatalogPointersForGeneration(candidateRoot, pointerPlan)
 	}, func(snapshot AppCatalogSnapshot) error {
-		return ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
+		return ValidateAppCatalogSnapshot(snapshot, pointerPlan.rolloutAppIDs, func(pointer AppCatalogPointer) error {
 			return verifyAppCatalogPointer(operatorKey, pointer)
 		})
 	})
@@ -583,7 +579,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=fault_after_current_switch: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	catalogPointer := catalogPointers[staged.AppID]
+	catalogPointer := pointerPlan.pointers[staged.AppID]
 
 	// Compute the receipt tuple from the now-verified facts.
 	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(preflight.release.AppHash)))

@@ -483,7 +483,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 // cloning the immutable current tree, assembling this app, and materializing the
 // complete replacement pointer directory. It runs before nonce claim; the active
 // generation cannot change under the service writer lock.
-func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, cfg Config, appID, packageID string) error {
+func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, packageID string, pointerCount int) error {
 	if !isSafePathSegment(appID) || !isSafePathSegment(packageID) {
 		return errors.New("unsafe appId/packageId for catalog capacity reservation")
 	}
@@ -525,84 +525,71 @@ func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, cfg Confi
 		}
 	}
 
-	rolloutEntries, err := readDirBounded(rolloutStateDir(cfg), maxRetentionRootEntries)
-	if err != nil {
-		return fmt.Errorf("reserve rollout pointers: %w", err)
+	if pointerCount < 1 || pointerCount > maxRetentionRootEntries {
+		return fmt.Errorf("invalid frozen pointer count %d", pointerCount)
 	}
-	pointerApps := make(map[string]struct{}, len(rolloutEntries)+1)
-	for _, entry := range rolloutEntries {
-		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
-			return fmt.Errorf("invalid rollout state member %s", entry.Name())
-		}
-		rolloutAppID := strings.TrimSuffix(entry.Name(), ".json")
-		if !isSafePathSegment(rolloutAppID) {
-			return fmt.Errorf("invalid rollout state appId %q", rolloutAppID)
-		}
-		pointerApps[rolloutAppID] = struct{}{}
-	}
-	pointerApps[appID] = struct{}{}
 
 	// Pointer materialization creates one temporary directory plus its complete
 	// new pointer set while the copied old pointer subtree still exists.
-	peak := members + steadyAdds + 1 + len(pointerApps)
-	final := members + steadyAdds - oldPointerMembers + 1 + len(pointerApps)
+	peak := members + steadyAdds + 1 + pointerCount
+	final := members + steadyAdds - oldPointerMembers + 1 + pointerCount
 	if peak > maxCatalogGenerationMembers || final > maxCatalogGenerationMembers {
 		return fmt.Errorf("catalog promotion needs peak/final %d/%d members, cap is %d", peak, final, maxCatalogGenerationMembers)
 	}
 	return nil
 }
 
-// WriteSignedAppCatalogPointersForGeneration materializes the complete pointer
-// set inside an unpublished candidate generation. Unlike the retired direct
-// DistDir writer, every rollout member is mandatory and invalid state aborts
-// the whole candidate; no rollout is silently skipped.
-func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot string, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (map[string]AppCatalogPointer, []string, error) {
-	candidate := AppCatalogSnapshot{Root: generationRoot}
-	indexBytes, err := readSnapshotFileBounded(candidate, "apps/index.json", maxAppCatalogJSONBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read candidate app catalog: %w", err)
-	}
+type appCatalogPointerPlan struct {
+	pointers      map[string]AppCatalogPointer
+	pointerBodies map[string][]byte
+	rolloutAppIDs []string
+}
+
+// buildSignedAppCatalogPointerPlan freezes every rollout/stage semantic input
+// before nonce claim. Postclaim materialization consumes only this plan.
+func buildSignedAppCatalogPointerPlan(cfg Config, indexBytes []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {
+	var zero appCatalogPointerPlan
 	var index catalogIndex
 	if err := json.Unmarshal(indexBytes, &index); err != nil {
-		return nil, nil, fmt.Errorf("decode candidate app catalog: %w", err)
+		return zero, fmt.Errorf("decode projected app catalog: %w", err)
 	}
 	packageByApp := make(map[string]string, len(index.Apps))
 	for _, app := range index.Apps {
 		appID := strings.TrimSpace(app.AppID)
 		packageID := strings.ToLower(strings.TrimSpace(app.PackageID))
 		if !isSafePathSegment(appID) || packageID == "" {
-			return nil, nil, errors.New("candidate app catalog contains invalid appId/packageId")
+			return zero, errors.New("projected app catalog contains invalid appId/packageId")
 		}
 		if _, duplicate := packageByApp[appID]; duplicate {
-			return nil, nil, fmt.Errorf("candidate app catalog contains duplicate appId %s", appID)
+			return zero, fmt.Errorf("projected app catalog contains duplicate appId %s", appID)
 		}
 		packageByApp[appID] = packageID
 	}
 
 	rolloutEntries, err := readDirBounded(rolloutStateDir(cfg), maxRetentionRootEntries)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read rollout state: %w", err)
+		return zero, fmt.Errorf("read rollout state: %w", err)
 	}
 	catalogHash := sha256.Sum256(indexBytes)
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	rollouts := make(map[string]appRolloutState, len(rolloutEntries)+1)
 	for _, entry := range rolloutEntries {
 		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
-			return nil, nil, fmt.Errorf("invalid rollout state member %s", entry.Name())
+			return zero, fmt.Errorf("invalid rollout state member %s", entry.Name())
 		}
 		appID := strings.TrimSuffix(entry.Name(), ".json")
 		if !isSafePathSegment(appID) {
-			return nil, nil, fmt.Errorf("invalid rollout state appId %q", appID)
+			return zero, fmt.Errorf("invalid rollout state appId %q", appID)
 		}
 		state, err := loadAppRollout(cfg, appID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load rollout %s: %w", appID, err)
+			return zero, fmt.Errorf("load rollout %s: %w", appID, err)
 		}
 		rollouts[appID] = state
 	}
 	if pending != nil {
 		if pending.AppID != requiredAppID || !isSafePathSegment(pending.AppID) {
-			return nil, nil, errors.New("pending rollout does not match required appId")
+			return zero, errors.New("pending rollout does not match required appId")
 		}
 		rollouts[pending.AppID] = *pending
 	}
@@ -611,28 +598,41 @@ func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot strin
 	for appID, state := range rollouts {
 		manifest, _, metadata, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load staged release for rollout %s: %w", appID, err)
+			return zero, fmt.Errorf("load staged release for rollout %s: %w", appID, err)
 		}
 		packageID := metadataPackageID(metadata)
 		if packageID == "" || packageByApp[appID] != packageID {
-			return nil, nil, fmt.Errorf("candidate catalog does not select rollout %s packageId %s", appID, packageID)
+			return zero, fmt.Errorf("projected catalog does not select rollout %s packageId %s", appID, packageID)
 		}
 		pointer, err := signAppCatalogPointer(operator, state, manifest, packageID, catalogHash, domainHash, now)
 		if err != nil {
-			return nil, nil, fmt.Errorf("sign pointer for rollout %s: %w", appID, err)
+			return zero, fmt.Errorf("sign pointer for rollout %s: %w", appID, err)
 		}
 		pointers[appID] = pointer
 		rolloutAppIDs = append(rolloutAppIDs, appID)
 	}
 	if _, ok := pointers[requiredAppID]; !ok {
-		return nil, nil, fmt.Errorf("candidate catalog has no rollout pointer for required appId %s", requiredAppID)
+		return zero, fmt.Errorf("projected catalog has no rollout pointer for required appId %s", requiredAppID)
 	}
 	sort.Strings(rolloutAppIDs)
+	pointerBodies := make(map[string][]byte, len(pointers))
+	for _, appID := range rolloutAppIDs {
+		body, err := json.MarshalIndent(pointers[appID], "", "  ")
+		if err != nil {
+			return zero, err
+		}
+		pointerBodies[appID] = append(body, '\n')
+	}
+	return appCatalogPointerPlan{pointers: pointers, pointerBodies: pointerBodies, rolloutAppIDs: rolloutAppIDs}, nil
+}
 
+// WriteSignedAppCatalogPointersForGeneration materializes one frozen preclaim
+// plan inside an unpublished self-produced candidate generation.
+func WriteSignedAppCatalogPointersForGeneration(generationRoot string, plan appCatalogPointerPlan) error {
 	appsDir := filepath.Join(generationRoot, "apps")
 	tmpDir, err := os.MkdirTemp(appsDir, ".pointers-")
 	if err != nil {
-		return nil, nil, fmt.Errorf("create candidate pointer directory: %w", err)
+		return fmt.Errorf("create candidate pointer directory: %w", err)
 	}
 	cleanup := true
 	defer func() {
@@ -640,37 +640,33 @@ func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot strin
 			_ = os.RemoveAll(tmpDir)
 		}
 	}()
-	for _, appID := range rolloutAppIDs {
-		body, err := json.MarshalIndent(pointers[appID], "", "  ")
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := writeSyncedFile(filepath.Join(tmpDir, appID+".json"), append(body, '\n'), 0o644); err != nil {
-			return nil, nil, err
+	for _, appID := range plan.rolloutAppIDs {
+		if err := writeSyncedFile(filepath.Join(tmpDir, appID+".json"), plan.pointerBodies[appID], 0o644); err != nil {
+			return err
 		}
 	}
 	if err := syncDir(tmpDir); err != nil {
-		return nil, nil, err
+		return err
 	}
 	pointerDir := filepath.Join(appsDir, "pointers")
 	if info, err := os.Lstat(pointerDir); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-			return nil, nil, errors.New("candidate pointer path is not a real directory")
+			return errors.New("candidate pointer path is not a real directory")
 		}
 		if err := os.RemoveAll(pointerDir); err != nil {
-			return nil, nil, fmt.Errorf("remove candidate's copied pointers: %w", err)
+			return fmt.Errorf("remove candidate's copied pointers: %w", err)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, nil, err
+		return err
 	}
 	if err := os.Rename(tmpDir, pointerDir); err != nil {
-		return nil, nil, fmt.Errorf("install candidate pointers: %w", err)
+		return fmt.Errorf("install candidate pointers: %w", err)
 	}
 	cleanup = false
 	if err := syncDir(appsDir); err != nil {
-		return nil, nil, err
+		return err
 	}
-	return pointers, rolloutAppIDs, nil
+	return nil
 }
 
 func (s AppCatalogGenerationStore) ensureRoot() error {

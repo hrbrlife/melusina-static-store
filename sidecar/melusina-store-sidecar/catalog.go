@@ -45,6 +45,10 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	if err != nil {
 		return err
 	}
+	return a.assemblePublishedAppProjection(spk, release, metadata, projection)
+}
+
+func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection) error {
 	appID, packageID := projection.appID, projection.packageID
 
 	for _, dir := range []string{

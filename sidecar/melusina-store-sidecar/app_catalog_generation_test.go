@@ -94,11 +94,7 @@ func TestCatalogPromotionCapacityRejectsOversizedActiveMember(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{PrivateStageDir: t.TempDir()}
-	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	err = ensureCatalogPromotionMemberCapacity(AppCatalogSnapshot{Root: root}, cfg, "app-one", "package-one")
+	err = ensureCatalogPromotionMemberCapacity(AppCatalogSnapshot{Root: root}, "app-one", "package-one", 1)
 	if err == nil || !strings.Contains(err.Error(), "exceeds copy bound") {
 		t.Fatalf("oversized active member passed preclaim capacity: %v", err)
 	}

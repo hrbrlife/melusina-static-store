@@ -785,6 +785,92 @@ func TestAppPromotionCatalogIndexCapacityRefusesBeforeClaimOrSourceMutation(t *t
 	}
 }
 
+func TestAppPromotionFreezesAllRolloutSemanticsBeforeClaim(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		plant func(t *testing.T, cfg Config) string
+	}{
+		{
+			name: "malformed-unrelated-rollout",
+			plant: func(t *testing.T, cfg Config) string {
+				path := filepath.Join(rolloutStateDir(cfg), "unrelated.json")
+				if err := os.WriteFile(path, []byte("not-json"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				return path
+			},
+		},
+		{
+			name: "unrelated-missing-stage",
+			plant: func(t *testing.T, cfg Config) string {
+				state := appRolloutState{
+					Schema:         appRolloutSchema,
+					AppID:          "unrelated",
+					CurrentStageID: strings.Repeat("f", 64),
+					CurrentAppHash: strings.Repeat("a", 64),
+					CurrentVersion: "1.0.0",
+					ActivatedAt:    time.Now().UTC().Unix(),
+				}
+				if err := writeAppRollout(cfg, state); err != nil {
+					t.Fatal(err)
+				}
+				path, err := rolloutStatePath(cfg, state.AppID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return path
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.CatalogRepoRoot = t.TempDir()
+			op := newTestIdentity(t, "freeze-operator", cfg.LicenseNFTMint, cfg.Domain)
+			fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+			slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "freeze", "app", fixture.metadata)
+			chain := newMockChainReader()
+			fixture.pinAccept(chain, operatorSignPub32(t, op))
+			svc := newTestService(t, cfg, chain, op)
+			publisher := newTestIdentity(t, "freeze-publisher", randPubkeyB58(t), "publisher.example.org")
+			svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+			now := time.Now().UTC().Add(time.Second)
+			svc.now = func() time.Time { return now }
+			release := mustJSON(t, fixture.rel)
+			stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, tc.name+"-stage")
+			if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+				t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+			}
+			planted := tc.plant(t, svc.cfg)
+			sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, tc.name+"-promote")
+			refused := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if refused.Code != http.StatusInternalServerError || !strings.Contains(refused.Body.String(), "catalog_pointer_plan") {
+				t.Fatalf("unfrozen rollout refusal = %d: %s", refused.Code, refused.Body.String())
+			}
+			sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !os.SameFile(sourceBefore, sourceAfter) {
+				t.Fatal("rollout-plan refusal mutated source before nonce claim")
+			}
+			if err := os.Remove(planted); err != nil {
+				t.Fatal(err)
+			}
+			if err := syncDir(rolloutStateDir(svc.cfg)); err != nil {
+				t.Fatal(err)
+			}
+			retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if retry.Code != http.StatusOK {
+				t.Fatalf("same envelope was consumed by rollout-plan refusal: %d %s", retry.Code, retry.Body.String())
+			}
+		})
+	}
+}
+
 func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()

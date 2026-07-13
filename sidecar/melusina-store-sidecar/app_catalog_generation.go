@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -74,8 +75,9 @@ func (s AppCatalogSnapshot) Open(relativePath string) (*os.File, error) {
 // AppCatalogGenerationStore owns atomic app-catalog generations. Hook is a
 // test-only fault seam; production leaves it nil.
 type AppCatalogGenerationStore struct {
-	Root string
-	Hook func(step string) error
+	Root    string
+	Hook    func(step string) error
+	Barrier *sync.RWMutex
 }
 
 // ResolveCurrent resolves and validates current exactly once. current must be
@@ -700,13 +702,17 @@ func validateCatalogTree(root string) error {
 	return nil
 }
 
-func validateSealedCatalogTree(root string) error {
+func validateSealedCatalogTree(root string, expectedUID, expectedGID uint32) error {
 	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("sealed app catalog contains symlink %s", path)
+		}
+		stat, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || stat.Uid != expectedUID || stat.Gid != expectedGID {
+			return fmt.Errorf("sealed app catalog member %s owner is not %d:%d", path, expectedUID, expectedGID)
 		}
 		if info.IsDir() {
 			if info.Mode().Perm() != 0o555 {

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -80,7 +81,7 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 			return nil
 		})
 	})
-	generations := AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot}
+	generations := AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot, Barrier: &sync.RWMutex{}}
 	if _, err := generations.BootstrapFromFlat(cfg.DistDir, nil); err != nil {
 		t.Fatalf("bootstrap app catalog generation: %v", err)
 	}
@@ -92,6 +93,8 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 		nonces:             envelope.NewMemoryNonceCache(),
 		appNonces:          appNonces,
 		catalogGenerations: generations,
+		catalogExpectedUID: uint32(os.Getuid()),
+		catalogExpectedGID: uint32(os.Getgid()),
 	}
 }
 
@@ -433,7 +436,7 @@ func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing
 				t.Fatal(err)
 			}
 			domainHash := primitives.StoreDomainHash(svc.cfg.Domain)
-			if _, err := svc.catalogGenerations.RecoverCurrent(rollouts, ed25519.PublicKey(operatorKey), hex.EncodeToString(domainHash[:]), svc.cfg.PrivateStageDir); err != nil {
+			if _, err := svc.catalogGenerations.RecoverCurrent(rollouts, ed25519.PublicKey(operatorKey), hex.EncodeToString(domainHash[:]), svc.cfg.PrivateStageDir, uint32(os.Getuid()), uint32(os.Getgid())); err != nil {
 				t.Fatalf("restart generation recovery: %v", err)
 			}
 			restarted := &publishService{
@@ -444,6 +447,8 @@ func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing
 				nonces:             envelope.NewMemoryNonceCache(),
 				appNonces:          reopened,
 				catalogGenerations: svc.catalogGenerations,
+				catalogExpectedUID: uint32(os.Getuid()),
+				catalogExpectedGID: uint32(os.Getgid()),
 				now:                func() time.Time { return now },
 			}
 			retryEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "fault-retry-"+step)
@@ -452,6 +457,34 @@ func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing
 				t.Fatalf("fresh-envelope retry = %d: %s", retry.Code, retry.Body.String())
 			}
 		})
+	}
+}
+
+func TestAppPublishRunsPostSuccessRetention(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "retention-store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "retention", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "retention-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	old := persistRetentionStage(t, svc.cfg.PrivateStageDir, "unreferenced-old", now.Add(-8*24*time.Hour))
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "retention-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "retention-promote")
+	if got := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("promote = %d: %s", got.Code, got.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(svc.cfg.PrivateStageDir, old.StageID)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("post-success retention did not delete old unreferenced stage: %v", err)
 	}
 }
 

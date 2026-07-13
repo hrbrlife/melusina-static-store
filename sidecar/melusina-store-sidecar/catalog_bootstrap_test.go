@@ -241,6 +241,7 @@ func newCatalogBootstrapFixture(t *testing.T, migrationState string) (Config, ca
 	now := time.Unix(1_800_000_000, 0).UTC()
 	opts := catalogBootstrapOptions{
 		expectedUID:       uid,
+		expectedGID:       uint32(os.Getgid()),
 		nonce:             defaultPublishNonceLedgerOptions(),
 		operatorPublicKey: make(ed25519.PublicKey, ed25519.PublicKeySize),
 	}

@@ -11,8 +11,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -56,16 +59,19 @@ type catalogNonceSentinel struct {
 type catalogRuntime struct {
 	appNonces          *publishNonceLedger
 	catalogGenerations AppCatalogGenerationStore
+	expectedUID        uint32
+	expectedGID        uint32
 }
 
 type catalogBootstrapOptions struct {
 	expectedUID       uint32
+	expectedGID       uint32
 	nonce             publishNonceLedgerOptions
 	operatorPublicKey ed25519.PublicKey
 }
 
 func productionCatalogBootstrapOptions() catalogBootstrapOptions {
-	return catalogBootstrapOptions{expectedUID: 0, nonce: defaultPublishNonceLedgerOptions()}
+	return catalogBootstrapOptions{expectedUID: 0, expectedGID: 0, nonce: defaultPublishNonceLedgerOptions()}
 }
 
 func bootstrapCatalogRuntime(cfg Config, operator *identity.Private) (catalogRuntime, error) {
@@ -81,7 +87,10 @@ func bootstrapCatalogRuntime(cfg Config, operator *identity.Private) (catalogRun
 }
 
 func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts catalogBootstrapOptions) (catalogRuntime, error) {
-	runtime := catalogRuntime{catalogGenerations: AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot}}
+	runtime := catalogRuntime{
+		catalogGenerations: AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot, Barrier: &sync.RWMutex{}},
+		expectedUID:        opts.expectedUID, expectedGID: opts.expectedGID,
+	}
 	if !writeCapable {
 		return runtime, nil
 	}
@@ -232,8 +241,18 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	}
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	servingDomainHash := hex.EncodeToString(domainHash[:])
-	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir); err != nil {
+	snapshot, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	if err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
+	}
+	appIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		appIDs = append(appIDs, appID)
+	}
+	sort.Strings(appIDs)
+	predecessorID, err := selectVerifiedRetentionPredecessor(store, snapshot.ID, appIDs, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	if err != nil {
+		return nil, fmt.Errorf("select catalog retention predecessor: %w", err)
 	}
 	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
 		return nil, err
@@ -241,6 +260,13 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	ledger, err := openPublishNonceLedger(ledgerRoot, state.LedgerID, opts.nonce)
 	if err != nil {
 		return nil, fmt.Errorf("open nonce ledger: %w", err)
+	}
+	retentionNow := time.Now().UTC()
+	if opts.nonce.Now != nil {
+		retentionNow = opts.nonce.Now().UTC()
+	}
+	if err := runAppRetentionGC(cfg, store, rollouts, snapshot.ID, predecessorID, retentionNow, opts.expectedUID, opts.expectedGID); err != nil {
+		return nil, fmt.Errorf("catalog startup retention: %w", err)
 	}
 	return ledger, nil
 }
@@ -471,6 +497,13 @@ func requireOwnedSecureDirectory(path string, mode os.FileMode, expectedUID uint
 func fileUID(info os.FileInfo) uint32 {
 	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 		return stat.Uid
+	}
+	return ^uint32(0)
+}
+
+func fileGID(info os.FileInfo) uint32 {
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		return stat.Gid
 	}
 	return ^uint32(0)
 }

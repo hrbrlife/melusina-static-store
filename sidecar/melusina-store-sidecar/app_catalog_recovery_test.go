@@ -32,7 +32,7 @@ func TestAppCatalogRecoveryInvalidCurrentSelectsNewestValidPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), "")
+	got, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testi
 	writeRecoveryGeneration(t, root, oldID, []string{"app-one"}, priv)
 	writeRecoveryGeneration(t, root, preparedID, []string{"app-one"}, priv)
 	prepared := recoveryRollouts("app-one")["app-one"]
-	prepared.CurrentStageID = strings.Repeat("e", 64)
+	prepared.CurrentStageID = recoveryManifest("app-one", "2.0.0").StageID
 	prepared.CurrentVersion = "2.0.0"
 	rewriteRecoveryPointerSelection(t, filepath.Join(root, preparedID), prepared, priv)
 	setGenerationTime(t, filepath.Join(root, oldID), time.Unix(10, 0))
@@ -60,8 +60,7 @@ func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testi
 	if err := os.Symlink(oldID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
 		t.Fatal(err)
 	}
-	got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(
-		map[string]appRolloutState{"app-one": prepared}, pub, recoveryDomainHash(), "")
+	got, err := recoverTestCurrent(root, map[string]appRolloutState{"app-one": prepared}, pub)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +82,7 @@ func TestAppCatalogRecoveryNoValidGenerationFailsWithoutCleanup(t *testing.T) {
 	if err := os.Mkdir(orphan, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil {
+	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err == nil {
 		t.Fatal("recovery accepted a catalog with no valid generation")
 	}
 	if _, err := os.Lstat(orphan); err != nil {
@@ -115,7 +114,7 @@ func TestAppCatalogRecoveryRejectsInvalidPointerAndPartialCurrent(t *testing.T) 
 			if err := os.Symlink(currentID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
 				t.Fatal(err)
 			}
-			got, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one", "app-two"), pub, recoveryDomainHash(), "")
+			got, err := recoverTestCurrent(root, recoveryRollouts("app-one", "app-two"), pub)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,7 +140,7 @@ func TestAppCatalogRecoveryCleansOnlySafeOrphansAfterVerification(t *testing.T) 
 	if err := os.Symlink(appCatalogGenerationPrefix+strings.Repeat("9", 32), currentTmp); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err != nil {
+	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{tmp, currentTmp} {
@@ -157,7 +156,7 @@ func TestAppCatalogRecoveryCleansOnlySafeOrphansAfterVerification(t *testing.T) 
 	if err := os.Symlink("/etc/passwd", filepath.Join(unsafe, "escape")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), "symlink") {
+	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err == nil || !strings.Contains(err.Error(), "symlink") {
 		t.Fatalf("unsafe orphan accepted: %v", err)
 	}
 }
@@ -174,7 +173,7 @@ func TestAppCatalogRecoveryRejectsSignedGenerationThatContradictsDurableRollout(
 	state := rollouts["app-one"]
 	state.CurrentStageID = strings.Repeat("e", 64)
 	rollouts["app-one"] = state
-	if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(rollouts, pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), "durable rollout selection") {
+	if _, err := recoverTestCurrent(root, rollouts, pub); err == nil || !strings.Contains(err.Error(), "durable rollout selection") {
 		t.Fatalf("accepted signed stale generation after rollout commit: %v", err)
 	}
 }
@@ -211,6 +210,23 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 			},
 			want: "appHash mismatch",
 		},
+		{
+			name: "release-byte-drift-with-same-fields",
+			mutate: func(t *testing.T, generation string) {
+				path := filepath.Join(generation, "attest", "app-one", "RELEASE.json")
+				body := []byte(readFile(t, path))
+				if err := os.Chmod(path, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, append(body, '\n'), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0o444); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "bytes differ from exact staged candidate",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -221,10 +237,33 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 				t.Fatal(err)
 			}
 			tc.mutate(t, filepath.Join(root, id))
-			if _, err := (AppCatalogGenerationStore{Root: root}).RecoverCurrent(recoveryRollouts("app-one"), pub, recoveryDomainHash(), ""); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("unsafe generation accepted: %v", err)
 			}
 		})
+	}
+}
+
+func TestAppCatalogRecoveryRequiresStageAndExactOwner(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	id := appCatalogGenerationPrefix + strings.Repeat("e", 32)
+	writeRecoveryGeneration(t, root, id, []string{"app-one"}, priv)
+	if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	rollouts := recoveryRollouts("app-one")
+	uid, gid := uint32(os.Getuid()), uint32(os.Getgid())
+	store := AppCatalogGenerationStore{Root: root}
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), "", uid, gid); err == nil || !strings.Contains(err.Error(), "private-stage root") {
+		t.Fatalf("missing private-stage root accepted: %v", err)
+	}
+	stageRoot := filepath.Join(root, "stages")
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, uid+1, gid); err == nil || !strings.Contains(err.Error(), "owner") {
+		t.Fatalf("wrong generation uid accepted: %v", err)
+	}
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, uid, gid+1); err == nil || !strings.Contains(err.Error(), "owner") {
+		t.Fatalf("wrong generation gid accepted: %v", err)
 	}
 }
 
@@ -239,7 +278,7 @@ func recoveryRollouts(appIDs ...string) map[string]appRolloutState {
 		rollouts[appID] = appRolloutState{
 			Schema:         appRolloutSchema,
 			AppID:          appID,
-			CurrentStageID: strings.Repeat("c", 64),
+			CurrentStageID: recoveryManifest(appID, "1.0.0").StageID,
 			CurrentAppHash: appHash,
 			CurrentVersion: "1.0.0",
 		}
@@ -272,6 +311,7 @@ func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, pri
 	appHashes := make(map[string]string, len(appIDs))
 	for _, appID := range appIDs {
 		spk, metadata, release, appHash := recoveryReleaseBytes(appID, "1.0.0")
+		persistRecoveryStage(t, root, appID, "1.0.0")
 		spkHash := sha256.Sum256(spk)
 		packageID := hex.EncodeToString(spkHash[:])[:32]
 		packageIDs[appID] = packageID
@@ -292,7 +332,7 @@ func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, pri
 			Schema: appCatalogPointerSchema, AppID: appID,
 			PackageID: packageIDs[appID], Version: "1.0.0",
 			AppHash: appHashes[appID], ReleaseHash: strings.Repeat("b", 64),
-			StageID: strings.Repeat("c", 64), CatalogSHA256: hex.EncodeToString(digest[:]),
+			StageID: recoveryManifest(appID, "1.0.0").StageID, CatalogSHA256: hex.EncodeToString(digest[:]),
 			ServingDomainHash: strings.Repeat("d", 64), PublishedAt: 1,
 		}
 		message, err := appCatalogPointerMessage(pointer)
@@ -319,6 +359,35 @@ func recoveryReleaseBytes(appID, version string) ([]byte, []byte, []byte, string
 	}
 	release := []byte(fmt.Sprintf(`{"appHash":%q,"releaseHash":%q,"version":%q}`, appHash, strings.Repeat("b", 64), version))
 	return spk, metadata, release, appHash
+}
+
+func recoveryManifest(appID, version string) stagedAppManifest {
+	spk, metadata, release, _ := recoveryReleaseBytes(appID, version)
+	manifest, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), slotHint{}, time.Unix(1, 0))
+	if err != nil {
+		panic(err)
+	}
+	return manifest
+}
+
+func persistRecoveryStage(t *testing.T, root, appID, version string) {
+	t.Helper()
+	stageRoot := filepath.Join(root, "stages")
+	if err := os.MkdirAll(stageRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(stageRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	spk, metadata, release, _ := recoveryReleaseBytes(appID, version)
+	if err := persistStagedApp(stageRoot, recoveryManifest(appID, version), spk, metadata, release); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func recoverTestCurrent(root string, rollouts map[string]appRolloutState, pub ed25519.PublicKey) (AppCatalogSnapshot, error) {
+	return (AppCatalogGenerationStore{Root: root}).RecoverCurrent(
+		rollouts, pub, recoveryDomainHash(), filepath.Join(root, "stages"), uint32(os.Getuid()), uint32(os.Getgid()))
 }
 
 func recoveryPackageID(appID string) string {
@@ -358,6 +427,7 @@ func rewriteRecoveryPointerSelection(t *testing.T, generation string, rollout ap
 	pointer.Version = rollout.CurrentVersion
 	releasePath := filepath.Join(generation, "attest", rollout.AppID, "RELEASE.json")
 	_, _, release, _ := recoveryReleaseBytes(rollout.AppID, rollout.CurrentVersion)
+	persistRecoveryStage(t, filepath.Dir(generation), rollout.AppID, rollout.CurrentVersion)
 	if err := os.Chmod(releasePath, 0o644); err != nil {
 		t.Fatal(err)
 	}

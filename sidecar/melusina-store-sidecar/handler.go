@@ -45,6 +45,8 @@ type publishService struct {
 	nonces             envelope.NonceCache // installer route only; app routes use appNonces
 	appNonces          *publishNonceLedger
 	catalogGenerations AppCatalogGenerationStore
+	catalogExpectedUID uint32
+	catalogExpectedGID uint32
 	now                func() time.Time
 	afterAppMutation   func(string) error // test-only crash seam; production nil
 
@@ -221,6 +223,8 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		nonces:             envelope.NewMemoryNonceCache(),
 		appNonces:          runtime.appNonces,
 		catalogGenerations: runtime.catalogGenerations,
+		catalogExpectedUID: runtime.expectedUID,
+		catalogExpectedGID: runtime.expectedGID,
 	}
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -581,6 +585,17 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
+	// The promotion, nonce consumption and success receipt are already committed.
+	// Retention runs under the same app writer mutex and the cross-request storage
+	// barrier, but a refusal is logged for fail-closed startup repair rather than
+	// being misreported to the caller as a failed promotion.
+	retainedRollouts, retentionErr := exactRolloutStatesAt(s.cfg, promotedAt)
+	if retentionErr == nil {
+		retentionErr = runAppRetentionGC(s.cfg, s.catalogGenerations, retainedRollouts, committedGeneration.ID, activeGeneration.ID, promotedAt, s.catalogExpectedUID, s.catalogExpectedGID)
+	}
+	if retentionErr != nil {
+		log.Printf("publish: post-success app retention refused: %v", retentionErr)
+	}
 }
 
 // handlePublishInstaller is the whole-file artifact publish path for

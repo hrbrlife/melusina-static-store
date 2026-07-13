@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 type appCatalogRecoveryCandidate struct {
@@ -24,7 +25,7 @@ type appCatalogRecoveryCandidate struct {
 // ties), switches to the first fully verified generation using the normal
 // relative-current protocol, and only then removes safe interrupted-write
 // artifacts. No valid generation means startup fails without cleanup.
-func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
 	if len(operatorKey) != ed25519.PublicKeySize {
 		return AppCatalogSnapshot{}, errors.New("app catalog recovery requires an ed25519 operator public key")
 	}
@@ -37,7 +38,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 	}
 	sort.Strings(rolloutAppIDs)
 	validate := func(snapshot AppCatalogSnapshot) error {
-		if err := validateSealedCatalogTree(snapshot.Root); err != nil {
+		if err := validateSealedCatalogTree(snapshot.Root, expectedUID, expectedGID); err != nil {
 			return err
 		}
 		if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
@@ -58,10 +59,10 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		}); err != nil {
 			return err
 		}
-		if stagedRoot != "" {
-			return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
+		if strings.TrimSpace(stagedRoot) == "" {
+			return errors.New("app catalog recovery requires the durable private-stage root")
 		}
-		return nil
+		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
 	}
 
 	current, currentErr := s.ResolveCurrent()
@@ -266,6 +267,10 @@ func validateRemovableCatalogTree(root string) error {
 // durable rollout directory. Unexpected members fail closed rather than being
 // silently omitted from cold-start generation verification.
 func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
+	return exactRolloutStatesAt(cfg, time.Now().UTC())
+}
+
+func exactRolloutStatesAt(cfg Config, now time.Time) (map[string]appRolloutState, error) {
 	root := rolloutStateDir(cfg)
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -290,7 +295,7 @@ func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 		if err != nil {
 			return nil, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
-		if err := validateRolloutStagedSelections(cfg, rollout); err != nil {
+		if err := validateRolloutStagedSelectionsAt(cfg, rollout, now); err != nil {
 			return nil, fmt.Errorf("validate rollout %s staged selection: %w", appID, err)
 		}
 		rollouts[appID] = rollout
@@ -299,6 +304,10 @@ func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 }
 
 func validateRolloutStagedSelections(cfg Config, rollout appRolloutState) error {
+	return validateRolloutStagedSelectionsAt(cfg, rollout, time.Now().UTC())
+}
+
+func validateRolloutStagedSelectionsAt(cfg Config, rollout appRolloutState, now time.Time) error {
 	current, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, rollout.CurrentStageID)
 	if err != nil {
 		return fmt.Errorf("load current stage: %w", err)
@@ -311,6 +320,9 @@ func validateRolloutStagedSelections(cfg Config, rollout appRolloutState) error 
 		if rollout.PreviousAppHash != "" || rollout.PreviousVersion != "" || rollout.PreviousValidUntil != 0 {
 			return errors.New("empty previous stage has non-empty previous selection")
 		}
+		return nil
+	}
+	if rollout.PreviousValidUntil < now.UTC().Unix() {
 		return nil
 	}
 	previous, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, rollout.PreviousStageID)

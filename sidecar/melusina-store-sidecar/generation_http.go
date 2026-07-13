@@ -27,6 +27,10 @@ func (h *generationHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.next.ServeHTTP(w, r)
 		return
 	}
+	if h.store.Barrier != nil {
+		h.store.Barrier.RLock()
+		defer h.store.Barrier.RUnlock()
+	}
 	snapshot, err := h.store.ResolveCurrent()
 	if err != nil {
 		http.Error(w, "app catalog unavailable", http.StatusServiceUnavailable)

@@ -25,6 +25,7 @@ import (
 const (
 	appCatalogCurrentLink      = "current"
 	appCatalogGenerationPrefix = "generation-"
+	maxAppCatalogJSONBytes     = 1 << 20
 )
 
 var appCatalogNamespaces = [...]string{"apps", "packages", "signatures", "attest"}
@@ -70,6 +71,72 @@ func (s AppCatalogSnapshot) Open(relativePath string) (*os.File, error) {
 		return nil, fmt.Errorf("app catalog target is not a regular file: %s", relativePath)
 	}
 	return os.NewFile(uintptr(fd), filepath.Join(s.Root, relativePath)), nil
+}
+
+// ReadDir enumerates one directory inside a snapshot through descriptor-relative,
+// no-follow opens and refuses to allocate beyond max entries.
+func (s AppCatalogSnapshot) ReadDir(relativePath string, max int) ([]os.DirEntry, error) {
+	parts, err := appCatalogPathParts(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	fd, err := syscall.Open(s.Root, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open app catalog snapshot root: %w", err)
+	}
+	for _, part := range parts {
+		next, openErr := syscall.Openat(fd, part, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+		_ = syscall.Close(fd)
+		if openErr != nil {
+			return nil, fmt.Errorf("open app catalog directory without following links: %w", openErr)
+		}
+		fd = next
+	}
+	dir := os.NewFile(uintptr(fd), filepath.Join(s.Root, relativePath))
+	defer dir.Close()
+	entries, err := dir.ReadDir(max + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	if len(entries) > max {
+		return nil, fmt.Errorf("app catalog directory %s exceeds %d entries", relativePath, max)
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	return entries, nil
+}
+
+func readSnapshotFileBounded(snapshot AppCatalogSnapshot, relativePath string, limit int64) ([]byte, error) {
+	return readSnapshotFileSized(snapshot, relativePath, limit, -1)
+}
+
+func readSnapshotFileExact(snapshot AppCatalogSnapshot, relativePath string, size int64) ([]byte, error) {
+	return readSnapshotFileSized(snapshot, relativePath, size, size)
+}
+
+func readSnapshotFileSized(snapshot AppCatalogSnapshot, relativePath string, limit, exact int64) ([]byte, error) {
+	if limit < 0 || limit > maxAppPublishBody || exact > limit {
+		return nil, errors.New("invalid app catalog file size bound")
+	}
+	f, err := snapshot.Open(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() < 0 || info.Size() > limit || (exact >= 0 && info.Size() != exact) {
+		return nil, fmt.Errorf("app catalog file %s size %d exceeds/mismatches bound %d", relativePath, info.Size(), limit)
+	}
+	body, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) != info.Size() || int64(len(body)) > limit || (exact >= 0 && int64(len(body)) != exact) {
+		return nil, fmt.Errorf("app catalog file %s changed during bounded read", relativePath)
+	}
+	return body, nil
 }
 
 // AppCatalogGenerationStore owns atomic app-catalog generations. Hook is a
@@ -156,7 +223,13 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 	if err := requireSameFilesystem(source, s.Root); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
-	if err := ensureDirectoryEntryCapacity(s.Root, 1); err != nil {
+	reserve := 1
+	if selectCurrent {
+		// The committed generation and the temporary .current-* selector coexist
+		// until the final atomic rename.
+		reserve = 2
+	}
+	if err := ensureDirectoryEntryCapacity(s.Root, reserve); err != nil {
 		return AppCatalogSnapshot{}, fmt.Errorf("app catalog generation capacity: %w", err)
 	}
 	id, err := newAppCatalogGenerationID()
@@ -175,11 +248,12 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 		}
 	}()
 
+	copiedMembers := 0
 	for _, namespace := range appCatalogNamespaces {
 		if err := s.fail("before-copy-" + namespace); err != nil {
 			return AppCatalogSnapshot{}, err
 		}
-		if err := copyCatalogTree(filepath.Join(source, namespace), filepath.Join(tmpRoot, namespace)); err != nil {
+		if err := copyCatalogTreeBounded(filepath.Join(source, namespace), filepath.Join(tmpRoot, namespace), &copiedMembers, 0); err != nil {
 			return AppCatalogSnapshot{}, fmt.Errorf("copy app catalog %s: %w", namespace, err)
 		}
 	}
@@ -244,7 +318,12 @@ func (s AppCatalogGenerationStore) SwitchCurrent(snapshot AppCatalogSnapshot) er
 func (s AppCatalogGenerationStore) switchCurrent(snapshot AppCatalogSnapshot) error {
 	tmpName := ".current-" + strings.TrimPrefix(snapshot.ID, appCatalogGenerationPrefix)
 	tmpPath := filepath.Join(s.Root, tmpName)
-	_ = os.Remove(tmpPath)
+	if err := os.Remove(tmpPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove stale app catalog current candidate: %w", err)
+	}
+	if err := ensureDirectoryEntryCapacity(s.Root, 1); err != nil {
+		return fmt.Errorf("app catalog selector capacity: %w", err)
+	}
 	if err := s.fail("before-current-symlink"); err != nil {
 		return err
 	}
@@ -294,7 +373,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 	if err := validateCatalogTree(snapshot.Root); err != nil {
 		return err
 	}
-	indexBytes, err := os.ReadFile(filepath.Join(snapshot.Root, "apps", "index.json"))
+	indexBytes, err := readSnapshotFileBounded(snapshot, "apps/index.json", maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("read app catalog index: %w", err)
 	}
@@ -324,7 +403,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 		}
 		want[appID] = struct{}{}
 	}
-	entries, err := os.ReadDir(filepath.Join(snapshot.Root, "apps", "pointers"))
+	entries, err := snapshot.ReadDir("apps/pointers", maxRetentionRootEntries)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) && len(want) == 0 {
 			entries = nil
@@ -343,7 +422,7 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 		if _, required := want[appID]; !required {
 			return fmt.Errorf("pointer has no rollout state: %s", appID)
 		}
-		body, err := os.ReadFile(filepath.Join(snapshot.Root, "apps", "pointers", entry.Name()))
+		body, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("apps", "pointers", entry.Name())), maxAppCatalogJSONBytes)
 		if err != nil {
 			return err
 		}
@@ -358,15 +437,15 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 			return fmt.Errorf("app catalog pointer %s does not select indexed package", appID)
 		}
 		if verifyPointer != nil {
-			spk, err := os.ReadFile(filepath.Join(snapshot.Root, "packages", pointer.PackageID))
+			spk, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("packages", pointer.PackageID)), maxAppPublishBody)
 			if err != nil {
 				return fmt.Errorf("read selected package for %s: %w", appID, err)
 			}
-			metadata, err := os.ReadFile(filepath.Join(snapshot.Root, "signatures", appID, "metadata.json"))
+			metadata, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), maxAppPublishBody)
 			if err != nil {
 				return fmt.Errorf("read selected metadata for %s: %w", appID, err)
 			}
-			releaseBytes, err := os.ReadFile(filepath.Join(snapshot.Root, "attest", appID, "RELEASE.json"))
+			releaseBytes, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppPublishBody)
 			if err != nil {
 				return fmt.Errorf("read selected release for %s: %w", appID, err)
 			}
@@ -405,7 +484,8 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 // DistDir writer, every rollout member is mandatory and invalid state aborts
 // the whole candidate; no rollout is silently skipped.
 func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot string, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (map[string]AppCatalogPointer, []string, error) {
-	indexBytes, err := os.ReadFile(filepath.Join(generationRoot, "apps", "index.json"))
+	candidate := AppCatalogSnapshot{Root: generationRoot}
+	indexBytes, err := readSnapshotFileBounded(candidate, "apps/index.json", maxAppCatalogJSONBytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read candidate app catalog: %w", err)
 	}
@@ -426,7 +506,7 @@ func WriteSignedAppCatalogPointersForGeneration(cfg Config, generationRoot strin
 		packageByApp[appID] = packageID
 	}
 
-	rolloutEntries, err := os.ReadDir(rolloutStateDir(cfg))
+	rolloutEntries, err := readDirBounded(rolloutStateDir(cfg), maxRetentionRootEntries)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read rollout state: %w", err)
 	}
@@ -615,7 +695,10 @@ func appCatalogPathParts(relativePath string) ([]string, error) {
 	return parts, nil
 }
 
-func copyCatalogTree(source, destination string) error {
+func copyCatalogTreeBounded(source, destination string, count *int, depth int) error {
+	if depth > maxRetentionTreeDepth {
+		return fmt.Errorf("catalog source exceeds depth %d", maxRetentionTreeDepth)
+	}
 	info, err := os.Lstat(source)
 	if err != nil {
 		return err
@@ -626,11 +709,15 @@ func copyCatalogTree(source, destination string) error {
 	if err := os.Mkdir(destination, 0o755); err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(source)
+	entries, err := readDirBounded(source, maxCatalogGenerationMembers)
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
+		*count = *count + 1
+		if *count > maxCatalogGenerationMembers {
+			return fmt.Errorf("catalog source exceeds %d members", maxCatalogGenerationMembers)
+		}
 		sourcePath := filepath.Join(source, entry.Name())
 		destinationPath := filepath.Join(destination, entry.Name())
 		entryInfo, err := os.Lstat(sourcePath)
@@ -641,7 +728,7 @@ func copyCatalogTree(source, destination string) error {
 		case entryInfo.Mode()&os.ModeSymlink != 0:
 			return fmt.Errorf("catalog source contains symlink %s", sourcePath)
 		case entryInfo.IsDir():
-			if err := copyCatalogTree(sourcePath, destinationPath); err != nil {
+			if err := copyCatalogTreeBounded(sourcePath, destinationPath, count, depth+1); err != nil {
 				return err
 			}
 		case entryInfo.Mode().IsRegular():
@@ -656,11 +743,16 @@ func copyCatalogTree(source, destination string) error {
 }
 
 func copyCatalogFile(source, destination string) error {
-	in, err := os.Open(source)
+	fd, err := syscall.Open(source, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return err
 	}
+	in := os.NewFile(uintptr(fd), source)
 	defer in.Close()
+	info, err := in.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > maxAppPublishBody {
+		return fmt.Errorf("catalog source file type/size is invalid: %s", source)
+	}
 	out, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
@@ -672,8 +764,16 @@ func copyCatalogFile(source, destination string) error {
 			_ = os.Remove(destination)
 		}
 	}()
-	if _, err := io.Copy(out, in); err != nil {
+	written, err := io.CopyN(out, in, info.Size())
+	if err != nil {
 		return err
+	}
+	if written != info.Size() {
+		return errors.New("catalog source file short bounded copy")
+	}
+	var extra [1]byte
+	if n, readErr := in.Read(extra[:]); n != 0 || !errors.Is(readErr, io.EOF) {
+		return errors.New("catalog source file changed during bounded copy")
 	}
 	if err := out.Sync(); err != nil {
 		return err

@@ -532,6 +532,84 @@ func TestAppStageCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
 	}
 }
 
+func TestAppPromotionCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		fill      func(t *testing.T, svc *publishService) []string
+		wantCheck string
+	}{
+		{
+			name: "generation-reserves-commit-and-selector",
+			fill: func(t *testing.T, svc *publishService) []string {
+				entries, err := readDirBounded(svc.catalogGenerations.Root, maxRetentionRootEntries)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var paths []string
+				for i := len(entries); i < maxRetentionRootEntries-1; i++ {
+					path := filepath.Join(svc.catalogGenerations.Root, fmt.Sprintf("capacity-fill-%03d", i))
+					if err := os.Mkdir(path, 0o755); err != nil {
+						t.Fatal(err)
+					}
+					paths = append(paths, path)
+				}
+				return paths
+			},
+			wantCheck: "generation_capacity",
+		},
+		{
+			name: "rollout-reserves-transaction-temp",
+			fill: func(t *testing.T, svc *publishService) []string {
+				var paths []string
+				for i := 0; i < maxRetentionRootEntries; i++ {
+					path := filepath.Join(rolloutStateDir(svc.cfg), fmt.Sprintf("capacity-fill-%03d", i))
+					if err := os.Mkdir(path, 0o700); err != nil {
+						t.Fatal(err)
+					}
+					paths = append(paths, path)
+				}
+				return paths
+			},
+			wantCheck: "rollout_capacity",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.CatalogRepoRoot = t.TempDir()
+			op := newTestIdentity(t, "promotion-capacity-operator", cfg.LicenseNFTMint, cfg.Domain)
+			fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+			seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "capacity", "app", fixture.metadata)
+			chain := newMockChainReader()
+			fixture.pinAccept(chain, operatorSignPub32(t, op))
+			svc := newTestService(t, cfg, chain, op)
+			publisher := newTestIdentity(t, "promotion-capacity-publisher", randPubkeyB58(t), "publisher.example.org")
+			svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+			now := time.Now().UTC().Add(time.Second)
+			svc.now = func() time.Time { return now }
+			release := mustJSON(t, fixture.rel)
+			stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, tc.name+"-stage")
+			if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+				t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+			}
+			fillers := tc.fill(t, svc)
+			promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, tc.name+"-promote")
+			full := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if full.Code != http.StatusInsufficientStorage || !strings.Contains(full.Body.String(), tc.wantCheck) {
+				t.Fatalf("capacity refusal = %d: %s", full.Code, full.Body.String())
+			}
+			for _, path := range fillers {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if retry.Code != http.StatusOK {
+				t.Fatalf("same envelope was consumed by capacity refusal: %d %s", retry.Code, retry.Body.String())
+			}
+		})
+	}
+}
+
 func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()

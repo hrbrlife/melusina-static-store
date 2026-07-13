@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -110,7 +109,7 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 		if err != nil {
 			return fmt.Errorf("load exact staged bytes for %s: %w", appID, err)
 		}
-		pointerBytes, err := readSnapshotFile(snapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")))
+		pointerBytes, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")), maxAppCatalogJSONBytes)
 		if err != nil {
 			return err
 		}
@@ -126,9 +125,9 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 			"metadata": {path: filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), want: stagedMetadata},
 			"release":  {path: filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), want: stagedRelease},
 		} {
-			got, err := readSnapshotFile(snapshot, check.path)
+			got, err := readSnapshotFileExact(snapshot, check.path, int64(len(check.want)))
 			if err != nil {
-				return err
+				return fmt.Errorf("generation %s bytes differ from exact staged candidate for %s: %w", name, appID, err)
 			}
 			if !bytes.Equal(got, check.want) {
 				return fmt.Errorf("generation %s bytes differ from exact staged candidate for %s", name, appID)
@@ -136,15 +135,6 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 		}
 	}
 	return nil
-}
-
-func readSnapshotFile(snapshot AppCatalogSnapshot, relativePath string) ([]byte, error) {
-	f, err := snapshot.Open(relativePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return io.ReadAll(f)
 }
 
 func (s AppCatalogGenerationStore) recoveryCandidates() ([]appCatalogRecoveryCandidate, error) {

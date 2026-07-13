@@ -52,6 +52,29 @@ func TestAppCatalogGenerationBootstrapCopiesAndSwitchesLast(t *testing.T) {
 	}
 }
 
+func TestSnapshotBoundedReadsRejectOversizeAndSymlink(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "packages"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "packages", "oversize"), []byte("12345"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := AppCatalogSnapshot{Root: root}
+	if _, err := readSnapshotFileBounded(snapshot, "packages/oversize", 4); err == nil {
+		t.Fatal("bounded snapshot read accepted an oversized file")
+	}
+	if _, err := readSnapshotFileExact(snapshot, "packages/oversize", 4); err == nil {
+		t.Fatal("exact snapshot read accepted a size mismatch")
+	}
+	if err := os.Symlink("oversize", filepath.Join(root, "packages", "linked")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readSnapshotFileBounded(snapshot, "packages/linked", 5); err == nil {
+		t.Fatal("bounded snapshot read followed a symlink")
+	}
+}
+
 func TestAppCatalogGenerationBuildValidatesPointersBeforeAtomicSwitch(t *testing.T) {
 	root := t.TempDir()
 	flat := filepath.Join(root, "dist")
@@ -234,6 +257,46 @@ func TestAppCatalogGenerationFaultAfterCurrentRenameLeavesNewCurrentRecoverable(
 	}
 	if selected.ID != prepared.ID {
 		t.Fatalf("post-rename uncertainty lost selected generation: got %s want %s", selected.ID, prepared.ID)
+	}
+}
+
+func TestSwitchCurrentRecoversStaleSelectorAtRootCapacity(t *testing.T) {
+	root := t.TempDir()
+	flat := filepath.Join(root, "dist")
+	generations := filepath.Join(root, "app-generations")
+	cleanupImmutableCatalog(t, generations)
+	writeGenerationFixture(t, flat, "app-one", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "old")
+	store := AppCatalogGenerationStore{Root: generations}
+	old, err := store.BootstrapFromFlat(flat, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := store.BuildCommittedFrom(old.Root, nil, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staleName := ".current-" + strings.TrimPrefix(prepared.ID, appCatalogGenerationPrefix)
+	if err := os.Symlink(prepared.ID, filepath.Join(generations, staleName)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := readDirBounded(generations, maxRetentionRootEntries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := len(entries); i < maxRetentionRootEntries; i++ {
+		if err := os.Mkdir(filepath.Join(generations, fmt.Sprintf("restart-fill-%03d", i)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.SwitchCurrent(prepared); err != nil {
+		t.Fatalf("restart could not replace its bounded stale selector: %v", err)
+	}
+	selected, err := store.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.ID != prepared.ID {
+		t.Fatalf("selected generation = %s, want %s", selected.ID, prepared.ID)
 	}
 }
 

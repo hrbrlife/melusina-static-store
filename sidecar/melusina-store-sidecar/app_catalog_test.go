@@ -5,11 +5,43 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestWriteSignedAppCatalogPointersRejectsOverCapRolloutEnumeration(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rollouts := filepath.Join(cfg.PrivateStageDir, "rollouts")
+	if err := os.Mkdir(rollouts, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(cfg.DistDir, "apps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), []byte("{\"apps\":[]}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i <= maxRetentionRootEntries; i++ {
+		name := filepath.Join(rollouts, fmt.Sprintf("app-%03d.json", i))
+		if err := os.WriteFile(name, []byte("{}\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	op := newTestIdentity(t, "catalog-overcap-operator", randPubkeyB58(t), cfg.Domain)
+	_, _, err := WriteSignedAppCatalogPointersForGeneration(cfg, cfg.DistDir, op, nil, "required-app", time.Now().UTC())
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("over-cap rollout enumeration was accepted: %v", err)
+	}
+}
 
 func TestWriteSignedAppCatalogPointersForGeneration_BindsExactIndexAndCurrentRelease(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()

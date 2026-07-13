@@ -496,8 +496,14 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := ensureDirectoryEntryCapacity(s.catalogGenerations.Root, 1); err != nil {
+	// Promotion needs one committed generation plus one transient .current-*
+	// selector, and rollout commit needs one temporary state member.
+	if err := ensureDirectoryEntryCapacity(s.catalogGenerations.Root, 2); err != nil {
 		http.Error(w, "check=generation_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	if err := ensureDirectoryEntryCapacity(rolloutStateDir(s.cfg), 1); err != nil {
+		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
 

@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
@@ -97,9 +99,27 @@ func loadAppRollout(cfg Config, appID string) (appRolloutState, error) {
 	if err != nil {
 		return state, err
 	}
-	b, err := os.ReadFile(path)
+	dirFD, err := syscall.Open(filepath.Dir(path), syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return state, err
+	}
+	defer syscall.Close(dirFD)
+	fd, err := syscall.Openat(dirFD, filepath.Base(path), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return state, err
+	}
+	f := os.NewFile(uintptr(fd), path)
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() < 0 || info.Size() > maxCatalogBootstrapJSON {
+		return state, errors.New("rollout state type, mode, or size is invalid")
+	}
+	b, err := io.ReadAll(io.LimitReader(f, maxCatalogBootstrapJSON+1))
+	if err != nil {
+		return state, err
+	}
+	if int64(len(b)) != info.Size() || len(b) > maxCatalogBootstrapJSON {
+		return state, errors.New("rollout state changed during bounded read")
 	}
 	if err := json.Unmarshal(b, &state); err != nil {
 		return appRolloutState{}, fmt.Errorf("decode rollout state: %w", err)
@@ -118,6 +138,9 @@ func writeAppRollout(cfg Config, state appRolloutState) error {
 	dir := filepath.Dir(path)
 	if err := requireSecureDirectory(dir, 0o700); err != nil {
 		return fmt.Errorf("rollout state is not initialized: %w", err)
+	}
+	if err := ensureDirectoryEntryCapacity(dir, 1); err != nil {
+		return fmt.Errorf("rollout state capacity: %w", err)
 	}
 	b, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {

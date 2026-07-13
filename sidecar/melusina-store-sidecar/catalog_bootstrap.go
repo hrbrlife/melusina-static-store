@@ -225,11 +225,11 @@ func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID u
 }
 
 func validateCommittedCatalogBootstrap(store AppCatalogGenerationStore, ledgerRoot string, state catalogMigrationState, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
-	rolloutAppIDs, err := exactRolloutAppIDs(Config{PrivateStageDir: filepath.Dir(ledgerRoot)})
+	rollouts, err := exactRolloutStates(Config{PrivateStageDir: filepath.Dir(ledgerRoot)})
 	if err != nil {
 		return nil, err
 	}
-	if _, err := store.RecoverCurrent(rolloutAppIDs, opts.operatorPublicKey); err != nil {
+	if _, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey); err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
 	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {

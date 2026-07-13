@@ -21,16 +21,33 @@ type appCatalogRecoveryCandidate struct {
 // ties), switches to the first fully verified generation using the normal
 // relative-current protocol, and only then removes safe interrupted-write
 // artifacts. No valid generation means startup fails without cleanup.
-func (s AppCatalogGenerationStore) RecoverCurrent(rolloutAppIDs []string, operatorKey ed25519.PublicKey) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey) (AppCatalogSnapshot, error) {
 	if len(operatorKey) != ed25519.PublicKeySize {
 		return AppCatalogSnapshot{}, errors.New("app catalog recovery requires an ed25519 operator public key")
 	}
 	if err := s.validateRoot(); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
+	rolloutAppIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		rolloutAppIDs = append(rolloutAppIDs, appID)
+	}
+	sort.Strings(rolloutAppIDs)
 	validate := func(snapshot AppCatalogSnapshot) error {
 		return ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
-			return verifyAppCatalogPointer(operatorKey, pointer)
+			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
+				return err
+			}
+			rollout, ok := rollouts[pointer.AppID]
+			if !ok {
+				return errors.New("catalog pointer has no durable rollout")
+			}
+			if pointer.StageID != rollout.CurrentStageID ||
+				pointer.AppHash != rollout.CurrentAppHash ||
+				pointer.Version != rollout.CurrentVersion {
+				return errors.New("catalog pointer does not match durable rollout selection")
+			}
+			return nil
 		})
 	}
 
@@ -189,16 +206,16 @@ func validateRemovableCatalogTree(root string) error {
 	})
 }
 
-// exactRolloutAppIDs derives the mandatory pointer set from the complete,
+// exactRolloutStates derives the mandatory pointer selections from the complete,
 // durable rollout directory. Unexpected members fail closed rather than being
 // silently omitted from cold-start generation verification.
-func exactRolloutAppIDs(cfg Config) ([]string, error) {
+func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 	root := rolloutStateDir(cfg)
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, fmt.Errorf("read exact rollout set: %w", err)
 	}
-	appIDs := make([]string, 0, len(entries))
+	rollouts := make(map[string]appRolloutState, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		path := filepath.Join(root, name)
@@ -213,11 +230,11 @@ func exactRolloutAppIDs(cfg Config) ([]string, error) {
 		if !isSafePathSegment(appID) {
 			return nil, fmt.Errorf("invalid rollout appId %q", appID)
 		}
-		if _, err := loadAppRollout(cfg, appID); err != nil {
+		rollout, err := loadAppRollout(cfg, appID)
+		if err != nil {
 			return nil, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
-		appIDs = append(appIDs, appID)
+		rollouts[appID] = rollout
 	}
-	sort.Strings(appIDs)
-	return appIDs, nil
+	return rollouts, nil
 }

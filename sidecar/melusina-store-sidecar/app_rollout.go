@@ -262,8 +262,9 @@ func commitAppRollout(cfg Config, state appRolloutState) error {
 // release. A failed assembly/pointer write leaves a retryable pending record;
 // it must never displace the last version users could actually install.
 func rolloutStateIsCatalogCurrent(cfg Config, state appRolloutState) (bool, error) {
-	pointerPath := filepath.Join(cfg.DistDir, "apps", "pointers", state.AppID+".json")
-	pointerBytes, err := os.ReadFile(pointerPath)
+	snapshot := AppCatalogSnapshot{Root: cfg.DistDir}
+	pointerPath := filepath.ToSlash(filepath.Join("apps", "pointers", state.AppID+".json"))
+	pointerBytes, err := readSnapshotFileBounded(snapshot, pointerPath, maxAppCatalogJSONBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
@@ -278,7 +279,7 @@ func rolloutStateIsCatalogCurrent(cfg Config, state appRolloutState) (bool, erro
 		pointer.AppHash != state.CurrentAppHash || pointer.Version != state.CurrentVersion {
 		return false, nil
 	}
-	indexBytes, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
+	indexBytes, err := readSnapshotFileBounded(snapshot, "apps/index.json", maxAppCatalogJSONBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
@@ -303,7 +304,8 @@ func rolloutStateIsCatalogCurrent(cfg Config, state appRolloutState) (bool, erro
 
 func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (capturedAppRelease, bool, error) {
 	var zero capturedAppRelease
-	b, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
+	snapshot := AppCatalogSnapshot{Root: cfg.DistDir}
+	b, err := readSnapshotFileBounded(snapshot, "apps/index.json", maxAppCatalogJSONBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return zero, false, nil
 	}
@@ -324,15 +326,15 @@ func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (cap
 	if packageID == "" {
 		return zero, false, nil
 	}
-	spk, err := os.ReadFile(filepath.Join(cfg.DistDir, "packages", packageID))
+	spk, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("packages", packageID)), maxAppPublishBody)
 	if err != nil {
 		return zero, false, fmt.Errorf("read current package %s: %w", packageID, err)
 	}
-	metadata, err := os.ReadFile(filepath.Join(cfg.DistDir, "signatures", appID, "metadata.json"))
+	metadata, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), maxAppPublishBody)
 	if err != nil {
 		return zero, false, fmt.Errorf("read current metadata: %w", err)
 	}
-	release, err := os.ReadFile(filepath.Join(cfg.DistDir, "attest", appID, "RELEASE.json"))
+	release, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppPublishBody)
 	if err != nil {
 		return zero, false, fmt.Errorf("read current release: %w", err)
 	}

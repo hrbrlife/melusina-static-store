@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # stage-into-catalog.sh — copy a freshly-built SPK from a source repo into
-# its static_store catalog package dir, regenerate RELEASE.json offline-stub
-# so the appHash matches, sync metadata.json (version + versionNumber).
+# its static_store catalog package dir, regenerate RELEASE.json offline-stub,
+# and merge committed source metadata with SPK-derived release fields.
 #
 # Used as the bridge between per-app `make pack` (which produced an SPK in
 # the source repo with a possibly-app-specific filename like clientspace.spk
@@ -15,12 +15,23 @@
 #
 # Exit 0 on success; 1 on any per-pair failure (continues processing the rest).
 #
+# Optional env:
+#   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
+#                         Defaults to metadata.json beside the source SPK.
+#   PRESERVE_EXISTING_RELEASE=1
+#                         Preserve the catalog RELEASE.json byte-for-byte and
+#                         require its appHash to bind the newly staged bytes.
+#   MELUSINA_APPHASH_BIN  Canonical apphash helper override (tests/operators).
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PRESERVE_EXISTING_RELEASE="${PRESERVE_EXISTING_RELEASE:-0}"
+[[ "$PRESERVE_EXISTING_RELEASE" == "0" || "$PRESERVE_EXISTING_RELEASE" == "1" ]] \
+  || { echo "FATAL: PRESERVE_EXISTING_RELEASE must be 0 or 1" >&2; exit 2; }
 STUB="${RELEASE_JSON_STUB:-}"
-if [[ -z "$STUB" ]]; then
+if [[ "$PRESERVE_EXISTING_RELEASE" == "0" && -z "$STUB" ]]; then
   # Probe canonical spkmodule copies on this host. Any reachable copy works
   # — release-json-stub is a pure script in the shared spkmodule component.
   for cand in \
@@ -36,7 +47,9 @@ if [[ -z "$STUB" ]]; then
     STUB="$(find /home/user/Desktop -maxdepth 5 -path '*/spkmodule/bin/release-json-stub' -executable -type f 2>/dev/null | head -1)"
   fi
 fi
-[[ -n "$STUB" && -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB, 5 canonical spkmodule paths, and recursive scan of /home/user/Desktop. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+if [[ "$PRESERVE_EXISTING_RELEASE" == "0" ]]; then
+  [[ -n "$STUB" && -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB, 5 canonical spkmodule paths, and recursive scan of /home/user/Desktop. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+fi
 
 # Pre-flight: spk CLI required for extracting package metadata
 command -v spk >/dev/null 2>&1 || { echo "FATAL: spk CLI not found on PATH — required by stage-into-catalog.sh. Install sandstorm bin/spk." >&2; exit 2; }
@@ -90,8 +103,15 @@ while (( $# >= 2 )); do
     fail "  catalog pkg dir missing: $PKG"; FAILS=$((FAILS+1)); continue
   fi
   CAT_META="$PKG/metadata.json"
+  SOURCE_META="${SOURCE_METADATA_PATH:-$(dirname "$SPK")/metadata.json}"
   if [[ ! -f "$CAT_META" ]]; then
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ "$PRESERVE_EXISTING_RELEASE" == "1" && ! -s "$PKG/RELEASE.json" ]]; then
+    fail "  preserve-existing requested but catalog RELEASE.json is absent or empty"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -n "${SOURCE_METADATA_PATH:-}" && ! -f "$SOURCE_META" ]]; then
+    fail "  explicit source metadata missing: $SOURCE_META"; FAILS=$((FAILS+1)); continue
   fi
 
   SHADOWS+=("$PKG")
@@ -116,7 +136,15 @@ while (( $# >= 2 )); do
   # spk verify output is Cap'n Proto text (JSON-like, not strict JSON); a small
   # python parser tolerates the trailing-comma + LargeDataBlob syntax. Verifying
   # the SHADOW spk means a verify failure aborts the pair with live intact.
-  SPK_INFO="$(spk verify -d "$SHADOW/app.spk" 2>/dev/null)"
+  SPK_INFO="$(spk verify -d "$SHADOW/app.spk" 2>/dev/null || true)"
+  STAGED_APP_ID=""
+  _unpack_dir="$(mktemp -d)"
+  if ! STAGED_APP_ID="$(spk unpack "$SHADOW/app.spk" "$_unpack_dir/app" 2>/dev/null)"; then
+    rm -rf "$_unpack_dir"
+    fail "  signature-checked spk unpack failed (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+  rm -rf "$_unpack_dir"
   if [[ -z "$SPK_INFO" ]]; then
     fail "  spk verify -d failed on staged SPK ($SPK) — refusing to stage with unknown identity (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
@@ -137,13 +165,39 @@ PY
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
-  # 2) rewrite metadata.json IN THE SHADOW (rm the linked copy first; read the
-  #    base from the LIVE metadata so the shared inode is never opened for write)
+  # Bind the package's signature-derived appId to both the existing catalog
+  # slot and, when supplied, the committed source metadata. A valid package for
+  # another app must never inherit this slot's presentation or release data.
+  CATALOG_APP_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appId",""))' "$CAT_META")"
+  if [[ -z "$CATALOG_APP_ID" || "$STAGED_APP_ID" != "$CATALOG_APP_ID" ]]; then
+    fail "  unpacked appId $STAGED_APP_ID != catalog appId ${CATALOG_APP_ID:-<empty>} (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -f "$SOURCE_META" ]]; then
+    SOURCE_APP_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appId",""))' "$SOURCE_META")"
+    if [[ -z "$SOURCE_APP_ID" || "$STAGED_APP_ID" != "$SOURCE_APP_ID" ]]; then
+      fail "  unpacked appId $STAGED_APP_ID != source metadata appId ${SOURCE_APP_ID:-<empty>} (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
+
+  # 2) rewrite metadata.json IN THE SHADOW. Catalog-only presentation fields
+  #    survive, but committed source metadata wins for product-owned fields.
+  #    The signed SPK remains authoritative for version/packageId, and its full
+  #    sha256 is always recomputed here.
   rm -f "$SHADOW/metadata.json"
-  if ! python3 - "$CAT_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
+  if ! python3 - "$CAT_META" "$SOURCE_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
 import json, sys
-src, dst, ver, num, pkg_id, full_sha = sys.argv[1:7]
-d = json.load(open(src))
+catalog, source, dst, ver, num, pkg_id, full_sha = sys.argv[1:8]
+d = json.load(open(catalog))
+try:
+    with open(source) as f:
+        committed = json.load(f)
+except FileNotFoundError:
+    committed = {}
+if not isinstance(committed, dict):
+    raise SystemExit("source metadata must be a JSON object")
+d.update(committed)
 d["version"] = ver
 d["marketingVersion"] = ver
 d["versionNumber"] = int(num)
@@ -159,15 +213,69 @@ PY
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 
-  # 3) regenerate RELEASE.json offline-stub in the shadow against the shadow SPK
-  #    + shadow metadata (rm the linked copy first so the stub writes a fresh file)
-  rm -f "$SHADOW/RELEASE.json"
-  if ! "$STUB" --spk "$SHADOW/app.spk" --metadata "$SHADOW/metadata.json" --output "$SHADOW/RELEASE.json" --version "$NEW_VER" >/dev/null 2>&1; then
-    fail "  release-json-stub failed for $(basename "$PKG") (live entry untouched)"
+  # Product metadata may refer to catalog assets that are not part of the SPK
+  # triple. Refuse a promotion that would leave the signed catalog card pointing
+  # at a missing screenshot. Paths must remain relative to the package root.
+  if ! python3 - "$SHADOW" "$SHADOW/metadata.json" <<'PY'
+import json, pathlib, sys
+
+root = pathlib.Path(sys.argv[1]).resolve()
+metadata = json.load(open(sys.argv[2]))
+for item in metadata.get("screenshots", []):
+    if not isinstance(item, dict) or not item.get("url"):
+        continue
+    relative = pathlib.PurePosixPath(item["url"])
+    if relative.is_absolute() or ".." in relative.parts:
+        raise SystemExit(f"unsafe screenshot path: {relative}")
+    target = (root / pathlib.Path(*relative.parts)).resolve()
+    if root not in target.parents or not target.is_file():
+        raise SystemExit(f"missing catalog screenshot: {relative}")
+PY
+  then
+    fail "  metadata references a missing or unsafe screenshot (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
+
+  # 3) Preserve an already-governed RELEASE.json only when it binds these exact
+  #    staged bytes. Otherwise create the provisional RELEASE.json used by the
+  #    new-release ceremony path. The preserve path never rewrites the release.
+  if [[ "$PRESERVE_EXISTING_RELEASE" == "1" ]]; then
+    APPHASH_BIN="${MELUSINA_APPHASH_BIN:-$ROOT/sidecar/melusina-store-sidecar/bin/apphash}"
+    if [[ ! -x "$APPHASH_BIN" ]]; then
+      APPHASH_DIR="$ROOT/sidecar/melusina-store-sidecar"
+      if [[ "$APPHASH_BIN" != "$APPHASH_DIR/bin/apphash" ]] || ! command -v go >/dev/null 2>&1; then
+        fail "  canonical apphash helper not found/executable: $APPHASH_BIN (live entry untouched)"
+        rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+      fi
+      mkdir -p "$APPHASH_DIR/bin"
+      if ! (cd "$APPHASH_DIR" && go build -o "$APPHASH_BIN" ./cmd/apphash); then
+        fail "  canonical apphash helper build failed (live entry untouched)"
+        rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+      fi
+    fi
+    if ! ACTUAL_APP_HASH="$("$APPHASH_BIN" -spk "$SHADOW/app.spk" -metadata "$SHADOW/metadata.json")"; then
+      fail "  canonical appHash computation failed (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+    RELEASE_APP_HASH="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appHash",""))' "$SHADOW/RELEASE.json" 2>/dev/null || true)"
+    if [[ ! "$ACTUAL_APP_HASH" =~ ^[0-9a-f]{64}$ ]] || [[ "${RELEASE_APP_HASH,,}" != "$ACTUAL_APP_HASH" ]]; then
+      fail "  existing RELEASE.json appHash ${RELEASE_APP_HASH:-<empty>} != canonical staged appHash ${ACTUAL_APP_HASH:-<invalid>} (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+    if ! cmp -s "$PKG/RELEASE.json" "$SHADOW/RELEASE.json"; then
+      fail "  preserve-existing changed RELEASE.json bytes (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  else
+    # rm breaks the hardlink before the provisional stub writes a fresh file.
+    rm -f "$SHADOW/RELEASE.json"
+    if ! "$STUB" --spk "$SHADOW/app.spk" --metadata "$SHADOW/metadata.json" --output "$SHADOW/RELEASE.json" --version "$NEW_VER" >/dev/null 2>&1; then
+      fail "  release-json-stub failed for $(basename "$PKG") (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
   if [[ ! -s "$SHADOW/RELEASE.json" ]]; then
-    fail "  release-json-stub produced empty RELEASE.json for $(basename "$PKG") (live entry untouched)"
+    fail "  RELEASE.json is absent or empty after staging $(basename "$PKG") (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   fi
 

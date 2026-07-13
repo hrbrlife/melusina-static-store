@@ -71,8 +71,19 @@ assert 'mv -T "$PUBLISH_TMP" "$OUT_DIR"' in s
 assert s.index('install -m 0755') < s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"')
 assert 'realpath -ms -- "$OUT_DIR"' in s
 assert 'validate_completed_output' in s
-assert 'sha256sum --strict -c SHA256SUMS' in s
-assert s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"') < s.index('sync -f "$OUT_PARENT"') < s.rindex('PUBLISH_TMP=""')
+assert s.index('build_once "$W1"') < s.index('if [[ -d "$OUT_DIR" ]]')
+assert 'cmp -s "$OUT_DIR/melusina-store-sidecar" "$TMP/out-1/stage/melusina-store-sidecar"' in s
+assert 'cmp -s "$OUT_DIR/apply-store-update" "$TMP/out-1/stage/apply-store-update"' in s
+assert 'cmp -s "$OUT_DIR/store-$VERSION.tar.xz" "$TMP/out-1/store-$VERSION.tar.xz"' in s
+assert 'cmp -s "$OUT_DIR/SHA256SUMS" "$TMP/out-1/SHA256SUMS"' in s
+assert 'cmp -s "$OUT_DIR/BUILD-PROVENANCE.json" "$TMP/out-1/BUILD-PROVENANCE.json"' in s
+recovery = s.index('if validate_completed_output; then')
+recovery_sync = s.index('sync -f "$OUT_PARENT"', recovery)
+recovery_success = s.index('deterministic x2 release already complete', recovery)
+assert recovery < recovery_sync < recovery_success
+publish = s.index('mv -T "$PUBLISH_TMP" "$OUT_DIR"')
+publish_sync = s.index('sync -f "$OUT_PARENT"', publish)
+assert publish < publish_sync < s.rindex('PUBLISH_TMP=""')
 assert 'rm -rf "$TMP" || true' in s
 PY
 

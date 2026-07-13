@@ -57,8 +57,8 @@ git -C "$ROOT" for-each-ref --format='%(objectname)' --contains "$HEAD" refs/rem
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 EXPECTED_PROVENANCE="{\"schema\":\"melusina-store-deterministic-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"archiveMembers\":[\"apply-store-update\",\"melusina-store-sidecar\"],\"builds\":2,\"byteIdentical\":true}"
 validate_completed_output() {
-  local entries sum_names archive_members file
-  entries="$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
+  local entries file
+  entries="$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)" || return 1
   [[ "$entries" == $'BUILD-PROVENANCE.json\nSHA256SUMS\napply-store-update\nmelusina-store-sidecar\nstore-1.0.4.tar.xz' ]] || return 1
   for file in melusina-store-sidecar apply-store-update SHA256SUMS BUILD-PROVENANCE.json "store-$VERSION.tar.xz"; do
     [[ -f "$OUT_DIR/$file" && ! -L "$OUT_DIR/$file" ]] || return 1
@@ -69,21 +69,12 @@ validate_completed_output() {
   for file in SHA256SUMS BUILD-PROVENANCE.json "store-$VERSION.tar.xz"; do
     [[ "$(stat -c '%a' "$OUT_DIR/$file")" == "644" ]] || return 1
   done
-  [[ "$(cat "$OUT_DIR/BUILD-PROVENANCE.json")" == "$EXPECTED_PROVENANCE" ]] || return 1
-  sum_names="$(awk 'NF == 2 {print $2}' "$OUT_DIR/SHA256SUMS")"
-  [[ "$sum_names" == $'melusina-store-sidecar\napply-store-update\nstore-1.0.4.tar.xz' ]] || return 1
-  (cd "$OUT_DIR" && sha256sum --strict -c SHA256SUMS >/dev/null) || return 1
-  archive_members="$(tar -tJf "$OUT_DIR/store-$VERSION.tar.xz" | LC_ALL=C sort)"
-  [[ "$archive_members" == $'apply-store-update\nmelusina-store-sidecar' ]] || return 1
+  cmp -s "$OUT_DIR/melusina-store-sidecar" "$TMP/out-1/stage/melusina-store-sidecar" || return 1
+  cmp -s "$OUT_DIR/apply-store-update" "$TMP/out-1/stage/apply-store-update" || return 1
+  cmp -s "$OUT_DIR/store-$VERSION.tar.xz" "$TMP/out-1/store-$VERSION.tar.xz" || return 1
+  cmp -s "$OUT_DIR/SHA256SUMS" "$TMP/out-1/SHA256SUMS" || return 1
+  cmp -s "$OUT_DIR/BUILD-PROVENANCE.json" "$TMP/out-1/BUILD-PROVENANCE.json" || return 1
 }
-if [[ -d "$OUT_DIR" ]]; then
-  if validate_completed_output; then
-    echo "deterministic x2 release already complete: $OUT_DIR"
-    exit 0
-  fi
-  echo "existing output directory is not an exact completed release: $OUT_DIR" >&2
-  exit 2
-fi
 WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-release-1.0.4.XXXXXX")"
 W1="$TMP/build-1"
@@ -131,6 +122,18 @@ cmp "$TMP/out-1/stage/melusina-store-sidecar" "$TMP/out-2/stage/melusina-store-s
 cmp "$TMP/out-1/stage/apply-store-update" "$TMP/out-2/stage/apply-store-update"
 cmp "$TMP/out-1/store-$VERSION.tar.xz" "$TMP/out-2/store-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
+printf '%s\n' "$EXPECTED_PROVENANCE" >"$TMP/out-1/BUILD-PROVENANCE.json"
+chmod 0644 "$TMP/out-1/BUILD-PROVENANCE.json"
+
+if [[ -d "$OUT_DIR" ]]; then
+  if validate_completed_output; then
+    sync -f "$OUT_PARENT"
+    echo "deterministic x2 release already complete: $OUT_DIR"
+    exit 0
+  fi
+  echo "existing output directory is not byte-identical to the fresh deterministic x2 release: $OUT_DIR" >&2
+  exit 2
+fi
 
 require_real_directory_ancestry "$OUT_PARENT"
 PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-$VERSION.output.XXXXXX")"
@@ -139,8 +142,7 @@ install -m 0755 "$TMP/out-1/stage/melusina-store-sidecar" "$PUBLISH_TMP/melusina
 install -m 0755 "$TMP/out-1/stage/apply-store-update" "$PUBLISH_TMP/apply-store-update"
 install -m 0644 "$TMP/out-1/store-$VERSION.tar.xz" "$PUBLISH_TMP/store-$VERSION.tar.xz"
 install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
-printf '%s\n' "$EXPECTED_PROVENANCE" >"$PUBLISH_TMP/BUILD-PROVENANCE.json"
-chmod 0644 "$PUBLISH_TMP/BUILD-PROVENANCE.json"
+install -m 0644 "$TMP/out-1/BUILD-PROVENANCE.json" "$PUBLISH_TMP/BUILD-PROVENANCE.json"
 for artifact in "$PUBLISH_TMP"/*; do sync -f "$artifact"; done
 sync -f "$PUBLISH_TMP"
 mv -T "$PUBLISH_TMP" "$OUT_DIR"

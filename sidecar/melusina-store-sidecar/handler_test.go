@@ -690,6 +690,101 @@ func TestAppPromotionCatalogMemberCapacityRefusesBeforeClaimOrSourceMutation(t *
 	}
 }
 
+func TestAppPromotionCatalogIndexCapacityRefusesBeforeClaimOrSourceMutation(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "index-capacity-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "capacity", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "index-capacity-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "index-capacity-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+
+	current, err := svc.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexPath := filepath.Join(current.Root, "apps", "index.json")
+	originalIndex, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := map[string]any{
+		"appId":     "padding-app",
+		"packageId": strings.Repeat("0", 32),
+		"name":      "padding",
+		"padding":   "",
+	}
+	probe, err := json.MarshalIndent(map[string]any{"apps": []any{row}}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row["padding"] = strings.Repeat("x", int(maxAppCatalogJSONBytes)-len(probe)-32)
+	nearLimit, err := json.MarshalIndent(map[string]any{"apps": []any{row}}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nearLimit = append(nearLimit, '\n')
+	if len(nearLimit) >= maxAppCatalogJSONBytes {
+		t.Fatalf("index fixture is not below cap: %d", len(nearLimit))
+	}
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(indexPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(indexPath, nearLimit, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "index-capacity-promote")
+	full := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if full.Code != http.StatusInsufficientStorage || !strings.Contains(full.Body.String(), "catalog_index_capacity") {
+		t.Fatalf("index-capacity refusal = %d: %s", full.Code, full.Body.String())
+	}
+	sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(sourceBefore, sourceAfter) {
+		t.Fatal("catalog index capacity refusal mutated source before nonce claim")
+	}
+
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(indexPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(indexPath, originalIndex, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by index-capacity refusal: %d %s", retry.Code, retry.Body.String())
+	}
+}
+
 func TestAppPublishTightExpiryExactAndPlusOneMillisecond(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()

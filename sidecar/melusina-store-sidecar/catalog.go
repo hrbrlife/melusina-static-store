@@ -19,6 +19,14 @@ type CatalogAssembler struct {
 	DistDir string
 }
 
+var errCatalogIndexCapacity = errors.New("projected catalog index exceeds bounded size")
+
+type catalogProjection struct {
+	appID      string
+	packageID  string
+	indexBytes []byte
+}
+
 func NewCatalogAssembler(_ string, distDir string) *CatalogAssembler {
 	if strings.TrimSpace(distDir) == "" {
 		distDir = "."
@@ -33,28 +41,11 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	if strings.TrimSpace(a.DistDir) == "" {
 		return fmt.Errorf("catalog dist dir is empty")
 	}
-	var meta map[string]any
-	if err := json.Unmarshal(metadata, &meta); err != nil {
-		return fmt.Errorf("decode metadata: %w", err)
+	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
+	if err != nil {
+		return err
 	}
-	var attest map[string]any
-	if err := json.Unmarshal(release, &attest); err != nil {
-		return fmt.Errorf("decode release: %w", err)
-	}
-	appID, _ := meta["appId"].(string)
-	packageID, _ := meta["packageId"].(string)
-	if strings.TrimSpace(appID) == "" {
-		return fmt.Errorf("metadata requires appId")
-	}
-	packageSum := sha256.Sum256(spk)
-	packageSHA := hex.EncodeToString(packageSum[:])
-	if strings.TrimSpace(packageID) == "" {
-		packageID = packageSHA[:32]
-		meta["packageId"] = packageID
-	}
-	if !strings.HasPrefix(packageSHA, packageID) {
-		return fmt.Errorf("packageId %s does not prefix package sha256 %s", packageID, packageSHA)
-	}
+	appID, packageID := projection.appID, projection.packageID
 
 	for _, dir := range []string{
 		filepath.Join(a.DistDir, "packages"),
@@ -74,6 +65,35 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	}
 	if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RELEASE.json", release); err != nil {
 		return err
+	}
+	return atomicWriteInto(filepath.Join(a.DistDir, "apps"), "index.json", projection.indexBytes)
+}
+
+// projectCatalogIndex is the shared, mutation-free source of truth for both
+// pre-claim capacity admission and candidate assembly.
+func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []byte) (catalogProjection, error) {
+	var zero catalogProjection
+	var meta map[string]any
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		return zero, fmt.Errorf("decode metadata: %w", err)
+	}
+	var attest map[string]any
+	if err := json.Unmarshal(release, &attest); err != nil {
+		return zero, fmt.Errorf("decode release: %w", err)
+	}
+	appID, _ := meta["appId"].(string)
+	packageID, _ := meta["packageId"].(string)
+	if strings.TrimSpace(appID) == "" {
+		return zero, fmt.Errorf("metadata requires appId")
+	}
+	packageSum := sha256.Sum256(spk)
+	packageSHA := hex.EncodeToString(packageSum[:])
+	if strings.TrimSpace(packageID) == "" {
+		packageID = packageSHA[:32]
+		meta["packageId"] = packageID
+	}
+	if !strings.HasPrefix(packageSHA, packageID) {
+		return zero, fmt.Errorf("packageId %s does not prefix package sha256 %s", packageID, packageSHA)
 	}
 
 	row := make(map[string]any, len(meta)+8)
@@ -104,16 +124,15 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 		row["updatedAt"] = signedAt * 1000
 	}
 
-	indexPath := filepath.Join(a.DistDir, "apps", "index.json")
 	index := struct {
 		Apps []map[string]any `json:"apps"`
 	}{}
-	if body, err := readSnapshotFileBounded(AppCatalogSnapshot{Root: a.DistDir}, "apps/index.json", maxAppCatalogJSONBytes); err == nil {
+	if body, err := readSnapshotFileBounded(snapshot, "apps/index.json", maxAppCatalogJSONBytes); err == nil {
 		if err := json.Unmarshal(body, &index); err != nil {
-			return fmt.Errorf("decode existing app index: %w", err)
+			return zero, fmt.Errorf("decode existing app index: %w", err)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("read existing app index: %w", err)
+		return zero, fmt.Errorf("read existing app index: %w", err)
 	}
 	kept := index.Apps[:0]
 	for _, existing := range index.Apps {
@@ -132,10 +151,13 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	})
 	body, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
-		return fmt.Errorf("encode app index: %w", err)
+		return zero, fmt.Errorf("encode app index: %w", err)
 	}
 	body = append(body, '\n')
-	return atomicWriteInto(filepath.Dir(indexPath), filepath.Base(indexPath), body)
+	if len(body) > maxAppCatalogJSONBytes {
+		return zero, fmt.Errorf("%w: got %d bytes, cap %d", errCatalogIndexCapacity, len(body), maxAppCatalogJSONBytes)
+	}
+	return catalogProjection{appID: appID, packageID: packageID, indexBytes: body}, nil
 }
 
 func numberAsInt64(value any) (int64, bool) {

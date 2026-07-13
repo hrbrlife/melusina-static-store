@@ -75,6 +75,35 @@ func TestSnapshotBoundedReadsRejectOversizeAndSymlink(t *testing.T) {
 	}
 }
 
+func TestCatalogPromotionCapacityRejectsOversizedActiveMember(t *testing.T) {
+	root := t.TempDir()
+	for _, namespace := range appCatalogNamespaces {
+		if err := os.MkdirAll(filepath.Join(root, namespace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	oversized := filepath.Join(root, "packages", "oversized")
+	f, err := os.OpenFile(oversized, os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(maxAppPublishBody + 1); err != nil {
+		_ = f.Close()
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{PrivateStageDir: t.TempDir()}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	err = ensureCatalogPromotionMemberCapacity(AppCatalogSnapshot{Root: root}, cfg, "app-one", "package-one")
+	if err == nil || !strings.Contains(err.Error(), "exceeds copy bound") {
+		t.Fatalf("oversized active member passed preclaim capacity: %v", err)
+	}
+}
+
 func TestAppCatalogGenerationBuildValidatesPointersBeforeAtomicSwitch(t *testing.T) {
 	root := t.TempDir()
 	flat := filepath.Join(root, "dist")

@@ -506,6 +506,14 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	if _, err := projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, errCatalogIndexCapacity) {
+			status = http.StatusInsufficientStorage
+		}
+		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
+		return
+	}
 	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, s.cfg, staged.AppID, metadataPackageID(metadata)); err != nil {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return

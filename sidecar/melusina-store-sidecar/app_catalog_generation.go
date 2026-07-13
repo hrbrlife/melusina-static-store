@@ -494,6 +494,9 @@ func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, cfg Confi
 		if info.Mode()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) {
 			return fmt.Errorf("unsafe current catalog member %s", path)
 		}
+		if info.Mode().IsRegular() && (info.Size() < 0 || info.Size() > maxAppPublishBody) {
+			return fmt.Errorf("current catalog member %s size %d exceeds copy bound %d", path, info.Size(), maxAppPublishBody)
+		}
 		members++
 		relative, err := filepath.Rel(snapshot.Root, path)
 		if err != nil {

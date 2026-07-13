@@ -107,10 +107,69 @@ func resolveAppSlot(catalogRoot, appID string, hint slotHint) (string, error) {
 	}
 }
 
-// persistPublishedApp writes the gate-verified {app.spk, RELEASE.json,
-// metadata.json} into the slot, each file atomically (temp+rename, the same
-// pattern as the installer artifact path).
-func persistPublishedApp(slotDir string, spk, release, metadata []byte) error {
+type publishedAppPersistencePlan struct{ slotDir string }
+
+// planPublishedAppPersistence refuses every deterministic path/type conflict
+// before the signed envelope is claimed. The service writer lock keeps this
+// frozen plan exclusive from other publishes until it is consumed.
+func planPublishedAppPersistence(catalogRoot, slotDir string) (publishedAppPersistencePlan, error) {
+	var zero publishedAppPersistencePlan
+	root, err := filepath.Abs(catalogRoot)
+	if err != nil {
+		return zero, err
+	}
+	slot, err := filepath.Abs(slotDir)
+	if err != nil {
+		return zero, err
+	}
+	packages := filepath.Join(root, "packages")
+	rel, err := filepath.Rel(packages, slot)
+	if err != nil || rel == "." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return zero, errors.New("resolved slot escapes catalog packages root")
+	}
+	parts := strings.Split(rel, string(os.PathSeparator))
+	if len(parts) != 3 {
+		return zero, errors.New("resolved slot is not developer/repo/slug")
+	}
+	for _, part := range parts {
+		if !isSafePathSegment(part) || len(part) > 255 {
+			return zero, errors.New("resolved slot contains unsafe filesystem component")
+		}
+	}
+
+	for _, dir := range []string{root, packages, filepath.Join(packages, parts[0]), filepath.Join(packages, parts[0], parts[1]), slot} {
+		info, statErr := os.Lstat(dir)
+		if errors.Is(statErr, os.ErrNotExist) {
+			continue
+		}
+		if statErr != nil {
+			return zero, fmt.Errorf("lstat source path: %w", statErr)
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return zero, fmt.Errorf("source path is not a real directory: %s", dir)
+		}
+	}
+	if info, statErr := os.Lstat(slot); statErr == nil && info.IsDir() {
+		for _, name := range []string{"app.spk", "RELEASE.json", "metadata.json"} {
+			targetInfo, targetErr := os.Lstat(filepath.Join(slot, name))
+			if errors.Is(targetErr, os.ErrNotExist) {
+				continue
+			}
+			if targetErr != nil {
+				return zero, fmt.Errorf("lstat source target: %w", targetErr)
+			}
+			if targetInfo.Mode()&os.ModeSymlink != 0 || !targetInfo.Mode().IsRegular() {
+				return zero, fmt.Errorf("source target is not a regular file: %s", name)
+			}
+		}
+	}
+	return publishedAppPersistencePlan{slotDir: slot}, nil
+}
+
+// persistPublishedAppPlanned consumes only the slot frozen by the preclaim
+// plan, then writes each verified file by same-directory atomic replacement.
+func persistPublishedAppPlanned(plan publishedAppPersistencePlan, spk, release, metadata []byte) error {
+	slotDir := plan.slotDir
 	if err := os.MkdirAll(slotDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", slotDir, err)
 	}

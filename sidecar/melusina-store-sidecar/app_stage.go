@@ -24,6 +24,7 @@ import (
 const (
 	appStageSchema        = "melusina-app-stage-v1"
 	appStageReceiptSchema = "melusina-app-stage-receipt-v1"
+	maxCatalogAppIDBytes  = 255 - len(".json")
 )
 
 var appStageReceiptDomain = []byte("melusina-app-stage-receipt-v1\x00")
@@ -69,6 +70,9 @@ func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint
 	appID := metadataAppID(metadata)
 	if !isSafePathSegment(appID) {
 		return zero, errors.New("metadata.json carries no safe appId")
+	}
+	if len(appID) > maxCatalogAppIDBytes {
+		return zero, errors.New("metadata.json appId exceeds derived filename limit")
 	}
 	computedAppHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
 	if err != nil {
@@ -139,7 +143,10 @@ func sameStagedReleaseIntent(staged, submitted stagedAppManifest) bool {
 		staged.SlotHint == submitted.SlotHint
 }
 
-type stagePersistencePlan struct{ alreadyPresent bool }
+type stagePersistencePlan struct {
+	alreadyPresent    bool
+	persistedManifest stagedAppManifest
+}
 
 func planStagePersistence(root string, manifest stagedAppManifest) (stagePersistencePlan, error) {
 	var plan stagePersistencePlan
@@ -151,10 +158,15 @@ func planStagePersistence(root string, manifest stagedAppManifest) (stagePersist
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return plan, errors.New("existing staged candidate is not a real directory")
 		}
-		if err := verifyStagedApp(target, manifest); err != nil {
+		stored, _, _, _, err := loadStagedApp(root, manifest.StageID)
+		if err != nil {
 			return plan, err
 		}
+		if !sameStagedReleaseIntent(stored, manifest) {
+			return plan, errors.New("existing staged candidate differs from submitted release intent")
+		}
 		plan.alreadyPresent = true
+		plan.persistedManifest = stored
 		return plan, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return plan, fmt.Errorf("stat staged candidate: %w", err)
@@ -162,6 +174,7 @@ func planStagePersistence(root string, manifest stagedAppManifest) (stagePersist
 	if err := ensureDirectoryEntryCapacity(root, 1); err != nil {
 		return plan, fmt.Errorf("private stage capacity: %w", err)
 	}
+	plan.persistedManifest = manifest
 	return plan, nil
 }
 
@@ -322,23 +335,6 @@ func readStagedAppFile(stageFD int, name string, sizeLimit int64, requireExact b
 		return nil, errors.New("staged file changed during bounded read")
 	}
 	return body, nil
-}
-
-func verifyStagedApp(dir string, want stagedAppManifest) error {
-	root := filepath.Dir(dir)
-	got, _, _, _, err := loadStagedApp(root, want.StageID)
-	if err != nil {
-		return err
-	}
-	// StageID binds the immutable package and release intent. StoredAt belongs to
-	// the first durable write, while the provisional RELEASE body may gain its
-	// PDA, author signature, quorum and timestamp after Squads. loadStagedApp()
-	// already proved the stored files match their own manifest, so retries only
-	// need to match the immutable intent.
-	if !sameStagedReleaseIntent(got, want) {
-		return errors.New("existing staged candidate differs from submitted release intent")
-	}
-	return nil
 }
 
 func mustReleaseJSON(raw []byte) ReleaseJSON {

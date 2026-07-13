@@ -547,10 +547,10 @@ type appCatalogPointerPlan struct {
 
 // buildSignedAppCatalogPointerPlan freezes every rollout/stage semantic input
 // before nonce claim. Postclaim materialization consumes only this plan.
-func buildSignedAppCatalogPointerPlan(cfg Config, indexBytes []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {
+func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, projection catalogProjection, projectedSPK, projectedMetadata, projectedRelease []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {
 	var zero appCatalogPointerPlan
 	var index catalogIndex
-	if err := json.Unmarshal(indexBytes, &index); err != nil {
+	if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
 		return zero, fmt.Errorf("decode projected app catalog: %w", err)
 	}
 	packageByApp := make(map[string]string, len(index.Apps))
@@ -570,7 +570,7 @@ func buildSignedAppCatalogPointerPlan(cfg Config, indexBytes []byte, operator *i
 	if err != nil {
 		return zero, fmt.Errorf("read rollout state: %w", err)
 	}
-	catalogHash := sha256.Sum256(indexBytes)
+	catalogHash := sha256.Sum256(projection.indexBytes)
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	rollouts := make(map[string]appRolloutState, len(rolloutEntries)+1)
 	for _, entry := range rolloutEntries {
@@ -596,13 +596,44 @@ func buildSignedAppCatalogPointerPlan(cfg Config, indexBytes []byte, operator *i
 	pointers := make(map[string]AppCatalogPointer, len(rollouts))
 	rolloutAppIDs := make([]string, 0, len(rollouts))
 	for appID, state := range rollouts {
-		manifest, _, metadata, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID)
+		manifest, _, stagedMetadata, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID)
 		if err != nil {
 			return zero, fmt.Errorf("load staged release for rollout %s: %w", appID, err)
 		}
-		packageID := metadataPackageID(metadata)
+		packageID := metadataPackageID(stagedMetadata)
 		if packageID == "" || packageByApp[appID] != packageID {
 			return zero, fmt.Errorf("projected catalog does not select rollout %s packageId %s", appID, packageID)
+		}
+		candidateSPK, candidateMetadata, candidateRelease := projectedSPK, projectedMetadata, projectedRelease
+		if appID != projection.appID {
+			candidateSPK, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("packages", packageID)), maxAppPublishBody)
+			if err != nil {
+				return zero, fmt.Errorf("read projected package for rollout %s: %w", appID, err)
+			}
+			candidateMetadata, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), maxAppPublishBody)
+			if err != nil {
+				return zero, fmt.Errorf("read projected metadata for rollout %s: %w", appID, err)
+			}
+			candidateRelease, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppPublishBody)
+			if err != nil {
+				return zero, fmt.Errorf("read projected release for rollout %s: %w", appID, err)
+			}
+		}
+		if metadataAppID(candidateMetadata) != appID || metadataPackageID(candidateMetadata) != packageID {
+			return zero, fmt.Errorf("projected metadata identity mismatch for rollout %s", appID)
+		}
+		candidateAppHash, hashErr := apphash.Canonical(bytes.NewReader(candidateSPK), candidateMetadata)
+		if hashErr != nil || candidateAppHash != manifest.AppHash {
+			return zero, fmt.Errorf("projected package/metadata appHash mismatch for rollout %s", appID)
+		}
+		var candidateIntent ReleaseJSON
+		if err := json.Unmarshal(candidateRelease, &candidateIntent); err != nil {
+			return zero, fmt.Errorf("decode projected release for rollout %s: %w", appID, err)
+		}
+		if strings.TrimSpace(candidateIntent.AppHash) != manifest.AppHash ||
+			strings.TrimSpace(candidateIntent.ReleaseHash) != manifest.ReleaseHash ||
+			strings.TrimSpace(candidateIntent.Version) != manifest.Version {
+			return zero, fmt.Errorf("projected release intent mismatch for rollout %s", appID)
 		}
 		pointer, err := signAppCatalogPointer(operator, state, manifest, packageID, catalogHash, domainHash, now)
 		if err != nil {

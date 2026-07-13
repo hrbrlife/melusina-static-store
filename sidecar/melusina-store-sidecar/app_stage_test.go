@@ -7,11 +7,27 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 )
+
+func TestStagedAppRejectsAppIDThatCannotFitDerivedJSONFilename(t *testing.T) {
+	spk := []byte("spk::long-app-id")
+	packageHash := sha256.Sum256(spk)
+	metadata := []byte(`{"appId":"` + strings.Repeat("a", maxCatalogAppIDBytes+1) + `","packageId":"` + hex.EncodeToString(packageHash[:])[:32] + `","version":"1.2.3"}`)
+	appHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseHash := sha256.Sum256([]byte("release::long-app-id"))
+	rel := ReleaseJSON{AppHash: appHash, ReleaseHash: hex.EncodeToString(releaseHash[:]), Version: "1.2.3"}
+	if _, err := buildStagedAppManifest(spk, metadata, mustJSON(t, rel), rel, slotHint{}, time.Now()); err == nil || !strings.Contains(err.Error(), "derived filename") {
+		t.Fatalf("overlong appId accepted: %v", err)
+	}
+}
 
 func testStageMaterial(t *testing.T, label string, at time.Time) (stagedAppManifest, []byte, []byte, []byte) {
 	t.Helper()

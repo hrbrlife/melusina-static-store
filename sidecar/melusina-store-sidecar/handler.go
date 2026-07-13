@@ -361,7 +361,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	receipt, err := signStageReceipt(s.operator, manifest, primitives.StoreDomainHash(s.cfg.Domain))
+	receipt, err := signStageReceipt(s.operator, stagePlan.persistedManifest, primitives.StoreDomainHash(s.cfg.Domain))
 	if err != nil {
 		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -455,6 +455,11 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
 		return
 	}
+	sourcePlan, err := planPublishedAppPersistence(s.cfg.CatalogRepoRoot, slotDir)
+	if err != nil {
+		http.Error(w, "check=persist_plan: "+err.Error(), http.StatusConflict)
+		return
+	}
 
 	// Promotion is permitted only for the exact candidate durably staged before
 	// the chain mutation. Recompute its content address from the submitted bytes,
@@ -513,7 +518,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
 		return
 	}
-	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, projection.indexBytes, s.operator, &rollout, staged.AppID, promotedAt)
+	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, activeGeneration, projection, spk, metadata, preflight.releaseBytes, s.operator, &rollout, staged.AppID, promotedAt)
 	if err != nil {
 		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -531,7 +536,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistPublishedApp(slotDir, spk, preflight.releaseBytes, metadata); err != nil {
+	if err := persistPublishedAppPlanned(sourcePlan, spk, preflight.releaseBytes, metadata); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 )
@@ -141,6 +142,52 @@ func TestHandlePublish_FirstPublishWithHintCreatesSlot(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 	assertSlotBytes(t, filepath.Join(cfg.CatalogRepoRoot, "packages", "hrbrlife", "new-repo", "new-app"), f.spk, release, f.metadata)
+}
+
+func TestHandlePublish_SourceTargetConflictRefusesBeforeClaimOrMutation(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "source-plan-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "source-plan", "app", fixture.metadata)
+	if err := os.Mkdir(filepath.Join(slotDir, "app.spk"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "source-plan-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second)
+	svc.now = func() time.Time { return now }
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "source-plan-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+	sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "source-plan-promote")
+	refused := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if refused.Code != http.StatusConflict || !strings.Contains(refused.Body.String(), "persist_plan") {
+		t.Fatalf("source conflict refusal = %d: %s", refused.Code, refused.Body.String())
+	}
+	sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(sourceBefore, sourceAfter) {
+		t.Fatal("source conflict refusal mutated source before nonce claim")
+	}
+	if err := os.Remove(filepath.Join(slotDir, "app.spk")); err != nil {
+		t.Fatal(err)
+	}
+	retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by source-plan refusal: %d %s", retry.Code, retry.Body.String())
+	}
 }
 
 func TestHandlePublish_UnsafeSlotHintRefused(t *testing.T) {

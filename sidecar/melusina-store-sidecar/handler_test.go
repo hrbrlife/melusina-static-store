@@ -571,6 +571,45 @@ func TestAppStageExistingCorruptCandidateRefusesBeforeNonceClaim(t *testing.T) {
 	}
 }
 
+func TestAppStageIdempotentRetryReceiptUsesDurableStoredAt(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "stage-receipt-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "receipt", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "stage-receipt-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	firstAt := time.Now().UTC().Add(time.Second).Truncate(time.Second)
+	clock := firstAt
+	svc.now = func() time.Time { return clock }
+	release := mustJSON(t, fixture.rel)
+	firstEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", firstAt, 10*time.Minute, "stored-at-first")
+	first := doStagePublish(t, svc, jsonPublishBody(t, firstEnvelope, release, fixture.spk, fixture.metadata))
+	if first.Code != http.StatusOK {
+		t.Fatalf("first stage = %d: %s", first.Code, first.Body.String())
+	}
+	var firstReceipt StageReceipt
+	if err := json.Unmarshal(first.Body.Bytes(), &firstReceipt); err != nil {
+		t.Fatal(err)
+	}
+	clock = firstAt.Add(2 * time.Minute)
+	retryEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", clock, 10*time.Minute, "stored-at-retry")
+	retry := doStagePublish(t, svc, jsonPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("retry stage = %d: %s", retry.Code, retry.Body.String())
+	}
+	var retryReceipt StageReceipt
+	if err := json.Unmarshal(retry.Body.Bytes(), &retryReceipt); err != nil {
+		t.Fatal(err)
+	}
+	if retryReceipt.StoredAt != firstReceipt.StoredAt || retryReceipt.OperatorSignature != firstReceipt.OperatorSignature {
+		t.Fatalf("retry receipt did not preserve durable receipt: first=%+v retry=%+v", firstReceipt, retryReceipt)
+	}
+}
+
 func TestAppPromotionCapacityRefusesBeforeNonceClaimAndRetrySucceeds(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -907,6 +946,194 @@ func TestAppPromotionFreezesAllRolloutSemanticsBeforeClaim(t *testing.T) {
 				t.Fatalf("same envelope was consumed by rollout-plan refusal: %d %s", retry.Code, retry.Body.String())
 			}
 		})
+	}
+}
+
+func TestAppPromotionPrevalidatesExactUnrelatedRolloutTupleBeforeClaim(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		relative   string
+		corrupt    func(t *testing.T, original []byte) []byte
+		wantReason string
+	}{
+		{
+			name:     "same-package-different-metadata",
+			relative: filepath.Join("signatures", "unrelated-pointer-app", "metadata.json"),
+			corrupt: func(t *testing.T, original []byte) []byte {
+				var metadata map[string]any
+				if err := json.Unmarshal(original, &metadata); err != nil {
+					t.Fatal(err)
+				}
+				metadata["appTitle"] = "tampered metadata with same package"
+				return mustJSON(t, metadata)
+			},
+			wantReason: "appHash mismatch",
+		},
+		{
+			name:     "release-intent-mismatch",
+			relative: filepath.Join("attest", "unrelated-pointer-app", "RELEASE.json"),
+			corrupt: func(t *testing.T, original []byte) []byte {
+				var release ReleaseJSON
+				if err := json.Unmarshal(original, &release); err != nil {
+					t.Fatal(err)
+				}
+				release.Version = "9.9.9"
+				return mustJSON(t, release)
+			},
+			wantReason: "release intent mismatch",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.CatalogRepoRoot = t.TempDir()
+			op := newTestIdentity(t, "tuple-freeze-operator", cfg.LicenseNFTMint, cfg.Domain)
+			fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+			slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "tuple-freeze", "app", fixture.metadata)
+			chain := newMockChainReader()
+			fixture.pinAccept(chain, operatorSignPub32(t, op))
+			svc := newTestService(t, cfg, chain, op)
+			publisher := newTestIdentity(t, "tuple-freeze-publisher", randPubkeyB58(t), "publisher.example.org")
+			svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+			now := time.Now().UTC().Add(time.Second).Truncate(time.Second)
+			svc.now = func() time.Time { return now }
+
+			unrelated := makeRolloutFixture(t, randPubkeyB58(t), "unrelated-pointer-app", "1.0.0", tc.name, now.Add(-time.Minute))
+			if err := persistStagedApp(svc.cfg.PrivateStageDir, unrelated.manifest, unrelated.spk, unrelated.metadata, unrelated.release); err != nil {
+				t.Fatal(err)
+			}
+			if err := writeAppRollout(svc.cfg, appRolloutState{
+				Schema: appRolloutSchema, AppID: unrelated.manifest.AppID,
+				CurrentStageID: unrelated.manifest.StageID, CurrentAppHash: unrelated.manifest.AppHash,
+				CurrentVersion: unrelated.manifest.Version, ActivatedAt: now.Add(-time.Minute).Unix(),
+			}); err != nil {
+				t.Fatal(err)
+			}
+			current, err := svc.catalogGenerations.ResolveCurrent()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := makeCatalogTreeRemovable(current.Root); err != nil {
+				t.Fatal(err)
+			}
+			if err := NewCatalogAssembler("", current.Root).AssemblePublishedApp(unrelated.spk, unrelated.release, unrelated.metadata); err != nil {
+				t.Fatal(err)
+			}
+			target := filepath.Join(current.Root, tc.relative)
+			original, err := os.ReadFile(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, tc.corrupt(t, original), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := syncAndSealCatalogTree(current.Root); err != nil {
+				t.Fatal(err)
+			}
+
+			release := mustJSON(t, fixture.rel)
+			stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, tc.name+"-stage")
+			if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+				t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+			}
+			sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, tc.name+"-promote")
+			refused := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if refused.Code != http.StatusInternalServerError || !strings.Contains(refused.Body.String(), "catalog_pointer_plan") || !strings.Contains(refused.Body.String(), tc.wantReason) {
+				t.Fatalf("tuple refusal = %d: %s", refused.Code, refused.Body.String())
+			}
+			sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !os.SameFile(sourceBefore, sourceAfter) {
+				t.Fatal("tuple refusal mutated source before nonce claim")
+			}
+			if err := makeCatalogTreeRemovable(current.Root); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(target, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, original, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := syncAndSealCatalogTree(current.Root); err != nil {
+				t.Fatal(err)
+			}
+			retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+			if retry.Code != http.StatusOK {
+				t.Fatalf("same envelope was consumed by tuple refusal: %d %s", retry.Code, retry.Body.String())
+			}
+		})
+	}
+}
+
+func TestAppPromotionCorruptCapturedPreviousStageRefusesBeforeClaim(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "captured-previous-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "captured-previous", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "captured-previous-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	now := time.Now().UTC().Add(time.Second).Truncate(time.Second)
+	svc.now = func() time.Time { return now }
+
+	old := makeRolloutFixture(t, randPubkeyB58(t), metadataAppID(fixture.metadata), "0.9.0", "captured-previous-old", time.Unix(fixture.rel.SignedAtUnix-3600, 0))
+	current, err := svc.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := makeCatalogTreeRemovable(current.Root); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewCatalogAssembler("", current.Root).AssemblePublishedApp(old.spk, old.release, old.metadata); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(current.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	release := mustJSON(t, fixture.rel)
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "captured-previous-stage")
+	if got := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
+		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
+	}
+	corruptPrevious := filepath.Join(svc.cfg.PrivateStageDir, old.manifest.StageID)
+	if err := os.Mkdir(corruptPrevious, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(corruptPrevious, "stage.json"), []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sourceBefore, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "captured-previous-promote")
+	refused := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if refused.Code != http.StatusInsufficientStorage || !strings.Contains(refused.Body.String(), "stage_capacity") {
+		t.Fatalf("captured-previous refusal = %d: %s", refused.Code, refused.Body.String())
+	}
+	sourceAfter, err := os.Stat(filepath.Join(slotDir, "metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(sourceBefore, sourceAfter) {
+		t.Fatal("captured-previous refusal mutated source before nonce claim")
+	}
+	if err := os.RemoveAll(corruptPrevious); err != nil {
+		t.Fatal(err)
+	}
+	retry := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata))
+	if retry.Code != http.StatusOK {
+		t.Fatalf("same envelope was consumed by captured-previous refusal: %d %s", retry.Code, retry.Body.String())
 	}
 }
 

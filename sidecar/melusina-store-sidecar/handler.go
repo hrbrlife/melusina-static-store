@@ -244,8 +244,14 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// under /packages/ pass the SERVE-TIME on-chain gate (canon §5b, B1-01): the
 	// served bytes must content-match an Active on-chain ReleaseEntry or the GET
 	// is refused (403). Fail-closed: with no chain reader, SPK serves 503.
-	gate := newServeGate(cfg, cr, http.FileServer(http.Dir(cfg.DistDir)))
-	mux.Handle("/", gate)
+	flatStatic := http.FileServer(http.Dir(cfg.DistDir))
+	static := requestScopedStatic{flat: flatStatic}
+	gate := newServeGate(cfg, cr, static)
+	var readSurface http.Handler = gate
+	if runtime.appNonces != nil && runtime.catalogGenerations.Root != "" {
+		readSurface = newGenerationHTTP(runtime.catalogGenerations, gate)
+	}
+	mux.Handle("/", readSurface)
 
 	if cr == nil {
 		log.Printf("read surface: %q — WARNING: no chain reader; /packages/* SPK serves fail CLOSED (503) until rpc_url is set", cfg.DistDir)

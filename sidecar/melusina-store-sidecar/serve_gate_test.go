@@ -136,6 +136,24 @@ func TestServeGate_Active(t *testing.T) {
 	}
 }
 
+func TestServeGate_MissingPrivateRollbackNeverFallsThroughToPublicPackage(t *testing.T) {
+	_, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+	g.apps = map[string]servedApp{
+		base: {
+			rel:      f.rel,
+			metadata: f.metadata,
+			spkPath:  filepath.Join(t.TempDir(), "missing-private-app.spk"),
+		},
+	}
+	g.appsLoadedAt = g.now()
+
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("missing private rollback fell through to public package: status=%d body=%q", w.Code, w.Body.String())
+	}
+}
+
 // TestServeGate_Refusals is the fail-closed serve-refusal table: missing,
 // Revoked, on-chain appHash mismatch, blacklisted, and the content-addressed
 // provenance miss (orphan bytes + the concrete B1-09 drift where served bytes no

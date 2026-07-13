@@ -66,6 +66,9 @@ type serveGate struct {
 	releaseVerdict map[string]time.Time // sha256(lowerhex) -> last InstallerRelease Active time
 
 	rebuildMu sync.Mutex // serializes resolve-index rebuilds
+
+	// Test-only barrier after catalog lookup and before opening package bytes.
+	beforePackageOpen func()
 }
 
 // servedApp is the dist-resolved material the gate needs to verify one served
@@ -132,6 +135,7 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defaultPath := filepath.Join(g.distDir, "packages", base)
+	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
 
 	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
 	// reader to verify it (503, distinct from a 403 verification refusal).
@@ -143,9 +147,20 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Resolve current catalog packages and rollback-window packages. A retained
 	// previous release lives outside the public dist tree and is reachable only
 	// through this authenticated resolver while its rollout deadline is live.
-	app, ok := g.lookupApp(base)
+	app, ok := g.lookupApp(base, snapshot, hasSnapshot)
 	if !ok {
-		if _, err := os.Stat(defaultPath); errors.Is(err, os.ErrNotExist) {
+		missing := false
+		if hasSnapshot {
+			f, err := snapshot.Open(filepath.ToSlash(filepath.Join("packages", base)))
+			if err == nil {
+				_ = f.Close()
+			}
+			missing = errors.Is(err, os.ErrNotExist)
+		} else {
+			_, err := os.Stat(defaultPath)
+			missing = errors.Is(err, os.ErrNotExist)
+		}
+		if missing {
 			g.fileServer.ServeHTTP(w, r)
 			return
 		}
@@ -156,13 +171,29 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	fp := app.spkPath
-	if fp == "" {
-		fp = defaultPath
+	if g.beforePackageOpen != nil {
+		g.beforePackageOpen()
 	}
-	f, err := os.Open(fp)
+	fp := app.spkPath
+	var f *os.File
+	var err error
+	if fp == "" && hasSnapshot {
+		f, err = snapshot.Open(filepath.ToSlash(filepath.Join("packages", base)))
+	} else {
+		if fp == "" {
+			fp = defaultPath
+		}
+		f, err = os.Open(fp)
+	}
 	if err != nil {
-		// Missing/unreadable SPK: let the FileServer render the canonical 404.
+		// A retained private candidate is never allowed to fall through to a
+		// similarly named public file. Missing private bytes fail closed.
+		if app.spkPath != "" {
+			http.NotFound(w, r)
+			return
+		}
+		// Missing/unreadable public SPK: let the request-scoped FileServer render
+		// the canonical 404 from this same immutable snapshot.
 		g.fileServer.ServeHTTP(w, r)
 		return
 	}
@@ -173,7 +204,11 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if st.IsDir() {
-		// A directory under /packages/ is not an SPK — preserve static behavior.
+		if app.spkPath != "" {
+			http.NotFound(w, r)
+			return
+		}
+		// A public directory under /packages/ is not an SPK — preserve static behavior.
 		g.fileServer.ServeHTTP(w, r)
 		return
 	}
@@ -334,8 +369,14 @@ func (g *serveGate) recordReleaseVerdict(installerHash string) {
 // On a miss it rebuilds the resolve index from disk at most once per
 // releaseRefresh window (bounding disk scans under a flood of unknown packageIds)
 // and retries once, so a newly published app becomes resolvable within the window.
-func (g *serveGate) lookupApp(packageID string) (servedApp, bool) {
+func (g *serveGate) lookupApp(packageID string, snapshot AppCatalogSnapshot, hasSnapshot bool) (servedApp, bool) {
 	key := strings.ToLower(strings.TrimSpace(packageID))
+	if hasSnapshot {
+		// Immutable generations make a request-local rebuild cheap enough and avoid
+		// any cross-request cache race while current is switching.
+		app, ok := g.buildAppIndex(snapshot, true)[key]
+		return app, ok
+	}
 	g.mu.RLock()
 	app, ok := g.apps[key]
 	loadedAt := g.appsLoadedAt
@@ -383,8 +424,17 @@ func (g *serveGate) rebuildAppIndex() {
 		return
 	}
 
+	idx := g.buildAppIndex(AppCatalogSnapshot{}, false)
+	g.mu.Lock()
+	g.apps = idx
+	g.appsLoadedAt = g.now()
+	g.mu.Unlock()
+}
+
+func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool) map[string]servedApp {
 	idx := make(map[string]servedApp)
-	if b, err := os.ReadFile(filepath.Join(g.distDir, "apps", "index.json")); err == nil {
+	b, err := g.readCatalogFile(snapshot, hasSnapshot, "apps/index.json")
+	if err == nil {
 		var ci catalogIndex
 		if json.Unmarshal(b, &ci) == nil {
 			for _, e := range ci.Apps {
@@ -397,18 +447,26 @@ func (g *serveGate) rebuildAppIndex() {
 				if pkgID == "" || !isSafePathSegment(appID) {
 					continue
 				}
-				rel, ok := readReleaseClaim(filepath.Join(g.distDir, "attest", appID, "RELEASE.json"))
+				relBytes, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")))
+				if err != nil {
+					continue
+				}
+				rel, ok := parseReleaseClaim(relBytes)
 				if !ok {
 					continue
 				}
-				meta, err := os.ReadFile(filepath.Join(g.distDir, "signatures", appID, "metadata.json"))
+				meta, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")))
 				if err != nil {
 					continue
+				}
+				spkPath := ""
+				if !hasSnapshot {
+					spkPath = filepath.Join(g.distDir, "packages", pkgID)
 				}
 				idx[pkgID] = servedApp{
 					rel:      rel,
 					metadata: meta,
-					spkPath:  filepath.Join(g.distDir, "packages", pkgID),
+					spkPath:  spkPath,
 				}
 			}
 		}
@@ -447,10 +505,19 @@ func (g *serveGate) rebuildAppIndex() {
 			validUntil: state.PreviousValidUntil,
 		}
 	}
-	g.mu.Lock()
-	g.apps = idx
-	g.appsLoadedAt = g.now()
-	g.mu.Unlock()
+	return idx
+}
+
+func (g *serveGate) readCatalogFile(snapshot AppCatalogSnapshot, hasSnapshot bool, relativePath string) ([]byte, error) {
+	if !hasSnapshot {
+		return os.ReadFile(filepath.Join(g.distDir, filepath.FromSlash(relativePath)))
+	}
+	f, err := snapshot.Open(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(f)
 }
 
 // isSafePathSegment reports whether s is a single clean path segment safe to
@@ -470,6 +537,10 @@ func readReleaseClaim(path string) (ReleaseJSON, bool) {
 	if err != nil {
 		return ReleaseJSON{}, false
 	}
+	return parseReleaseClaim(b)
+}
+
+func parseReleaseClaim(b []byte) (ReleaseJSON, bool) {
 	var rel ReleaseJSON
 	if json.Unmarshal(b, &rel) != nil {
 		return ReleaseJSON{}, false

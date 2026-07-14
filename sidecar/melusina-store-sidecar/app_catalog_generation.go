@@ -187,7 +187,13 @@ func (s AppCatalogGenerationStore) BootstrapFromFlat(flatDist string, validate f
 		}
 		return AppCatalogSnapshot{}, fmt.Errorf("lstat app catalog current: %w", err)
 	}
-	return s.buildFrom(flatDist, validate)
+	// Sanitize the byte-copied legacy index so a flat re-bootstrap can never
+	// re-introduce a Mongo-unsafe key (e.g. attest.$schema) that the shell's
+	// installVerifiedApp upsert would reject. Runs inside the candidate before
+	// validate/seal; a no-op for already-safe or opaque indexes.
+	return s.buildFromWith(flatDist, func(candidateRoot string) error {
+		return sanitizeCatalogIndexFile(candidateRoot)
+	}, validate, true)
 }
 
 // BuildAndSwitch clones the active immutable app catalog by byte-copy, lets
@@ -210,10 +216,6 @@ func (s AppCatalogGenerationStore) BuildAndSwitch(build func(candidateRoot strin
 // recoverable matching generation if the process exits between those steps.
 func (s AppCatalogGenerationStore) BuildCommittedFrom(source string, build func(candidateRoot string) error, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
 	return s.buildFromWith(source, build, validate, false)
-}
-
-func (s AppCatalogGenerationStore) buildFrom(source string, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
-	return s.buildFromWith(source, nil, validate, true)
 }
 
 func (s AppCatalogGenerationStore) buildFromWith(source string, build func(string) error, validate func(AppCatalogSnapshot) error, selectCurrent bool) (AppCatalogSnapshot, error) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -177,6 +178,19 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 		}
 		return left < right
 	})
+	// Strip Mongo-unsafe keys ($-prefixed or dotted, e.g. attest.$schema copied
+	// from RELEASE.json) from every row IMMEDIATELY before marshaling. This is
+	// load-bearing: projection.indexBytes below is BOTH written to apps/index.json
+	// AND hashed (sha256) into every signed catalog pointer, so the stripped bytes
+	// must be the ones marshaled here — stripping any later would desync the served
+	// index from the signed catalog digest. Reader fields (attest.appHash,
+	// attest.releaseHash, appId, packageId, sha256, version, ...) carry no $/. and
+	// therefore survive untouched.
+	for i := range index.Apps {
+		if m, ok := stripMongoUnsafeKeys(index.Apps[i]).(map[string]any); ok {
+			index.Apps[i] = m
+		}
+	}
 	body, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		return zero, fmt.Errorf("encode app index: %w", err)
@@ -186,6 +200,95 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 		return zero, fmt.Errorf("%w: got %d bytes, cap %d", errCatalogIndexCapacity, len(body), maxAppCatalogJSONBytes)
 	}
 	return catalogProjection{appID: appID, packageID: packageID, indexBytes: body}, nil
+}
+
+// stripMongoUnsafeKeys removes every map key that Minimongo rejects on upsert —
+// keys beginning with '$' (operator keys, e.g. attest.$schema) or containing '.'
+// (dotted paths) — at any depth, returning the sanitized value. Only the unsafe
+// keys are dropped; sibling scalar/array/object values (attest.appHash,
+// attest.releaseHash, etc.) are preserved.
+func stripMongoUnsafeKeys(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, val := range t {
+			if strings.HasPrefix(k, "$") || strings.Contains(k, ".") {
+				delete(t, k)
+				continue
+			}
+			t[k] = stripMongoUnsafeKeys(val)
+		}
+		return t
+	case []any:
+		for i := range t {
+			t[i] = stripMongoUnsafeKeys(t[i])
+		}
+		return t
+	default:
+		return v
+	}
+}
+
+// hasMongoUnsafeKey reports whether any map key at any depth begins with '$' or
+// contains '.', i.e. a key Minimongo would reject on upsert.
+func hasMongoUnsafeKey(v any) bool {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, val := range t {
+			if strings.HasPrefix(k, "$") || strings.Contains(k, ".") {
+				return true
+			}
+			if hasMongoUnsafeKey(val) {
+				return true
+			}
+		}
+	case []any:
+		for _, e := range t {
+			if hasMongoUnsafeKey(e) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// sanitizeCatalogIndexFile makes a materialized catalog generation's
+// apps/index.json Mongo-safe on the flat-bootstrap path (BootstrapFromFlat
+// byte-copies the legacy DistDir verbatim and never calls projectCatalogIndex).
+// It drops any map key that begins with '$' or contains '.' at any depth — e.g.
+// attest.$schema copied from RELEASE.json — which Minimongo rejects on upsert.
+// The exact original bytes are preserved whenever the index is unparseable JSON
+// or already Mongo-safe, so signed pointer digests over the index (and opaque
+// test fixtures) are never disturbed. The publish path is handled separately,
+// inside projectCatalogIndex before marshaling.
+func sanitizeCatalogIndexFile(catalogRoot string) error {
+	indexPath := filepath.Join(catalogRoot, "apps", "index.json")
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("read catalog index for sanitize: %w", err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var doc any
+	if err := dec.Decode(&doc); err != nil {
+		// Opaque / non-JSON index: nothing a Minimongo upsert could choke on.
+		return nil
+	}
+	if !hasMongoUnsafeKey(doc) {
+		// Already Mongo-safe: keep the exact bytes so any catalog-digest stays stable.
+		return nil
+	}
+	body, err := json.MarshalIndent(stripMongoUnsafeKeys(doc), "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode sanitized catalog index: %w", err)
+	}
+	body = append(body, '\n')
+	if err := os.WriteFile(indexPath, body, 0o644); err != nil {
+		return fmt.Errorf("write sanitized catalog index: %w", err)
+	}
+	return nil
 }
 
 func numberAsInt64(value any) (int64, bool) {

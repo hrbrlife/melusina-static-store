@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-[[ "$VERSION" == "1.0.4" ]] || { echo "--version must be exact governed version 1.0.4" >&2; exit 2; }
+[[ "$VERSION" == "1.0.5" ]] || { echo "--version must be exact governed version 1.0.5" >&2; exit 2; }
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
 OUT_DIR="$(realpath -ms -- "$OUT_DIR")"
 OUT_PARENT="$(dirname "$OUT_DIR")"
@@ -59,7 +59,7 @@ EXPECTED_PROVENANCE="{\"schema\":\"melusina-store-deterministic-build-v1\",\"sou
 validate_completed_output() {
   local entries file
   entries="$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)" || return 1
-  [[ "$entries" == $'BUILD-PROVENANCE.json\nSHA256SUMS\napply-store-update\nmelusina-store-sidecar\nstore-1.0.4.tar.xz' ]] || return 1
+  [[ "$entries" == $'BUILD-PROVENANCE.json\nSHA256SUMS\napply-store-update\nmelusina-store-sidecar\nstore-1.0.5.tar.xz' ]] || return 1
   for file in melusina-store-sidecar apply-store-update SHA256SUMS BUILD-PROVENANCE.json "store-$VERSION.tar.xz"; do
     [[ -f "$OUT_DIR/$file" && ! -L "$OUT_DIR/$file" ]] || return 1
   done
@@ -76,7 +76,7 @@ validate_completed_output() {
   cmp -s "$OUT_DIR/BUILD-PROVENANCE.json" "$TMP/out-1/BUILD-PROVENANCE.json" || return 1
 }
 WORK_BASE="$(dirname "$ROOT")"
-TMP="$(mktemp -d "$WORK_BASE/.store-release-1.0.4.XXXXXX")"
+TMP="$(mktemp -d "$WORK_BASE/.store-release-1.0.5.XXXXXX")"
 W1="$TMP/build-1"
 W2="$TMP/build-2"
 PUBLISH_TMP=""

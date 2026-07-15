@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestActiveEntriesRefusesUndecodableAccount(t *testing.T) {
 	var appID [32]byte
@@ -23,20 +26,10 @@ func TestDecodeProgramAccountsRefusesIncompleteRPCRecords(t *testing.T) {
 		{name: "empty pubkey", pubkey: "", data: []string{"AA==", "base64"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var record struct {
-				Pubkey  string `json:"pubkey"`
-				Account struct {
-					Data []string `json:"data"`
-				} `json:"account"`
-			}
+			var record rpcProgramAccount
 			record.Pubkey = tc.pubkey
 			record.Account.Data = tc.data
-			if _, err := decodeProgramAccounts([]struct {
-				Pubkey  string `json:"pubkey"`
-				Account struct {
-					Data []string `json:"data"`
-				} `json:"account"`
-			}{record}); err == nil {
+			if _, err := decodeProgramAccounts([]rpcProgramAccount{record}); err == nil {
 				t.Fatal("decodeProgramAccounts accepted an incomplete RPC record")
 			}
 		})
@@ -44,24 +37,37 @@ func TestDecodeProgramAccountsRefusesIncompleteRPCRecords(t *testing.T) {
 }
 
 func TestDecodeProgramAccountsAcceptsCompleteBase64RPCRecord(t *testing.T) {
-	var record struct {
-		Pubkey  string `json:"pubkey"`
-		Account struct {
-			Data []string `json:"data"`
-		} `json:"account"`
-	}
+	var record rpcProgramAccount
 	record.Pubkey = "release-entry"
 	record.Account.Data = []string{"AA==", "base64"}
-	accounts, err := decodeProgramAccounts([]struct {
-		Pubkey  string `json:"pubkey"`
-		Account struct {
-			Data []string `json:"data"`
-		} `json:"account"`
-	}{record})
+	accounts, err := decodeProgramAccounts([]rpcProgramAccount{record})
 	if err != nil {
 		t.Fatalf("decodeProgramAccounts rejected complete RPC record: %v", err)
 	}
 	if len(accounts) != 1 || accounts[0].pubkey != record.Pubkey || len(accounts[0].data) != 1 {
 		t.Fatalf("decodeProgramAccounts returned %#v, want one decoded record", accounts)
+	}
+}
+
+func TestProgramAccountsResponseRequiresExplicitResult(t *testing.T) {
+	for _, raw := range []string{
+		`{"jsonrpc":"2.0","id":1}`,
+		`{"jsonrpc":"2.0","id":1,"result":null}`,
+	} {
+		var response programAccountsResponse
+		if err := json.Unmarshal([]byte(raw), &response); err != nil {
+			t.Fatalf("decode fixture: %v", err)
+		}
+		if response.Result != nil {
+			t.Fatalf("result must stay nil for incomplete response %s", raw)
+		}
+	}
+
+	var response programAccountsResponse
+	if err := json.Unmarshal([]byte(`{"jsonrpc":"2.0","id":1,"result":[]}`), &response); err != nil {
+		t.Fatalf("decode explicit empty result: %v", err)
+	}
+	if response.Result == nil {
+		t.Fatal("explicit empty result must remain distinguishable from missing result")
 	}
 }

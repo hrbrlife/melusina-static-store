@@ -321,7 +321,14 @@ JSON
 # critical section (auto-released when this process exits). Different multisigs
 # may proceed concurrently; the same multisig is strictly serialized.
 command -v flock >/dev/null 2>&1 || { echo "[ceremony:$APP_SLUG] FATAL: flock (util-linux) not found — required to serialize the Squads tx-index critical section" >&2; exit 1; }
-CEREMONY_LOCK="${CEREMONY_LOCK:-$_SS_ROOT/.ceremony-$MULTISIG_PDA.lock}"
+# All linked git worktrees share one Squads transaction index, so their default
+# lock must also be shared. `--git-common-dir` resolves the primary worktree's
+# .git directory from either the primary checkout or any linked worktree.
+_CEREMONY_LOCK_ROOT="$_SS_ROOT"
+if _GIT_COMMON_DIR="$(git -C "$_SS_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  _CEREMONY_LOCK_ROOT="$(dirname "$_GIT_COMMON_DIR")"
+fi
+CEREMONY_LOCK="${CEREMONY_LOCK:-$_CEREMONY_LOCK_ROOT/.ceremony-$MULTISIG_PDA.lock}"
 exec {CEREMONY_LOCK_FD}>"$CEREMONY_LOCK" || { echo "[ceremony:$APP_SLUG] FATAL: cannot open ceremony lock $CEREMONY_LOCK" >&2; exit 1; }
 echo "[ceremony:$APP_SLUG] acquiring ceremony lock ($(basename "$CEREMONY_LOCK"))..."
 if ! flock -w "${CEREMONY_LOCK_WAIT:-600}" "$CEREMONY_LOCK_FD"; then

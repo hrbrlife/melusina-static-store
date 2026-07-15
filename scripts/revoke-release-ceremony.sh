@@ -98,7 +98,13 @@ npm install --prefix "$TMP" --silent
 # revoke against the SAME multisig must never race each other's
 # transactionIndex.
 command -v flock >/dev/null 2>&1 || { echo "FATAL: flock required" >&2; exit 1; }
-CEREMONY_LOCK="${CEREMONY_LOCK:-$_SS_ROOT/.ceremony-$MULTISIG_PDA.lock}"
+# Serialize the shared Squads transaction index across every linked worktree.
+# Each worktree has its own root but the same absolute git common directory.
+_CEREMONY_LOCK_ROOT="$_SS_ROOT"
+if _GIT_COMMON_DIR="$(git -C "$_SS_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  _CEREMONY_LOCK_ROOT="$(dirname "$_GIT_COMMON_DIR")"
+fi
+CEREMONY_LOCK="${CEREMONY_LOCK:-$_CEREMONY_LOCK_ROOT/.ceremony-$MULTISIG_PDA.lock}"
 exec {CEREMONY_LOCK_FD}>"$CEREMONY_LOCK"
 echo "[revoke:$APP_SLUG] acquiring ceremony lock..."
 flock -w "${CEREMONY_LOCK_WAIT:-600}" "$CEREMONY_LOCK_FD" \

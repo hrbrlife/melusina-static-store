@@ -41,6 +41,8 @@
 #     [--skip ceremony] \
 #     [--catalog-path <dir>]           # override auto-detected static_store
 #                                       #   packages/<dev>/<repo>/<slug> dir
+#     [--receipt-dir <durable-dir>]    # required: retain verified stage/promote receipts
+#     [--revoke-stale --expected-stale-pda <PDA> ...]
 #     [--dry-run]
 #
 # <dev-publish-keys-dir> must contain (see dev-publish-keys/README.md in
@@ -73,8 +75,12 @@ KEYS_DIR=""
 BUMP="patch"
 SKIP=""
 CATALOG_PATH_OVERRIDE=""
+RECEIPT_DIR=""
+STAGE_RECEIPT=""
+PROMOTE_RECEIPT=""
 DRY_RUN=false
 REVOKE_STALE=false
+EXPECTED_STALE_PDAS=()
 STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
 STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
 STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN}"
@@ -89,6 +95,8 @@ while [[ $# -gt 0 ]]; do
     --bump)         BUMP="$2"; shift 2 ;;
     --skip)         SKIP="$2"; shift 2 ;;
     --catalog-path) CATALOG_PATH_OVERRIDE="$2"; shift 2 ;;
+    --receipt-dir)  RECEIPT_DIR="$2"; shift 2 ;;
+    --expected-stale-pda) EXPECTED_STALE_PDAS+=("$2"); shift 2 ;;
     --revoke-stale) REVOKE_STALE=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     -h|--help) sed -n '/^# Usage:/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
@@ -103,6 +111,15 @@ done
 for f in publisher.json reviewer-1.json reviewer-2.json core-app-team-squads.json publisher.key.json store-pubkey.json; do
   [[ -f "$KEYS_DIR/$f" ]] || { echo "FATAL: $KEYS_DIR/$f missing (see dev-publish-keys/README.md)" >&2; exit 2; }
 done
+if $REVOKE_STALE; then
+  [[ -n "$RECEIPT_DIR" ]] || { echo "FATAL: --revoke-stale requires --receipt-dir so verified stage/promote receipts survive the ceremony" >&2; exit 2; }
+  ((${#EXPECTED_STALE_PDAS[@]} > 0)) || { echo "FATAL: --revoke-stale requires one or more explicit --expected-stale-pda values" >&2; exit 2; }
+  declare -A seen_expected=()
+  for pda in "${EXPECTED_STALE_PDAS[@]}"; do
+    [[ -n "$pda" && -z "${seen_expected[$pda]:-}" ]] || { echo "FATAL: duplicate or empty --expected-stale-pda: '$pda'" >&2; exit 2; }
+    seen_expected[$pda]=1
+  done
+fi
 
 skip_step() { [[ ",${SKIP}," == *",$1,"* ]]; }
 ok()   { printf '\033[0;32m[OK]\033[0m   %s\n' "$*"; }
@@ -116,6 +133,9 @@ APP_SLUG="$(basename "$APP_DIR")"
 info "App: $APP_SLUG ($APP_DIR)"
 info "Keys: $KEYS_DIR"
 info "Store: $STORE_URL   Bump: $BUMP   Dry-run: $DRY_RUN"
+if $REVOKE_STALE; then
+  info "Expected stale Active ReleaseEntries: ${EXPECTED_STALE_PDAS[*]}"
+fi
 echo
 
 # ---- Step 1: version bump ---------------------------------------------------
@@ -221,8 +241,17 @@ else
     --rpc-url "$RPC_URL"
     --timeout 480s
   )
-  "$SUBMIT_BIN" "${submit_common[@]}" -stage \
+  if $REVOKE_STALE; then
+    mkdir -p "$RECEIPT_DIR" || fail "  could not create receipt directory $RECEIPT_DIR"
+    STAGE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-stage-receipt.json"
+    PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-promote-receipt.json"
+    [[ ! -e "$STAGE_RECEIPT" && ! -e "$PROMOTE_RECEIPT" ]] || fail "  refusing to overwrite existing ceremony receipt(s) in $RECEIPT_DIR"
+  fi
+  stage_args=(-stage)
+  [[ -z "$STAGE_RECEIPT" ]] || stage_args+=(--receipt-out "$STAGE_RECEIPT")
+  "$SUBMIT_BIN" "${submit_common[@]}" "${stage_args[@]}" \
     || fail "  stage rejected by $STORE_URL/publish/stage — see output above (check=... names the failing gate)"
+  [[ -z "${STAGE_RECEIPT:-}" || -s "$STAGE_RECEIPT" ]] || fail "  verified stage receipt was not retained at $STAGE_RECEIPT"
 fi
 echo
 
@@ -241,13 +270,35 @@ if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
     (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/list-active-releases ./cmd/list-active-releases) \
       || fail "  list-active-releases build failed"
   fi
-  ACTIVES="$("$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" 2>/dev/null | python3 -c 'import json,sys
-for line in sys.stdin:
-    line=line.strip()
-    if line:
-        print(json.loads(line)["pda"])' 2>/dev/null || true)"
-  for pda in $ACTIVES; do
-    [[ "$pda" == "$NEW_PDA" ]] && continue
+  ACTIVE_JSON="$(mktemp)"
+  ACTIVE_PDAS="$(mktemp)"
+  trap 'rm -f "${ACTIVE_JSON:-}" "${ACTIVE_PDAS:-}"' EXIT
+  "$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" >"$ACTIVE_JSON" \
+    || fail "  Active ReleaseEntry enumeration failed; refusing to revoke without a complete chain view"
+  python3 - "$NEW_PDA" <"$ACTIVE_JSON" >"$ACTIVE_PDAS" <<'PY' \
+    || fail "  Active ReleaseEntry enumeration was malformed; refusing to revoke"
+import json, sys
+new_pda = sys.argv[1]
+seen = set()
+for raw in sys.stdin:
+    raw = raw.strip()
+    if not raw:
+        continue
+    entry = json.loads(raw)
+    pda = entry.get("pda")
+    if not isinstance(pda, str) or not pda or pda in seen:
+        raise SystemExit("invalid or duplicate Active ReleaseEntry PDA")
+    seen.add(pda)
+if new_pda not in seen:
+    raise SystemExit("just-registered ReleaseEntry is not Active")
+for pda in sorted(seen - {new_pda}):
+    print(pda)
+PY
+  mapfile -t ACTUAL_STALE_PDAS <"$ACTIVE_PDAS"
+  mapfile -t EXPECTED_STALE_SORTED < <(printf '%s\n' "${EXPECTED_STALE_PDAS[@]}" | LC_ALL=C sort)
+  [[ "${ACTUAL_STALE_PDAS[*]}" == "${EXPECTED_STALE_SORTED[*]}" ]] \
+    || fail "  Active ReleaseEntry set differs from explicit --expected-stale-pda allowlist; refusing to revoke"
+  for pda in "${EXPECTED_STALE_SORTED[@]}"; do
     info "  revoking stale Active ReleaseEntry $pda"
     STALE_RELEASE_ENTRY_PDA="$pda" MASTER_NFT_ATA="$MASTER_NFT_ATA" MELUSINA_RPC_URL="$RPC_URL" \
       MELUSINA_PUBLISHER_KEYPAIR="$KEYS_DIR/publisher.json" \
@@ -265,10 +316,39 @@ step 5c "promote staged candidate via $STORE_URL/publish"
 if $DRY_RUN; then
   info "  DRY RUN — would promote the already staged tuple via $STORE_URL/publish"
 else
-  "$SUBMIT_BIN" "${submit_common[@]}" \
+  promote_args=()
+  [[ -z "$PROMOTE_RECEIPT" ]] || promote_args+=(--receipt-out "$PROMOTE_RECEIPT")
+  "$SUBMIT_BIN" "${submit_common[@]}" "${promote_args[@]}" \
     || fail "  promote rejected by $STORE_URL/publish — see output above (check=... names the failing gate)"
+  [[ -z "${PROMOTE_RECEIPT:-}" || -s "$PROMOTE_RECEIPT" ]] || fail "  verified promotion receipt was not retained at $PROMOTE_RECEIPT"
 fi
 echo
+
+# The promotion receipt proves the store accepted this tuple. Re-read the
+# chain independently before calling it live: after a revoke run the new PDA
+# must be the ONE Active entry and must pin this exact RELEASE.json tree hash.
+if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
+  step 5d "independently assert exactly one Active ReleaseEntry after promote"
+  EXPECTED_APP_HASH="$(python3 -c 'import json; print(json.load(open("'"$CAT_PATH"'/RELEASE.json"))["appHash"])')"
+  FINAL_ACTIVE_JSON="$(mktemp)"
+  trap 'rm -f "${ACTIVE_JSON:-}" "${ACTIVE_PDAS:-}" "${FINAL_ACTIVE_JSON:-}"' EXIT
+  "$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" >"$FINAL_ACTIVE_JSON" \
+    || fail "  final Active ReleaseEntry enumeration failed"
+  python3 - "$NEW_PDA" "$EXPECTED_APP_HASH" <"$FINAL_ACTIVE_JSON" <<'PY' \
+    || fail "  post-promote chain state is not exactly the new Active ReleaseEntry"
+import json, sys
+want_pda, want_hash = sys.argv[1:]
+entries = []
+for raw in sys.stdin:
+    raw = raw.strip()
+    if raw:
+        entries.append(json.loads(raw))
+if len(entries) != 1 or entries[0].get("pda") != want_pda or entries[0].get("appHash", "").lower() != want_hash.lower():
+    raise SystemExit("expected exactly the promoted PDA with the RELEASE.json appHash")
+PY
+  ok "  exactly one Active ReleaseEntry remains and it pins $EXPECTED_APP_HASH"
+  echo
+fi
 
 # ---- Step 6: verify chain-verified serve -------------------------------------
 step 6 "verify served + chain-verified"
@@ -289,10 +369,25 @@ for a in apps:
         print(a.get('marketingVersion') or a.get('version') or '')
         break
 " "$SERVED_JSON" 2>/dev/null || true)"
+  SERVED_PACKAGE_ID="$(python3 -c "
+import json,sys
+d=json.loads(sys.argv[1])
+apps=d.get('apps', d if isinstance(d,list) else [])
+for a in apps:
+    if a.get('appId')=='$APP_ID':
+        print(a.get('packageId') or '')
+        break
+" "$SERVED_JSON" 2>/dev/null || true)"
   [[ "$SERVED_VER" == "$EXPECT_VER" ]] \
     || fail "  served index.json version '$SERVED_VER' != expected '$EXPECT_VER' — publish did not reach the served catalog"
+  [[ "$SERVED_PACKAGE_ID" == "${EXPECT_SHA:0:32}" ]] \
+    || fail "  served index.json packageId '$SERVED_PACKAGE_ID' != expected '${EXPECT_SHA:0:32}'"
+  SERVED_SHA="$(curl -fsS --max-time 120 "$STORE_URL/packages/$SERVED_PACKAGE_ID" | sha256sum | awk '{print $1}')" \
+    || fail "  could not fetch the served package for SHA-256 verification"
+  [[ "$SERVED_SHA" == "$EXPECT_SHA" ]] \
+    || fail "  served package SHA-256 '$SERVED_SHA' != expected '$EXPECT_SHA'"
   ok "  served index.json shows $APP_SLUG $SERVED_VER (matches)"
-  info "  expected app.spk sha256: $EXPECT_SHA (compare against the Active on-chain ReleaseEntry AppHash before declaring HT14 done)"
+  ok "  served package SHA-256 $SERVED_SHA matches the clean artifact"
 fi
 echo
 

@@ -41,7 +41,7 @@
 #     [--skip ceremony] \
 #     [--catalog-path <dir>]           # override auto-detected static_store
 #                                       #   packages/<dev>/<repo>/<slug> dir
-#     [--receipt-dir <durable-dir>]    # required: retain verified stage/promote receipts
+#     --receipt-dir <durable-dir>      # required for every non-dry live publish
 #     [--revoke-stale --expected-stale-pda <PDA> ...]
 #     [--dry-run]
 #
@@ -111,8 +111,10 @@ done
 for f in publisher.json reviewer-1.json reviewer-2.json core-app-team-squads.json publisher.key.json store-pubkey.json; do
   [[ -f "$KEYS_DIR/$f" ]] || { echo "FATAL: $KEYS_DIR/$f missing (see dev-publish-keys/README.md)" >&2; exit 2; }
 done
+if ! $DRY_RUN; then
+  [[ -n "$RECEIPT_DIR" ]] || { echo "FATAL: live publish requires --receipt-dir so verified stage/promote receipts survive the ceremony" >&2; exit 2; }
+fi
 if $REVOKE_STALE; then
-  [[ -n "$RECEIPT_DIR" ]] || { echo "FATAL: --revoke-stale requires --receipt-dir so verified stage/promote receipts survive the ceremony" >&2; exit 2; }
   ((${#EXPECTED_STALE_PDAS[@]} > 0)) || { echo "FATAL: --revoke-stale requires one or more explicit --expected-stale-pda values" >&2; exit 2; }
   declare -A seen_expected=()
   for pda in "${EXPECTED_STALE_PDAS[@]}"; do
@@ -241,12 +243,10 @@ else
     --rpc-url "$RPC_URL"
     --timeout 480s
   )
-  if $REVOKE_STALE; then
-    mkdir -p "$RECEIPT_DIR" || fail "  could not create receipt directory $RECEIPT_DIR"
-    STAGE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-stage-receipt.json"
-    PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-promote-receipt.json"
-    [[ ! -e "$STAGE_RECEIPT" && ! -e "$PROMOTE_RECEIPT" ]] || fail "  refusing to overwrite existing ceremony receipt(s) in $RECEIPT_DIR"
-  fi
+  mkdir -p "$RECEIPT_DIR" || fail "  could not create receipt directory $RECEIPT_DIR"
+  STAGE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-stage-receipt.json"
+  PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-promote-receipt.json"
+  [[ ! -e "$STAGE_RECEIPT" && ! -e "$PROMOTE_RECEIPT" ]] || fail "  refusing to overwrite existing ceremony receipt(s) in $RECEIPT_DIR"
   stage_args=(-stage)
   [[ -z "$STAGE_RECEIPT" ]] || stage_args+=(--receipt-out "$STAGE_RECEIPT")
   "$SUBMIT_BIN" "${submit_common[@]}" "${stage_args[@]}" \

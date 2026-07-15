@@ -85,25 +85,36 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	if err != nil {
 		return fmt.Errorf("getProgramAccounts: %w", err)
 	}
+	entries, err := activeEntries(accounts, appID)
+	if err != nil {
+		return err
+	}
 	enc := json.NewEncoder(os.Stdout)
-	found := 0
+	for _, entry := range entries {
+		if err := enc.Encode(entry); err != nil {
+			return fmt.Errorf("write active entry: %w", err)
+		}
+	}
+	fmt.Fprintf(os.Stderr, "%d Active ReleaseEntry account(s) found for this app_id\n", len(entries))
+	return nil
+}
+
+// activeEntries refuses an incomplete RPC result. A caller uses this list to
+// decide irreversible revocations, so silently skipping an undecodable account
+// would turn a partial chain view into an unsafe "complete" allowlist check.
+func activeEntries(accounts []programAccount, appID [32]byte) ([]activeEntry, error) {
+	entries := make([]activeEntry, 0, len(accounts))
 	for _, acct := range accounts {
 		meta, err := readReleaseEntryMinimal(acct.data)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip %s: decode error: %v\n", acct.pubkey, err)
+			return nil, fmt.Errorf("decode ReleaseEntry %s: %w", acct.pubkey, err)
+		}
+		if meta.appID != appID || meta.status != verify.AttestationStatusActive {
 			continue
 		}
-		if meta.appID != appID {
-			continue
-		}
-		if meta.status != verify.AttestationStatusActive {
-			continue
-		}
-		found++
-		_ = enc.Encode(activeEntry{PDA: acct.pubkey, Version: meta.version, AppHash: fmt.Sprintf("%x", meta.appHash)})
+		entries = append(entries, activeEntry{PDA: acct.pubkey, Version: meta.version, AppHash: fmt.Sprintf("%x", meta.appHash)})
 	}
-	fmt.Fprintf(os.Stderr, "%d Active ReleaseEntry account(s) found for this app_id\n", found)
-	return nil
+	return entries, nil
 }
 
 type programAccount struct {

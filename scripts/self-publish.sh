@@ -233,8 +233,14 @@ for line in sys.stdin:
   echo
 fi
 
-# ---- Step 5: POST /publish (sealed-v3, single writer, chain-verified) -------
-step 5 "POST $STORE_URL/publish"
+# ---- Step 5: stage + promote through POST /publish (sealed-v3) ---------------
+# The 1.0.5 store enforces the two-phase contract: the candidate MUST be
+# durably staged (POST /publish/stage → signed StageReceipt) BEFORE the
+# activation POST /publish, which looks the staged candidate up by its
+# appId/appHash/releaseHash tuple. A bare promote against 1.0.5 is refused
+# with "HTTP 409 check=stage: candidate was not durably staged before
+# activation" (hit + fixed 2026-07-15, welcome-pearl 0.1.23).
+step 5 "stage + promote via $STORE_URL/publish"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 if [[ ! -x "$SUBMIT_BIN" ]]; then
   info "  building submit client"
@@ -243,20 +249,24 @@ if [[ ! -x "$SUBMIT_BIN" ]]; then
     || fail "  submit-build failed"
 fi
 if $DRY_RUN; then
-  info "  DRY RUN — would POST $CAT_PATH/{app.spk,metadata.json,RELEASE.json} to $STORE_URL/publish"
+  info "  DRY RUN — would stage then promote $CAT_PATH/{app.spk,metadata.json,RELEASE.json} via $STORE_URL/publish{/stage,}"
 else
-  "$SUBMIT_BIN" \
-    --store "$STORE_URL" \
-    --spk "$CAT_PATH/app.spk" \
-    --metadata "$CAT_PATH/metadata.json" \
-    --release "$CAT_PATH/RELEASE.json" \
-    --publisher-key "$KEYS_DIR/publisher.key.json" \
-    --store-pubkey "$KEYS_DIR/store-pubkey.json" \
-    --license-mint "$STORE_LICENSE_MINT" \
-    --domain "$STORE_DOMAIN" \
-    --rpc-url "$RPC_URL" \
-    --timeout 480s \
-    || fail "  sealed submit rejected by $STORE_URL — see output above (check=... names the failing gate)"
+  submit_common=(
+    --store "$STORE_URL"
+    --spk "$CAT_PATH/app.spk"
+    --metadata "$CAT_PATH/metadata.json"
+    --release "$CAT_PATH/RELEASE.json"
+    --publisher-key "$KEYS_DIR/publisher.key.json"
+    --store-pubkey "$KEYS_DIR/store-pubkey.json"
+    --license-mint "$STORE_LICENSE_MINT"
+    --domain "$STORE_DOMAIN"
+    --rpc-url "$RPC_URL"
+    --timeout 480s
+  )
+  "$SUBMIT_BIN" "${submit_common[@]}" -stage \
+    || fail "  stage rejected by $STORE_URL/publish/stage — see output above (check=... names the failing gate)"
+  "$SUBMIT_BIN" "${submit_common[@]}" \
+    || fail "  promote rejected by $STORE_URL/publish — see output above (check=... names the failing gate)"
 fi
 echo
 

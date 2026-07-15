@@ -189,23 +189,50 @@ echo
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "  MELUSINA_STORE_RPC_URL (or MELUSINA_RPC_URL) required for receipt verification"
 
-# ---- Step 4b: revoke stale Active ReleaseEntries (OPT-IN) --------------------
-# Apps have NO atomic on-chain supersede (unlike installers). The store's
-# verifyReleaseVersionForward gate rejects a publish while ANY other Active
-# ReleaseEntry exists for the same app_id — so a version-bump publish needs the
-# PRIOR version's entry revoked first. This step registers-then-revokes: the
-# ceremony (Step 4) already registered the NEW entry, so here we revoke every
-# OTHER Active entry for this app_id, keeping only the just-registered one.
-#
-# WHY OPT-IN (--revoke-stale), NOT default: it is only SAFE when the store
-# actually PERSISTS-on-publish (store-sidecar >= commit b471999f). On an older
-# store binary the POST returns a valid receipt but never writes the new bytes,
-# so revoking the prior entry FIRST would strand the still-served old bytes with
-# a Revoked on-chain entry → the serve-gate then 403s the live app. Only pass
-# --revoke-stale once the deployed store persists on publish (verify: a prior
-# self-publish actually changed /apps/index.json). See dev-publish-keys/README.
+# ---- Step 5: durable stage through POST /publish/stage (sealed-v3) -----------
+# The 1.0.5 store enforces the two-phase contract: the candidate MUST be
+# durably staged (POST /publish/stage → signed StageReceipt) BEFORE the
+# activation POST /publish, which looks the staged candidate up by its
+# appId/appHash/releaseHash tuple. A bare promote against 1.0.5 is refused
+# with "HTTP 409 check=stage: candidate was not durably staged before
+# activation" (hit + fixed 2026-07-15, welcome-pearl 0.1.23). Keep the
+# stage as a distinct durable boundary: revoking an old Active before this
+# receipt exists can create a serving gap if the candidate cannot be staged.
+step 5 "durably stage via $STORE_URL/publish/stage"
+SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
+if [[ ! -x "$SUBMIT_BIN" ]]; then
+  info "  building submit client"
+  $DRY_RUN || (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && \
+    mkdir -p bin && go build -o bin/submit ./cmd/submit) \
+    || fail "  submit-build failed"
+fi
+if $DRY_RUN; then
+  info "  DRY RUN — would durably stage $CAT_PATH/{app.spk,metadata.json,RELEASE.json} via $STORE_URL/publish/stage"
+else
+  submit_common=(
+    --store "$STORE_URL"
+    --spk "$CAT_PATH/app.spk"
+    --metadata "$CAT_PATH/metadata.json"
+    --release "$CAT_PATH/RELEASE.json"
+    --publisher-key "$KEYS_DIR/publisher.key.json"
+    --store-pubkey "$KEYS_DIR/store-pubkey.json"
+    --license-mint "$STORE_LICENSE_MINT"
+    --domain "$STORE_DOMAIN"
+    --rpc-url "$RPC_URL"
+    --timeout 480s
+  )
+  "$SUBMIT_BIN" "${submit_common[@]}" -stage \
+    || fail "  stage rejected by $STORE_URL/publish/stage — see output above (check=... names the failing gate)"
+fi
+echo
+
+# ---- Step 5b: revoke stale Active ReleaseEntries (OPT-IN, after stage) -------
+# Apps have no atomic on-chain supersede. The store accepts promotion only when
+# no different Active ReleaseEntry remains for the app, but the old entry must
+# stay Active until the candidate has a durable StageReceipt. The safe order is
+# ceremony/register -> durable stage -> revoke stale entries -> promote.
 if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
-  step 4b "revoke stale Active ReleaseEntries (--revoke-stale)"
+  step 5b "revoke stale Active ReleaseEntries after durable stage (--revoke-stale)"
   NEW_PDA="$(python3 -c 'import json;print(json.load(open("'"$CAT_PATH"'/RELEASE.json")).get("releaseEntryPda",""))' 2>/dev/null || true)"
   [[ -n "$NEW_PDA" ]] || fail "  --revoke-stale: could not read the just-registered releaseEntryPda from $CAT_PATH/RELEASE.json"
   LIST_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/list-active-releases"
@@ -233,38 +260,11 @@ for line in sys.stdin:
   echo
 fi
 
-# ---- Step 5: stage + promote through POST /publish (sealed-v3) ---------------
-# The 1.0.5 store enforces the two-phase contract: the candidate MUST be
-# durably staged (POST /publish/stage → signed StageReceipt) BEFORE the
-# activation POST /publish, which looks the staged candidate up by its
-# appId/appHash/releaseHash tuple. A bare promote against 1.0.5 is refused
-# with "HTTP 409 check=stage: candidate was not durably staged before
-# activation" (hit + fixed 2026-07-15, welcome-pearl 0.1.23).
-step 5 "stage + promote via $STORE_URL/publish"
-SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
-if [[ ! -x "$SUBMIT_BIN" ]]; then
-  info "  building submit client"
-  $DRY_RUN || (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && \
-    mkdir -p bin && go build -o bin/submit ./cmd/submit) \
-    || fail "  submit-build failed"
-fi
+# ---- Step 5c: promote the already staged candidate ---------------------------
+step 5c "promote staged candidate via $STORE_URL/publish"
 if $DRY_RUN; then
-  info "  DRY RUN — would stage then promote $CAT_PATH/{app.spk,metadata.json,RELEASE.json} via $STORE_URL/publish{/stage,}"
+  info "  DRY RUN — would promote the already staged tuple via $STORE_URL/publish"
 else
-  submit_common=(
-    --store "$STORE_URL"
-    --spk "$CAT_PATH/app.spk"
-    --metadata "$CAT_PATH/metadata.json"
-    --release "$CAT_PATH/RELEASE.json"
-    --publisher-key "$KEYS_DIR/publisher.key.json"
-    --store-pubkey "$KEYS_DIR/store-pubkey.json"
-    --license-mint "$STORE_LICENSE_MINT"
-    --domain "$STORE_DOMAIN"
-    --rpc-url "$RPC_URL"
-    --timeout 480s
-  )
-  "$SUBMIT_BIN" "${submit_common[@]}" -stage \
-    || fail "  stage rejected by $STORE_URL/publish/stage — see output above (check=... names the failing gate)"
   "$SUBMIT_BIN" "${submit_common[@]}" \
     || fail "  promote rejected by $STORE_URL/publish — see output above (check=... names the failing gate)"
 fi

@@ -190,14 +190,30 @@ func getProgramAccountsByAppID(ctx context.Context, rpcURL, programIDB58 string,
 	if parsed.Error != nil {
 		return nil, fmt.Errorf("rpc error %d: %s", parsed.Error.Code, parsed.Error.Message)
 	}
-	out := make([]programAccount, 0, len(parsed.Result))
-	for _, r := range parsed.Result {
-		if len(r.Account.Data) == 0 {
-			continue
+	return decodeProgramAccounts(parsed.Result)
+}
+
+// decodeProgramAccounts refuses malformed RPC account records. Callers use the
+// resulting set as the complete Active-entry view before an irreversible
+// revoke, so dropping a record would turn a partial response into a false
+// allowlist match.
+func decodeProgramAccounts(records []struct {
+	Pubkey  string `json:"pubkey"`
+	Account struct {
+		Data []string `json:"data"`
+	} `json:"account"`
+}) ([]programAccount, error) {
+	out := make([]programAccount, 0, len(records))
+	for _, r := range records {
+		if r.Pubkey == "" {
+			return nil, errors.New("RPC account record has empty pubkey")
+		}
+		if len(r.Account.Data) != 2 || r.Account.Data[0] == "" || r.Account.Data[1] != "base64" {
+			return nil, fmt.Errorf("RPC account %s has missing or malformed base64 data", r.Pubkey)
 		}
 		decoded, err := decodeBase64(r.Account.Data[0])
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("decode RPC account %s base64 data: %w", r.Pubkey, err)
 		}
 		out = append(out, programAccount{pubkey: r.Pubkey, data: decoded})
 	}

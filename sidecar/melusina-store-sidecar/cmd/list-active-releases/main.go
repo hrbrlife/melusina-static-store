@@ -134,14 +134,18 @@ type storeRPCError struct {
 	Message string `json:"message"`
 }
 
+type rpcProgramAccount struct {
+	Pubkey  string `json:"pubkey"`
+	Account struct {
+		Data []string `json:"data"`
+	} `json:"account"`
+}
+
 type programAccountsResponse struct {
-	Result []struct {
-		Pubkey  string `json:"pubkey"`
-		Account struct {
-			Data []string `json:"data"`
-		} `json:"account"`
-	} `json:"result"`
-	Error *storeRPCError `json:"error,omitempty"`
+	// A pointer distinguishes an explicit empty result (a complete, valid chain
+	// view) from omitted/null result, which must never authorize revocations.
+	Result *[]rpcProgramAccount `json:"result"`
+	Error  *storeRPCError       `json:"error,omitempty"`
 }
 
 func getProgramAccountsByAppID(ctx context.Context, rpcURL, programIDB58 string, appID [32]byte) ([]programAccount, error) {
@@ -190,19 +194,17 @@ func getProgramAccountsByAppID(ctx context.Context, rpcURL, programIDB58 string,
 	if parsed.Error != nil {
 		return nil, fmt.Errorf("rpc error %d: %s", parsed.Error.Code, parsed.Error.Message)
 	}
-	return decodeProgramAccounts(parsed.Result)
+	if parsed.Result == nil {
+		return nil, errors.New("RPC response omitted or null result")
+	}
+	return decodeProgramAccounts(*parsed.Result)
 }
 
 // decodeProgramAccounts refuses malformed RPC account records. Callers use the
 // resulting set as the complete Active-entry view before an irreversible
 // revoke, so dropping a record would turn a partial response into a false
 // allowlist match.
-func decodeProgramAccounts(records []struct {
-	Pubkey  string `json:"pubkey"`
-	Account struct {
-		Data []string `json:"data"`
-	} `json:"account"`
-}) ([]programAccount, error) {
+func decodeProgramAccounts(records []rpcProgramAccount) ([]programAccount, error) {
 	out := make([]programAccount, 0, len(records))
 	for _, r := range records {
 		if r.Pubkey == "" {

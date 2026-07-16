@@ -28,9 +28,8 @@ CATALOG_PATH_OVERRIDE=""
 BUMP="none"
 PROMOTE_EXISTING=false
 DRY_RUN=false
-STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
-STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
-STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN}"
+GENESIS_PATH="${MELUSINA_FRESH_GENESIS:-}"
+GENESIS_ROOT_KEY="${MELUSINA_FRESH_GENESIS_ROOT_KEY:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,7 +49,47 @@ need_file() { [[ -f "$1" ]] || fail "required file missing: $1"; }
 
 [[ -n "$APP_DIR" && -d "$APP_DIR" ]] || fail "app source directory is required"
 [[ -n "$KEYS_DIR" && -d "$KEYS_DIR" ]] || fail "--keys directory is required"
+[[ -n "$GENESIS_PATH" ]] || fail "MELUSINA_FRESH_GENESIS is required"
+[[ -n "$GENESIS_ROOT_KEY" ]] || fail "MELUSINA_FRESH_GENESIS_ROOT_KEY is required"
+need_file "$GENESIS_PATH"
 case "$BUMP" in patch|minor|major|none) ;; *) fail "--bump must be patch, minor, major, or none" ;; esac
+
+# The publish client and active-release reader intentionally have no program or
+# cluster defaults.  Resolve those values from the signed greenfield genesis,
+# and refuse ambient store settings that disagree with it.  This prevents a
+# fresh FULL_DEPLOY from silently publishing against the prior program/store.
+FRESH_STAGE_TOOL="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/scripts/emit_fresh_deployment_stage_receipt.py"
+need_file "$FRESH_STAGE_TOOL"
+mapfile -t signed_binding < <(python3 - "$FRESH_STAGE_TOOL" "$GENESIS_PATH" "$GENESIS_ROOT_KEY" <<'PY'
+import importlib.util, pathlib, sys
+tool = pathlib.Path(sys.argv[1])
+genesis_path = pathlib.Path(sys.argv[2])
+root_key = sys.argv[3]
+spec = importlib.util.spec_from_file_location("fresh_stage_binding", tool)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+genesis = module.verify_signed_genesis(genesis_path, root_key)
+binding = module.contract_bindings(genesis)
+for name in ("programId", "clusterGenesisHash", "licenseNftMint", "storeOrigin", "storeDomain"):
+    print(binding[name])
+PY
+)
+[[ ${#signed_binding[@]} -eq 5 ]] || fail "signed genesis binding output is incomplete"
+PROGRAM_ID="${signed_binding[0]}"
+CLUSTER_GENESIS_HASH="${signed_binding[1]}"
+STORE_LICENSE_MINT="${signed_binding[2]}"
+STORE_URL="${signed_binding[3]}"
+STORE_DOMAIN="${signed_binding[4]}"
+[[ -z "${MELUSINA_PROGRAM_ID:-}" || "${MELUSINA_PROGRAM_ID:-}" == "$PROGRAM_ID" ]] || \
+  fail "MELUSINA_PROGRAM_ID differs from signed fresh genesis"
+[[ -z "${MELUSINA_CLUSTER_GENESIS_HASH:-}" || "${MELUSINA_CLUSTER_GENESIS_HASH:-}" == "$CLUSTER_GENESIS_HASH" ]] || \
+  fail "MELUSINA_CLUSTER_GENESIS_HASH differs from signed fresh genesis"
+[[ -z "${MELUSINA_STORE_LICENSE_MINT:-}" || "${MELUSINA_STORE_LICENSE_MINT:-}" == "$STORE_LICENSE_MINT" ]] || \
+  fail "MELUSINA_STORE_LICENSE_MINT differs from signed fresh genesis"
+[[ -z "${MELUSINA_STORE_URL:-}" || "${MELUSINA_STORE_URL:-}" == "$STORE_URL" ]] || \
+  fail "MELUSINA_STORE_URL differs from signed fresh genesis"
+[[ -z "${MELUSINA_STORE_DOMAIN:-}" || "${MELUSINA_STORE_DOMAIN:-}" == "$STORE_DOMAIN" ]] || \
+  fail "MELUSINA_STORE_DOMAIN differs from signed fresh genesis"
 
 # Canonicalize before the later cd, and reject every symlink component. This
 # keeps app/key/catalog references stable for the whole invocation.
@@ -123,9 +162,30 @@ else
   "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
 fi
 for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
+APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"
+[[ "$APP_ID" =~ ^[0123456789acdefghjkmnpqrstuvwxyz]{52}$ ]] || \
+  fail "metadata.json appId is not canonical"
 
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "MELUSINA_STORE_RPC_URL or MELUSINA_RPC_URL is required"
+
+# Return a fresh finalized slot for each independently signed envelope. submit
+# re-checks getGenesisHash itself; this helper supplies only the non-zero
+# verified_slot required by ChainEvidence.
+finalized_slot() {
+  python3 - "$RPC_URL" <<'PY'
+import json, sys, urllib.request
+request = urllib.request.Request(sys.argv[1], data=json.dumps({
+    "jsonrpc": "2.0", "id": 1, "method": "getSlot",
+    "params": [{"commitment": "finalized"}],
+}).encode(), headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(request, timeout=90) as response:
+    value = json.loads(response.read())
+if value.get("error") or not isinstance(value.get("result"), int) or value["result"] < 1:
+    raise SystemExit(f"finalized getSlot failed: {value}")
+print(value["result"])
+PY
+}
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 if [[ ! -x "$SUBMIT_BIN" ]]; then
   (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/submit ./cmd/submit)
@@ -138,7 +198,9 @@ RECEIPT_DIR="${MELUSINA_PUBLISH_RECEIPT_DIR:-/tmp/melusina-publish-receipts/$APP
 mkdir -p "$RECEIPT_DIR"
 chmod 700 "$RECEIPT_DIR"
 STAGE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-stage.json"
-PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_SLUG-promote.json"
+# The greenfield storePublish stage producer requires the exact signed app set
+# as <appId>.json, so promotion proof collection is deterministic.
+PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_ID.json"
 ACTIVE_BEFORE="$RECEIPT_DIR/$APP_SLUG-active-before.jsonl"
 ACTIVE_AFTER="$RECEIPT_DIR/$APP_SLUG-active-after.jsonl"
 
@@ -147,13 +209,15 @@ submit_common=(
   --metadata "$CAT_PATH/metadata.json" --release "$CAT_PATH/RELEASE.json"
   --publisher-key "$KEYS_DIR/publisher.key.json" --store-pubkey "$KEYS_DIR/store-pubkey.json"
   --license-mint "$STORE_LICENSE_MINT" --domain "$STORE_DOMAIN"
-  --rpc-url "$RPC_URL" --timeout 480s
+  --rpc-url "$RPC_URL" --program-id "$PROGRAM_ID"
+  --cluster-genesis-hash "$CLUSTER_GENESIS_HASH" --timeout 480s
 )
 
 # Envelope S is generated inside this invocation and is valid only at the
 # stage route. Successful return includes local verification of the store's
 # signed stage receipt against current on-chain store authority.
-"$SUBMIT_BIN" "${submit_common[@]}" --stage --receipt-out "$STAGE_RECEIPT"
+"$SUBMIT_BIN" "${submit_common[@]}" --verified-slot "$(finalized_slot)" \
+  --stage --receipt-out "$STAGE_RECEIPT"
 info "private stage verified: $STAGE_RECEIPT"
 
 if ! $PROMOTE_EXISTING; then
@@ -164,20 +228,25 @@ fi
 info "EXACT-CURRENT: no app chain write; existing Active ReleaseEntry remains authoritative"
 KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("releaseEntryPda") or "")' "$CAT_PATH/RELEASE.json")"
 [[ -n "$KNOWN_RELEASE_PDA" ]] || fail "exact-current release has no releaseEntryPda"
-"$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_BEFORE"
+"$ACTIVE_BIN" -rpc-url "$RPC_URL" -program-id "$PROGRAM_ID" \
+  -cluster-genesis-hash "$CLUSTER_GENESIS_HASH" -known-pda "$KNOWN_RELEASE_PDA" | \
+  LC_ALL=C sort >"$ACTIVE_BEFORE"
 [[ "$(wc -l <"$ACTIVE_BEFORE" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry before promotion"
 
 # Envelope P is freshly generated here and is valid only at /publish. It never
 # reuses the stage nonce or purpose.
-"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"
+"$SUBMIT_BIN" "${submit_common[@]}" --verified-slot "$(finalized_slot)" \
+  --receipt-out "$PROMOTE_RECEIPT"
 "$SUBMIT_BIN" --verify-receipt "$PROMOTE_RECEIPT" \
   --store "$STORE_URL" --license-mint "$STORE_LICENSE_MINT" \
-  --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL"
-"$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_AFTER"
+  --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL" --program-id "$PROGRAM_ID" \
+  --cluster-genesis-hash "$CLUSTER_GENESIS_HASH"
+"$ACTIVE_BIN" -rpc-url "$RPC_URL" -program-id "$PROGRAM_ID" \
+  -cluster-genesis-hash "$CLUSTER_GENESIS_HASH" -known-pda "$KNOWN_RELEASE_PDA" | \
+  LC_ALL=C sort >"$ACTIVE_AFTER"
 [[ "$(wc -l <"$ACTIVE_AFTER" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry after promotion"
 cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER" || fail "Active ReleaseEntry set changed during exact-current promotion"
 
-APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"
 POINTER_URL="$STORE_URL/apps/pointers/$APP_ID.json"
 curl -fsS --max-time 30 "$POINTER_URL" -o "$RECEIPT_DIR/$APP_SLUG-pointer.json"
 python3 - "$PROMOTE_RECEIPT" "$RECEIPT_DIR/$APP_SLUG-pointer.json" <<'PY' || fail "served pointer differs from verified promotion receipt"

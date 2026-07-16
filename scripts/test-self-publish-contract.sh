@@ -26,6 +26,14 @@ grep -q 'PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
 grep -q 'no app-chain writer' "$DRIVER"
 grep -q 'Active ReleaseEntry set changed' "$DRIVER"
 grep -q 'requires exactly one Active ReleaseEntry before promotion' "$DRIVER"
+grep -q 'MELUSINA_FRESH_GENESIS is required' "$DRIVER"
+grep -q 'MELUSINA_FRESH_GENESIS_ROOT_KEY is required' "$DRIVER"
+grep -q -- '--program-id "$PROGRAM_ID"' "$DRIVER"
+grep -q -- '--cluster-genesis-hash "$CLUSTER_GENESIS_HASH"' "$DRIVER"
+grep -q -- '--verified-slot "$(finalized_slot)"' "$DRIVER"
+grep -q 'PROMOTE_RECEIPT="$RECEIPT_DIR/$APP_ID.json"' "$DRIVER"
+! grep -q '7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb' "$DRIVER"
+! grep -q '35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN' "$DRIVER"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then
@@ -45,16 +53,16 @@ rm -f /tmp/melusina-retired-sync.out
 python3 - "$DRIVER" <<'PY'
 import pathlib, sys
 s = pathlib.Path(sys.argv[1]).read_text()
-stage = s.index('"$SUBMIT_BIN" "${submit_common[@]}" --stage')
+stage = s.index('--stage --receipt-out "$STAGE_RECEIPT"')
 stop = s.index('STOP PRE-CHAIN')
 readonly = s.index('EXACT-CURRENT: no app chain write')
 active_before = s.index('>"$ACTIVE_BEFORE"')
-promote = s.index('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"')
+promote = s.index('--receipt-out "$PROMOTE_RECEIPT"')
 active_after = s.index('>"$ACTIVE_AFTER"')
 compare = s.index('cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER"')
 assert stage < stop < readonly < active_before < promote < active_after < compare
-assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --stage') == 1
-assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"') == 1
+assert s.count('--stage --receipt-out "$STAGE_RECEIPT"') == 1
+assert s.count('--receipt-out "$PROMOTE_RECEIPT"') == 1
 PY
 
 python3 - "$RELEASE_BUILDER" <<'PY'

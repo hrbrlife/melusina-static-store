@@ -30,13 +30,12 @@ import (
 )
 
 const (
-	prepareCatalogV104Command = "prepare-catalog-v104"
+	prepareStoreUpdateCommand = "prepare-store-update"
 	chainReceiptSchema        = "melusina-installer-release-chain-verification-v1"
 	applyReceiptSchema        = "melusina-store-update-apply-v1"
-	migrationStateSchema      = "melusina-catalog-v104-migration-v1"
-	fromVersion               = "1.0.3"
-	toVersion                 = "1.0.4"
-	catalogStateName          = "catalog-v104.json"
+	fromVersion               = "1.0.5"
+	toVersion                 = "1.0.6"
+	applyReceiptName          = "store-1.0.6.json"
 	writerLockName            = "writer.lock"
 	canonicalLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	xzExecutable              = "/usr/bin/xz"
@@ -91,19 +90,6 @@ type applyReceipt struct {
 	LedgerID                   string `json:"ledgerId"`
 }
 
-type migrationState struct {
-	Schema                     string `json:"schema"`
-	State                      string `json:"state"`
-	FromVersion                string `json:"fromVersion"`
-	ToVersion                  string `json:"toVersion"`
-	SourceChainReceiptSHA256   string `json:"sourceChainReceiptSha256"`
-	SourceInstallerReleasePDA  string `json:"sourceInstallerReleasePda"`
-	ArchiveSHA256              string `json:"archiveSha256"`
-	ExpectedInstalledELFSHA256 string `json:"expectedInstalledElfSha256"`
-	NewELFSHA256               string `json:"newElfSha256"`
-	LedgerID                   string `json:"ledgerId"`
-}
-
 type result struct {
 	Schema                   string `json:"schema"`
 	State                    string `json:"state"`
@@ -146,7 +132,7 @@ func run(args []string, out io.Writer, policy securityPolicy) error {
 	if err != nil {
 		return err
 	}
-	res, err := prepareCatalogV104(opts, policy)
+	res, err := prepareStoreUpdate(opts, policy)
 	if err != nil {
 		return err
 	}
@@ -156,22 +142,22 @@ func run(args []string, out io.Writer, policy securityPolicy) error {
 }
 
 func parseOptions(args []string) (options, error) {
-	if len(args) == 0 || args[0] != prepareCatalogV104Command {
-		return options{}, fmt.Errorf("exact subcommand %q is required", prepareCatalogV104Command)
+	if len(args) == 0 || args[0] != prepareStoreUpdateCommand {
+		return options{}, fmt.Errorf("exact subcommand %q is required", prepareStoreUpdateCommand)
 	}
 	var opts options
-	fs := flag.NewFlagSet("apply-store-update "+prepareCatalogV104Command, flag.ContinueOnError)
-	fs.StringVar(&opts.archive, "archive", "", "pulled store 1.0.4 archive")
+	fs := flag.NewFlagSet("apply-store-update "+prepareStoreUpdateCommand, flag.ContinueOnError)
+	fs.StringVar(&opts.archive, "archive", "", "pulled store 1.0.6 archive")
 	fs.StringVar(&opts.archiveSHA256, "archive-sha256", "", "verified archive sha256")
 	fs.StringVar(&opts.chainReceipt, "chain-receipt", "", "bounded InstallerReleaseEntry verification receipt")
 	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
 	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
-	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed 1.0.3 store ELF")
-	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed 1.0.3 ELF sha256")
-	fs.StringVar(&opts.newELF, "new-elf", "", "pulled 1.0.4 store ELF")
-	fs.StringVar(&opts.newELFMember, "new-elf-member", "", "exact clean tar member containing the 1.0.4 store ELF")
-	fs.StringVar(&opts.newELFSHA256, "new-elf-sha256", "", "verified 1.0.4 ELF sha256")
-	fs.StringVar(&opts.migrationStateDir, "migration-state-dir", "", "persistent migration-state directory")
+	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed 1.0.5 store ELF")
+	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed 1.0.5 ELF sha256")
+	fs.StringVar(&opts.newELF, "new-elf", "", "pulled 1.0.6 store ELF")
+	fs.StringVar(&opts.newELFMember, "new-elf-member", "", "exact clean tar member containing the 1.0.6 store ELF")
+	fs.StringVar(&opts.newELFSHA256, "new-elf-sha256", "", "verified 1.0.6 ELF sha256")
+	fs.StringVar(&opts.migrationStateDir, "migration-state-dir", "", "persistent migration-state directory holding the writer lock")
 	fs.StringVar(&opts.updateReceiptDir, "update-receipt-dir", "", "persistent update-receipt directory")
 	if err := fs.Parse(args[1:]); err != nil {
 		return options{}, err
@@ -225,7 +211,7 @@ func parseOptions(args []string) (options, error) {
 	return opts, nil
 }
 
-func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
+func prepareStoreUpdate(opts options, policy securityPolicy) (result, error) {
 	if policy.requireEffectiveRoot && os.Geteuid() != 0 {
 		return result{}, errors.New("must run as root")
 	}
@@ -275,8 +261,7 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 		return result{}, fmt.Errorf("update-receipt directory: %w", err)
 	}
 
-	receiptPath := filepath.Join(opts.updateReceiptDir, catalogStateName)
-	migrationPath := filepath.Join(opts.migrationStateDir, catalogStateName)
+	receiptPath := filepath.Join(opts.updateReceiptDir, applyReceiptName)
 	lockPath := filepath.Join(opts.migrationStateDir, writerLockName)
 	if err := createOrValidateWriterLock(lockPath, policy.expectedUID, policy.expectedGID); err != nil {
 		return result{}, fmt.Errorf("writer lock: %w", err)
@@ -317,38 +302,10 @@ func prepareCatalogV104(opts options, policy securityPolicy) (result, error) {
 		if err := validateWriterLock(lockPath, policy.expectedUID, policy.expectedGID); err != nil {
 			return result{}, fmt.Errorf("seeded receipt has invalid writer lock: %w", err)
 		}
-		var migration migrationState
-		exists, err := readSecureJSONIfExists(migrationPath, policy.expectedUID, &migration)
-		if err != nil {
-			return result{}, fmt.Errorf("seeded receipt migration state: %w", err)
-		}
-		if !exists {
-			return result{}, errors.New("seeded receipt exists but migration state is missing; refusing reseed")
-		}
-		if err := validateMigrationState(migration, receipt, true); err != nil {
-			return result{}, fmt.Errorf("seeded receipt migration state mismatch: %w", err)
-		}
 		return preparedResult(receipt), nil
 	}
 	if receipt.State != "seeding" {
 		return result{}, fmt.Errorf("unsupported apply receipt state %q", receipt.State)
-	}
-
-	desiredMigration := desiredMigrationState(receipt)
-	var migration migrationState
-	migrationExists, err := readSecureJSONIfExists(migrationPath, policy.expectedUID, &migration)
-	if err != nil {
-		return result{}, fmt.Errorf("migration state: %w", err)
-	}
-	if !migrationExists {
-		if err := writeExclusiveJSON(migrationPath, desiredMigration, policy.expectedUID); err != nil {
-			return result{}, fmt.Errorf("create authorized migration state: %w", err)
-		}
-		if err := fsyncDir(opts.migrationStateDir); err != nil {
-			return result{}, fmt.Errorf("fsync migration-state directory: %w", err)
-		}
-	} else if err := validateMigrationState(migration, receipt, true); err != nil {
-		return result{}, fmt.Errorf("seeding migration state mismatch: %w", err)
 	}
 
 	seeded := receipt
@@ -373,15 +330,6 @@ func desiredApplyReceipt(state string, opts options, chainHash string, chain cha
 		InstallerReleasePDA: chain.InstallerReleasePDA, ChainVerifiedSlot: chain.VerifiedSlot,
 		ExpectedInstalledELFSHA256: opts.expectedOldELFSHA256, NewELFSHA256: opts.newELFSHA256,
 		LedgerID: ledgerID,
-	}
-}
-
-func desiredMigrationState(receipt applyReceipt) migrationState {
-	return migrationState{
-		Schema: migrationStateSchema, State: "authorized", FromVersion: receipt.FromVersion, ToVersion: receipt.ToVersion,
-		SourceChainReceiptSHA256: receipt.ChainReceiptSHA256, SourceInstallerReleasePDA: receipt.InstallerReleasePDA,
-		ArchiveSHA256: receipt.ArchiveSHA256, ExpectedInstalledELFSHA256: receipt.ExpectedInstalledELFSHA256,
-		NewELFSHA256: receipt.NewELFSHA256, LedgerID: receipt.LedgerID,
 	}
 }
 
@@ -461,23 +409,6 @@ func validateApplyReceipt(receipt applyReceipt, opts options, chainHash string, 
 		return errors.New("ledgerId is invalid")
 	}
 	return nil
-}
-
-func validateMigrationState(state migrationState, receipt applyReceipt, allowProgressed bool) error {
-	desired := desiredMigrationState(receipt)
-	if state.Schema != desired.Schema || state.FromVersion != desired.FromVersion || state.ToVersion != desired.ToVersion ||
-		state.SourceChainReceiptSHA256 != desired.SourceChainReceiptSHA256 || state.SourceInstallerReleasePDA != desired.SourceInstallerReleasePDA ||
-		state.ArchiveSHA256 != desired.ArchiveSHA256 || state.ExpectedInstalledELFSHA256 != desired.ExpectedInstalledELFSHA256 ||
-		state.NewELFSHA256 != desired.NewELFSHA256 || state.LedgerID != desired.LedgerID {
-		return errors.New("schema, transition, source, archive, ELF, or ledger binding differs")
-	}
-	if state.State == "authorized" {
-		return nil
-	}
-	if allowProgressed && (state.State == "initializing" || state.State == "committed") {
-		return nil
-	}
-	return fmt.Errorf("state %q is not valid for this apply phase", state.State)
 }
 
 func canonicalSHA256(value string) (string, error) {

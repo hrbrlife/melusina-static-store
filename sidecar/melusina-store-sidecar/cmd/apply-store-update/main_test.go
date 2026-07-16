@@ -45,7 +45,7 @@ func (m *mockInstallerVerifier) FetchInstallerReleaseEntry(_ context.Context, go
 	return m.hash, m.status, m.err
 }
 
-func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing.T) {
+func TestPrepareStoreUpdateCreatesDurableAuthorizationAndIsIdempotent(t *testing.T) {
 	f := newTestFixture(t)
 	var out bytes.Buffer
 	if err := run(f.args, &out, f.policy); err != nil {
@@ -65,14 +65,24 @@ func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing
 	assertMode(t, f.migrations, 0700)
 	assertMode(t, f.receipts, 0700)
 	assertMode(t, filepath.Join(f.migrations, writerLockName), 0600)
-	assertMode(t, filepath.Join(f.migrations, catalogStateName), 0600)
-	assertMode(t, filepath.Join(f.receipts, catalogStateName), 0600)
+	assertMode(t, filepath.Join(f.receipts, applyReceiptName), 0600)
 
-	var state migrationState
-	readTestJSON(t, filepath.Join(f.migrations, catalogStateName), &state)
-	if state.State != "authorized" || state.LedgerID != got.LedgerID || state.FromVersion != fromVersion || state.ToVersion != toVersion {
-		t.Fatalf("unexpected migration state: %+v", state)
+	var receipt applyReceipt
+	readTestJSON(t, filepath.Join(f.receipts, applyReceiptName), &receipt)
+	if receipt.State != "seeded" || receipt.LedgerID != got.LedgerID ||
+		receipt.FromVersion != fromVersion || receipt.ToVersion != toVersion {
+		t.Fatalf("unexpected apply receipt: %+v", receipt)
 	}
+	if receipt.FromVersion != "1.0.5" || receipt.ToVersion != "1.0.6" {
+		t.Fatalf("apply receipt does not stamp the governed 1.0.5->1.0.6 transition: %+v", receipt)
+	}
+
+	// The 1.0.5->1.0.6 hop is a pure binary swap: it carries no catalog
+	// migration. The store reads the pre-existing committed
+	// migrations/catalog-v104.json record at boot, so this helper must never
+	// create, touch, or supersede anything in the migration-state directory
+	// other than the writer lock it owns.
+	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
 
 	var second bytes.Buffer
 	if err := run(f.args, &second, f.policy); err != nil {
@@ -90,7 +100,7 @@ func TestPrepareCatalogV104CreatesDurableAuthorizationAndIsIdempotent(t *testing
 	}
 }
 
-func TestPrepareCatalogV104LocksBeforeCreatingPersistentState(t *testing.T) {
+func TestPrepareStoreUpdateLocksBeforeCreatingPersistentState(t *testing.T) {
 	f := newTestFixture(t)
 	crashCount := 0
 	f.policy.afterWriterLock = func() error {
@@ -100,17 +110,15 @@ func TestPrepareCatalogV104LocksBeforeCreatingPersistentState(t *testing.T) {
 		}
 		return nil
 	}
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "injected crash") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "injected crash") {
 		t.Fatalf("expected injected failure, got %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.receipts, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("apply receipt created before writer ownership: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.migrations, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("migration state created before injected crash: %v", err)
-	}
+	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
 
-	res, err := prepareCatalogV104(f.opts, f.policy)
+	res, err := prepareStoreUpdate(f.opts, f.policy)
 	if err != nil {
 		t.Fatalf("resume: %v", err)
 	}
@@ -119,7 +127,7 @@ func TestPrepareCatalogV104LocksBeforeCreatingPersistentState(t *testing.T) {
 	}
 }
 
-func TestPrepareCatalogV104RefusesHeldWriterLockWithoutStateMutation(t *testing.T) {
+func TestPrepareStoreUpdateRefusesHeldWriterLockWithoutStateMutation(t *testing.T) {
 	f := newTestFixture(t)
 	lockPath := filepath.Join(f.migrations, writerLockName)
 	if err := ensureSecureDir(f.migrations, f.policy.expectedUID); err != nil {
@@ -133,78 +141,54 @@ func TestPrepareCatalogV104RefusesHeldWriterLockWithoutStateMutation(t *testing.
 		t.Fatal(err)
 	}
 	defer held.Close()
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "writer lock ownership") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "writer lock ownership") {
 		t.Fatalf("helper entered while writer lock held: %v", err)
 	}
-	for _, path := range []string{
-		filepath.Join(f.receipts, catalogStateName),
-		filepath.Join(f.migrations, catalogStateName),
-	} {
-		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("persistent state changed while lock held at %s: %v", path, err)
-		}
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("persistent state changed while lock held: %v", err)
 	}
+	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
 }
 
-func TestPrepareCatalogV104RejectsWriterLockGIDMismatch(t *testing.T) {
+func TestPrepareStoreUpdateRejectsWriterLockGIDMismatch(t *testing.T) {
 	f := newTestFixture(t)
 	f.policy.expectedGID++
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "uid:gid") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "uid:gid") {
 		t.Fatalf("helper accepted writer.lock GID mismatch: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.receipts, catalogStateName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("receipt created despite writer.lock GID mismatch: %v", err)
 	}
 }
 
-func TestSeededMissingMigrationRefusesWithoutReseed(t *testing.T) {
+// A crash between the durable "seeding" receipt write and the advance to
+// "seeded" must resume onto the same governed identity rather than mint a new
+// ledger ID.
+func TestSeedingReceiptResumesOntoTheSameIdentity(t *testing.T) {
 	f := newTestFixture(t)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err != nil {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err != nil {
 		t.Fatal(err)
 	}
-	migrationPath := filepath.Join(f.migrations, catalogStateName)
-	if err := os.Remove(migrationPath); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "refusing reseed") {
-		t.Fatalf("seeded missing migration was not refused: %v", err)
-	}
-	if _, err := os.Stat(migrationPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("missing migration was recreated: %v", err)
-	}
-}
-
-func TestSeedingReceiptReconcilesIdentityExactProgressedMigration(t *testing.T) {
-	f := newTestFixture(t)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err != nil {
-		t.Fatal(err)
-	}
-	receiptPath := filepath.Join(f.receipts, catalogStateName)
-	migrationPath := filepath.Join(f.migrations, catalogStateName)
+	receiptPath := filepath.Join(f.receipts, applyReceiptName)
 	var receipt applyReceipt
 	readTestJSON(t, receiptPath, &receipt)
 	receipt.State = "seeding"
 	if err := replaceJSONDurable(receiptPath, receipt, f.policy.expectedUID); err != nil {
 		t.Fatal(err)
 	}
-	var migration migrationState
-	readTestJSON(t, migrationPath, &migration)
-	migration.State = "committed"
-	if err := replaceJSONDurable(migrationPath, migration, f.policy.expectedUID); err != nil {
-		t.Fatal(err)
-	}
-	got, err := prepareCatalogV104(f.opts, f.policy)
+	got, err := prepareStoreUpdate(f.opts, f.policy)
 	if err != nil {
-		t.Fatalf("reconcile progressed migration: %v", err)
+		t.Fatalf("resume seeding receipt: %v", err)
 	}
 	if got.State != "seeded" || got.LedgerID != receipt.LedgerID {
-		t.Fatalf("progressed migration changed identity: %+v", got)
+		t.Fatalf("resume changed identity: %+v", got)
 	}
+	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
 }
 
 func TestExistingReceiptMismatchRefuses(t *testing.T) {
 	f := newTestFixture(t)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err != nil {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err != nil {
 		t.Fatal(err)
 	}
 	other := filepath.Join(filepath.Dir(f.opts.installedELF), "other-old-elf")
@@ -213,7 +197,7 @@ func TestExistingReceiptMismatchRefuses(t *testing.T) {
 	}
 	f.opts.installedELF = other
 	f.opts.expectedOldELFSHA256 = fileSHA256(t, other)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "existing apply receipt mismatch") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "existing apply receipt mismatch") {
 		t.Fatalf("mismatched reapply was accepted: %v", err)
 	}
 }
@@ -231,7 +215,7 @@ func TestIndependentChainVerificationRefusesWrongHashOrInactive(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
 			tc.mutate(f.chain)
-			if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("untrusted chain state accepted: %v", err)
 			}
 		})
@@ -245,8 +229,8 @@ func TestArchiveELFBindingRefusesMissingDuplicateAndTraversal(t *testing.T) {
 		want    string
 	}{
 		{"missing", []tarEntry{{"bin/other", "elf"}}, "not found"},
-		{"duplicate", []tarEntry{{"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}, {"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}}, "duplicate member"},
-		{"traversal", []tarEntry{{"../escape", "bad"}, {"bin/melusina-store-sidecar", "deterministic 1.0.4 binary"}}, "unsafe member"},
+		{"duplicate", []tarEntry{{"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}, {"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}}, "duplicate member"},
+		{"traversal", []tarEntry{{"../escape", "bad"}, {"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}}, "unsafe member"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -265,7 +249,7 @@ func TestInputSymlinkAndUnknownForceFlagRefuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.opts.archive = linked
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil {
 		t.Fatal("symlink archive was accepted")
 	}
 
@@ -287,14 +271,14 @@ func TestChainReceiptIsStrictAndArchiveBound(t *testing.T) {
 	}
 	receipt["unexpected"] = true
 	writeTestJSON(t, f.opts.chainReceipt, receipt, 0600)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("unknown receipt field accepted: %v", err)
 	}
 
 	delete(receipt, "unexpected")
 	receipt["installerSha256"] = strings.Repeat("0", 64)
 	writeTestJSON(t, f.opts.chainReceipt, receipt, 0600)
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "does not bind") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "does not bind") {
 		t.Fatalf("unbound chain receipt accepted: %v", err)
 	}
 }
@@ -304,7 +288,7 @@ func TestPersistentModeMismatchRefuses(t *testing.T) {
 	if err := os.Mkdir(f.migrations, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := prepareCatalogV104(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "want 0700") {
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "want 0700") {
 		t.Fatalf("unsafe persistent directory mode accepted: %v", err)
 	}
 }
@@ -312,18 +296,18 @@ func TestPersistentModeMismatchRefuses(t *testing.T) {
 func newTestFixture(t *testing.T) testFixture {
 	t.Helper()
 	root := t.TempDir()
-	archive := filepath.Join(root, "store-1.0.4.tar.xz")
-	oldELF := filepath.Join(root, "installed-1.0.3")
+	archive := filepath.Join(root, "store-1.0.6.tar.xz")
+	oldELF := filepath.Join(root, "installed-1.0.5")
 	newELF := filepath.Join(root, "melusina-store-sidecar")
 	for path, contents := range map[string]string{
-		oldELF: "installed 1.0.3 binary", newELF: "deterministic 1.0.4 binary",
+		oldELF: "installed 1.0.5 binary", newELF: "deterministic 1.0.6 binary",
 	} {
 		if err := os.WriteFile(path, []byte(contents), 0755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	member := "bin/melusina-store-sidecar"
-	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.4 binary"}})
+	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.6 binary"}})
 	archiveHash := fileSHA256(t, archive)
 	archiveHashBytes := mustHash32(t, archiveHash)
 	masterMint, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
@@ -358,7 +342,7 @@ func newTestFixture(t *testing.T) testFixture {
 		migrationStateDir: migrations, updateReceiptDir: receipts,
 	}
 	args := []string{
-		prepareCatalogV104Command,
+		prepareStoreUpdateCommand,
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
 		"--rpc-url", opts.rpcURL, "--master-nft-mint", opts.masterNFTMint,
@@ -442,6 +426,27 @@ func readTestJSON(t *testing.T, path string, dst any) {
 	}
 	if err := json.Unmarshal(raw, dst); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// assertMigrationDirHoldsOnlyWriterLock pins the 1.0.5->1.0.6 invariant that
+// this helper emits no migration state at all. The store's own boot path still
+// reads the pre-existing committed migrations/catalog-v104.json record, so any
+// file this helper writes there beyond the writer lock it owns would be a
+// regression against a live install.
+func assertMigrationDirHoldsOnlyWriterLock(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != writerLockName {
+			t.Fatalf("migration-state directory holds unexpected entry %q; the helper must not write migration state", entry.Name())
+		}
 	}
 }
 

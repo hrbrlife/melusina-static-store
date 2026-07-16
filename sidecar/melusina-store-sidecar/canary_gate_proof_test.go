@@ -205,6 +205,7 @@ func TestCanaryProducerEndToEnd(t *testing.T) {
 		"promote_wire":         promoteWire,
 		"stage_nonce":          stageNonce,
 		"promote_nonce":        promoteNonce,
+		"xcheck_wire_key":      "stage_wire",
 		"xcheck_source_digest": stageWire.Payload.Source.DigestHex(),
 		"xcheck_dest_digest":   stageWire.Payload.Destination.DigestHex(),
 		"xcheck_canonical_hex": hex.EncodeToString(goCanon),
@@ -235,6 +236,89 @@ func TestCanaryProducerEndToEnd(t *testing.T) {
 	logCase(t, 2, "PRODUCER promote body -> gate (expect 200)", r2.Code, r2.Body.String())
 	if r2.Code != http.StatusOK {
 		t.Fatalf("producer promote body expected 200, got %d", r2.Code)
+	}
+}
+
+// TestCanaryProducerRetrySingleRoute proves the RETRY path: a PROMOTE retry
+// ships ONLY the promote control envelope at attempt=1, wrapping a wire signed
+// with the worker-issued retry_nonce. The producer's --route promote --attempt 1
+// output must (i) carry exactly {schema,txid,walDigest,promoteEnvelope} — the
+// strict resume key set resume_canaries expects for pending=['promote'], (ii) be
+// accepted by the fixed CanaryEnvelope.parse with attempt==1 and nonce==retry
+// nonce (the retry branch's binding), and (iii) still pass the isolated gate.
+//
+// Guarded by CANARY_PROOF=1 (shells python3 + the two repo scripts).
+func TestCanaryProducerRetrySingleRoute(t *testing.T) {
+	if os.Getenv("CANARY_PROOF") != "1" {
+		t.Skip("set CANARY_PROOF=1 (+ PRODUCER/PROVE/OUTDIR) to run the python producer loop")
+	}
+	producer := mustEnv(t, "PRODUCER")
+	prove := mustEnv(t, "PROVE")
+	outDir := mustEnv(t, "OUTDIR")
+
+	svc, op, _, f, release := canaryGate(t)
+	pub, seed := fixedSidecarIdentity(t, "publisher", svc.cfg.LicenseNFTMint, "publisher.example.org", 0x22)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	now := time.Now().UTC()
+
+	// The worker-issued retry nonce (hex64, per the AWAIT_CANARY_RETRY WAL
+	// contract). The emitter signs the promote wire with exactly this nonce.
+	retryNonce := hex.EncodeToString(sha256Sum([]byte("promote-retry-nonce-attempt-1")))
+	promoteWire := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish", now, 20*time.Minute, retryNonce)
+	goCanon, err := envelope.CanonicalPayload(promoteWire.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := map[string]any{
+		"publisher_seed_hex":   hex.EncodeToString(seed[:]),
+		"authorized_signer":    pub.Public().SignPubkeyB58,
+		"operator_public":      op.Public(),
+		"release_b64":          base64.StdEncoding.EncodeToString(release),
+		"spk_b64":              base64.StdEncoding.EncodeToString(f.spk),
+		"metadata_b64":         base64.StdEncoding.EncodeToString(f.metadata),
+		"txid":                 "canary-retry-txid-0001",
+		"wal_digest":           hex.EncodeToString(sha256Sum([]byte("retry-wal"))),
+		"promote_wire":         promoteWire,
+		"promote_nonce":        retryNonce,
+		"xcheck_wire_key":      "promote_wire",
+		"xcheck_source_digest": promoteWire.Payload.Source.DigestHex(),
+		"xcheck_dest_digest":   promoteWire.Payload.Destination.DigestHex(),
+		"xcheck_canonical_hex": hex.EncodeToString(goCanon),
+		"xcheck_payload_hash":  promoteWire.PayloadHash,
+	}
+	fixturePath := filepath.Join(outDir, "retry-fixture.json")
+	writeJSON(t, fixturePath, fixture)
+	resumePath := filepath.Join(outDir, "retry-resume.json")
+
+	runPy(t, producer, "--fixture", fixturePath, "--out", resumePath, "--route", "promote", "--attempt", "1")
+	runPy(t, prove, "--fixture", fixturePath, "--resume", resumePath, "--route", "promote", "--attempt", "1")
+
+	// Single-route: exactly one envelope + one body, no stage.
+	var resume struct {
+		Resume         map[string]json.RawMessage `json:"resume"`
+		PromoteBodyB64 string                     `json:"promoteBody_b64"`
+		StageBodyB64   string                     `json:"stageBody_b64"`
+	}
+	readJSON(t, resumePath, &resume)
+	if _, hasStage := resume.Resume["stageEnvelope"]; hasStage || resume.StageBodyB64 != "" {
+		t.Fatalf("PROMOTE retry must not emit a stage control: %v", resume.Resume)
+	}
+	if _, hasPromote := resume.Resume["promoteEnvelope"]; !hasPromote {
+		t.Fatalf("PROMOTE retry missing promoteEnvelope: %v", resume.Resume)
+	}
+
+	// A PROMOTE retry only ever runs AFTER stage succeeded at attempt 0, so the
+	// candidate is already durably staged on the box. Reproduce that precondition
+	// (a bare /publish with no prior stage is a correct 409), then drive the
+	// producer's retry-promote body → 200, proving the retry wire is gate-valid.
+	stage := doStagePublish(t, svc, jsonPublishBody(t, signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish/stage", now, 20*time.Minute, "retry-precursor-stage"), release, f.spk, f.metadata))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("retry precursor stage expected 200, got %d: %s", stage.Code, stage.Body.String())
+	}
+	r := doPublish(t, svc, bytes.NewBuffer(mustB64(t, resume.PromoteBodyB64)))
+	logCase(t, 1, "PRODUCER retry(attempt=1, promote-only) body -> gate (expect 200)", r.Code, r.Body.String())
+	if r.Code != http.StatusOK {
+		t.Fatalf("producer retry promote body expected 200, got %d", r.Code)
 	}
 }
 

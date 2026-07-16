@@ -1233,7 +1233,18 @@ type SidecarIdentity struct {
 	SigningPubkey      [32]byte
 	EncryptionPubkey   [32]byte
 	KeyVersion         uint32
-	Status             AttestationStatus
+
+	// GlobalSidecarApproval is the host-written pointer at
+	// state/attestation.rs:141 — the ONLY route from a sidecar identity to its
+	// approval, and therefore to the one record that can be REVOKED.
+	//
+	// This decoder used to SkipPubkey it away (PROVENANCE_CONTRACTS.md §7.4),
+	// which is why the EXISTING revoke_global_sidecar instruction (lib.rs:1326)
+	// has had zero effect on anything any verifier checks: nothing could reach
+	// the account it revokes. Returning it is the whole fix.
+	GlobalSidecarApproval Pubkey
+
+	Status AttestationStatus
 }
 
 // ReadSidecarIdentity decodes a SidecarIdentityEntry account (seeds
@@ -1295,8 +1306,10 @@ func ReadSidecarIdentity(data []byte) (SidecarIdentity, error) {
 	if offset, err = SkipPubkey(data, offset); err != nil { // local_sidecar_approval
 		return s, fmt.Errorf("sidecar_identity: local_sidecar_approval: %w", err)
 	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // global_sidecar_approval
-		return s, fmt.Errorf("sidecar_identity: global_sidecar_approval: %w", err)
+	// global_sidecar_approval — RETURNED, not skipped (§7.4): it is the only
+	// pointer to the one revocable record.
+	if offset, err = readFixed32(data, offset, "global_sidecar_approval", &s.GlobalSidecarApproval); err != nil {
+		return s, err
 	}
 	if offset, err = SkipPubkey(data, offset); err != nil { // registered_by
 		return s, fmt.Errorf("sidecar_identity: registered_by: %w", err)

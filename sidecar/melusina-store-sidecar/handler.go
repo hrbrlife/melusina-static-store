@@ -97,12 +97,41 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	}
 	operator := s.operator.Public()
 	spkHashHex := hex.EncodeToString(sha256Sum(spk))
+	// requireEnvelopePresent separates "the client sent no envelope" (401
+	// check=envelope) from "this publisher is not allowlisted" (403
+	// check=accept_publishers) BEFORE either check runs — an empty/malformed
+	// envelope has no Source key to resolve a policy entry against, and
+	// misreporting it as an allowlist problem sends an operator to edit the
+	// wrong file.
+	if err := requireEnvelopePresent(sig); err != nil {
+		return out, fmt.Errorf("check=envelope: %w", err)
+	}
+	// Policy first, authority second (ported from d81b7d9a resolveAcceptedPublisherKey):
+	// resolve the signing key THIS STORE'S POLICY authorizes for the claimed
+	// publisher BEFORE the signature check, so an unlisted publisher gets its
+	// own diagnostic and never reaches envelope.Verify. The resolved key —
+	// never the blob's own claimed key — is what the signature is verified
+	// against below.
+	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
+	if !ok {
+		return out, errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+	}
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
-		Now:                 now,
-		ExpectedKind:        envelope.KindArtifact,
-		ExpectedDestination: &operator,
-		ExpectedRequestHash: spkHashHex,
-		NonceCache:          nil,
+		Now:                     now,
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: signerKey,
+		ExpectedDestination:     &operator,
+		ExpectedRequestHash:     spkHashHex,
+		// v2's envelope.Verify claims a nonce as an integral, mandatory part of
+		// verification on the transport profile (a nil cache is a rejection, not
+		// a skip — R-22a). The store's REAL, durable, crash-safe replay ledger
+		// for app publishes is s.appNonces, claimed by claimAppEnvelope only
+		// after every other check (including the route-specific chain reads)
+		// passes, so a refusal never allocates replay state. A fresh cache here
+		// satisfies envelope.Verify's structural requirement for THIS call only
+		// and carries no state across preflight attempts, so it can never be
+		// the reason a legitimate retry of the same envelope is refused.
+		NonceCache: envelope.NewMemoryNonceCache(),
 	}); err != nil {
 		return out, fmt.Errorf("check=envelope: %w", err)
 	}
@@ -119,9 +148,6 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	var rel ReleaseJSON
 	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
 		return out, fmt.Errorf("check=release_json: %w", err)
-	}
-	if !s.publisherIdentityAccepted(sig.Payload.Source) {
-		return out, errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
 	}
 	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, hint: hint, release: rel}, nil
 }
@@ -154,7 +180,9 @@ func (s *publishService) claimAppEnvelope(sig envelope.Signed, claimNow time.Tim
 // publishRequest is the JSON wire form accepted when the client does not use
 // multipart/form-data. Each field is base64-std unless noted.
 type publishRequest struct {
-	// Envelope is the publisher's signed artifact envelope (JSON object).
+	// Envelope is the publisher's signed publish-request envelope (JSON
+	// object; envelope.KindPublishRequest — NOT envelope.KindArtifact, which
+	// v2 reclaimed for durable evidence records).
 	Envelope envelope.Signed `json:"envelope"`
 	// ReleaseB64 is the RELEASE.json body (the envelope Body), base64-std.
 	ReleaseB64 string `json:"release_b64"`
@@ -178,8 +206,9 @@ type publishRequest struct {
 // Python/rootfs tarball, bootstrap tarball); class+name select the served
 // /releases/<class>/<name> path.
 type installerPublishRequest struct {
-	// Envelope is the publisher's signed artifact envelope (JSON object). It
-	// binds RequestHash to sha256(artifact), matching /publish's author gate.
+	// Envelope is the publisher's signed publish-request envelope (JSON
+	// object; envelope.KindPublishRequest). It binds RequestHash to
+	// sha256(artifact), matching /publish's author gate.
 	Envelope    envelope.Signed `json:"envelope"`
 	Class       string          `json:"class"`
 	Name        string          `json:"name"`
@@ -663,17 +692,26 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 	artifactHash := sha256.Sum256(artifact)
 	operatorIdentity := s.operator.Public()
 	artifactHashHex := hex.EncodeToString(artifactHash[:])
-	if err := envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedKind:        envelope.KindArtifact,
-		ExpectedDestination: &operatorIdentity,
-		ExpectedRequestHash: artifactHashHex,
-		NonceCache:          s.nonces,
-	}); err != nil {
+	// Same three-step order as the app route (requireEnvelopePresent ->
+	// resolveAcceptedPublisherKey -> envelope.Verify), so the two routes cannot
+	// report the same condition with different codes.
+	if err := requireEnvelopePresent(sig); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
-	if !s.publisherIdentityAccepted(sig.Payload.Source) {
+	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
+	if !ok {
 		http.Error(w, "check=accept_publishers: installer publisher not in store policy accept_publishers", http.StatusForbidden)
+		return
+	}
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: signerKey,
+		ExpectedDestination:     &operatorIdentity,
+		ExpectedRequestHash:     artifactHashHex,
+		NonceCache:              s.nonces,
+	}); err != nil {
+		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -761,19 +799,61 @@ func publishErrorStatus(err error) int {
 	return http.StatusForbidden
 }
 
-func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bool {
-	if len(s.cfg.Policy.AcceptPublishers) == 0 {
-		return false
+// resolveAcceptedPublisherKey returns the signing key THIS STORE'S POLICY
+// authorizes for the claimed publisher, and is the SOLE signer authority for a
+// publish (ported from d81b7d9a; PROVENANCE_CONTRACTS.md §7.6(4)).
+//
+// THE DIRECTION IS THE SECURITY PROPERTY. `claimed` is the key the envelope
+// carries, and it is used ONLY as a lookup hint into our own allowlist; the
+// key returned — and therefore the key the signature is verified against — is
+// OUR policy's copy. A claimed key that is not in the allowlist resolves to
+// nothing and the publish is refused, so the blob can select WHICH allowlisted
+// publisher it claims to be, and can never introduce a key.
+//
+// v1's envelope.Verify accidentally made the blob its own authority (it
+// verified against the pubkey inside the payload being verified, which any
+// key satisfies for its own blob). v2 requires the caller to pin
+// ExpectedSignerPubkeyB58 explicitly, and this is the ONE place that pin comes
+// from. An empty AcceptPublishers list matches nothing (the loop below simply
+// never runs), so the fail-closed-on-empty-list behaviour of the function this
+// replaces is preserved structurally, not by a separate guard.
+//
+// Only a base58 SIGNING PUBKEY authorizes a publish now (D-10): a
+// self-asserted ReleaseEntry PDA in the allowlist can never resolve to a key,
+// because a PDA is not decodable as an ed25519 public key, so it can never
+// gate a signature check.
+func (s *publishService) resolveAcceptedPublisherKey(claimed identity.Public) (string, bool) {
+	want := strings.TrimSpace(claimed.SignPubkeyB58)
+	if want == "" {
+		return "", false
 	}
-	pub := strings.TrimSpace(publisher.SignPubkeyB58)
-	digest := strings.TrimSpace(publisher.DigestHex())
 	for _, a := range s.cfg.Policy.AcceptPublishers {
-		item := strings.TrimSpace(a)
-		if item == pub || item == digest {
-			return true
+		if strings.TrimSpace(a) == want {
+			// Return the POLICY's copy, not the blob's. Identical strings today;
+			// the point is that the value flows from configuration into the
+			// verification, never from the thing being verified.
+			return strings.TrimSpace(a), true
 		}
 	}
-	return false
+	return "", false
+}
+
+// requireEnvelopePresent separates "the client sent no envelope" from "this
+// publisher is not allowlisted".
+//
+// Both are refusals, and the gate is equally closed either way — but an
+// operator who reads "not in store policy accept_publishers" will go and edit
+// their allowlist, when the real fault is a client that posted nothing. This
+// runs before the policy check (so an unlisted publisher gets its own
+// diagnostic), which is exactly what makes the distinction necessary.
+func requireEnvelopePresent(sig envelope.Signed) error {
+	if strings.TrimSpace(sig.SignatureB58) == "" {
+		return errors.New("missing envelope signature")
+	}
+	if strings.TrimSpace(sig.Payload.Source.SignPubkeyB58) == "" {
+		return errors.New("envelope carries no source identity")
+	}
+	return nil
 }
 
 // parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw

@@ -65,9 +65,11 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 				t.Fatalf("decode envelope: %v", err)
 			}
 			if err := envelope.Verify(signed, envelope.VerifyOptions{
-				ExpectedKind:        envelope.KindArtifact,
-				ExpectedDestination: ptrPublic(operator.Public()),
-				ExpectedRequestHash: hashHex,
+				ExpectedKind:            envelope.KindPublishRequest,
+				ExpectedSignerPubkeyB58: publisher.Public().SignPubkeyB58,
+				ExpectedDestination:     ptrPublic(operator.Public()),
+				ExpectedRequestHash:     hashHex,
+				NonceCache:              envelope.NewMemoryNonceCache(),
 			}); err != nil {
 				t.Fatalf("verify envelope: %v", err)
 			}

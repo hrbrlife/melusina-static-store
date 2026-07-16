@@ -31,8 +31,13 @@ type Policy struct {
 	AllowedTiers []string `json:"allowed_tiers"`
 	// RequireScanReport: reject publishes lacking an attested clean scan report.
 	RequireScanReport bool `json:"require_scan_report"`
-	// AcceptPublishers: base58 ReleaseEntry PDAs / publisher identities trusted to submit.
-	// Empty fails closed on /publish and /publish/installer.
+	// AcceptPublishers: base58 SIGNING PUBKEYS (identity.Public.SignPubkeyB58)
+	// this store's policy authorizes to submit — the SOLE signer authority
+	// resolveAcceptedPublisherKey pins into envelope.Verify's
+	// ExpectedSignerPubkeyB58. A ReleaseEntry PDA does NOT authorize a publish
+	// (D-10): a PDA is not decodable as an ed25519 public key, so it can never
+	// resolve to a signer key. Empty fails closed on /publish and
+	// /publish/installer.
 	AcceptPublishers []string `json:"accept_publishers"`
 }
 

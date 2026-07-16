@@ -126,7 +126,7 @@ func run(args []string, stdout io.Writer) error {
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
-	signed, err := envelope.Sign(envelope.KindArtifact, publisher, destination, envelope.SignOptions{
+	signed, err := envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
 		RequestHash: hashHex,
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{

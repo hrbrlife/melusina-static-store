@@ -99,8 +99,9 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 	}
 }
 
-// signPublish builds a valid signed artifact envelope from the publisher,
-// addressed to the operator, binding RequestHash=sha256(spk) and Body=release.
+// signPublish builds a valid signed publish-request envelope from the
+// publisher, addressed to the operator, binding RequestHash=sha256(spk) and
+// Body=release.
 func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, spk, release []byte) envelope.Signed {
 	return signPublishForRoute(t, publisher, operatorPub, spk, release, "/publish", time.Now().UTC(), 5*time.Minute, "")
 }
@@ -108,7 +109,7 @@ func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity
 func signPublishForRoute(t *testing.T, publisher *identity.Private, operatorPub identity.Public, spk, release []byte, route string, now time.Time, ttl time.Duration, nonce string) envelope.Signed {
 	t.Helper()
 	spkSum := sha256.Sum256(spk)
-	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+	sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, operatorPub, envelope.SignOptions{
 		Body:        release,
 		RequestHash: hex.EncodeToString(spkSum[:]),
 		Method:      http.MethodPost,
@@ -131,7 +132,7 @@ func signPublishForRoute(t *testing.T, publisher *identity.Private, operatorPub 
 func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte) envelope.Signed {
 	t.Helper()
 	artifactSum := sha256.Sum256(artifact)
-	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+	sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, operatorPub, envelope.SignOptions{
 		RequestHash: hex.EncodeToString(artifactSum[:]),
 		TTL:         5 * time.Minute,
 		Chain: envelope.ChainEvidence{

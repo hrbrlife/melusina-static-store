@@ -26,6 +26,28 @@ func SidecarIdentity(licenseMint Pubkey, sidecarID string, keyVersion uint32, pr
 	return primitives.DeriveSidecarIdentity(licenseMint, sidecarID, keyVersion, programID)
 }
 
+// GlobalSidecar derives the GlobalSidecarApproval PDA, seeds
+// ["global_sidecar", master_nft_mint, sidecar_id].
+//
+// It is a sidecar's release record: the account carrying binary_hash and — once
+// the PROVENANCE_CONTRACTS.md §6.4 program change lands — release_policy_hash,
+// the fail-closed guard pin that gates VERIFIED_DECISION.
+//
+// sidecarresult derives it FORWARD from the verifier's build-pinned master mint
+// (Rule 7) and rejects any result whose carried ReleaseRef, or whose
+// SidecarIdentityEntry.global_sidecar_approval pointer, disagrees. A carried PDA
+// is a diagnostic, never a destination: if the blob names which account to read,
+// the blob chose the authority and the read is theater.
+//
+// Note the seed has NO binary_hash and NO version, and
+// handler_update_global_sidecar_binary_hash (lib.rs:1292) mutates the account in
+// place — so one approval account describes whatever build was last written to
+// it. That is why R-11e must bind approval.binary_hash to the init-once
+// SidecarIdentityEntry.binary_hash (§6.3.2).
+func GlobalSidecar(masterMint Pubkey, sidecarID string, programID Pubkey) (Pubkey, Bump, error) {
+	return primitives.DeriveGlobalSidecar(masterMint, sidecarID, programID)
+}
+
 func AppSidecarAuthorization(licenseMint Pubkey, appHash [32]byte, sidecarID string, programID Pubkey) (Pubkey, Bump, error) {
 	return primitives.DeriveAppSidecarAuthz(licenseMint, appHash, sidecarID, programID)
 }

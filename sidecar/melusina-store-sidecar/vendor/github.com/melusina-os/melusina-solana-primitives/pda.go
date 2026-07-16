@@ -167,8 +167,9 @@ var (
 //  3. sha256 of the resulting bytes.
 //
 // This is the 32-byte HASH used DIRECTLY as the third PDA seed for
-// StoreOperatorAuthorization. Per the C-5 warning it must NOT be routed
-// through DeriveDomainClaim (which seeds the raw host string).
+// StoreOperatorAuthorization, and it is likewise the seed for DomainClaim
+// (["domain_claim", domain_hash]). Per the C-5 warning the RAW HOST STRING is
+// never a seed — the exported helper that seeded it is deleted (see below).
 //
 // Cross-lang coherence (FEDERATED-STORE-MVP §S8): sha256("melusina-os.org")
 // == 0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7,
@@ -269,10 +270,33 @@ func DeriveAppContractPair(appHash [32]byte, programIDBound Pubkey, programID Pu
 	return FindProgramAddress([][]byte{SeedAppContractPair, appHash[:], programIDBound[:]}, programID, nil)
 }
 
-// DeriveDomainClaim returns DomainClaim[domain].
-func DeriveDomainClaim(domain string, programID Pubkey) (Pubkey, PDABump, error) {
-	return FindProgramAddress([][]byte{SeedDomainClaim, []byte(domain)}, programID, nil)
-}
+// `DeriveDomainClaim(domain string, ...)` STOOD HERE AND IS DELETED.
+//
+// It derived `[SeedDomainClaim, []byte(domain)]` — the RAW DOMAIN STRING. The
+// on-chain program seeds the 32-BYTE HASH: `seeds = [b"domain_claim",
+// domain_hash.as_ref()]` (licenses.rs:399, domain.rs:44; close_domain_claim_unsafe's
+// own comment spells it `[b"domain_claim", sha256(domain)]`). The two derive
+// DIFFERENT addresses, so this helper could NEVER find a real account — it had
+// ZERO production callers, and every reference to it anywhere in the tree was a
+// COMMENT WARNING PEOPLE NOT TO CALL IT.
+//
+// It is deleted rather than annotated because four prose warnings guarding an
+// exported footgun IS the disease: a helper whose NAME says DomainClaim and whose
+// CODE derives a PDA the program never writes is a trap that documentation cannot
+// disarm, and the next lane to reach for the obviously-named function would have
+// derived a dead address, found nothing, refused every honest artifact as "domain
+// unclaimed" — fail-closed but wrong, and debugged as a chain problem for a week.
+// Greenfield: the killed path dies, it does not get a comment.
+//
+// To derive a real DomainClaim, seed the hash DIRECTLY:
+//
+//	FindProgramAddress([][]byte{SeedDomainClaim, domainHash[:]}, programID, nil)
+//
+// where domainHash is StoreDomainHash(host). trustmaster/solanachain.go's
+// ReadDomainClaim is the reference implementation, and its
+// TestReadDomainClaim_DoesNotUseTheRawStringDeriver still pins the two
+// derivations apart — computing the string-seeded address INLINE, so the trap
+// stays tested without a footgun in the public API to test it with.
 
 // DeriveReleaseV2 returns ReleaseEntry[masterMint, appHash].
 func DeriveReleaseV2(masterMint Pubkey, appHash [32]byte, programID Pubkey) (Pubkey, PDABump, error) {
@@ -347,8 +371,8 @@ func DeriveStoreReleaseListing(storeAuthority Pubkey, appHash [32]byte, programI
 // DeriveStoreOperatorAuthz returns StoreOperatorAuthorization PDA, seeds
 // ["store_operator", license_nft_mint, store_domain_hash] (FEDERATED-STORE-MVP
 // §C1; state/store_operator.rs:18). storeDomainHash is the 32-byte HASH
-// produced by StoreDomainHash — it is used DIRECTLY as a seed, NOT routed
-// through DeriveDomainClaim (C-5 warning: that seeds the raw host string).
+// produced by StoreDomainHash — it is used DIRECTLY as a seed (C-5 warning: the
+// raw host string is never a seed on this program).
 func DeriveStoreOperatorAuthz(licenseMint Pubkey, storeDomainHash [32]byte, programID Pubkey) (Pubkey, PDABump, error) {
 	return FindProgramAddress([][]byte{SeedStoreOperator, licenseMint[:], storeDomainHash[:]}, programID, nil)
 }

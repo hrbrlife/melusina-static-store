@@ -9,10 +9,17 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hrbrlife/melusina-attest/canonical"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const CurrentVersion = 1
+
+// DigestDomainTag is the frozen domain-separation prefix for Public.Digest
+// (§4.5). It is versioned independently of the envelope wire tag: this digest
+// is an identity-local encoding that the envelope CONSUMES (CanonicalPayload
+// binds Source.DigestHex()), not the envelope's own contract.
+const DigestDomainTag = "melusina-attest-identity-v1"
 
 type Kind string
 
@@ -151,9 +158,44 @@ func (p Public) BoxPublicKey() (*ecdh.PublicKey, error) {
 	return ecdh.X25519().NewPublicKey(raw)
 }
 
+// Digest is sha256 over the canonical length-prefixed, domain-tagged encoding
+// of Public (§4.5). It MUST NOT depend on a JSON encoder, and the JSON-marshal
+// path is DELETED, not deprecated.
+//
+// WHY, stated once so nobody reintroduces it: Go's encoding/json HTML-escapes
+// `<`, `>` and `&` (to <, >, &); Python's
+// json.dumps(ensure_ascii=False) and JavaScript's JSON.stringify do not. A
+// JSON-marshal digest therefore agrees across Go/Python/TypeScript only on
+// ASCII-safe data — the Python port's own comment conceded exactly that. And
+// because envelope.CanonicalPayload binds Source.DigestHex()/
+// Destination.DigestHex(), that divergence is not identity-local: it forks the
+// canonical bytes of EVERY envelope, and surfaces at a relying party as a bare
+// hash mismatch with no diagnostic (R-36). This is the latent, silent,
+// cross-language class the programme exists to stop, so the encoder is bound
+// to `canonical` — the same primitive every other contract uses (§4.1, Rule 5:
+// one encoding, one contract).
+//
+// Field order is FROZEN and matches the Ref/Public declaration order above.
+// §4.6's extension rule applies: append only, never insert; bump this tag and
+// delete the prior emitter in the same change; emit every field
+// unconditionally (zero-length when absent) so the canonical bytes never
+// depend on content.
 func (p Public) Digest() [32]byte {
-	b, _ := json.Marshal(p)
-	return sha256.Sum256(b)
+	return sha256.Sum256(canonical.Encode(DigestDomainTag, []string{
+		canonical.Int(int64(p.Version)),
+		string(p.Ref.Kind),
+		p.Ref.ChainID,
+		p.Ref.ProgramID,
+		p.Ref.LicenseMint,
+		p.Ref.Domain,
+		p.Ref.PDA,
+		p.Ref.AppHashHex,
+		p.Ref.PearlIDHash,
+		p.Ref.SidecarID,
+		canonical.Uint(uint64(p.Ref.KeyVersion)),
+		p.SignPubkeyB58,
+		p.BoxPubkeyB58,
+	}))
 }
 
 func (p Public) DigestHex() string {

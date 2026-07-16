@@ -1,7 +1,8 @@
 // Command submit is the paired sealed-v3 publish client (FEDERATED-STORE-MVP
 // §C3). It REPLACES the gh-pages force-push: instead of writing the catalog
 // itself, it packs the publisher's CLAIMS (the canonical RELEASE.json) into a
-// signed artifact envelope and POSTs them — together with the SPK bytes — to a
+// signed publish-request envelope (envelope.KindPublishRequest) and POSTs
+// them — together with the SPK bytes — to a
 // store sidecar's gated POST /publish (the C2.3 receive contract). The sidecar
 // is the SINGLE WRITER; this client never touches git.
 //
@@ -379,11 +380,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 		target = appStageTarget
 	}
 
-	// Build the signed artifact envelope: KindArtifact addressed to the store
-	// operator, binding RequestHash=sha256(SPK) and Body=RELEASE.json, carrying
-	// the on-chain evidence (ReleaseEntry PDA, program, slot). BodyHash is set
-	// explicitly to sha256(release) — the sidecar requires sha256(release) ==
-	// envelope.body_hash.
+	// Build the signed publish-request envelope: KindPublishRequest addressed
+	// to the store operator, binding RequestHash=sha256(SPK) and
+	// Body=RELEASE.json, carrying the on-chain evidence (ReleaseEntry PDA,
+	// program, slot). BodyHash is set explicitly to sha256(release) — the
+	// sidecar requires sha256(release) == envelope.body_hash.
 	//
 	// The envelope must outlive the upload: the sidecar verifies it only after
 	// the full body arrives, so on a slow uplink a large SPK can take longer to
@@ -585,9 +586,10 @@ func decodeReceiptForVerification(raw []byte) (Receipt, error) {
 	}
 }
 
-// buildEnvelope constructs the sealed-v3 signed artifact envelope. The sidecar's
-// envelope.Verify requires Kind==artifact, Destination==operator, RequestHash==
-// sha256(SPK), and sha256(Body)==BodyHash; we set all of them here.
+// buildEnvelope constructs the sealed-v3 signed publish-request envelope. The
+// sidecar's envelope.Verify requires Kind==publish-request (envelope.KindPublishRequest),
+// Destination==operator, RequestHash==sha256(SPK), and sha256(Body)==BodyHash;
+// we set all of them here.
 func buildEnvelope(src *identity.Private, dst identity.Public, target string, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
 	if target != appPromoteTarget && target != appStageTarget {
 		return envelope.Signed{}, fmt.Errorf("app publish target must be exactly %q or %q", appPromoteTarget, appStageTarget)
@@ -613,7 +615,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 		}
 	}
 
-	return envelope.Sign(envelope.KindArtifact, src, dst, envelope.SignOptions{
+	return envelope.Sign(envelope.KindPublishRequest, src, dst, envelope.SignOptions{
 		Method:      http.MethodPost,
 		Target:      target,
 		Body:        releaseBytes,

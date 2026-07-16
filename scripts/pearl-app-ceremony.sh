@@ -287,7 +287,23 @@ JS
 
 # Step 1: appHash (over the staged tree).
 APP_HASH="$("$PEARL_TOOL" compute-app-hash --app-dir "$APP_DIR" | tail -n 1)"
-NONCE="$(openssl rand -hex 16)"
+# The nonce is an INPUT, not a fresh secret, because releaseHash =
+# sha256(appHash||version||nonce) is PINNED ON-CHAIN at register time while the
+# ReleaseEntry PDA = f(master, appHash) is DETERMINISTIC. A re-run of an already
+# registered release therefore lands on the SAME PDA but, with a fresh nonce,
+# recomputes a DIFFERENT releaseHash — so finalize-release aborts
+# RELEASE_BINDING_DRIFT and the "already on-chain → skip submit → finalize from
+# the existing entry" idempotent path below could NEVER complete. That path is
+# not merely slow to recover: the PDA account already exists, so re-registering
+# it fails "account already in use", and the nonce is a hash preimage that
+# cannot be read back off-chain. Without this override an interrupted publish
+# STRANDS the release permanently. Pass the nonce from the original ceremony's
+# `nonce=` log line (or the prior RELEASE.json releaseNonce) to resume it.
+NONCE="${MELUSINA_RELEASE_NONCE:-$(openssl rand -hex 16)}"
+[[ "$NONCE" =~ ^[0-9a-f]{32}$ ]] || {
+  echo "[ceremony:$APP_SLUG] FATAL: MELUSINA_RELEASE_NONCE must be 32 lowercase hex chars (got ${#NONCE} chars)" >&2
+  exit 2
+}
 RELEASE_HASH="$(printf '%s%s%s' "$APP_HASH" "$VERSION" "$NONCE" | sha256sum | awk '{print $1}')"
 echo "[ceremony:$APP_SLUG] appHash=$APP_HASH version=$VERSION nonce=$NONCE"
 

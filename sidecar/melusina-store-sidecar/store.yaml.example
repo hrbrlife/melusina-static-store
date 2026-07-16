@@ -19,7 +19,13 @@ policy:
   allowed_tiers: ["regular"]       # capability tiers this store may list
   require_scan_report: true        # reject publishes without an attested clean scan report
   accept_publishers:               # REQUIRED for /publish; empty fails closed
-    - "<allowed publisher signing pubkey or ReleaseEntry PDA>"
+    # BASE58 SIGNING PUBKEYS ONLY. This list is the signer authority: the publish
+    # envelope's signature is verified against the entry matched here, so an entry
+    # that is not a key cannot authorize anything (PROVENANCE_CONTRACTS.md §7.6(4)).
+    # A ReleaseEntry PDA used to be accepted here and NO LONGER IS (D-10): it is a
+    # field the publisher writes into RELEASE.json, and a self-asserted value has
+    # no business deciding whether to trust the thing that asserted it.
+    - "<allowed publisher base58 signing pubkey>"
 
 rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
 listen_addr: ":8443"

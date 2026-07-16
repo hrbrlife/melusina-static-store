@@ -64,10 +64,19 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 			if err := json.Unmarshal(envelopeBytes, &signed); err != nil {
 				t.Fatalf("decode envelope: %v", err)
 			}
+			// This stands in for the store's gate. The expected signer is read
+			// off the envelope only because this fake has no accept_publishers
+			// config to read it from; the REAL gate resolves it from
+			// s.cfg.Policy.AcceptPublishers (handler.go
+			// resolveAcceptedPublisherKey), which is the whole point of §7.6(4).
+			// What this fake is actually asserting is the KIND, the DESTINATION
+			// and the REQUEST-HASH binding of what submit-installer emits.
 			if err := envelope.Verify(signed, envelope.VerifyOptions{
-				ExpectedKind:        envelope.KindArtifact,
-				ExpectedDestination: ptrPublic(operator.Public()),
-				ExpectedRequestHash: hashHex,
+				ExpectedSignerPubkeyB58: signed.Payload.Source.SignPubkeyB58,
+				ExpectedKind:            envelope.KindPublishRequest,
+				ExpectedDestination:     ptrPublic(operator.Public()),
+				ExpectedRequestHash:     hashHex,
+				NonceCache:              envelope.NewMemoryNonceCache(),
 			}); err != nil {
 				t.Fatalf("verify envelope: %v", err)
 			}

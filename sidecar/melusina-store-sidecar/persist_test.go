@@ -75,7 +75,7 @@ func TestHandlePublish_PersistsIntoResolvedSlot(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusOK {
@@ -99,7 +99,7 @@ func TestHandlePublish_FirstPublishRequiresSlotHint(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusBadRequest {
@@ -125,7 +125,7 @@ func TestHandlePublish_FirstPublishWithHintCreatesSlot(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBodyWithSlot(t, sig, release, f.spk, f.metadata, "hrbrlife", "new-repo", "new-app"))
 	if w.Code != http.StatusOK {
@@ -149,7 +149,7 @@ func TestHandlePublish_UnsafeSlotHintRefused(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBodyWithSlot(t, sig, release, f.spk, f.metadata, "hrbrlife", "repo", "../evil"))
 	if w.Code != http.StatusBadRequest {
@@ -178,7 +178,7 @@ func TestHandlePublish_AmbiguousSlotRefused(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusConflict {
@@ -203,7 +203,7 @@ func TestHandlePublish_HintConflictRefused(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBodyWithSlot(t, sig, release, f.spk, f.metadata, "hrbrlife", "other-repo", "other-app"))
 	if w.Code != http.StatusConflict {

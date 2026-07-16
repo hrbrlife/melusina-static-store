@@ -1,10 +1,19 @@
 // Command list-active-releases enumerates EVERY Active on-chain ReleaseEntry
 // for a given app_id — the same getProgramAccounts(memcmp app_id) query
-// store_rpc_reader.go's FetchActiveReleaseEntriesByAppID runs — so a revoke
-// pass can retire ALL stale entries, not just the one a 409 happened to name.
-// verifyReleaseVersionForward (release_version.go) rejects a publish while
-// ANY other Active entry exists for the same app_id, so a single missed
-// leftover (e.g. an old 0.1.44 nobody remembers) would 409 all over again.
+// store_rpc_reader.go's FetchActiveReleaseEntriesByAppID runs — so the no-gap
+// supersede orchestrator (cmd/publish-supersede) can retire ALL stale entries
+// as its FINAL step, not just the one a caller happened to name.
+//
+// NOTE (card 0055): the app publish gate (release_version.go
+// verifyReleaseVersionForward) does NOT require zero other Active entries. It
+// permits a bounded 2-Active rollout window and rejects only a submitted
+// version that is not strictly greater than some other Active version
+// (errSupersedeRequired is enforced on the installer path, not apps). Stale
+// entries are therefore retired AFTER the new release is Active AND served
+// (promote-first, revoke-last), so an app is never left with zero Active
+// releases. An earlier version of this comment wrongly claimed the gate
+// "rejects a publish while ANY other Active entry exists" — that false belief
+// is exactly what drove the buggy revoke-first ordering.
 //
 // Usage:
 //

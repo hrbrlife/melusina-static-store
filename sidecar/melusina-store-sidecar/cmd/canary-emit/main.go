@@ -41,11 +41,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/hkdf"
 
 	"github.com/hrbrlife/melusina-attest/derive"
 	"github.com/hrbrlife/melusina-attest/envelope"
@@ -75,6 +78,8 @@ func main() {
 		err = runOperatorPublic(os.Args[2:])
 	case "sign":
 		err = runSign(os.Args[2:])
+	case "operator-seeds":
+		err = runOperatorSeeds(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown subcommand %q (want operator-public|sign)", os.Args[1])
 	}
@@ -267,6 +272,111 @@ func parseShard32(raw []byte) ([32]byte, error) {
 		return out, nil
 	}
 	return out, fmt.Errorf("want 64 hex chars or 32 raw bytes, got %d bytes", len(raw))
+}
+
+// ── operator-seeds ─────────────────────────────────────────────────────────────
+//
+// Reproduces the kv1 operator's HKDF-derived sign+box seeds from the LIVE shards
+// (identical to derive.DeriveSidecar, cross-checked against it) and writes the
+// operator publisher-identity file {ref, sign_seed_hex, box_seed_hex} (0600) that
+// the existing `sign` subcommand + canary_control_producer.py consume. This lets
+// the canary WIRE + CONTROL be offline-signed by the REAL operator key (== the
+// on-chain store authority F616.signing_pubkey), so the store's operator-signed
+// receipts verify against the REAL kv1 operator pubkey. The seeds are written to a
+// 0600 file for the offline signer and are NEVER printed (HT13).
+func runOperatorSeeds(args []string) error {
+	fs := flag.NewFlagSet("operator-seeds", flag.ContinueOnError)
+	configPath := fs.String("config", "", "path to the LIVE store config JSON (required)")
+	shardsDir := fs.String("shards", "", "override boot_identity.shards_dir")
+	expect := fs.String("expect-sign-pubkey", "", "cross-check: derived operator sign pubkey MUST equal this base58")
+	out := fs.String("out", "", "write the operator publisher-identity JSON here (0600) (required)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *configPath == "" || *out == "" {
+		return errors.New("--config and --out are required")
+	}
+	cfg, err := loadStoreConfig(*configPath)
+	if err != nil {
+		return err
+	}
+	dir := strings.TrimSpace(*shardsDir)
+	if dir == "" {
+		dir = strings.TrimSpace(cfg.BootIdentity.ShardsDir)
+	}
+	if dir == "" {
+		return errors.New("no shards dir")
+	}
+	ref, err := operatorRef(cfg)
+	if err != nil {
+		return err
+	}
+	shards, err := loadSidecarShards(dir)
+	if err != nil {
+		return fmt.Errorf("load shards: %w", err)
+	}
+	// Reproduce derive.derive() exactly (labels + info are the attest v1 domain).
+	ikm := append(append(append([]byte{}, shards.AuthorShard[:]...),
+		shards.HostObservationShard[:]...), shards.ReleaseShard[:]...)
+	refBytes, err := json.Marshal(ref)
+	if err != nil {
+		return err
+	}
+	refDigest := sha256.Sum256(refBytes)
+	info := fmt.Sprintf("%s|kv=%d|ref=%x", ref.Kind, ref.KeyVersion, refDigest[:])
+	master, err := hkdf32(ikm, []byte("melusina-attest/sidecar-master/v1"), []byte(info))
+	if err != nil {
+		return err
+	}
+	signSeed, err := hkdf32(master[:], nil, []byte("melusina-attest/sign-seed/v1"))
+	if err != nil {
+		return err
+	}
+	boxSeed, err := hkdf32(master[:], nil, []byte("melusina-attest/box-seed/v1"))
+	if err != nil {
+		return err
+	}
+	// Cross-check: NewPrivate(seeds) must equal DeriveSidecar(shards).
+	reproduced, err := identity.NewPrivate(ref, signSeed, boxSeed)
+	if err != nil {
+		return err
+	}
+	authoritative, err := derive.DeriveSidecar(ref, shards)
+	if err != nil {
+		return err
+	}
+	if reproduced.Public().SignPubkeyB58 != authoritative.Public().SignPubkeyB58 ||
+		reproduced.Public().BoxPubkeyB58 != authoritative.Public().BoxPubkeyB58 {
+		return errors.New("seed reproduction diverged from DeriveSidecar (HKDF mismatch)")
+	}
+	if e := strings.TrimSpace(*expect); e != "" && reproduced.Public().SignPubkeyB58 != e {
+		return fmt.Errorf("derived operator sign pubkey %s != expected %s", reproduced.Public().SignPubkeyB58, e)
+	}
+	body, err := json.MarshalIndent(map[string]any{
+		"ref":           ref,
+		"sign_seed_hex": hex.EncodeToString(signSeed[:]),
+		"box_seed_hex":  hex.EncodeToString(boxSeed[:]),
+	}, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(*out, append(body, '\n'), 0o600); err != nil {
+		return err
+	}
+	// PUBLIC diagnostics only (never the seeds).
+	fmt.Fprintf(os.Stderr, "operator sign_pubkey_b58 = %s\n", reproduced.Public().SignPubkeyB58)
+	fmt.Fprintf(os.Stderr, "operator PDA             = %s (kv=%d)\n", ref.PDA, ref.KeyVersion)
+	fmt.Fprintf(os.Stderr, "publisher-identity (seeds, 0600) written = %s\n", *out)
+	return nil
+}
+
+func hkdf32(ikm, salt, info []byte) ([32]byte, error) {
+	var outv [32]byte
+	r := hkdf.New(sha256.New, ikm, salt, info)
+	if _, err := io.ReadFull(r, outv[:]); err != nil {
+		return outv, err
+	}
+	return outv, nil
 }
 
 // ── sign ─────────────────────────────────────────────────────────────────────

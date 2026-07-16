@@ -379,7 +379,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		target = appStageTarget
 	}
 
-	// Build the signed artifact envelope: KindArtifact addressed to the store
+	// Build the signed publish-request envelope: KindPublishRequest addressed to the store
 	// operator, binding RequestHash=sha256(SPK) and Body=RELEASE.json, carrying
 	// the on-chain evidence (ReleaseEntry PDA, program, slot). BodyHash is set
 	// explicitly to sha256(release) — the sidecar requires sha256(release) ==
@@ -585,9 +585,13 @@ func decodeReceiptForVerification(raw []byte) (Receipt, error) {
 	}
 }
 
-// buildEnvelope constructs the sealed-v3 signed artifact envelope. The sidecar's
-// envelope.Verify requires Kind==artifact, Destination==operator, RequestHash==
-// sha256(SPK), and sha256(Body)==BodyHash; we set all of them here.
+// buildEnvelope constructs the sealed-v3 signed PUBLISH-REQUEST envelope.
+//
+// Kind is KindPublishRequest, NOT KindArtifact: §4.3 reclaimed that name for a
+// durable evidence record that must verify years later. This is a transport
+// message with a TTL and a nonce — the opposite lifetime. The sidecar's
+// envelope.Verify requires Kind==publish-request, Destination==operator,
+// RequestHash==sha256(SPK), and sha256(Body)==BodyHash; we set all of them here.
 func buildEnvelope(src *identity.Private, dst identity.Public, target string, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
 	if target != appPromoteTarget && target != appStageTarget {
 		return envelope.Signed{}, fmt.Errorf("app publish target must be exactly %q or %q", appPromoteTarget, appStageTarget)
@@ -613,7 +617,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 		}
 	}
 
-	return envelope.Sign(envelope.KindArtifact, src, dst, envelope.SignOptions{
+	return envelope.Sign(envelope.KindPublishRequest, src, dst, envelope.SignOptions{
 		Method:      http.MethodPost,
 		Target:      target,
 		Body:        releaseBytes,

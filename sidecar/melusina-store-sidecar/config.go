@@ -30,8 +30,21 @@ type Policy struct {
 	AllowedTiers []string `json:"allowed_tiers"`
 	// RequireScanReport: reject publishes lacking an attested clean scan report.
 	RequireScanReport bool `json:"require_scan_report"`
-	// AcceptPublishers: base58 ReleaseEntry PDAs / publisher identities trusted to submit.
+	// AcceptPublishers: base58 SIGNING PUBKEYS of the publishers trusted to submit.
 	// Empty fails closed on /publish and /publish/installer.
+	//
+	// This list is the SIGNER AUTHORITY, not a label match: the publish envelope's
+	// signature is verified against the entry resolved from here
+	// (handler.resolveAcceptedPublisherKey, PROVENANCE_CONTRACTS.md §7.6(4)). An
+	// entry that is not a key therefore cannot authorize a publish, because there
+	// is nothing to verify against.
+	//
+	// D-10: ReleaseEntry PDAs were accepted here and no longer are. A PDA is a
+	// field the publisher writes into RELEASE.json — a self-asserted value that
+	// was being used to decide whether to trust the publisher who asserted it.
+	// An operator whose config lists a PDA will see check=accept_publishers
+	// refusals until it is replaced with the publisher's signing pubkey; that is
+	// a deliberate, named break, not a regression.
 	AcceptPublishers []string `json:"accept_publishers"`
 }
 

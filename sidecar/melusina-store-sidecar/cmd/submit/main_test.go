@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -229,8 +230,10 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
 
-	if sig.Payload.Kind != envelope.KindArtifact {
-		t.Errorf("kind = %q, want %q", sig.Payload.Kind, envelope.KindArtifact)
+	// KindPublishRequest, not KindArtifact — §4.3 reclaimed that name for a
+	// durable evidence record. A publish request is transport.
+	if sig.Payload.Kind != envelope.KindPublishRequest {
+		t.Errorf("kind = %q, want %q", sig.Payload.Kind, envelope.KindPublishRequest)
 	}
 	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != appPromoteTarget {
 		t.Errorf("purpose = %s %q, want POST %q", sig.Payload.Method, sig.Payload.Target, appPromoteTarget)
@@ -258,9 +261,11 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	// Destination, RequestHash == sha256(spk).
 	opPub := op.Public()
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedKind:        envelope.KindArtifact,
-		ExpectedDestination: &opPub,
-		ExpectedRequestHash: hex.EncodeToString(wantSPK[:]),
+		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedDestination:     &opPub,
+		ExpectedRequestHash:     hex.EncodeToString(wantSPK[:]),
+		NonceCache:              envelope.NewMemoryNonceCache(),
 	}); err != nil {
 		t.Fatalf("envelope.Verify (handler contract): %v", err)
 	}
@@ -278,12 +283,21 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
 	// An envelope addressed to op must NOT verify against a different destination.
+	// Options are COMPLETE except for the destination under test. With a loose
+	// options struct this would now reject as "verify options incomplete" — i.e.
+	// pass while never reaching the destination check at all.
 	otherPub := other.Public()
-	if err := envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedKind:        envelope.KindArtifact,
-		ExpectedDestination: &otherPub,
-	}); err == nil {
+	err = envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedDestination:     &otherPub,
+		NonceCache:              envelope.NewMemoryNonceCache(),
+	})
+	if err == nil {
 		t.Fatal("expected destination mismatch to fail verification")
+	}
+	if !strings.Contains(err.Error(), "destination mismatch") {
+		t.Fatalf("expected a DESTINATION rejection, got %v", err)
 	}
 }
 
@@ -314,11 +328,16 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 			// the signature rather than becoming an empty-target compatibility path.
 			tampered := signed
 			tampered.Payload.Target = tc.other
-			if err := envelope.Verify(tampered, envelope.VerifyOptions{
-				ExpectedKind:        envelope.KindArtifact,
-				ExpectedDestination: &opPub,
-			}); err == nil {
-				t.Fatalf("envelope for %q remained valid after retargeting to %q", tc.target, tc.other)
+			// Complete options: the rejection must be the payload-hash break, not
+			// a misconfigured verifier.
+			err = envelope.Verify(tampered, envelope.VerifyOptions{
+				ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
+				ExpectedKind:            envelope.KindPublishRequest,
+				ExpectedDestination:     &opPub,
+				NonceCache:              envelope.NewMemoryNonceCache(),
+			})
+			if !errors.Is(err, envelope.ErrPayloadHashMismatch) {
+				t.Fatalf("envelope for %q must fail the signature binding after retargeting to %q; got %v", tc.target, tc.other, err)
 			}
 		})
 	}
@@ -897,10 +916,11 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 		// across the JSON + multipart POSTs, which a shared cache would reject as
 		// a replay. The replay path is covered by the handler's own tests.
 		if err := envelope.Verify(sigIn, envelope.VerifyOptions{
-			ExpectedKind:        envelope.KindArtifact,
-			ExpectedDestination: &opPub,
-			ExpectedRequestHash: hex.EncodeToString(spkSum[:]),
-			NonceCache:          envelope.NewMemoryNonceCache(),
+			ExpectedSignerPubkeyB58: sigIn.Payload.Source.SignPubkeyB58,
+			ExpectedKind:            envelope.KindPublishRequest,
+			ExpectedDestination:     &opPub,
+			ExpectedRequestHash:     hex.EncodeToString(spkSum[:]),
+			NonceCache:              envelope.NewMemoryNonceCache(),
 		}); err != nil {
 			http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 			return

@@ -48,12 +48,15 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 	}
 }
 
-// signPublish builds a valid signed artifact envelope from the publisher,
+// signPublish builds a valid signed PUBLISH-REQUEST envelope from the publisher,
 // addressed to the operator, binding RequestHash=sha256(spk) and Body=release.
+//
+// KindPublishRequest, not KindArtifact: §4.3 reclaimed that name for durable
+// evidence. A publish request is transport.
 func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, spk, release []byte) envelope.Signed {
 	t.Helper()
 	spkSum := sha256.Sum256(spk)
-	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+	sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, operatorPub, envelope.SignOptions{
 		Body:        release,
 		RequestHash: hex.EncodeToString(spkSum[:]),
 		TTL:         5 * time.Minute,
@@ -72,7 +75,7 @@ func signPublish(t *testing.T, publisher *identity.Private, operatorPub identity
 func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte) envelope.Signed {
 	t.Helper()
 	artifactSum := sha256.Sum256(artifact)
-	sig, err := envelope.Sign(envelope.KindArtifact, publisher, operatorPub, envelope.SignOptions{
+	sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, operatorPub, envelope.SignOptions{
 		RequestHash: hex.EncodeToString(artifactSum[:]),
 		TTL:         5 * time.Minute,
 		Chain: envelope.ChainEvidence{
@@ -85,6 +88,19 @@ func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub
 		t.Fatalf("Sign installer: %v", err)
 	}
 	return sig
+}
+
+// acceptPublisherOf allowlists the envelope's publisher by SIGNING KEY.
+//
+// Tests used to write `AcceptPublishers = []string{f.rel.ReleaseEntryPda}`,
+// which exercised the D-10 path: a SELF-ASSERTED RELEASE.json field satisfying
+// the store's allowlist. That path is deleted — the allowlist now holds keys,
+// because the key is what the signature is verified against (§7.6(4)). Reading
+// the key off `sig` here is a TEST constructing the scenario "this store
+// allowlists this publisher"; production reads it from configuration and never
+// from the blob.
+func acceptPublisherOf(svc *publishService, sig envelope.Signed) {
+	svc.cfg.Policy.AcceptPublishers = []string{sig.Payload.Source.SignPubkeyB58}
 }
 
 // jsonPublishBody assembles the JSON wire form for POST /publish.
@@ -169,7 +185,7 @@ func TestHandlePublish_Accept(t *testing.T) {
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	acceptPublisherOf(svc, sig)
 
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusOK {
@@ -681,9 +697,17 @@ func TestHandlePublish_Rejects(t *testing.T) {
 			m := newMockChainReader()
 			f.pinAccept(m, operatorPub)
 			svc := newTestService(t, cfg, m, op)
-			svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
-
 			release, spk, sig := tc.setup(t, cfg, m, op, &f, operatorPub)
+			// Allowlist AFTER setup: each case mints its own publisher, and the
+			// allowlist is now keyed by signing key rather than by the release's
+			// self-asserted PDA (D-10). Every case below must therefore fail for
+			// ITS OWN reason — an unrelated accept_publishers rejection would
+			// make each of these negatives pass while testing nothing.
+			//
+			// The "no_envelope" case carries an empty Source key, which resolves
+			// to no allowlisted publisher and is refused at check=envelope — the
+			// code it asserts.
+			acceptPublisherOf(svc, sig)
 			w := doPublish(t, svc, jsonPublishBody(t, sig, release, spk, f.metadata))
 			if w.Code != tc.wantCode {
 				t.Fatalf("got %d, want %d: %s", w.Code, tc.wantCode, w.Body.String())
@@ -692,6 +716,90 @@ func TestHandlePublish_Rejects(t *testing.T) {
 				t.Fatalf("body %q does not name %q", w.Body.String(), tc.wantBody)
 			}
 		})
+	}
+}
+
+// D-10 — a ReleaseEntry PDA in accept_publishers no longer authorizes a publish.
+//
+// This is the test that makes the deletion REAL rather than described. Until the
+// v2 cutover, `accept_publishers: ["<ReleaseEntry PDA>"]` was a working, endorsed
+// configuration (store.config.example.json documented it), and it authorized a
+// publish by matching a field the PUBLISHER TYPES INTO RELEASE.json against the
+// store's allowlist. It was not exploitable on its own — VerifyPublish
+// independently re-resolves the chain from the same release — but it is a
+// self-asserted value inside an authority decision, and it is unusable as an
+// authority now for a concrete reason: it is not a key, so nothing can be
+// verified against it.
+//
+// The publish below is otherwise COMPLETELY VALID — the control at the bottom
+// proves it — so this test can only pass because the PDA path is gone.
+func TestHandlePublish_ReleaseEntryPDAInAllowlistDoesNotAuthorize(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+
+	release := mustJSON(t, f.rel)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signPublish(t, pub, op.Public(), f.spk, release)
+
+	// The OLD configuration: allowlist the release's self-asserted PDA.
+	svc.cfg.Policy.AcceptPublishers = []string{f.rel.ReleaseEntryPda}
+	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("a ReleaseEntry PDA must NOT authorize a publish; got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "check=accept_publishers") {
+		t.Fatalf("body %q does not name accept_publishers", w.Body.String())
+	}
+
+	// CONTROL: the identical publish, allowlisted by SIGNING KEY, succeeds. This
+	// is what makes the rejection above meaningful — without it, the test would
+	// pass just as happily against a store that refused everything.
+	svc2 := newTestService(t, cfg, m, op)
+	svc2.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	sig2 := signPublish(t, pub, op.Public(), f.spk, release)
+	w2 := doPublish(t, svc2, jsonPublishBody(t, sig2, release, f.spk, f.metadata))
+	if w2.Code != http.StatusOK {
+		t.Fatalf("control: the same publish keyed by signing pubkey must succeed; got %d: %s", w2.Code, w2.Body.String())
+	}
+}
+
+// The publish gate must verify against the key THE STORE'S POLICY names, never
+// the key the envelope carries. An attacker's envelope is internally perfect —
+// it is signed correctly, by them.
+//
+// Before the v2 cutover envelope.Verify checked `s.Payload.Source.Verify(...)`,
+// so ANY key verified for its own blob and this envelope would have passed the
+// envelope check, leaving accept_publishers as the only thing between an
+// arbitrary signer and the gate.
+func TestHandlePublish_EnvelopeFromNonAllowlistedSignerIsRefused(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+
+	release := mustJSON(t, f.rel)
+	legit := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	attacker := newTestIdentity(t, "attacker", randPubkeyB58(t), "attacker.example.org")
+
+	// The store allowlists ONLY the legitimate publisher.
+	svc.cfg.Policy.AcceptPublishers = []string{legit.Public().SignPubkeyB58}
+
+	evil := signPublish(t, attacker, op.Public(), f.spk, release)
+	w := doPublish(t, svc, jsonPublishBody(t, evil, release, f.spk, f.metadata))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("an envelope from a non-allowlisted signer must be refused; got %d: %s", w.Code, w.Body.String())
 	}
 }
 

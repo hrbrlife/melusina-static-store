@@ -8,7 +8,7 @@
   "policy": {
     "allowed_tiers": ["regular"],
     "require_scan_report": true,
-    "accept_publishers": ["<allowed publisher signing pubkey or ReleaseEntry PDA>"]
+    "accept_publishers": ["<allowed publisher base58 signing pubkey>"]
   },
   "rpc_url": "<Solana RPC endpoint>",
   "listen_addr": ":8443",

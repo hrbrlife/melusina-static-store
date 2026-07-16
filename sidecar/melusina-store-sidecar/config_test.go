@@ -13,6 +13,11 @@ const (
 	testGenesisHash    = "11111111111111111111111111111111"
 )
 
+func TestMain(m *testing.M) {
+	setProgramIDFromConfig(testFreshProgramID)
+	os.Exit(m.Run())
+}
+
 func writeTmpConfig(t *testing.T, content string) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "store.config.json")
@@ -88,7 +93,7 @@ func TestLoadConfig_RejectsInvalidProgramID(t *testing.T) {
 func TestLoadConfig_RejectsMissingAndLegacyProgramID(t *testing.T) {
 	for _, body := range []string{
 		`{"license_nft_mint":"LIC","domain":"store.example.org"}`,
-		`{"license_nft_mint":"LIC","domain":"store.example.org","program_id":"` + defaultLicenseProgramID + `"}`,
+		`{"license_nft_mint":"LIC","domain":"store.example.org","program_id":"` + legacyRefusedLicenseProgramID + `"}`,
 	} {
 		if _, err := LoadConfig(writeTmpConfig(t, body)); err == nil {
 			t.Fatalf("expected explicit fresh program refusal for %s", body)

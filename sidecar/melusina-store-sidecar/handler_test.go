@@ -327,7 +327,7 @@ func TestAppPublishRefusesEnvelopeFromDifferentProgramBeforeChainRead(t *testing
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
 	release := mustJSON(t, fixture.rel)
 	env := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, "wrong-program")
-	svc.cfg.ProgramID = testFreshProgramID // envelope remains signed for programID.Base58().
+	svc.cfg.ProgramID = randPubkeyB58(t) // envelope remains signed for the distinct TestMain program.
 	got := doStagePublish(t, svc, jsonPublishBody(t, env, release, fixture.spk, fixture.metadata))
 	if got.Code != http.StatusUnauthorized || !strings.Contains(got.Body.String(), "check=program_id") {
 		t.Fatalf("different-program envelope = %d %s", got.Code, got.Body.String())

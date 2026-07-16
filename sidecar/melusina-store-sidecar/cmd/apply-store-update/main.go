@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -37,7 +38,7 @@ const (
 	toVersion                 = "1.0.6"
 	applyReceiptName          = "store-1.0.6.json"
 	writerLockName            = "writer.lock"
-	canonicalLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	legacyLicenseProgramID    = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	xzExecutable              = "/usr/bin/xz"
 	maxChainReceiptBytes      = 64 << 10
 	maxPersistentJSONBytes    = 64 << 10
@@ -52,6 +53,8 @@ type options struct {
 	archiveSHA256        string
 	chainReceipt         string
 	rpcURL               string
+	programID            string
+	clusterGenesisHash   string
 	masterNFTMint        string
 	installedELF         string
 	expectedOldELFSHA256 string
@@ -85,6 +88,8 @@ type applyReceipt struct {
 	ChainReceiptSHA256         string `json:"chainReceiptSha256"`
 	InstallerReleasePDA        string `json:"installerReleasePda"`
 	ChainVerifiedSlot          uint64 `json:"chainVerifiedSlot"`
+	ProgramID                  string `json:"programId"`
+	ClusterGenesisHash         string `json:"clusterGenesisHash"`
 	ExpectedInstalledELFSHA256 string `json:"expectedInstalledElfSha256"`
 	NewELFSHA256               string `json:"newElfSha256"`
 	LedgerID                   string `json:"ledgerId"`
@@ -103,6 +108,7 @@ type securityPolicy struct {
 	requireEffectiveRoot bool
 	afterWriterLock      func() error
 	newChainVerifier     func(string) installerReleaseVerifier
+	verifyGenesis        func(context.Context, string, string) error
 }
 
 type installerReleaseVerifier interface {
@@ -117,6 +123,7 @@ func productionSecurityPolicy() securityPolicy {
 		newChainVerifier: func(endpoint string) installerReleaseVerifier {
 			return verify.NewRPCClient(endpoint)
 		},
+		verifyGenesis: verifyRPCGenesis,
 	}
 }
 
@@ -151,6 +158,8 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.archiveSHA256, "archive-sha256", "", "verified archive sha256")
 	fs.StringVar(&opts.chainReceipt, "chain-receipt", "", "bounded InstallerReleaseEntry verification receipt")
 	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
+	fs.StringVar(&opts.programID, "program-id", "", "exact freshly deployed license-registry program id (required; legacy refused)")
+	fs.StringVar(&opts.clusterGenesisHash, "cluster-genesis-hash", "", "exact getGenesisHash result for --rpc-url (required)")
 	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
 	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed 1.0.5 store ELF")
 	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed 1.0.5 ELF sha256")
@@ -168,6 +177,7 @@ func parseOptions(args []string) (options, error) {
 	for name, value := range map[string]string{
 		"--archive": opts.archive, "--archive-sha256": opts.archiveSHA256,
 		"--chain-receipt": opts.chainReceipt, "--rpc-url": opts.rpcURL,
+		"--program-id": opts.programID, "--cluster-genesis-hash": opts.clusterGenesisHash,
 		"--master-nft-mint": opts.masterNFTMint, "--installed-elf": opts.installedELF,
 		"--expected-old-elf-sha256": opts.expectedOldELFSHA256,
 		"--new-elf":                 opts.newELF, "--new-elf-member": opts.newELFMember,
@@ -208,12 +218,32 @@ func parseOptions(args []string) (options, error) {
 	if err := validateArchiveMemberName(opts.newELFMember); err != nil {
 		return options{}, fmt.Errorf("--new-elf-member: %w", err)
 	}
+	programID, err := primitives.PubkeyFromBase58(opts.programID)
+	if err != nil || programID.Base58() != opts.programID {
+		return options{}, errors.New("--program-id must be a canonical base58 Solana pubkey")
+	}
+	if opts.programID == legacyLicenseProgramID {
+		return options{}, errors.New("legacy --program-id is refused")
+	}
+	genesis, err := primitives.PubkeyFromBase58(opts.clusterGenesisHash)
+	if err != nil || genesis.Base58() != opts.clusterGenesisHash {
+		return options{}, errors.New("--cluster-genesis-hash must be a canonical base58 32-byte hash")
+	}
 	return opts, nil
 }
 
 func prepareStoreUpdate(opts options, policy securityPolicy) (result, error) {
 	if policy.requireEffectiveRoot && os.Geteuid() != 0 {
 		return result{}, errors.New("must run as root")
+	}
+	if policy.verifyGenesis == nil {
+		return result{}, errors.New("cluster genesis verifier is unavailable")
+	}
+	genesisCtx, genesisCancel := context.WithTimeout(context.Background(), chainVerificationTimeout)
+	genesisErr := policy.verifyGenesis(genesisCtx, opts.rpcURL, opts.clusterGenesisHash)
+	genesisCancel()
+	if genesisErr != nil {
+		return result{}, fmt.Errorf("cluster genesis: %w", genesisErr)
 	}
 	archiveHash, memberHash, err := hashArchiveAndXZTarMember(opts.archive, opts.newELFMember)
 	if err != nil {
@@ -328,6 +358,7 @@ func desiredApplyReceipt(state string, opts options, chainHash string, chain cha
 		Schema: applyReceiptSchema, State: state, FromVersion: fromVersion, ToVersion: toVersion,
 		ArchiveSHA256: opts.archiveSHA256, ChainReceiptSHA256: chainHash,
 		InstallerReleasePDA: chain.InstallerReleasePDA, ChainVerifiedSlot: chain.VerifiedSlot,
+		ProgramID: opts.programID, ClusterGenesisHash: opts.clusterGenesisHash,
 		ExpectedInstalledELFSHA256: opts.expectedOldELFSHA256, NewELFSHA256: opts.newELFSHA256,
 		LedgerID: ledgerID,
 	}
@@ -344,7 +375,7 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	if h != opts.archiveSHA256 {
 		return errors.New("installerSha256 does not bind the verified archive")
 	}
-	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	programID, err := primitives.PubkeyFromBase58(opts.programID)
 	if err != nil {
 		return fmt.Errorf("internal canonical program id: %w", err)
 	}
@@ -362,7 +393,7 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	if err != nil {
 		return fmt.Errorf("derive InstallerReleaseEntry PDA: %w", err)
 	}
-	if receipt.ProgramID != canonicalLicenseProgramID || receipt.MasterNFTMint != opts.masterNFTMint || receipt.InstallerReleasePDA != releasePDA.Base58() {
+	if receipt.ProgramID != opts.programID || receipt.MasterNFTMint != opts.masterNFTMint || receipt.InstallerReleasePDA != releasePDA.Base58() {
 		return errors.New("programId, masterNftMint, or installerReleasePda does not match independently derived identity")
 	}
 	if receipt.Status != verify.AttestationStatusActive.String() {
@@ -402,11 +433,50 @@ func validateApplyReceipt(receipt applyReceipt, opts options, chainHash string, 
 	}
 	if receipt.ArchiveSHA256 != opts.archiveSHA256 || receipt.ChainReceiptSHA256 != chainHash ||
 		receipt.InstallerReleasePDA != chain.InstallerReleasePDA || receipt.ChainVerifiedSlot != chain.VerifiedSlot ||
+		receipt.ProgramID != opts.programID || receipt.ClusterGenesisHash != opts.clusterGenesisHash ||
 		receipt.ExpectedInstalledELFSHA256 != opts.expectedOldELFSHA256 || receipt.NewELFSHA256 != opts.newELFSHA256 {
 		return errors.New("source/archive/ELF binding differs")
 	}
 	if !isCanonicalHex(receipt.LedgerID, 32) {
 		return errors.New("ledgerId is invalid")
+	}
+	return nil
+}
+
+func verifyRPCGenesis(ctx context.Context, rpcURL, expected string) error {
+	body := []byte(`{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}`)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("getGenesisHash HTTP %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return err
+	}
+	var result struct {
+		Result string `json:"result"`
+		Error  *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return err
+	}
+	if result.Error != nil {
+		return fmt.Errorf("getGenesisHash RPC error %d: %s", result.Error.Code, result.Error.Message)
+	}
+	if strings.TrimSpace(result.Result) != expected {
+		return fmt.Errorf("RPC=%q expected=%q", result.Result, expected)
 	}
 	return nil
 }

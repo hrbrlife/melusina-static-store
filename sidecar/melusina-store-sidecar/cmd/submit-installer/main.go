@@ -25,14 +25,16 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+const legacyProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 
 type publisherKeyFile struct {
-	Ref      identity.Ref `json:"ref"`
-	SignSeed string       `json:"sign_seed_hex"`
-	BoxSeed  string       `json:"box_seed_hex"`
+	Ref                identity.Ref `json:"ref"`
+	ClusterGenesisHash string       `json:"cluster_genesis_hash"`
+	SignSeed           string       `json:"sign_seed_hex"`
+	BoxSeed            string       `json:"box_seed_hex"`
 }
 
 type options struct {
@@ -42,6 +44,9 @@ type options struct {
 	artifactPath string
 	publisherKey string
 	storePubkey  string
+	rpcURL       string
+	programID    string
+	genesisHash  string
 	verifiedSlot uint64
 	timeout      time.Duration
 }
@@ -69,7 +74,10 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.artifactPath, "artifact", "", "whole-file artifact path (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher identity JSON path or env:NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "store operator identity.Public JSON path (required)")
-	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
+	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint (required)")
+	fs.StringVar(&o.programID, "program-id", "", "fresh license-registry program id (required; legacy refused)")
+	fs.StringVar(&o.genesisHash, "cluster-genesis-hash", "", "exact getGenesisHash result for --rpc-url (required)")
+	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 0, "publisher chain-evidence slot from a real on-chain pre-check (required)")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -78,7 +86,8 @@ func parseFlags(args []string) (options, error) {
 	for name, value := range map[string]string{
 		"--store": o.store, "--class": o.class, "--name": o.name,
 		"--artifact": o.artifactPath, "--publisher-key": o.publisherKey,
-		"--store-pubkey": o.storePubkey,
+		"--store-pubkey": o.storePubkey, "--rpc-url": o.rpcURL,
+		"--program-id": o.programID, "--cluster-genesis-hash": o.genesisHash,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
@@ -96,6 +105,15 @@ func parseFlags(args []string) (options, error) {
 	if o.timeout <= 0 {
 		return o, errors.New("--timeout must be positive")
 	}
+	if o.programID == legacyProgramID {
+		return o, errors.New("legacy --program-id is refused")
+	}
+	if program, err := primitives.PubkeyFromBase58(o.programID); err != nil || program.Base58() != o.programID {
+		return o, errors.New("--program-id must be a canonical base58 32-byte key")
+	}
+	if genesis, err := primitives.PubkeyFromBase58(o.genesisHash); err != nil || genesis.Base58() != o.genesisHash {
+		return o, errors.New("--cluster-genesis-hash must be a canonical base58 32-byte hash")
+	}
 	return o, nil
 }
 
@@ -103,6 +121,12 @@ func run(args []string, stdout io.Writer) error {
 	o, err := parseFlags(args)
 	if err != nil {
 		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	err = verifyInstallerGenesis(ctx, o.rpcURL, o.genesisHash)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("cluster genesis: %w", err)
 	}
 	artifact, err := os.ReadFile(o.artifactPath)
 	if err != nil {
@@ -114,13 +138,19 @@ func run(args []string, stdout io.Writer) error {
 	artifactHash := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(artifactHash[:])
 
-	publisher, err := loadPublisherKey(o.publisherKey)
+	publisher, err := loadPublisherKey(o.publisherKey, o.genesisHash)
 	if err != nil {
 		return fmt.Errorf("publisher key: %w", err)
+	}
+	if publisher.Public().Ref.ProgramID != o.programID {
+		return fmt.Errorf("publisher identity program_id %q != --program-id %q", publisher.Public().Ref.ProgramID, o.programID)
 	}
 	destination, err := loadStorePubkey(o.storePubkey)
 	if err != nil {
 		return fmt.Errorf("store pubkey: %w", err)
+	}
+	if destination.Ref.ProgramID != o.programID {
+		return fmt.Errorf("store identity program_id %q != --program-id %q", destination.Ref.ProgramID, o.programID)
 	}
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
@@ -131,7 +161,7 @@ func run(args []string, stdout io.Writer) error {
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
 			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, "solana:devnet"),
-			ProgramID:    firstNonEmpty(publisher.Public().Ref.ProgramID, defaultProgramID),
+			ProgramID:    o.programID,
 			VerifiedSlot: o.verifiedSlot,
 		},
 	})
@@ -153,6 +183,43 @@ func run(args []string, stdout io.Writer) error {
 	}
 	fmt.Fprintf(stdout, "PUBLISH INSTALLER OK class=%s name=%s sha256=%s path=%s\n",
 		result.Class, result.Name, hashHex, result.Path)
+	return nil
+}
+
+func verifyInstallerGenesis(ctx context.Context, rpcURL, expected string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}`))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("getGenesisHash HTTP %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return err
+	}
+	var result struct {
+		Result string `json:"result"`
+		Error  *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return err
+	}
+	if result.Error != nil {
+		return fmt.Errorf("getGenesisHash RPC error %d: %s", result.Error.Code, result.Error.Message)
+	}
+	if strings.TrimSpace(result.Result) != expected {
+		return fmt.Errorf("RPC=%q expected=%q", result.Result, expected)
+	}
 	return nil
 }
 
@@ -251,7 +318,7 @@ func writePart(mw *multipart.Writer, field, filename string, data []byte) error 
 	return err
 }
 
-func loadPublisherKey(arg string) (*identity.Private, error) {
+func loadPublisherKey(arg, expectedGenesis string) (*identity.Private, error) {
 	var raw []byte
 	if name, ok := strings.CutPrefix(arg, "env:"); ok {
 		value := os.Getenv(name)
@@ -269,6 +336,9 @@ func loadPublisherKey(arg string) (*identity.Private, error) {
 	var file publisherKeyFile
 	if err := json.Unmarshal(raw, &file); err != nil {
 		return nil, err
+	}
+	if file.ClusterGenesisHash != expectedGenesis {
+		return nil, fmt.Errorf("publisher identity cluster_genesis_hash %q != expected %q", file.ClusterGenesisHash, expectedGenesis)
 	}
 	signSeed, err := seed32(file.SignSeed)
 	if err != nil {

@@ -105,6 +105,20 @@ per-install material):
   immutable `StoreOperatorAuthorization`; the new entry still fail-closes on
   the current binary, domain, and TLS certificate.
 
+The typed FULL_DEPLOY private-blob mapping is exact: `storeAuthorShard` ->
+`author.shard`, `storeHostObservationShard` -> `host-observation.shard`,
+`storeReleaseShard` -> `release.shard`, and `storeTlsPrivateKey` -> the path in
+`tls.key_path`. The descriptor materializer owns those leaf writes (shards and
+TLS key `0600`, containing directory `0700`). `publisherKeypair` is an off-box
+ceremony input and must never be materialized on the store host.
+
+Every deployment producer (`keygen`, `boot-identity-prep`, `canary-emit`,
+`submit`, `submit-installer`, `apply-store-update`, `list-active-releases`, and
+`publish-supersede`) requires the freshly deployed `program_id` and exact
+`getGenesisHash` result. There is no compiled-in program/genesis fallback;
+cross-program, cross-genesis, or wrong-derived-PDA inputs fail before durable
+state is created or a request is sent.
+
 The helper command below generates or reuses the three shard files and prints
 the public `register_sidecar_identity` inputs without broadcasting any
 transaction or printing secret shard values:
@@ -117,6 +131,7 @@ go run ./cmd/boot-identity-prep \
   -sidecar-id store \
   -chain-id solana:devnet \
   -program-id <license-registry-program-id> \
+  -cluster-genesis-hash <exact-getGenesisHash-result> \
   -binary ./melusina-store-sidecar \
   -tls-cert /etc/melusina/store/boot-identity-tls-cert.pem
 ```

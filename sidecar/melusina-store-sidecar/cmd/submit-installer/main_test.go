@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,6 +18,11 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 )
 
+const (
+	installerTestProgram = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	installerTestGenesis = "11111111111111111111111111111111"
+)
+
 func testPrivate(t *testing.T, sidecarID string) (*identity.Private, [32]byte, [32]byte) {
 	t.Helper()
 	var signSeed, boxSeed [32]byte
@@ -29,7 +35,7 @@ func testPrivate(t *testing.T, sidecarID string) (*identity.Private, [32]byte, [
 	private, err := identity.NewPrivate(identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     "solana:devnet",
-		ProgramID:   defaultProgramID,
+		ProgramID:   installerTestProgram,
 		LicenseMint: "11111111111111111111111111111111",
 		Domain:      "publisher.example",
 		PDA:         "11111111111111111111111111111111",
@@ -48,6 +54,17 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	artifact := []byte("immutable deployer artifact")
 	digest := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(digest[:])
+	rpc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Method string `json:"method"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.Method != "getGenesisHash" {
+			http.Error(w, "bad RPC request", http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": installerTestGenesis})
+	}))
+	defer rpc.Close()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -63,6 +80,9 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 			var signed envelope.Signed
 			if err := json.Unmarshal(envelopeBytes, &signed); err != nil {
 				t.Fatalf("decode envelope: %v", err)
+			}
+			if signed.Payload.ChainEvidence.ProgramID != installerTestProgram {
+				t.Fatalf("envelope program=%q", signed.Payload.ChainEvidence.ProgramID)
 			}
 			if err := envelope.Verify(signed, envelope.VerifyOptions{
 				ExpectedKind:            envelope.KindPublishRequest,
@@ -99,7 +119,8 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	publisherJSON, _ := json.Marshal(publisherKeyFile{
-		Ref: publisher.Public().Ref, SignSeed: hex.EncodeToString(signSeed[:]), BoxSeed: hex.EncodeToString(boxSeed[:]),
+		Ref: publisher.Public().Ref, ClusterGenesisHash: installerTestGenesis,
+		SignSeed: hex.EncodeToString(signSeed[:]), BoxSeed: hex.EncodeToString(boxSeed[:]),
 	})
 	if err := os.WriteFile(publisherPath, publisherJSON, 0o600); err != nil {
 		t.Fatal(err)
@@ -117,6 +138,9 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 		"--artifact", artifactPath,
 		"--publisher-key", publisherPath,
 		"--store-pubkey", operatorPath,
+		"--rpc-url", rpc.URL,
+		"--program-id", installerTestProgram,
+		"--cluster-genesis-hash", installerTestGenesis,
 		"--verified-slot", "123",
 	}, &output)
 	if err != nil {
@@ -124,6 +148,43 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), "PUBLISH INSTALLER OK") || !strings.Contains(output.String(), hashHex) {
 		t.Fatalf("unexpected output: %q", output.String())
+	}
+}
+
+func TestFreshProgramAndGenesisNegativeControls(t *testing.T) {
+	if _, err := parseFlags([]string{}); err == nil || !strings.Contains(err.Error(), "--program-id") || !strings.Contains(err.Error(), "--cluster-genesis-hash") {
+		t.Fatalf("missing chain binding error = %v", err)
+	}
+	base := []string{
+		"--store", "https://store.example", "--class", "deployer", "--name", "artifact.tar.xz",
+		"--artifact", "/tmp/artifact", "--publisher-key", "/tmp/publisher", "--store-pubkey", "/tmp/store",
+		"--rpc-url", "https://rpc.example", "--program-id", legacyProgramID,
+		"--cluster-genesis-hash", installerTestGenesis, "--verified-slot", "42",
+	}
+	if _, err := parseFlags(base); err == nil || !strings.Contains(err.Error(), "legacy --program-id is refused") {
+		t.Fatalf("legacy program error = %v", err)
+	}
+	var freshNoSlot []string
+	for i := 0; i < len(base); i++ {
+		if base[i] == "--verified-slot" {
+			i++
+			continue
+		}
+		if base[i] == legacyProgramID {
+			freshNoSlot = append(freshNoSlot, installerTestProgram)
+			continue
+		}
+		freshNoSlot = append(freshNoSlot, base[i])
+	}
+	if _, err := parseFlags(freshNoSlot); err == nil || !strings.Contains(err.Error(), "--verified-slot") {
+		t.Fatalf("missing real verified slot accepted: %v", err)
+	}
+	rpc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": installerTestGenesis})
+	}))
+	defer rpc.Close()
+	if err := verifyInstallerGenesis(context.Background(), rpc.URL, installerTestProgram); err == nil || !strings.Contains(err.Error(), "expected") {
+		t.Fatalf("wrong genesis accepted: %v", err)
 	}
 }
 

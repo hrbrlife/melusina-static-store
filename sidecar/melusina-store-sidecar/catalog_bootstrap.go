@@ -416,7 +416,7 @@ func validateCatalogMigrationState(state catalogMigrationState) error {
 				return fmt.Errorf("zero-state %s is required", name)
 			}
 		}
-		if state.ProgramID == defaultLicenseProgramID {
+		if state.ProgramID == legacyRefusedLicenseProgramID {
 			return errors.New("zero-state refuses the legacy license program")
 		}
 		for name, value := range map[string]string{

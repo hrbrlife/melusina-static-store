@@ -14,12 +14,13 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const defaultLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+const legacyRefusedLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 
 // programID is the license-registry program the federated store verifies
-// against (FEDERATED-STORE-MVP §1). It defaults to the current devnet registry
-// and is overwritten from validated operator config at process boot.
-var programID = mustPubkey(defaultLicenseProgramID)
+// against (FEDERATED-STORE-MVP §1). It has deliberately no compiled-in value:
+// main sets it only after LoadConfig has accepted an explicit fresh program.
+// Tests install their own fresh program in TestMain.
+var programID pda.Pubkey
 
 func mustPubkey(s string) pda.Pubkey {
 	p, err := primitives.PubkeyFromBase58(s)

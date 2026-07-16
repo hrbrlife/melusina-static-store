@@ -34,6 +34,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -58,10 +59,10 @@ import (
 )
 
 const (
-	defaultProgramIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
-	defaultChainID      = "solana:devnet"
-	stageTarget         = "/publish/stage"
-	promoteTarget       = "/publish"
+	legacyProgramIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	defaultChainID     = "solana:devnet"
+	stageTarget        = "/publish/stage"
+	promoteTarget      = "/publish"
 	// maxTransportTTL mirrors the envelope transport ceiling AND the canary
 	// control-envelope lifetime cap (CanaryEnvelope.parse: expires-issued <= 30m).
 	maxTransportTTL = 30 * time.Minute
@@ -92,10 +93,12 @@ func main() {
 // ── config (minimal; the store's own Config is package main and not importable) ──
 
 type storeConfigFile struct {
-	LicenseNFTMint string `json:"license_nft_mint"`
-	ProgramID      string `json:"program_id"`
-	Domain         string `json:"domain"`
-	BootIdentity   struct {
+	LicenseNFTMint     string `json:"license_nft_mint"`
+	ProgramID          string `json:"program_id"`
+	ClusterGenesisHash string `json:"cluster_genesis_hash"`
+	RPCURL             string `json:"rpc_url"`
+	Domain             string `json:"domain"`
+	BootIdentity       struct {
 		ShardsDir          string `json:"shards_dir"`
 		SidecarID          string `json:"sidecar_id"`
 		ChainID            string `json:"chain_id"`
@@ -109,9 +112,10 @@ type storeConfigFile struct {
 // SOURCE): a validated attest Ref plus the 32-byte ed25519 sign seed and 32-byte
 // x25519 box seed (hex). Byte-identical to cmd/submit's publisherKeyFile.
 type publisherKeyFile struct {
-	Ref      identity.Ref `json:"ref"`
-	SignSeed string       `json:"sign_seed_hex"`
-	BoxSeed  string       `json:"box_seed_hex"`
+	Ref                identity.Ref `json:"ref"`
+	ClusterGenesisHash string       `json:"cluster_genesis_hash"`
+	SignSeed           string       `json:"sign_seed_hex"`
+	BoxSeed            string       `json:"box_seed_hex"`
 }
 
 // ── operator-public ──────────────────────────────────────────────────────────
@@ -130,6 +134,9 @@ func runOperatorPublic(args []string) error {
 	}
 	cfg, err := loadStoreConfig(*configPath)
 	if err != nil {
+		return err
+	}
+	if err := verifyCanaryConfigGenesis(cfg); err != nil {
 		return err
 	}
 	dir := strings.TrimSpace(*shardsDir)
@@ -185,7 +192,7 @@ func runOperatorPublic(args []string) error {
 // different key, which the destination-digest gate rejects — but we cross-check
 // the sign pubkey in operator-public to catch it loudly instead.
 func operatorRef(cfg storeConfigFile) (identity.Ref, error) {
-	programID, err := primitives.PubkeyFromBase58(programIDOf(cfg))
+	programID, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.ProgramID))
 	if err != nil {
 		return identity.Ref{}, fmt.Errorf("program_id: %w", err)
 	}
@@ -300,6 +307,9 @@ func runOperatorSeeds(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := verifyCanaryConfigGenesis(cfg); err != nil {
+		return err
+	}
 	dir := strings.TrimSpace(*shardsDir)
 	if dir == "" {
 		dir = strings.TrimSpace(cfg.BootIdentity.ShardsDir)
@@ -353,9 +363,10 @@ func runOperatorSeeds(args []string) error {
 		return fmt.Errorf("derived operator sign pubkey %s != expected %s", reproduced.Public().SignPubkeyB58, e)
 	}
 	body, err := json.MarshalIndent(map[string]any{
-		"ref":           ref,
-		"sign_seed_hex": hex.EncodeToString(signSeed[:]),
-		"box_seed_hex":  hex.EncodeToString(boxSeed[:]),
+		"ref":                  ref,
+		"cluster_genesis_hash": cfg.ClusterGenesisHash,
+		"sign_seed_hex":        hex.EncodeToString(signSeed[:]),
+		"box_seed_hex":         hex.EncodeToString(boxSeed[:]),
 	}, "", "  ")
 	if err != nil {
 		return err
@@ -391,7 +402,8 @@ func runSign(args []string) error {
 	releaseEntryPDA := fs.String("release-entry-pda", "", "chain evidence: the app's on-chain ReleaseEntry PDA (base58) (required)")
 	verifiedSlot := fs.Uint64("verified-slot", 0, "chain evidence: verified_slot (a real finalized slot; must be > 0) (required)")
 	chainID := fs.String("chain-id", defaultChainID, "chain evidence chain_id")
-	programID := fs.String("program-id", defaultProgramIDB58, "chain evidence program_id")
+	programID := fs.String("program-id", "", "fresh chain evidence program_id (required; legacy refused)")
+	clusterGenesisHash := fs.String("cluster-genesis-hash", "", "exact target-cluster getGenesisHash result (required)")
 	nowUnix := fs.Int64("now-unix", 0, "issue time (unix seconds); 0 => now")
 	ttlSeconds := fs.Int64("ttl-seconds", 1200, "envelope TTL seconds (<= 1800; must cover the deadline)")
 	deadlineUnix := fs.Int64("deadline-unix", 0, "the governed-apply canary deadline (unix seconds); if set, expires must exceed deadline+60")
@@ -408,7 +420,8 @@ func runSign(args []string) error {
 		"--release": *releasePath, "--spk": *spkPath, "--metadata": *metadataPath,
 		"--release-entry-pda": *releaseEntryPDA, "--stage-nonce": *stageNonce,
 		"--promote-nonce": *promoteNonce, "--txid": *txid, "--wal-digest": *walDigest,
-		"--out-fixture": *outFixture,
+		"--out-fixture": *outFixture, "--program-id": *programID,
+		"--cluster-genesis-hash": *clusterGenesisHash,
 	} {
 		if strings.TrimSpace(v) == "" {
 			return fmt.Errorf("%s is required", name)
@@ -420,6 +433,9 @@ func runSign(args []string) error {
 	if *stageNonce == *promoteNonce {
 		return errors.New("--stage-nonce and --promote-nonce must differ (distinct replay scopes)")
 	}
+	if err := validateCanaryFreshChain(*programID, *clusterGenesisHash); err != nil {
+		return err
+	}
 
 	dstBytes, err := os.ReadFile(*operatorPublic)
 	if err != nil {
@@ -429,6 +445,9 @@ func runSign(args []string) error {
 	if err != nil {
 		return fmt.Errorf("parse operator identity.Public: %w", err)
 	}
+	if dst.Ref.ProgramID != *programID {
+		return fmt.Errorf("operator identity program_id %q != --program-id %q", dst.Ref.ProgramID, *programID)
+	}
 	keyRaw, err := os.ReadFile(*publisherKey)
 	if err != nil {
 		return fmt.Errorf("read publisher-identity: %w", err)
@@ -436,6 +455,12 @@ func runSign(args []string) error {
 	var pk publisherKeyFile
 	if err := json.Unmarshal(keyRaw, &pk); err != nil {
 		return fmt.Errorf("parse publisher-identity JSON: %w", err)
+	}
+	if pk.Ref.ProgramID != *programID {
+		return fmt.Errorf("publisher identity program_id %q != --program-id %q", pk.Ref.ProgramID, *programID)
+	}
+	if pk.ClusterGenesisHash != *clusterGenesisHash {
+		return fmt.Errorf("publisher identity cluster_genesis_hash %q != --cluster-genesis-hash %q", pk.ClusterGenesisHash, *clusterGenesisHash)
 	}
 	signSeed, err := seed32FromHex(pk.SignSeed)
 	if err != nil {
@@ -453,6 +478,34 @@ func runSign(args []string) error {
 	release, err := readNonEmpty(*releasePath)
 	if err != nil {
 		return err
+	}
+	var releaseClaims struct {
+		AppHash       string `json:"appHash"`
+		MasterNFTMint string `json:"masterNftMint"`
+	}
+	if err := json.Unmarshal(release, &releaseClaims); err != nil {
+		return fmt.Errorf("parse RELEASE.json: %w", err)
+	}
+	appHashRaw, err := hex.DecodeString(strings.TrimSpace(releaseClaims.AppHash))
+	if err != nil || len(appHashRaw) != sha256.Size {
+		return errors.New("RELEASE.json appHash must be a 32-byte lowercase hex digest")
+	}
+	if releaseClaims.AppHash != strings.ToLower(releaseClaims.AppHash) {
+		return errors.New("RELEASE.json appHash must be lowercase")
+	}
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(releaseClaims.MasterNFTMint))
+	if err != nil {
+		return fmt.Errorf("RELEASE.json masterNftMint: %w", err)
+	}
+	program, _ := primitives.PubkeyFromBase58(*programID)
+	var appHash [32]byte
+	copy(appHash[:], appHashRaw)
+	expectedReleasePDA, _, err := pda.Release(masterMint, appHash, program)
+	if err != nil {
+		return fmt.Errorf("derive ReleaseEntry PDA: %w", err)
+	}
+	if strings.TrimSpace(*releaseEntryPDA) != expectedReleasePDA.Base58() {
+		return fmt.Errorf("--release-entry-pda %s != fresh-program derived %s", *releaseEntryPDA, expectedReleasePDA.Base58())
 	}
 	spk, err := readNonEmpty(*spkPath)
 	if err != nil {
@@ -511,15 +564,17 @@ func runSign(args []string) error {
 	// OUTER envelope with the same key; the fixture is written 0600 and the seed
 	// is never printed (HT13).
 	fixture := map[string]any{
-		"publisher_seed_hex": strings.TrimSpace(pk.SignSeed),
-		"authorized_signer":  pub.Public().SignPubkeyB58,
-		"release_b64":        base64.StdEncoding.EncodeToString(release),
-		"spk_b64":            base64.StdEncoding.EncodeToString(spk),
-		"metadata_b64":       base64.StdEncoding.EncodeToString(metadata),
-		"txid":               strings.TrimSpace(*txid),
-		"wal_digest":         strings.TrimSpace(*walDigest),
-		"stage_wire":         stageWire,
-		"promote_wire":       promoteWire,
+		"publisher_seed_hex":   strings.TrimSpace(pk.SignSeed),
+		"authorized_signer":    pub.Public().SignPubkeyB58,
+		"program_id":           strings.TrimSpace(*programID),
+		"cluster_genesis_hash": strings.TrimSpace(*clusterGenesisHash),
+		"release_b64":          base64.StdEncoding.EncodeToString(release),
+		"spk_b64":              base64.StdEncoding.EncodeToString(spk),
+		"metadata_b64":         base64.StdEncoding.EncodeToString(metadata),
+		"txid":                 strings.TrimSpace(*txid),
+		"wal_digest":           strings.TrimSpace(*walDigest),
+		"stage_wire":           stageWire,
+		"promote_wire":         promoteWire,
 	}
 	fixBytes, err := json.MarshalIndent(fixture, "", "  ")
 	if err != nil {
@@ -561,14 +616,72 @@ func loadStoreConfig(path string) (storeConfigFile, error) {
 	if strings.TrimSpace(cfg.LicenseNFTMint) == "" {
 		return cfg, errors.New("config: license_nft_mint is required")
 	}
+	if strings.TrimSpace(cfg.RPCURL) == "" {
+		return cfg, errors.New("config: rpc_url is required")
+	}
+	if err := validateCanaryFreshChain(cfg.ProgramID, cfg.ClusterGenesisHash); err != nil {
+		return cfg, fmt.Errorf("config: %w", err)
+	}
 	return cfg, nil
 }
 
-func programIDOf(cfg storeConfigFile) string {
-	if s := strings.TrimSpace(cfg.ProgramID); s != "" {
-		return s
+func validateCanaryFreshChain(programID, genesisHash string) error {
+	programID = strings.TrimSpace(programID)
+	genesisHash = strings.TrimSpace(genesisHash)
+	if programID == "" || genesisHash == "" {
+		return errors.New("program_id and cluster_genesis_hash are required")
 	}
-	return defaultProgramIDB58
+	if programID == legacyProgramIDB58 {
+		return errors.New("legacy program_id is refused")
+	}
+	program, err := primitives.PubkeyFromBase58(programID)
+	if err != nil || program.Base58() != programID {
+		return errors.New("program_id must be a canonical base58 32-byte key")
+	}
+	genesis, err := primitives.PubkeyFromBase58(genesisHash)
+	if err != nil || genesis.Base58() != genesisHash {
+		return errors.New("cluster_genesis_hash must be a canonical base58 32-byte hash")
+	}
+	return nil
+}
+
+func verifyCanaryConfigGenesis(cfg storeConfigFile) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.RPCURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}`))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("getGenesisHash: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("getGenesisHash HTTP %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return err
+	}
+	var result struct {
+		Result string `json:"result"`
+		Error  *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return err
+	}
+	if result.Error != nil {
+		return fmt.Errorf("getGenesisHash RPC error %d: %s", result.Error.Code, result.Error.Message)
+	}
+	if strings.TrimSpace(result.Result) != strings.TrimSpace(cfg.ClusterGenesisHash) {
+		return fmt.Errorf("cluster genesis mismatch: RPC=%q expected=%q", result.Result, cfg.ClusterGenesisHash)
+	}
+	return nil
 }
 
 func readNonEmpty(path string) ([]byte, error) {

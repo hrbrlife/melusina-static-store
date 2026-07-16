@@ -172,9 +172,10 @@ type submittedReceiptIntent struct {
 // to the publisher's PDA on-chain, so the seeds here are the publisher's, never
 // the store's.
 type publisherKeyFile struct {
-	Ref      identity.Ref `json:"ref"`
-	SignSeed string       `json:"sign_seed_hex"`
-	BoxSeed  string       `json:"box_seed_hex"`
+	Ref                identity.Ref `json:"ref"`
+	ClusterGenesisHash string       `json:"cluster_genesis_hash"`
+	SignSeed           string       `json:"sign_seed_hex"`
+	BoxSeed            string       `json:"box_seed_hex"`
 }
 
 // publishRequest is the JSON wire form the sidecar's /publish accepts when the
@@ -233,7 +234,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.StringVar(&o.programID, "program-id", "", "fresh license-registry program id (required; legacy default refused)")
 	fs.StringVar(&o.clusterGenesisHash, "cluster-genesis-hash", "", "exact getGenesisHash result for --rpc-url (required)")
-	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
+	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 0, "ChainEvidence verified_slot from the publisher's real on-chain pre-check (required)")
 	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
 	fs.BoolVar(&o.stageOnly, "stage", false, "privately stage the candidate before chain mutation; return a signed staging receipt")
 	fs.StringVar(&o.developer, "developer", "", "catalog developer path segment (required with --repo/--slug for a first publish)")
@@ -425,7 +426,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("check=receipt_submission: %w", err)
 	}
 
-	pubPriv, err := loadPublisherKey(o.publisherKey)
+	pubPriv, err := loadPublisherKeyForGenesis(o.publisherKey, o.clusterGenesisHash)
 	if err != nil {
 		return fmt.Errorf("publisher key: %w", err)
 	}
@@ -1146,6 +1147,10 @@ func receiptMessage(appHash, releaseHash, servingDomainHash [32]byte) []byte {
 // loadPublisherKey reads the publisher signing identity from a path or, when the
 // argument is "env:NAME", from the environment variable NAME.
 func loadPublisherKey(arg string) (*identity.Private, error) {
+	return loadPublisherKeyForGenesis(arg, "")
+}
+
+func loadPublisherKeyForGenesis(arg, expectedGenesis string) (*identity.Private, error) {
 	var raw []byte
 	if name, ok := strings.CutPrefix(arg, "env:"); ok {
 		val := os.Getenv(name)
@@ -1163,6 +1168,9 @@ func loadPublisherKey(arg string) (*identity.Private, error) {
 	var f publisherKeyFile
 	if err := json.Unmarshal(raw, &f); err != nil {
 		return nil, fmt.Errorf("parse publisher key JSON: %w", err)
+	}
+	if expectedGenesis != "" && f.ClusterGenesisHash != expectedGenesis {
+		return nil, fmt.Errorf("cluster_genesis_hash %q != expected %q", f.ClusterGenesisHash, expectedGenesis)
 	}
 	signSeed, err := seed32FromHex(f.SignSeed)
 	if err != nil {

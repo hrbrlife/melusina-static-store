@@ -88,7 +88,7 @@ func initializeZeroStateCatalog(cfg Config, operator *identity.Private, writerLo
 			return fmt.Errorf("zero-state %s must be an absolute clean path", name)
 		}
 	}
-	if cfg.ProgramID == "" || cfg.ProgramID == defaultLicenseProgramID || cfg.ClusterGenesisHash == "" {
+	if cfg.ProgramID == "" || cfg.ProgramID == legacyRefusedLicenseProgramID || cfg.ClusterGenesisHash == "" {
 		return errors.New("zero-state initializer requires a fresh explicit program_id and cluster_genesis_hash")
 	}
 	operatorPublic := operator.Public()

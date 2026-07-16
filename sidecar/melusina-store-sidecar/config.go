@@ -240,8 +240,8 @@ func LoadConfig(path string) (Config, error) {
 	if _, err := primitives.PubkeyFromBase58(cfg.ProgramID); err != nil {
 		return cfg, fmt.Errorf("config: program_id is invalid: %w", err)
 	}
-	if cfg.ProgramID == defaultLicenseProgramID {
-		return cfg, fmt.Errorf("config: legacy program_id %s is refused; deploy and name the fresh program explicitly", defaultLicenseProgramID)
+	if cfg.ProgramID == legacyRefusedLicenseProgramID {
+		return cfg, fmt.Errorf("config: legacy program_id %s is refused; deploy and name the fresh program explicitly", legacyRefusedLicenseProgramID)
 	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = "dist-publish"

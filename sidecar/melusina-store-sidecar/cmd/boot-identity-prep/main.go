@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
-	defaultChainID   = "solana:devnet"
+	legacyProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	defaultChainID  = "solana:devnet"
 )
 
 type options struct {
@@ -34,6 +34,7 @@ type options struct {
 	sidecarID          string
 	chainID            string
 	programID          string
+	clusterGenesisHash string
 	keyVersion         uint
 	operatorKeyVersion uint
 	operatorDomain     string
@@ -50,6 +51,7 @@ type shardReport struct {
 
 type ceremonyReport struct {
 	Warning              string          `json:"warning"`
+	ClusterGenesisHash   string          `json:"cluster_genesis_hash"`
 	Shards               shardReport     `json:"shards"`
 	IdentityRef          identity.Ref    `json:"identity_ref"`
 	OperatorIdentityRef  identity.Ref    `json:"operator_identity_ref"`
@@ -61,6 +63,7 @@ type ceremonyReport struct {
 
 type registerSidecar struct {
 	ProgramID              string `json:"program_id"`
+	ClusterGenesisHash     string `json:"cluster_genesis_hash"`
 	LicenseNFTMint         string `json:"license_nft_mint"`
 	SidecarID              string `json:"sidecar_id"`
 	KeyVersion             uint32 `json:"key_version"`
@@ -113,7 +116,8 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.domain, "domain", "", "store domain used for store_domain_hash")
 	fs.StringVar(&opts.sidecarID, "sidecar-id", "store", "sidecar_id seed for SidecarIdentityEntry")
 	fs.StringVar(&opts.chainID, "chain-id", defaultChainID, "attest identity chain id")
-	fs.StringVar(&opts.programID, "program-id", defaultProgramID, "license registry program id")
+	fs.StringVar(&opts.programID, "program-id", "", "fresh license registry program id (required; legacy refused)")
+	fs.StringVar(&opts.clusterGenesisHash, "cluster-genesis-hash", "", "exact target-cluster getGenesisHash result (required)")
 	fs.UintVar(&opts.keyVersion, "key-version", 1, "SidecarIdentityEntry key_version seed")
 	fs.UintVar(&opts.operatorKeyVersion, "operator-key-version", 0, "stable operator identity key_version; 0 uses -key-version")
 	fs.StringVar(&opts.operatorDomain, "operator-domain", "", "stable operator identity domain; empty uses -domain")
@@ -132,14 +136,15 @@ func parseOptions(args []string) (options, error) {
 func validateOptions(opts options) error {
 	missing := []string{}
 	for name, value := range map[string]string{
-		"-shards-dir":   opts.shardsDir,
-		"-license-mint": opts.licenseMint,
-		"-domain":       opts.domain,
-		"-sidecar-id":   opts.sidecarID,
-		"-chain-id":     opts.chainID,
-		"-program-id":   opts.programID,
-		"-binary":       opts.binaryPath,
-		"-tls-cert":     opts.tlsCertPath,
+		"-shards-dir":           opts.shardsDir,
+		"-license-mint":         opts.licenseMint,
+		"-domain":               opts.domain,
+		"-sidecar-id":           opts.sidecarID,
+		"-chain-id":             opts.chainID,
+		"-program-id":           opts.programID,
+		"-cluster-genesis-hash": opts.clusterGenesisHash,
+		"-binary":               opts.binaryPath,
+		"-tls-cert":             opts.tlsCertPath,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
@@ -160,8 +165,18 @@ func validateOptions(opts options) error {
 	if _, err := primitives.PubkeyFromBase58(opts.licenseMint); err != nil {
 		return fmt.Errorf("-license-mint: %w", err)
 	}
-	if _, err := primitives.PubkeyFromBase58(opts.programID); err != nil {
+	if opts.programID == legacyProgramID {
+		return errors.New("legacy -program-id is refused")
+	}
+	if programID, err := primitives.PubkeyFromBase58(opts.programID); err != nil {
 		return fmt.Errorf("-program-id: %w", err)
+	} else if programID.Base58() != opts.programID {
+		return errors.New("-program-id must be canonical base58")
+	}
+	if genesis, err := primitives.PubkeyFromBase58(opts.clusterGenesisHash); err != nil {
+		return fmt.Errorf("-cluster-genesis-hash: %w", err)
+	} else if genesis.Base58() != opts.clusterGenesisHash {
+		return errors.New("-cluster-genesis-hash must be canonical base58")
 	}
 	return nil
 }
@@ -236,7 +251,8 @@ func prepare(opts options) (ceremonyReport, error) {
 	domainHash := primitives.StoreDomainHash(opts.domain)
 
 	return ceremonyReport{
-		Warning: "secret shard values are intentionally omitted; protect the shard files mode 0600 and never commit them",
+		Warning:            "secret shard values are intentionally omitted; protect the shard files mode 0600 and never commit them",
+		ClusterGenesisHash: opts.clusterGenesisHash,
 		Shards: shardReport{
 			Dir:     opts.shardsDir,
 			Created: shardsCreated,
@@ -252,6 +268,7 @@ func prepare(opts options) (ceremonyReport, error) {
 		SidecarIdentityBump: bump,
 		RegisterSidecarInput: registerSidecar{
 			ProgramID:              programID.Base58(),
+			ClusterGenesisHash:     opts.clusterGenesisHash,
 			LicenseNFTMint:         licenseMint.Base58(),
 			SidecarID:              opts.sidecarID,
 			KeyVersion:             keyVersion,

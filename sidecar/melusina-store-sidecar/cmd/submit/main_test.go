@@ -806,9 +806,8 @@ func writePublisherKey(t *testing.T, ref identity.Ref) (path string) {
 		t.Fatal(err)
 	}
 	f := publisherKeyFile{
-		Ref:      ref,
-		SignSeed: hex.EncodeToString(signSeed[:]),
-		BoxSeed:  hex.EncodeToString(boxSeed[:]),
+		Ref: ref, ClusterGenesisHash: fixtureGenesisHashB58,
+		SignSeed: hex.EncodeToString(signSeed[:]), BoxSeed: hex.EncodeToString(boxSeed[:]),
 	}
 	b, err := json.Marshal(f)
 	if err != nil {
@@ -854,6 +853,18 @@ func TestLoadPublisherKey_FileAndEnv(t *testing.T) {
 	}
 	if priv2.Public().DigestHex() != priv.Public().DigestHex() {
 		t.Error("env-loaded key differs from file-loaded key")
+	}
+}
+
+func TestLoadPublisherKeyRefusesGenesisDrift(t *testing.T) {
+	ref := identity.Ref{
+		Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: fixtureProgramIDB58,
+		LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org",
+		PDA: randPubkeyB58(t), SidecarID: "publisher", KeyVersion: 1,
+	}
+	path := writePublisherKey(t, ref)
+	if _, err := loadPublisherKeyForGenesis(path, fixtureProgramIDB58); err == nil || !strings.Contains(err.Error(), "cluster_genesis_hash") {
+		t.Fatalf("publisher key replayed across genesis: %v", err)
 	}
 }
 
@@ -1031,6 +1042,10 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 		"--program-id", fixtureProgramIDB58,
 		"--cluster-genesis-hash", fixtureGenesisHashB58,
 	}
+	if _, err := parseFlags(required); err == nil || !strings.Contains(err.Error(), "--verified-slot") {
+		t.Fatalf("missing real verified slot accepted: %v", err)
+	}
+	required = append(required, "--verified-slot", "42")
 	if _, err := parseFlags(append(required, "--developer", "hrbrlife")); err == nil || !strings.Contains(err.Error(), "must be supplied together") {
 		t.Fatalf("partial slot hint error = %v", err)
 	}

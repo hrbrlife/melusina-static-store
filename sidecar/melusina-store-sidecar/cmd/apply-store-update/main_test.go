@@ -20,6 +20,11 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+const (
+	testProgramID   = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	testGenesisHash = "11111111111111111111111111111111"
+)
+
 type testFixture struct {
 	opts       options
 	args       []string
@@ -70,7 +75,8 @@ func TestPrepareStoreUpdateCreatesDurableAuthorizationAndIsIdempotent(t *testing
 	var receipt applyReceipt
 	readTestJSON(t, filepath.Join(f.receipts, applyReceiptName), &receipt)
 	if receipt.State != "seeded" || receipt.LedgerID != got.LedgerID ||
-		receipt.FromVersion != fromVersion || receipt.ToVersion != toVersion {
+		receipt.FromVersion != fromVersion || receipt.ToVersion != toVersion ||
+		receipt.ProgramID != testProgramID || receipt.ClusterGenesisHash != testGenesisHash {
 		t.Fatalf("unexpected apply receipt: %+v", receipt)
 	}
 	if receipt.FromVersion != "1.0.5" || receipt.ToVersion != "1.0.6" {
@@ -222,6 +228,30 @@ func TestIndependentChainVerificationRefusesWrongHashOrInactive(t *testing.T) {
 	}
 }
 
+func TestFreshChainBindingIsRequiredAndGenesisMismatchRefusesBeforeMutation(t *testing.T) {
+	f := newTestFixture(t)
+	legacyArgs := append([]string(nil), f.args...)
+	for i := range legacyArgs {
+		if legacyArgs[i] == testProgramID {
+			legacyArgs[i] = legacyLicenseProgramID
+			break
+		}
+	}
+	if _, err := parseOptions(legacyArgs); err == nil || !strings.Contains(err.Error(), "legacy --program-id is refused") {
+		t.Fatalf("legacy program error = %v", err)
+	}
+
+	f.policy.verifyGenesis = func(context.Context, string, string) error {
+		return errors.New("RPC genesis does not match expected")
+	}
+	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "cluster genesis") {
+		t.Fatalf("genesis mismatch error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("genesis mismatch created persistent state: %v", err)
+	}
+}
+
 func TestArchiveELFBindingRefusesMissingDuplicateAndTraversal(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -310,11 +340,11 @@ func newTestFixture(t *testing.T) testFixture {
 	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.6 binary"}})
 	archiveHash := fileSHA256(t, archive)
 	archiveHashBytes := mustHash32(t, archiveHash)
-	masterMint, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	masterMint, err := primitives.PubkeyFromBase58(testProgramID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	programID, err := primitives.PubkeyFromBase58(testProgramID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +355,7 @@ func newTestFixture(t *testing.T) testFixture {
 	chainPath := filepath.Join(root, "verified-InstallerReleaseEntry-receipt.json")
 	writeTestJSON(t, chainPath, chainVerificationReceipt{
 		Schema: chainReceiptSchema, InstallerSHA256: archiveHash,
-		InstallerReleasePDA: releasePDA.Base58(), ProgramID: canonicalLicenseProgramID, MasterNFTMint: masterMint.Base58(),
+		InstallerReleasePDA: releasePDA.Base58(), ProgramID: testProgramID, MasterNFTMint: masterMint.Base58(),
 		Status: "Active", VerifiedSlot: 12345, VerifiedAtUnix: 1_700_000_000,
 	}, 0600)
 	persist := filepath.Join(root, "persist")
@@ -336,7 +366,8 @@ func newTestFixture(t *testing.T) testFixture {
 	receipts := filepath.Join(persist, "update-receipts")
 	opts := options{
 		archive: archive, archiveSHA256: archiveHash, chainReceipt: chainPath,
-		rpcURL: "https://rpc.example.invalid", masterNFTMint: masterMint.Base58(),
+		rpcURL: "https://rpc.example.invalid", programID: testProgramID,
+		clusterGenesisHash: testGenesisHash, masterNFTMint: masterMint.Base58(),
 		installedELF: oldELF, expectedOldELFSHA256: fileSHA256(t, oldELF),
 		newELF: newELF, newELFMember: member, newELFSHA256: fileSHA256(t, newELF),
 		migrationStateDir: migrations, updateReceiptDir: receipts,
@@ -345,7 +376,8 @@ func newTestFixture(t *testing.T) testFixture {
 		prepareStoreUpdateCommand,
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
-		"--rpc-url", opts.rpcURL, "--master-nft-mint", opts.masterNFTMint,
+		"--rpc-url", opts.rpcURL, "--program-id", opts.programID,
+		"--cluster-genesis-hash", opts.clusterGenesisHash, "--master-nft-mint", opts.masterNFTMint,
 		"--installed-elf", opts.installedELF, "--expected-old-elf-sha256", opts.expectedOldELFSHA256,
 		"--new-elf", opts.newELF, "--new-elf-member", opts.newELFMember, "--new-elf-sha256", opts.newELFSHA256,
 		"--migration-state-dir", opts.migrationStateDir, "--update-receipt-dir", opts.updateReceiptDir,
@@ -353,8 +385,12 @@ func newTestFixture(t *testing.T) testFixture {
 	mock := &mockInstallerVerifier{hash: archiveHashBytes, status: verify.AttestationStatusActive, wantPDA: releasePDA.Base58()}
 	return testFixture{
 		opts: opts, args: args, migrations: migrations, receipts: receipts,
-		chain:  mock,
-		policy: securityPolicy{expectedUID: uint32(os.Geteuid()), expectedGID: uint32(os.Getegid()), newChainVerifier: func(string) installerReleaseVerifier { return mock }},
+		chain: mock,
+		policy: securityPolicy{
+			expectedUID: uint32(os.Geteuid()), expectedGID: uint32(os.Getegid()),
+			newChainVerifier: func(string) installerReleaseVerifier { return mock },
+			verifyGenesis:    func(context.Context, string, string) error { return nil },
+		},
 	}
 }
 

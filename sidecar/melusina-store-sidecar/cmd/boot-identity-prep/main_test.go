@@ -20,6 +20,11 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+const (
+	bootTestProgramID = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	bootTestGenesis   = "11111111111111111111111111111111"
+)
+
 func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 	dir := t.TempDir()
 	shardsDir := filepath.Join(dir, "shards")
@@ -36,6 +41,8 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 		"-license-mint", licenseMint,
 		"-domain", "melusina-os.org",
 		"-sidecar-id", "store",
+		"-program-id", bootTestProgramID,
+		"-cluster-genesis-hash", bootTestGenesis,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}, &out)
@@ -65,6 +72,9 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 	if report.RegisterSidecarInput.LicenseNFTMint != licenseMint {
 		t.Fatalf("license mint = %s, want %s", report.RegisterSidecarInput.LicenseNFTMint, licenseMint)
 	}
+	if report.ClusterGenesisHash != bootTestGenesis || report.RegisterSidecarInput.ClusterGenesisHash != bootTestGenesis || report.RegisterSidecarInput.ProgramID != bootTestProgramID {
+		t.Fatalf("fresh chain binding missing from report: %+v", report.RegisterSidecarInput)
+	}
 	if report.RegisterSidecarInput.DomainHashHex != "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7" {
 		t.Fatalf("domain hash = %s", report.RegisterSidecarInput.DomainHashHex)
 	}
@@ -93,6 +103,8 @@ func TestRunReusesCompleteShardSet(t *testing.T) {
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
+		"-program-id", bootTestProgramID,
+		"-cluster-genesis-hash", bootTestGenesis,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}
@@ -138,6 +150,8 @@ func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
 		"-shards-dir", shardsDir,
 		"-license-mint", licenseMint,
 		"-sidecar-id", "store",
+		"-program-id", bootTestProgramID,
+		"-cluster-genesis-hash", bootTestGenesis,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}
@@ -201,11 +215,29 @@ func TestRunRejectsPartialShardSet(t *testing.T) {
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
+		"-program-id", bootTestProgramID,
+		"-cluster-genesis-hash", bootTestGenesis,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}, &out)
 	if err == nil || !strings.Contains(err.Error(), "partial shard set") {
 		t.Fatalf("expected partial shard error, got %v", err)
+	}
+}
+
+func TestParseRequiresFreshProgramAndGenesisAndRefusesLegacy(t *testing.T) {
+	base := options{
+		shardsDir: "/tmp/shards", licenseMint: "11111111111111111111111111111111",
+		domain: "store.example.org", sidecarID: "store", chainID: defaultChainID,
+		keyVersion: 1, binaryPath: "/tmp/store", tlsCertPath: "/tmp/cert",
+	}
+	if err := validateOptions(base); err == nil || !strings.Contains(err.Error(), "-program-id") || !strings.Contains(err.Error(), "-cluster-genesis-hash") {
+		t.Fatalf("missing fresh-chain binding error = %v", err)
+	}
+	base.programID = legacyProgramID
+	base.clusterGenesisHash = bootTestGenesis
+	if err := validateOptions(base); err == nil || !strings.Contains(err.Error(), "legacy -program-id is refused") {
+		t.Fatalf("legacy program error = %v", err)
 	}
 }
 

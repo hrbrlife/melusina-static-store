@@ -23,10 +23,12 @@ import (
 
 const (
 	catalogMigrationStateSchema = "melusina-catalog-v104-migration-v1"
+	catalogZeroStateSchema      = "melusina-catalog-zero-state-v1"
 	catalogMigrationStateName   = "catalog-v104.json"
 	catalogMigrationStateNext   = "catalog-v104.json.next"
 	catalogMigrationFromVersion = "1.0.3"
 	catalogMigrationToVersion   = "1.0.4"
+	catalogZeroStateToVersion   = "1.0.6"
 	catalogNonceSentinelName    = "nonce-ledger-v1.initialized"
 	catalogNonceSentinelSchema  = "melusina-publish-nonce-ledger-initialized-v1"
 	maxCatalogBootstrapJSON     = 64 << 10
@@ -43,6 +45,19 @@ type catalogMigrationState struct {
 	ExpectedInstalledELFSHA256 string `json:"expectedInstalledElfSha256"`
 	NewELFSHA256               string `json:"newElfSha256"`
 	LedgerID                   string `json:"ledgerId"`
+	// The zero-state schema binds a blank catalog to the exact deployment that
+	// created it. These fields are intentionally part of the durable migration
+	// state so copying a fresh catalog across programs, clusters, authorities or
+	// origins fails before a listener opens.
+	ProgramID          string `json:"programId,omitempty"`
+	ClusterGenesisHash string `json:"clusterGenesisHash,omitempty"`
+	OperatorPubkey     string `json:"operatorPubkey,omitempty"`
+	StoreAuthority     string `json:"storeAuthority,omitempty"`
+	StoreOrigin        string `json:"storeOrigin,omitempty"`
+	StoreID            string `json:"storeId,omitempty"`
+	LicenseNFTMint     string `json:"licenseNftMint,omitempty"`
+	StoreDomainHash    string `json:"storeDomainHash,omitempty"`
+	OperatorSignature  string `json:"operatorSignature,omitempty"`
 }
 
 type catalogNonceSentinel struct {
@@ -116,6 +131,9 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 	}
 	if err := validateCatalogMigrationState(state); err != nil {
 		return catalogRuntime{}, fmt.Errorf("catalog bootstrap migration state: %w", err)
+	}
+	if err := validateCatalogMigrationBinding(cfg, state, opts); err != nil {
+		return catalogRuntime{}, fmt.Errorf("catalog bootstrap deployment binding: %w", err)
 	}
 
 	currentPath := filepath.Join(cfg.CatalogGenerationRoot, appCatalogCurrentLink)
@@ -374,11 +392,65 @@ func readCatalogMigrationState(path string, expectedUID uint32) (catalogMigratio
 }
 
 func validateCatalogMigrationState(state catalogMigrationState) error {
+	if state.State != "authorized" && state.State != "initializing" && state.State != "committed" {
+		return errors.New("invalid state")
+	}
+	if err := validatePublishNonceLedgerID(state.LedgerID); err != nil {
+		return err
+	}
+	if state.Schema == catalogZeroStateSchema {
+		if state.FromVersion != "zero" || state.ToVersion != catalogZeroStateToVersion {
+			return errors.New("zero-state schema or version mismatch")
+		}
+		if state.SourceChainReceiptSHA256 != "" || state.SourceInstallerReleasePDA != "" || state.ArchiveSHA256 != "" || state.ExpectedInstalledELFSHA256 != "" || state.NewELFSHA256 != "" {
+			return errors.New("zero-state receipt must not carry migration-source fields")
+		}
+		for name, value := range map[string]string{
+			"programId": state.ProgramID, "clusterGenesisHash": state.ClusterGenesisHash,
+			"operatorPubkey": state.OperatorPubkey, "storeAuthority": state.StoreAuthority,
+			"storeOrigin": state.StoreOrigin, "storeId": state.StoreID,
+			"licenseNftMint": state.LicenseNFTMint, "storeDomainHash": state.StoreDomainHash,
+			"operatorSignature": state.OperatorSignature,
+		} {
+			if strings.TrimSpace(value) == "" {
+				return fmt.Errorf("zero-state %s is required", name)
+			}
+		}
+		if state.ProgramID == defaultLicenseProgramID {
+			return errors.New("zero-state refuses the legacy license program")
+		}
+		for name, value := range map[string]string{
+			"programId": state.ProgramID, "clusterGenesisHash": state.ClusterGenesisHash,
+			"operatorPubkey": state.OperatorPubkey, "storeAuthority": state.StoreAuthority,
+			"licenseNftMint": state.LicenseNFTMint,
+		} {
+			if _, err := primitives.PubkeyFromBase58(value); err != nil {
+				return fmt.Errorf("invalid zero-state %s: %w", name, err)
+			}
+		}
+		if state.OperatorPubkey != state.StoreAuthority {
+			return errors.New("zero-state operatorPubkey must equal storeAuthority")
+		}
+		if len(state.StoreID) > 128 || strings.IndexByte(state.StoreID, 0) >= 0 {
+			return errors.New("invalid zero-state storeId")
+		}
+		if !validLowerHexDigest(state.StoreDomainHash) {
+			return errors.New("invalid zero-state storeDomainHash")
+		}
+		if _, err := exactHTTPSOrigin(state.StoreOrigin); err != nil {
+			return fmt.Errorf("invalid zero-state storeOrigin: %w", err)
+		}
+		sig, err := primitives.DecodeBase58(state.OperatorSignature)
+		if err != nil || len(sig) != ed25519.SignatureSize {
+			return errors.New("invalid zero-state operatorSignature")
+		}
+		return nil
+	}
 	if state.Schema != catalogMigrationStateSchema || state.FromVersion != catalogMigrationFromVersion || state.ToVersion != catalogMigrationToVersion {
 		return errors.New("schema or version mismatch")
 	}
-	if state.State != "authorized" && state.State != "initializing" && state.State != "committed" {
-		return errors.New("invalid state")
+	if state.ProgramID != "" || state.ClusterGenesisHash != "" || state.OperatorPubkey != "" || state.StoreAuthority != "" || state.StoreOrigin != "" || state.StoreID != "" || state.LicenseNFTMint != "" || state.StoreDomainHash != "" || state.OperatorSignature != "" {
+		return errors.New("legacy migration state carries unexpected zero-state bindings")
 	}
 	for name, digest := range map[string]string{
 		"sourceChainReceiptSha256":   state.SourceChainReceiptSHA256,
@@ -393,7 +465,44 @@ func validateCatalogMigrationState(state catalogMigrationState) error {
 	if strings.TrimSpace(state.SourceInstallerReleasePDA) == "" || len(state.SourceInstallerReleasePDA) > 256 {
 		return errors.New("invalid sourceInstallerReleasePda")
 	}
-	return validatePublishNonceLedgerID(state.LedgerID)
+	return nil
+}
+
+func zeroCatalogBindingMessage(state catalogMigrationState) []byte {
+	return []byte(strings.Join([]string{
+		"melusina-catalog-zero-state-binding-v1", state.ProgramID,
+		state.ClusterGenesisHash, state.OperatorPubkey, state.StoreAuthority,
+		state.StoreOrigin, state.StoreID, state.LicenseNFTMint,
+		state.StoreDomainHash, state.LedgerID, state.FromVersion, state.ToVersion,
+	}, "\x00"))
+}
+
+func validateCatalogMigrationBinding(cfg Config, state catalogMigrationState, opts catalogBootstrapOptions) error {
+	if state.Schema != catalogZeroStateSchema {
+		return nil
+	}
+	wantOperator := primitives.EncodeBase58(opts.operatorPublicKey)
+	domainHash := primitives.StoreDomainHash(cfg.Domain)
+	want := map[string][2]string{
+		"programId":          {state.ProgramID, strings.TrimSpace(cfg.ProgramID)},
+		"clusterGenesisHash": {state.ClusterGenesisHash, strings.TrimSpace(cfg.ClusterGenesisHash)},
+		"operatorPubkey":     {state.OperatorPubkey, wantOperator},
+		"storeAuthority":     {state.StoreAuthority, wantOperator},
+		"storeOrigin":        {state.StoreOrigin, strings.TrimSpace(cfg.PublicBaseURL)},
+		"storeId":            {state.StoreID, strings.TrimSpace(cfg.StoreID)},
+		"licenseNftMint":     {state.LicenseNFTMint, strings.TrimSpace(cfg.LicenseNFTMint)},
+		"storeDomainHash":    {state.StoreDomainHash, hex.EncodeToString(domainHash[:])},
+	}
+	for name, pair := range want {
+		if pair[0] != pair[1] {
+			return fmt.Errorf("%s %q != configured %q", name, pair[0], pair[1])
+		}
+	}
+	sig, err := primitives.DecodeBase58(state.OperatorSignature)
+	if err != nil || !ed25519.Verify(opts.operatorPublicKey, zeroCatalogBindingMessage(state), sig) {
+		return errors.New("operator signature does not verify the zero-state binding")
+	}
+	return nil
 }
 
 func writeCatalogMigrationState(path string, state catalogMigrationState, expectedUID uint32) error {

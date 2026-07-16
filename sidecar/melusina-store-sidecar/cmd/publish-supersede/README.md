@@ -1,7 +1,24 @@
-# publish-supersede — the no-gap app republish orchestrator (card 0055)
+# publish-supersede — zero-state first publish + no-gap republish
 
 Replaces an app's Active on-chain `ReleaseEntry` with a strictly-greater one
 **without ever leaving the app with zero Active releases**.
+
+With no `--stale-pda`, the same durable state machine is in
+`FIRST_PUBLISH` mode. It first proves both the Active set and served slot are
+empty, then converges `0 Active -> exactly 1 Active=new -> served=new`.
+Interrupted register, stage, or promote operations resume forward from the WAL.
+
+Every WAL is bound to required, explicit deployment facts:
+
+- fresh license `--program-id` (the legacy `7an…` program is refused),
+- `--cluster-genesis-hash`,
+- `--operator-pubkey` and on-chain `--store-authority` (required equal),
+- exact HTTPS `--store-origin`.
+
+Those facts are also exported to every operator command as
+`MEL_PROGRAM_ID`, `MEL_CLUSTER_GENESIS_HASH`, `MEL_OPERATOR_PUBKEY`,
+`MEL_STORE_AUTHORITY`, and `MEL_STORE_ORIGIN`. Reusing a WAL on another
+program, cluster, authority, or store is refused before another mutation.
 
 ## The defect (card 0055)
 

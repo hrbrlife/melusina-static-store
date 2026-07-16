@@ -46,18 +46,23 @@ func (s *stringList) Set(v string) error {
 }
 
 type cliOptions struct {
-	wal         string
-	appID       string
-	newAppHash  string
-	newVersion  string
-	stalePDAs   stringList
-	activeCmd   string
-	registerCmd string
-	stageCmd    string
-	promoteCmd  string
-	revokeCmd   string
-	servedCmd   string
-	opTimeout   time.Duration
+	wal                string
+	appID              string
+	newAppHash         string
+	newVersion         string
+	stalePDAs          stringList
+	programID          string
+	clusterGenesisHash string
+	operatorPubkey     string
+	storeAuthority     string
+	storeOrigin        string
+	activeCmd          string
+	registerCmd        string
+	stageCmd           string
+	promoteCmd         string
+	revokeCmd          string
+	servedCmd          string
+	opTimeout          time.Duration
 }
 
 func main() {
@@ -79,8 +84,11 @@ func run(args []string, out *os.File) error {
 		NewAppHash: opts.newAppHash,
 		NewVersion: opts.newVersion,
 		StalePDAs:  opts.stalePDAs,
-		Chain:      ops,
-		Store:      ops,
+		ProgramID:  opts.programID, ClusterGenesisHash: opts.clusterGenesisHash,
+		OperatorPubkey: opts.operatorPubkey, StoreAuthority: opts.storeAuthority,
+		StoreOrigin: opts.storeOrigin,
+		Chain:       ops,
+		Store:       ops,
 	}
 	rec, err := RunSupersede(p)
 	if err != nil {
@@ -98,7 +106,12 @@ func parseCLI(args []string) (cliOptions, error) {
 	fs.StringVar(&o.appID, "app-id", "", "appId being superseded (required)")
 	fs.StringVar(&o.newAppHash, "new-app-hash", "", "new release app_hash (required)")
 	fs.StringVar(&o.newVersion, "new-version", "", "new release version, strictly greater (required)")
-	fs.Var(&o.stalePDAs, "stale-pda", "an exact prior Active ReleaseEntry PDA to retire (repeatable, required)")
+	fs.Var(&o.stalePDAs, "stale-pda", "an exact prior Active ReleaseEntry PDA to retire (repeatable; omit only for a proven zero-state first publish)")
+	fs.StringVar(&o.programID, "program-id", "", "exact freshly-deployed license program id (required; legacy default refused)")
+	fs.StringVar(&o.clusterGenesisHash, "cluster-genesis-hash", "", "exact getGenesisHash result for the target cluster (required)")
+	fs.StringVar(&o.operatorPubkey, "operator-pubkey", "", "store receipt-signing operator pubkey (required)")
+	fs.StringVar(&o.storeAuthority, "store-authority", "", "on-chain StoreOperatorAuthorization.store_authority (required; must equal operator)")
+	fs.StringVar(&o.storeOrigin, "store-origin", "", "exact https store origin (required)")
 	fs.StringVar(&o.activeCmd, "active-cmd", "", "read-only: prints JSON-lines of Active releases for MEL_APP_ID (required)")
 	fs.StringVar(&o.registerCmd, "register-cmd", "", "governed off-box ceremony: register the new release Active (required)")
 	fs.StringVar(&o.stageCmd, "stage-cmd", "", "stage the new bytes privately, print {\"stageId\":..} (required)")
@@ -115,6 +128,9 @@ func parseCLI(args []string) (cliOptions, error) {
 	required := map[string]string{
 		"--wal": o.wal, "--app-id": o.appID, "--new-app-hash": o.newAppHash,
 		"--new-version": o.newVersion, "--active-cmd": o.activeCmd,
+		"--program-id": o.programID, "--cluster-genesis-hash": o.clusterGenesisHash,
+		"--operator-pubkey": o.operatorPubkey, "--store-authority": o.storeAuthority,
+		"--store-origin": o.storeOrigin,
 		"--register-cmd": o.registerCmd, "--stage-cmd": o.stageCmd,
 		"--promote-cmd": o.promoteCmd, "--revoke-cmd": o.revokeCmd, "--served-cmd": o.servedCmd,
 	}
@@ -122,9 +138,6 @@ func parseCLI(args []string) (cliOptions, error) {
 		if strings.TrimSpace(val) == "" {
 			return cliOptions{}, fmt.Errorf("%s is required", name)
 		}
-	}
-	if len(o.stalePDAs) == 0 {
-		return cliOptions{}, errors.New("at least one --stale-pda is required")
 	}
 	return o, nil
 }
@@ -138,7 +151,17 @@ func (c *commandOps) exec(cmdStr string, env map[string]string) (string, error) 
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr)
 	cmd.Env = os.Environ()
+	bound := map[string]string{
+		"MEL_PROGRAM_ID":           c.opts.programID,
+		"MEL_CLUSTER_GENESIS_HASH": c.opts.clusterGenesisHash,
+		"MEL_OPERATOR_PUBKEY":      c.opts.operatorPubkey,
+		"MEL_STORE_AUTHORITY":      c.opts.storeAuthority,
+		"MEL_STORE_ORIGIN":         c.opts.storeOrigin,
+	}
 	for k, v := range env {
+		bound[k] = v
+	}
+	for k, v := range bound {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 	var stdout, stderr strings.Builder

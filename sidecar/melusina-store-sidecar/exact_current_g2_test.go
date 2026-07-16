@@ -68,6 +68,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	cfg.LicenseNFTMint = randPubkeyB58(t)
 	cfg.Domain = "exact-current.store.example.org"
 	cfg.StoreID = "exact-current-store"
+	cfg.ProgramID = programID.Base58()
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ServeVerifyTTLSeconds = -1
 

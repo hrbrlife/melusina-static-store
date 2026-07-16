@@ -23,6 +23,11 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+const (
+	fixtureProgramIDB58   = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	fixtureGenesisHashB58 = "11111111111111111111111111111111"
+)
+
 // ── test identity / fixture builders ───────────────────────────────────────
 
 // newTestIdentity builds a freshly-keyed sidecar identity bound to the given
@@ -40,7 +45,7 @@ func newTestIdentity(t *testing.T, sidecarID, licenseMint, domain string) *ident
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     defaultChainID,
-		ProgramID:   programIDB58,
+		ProgramID:   fixtureProgramIDB58,
 		LicenseMint: licenseMint,
 		Domain:      domain,
 		PDA:         "11111111111111111111111111111111",
@@ -132,7 +137,7 @@ func (m *mockAuthzReader) FetchStoreOperatorAuthz(_ context.Context, addr string
 // pinAuthz wires the mock to vouch for the operator key at the derived PDA.
 func pinAuthz(t *testing.T, m *mockAuthzReader, licenseMintB58, domain string, operatorKey [32]byte) {
 	t.Helper()
-	programID, err := primitives.PubkeyFromBase58(programIDB58)
+	programID, err := primitives.PubkeyFromBase58(fixtureProgramIDB58)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +229,7 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 12345, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 12345, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -247,8 +252,8 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	if sig.Payload.ChainEvidence.VerifiedSlot != 12345 {
 		t.Errorf("verified_slot = %d, want 12345", sig.Payload.ChainEvidence.VerifiedSlot)
 	}
-	if sig.Payload.ChainEvidence.ProgramID != programIDB58 {
-		t.Errorf("program_id = %s, want %s", sig.Payload.ChainEvidence.ProgramID, programIDB58)
+	if sig.Payload.ChainEvidence.ProgramID != fixtureProgramIDB58 {
+		t.Errorf("program_id = %s, want %s", sig.Payload.ChainEvidence.ProgramID, fixtureProgramIDB58)
 	}
 	if sig.Payload.ChainEvidence.ReleaseEntryPDA == "" {
 		t.Error("expected ReleaseEntryPDA chain evidence to be populated")
@@ -277,7 +282,7 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	other := newTestIdentity(t, "other-operator", randPubkeyB58(t), "other.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -311,7 +316,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 		{name: "promote-refuses-stage", target: appPromoteTarget, other: appStageTarget},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			signed, err := buildEnvelope(pub, opPub, tc.target, spk, releaseBytes, claims, 1, 5*time.Minute)
+			signed, err := buildEnvelope(pub, opPub, tc.target, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -338,7 +343,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 	}
 
 	for _, target := range []string{"", "/publish/installer", "/publish/"} {
-		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, 1, 5*time.Minute); err == nil {
+		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute); err == nil {
 			t.Fatalf("buildEnvelope accepted non-app target %q", target)
 		}
 	}
@@ -365,7 +370,7 @@ func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
 		{name: "promote-envelope-to-stage", signedTarget: appPromoteTarget, postTarget: appStageTarget},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -375,7 +380,7 @@ func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
 		})
 	}
 
-	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +414,7 @@ func TestVerifyReceipt_ValidReceiptVerifies(t *testing.T) {
 	pinAuthz(t, m, licenseMint, domain, opKey)
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err != nil {
 		t.Fatalf("expected valid receipt to verify, got: %v", err)
 	}
 }
@@ -462,6 +467,8 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 		"--license-mint", randPubkeyB58(t),
 		"--domain", "store.example.org",
 		"--rpc-url", "https://rpc.example.org",
+		"--program-id", fixtureProgramIDB58,
+		"--cluster-genesis-hash", fixtureGenesisHashB58,
 	}
 	parsed, err := parseFlags(base)
 	if err != nil {
@@ -477,9 +484,52 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 		"--verify-receipt", "/tmp/publish-receipt.json",
 		"--license-mint", randPubkeyB58(t),
 		"--rpc-url", "https://rpc.example.org",
+		"--program-id", fixtureProgramIDB58,
+		"--cluster-genesis-hash", fixtureGenesisHashB58,
 	}
 	if _, err := parseFlags(withoutDomain); err == nil {
 		t.Fatal("verify mode accepted a receipt without a serving domain")
+	}
+}
+
+func TestParseFlagsRequiresExplicitFreshProgramAndGenesis(t *testing.T) {
+	base := []string{
+		"--verify-receipt", "/tmp/publish-receipt.json",
+		"--license-mint", randPubkeyB58(t),
+		"--domain", "store.example.org",
+		"--rpc-url", "https://rpc.example.org",
+	}
+	if _, err := parseFlags(base); err == nil || !strings.Contains(err.Error(), "--program-id") || !strings.Contains(err.Error(), "--cluster-genesis-hash") {
+		t.Fatalf("missing fresh-chain binding error = %v", err)
+	}
+	legacy := append(append([]string(nil), base...),
+		"--program-id", legacyProgramIDB58,
+		"--cluster-genesis-hash", fixtureGenesisHashB58,
+	)
+	if _, err := parseFlags(legacy); err == nil || !strings.Contains(err.Error(), "legacy --program-id is refused") {
+		t.Fatalf("legacy program error = %v", err)
+	}
+}
+
+func TestVerifySubmitGenesisRequiresExactRPCCluster(t *testing.T) {
+	rpc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Method string `json:"method"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.Method != "getGenesisHash" {
+			http.Error(w, "bad genesis request", http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0", "id": 1, "result": fixtureGenesisHashB58,
+		})
+	}))
+	defer rpc.Close()
+	if err := verifySubmitGenesis(context.Background(), rpc.URL, fixtureGenesisHashB58); err != nil {
+		t.Fatalf("exact genesis rejected: %v", err)
+	}
+	if err := verifySubmitGenesis(context.Background(), rpc.URL, fixtureProgramIDB58); err == nil || !strings.Contains(err.Error(), "cluster genesis mismatch") {
+		t.Fatalf("wrong-cluster error = %v", err)
 	}
 }
 
@@ -491,11 +541,11 @@ func TestVerifyStageReceipt_AcceptsOnlyAuthorizedUntamperedReceipt(t *testing.T)
 	pinAuthz(t, m, licenseMint, domain, opKey)
 	stageID := sha256.Sum256([]byte("candidate"))
 	receipt := signStageReceipt(op, stageID, appHash, releaseHash, domainHash, 1_700_000_000)
-	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyStageReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err != nil {
 		t.Fatal(err)
 	}
 	receipt.StoredAt++
-	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyStageReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err == nil {
 		t.Fatal("tampered stage receipt was accepted")
 	}
 }
@@ -544,14 +594,14 @@ func TestAcceptStageReceiptRejectsValidOtherCandidateBeforeReceiptOut(t *testing
 		StageID:     receipt.StageID,
 	}
 	out := filepath.Join(t.TempDir(), "stage-receipt.json")
-	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+	if _, err := acceptStageReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
 		t.Fatalf("valid signed receipt for another candidate was not rejected: %v", err)
 	}
 	if _, err := os.Stat(out); !os.IsNotExist(err) {
 		t.Fatalf("mismatched stage receipt reached receipt-out: %v", err)
 	}
 	expected.AppHash = receipt.AppHash
-	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+	if _, err := acceptStageReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, raw, expected, out); err != nil {
 		t.Fatalf("exact submitted stage receipt was rejected: %v", err)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -578,14 +628,14 @@ func TestAcceptPromotionReceiptRejectsValidStaleReceiptBeforeReceiptOut(t *testi
 		StageID:     receipt.Stage.StageID,
 	}
 	out := filepath.Join(t.TempDir(), "promotion-receipt.json")
-	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+	if _, err := acceptPromotionReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
 		t.Fatalf("valid signed stale promotion receipt was not rejected: %v", err)
 	}
 	if _, err := os.Stat(out); !os.IsNotExist(err) {
 		t.Fatalf("mismatched promotion receipt reached receipt-out: %v", err)
 	}
 	expected.ReleaseHash = receipt.ReleaseHash
-	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+	if _, err := acceptPromotionReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, raw, expected, out); err != nil {
 		t.Fatalf("exact submitted promotion receipt was rejected: %v", err)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -610,7 +660,7 @@ func TestVerifyReceipt_TamperedSignatureFails(t *testing.T) {
 	raw[0] ^= 0xFF
 	receipt.OperatorSignature = primitives.EncodeBase58(raw)
 
-	err = verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err = verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected tampered signature to fail verification")
 	}
@@ -631,7 +681,7 @@ func TestVerifyReceipt_WrongKeyFails(t *testing.T) {
 	pinAuthz(t, m, licenseMint, domain, authorizedKey)
 
 	receipt := signReceipt(signer, appHash, releaseHash, servingDomainHash)
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a receipt signed by an unauthorized key to fail")
 	}
@@ -654,7 +704,7 @@ func TestVerifyReceipt_TamperedTupleFails(t *testing.T) {
 	other := sha256.Sum256([]byte("a different app"))
 	receipt.AppHash = hex.EncodeToString(other[:])
 
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err == nil {
 		t.Fatal("expected a tampered appHash to fail verification")
 	}
 }
@@ -668,7 +718,7 @@ func TestVerifyReceipt_TamperedNestedCatalogPointerFails(t *testing.T) {
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
 	receipt.Catalog.PackageID = "00000000000000000000000000000000"
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "check=catalog_pointer") {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "check=catalog_pointer") {
 		t.Fatalf("tampered catalog pointer was not rejected at catalog check: %v", err)
 	}
 }
@@ -682,7 +732,7 @@ func TestVerifyReceipt_MissingNestedProofFails(t *testing.T) {
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
 	receipt.Rollout = nil
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "signed stage, rollout and catalog") {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "signed stage, rollout and catalog") {
 		t.Fatalf("missing rollout proof was not rejected: %v", err)
 	}
 }
@@ -700,7 +750,7 @@ func TestVerifyReceipt_WrongServingDomainFails(t *testing.T) {
 	wrongDomainHash := primitives.StoreDomainHash("evil.example.org")
 	receipt := signReceipt(op, appHash, releaseHash, wrongDomainHash)
 
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a receipt for the wrong serving domain to fail")
 	}
@@ -715,7 +765,7 @@ func TestVerifyReceipt_AuthzNotActiveFails(t *testing.T) {
 	opKey := signPub32(t, op)
 
 	// Wire the authz as Revoked.
-	programID, _ := primitives.PubkeyFromBase58(programIDB58)
+	programID, _ := primitives.PubkeyFromBase58(fixtureProgramIDB58)
 	lm, _ := primitives.PubkeyFromBase58(licenseMint)
 	dh := primitives.StoreDomainHash(domain)
 	authzPDA, _, _ := pda.StoreOperatorAuthorization(lm, dh, programID)
@@ -724,7 +774,7 @@ func TestVerifyReceipt_AuthzNotActiveFails(t *testing.T) {
 	}}
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a non-Active store authorization to fail")
 	}
@@ -739,7 +789,7 @@ func TestVerifyReceipt_AuthzNotFoundFails(t *testing.T) {
 	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}} // nothing pinned
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err == nil {
 		t.Fatal("expected a missing store authorization to fail closed")
 	}
 }
@@ -775,7 +825,7 @@ func TestLoadPublisherKey_FileAndEnv(t *testing.T) {
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     defaultChainID,
-		ProgramID:   programIDB58,
+		ProgramID:   fixtureProgramIDB58,
 		LicenseMint: randPubkeyB58(t),
 		Domain:      "publisher.example.org",
 		PDA:         "11111111111111111111111111111111",
@@ -932,7 +982,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 999, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 999, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -954,7 +1004,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 
 	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
 	pinAuthz(t, m, licenseMint, domain, opKey)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyReceipt(context.Background(), m, fixtureProgramIDB58, licenseMint, domain, receipt); err != nil {
 		t.Fatalf("e2e receipt verification failed: %v", err)
 	}
 	if receipt.AppHash != claims.AppHash {
@@ -978,6 +1028,8 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 		"--metadata", "metadata.json", "--release", "RELEASE.json",
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
+		"--program-id", fixtureProgramIDB58,
+		"--cluster-genesis-hash", fixtureGenesisHashB58,
 	}
 	if _, err := parseFlags(append(required, "--developer", "hrbrlife")); err == nil || !strings.Contains(err.Error(), "must be supplied together") {
 		t.Fatalf("partial slot hint error = %v", err)
@@ -1005,7 +1057,7 @@ func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 	spk, metadata, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, fixtureProgramIDB58, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

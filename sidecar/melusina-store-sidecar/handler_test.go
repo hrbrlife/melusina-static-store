@@ -119,7 +119,7 @@ func signPublishForRoute(t *testing.T, publisher *identity.Private, operatorPub 
 		Nonce:       nonce,
 		Chain: envelope.ChainEvidence{
 			ChainID:      "solana:devnet",
-			ProgramID:    "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+			ProgramID:    programID.Base58(),
 			VerifiedSlot: 12345,
 		},
 	})
@@ -137,7 +137,7 @@ func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub
 		TTL:         5 * time.Minute,
 		Chain: envelope.ChainEvidence{
 			ChainID:      "solana:devnet",
-			ProgramID:    "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+			ProgramID:    programID.Base58(),
 			VerifiedSlot: 12345,
 		},
 	})
@@ -311,6 +311,26 @@ func TestHandlePublish_Accept(t *testing.T) {
 	}
 	if err := verifyAppCatalogPointer(ed25519.PublicKey(operatorKey), *rc.Catalog); err != nil {
 		t.Fatalf("verify catalog pointer: %v", err)
+	}
+}
+
+func TestAppPublishRefusesEnvelopeFromDifferentProgramBeforeChainRead(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "program-bound-operator", cfg.LicenseNFTMint, cfg.Domain)
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "program-bound", "app", fixture.metadata)
+	chain := newMockChainReader()
+	fixture.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "program-bound-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	release := mustJSON(t, fixture.rel)
+	env := signPublishForRoute(t, publisher, op.Public(), fixture.spk, release, "/publish/stage", time.Now().UTC(), 5*time.Minute, "wrong-program")
+	svc.cfg.ProgramID = testFreshProgramID // envelope remains signed for programID.Base58().
+	got := doStagePublish(t, svc, jsonPublishBody(t, env, release, fixture.spk, fixture.metadata))
+	if got.Code != http.StatusUnauthorized || !strings.Contains(got.Body.String(), "check=program_id") {
+		t.Fatalf("different-program envelope = %d %s", got.Code, got.Body.String())
 	}
 }
 

@@ -68,13 +68,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const receiptSchema = "melusina-app-publish-supersede-v1"
+const (
+	receiptSchema          = "melusina-app-publish-transaction-v2"
+	legacyLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	modeFirstPublish       = "FIRST_PUBLISH"
+	modeSupersede          = "SUPERSEDE"
+)
 
 // WAL states (forward-only). See the package doc for the invariant each holds.
 const (
@@ -129,13 +137,18 @@ type StoreOps interface {
 // no others (it does not dynamically discover what to revoke), so the revoke
 // scope is auditable up front.
 type Params struct {
-	WALPath    string
-	AppID      string
-	NewAppHash string
-	NewVersion string
-	StalePDAs  []string
-	Chain      ChainOps
-	Store      StoreOps
+	WALPath            string
+	AppID              string
+	NewAppHash         string
+	NewVersion         string
+	StalePDAs          []string
+	ProgramID          string
+	ClusterGenesisHash string
+	OperatorPubkey     string
+	StoreAuthority     string
+	StoreOrigin        string
+	Chain              ChainOps
+	Store              StoreOps
 
 	// afterStep is a test-only crash seam fired after a state is durably
 	// journaled; returning an error models a process death at that boundary.
@@ -146,15 +159,21 @@ type Params struct {
 // Receipt is the durable WAL record. It is the single source of truth for
 // resuming an interrupted publish.
 type Receipt struct {
-	Schema        string   `json:"schema"`
-	State         string   `json:"state"`
-	AppID         string   `json:"appId"`
-	NewAppHash    string   `json:"newAppHash"`
-	NewVersion    string   `json:"newVersion"`
-	NewReleasePDA string   `json:"newReleasePda,omitempty"`
-	StalePDAs     []string `json:"stalePdas"`
-	StageID       string   `json:"stageId,omitempty"`
-	LedgerID      string   `json:"ledgerId"`
+	Schema             string   `json:"schema"`
+	State              string   `json:"state"`
+	AppID              string   `json:"appId"`
+	NewAppHash         string   `json:"newAppHash"`
+	NewVersion         string   `json:"newVersion"`
+	NewReleasePDA      string   `json:"newReleasePda,omitempty"`
+	StalePDAs          []string `json:"stalePdas"`
+	StageID            string   `json:"stageId,omitempty"`
+	LedgerID           string   `json:"ledgerId"`
+	Mode               string   `json:"mode"`
+	ProgramID          string   `json:"programId"`
+	ClusterGenesisHash string   `json:"clusterGenesisHash"`
+	OperatorPubkey     string   `json:"operatorPubkey"`
+	StoreAuthority     string   `json:"storeAuthority"`
+	StoreOrigin        string   `json:"storeOrigin"`
 }
 
 func (p Params) validate() error {
@@ -173,9 +192,6 @@ func (p Params) validate() error {
 	if strings.TrimSpace(p.NewVersion) == "" {
 		return errors.New("NewVersion is required")
 	}
-	if len(p.StalePDAs) == 0 {
-		return errors.New("StalePDAs must name at least one prior Active release to retire")
-	}
 	seen := map[string]bool{}
 	for _, pda := range p.StalePDAs {
 		if strings.TrimSpace(pda) == "" {
@@ -188,6 +204,32 @@ func (p Params) validate() error {
 	}
 	if p.Chain == nil || p.Store == nil {
 		return errors.New("Chain and Store ops are required")
+	}
+	for name, value := range map[string]string{
+		"ProgramID": p.ProgramID, "ClusterGenesisHash": p.ClusterGenesisHash,
+		"OperatorPubkey": p.OperatorPubkey, "StoreAuthority": p.StoreAuthority,
+		"StoreOrigin": p.StoreOrigin,
+	} {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("%s is required", name)
+		}
+	}
+	if p.ProgramID == legacyLicenseProgramID {
+		return errors.New("legacy license program is refused")
+	}
+	for name, value := range map[string]string{
+		"ProgramID": p.ProgramID, "ClusterGenesisHash": p.ClusterGenesisHash,
+		"OperatorPubkey": p.OperatorPubkey, "StoreAuthority": p.StoreAuthority,
+	} {
+		if _, err := primitives.PubkeyFromBase58(value); err != nil {
+			return fmt.Errorf("%s is invalid: %w", name, err)
+		}
+	}
+	if p.OperatorPubkey != p.StoreAuthority {
+		return errors.New("OperatorPubkey must equal StoreAuthority")
+	}
+	if _, err := exactStoreOrigin(p.StoreOrigin); err != nil {
+		return fmt.Errorf("StoreOrigin: %w", err)
 	}
 	return nil
 }
@@ -206,13 +248,28 @@ func RunSupersede(p Params) (Receipt, error) {
 	for rec.State != stateDone {
 		switch rec.State {
 		case stateInit:
+			if rec.Mode == modeFirstPublish {
+				if err := verifyFirstPublishInitialOrInterrupted(p, rec); err != nil {
+					return rec, fmt.Errorf("first-publish precondition: %w", err)
+				}
+			}
 			if err := ensureRegistered(p, &rec); err != nil {
 				return rec, fmt.Errorf("register-new: %w", err)
+			}
+			if rec.Mode == modeFirstPublish {
+				if err := verifyFirstPublishRegistered(p, rec); err != nil {
+					return rec, fmt.Errorf("first-publish registered invariant: %w", err)
+				}
 			}
 			if err := advance(p, &rec, stateRegistered); err != nil {
 				return rec, err
 			}
 		case stateRegistered:
+			if rec.Mode == modeFirstPublish {
+				if err := verifyFirstPublishRegistered(p, rec); err != nil {
+					return rec, fmt.Errorf("first-publish registered invariant: %w", err)
+				}
+			}
 			if err := ensureStaged(p, &rec); err != nil {
 				return rec, fmt.Errorf("stage-new: %w", err)
 			}
@@ -229,6 +286,15 @@ func RunSupersede(p Params) (Receipt, error) {
 				return rec, err
 			}
 		case statePromoted:
+			if rec.Mode == modeFirstPublish {
+				if err := verifyFinalSingleActive(p, rec); err != nil {
+					return rec, fmt.Errorf("first-publish final invariant: %w", err)
+				}
+				if err := advance(p, &rec, stateDone); err != nil {
+					return rec, err
+				}
+				continue
+			}
 			// ONLY now — after the new release is Active AND served — retire the
 			// old. This is the sole Active->non-Active transition.
 			if err := ensureOldRevoked(p, &rec); err != nil {
@@ -238,6 +304,9 @@ func RunSupersede(p Params) (Receipt, error) {
 				return rec, err
 			}
 		case stateRevoked:
+			if err := verifyFinalSingleActive(p, rec); err != nil {
+				return rec, fmt.Errorf("supersede final invariant: %w", err)
+			}
 			if err := advance(p, &rec, stateDone); err != nil {
 				return rec, err
 			}
@@ -246,6 +315,56 @@ func RunSupersede(p Params) (Receipt, error) {
 		}
 	}
 	return rec, nil
+}
+
+func verifyFirstPublishRegistered(p Params, rec Receipt) error {
+	active, err := p.Chain.ActiveReleases(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if len(active) != 1 || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.NewVersion {
+		return fmt.Errorf("want exactly one Active new release, got %#v", active)
+	}
+	return nil
+}
+
+func verifyFirstPublishInitialOrInterrupted(p Params, rec Receipt) error {
+	active, err := p.Chain.ActiveReleases(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if len(active) > 1 || (len(active) == 1 && active[0].AppHash != rec.NewAppHash) {
+		return fmt.Errorf("expected zero Active releases (or the exact new release after an interrupted register), got %d", len(active))
+	}
+	served, err := p.Store.ServedAppHash(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if served != "" && served != rec.NewAppHash {
+		return fmt.Errorf("expected no served release, got %s", served)
+	}
+	if served == rec.NewAppHash && len(active) != 1 {
+		return errors.New("new bytes are served without exactly one Active new release")
+	}
+	return nil
+}
+
+func verifyFinalSingleActive(p Params, rec Receipt) error {
+	active, err := p.Chain.ActiveReleases(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if len(active) != 1 || active[0].AppHash != rec.NewAppHash {
+		return fmt.Errorf("want exactly one Active release %s, got %#v", rec.NewAppHash, active)
+	}
+	served, err := p.Store.ServedAppHash(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if served != rec.NewAppHash {
+		return fmt.Errorf("served app hash %q != new %q", served, rec.NewAppHash)
+	}
+	return nil
 }
 
 func advance(p Params, rec *Receipt, next string) error {
@@ -269,6 +388,9 @@ func ensureRegistered(p Params, rec *Receipt) error {
 	}
 	for _, r := range active {
 		if r.AppHash == rec.NewAppHash {
+			if r.Version != rec.NewVersion || strings.TrimSpace(r.PDA) == "" {
+				return errors.New("existing new release has mismatched version or empty PDA")
+			}
 			rec.NewReleasePDA = r.PDA // already Active from a prior attempt
 			return nil
 		}
@@ -276,6 +398,9 @@ func ensureRegistered(p Params, rec *Receipt) error {
 	ref, err := p.Chain.RegisterRelease(rec.AppID, rec.NewAppHash, rec.NewVersion)
 	if err != nil {
 		return err
+	}
+	if ref.AppHash != rec.NewAppHash || ref.Version != rec.NewVersion || strings.TrimSpace(ref.PDA) == "" {
+		return errors.New("register returned a release that does not match the requested hash/version")
 	}
 	rec.NewReleasePDA = ref.PDA
 	return nil
@@ -379,6 +504,9 @@ func loadOrSeedReceipt(p Params) (Receipt, error) {
 		NewVersion: p.NewVersion,
 		StalePDAs:  append([]string(nil), p.StalePDAs...),
 		LedgerID:   ledgerID,
+		Mode:       publishMode(p.StalePDAs), ProgramID: p.ProgramID,
+		ClusterGenesisHash: p.ClusterGenesisHash, OperatorPubkey: p.OperatorPubkey,
+		StoreAuthority: p.StoreAuthority, StoreOrigin: p.StoreOrigin,
 	}
 	if err := writeReceiptExclusive(p.WALPath, seed); err != nil {
 		if errors.Is(err, os.ErrExist) {
@@ -415,12 +543,41 @@ func validateReceiptBinding(rec Receipt, p Params) error {
 	if !sameStringSet(rec.StalePDAs, p.StalePDAs) {
 		return errors.New("stalePdas set differs")
 	}
+	if rec.Mode != publishMode(p.StalePDAs) || rec.ProgramID != p.ProgramID ||
+		rec.ClusterGenesisHash != p.ClusterGenesisHash || rec.OperatorPubkey != p.OperatorPubkey ||
+		rec.StoreAuthority != p.StoreAuthority || rec.StoreOrigin != p.StoreOrigin {
+		return errors.New("deployment binding differs")
+	}
 	switch rec.State {
 	case stateInit, stateRegistered, stateStaged, statePromoted, stateRevoked, stateDone:
 	default:
 		return fmt.Errorf("unknown persisted state %q", rec.State)
 	}
 	return nil
+}
+
+func publishMode(stale []string) string {
+	if len(stale) == 0 {
+		return modeFirstPublish
+	}
+	return modeSupersede
+}
+
+func exactStoreOrigin(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return "", errors.New("must be an exact https origin")
+	}
+	u.Path = ""
+	canonical := u.String()
+	if canonical != trimmed {
+		return "", errors.New("must already be canonical (no trailing slash or whitespace)")
+	}
+	return canonical, nil
 }
 
 func sameStringSet(a, b []string) bool {

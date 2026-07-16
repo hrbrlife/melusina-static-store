@@ -63,6 +63,23 @@ enabled. Any mismatch / missing entry / RPC error is FATAL (Inv 5). When
 `shards_dir` is unset the store is deliberately read-only: operator nil,
 `/publish` `503`, serve gate unaffected.
 
+For a brand-new program and empty catalog, set an explicit fresh `program_id`,
+the RPC's exact `cluster_genesis_hash`, and an exact HTTPS `public_base_url`,
+then start once with:
+
+```sh
+./melusina-store-sidecar -config store.config.json -initialize-zero-state
+```
+
+Before creating catalog state, startup verifies `getGenesisHash`, the bound
+`SidecarIdentityEntry`, and the Active `StoreOperatorAuthorization`. It then
+creates the blank catalog under the process-lifetime `writer.lock` and signs a
+durable zero-state binding over program, genesis, operator/store authority,
+license, domain hash, store id, origin, and replay-ledger id. Restart is
+idempotent; copying or replaying that catalog under different deployment facts
+fails before the listener opens. The legacy `7an…` program is deliberately
+refused by this lineage.
+
 **DEPLOYER must provision** (NONE of this lives in-repo — it is secret /
 per-install material):
 - **Three shard files** under `boot_identity.shards_dir`, each either 64

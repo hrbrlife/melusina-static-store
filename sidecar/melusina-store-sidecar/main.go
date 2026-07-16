@@ -38,6 +38,7 @@ func main() {
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")
 	distOverride := flag.String("dist", "", "override dist_dir from config")
+	initializeZeroState := flag.Bool("initialize-zero-state", false, "securely initialize a blank write catalog, then start (idempotent; requires explicit fresh program/genesis/origin)")
 	flag.Parse()
 
 	log.Printf("melusina-store-sidecar %s starting", Version)
@@ -56,6 +57,14 @@ func main() {
 		log.Fatalf("config after overrides: %v", err)
 	}
 	setProgramIDFromConfig(cfg.ProgramID)
+	if cfg.ClusterGenesisHash != "" {
+		genesisCtx, genesisCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err := verifyRPCGenesis(genesisCtx, cfg.RPCURL, cfg.ClusterGenesisHash)
+		genesisCancel()
+		if err != nil {
+			log.Fatalf("cluster genesis: %v", err)
+		}
+	}
 
 	// The on-chain reader is the trust gate for /publish (VerifyPublish). It is
 	// always wired from cfg.RPCURL; the production client (*verify.RPCClient)
@@ -95,6 +104,21 @@ func main() {
 	// Holding its descriptor until shutdown makes the OS lock process-lifetime.
 	var writerLock *os.File
 	if operator != nil {
+		if *initializeZeroState {
+			operatorPub, keyErr := signPubkey32(operator.Public())
+			if keyErr != nil {
+				log.Fatalf("zero-state operator key: %v", keyErr)
+			}
+			authCtx, authCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			_, _, authErr := VerifyStoreOperator(authCtx, cr, cfg, operatorPub, false)
+			authCancel()
+			if authErr != nil {
+				log.Fatalf("zero-state store authority: %v", authErr)
+			}
+			if err := prepareZeroStateWriterLock(cfg, productionZeroCatalogInitOptions()); err != nil {
+				log.Fatalf("zero-state writer lock: %v", err)
+			}
+		}
 		writerLockPath := filepath.Join(cfg.CatalogMigrationStateDir, "writer.lock")
 		writerLock, err = acquireExistingWriterLock(writerLockPath)
 		if err != nil {
@@ -102,6 +126,14 @@ func main() {
 		}
 		defer writerLock.Close()
 		log.Printf("catalog writer exclusion acquired: %s", writerLockPath)
+		if *initializeZeroState {
+			if err := initializeZeroStateCatalog(cfg, operator, writerLock, productionZeroCatalogInitOptions()); err != nil {
+				log.Fatalf("zero-state catalog initialization: %v", err)
+			}
+			log.Printf("zero-state catalog binding initialized/verified for program=%s genesis=%s origin=%s", cfg.ProgramID, cfg.ClusterGenesisHash, cfg.PublicBaseURL)
+		}
+	} else if *initializeZeroState {
+		log.Fatal("-initialize-zero-state requires boot_identity.shards_dir and a bound operator")
 	}
 
 	// Bootstrap/recover persistent app-catalog and replay state only after the

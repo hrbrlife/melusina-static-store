@@ -8,7 +8,8 @@
 # and the three attest shards differ between operators.
 
 license_nft_mint: "<base58 License NFT mint of the operating license>"
-program_id: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+program_id: "<freshly deployed license-registry program id; explicit, no default>"
+cluster_genesis_hash: "<exact getGenesisHash result from rpc_url>"
 domain: "store.example.org"        # bare host only (no scheme/port/path); store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 store_id: "melusina-store"
 # reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
@@ -23,7 +24,7 @@ policy:
 
 rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
 listen_addr: ":8443"
-dist_dir: "dist-publish"           # the build output to serve (relative to CWD or absolute)
+dist_dir: "/var/lib/melusina-store/dist-publish"  # absolute in write mode
 private_stage_dir: "/var/lib/melusina-store/private-app-candidates"  # MUST be outside dist_dir; mode 0700
 catalog_generation_root: "/var/lib/melusina-store/app-catalog-generations"  # immutable generations; sibling filesystem to dist_dir
 catalog_migration_state_dir: "/var/lib/melusina-store/migrations"  # root-owned 0700; apply helper owns writer.lock + catalog-v104.json

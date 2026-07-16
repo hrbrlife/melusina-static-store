@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -10,12 +11,15 @@ import (
 var errInjected = errors.New("INJECTED-FAULT: simulated process death")
 
 const (
-	tAppID  = "app-ccash-go-htmx"
-	oldPDA  = "PDA-old-0763"
-	oldHash = "hash-old-0.3.63"
-	oldVer  = "0.3.63"
-	newHash = "hash-new-0.3.64"
-	newVer  = "0.3.64"
+	tAppID     = "app-ccash-go-htmx"
+	oldPDA     = "PDA-old-0763"
+	oldHash    = "hash-old-0.3.63"
+	oldVer     = "0.3.63"
+	newHash    = "hash-new-0.3.64"
+	newVer     = "0.3.64"
+	tProgramID = "BSENx6t1GVPzhnnd4yiojxWk7HjKZiiRQEkriHg6Mpix"
+	tGenesis   = "11111111111111111111111111111111"
+	tOperator  = "SysvarC1ock11111111111111111111111111111111"
 )
 
 // ── in-memory fault-injectable fakes ────────────────────────────────────────
@@ -157,9 +161,18 @@ func baseParams(wal string, ch *fakeChain, st *fakeStore) Params {
 		NewAppHash: newHash,
 		NewVersion: newVer,
 		StalePDAs:  []string{oldPDA},
-		Chain:      ch,
-		Store:      st,
+		ProgramID:  tProgramID, ClusterGenesisHash: tGenesis,
+		OperatorPubkey: tOperator, StoreAuthority: tOperator,
+		StoreOrigin: "https://bazaar.example.org",
+		Chain:       ch,
+		Store:       st,
 	}
+}
+
+func firstPublishParams(wal string, ch *fakeChain, st *fakeStore) Params {
+	p := baseParams(wal, ch, st)
+	p.StalePDAs = nil
+	return p
 }
 
 // servedActiveBacked is the observable no-0-Active invariant: the bytes the
@@ -305,6 +318,81 @@ func TestSupersede_IdempotentAfterDone(t *testing.T) {
 		t.Fatalf("second run mutated state: state=%s active=%d", rec.State, ch.activeCountDirect(tAppID))
 	}
 	assertConverged(t, ch, st)
+}
+
+func TestFirstPublish_FaultInjection_ZeroToExactlyOne(t *testing.T) {
+	points := []struct{ label, chainFault, storeFault, afterState string }{
+		{"before-register", "register:before", "", ""},
+		{"mid-register", "register:after", "", ""},
+		{"after-register", "", "", stateRegistered},
+		{"before-stage", "", "stage:before", ""},
+		{"mid-stage", "", "stage:after", ""},
+		{"after-stage", "", "", stateStaged},
+		{"before-promote", "", "promote:before", ""},
+		{"mid-promote", "", "promote:after", ""},
+		{"after-promote", "", "", statePromoted},
+	}
+	for _, point := range points {
+		t.Run(point.label, func(t *testing.T) {
+			wal := filepath.Join(t.TempDir(), "first-publish.wal.json")
+			ch := &fakeChain{entries: map[string]*chainEntry{}, nextPDA: 2000, fault: &faultPlan{at: point.chainFault}}
+			st := &fakeStore{served: map[string]string{}, fault: &faultPlan{at: point.storeFault}}
+			p := firstPublishParams(wal, ch, st)
+			if point.afterState != "" {
+				p.afterStep = func(state string) error {
+					if state == point.afterState {
+						return errInjected
+					}
+					return nil
+				}
+			}
+			if _, err := RunSupersede(p); !errors.Is(err, errInjected) {
+				t.Fatalf("expected crash, got %v", err)
+			}
+			if active := ch.activeCountDirect(tAppID); active < 0 || active > 1 {
+				t.Fatalf("first publish crossed an invalid Active count: %d", active)
+			}
+			if served := st.servedDirect(tAppID); served != "" && (!ch.isActiveHash(tAppID, served) || served != newHash) {
+				t.Fatalf("served release %q is not the single Active new release", served)
+			}
+
+			// Model a brand-new process: reconstruct Params and clear the fakes'
+			// fault injectors while preserving only durable chain/store/WAL state.
+			ch.fault, st.fault = &faultPlan{}, &faultPlan{}
+			rec, err := RunSupersede(firstPublishParams(wal, ch, st))
+			if err != nil || rec.State != stateDone {
+				t.Fatalf("restart recovery = state %s err %v", rec.State, err)
+			}
+			if ch.activeCountDirect(tAppID) != 1 || !ch.isActiveHash(tAppID, newHash) || st.servedDirect(tAppID) != newHash {
+				t.Fatal("first publish did not converge 0 Active -> exactly 1 Active=new + served=new")
+			}
+		})
+	}
+}
+
+func TestFirstPublishRefusesNonZeroInitialState(t *testing.T) {
+	wal := filepath.Join(t.TempDir(), "first-publish.wal.json")
+	ch, st := newWorld()
+	ch.fault, st.fault = &faultPlan{}, &faultPlan{}
+	p := firstPublishParams(wal, ch, st)
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "expected zero Active") {
+		t.Fatalf("non-zero first-publish error = %v", err)
+	}
+}
+
+func TestFirstPublishWALRefusesClusterReplay(t *testing.T) {
+	wal := filepath.Join(t.TempDir(), "first-publish.wal.json")
+	ch := &fakeChain{entries: map[string]*chainEntry{}, fault: &faultPlan{at: "register:before"}}
+	st := &fakeStore{served: map[string]string{}, fault: &faultPlan{}}
+	if _, err := RunSupersede(firstPublishParams(wal, ch, st)); !errors.Is(err, errInjected) {
+		t.Fatalf("seed crash = %v", err)
+	}
+	ch.fault = &faultPlan{}
+	p := firstPublishParams(wal, ch, st)
+	p.ClusterGenesisHash = "SysvarRent111111111111111111111111111111111"
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "deployment binding differs") {
+		t.Fatalf("cluster replay error = %v", err)
+	}
 }
 
 // TestSupersede_WALBindingMismatch proves a WAL for a different publish is

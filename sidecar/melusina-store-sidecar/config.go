@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,12 +44,16 @@ type Policy struct {
 }
 
 type Config struct {
-	LicenseNFTMint  string `json:"license_nft_mint"`
-	ProgramID       string `json:"program_id"`
-	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
-	StoreID         string `json:"store_id"`
-	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
-	RootStoreURL    string `json:"root_store_url"`
+	LicenseNFTMint string `json:"license_nft_mint"`
+	ProgramID      string `json:"program_id"`
+	// ClusterGenesisHash pins every chain read and every durable write-state
+	// receipt to one exact Solana cluster. A write-capable store refuses to boot
+	// without it and verifies getGenesisHash before deriving its operator.
+	ClusterGenesisHash string `json:"cluster_genesis_hash"`
+	Domain             string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
+	StoreID            string `json:"store_id"`
+	ResellerNFTMint    string `json:"reseller_nft_mint,omitempty"`
+	RootStoreURL       string `json:"root_store_url"`
 	// PublicBaseURL is THIS store's own public origin — the absolute
 	// https://bazaar.<domain> URL the install-side melusina-update-checker.py
 	// fetches /update/manifest.json from and downloads bundles from. The sidecar
@@ -208,7 +214,6 @@ func defaultConfig() Config {
 		ListenAddr:      ":8443",
 		DistDir:         "dist-publish",
 		CatalogRepoRoot: ".",
-		ProgramID:       defaultLicenseProgramID,
 	}
 }
 
@@ -230,10 +235,13 @@ func LoadConfig(path string) (Config, error) {
 	}
 	cfg.ProgramID = strings.TrimSpace(cfg.ProgramID)
 	if cfg.ProgramID == "" {
-		cfg.ProgramID = defaultLicenseProgramID
+		return cfg, fmt.Errorf("config: program_id is required (no legacy default)")
 	}
 	if _, err := primitives.PubkeyFromBase58(cfg.ProgramID); err != nil {
 		return cfg, fmt.Errorf("config: program_id is invalid: %w", err)
+	}
+	if cfg.ProgramID == defaultLicenseProgramID {
+		return cfg, fmt.Errorf("config: legacy program_id %s is refused; deploy and name the fresh program explicitly", defaultLicenseProgramID)
 	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = "dist-publish"
@@ -242,6 +250,25 @@ func LoadConfig(path string) (Config, error) {
 		cfg.CatalogRepoRoot = "."
 	}
 	writeCapable := strings.TrimSpace(cfg.BootIdentity.ShardsDir) != ""
+	if writeCapable && strings.TrimSpace(cfg.RPCURL) == "" {
+		return cfg, fmt.Errorf("config: rpc_url is required when boot_identity.shards_dir is set")
+	}
+	cfg.ClusterGenesisHash = strings.TrimSpace(cfg.ClusterGenesisHash)
+	if writeCapable && cfg.ClusterGenesisHash == "" {
+		return cfg, fmt.Errorf("config: cluster_genesis_hash is required when boot_identity.shards_dir is set")
+	}
+	if cfg.ClusterGenesisHash != "" {
+		if _, err := primitives.PubkeyFromBase58(cfg.ClusterGenesisHash); err != nil {
+			return cfg, fmt.Errorf("config: cluster_genesis_hash is invalid: %w", err)
+		}
+	}
+	if writeCapable {
+		origin, err := exactHTTPSOrigin(cfg.PublicBaseURL)
+		if err != nil {
+			return cfg, fmt.Errorf("config: public_base_url is required as an exact https origin in write mode: %w", err)
+		}
+		cfg.PublicBaseURL = origin
+	}
 	if writeCapable && strings.TrimSpace(cfg.PrivateStageDir) == "" {
 		return cfg, fmt.Errorf("config: private_stage_dir is required when boot_identity.shards_dir is set")
 	}
@@ -258,6 +285,19 @@ func LoadConfig(path string) (Config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+func exactHTTPSOrigin(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return "", errors.New("must be https://host[:port] with no credentials, path, query, or fragment")
+	}
+	u.Path = ""
+	return u.String(), nil
 }
 
 // validateCatalogStorageRoots performs lexical containment checks only. The

@@ -25,6 +25,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -33,6 +34,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"bytes"
@@ -43,7 +45,7 @@ import (
 )
 
 const (
-	defaultLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+	legacyLicenseProgramID  = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	releaseEntryAppIDOffset = verify.AccountDiscriminatorLen + 32 + 32
 )
 
@@ -55,20 +57,25 @@ type activeEntry struct {
 
 func main() {
 	rpcURL := flag.String("rpc-url", "", "Solana JSON-RPC endpoint (required)")
-	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; required — used to read app_id)")
-	programIDFlag := flag.String("program-id", defaultLicenseProgramID, "license-registry program id")
+	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (use for republish)")
+	appIDText := flag.String("app-id", "", "canonical ASCII appId; sha256(appId) is queried (use for zero-state first publish)")
+	programIDFlag := flag.String("program-id", "", "fresh license-registry program id (required; no default)")
+	genesisHash := flag.String("cluster-genesis-hash", "", "exact getGenesisHash result (required)")
 	flag.Parse()
-	if *rpcURL == "" || *knownPDA == "" {
-		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> -known-pda <pda>")
+	if *rpcURL == "" || *programIDFlag == "" || *genesisHash == "" || ((*knownPDA == "") == (*appIDText == "")) {
+		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> -program-id <fresh-program> -cluster-genesis-hash <hash> (-known-pda <pda> | -app-id <ascii-app-id>)")
 		os.Exit(2)
 	}
-	if err := run(*rpcURL, *knownPDA, *programIDFlag); err != nil {
+	if err := run(*rpcURL, *knownPDA, *appIDText, *programIDFlag, *genesisHash); err != nil {
 		fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(rpcURL, knownPDA, programIDB58 string) error {
+func run(rpcURL, knownPDA, appIDText, programIDB58, expectedGenesis string) error {
+	if programIDB58 == legacyLicenseProgramID {
+		return errors.New("legacy program id is refused")
+	}
 	programID, err := primitives.PubkeyFromBase58(programIDB58)
 	if err != nil {
 		return fmt.Errorf("bad -program-id: %w", err)
@@ -76,17 +83,33 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	cr := verify.NewRPCClient(rpcURL)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	if err := verifyGenesisHash(ctx, rpcURL, expectedGenesis); err != nil {
+		return err
+	}
 
-	data, err := cr.GetAccountInfo(ctx, knownPDA)
-	if err != nil {
-		return fmt.Errorf("fetch known PDA %s: %w", knownPDA, err)
-	}
-	if data == nil {
-		return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
-	}
-	appID, err := verify.ReadReleaseEntryAppID(data)
-	if err != nil {
-		return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+	var appID [32]byte
+	if strings.TrimSpace(appIDText) != "" {
+		if strings.TrimSpace(appIDText) != appIDText || len(appIDText) > 256 {
+			return errors.New("-app-id must be canonical non-whitespace ASCII text <=256 bytes")
+		}
+		for _, b := range []byte(appIDText) {
+			if b < 0x21 || b > 0x7e {
+				return errors.New("-app-id must contain printable ASCII without spaces")
+			}
+		}
+		appID = sha256.Sum256([]byte(appIDText))
+	} else {
+		data, err := cr.GetAccountInfo(ctx, knownPDA)
+		if err != nil {
+			return fmt.Errorf("fetch known PDA %s: %w", knownPDA, err)
+		}
+		if data == nil {
+			return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
+		}
+		appID, err = verify.ReadReleaseEntryAppID(data)
+		if err != nil {
+			return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+		}
 	}
 	fmt.Fprintf(os.Stderr, "app_id (base58 of raw bytes): %s\n", primitives.EncodeBase58(appID[:]))
 
@@ -112,6 +135,42 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 		_ = enc.Encode(activeEntry{PDA: acct.pubkey, Version: meta.version, AppHash: fmt.Sprintf("%x", meta.appHash)})
 	}
 	fmt.Fprintf(os.Stderr, "%d Active ReleaseEntry account(s) found for this app_id\n", found)
+	return nil
+}
+
+func verifyGenesisHash(ctx context.Context, rpcURL, expected string) error {
+	if _, err := primitives.PubkeyFromBase58(strings.TrimSpace(expected)); err != nil {
+		return fmt.Errorf("bad -cluster-genesis-hash: %w", err)
+	}
+	req := storeRPCRequest{JSONRPC: "2.0", ID: 1, Method: "getGenesisHash"}
+	body, _ := json.Marshal(req)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return err
+	}
+	var parsed struct {
+		Result string         `json:"result"`
+		Error  *storeRPCError `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return err
+	}
+	if parsed.Error != nil {
+		return fmt.Errorf("getGenesisHash RPC error %d: %s", parsed.Error.Code, parsed.Error.Message)
+	}
+	if strings.TrimSpace(parsed.Result) != strings.TrimSpace(expected) {
+		return fmt.Errorf("cluster genesis mismatch: RPC=%q expected=%q", parsed.Result, expected)
+	}
 	return nil
 }
 

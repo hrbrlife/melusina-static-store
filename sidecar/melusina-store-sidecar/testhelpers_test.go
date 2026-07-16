@@ -270,7 +270,7 @@ func newTestIdentity(t *testing.T, sidecarID, licenseMint, domain string) *ident
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     "solana:devnet",
-		ProgramID:   "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+		ProgramID:   programID.Base58(),
 		LicenseMint: licenseMint,
 		Domain:      domain,
 		PDA:         "11111111111111111111111111111111",
@@ -330,6 +330,7 @@ func testConfig(t *testing.T) (Config, string) {
 	licenseMint := randPubkeyB58(t)
 	return Config{
 		LicenseNFTMint:  licenseMint,
+		ProgramID:       programID.Base58(),
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",

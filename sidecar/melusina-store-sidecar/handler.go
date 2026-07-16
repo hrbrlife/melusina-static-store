@@ -106,6 +106,12 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	if err := requireEnvelopePresent(sig); err != nil {
 		return out, fmt.Errorf("check=envelope: %w", err)
 	}
+	if strings.TrimSpace(s.cfg.ProgramID) == "" {
+		return out, errors.New("check=program_id: store config has no explicit program_id")
+	}
+	if strings.TrimSpace(sig.Payload.ChainEvidence.ProgramID) != strings.TrimSpace(s.cfg.ProgramID) {
+		return out, fmt.Errorf("check=program_id: envelope program %q != store program %q", sig.Payload.ChainEvidence.ProgramID, s.cfg.ProgramID)
+	}
 	// Policy first, authority second (ported from d81b7d9a resolveAcceptedPublisherKey):
 	// resolve the signing key THIS STORE'S POLICY authorizes for the claimed
 	// publisher BEFORE the signature check, so an unlisted publisher gets its

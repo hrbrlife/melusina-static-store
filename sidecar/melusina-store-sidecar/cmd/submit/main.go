@@ -50,10 +50,7 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// programIDB58 is the license-registry program the federated store verifies
-// against (FEDERATED-STORE-MVP §1). It is the program that owns the
-// ReleaseEntry + StoreOperatorAuthorization PDAs.
-const programIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+const legacyProgramIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 
 // defaultChainID is the chain the envelope ChainEvidence is bound to when the
 // publisher key file does not pin one. The sidecar does not gate on chain_id
@@ -200,24 +197,26 @@ func main() {
 }
 
 type options struct {
-	store             string
-	spkPath           string
-	metadataPath      string
-	releasePath       string
-	publisherKey      string // path; or env name via --publisher-key env:NAME
-	storePubkey       string // path to the sidecar operator identity.Public JSON
-	licenseMint       string // store operator's license_nft_mint (StoreOperatorAuthz seed)
-	domain            string // store serving domain (store_domain_hash seed)
-	rpcURL            string // Solana JSON-RPC for receipt verification
-	verifiedSlot      uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
-	useMultipart      bool
-	stageOnly         bool
-	developer         string
-	repo              string
-	slug              string
-	receiptOut        string
-	verifyReceiptPath string
-	timeout           time.Duration
+	store              string
+	spkPath            string
+	metadataPath       string
+	releasePath        string
+	publisherKey       string // path; or env name via --publisher-key env:NAME
+	storePubkey        string // path to the sidecar operator identity.Public JSON
+	licenseMint        string // store operator's license_nft_mint (StoreOperatorAuthz seed)
+	domain             string // store serving domain (store_domain_hash seed)
+	rpcURL             string // Solana JSON-RPC for receipt verification
+	programID          string // exact freshly deployed license program
+	clusterGenesisHash string // exact getGenesisHash result
+	verifiedSlot       uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	useMultipart       bool
+	stageOnly          bool
+	developer          string
+	repo               string
+	slug               string
+	receiptOut         string
+	verifyReceiptPath  string
+	timeout            time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -232,6 +231,8 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
 	fs.StringVar(&o.domain, "domain", "", "store serving domain (bare host); store_domain_hash seed for receipt verification (defaults to the host in --store)")
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
+	fs.StringVar(&o.programID, "program-id", "", "fresh license-registry program id (required; legacy default refused)")
+	fs.StringVar(&o.clusterGenesisHash, "cluster-genesis-hash", "", "exact getGenesisHash result for --rpc-url (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
 	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
 	fs.BoolVar(&o.stageOnly, "stage", false, "privately stage the candidate before chain mutation; return a signed staging receipt")
@@ -247,6 +248,25 @@ func parseFlags(args []string) (options, error) {
 
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
+	if o.programID == "" {
+		missing = append(missing, "--program-id")
+	}
+	if o.clusterGenesisHash == "" {
+		missing = append(missing, "--cluster-genesis-hash")
+	}
+	if o.programID != "" {
+		if o.programID == legacyProgramIDB58 {
+			return o, errors.New("legacy --program-id is refused")
+		}
+		if _, err := primitives.PubkeyFromBase58(o.programID); err != nil {
+			return o, fmt.Errorf("--program-id: %w", err)
+		}
+	}
+	if o.clusterGenesisHash != "" {
+		if _, err := primitives.PubkeyFromBase58(o.clusterGenesisHash); err != nil {
+			return o, fmt.Errorf("--cluster-genesis-hash: %w", err)
+		}
+	}
 	if verifyMode {
 		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
@@ -316,9 +336,50 @@ func parseFlags(args []string) (options, error) {
 	return o, nil
 }
 
+func verifySubmitGenesis(ctx context.Context, rpcURL, expected string) error {
+	reqBody := []byte(`{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}`)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("getGenesisHash: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("getGenesisHash HTTP %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return err
+	}
+	var out struct {
+		Result string `json:"result"`
+		Error  *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return fmt.Errorf("decode getGenesisHash: %w", err)
+	}
+	if out.Error != nil {
+		return fmt.Errorf("getGenesisHash RPC error %d: %s", out.Error.Code, out.Error.Message)
+	}
+	if strings.TrimSpace(out.Result) != strings.TrimSpace(expected) {
+		return fmt.Errorf("cluster genesis mismatch: RPC=%q expected=%q", out.Result, expected)
+	}
+	return nil
+}
+
 func run(args []string, stdout, stderr io.Writer) error {
 	o, err := parseFlags(args)
 	if err != nil {
+		return err
+	}
+	if err := verifySubmitGenesis(context.Background(), o.rpcURL, o.clusterGenesisHash); err != nil {
 		return err
 	}
 	if o.verifyReceiptPath != "" {
@@ -368,9 +429,15 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("publisher key: %w", err)
 	}
+	if pubPriv.Public().Ref.ProgramID != o.programID {
+		return fmt.Errorf("publisher key program_id %q != --program-id %q", pubPriv.Public().Ref.ProgramID, o.programID)
+	}
 	dst, err := loadStorePubkey(o.storePubkey)
 	if err != nil {
 		return fmt.Errorf("store pubkey: %w", err)
+	}
+	if dst.Ref.ProgramID != o.programID {
+		return fmt.Errorf("store pubkey program_id %q != --program-id %q", dst.Ref.ProgramID, o.programID)
 	}
 
 	// Select the purpose before signing. App envelopes are never route-less and
@@ -394,7 +461,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if envTTL < 5*time.Minute {
 		envTTL = 5 * time.Minute
 	}
-	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.verifiedSlot, envTTL)
+	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.programID, o.verifiedSlot, envTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
 	}
@@ -414,7 +481,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 	// check, so the publish client refuses to call it a success.
 	cr := verify.NewRPCClient(o.rpcURL)
 	if o.stageOnly {
-		receipt, err := acceptStageReceipt(context.Background(), cr, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+		receipt, err := acceptStageReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
 		if err != nil {
 			return fmt.Errorf("stage receipt verification: %w", err)
 		}
@@ -422,7 +489,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		fmt.Fprintf(stdout, "STAGE OK — private persistence receipt verified against on-chain store_authority\n%s\n", out)
 		return nil
 	}
-	receipt, err := acceptPromotionReceipt(context.Background(), cr, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+	receipt, err := acceptPromotionReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
 	if err != nil {
 		return fmt.Errorf("receipt verification: %w", err)
 	}
@@ -486,12 +553,12 @@ func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, dev
 	}, nil
 }
 
-func acceptStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (StageReceipt, error) {
+func acceptStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, programID, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (StageReceipt, error) {
 	var receipt StageReceipt
 	if err := json.Unmarshal(raw, &receipt); err != nil {
 		return StageReceipt{}, fmt.Errorf("decode stage receipt: %w", err)
 	}
-	if err := verifyStageReceipt(ctx, cr, licenseMint, domain, receipt); err != nil {
+	if err := verifyStageReceipt(ctx, cr, programID, licenseMint, domain, receipt); err != nil {
 		return StageReceipt{}, err
 	}
 	if receipt.AppID != expected.AppID ||
@@ -506,12 +573,12 @@ func acceptStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licen
 	return receipt, nil
 }
 
-func acceptPromotionReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (Receipt, error) {
+func acceptPromotionReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, programID, licenseMint, domain string, raw []byte, expected submittedReceiptIntent, receiptOut string) (Receipt, error) {
 	var receipt Receipt
 	if err := json.Unmarshal(raw, &receipt); err != nil {
 		return Receipt{}, fmt.Errorf("decode receipt: %w", err)
 	}
-	if err := verifyReceipt(ctx, cr, licenseMint, domain, receipt); err != nil {
+	if err := verifyReceipt(ctx, cr, programID, licenseMint, domain, receipt); err != nil {
 		return Receipt{}, err
 	}
 	if receipt.Stage == nil || receipt.Catalog == nil ||
@@ -537,7 +604,7 @@ func runVerifyReceipt(o options, stdout io.Writer) error {
 		return fmt.Errorf("decode receipt %s: %w", o.verifyReceiptPath, err)
 	}
 	client := verify.NewRPCClient(o.rpcURL)
-	if err := verifyReceipt(context.Background(), client, o.licenseMint, o.domain, receipt); err != nil {
+	if err := verifyReceipt(context.Background(), client, o.programID, o.licenseMint, o.domain, receipt); err != nil {
 		return fmt.Errorf("receipt verification: %w", err)
 	}
 	fmt.Fprintf(stdout, "RECEIPT OK — saved promotion proof verified against on-chain store_authority\n")
@@ -590,7 +657,7 @@ func decodeReceiptForVerification(raw []byte) (Receipt, error) {
 // sidecar's envelope.Verify requires Kind==publish-request (envelope.KindPublishRequest),
 // Destination==operator, RequestHash==sha256(SPK), and sha256(Body)==BodyHash;
 // we set all of them here.
-func buildEnvelope(src *identity.Private, dst identity.Public, target string, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
+func buildEnvelope(src *identity.Private, dst identity.Public, target string, spk, releaseBytes []byte, claims ReleaseClaims, programIDB58 string, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
 	if target != appPromoteTarget && target != appStageTarget {
 		return envelope.Signed{}, fmt.Errorf("app publish target must be exactly %q or %q", appPromoteTarget, appStageTarget)
 	}
@@ -599,7 +666,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 
 	chain := envelope.ChainEvidence{
 		ChainID:      firstNonEmpty(src.Public().Ref.ChainID, defaultChainID),
-		ProgramID:    firstNonEmpty(src.Public().Ref.ProgramID, programIDB58),
+		ProgramID:    programIDB58,
 		VerifiedSlot: verifiedSlot,
 	}
 	// Pin the ReleaseEntry PDA as chain evidence when the masterNftMint + appHash
@@ -609,7 +676,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 	// sidecar anyway; this is the publisher's claimed PDA.
 	if mm := strings.TrimSpace(claims.MasterNftMint); mm != "" {
 		if appHash, err := hash32FromHex(claims.AppHash); err == nil {
-			if relPDA, err := releaseEntryPDA(mm, appHash); err == nil {
+			if relPDA, err := releaseEntryPDA(mm, appHash, programIDB58); err == nil {
 				chain.ReleaseEntryPDA = relPDA
 			}
 		}
@@ -629,7 +696,7 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 // releaseEntryPDA derives the ReleaseEntry PDA base58 from the masterNftMint and
 // the app_hash (the tree-hash over {app.spk, metadata.json}), matching the
 // sidecar's VerifyPublish derivation.
-func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
+func releaseEntryPDA(masterMintB58 string, appHash [32]byte, programIDB58 string) (string, error) {
 	mm, err := primitives.PubkeyFromBase58(masterMintB58)
 	if err != nil {
 		return "", err
@@ -783,8 +850,8 @@ var _ storeOperatorAuthzFetcher = (*verify.RPCClient)(nil)
 // (ed25519 over the RAW 96 bytes appHash||releaseHash||servingDomainHash) under
 // that key. FAIL-CLOSED: a missing/non-Active authz, a domain-hash mismatch, a
 // malformed receipt field, or an invalid signature all return an error.
-func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string, receipt Receipt) error {
-	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, licenseMintB58, domain)
+func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, programIDB58, licenseMintB58, domain string, receipt Receipt) error {
+	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, programIDB58, licenseMintB58, domain)
 	if err != nil {
 		return err
 	}
@@ -853,7 +920,7 @@ func verifyReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMin
 	return nil
 }
 
-func receiptAuthority(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string) (ed25519.PublicKey, [32]byte, error) {
+func receiptAuthority(ctx context.Context, cr storeOperatorAuthzFetcher, programIDB58, licenseMintB58, domain string) (ed25519.PublicKey, [32]byte, error) {
 	var zero [32]byte
 	programID, err := primitives.PubkeyFromBase58(programIDB58)
 	if err != nil {
@@ -883,11 +950,11 @@ func receiptAuthority(ctx context.Context, cr storeOperatorAuthzFetcher, license
 	return ed25519.PublicKey(storeAuthority[:]), storeDomainHash, nil
 }
 
-func verifyStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licenseMintB58, domain string, receipt StageReceipt) error {
+func verifyStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, programIDB58, licenseMintB58, domain string, receipt StageReceipt) error {
 	if receipt.Schema != "melusina-app-stage-receipt-v1" {
 		return errors.New("check=stage_receipt: schema mismatch")
 	}
-	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, licenseMintB58, domain)
+	pubKey, storeDomainHash, err := receiptAuthority(ctx, cr, programIDB58, licenseMintB58, domain)
 	if err != nil {
 		return err
 	}

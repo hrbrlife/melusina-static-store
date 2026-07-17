@@ -1,8 +1,13 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -12,9 +17,9 @@ var errInjected = errors.New("INJECTED-FAULT: simulated process death")
 const (
 	tAppID  = "app-ccash-go-htmx"
 	oldPDA  = "PDA-old-0763"
-	oldHash = "hash-old-0.3.63"
+	oldHash = "1111111111111111111111111111111111111111111111111111111111111111"
 	oldVer  = "0.3.63"
-	newHash = "hash-new-0.3.64"
+	newHash = "2222222222222222222222222222222222222222222222222222222222222222"
 	newVer  = "0.3.64"
 )
 
@@ -44,6 +49,16 @@ type fakeChain struct {
 	fault   *faultPlan
 }
 
+type fakeBuild struct{}
+
+func (fakeBuild) Build(path string) error {
+	return writeTestJSON(path, map[string]any{
+		"schema":   "melusina-app-candidate-receipt-v1",
+		"app":      map[string]any{"appId": tAppID, "version": newVer},
+		"artifact": map[string]any{"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "size": 42},
+	})
+}
+
 func (c *fakeChain) ActiveReleases(appID string) ([]releaseRef, error) {
 	var out []releaseRef
 	for _, e := range c.entries {
@@ -54,30 +69,78 @@ func (c *fakeChain) ActiveReleases(appID string) ([]releaseRef, error) {
 	return out, nil
 }
 
-func (c *fakeChain) RegisterRelease(appID, appHash, version string) (releaseRef, error) {
+func (c *fakeChain) RegisterRelease(appID, appHash, version, nonce, releaseJSONPath, receiptPath string) error {
 	if err := c.fault.maybe("register:before"); err != nil {
-		return releaseRef{}, err
+		return err
 	}
 	// idempotent at the source too: reuse an existing Active entry.
+	var found *chainEntry
+	already := false
 	for _, e := range c.entries {
 		if e.appID == appID && e.appHash == appHash && e.active {
-			return releaseRef{PDA: e.pda, AppHash: e.appHash, Version: e.version}, c.fault.maybe("register:after")
+			found, already = e, true
+			break
 		}
 	}
-	c.nextPDA++
-	pda := "PDA-new-" + itoa(c.nextPDA)
-	c.entries[pda] = &chainEntry{pda: pda, appID: appID, appHash: appHash, version: version, active: true}
-	return releaseRef{PDA: pda, AppHash: appHash, Version: version}, c.fault.maybe("register:after")
+	if found == nil {
+		c.nextPDA++
+		pda := "PDA-new-" + itoa(c.nextPDA)
+		found = &chainEntry{pda: pda, appID: appID, appHash: appHash, version: version, active: true}
+		c.entries[pda] = found
+	}
+	if err := c.fault.maybe("register:after"); err != nil {
+		return err
+	}
+	h := sha256.Sum256([]byte(appHash + version + nonce))
+	releaseHash := hex.EncodeToString(h[:])
+	if err := writeTestJSON(releaseJSONPath, map[string]any{
+		"$schema": "melusina-release-v1", "appHash": appHash, "releaseHash": releaseHash,
+		"version": version, "releaseNonce": nonce, "releaseEntryPda": found.pda,
+	}); err != nil {
+		return err
+	}
+	receipt := map[string]any{
+		"schema": "melusina-register-release-receipt-v1", "releaseEntryPda": found.pda,
+		"releaseHash": releaseHash, "status": "Active", "alreadyRegistered": already,
+	}
+	if !already {
+		receipt["transactionSignatures"] = []string{"register-tx"}
+	}
+	return writeTestJSON(receiptPath, receipt)
 }
 
-func (c *fakeChain) RevokeRelease(pda string) error {
+func (c *fakeChain) ReleaseStatus(pda string) (releaseStatus, error) {
+	e, ok := c.entries[pda]
+	if !ok {
+		return releaseStatus{}, errors.New("not found")
+	}
+	status := "Revoked"
+	if e.active {
+		status = "Active"
+	}
+	return releaseStatus{PDA: pda, AppHash: e.appHash, Version: e.version, Status: status}, nil
+}
+
+func (c *fakeChain) RevokeRelease(pda, receiptPath string) error {
 	if err := c.fault.maybe("revoke:before"); err != nil {
 		return err
 	}
+	already := true
 	if e, ok := c.entries[pda]; ok {
+		already = !e.active
 		e.active = false // idempotent: revoking an already-revoked PDA is a no-op
 	}
-	return c.fault.maybe("revoke:after")
+	if err := c.fault.maybe("revoke:after"); err != nil {
+		return err
+	}
+	receipt := map[string]any{
+		"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda,
+		"status": "Revoked", "alreadyRevoked": already,
+	}
+	if !already {
+		receipt["transactionSignature"] = "revoke-tx"
+	}
+	return writeTestJSON(receiptPath, receipt)
 }
 
 // direct (non-faulting) inspectors used by assertions at the crash instant.
@@ -105,19 +168,33 @@ type fakeStore struct {
 	fault  *faultPlan
 }
 
-func (s *fakeStore) Stage(appID, appHash string) (string, error) {
+func (s *fakeStore) Stage(appID, appHash, releaseHash, receiptPath string) error {
 	if err := s.fault.maybe("stage:before"); err != nil {
-		return "", err
+		return err
 	}
-	return "stage-" + appHash, s.fault.maybe("stage:after")
+	if err := s.fault.maybe("stage:after"); err != nil {
+		return err
+	}
+	return writeTestJSON(receiptPath, map[string]any{
+		"schema": "melusina-app-stage-receipt-v1", "stageId": "stage-" + appHash,
+		"appId": appID, "appHash": appHash, "releaseHash": releaseHash,
+	})
 }
 
-func (s *fakeStore) Promote(appID, appHash, stageID string) error {
+func (s *fakeStore) Promote(appID, appHash, releaseHash, stageID, receiptPath string) error {
 	if err := s.fault.maybe("promote:before"); err != nil {
 		return err
 	}
 	s.served[appID] = appHash
-	return s.fault.maybe("promote:after")
+	if err := s.fault.maybe("promote:after"); err != nil {
+		return err
+	}
+	return writeTestJSON(receiptPath, map[string]any{
+		"schema": "melusina-app-promotion-receipt-v1", "appHash": appHash, "releaseHash": releaseHash,
+		"stage":   map[string]any{"stageId": stageID, "appId": appID, "appHash": appHash},
+		"rollout": map[string]any{"appId": appID, "currentStageId": stageID, "currentAppHash": appHash, "currentVersion": newVer},
+		"catalog": map[string]any{"appId": appID, "stageId": stageID, "appHash": appHash, "releaseHash": releaseHash, "version": newVer},
+	})
 }
 
 func (s *fakeStore) ServedAppHash(appID string) (string, error) { return s.served[appID], nil }
@@ -151,15 +228,31 @@ func newWorld() (*fakeChain, *fakeStore) {
 }
 
 func baseParams(wal string, ch *fakeChain, st *fakeStore) Params {
+	dir := filepath.Dir(wal)
 	return Params{
-		WALPath:    wal,
-		AppID:      tAppID,
-		NewAppHash: newHash,
-		NewVersion: newVer,
-		StalePDAs:  []string{oldPDA},
-		Chain:      ch,
-		Store:      st,
+		WALPath:         wal,
+		LockPath:        filepath.Join(dir, "app.lock"),
+		ReceiptDir:      filepath.Join(dir, "receipts"),
+		ReleaseJSONPath: filepath.Join(dir, "RELEASE.json"),
+		AppID:           tAppID,
+		NewAppHash:      newHash,
+		NewVersion:      newVer,
+		StalePDAs:       []string{oldPDA},
+		Build:           fakeBuild{},
+		Chain:           ch,
+		Store:           st,
 	}
+}
+
+func writeTestJSON(path string, value any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	raw, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(raw, '\n'), 0o600)
 }
 
 // servedActiveBacked is the observable no-0-Active invariant: the bytes the
@@ -307,6 +400,62 @@ func TestSupersede_IdempotentAfterDone(t *testing.T) {
 	assertConverged(t, ch, st)
 }
 
+func TestSupersede_ConcurrentSameAppLockRejected(t *testing.T) {
+	w := filepath.Join(t.TempDir(), "wal.json")
+	ch, st := newWorld()
+	ch.fault, st.fault = &faultPlan{}, &faultPlan{}
+	p := baseParams(w, ch, st)
+	held, err := acquireAppLock(p.LockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Close()
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "another publisher holds per-app lock") {
+		t.Fatalf("concurrent same-app publish was not rejected: %v", err)
+	}
+}
+
+func TestTerminalReceiptSchemaStrictAndComplete(t *testing.T) {
+	w := filepath.Join(t.TempDir(), "wal.json")
+	ch, st := newWorld()
+	ch.fault, st.fault = &faultPlan{}, &faultPlan{}
+	rec, err := RunSupersede(baseParams(w, ch, st))
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal := newTerminalReceipt(rec)
+	raw, err := json.Marshal(terminal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded terminalReceipt
+	if err := decodeOneJSON(raw, &decoded, true); err != nil {
+		t.Fatalf("terminal schema is not strict-decodable: %v", err)
+	}
+	if decoded.Schema != "melusina-app-publish-terminal-receipt-v1" || decoded.Outcome != "accepted" ||
+		decoded.NativeReceipts["register"].SHA256 == "" || decoded.NativeReceipts["stage"].SHA256 == "" ||
+		decoded.NativeReceipts["promote"].SHA256 == "" || decoded.RevokeReceipts[oldPDA].SHA256 == "" {
+		t.Fatalf("terminal receipt is incomplete: %+v", decoded)
+	}
+}
+
+func TestSupersede_DoneReplayRejectsNativeReceiptDrift(t *testing.T) {
+	dir := t.TempDir()
+	w := filepath.Join(dir, "wal.json")
+	ch, st := newWorld()
+	ch.fault, st.fault = &faultPlan{}, &faultPlan{}
+	p := baseParams(w, ch, st)
+	if _, err := RunSupersede(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(stageReceiptPath(p), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "artifact drift") {
+		t.Fatalf("DONE replay accepted drifted native receipt: %v", err)
+	}
+}
+
 // TestSupersede_WALBindingMismatch proves a WAL for a different publish is
 // refused rather than clobbered.
 func TestSupersede_WALBindingMismatch(t *testing.T) {
@@ -326,7 +475,7 @@ func TestSupersede_WALBindingMismatch(t *testing.T) {
 	}
 	// now a DIFFERENT publish (0.3.65) tries to reuse the same WAL path
 	other := baseParams(wal, ch, st)
-	other.NewAppHash = "hash-new-0.3.65"
+	other.NewAppHash = "3333333333333333333333333333333333333333333333333333333333333333"
 	other.NewVersion = "0.3.65"
 	if _, err := RunSupersede(other); err == nil {
 		t.Fatalf("expected binding-mismatch refusal, got nil")
@@ -365,14 +514,10 @@ func TestSupersede_HarnessDetectsBuggyRevokeFirstGap(t *testing.T) {
 // buggyRevokeFirstDrive is the minimal buggy ordering used only to prove the
 // invariant detects the 0-Active gap.
 func buggyRevokeFirstDrive(ch *fakeChain, crashAfterRevoke bool) error {
-	if err := ch.RevokeRelease(oldPDA); err != nil {
-		return err
-	}
+	ch.entries[oldPDA].active = false
 	if crashAfterRevoke {
 		return errInjected
 	}
-	if _, err := ch.RegisterRelease(tAppID, newHash, newVer); err != nil {
-		return err
-	}
+	ch.entries["PDA-buggy-new"] = &chainEntry{pda: "PDA-buggy-new", appID: tAppID, appHash: newHash, version: newVer, active: true}
 	return nil
 }

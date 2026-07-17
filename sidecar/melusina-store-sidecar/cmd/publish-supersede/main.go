@@ -24,12 +24,14 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -46,18 +48,24 @@ func (s *stringList) Set(v string) error {
 }
 
 type cliOptions struct {
-	wal         string
-	appID       string
-	newAppHash  string
-	newVersion  string
-	stalePDAs   stringList
-	activeCmd   string
-	registerCmd string
-	stageCmd    string
-	promoteCmd  string
-	revokeCmd   string
-	servedCmd   string
-	opTimeout   time.Duration
+	wal          string
+	lockDir      string
+	receiptDir   string
+	releaseJSON  string
+	appID        string
+	newAppHash   string
+	newVersion   string
+	releaseNonce string
+	stalePDAs    stringList
+	buildCmd     string
+	activeCmd    string
+	statusCmd    string
+	registerCmd  string
+	stageCmd     string
+	promoteCmd   string
+	revokeCmd    string
+	servedCmd    string
+	opTimeout    time.Duration
 }
 
 func main() {
@@ -74,32 +82,47 @@ func run(args []string, out *os.File) error {
 	}
 	ops := &commandOps{opts: opts}
 	p := Params{
-		WALPath:    opts.wal,
-		AppID:      opts.appID,
-		NewAppHash: opts.newAppHash,
-		NewVersion: opts.newVersion,
-		StalePDAs:  opts.stalePDAs,
-		Chain:      ops,
-		Store:      ops,
+		WALPath:         opts.wal,
+		LockPath:        appLockPath(opts.lockDir, opts.appID),
+		ReceiptDir:      opts.receiptDir,
+		ReleaseJSONPath: opts.releaseJSON,
+		AppID:           opts.appID,
+		NewAppHash:      opts.newAppHash,
+		NewVersion:      opts.newVersion,
+		ReleaseNonce:    opts.releaseNonce,
+		StalePDAs:       opts.stalePDAs,
+		Build:           ops,
+		Chain:           ops,
+		Store:           ops,
 	}
 	rec, err := RunSupersede(p)
 	if err != nil {
 		return err
 	}
+	terminal := newTerminalReceipt(rec)
+	if err := writeTerminalReceiptDurable(terminalReceiptPath(p), terminal); err != nil {
+		return fmt.Errorf("terminal receipt: %w", err)
+	}
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
-	return enc.Encode(rec)
+	return enc.Encode(terminal)
 }
 
 func parseCLI(args []string) (cliOptions, error) {
 	var o cliOptions
 	fs := flag.NewFlagSet("publish-supersede", flag.ContinueOnError)
 	fs.StringVar(&o.wal, "wal", "", "absolute path to the durable write-ahead receipt (required)")
+	fs.StringVar(&o.lockDir, "lock-dir", "", "absolute directory for per-app locks (required)")
+	fs.StringVar(&o.receiptDir, "receipt-dir", "", "absolute directory for immutable native receipts (required)")
+	fs.StringVar(&o.releaseJSON, "release-json", "", "absolute finalized RELEASE.json path written by register-cmd (required)")
 	fs.StringVar(&o.appID, "app-id", "", "appId being superseded (required)")
 	fs.StringVar(&o.newAppHash, "new-app-hash", "", "new release app_hash (required)")
 	fs.StringVar(&o.newVersion, "new-version", "", "new release version, strictly greater (required)")
-	fs.Var(&o.stalePDAs, "stale-pda", "an exact prior Active ReleaseEntry PDA to retire (repeatable, required)")
+	fs.StringVar(&o.releaseNonce, "release-nonce", "", "32 lowercase hex nonce override; generated once and WAL-pinned when omitted")
+	fs.Var(&o.stalePDAs, "stale-pda", "an exact prior Active ReleaseEntry PDA to retire (repeatable; omit for first publication)")
+	fs.StringVar(&o.buildCmd, "build-cmd", "", "build exact candidate and write MEL_CANDIDATE_RECEIPT_OUT (required)")
 	fs.StringVar(&o.activeCmd, "active-cmd", "", "read-only: prints JSON-lines of Active releases for MEL_APP_ID (required)")
+	fs.StringVar(&o.statusCmd, "status-cmd", "", "read-only exact-PDA status JSON for MEL_PDA (required when stale-pda is present)")
 	fs.StringVar(&o.registerCmd, "register-cmd", "", "governed off-box ceremony: register the new release Active (required)")
 	fs.StringVar(&o.stageCmd, "stage-cmd", "", "stage the new bytes privately, print {\"stageId\":..} (required)")
 	fs.StringVar(&o.promoteCmd, "promote-cmd", "", "durable /publish promote of the staged new bytes (required)")
@@ -113,8 +136,10 @@ func parseCLI(args []string) (cliOptions, error) {
 		return cliOptions{}, fmt.Errorf("unexpected positional args: %v", fs.Args())
 	}
 	required := map[string]string{
-		"--wal": o.wal, "--app-id": o.appID, "--new-app-hash": o.newAppHash,
+		"--wal": o.wal, "--lock-dir": o.lockDir, "--receipt-dir": o.receiptDir,
+		"--release-json": o.releaseJSON, "--app-id": o.appID, "--new-app-hash": o.newAppHash,
 		"--new-version": o.newVersion, "--active-cmd": o.activeCmd,
+		"--build-cmd":    o.buildCmd,
 		"--register-cmd": o.registerCmd, "--stage-cmd": o.stageCmd,
 		"--promote-cmd": o.promoteCmd, "--revoke-cmd": o.revokeCmd, "--served-cmd": o.servedCmd,
 	}
@@ -123,10 +148,20 @@ func parseCLI(args []string) (cliOptions, error) {
 			return cliOptions{}, fmt.Errorf("%s is required", name)
 		}
 	}
-	if len(o.stalePDAs) == 0 {
-		return cliOptions{}, errors.New("at least one --stale-pda is required")
+	if len(o.stalePDAs) > 0 && strings.TrimSpace(o.statusCmd) == "" {
+		return cliOptions{}, errors.New("--status-cmd is required when --stale-pda is present")
+	}
+	for name, path := range map[string]string{"--wal": o.wal, "--lock-dir": o.lockDir, "--receipt-dir": o.receiptDir, "--release-json": o.releaseJSON} {
+		if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+			return cliOptions{}, fmt.Errorf("%s must be an absolute clean path", name)
+		}
 	}
 	return o, nil
+}
+
+func appLockPath(dir, appID string) string {
+	h := sha256.Sum256([]byte(appID))
+	return filepath.Join(dir, fmt.Sprintf("%x.lock", h[:16]))
 }
 
 // commandOps satisfies both ChainOps and StoreOps by shelling to the operator's
@@ -171,6 +206,9 @@ func (c *commandOps) ActiveReleases(appID string) ([]releaseRef, error) {
 		if err := json.Unmarshal([]byte(line), &r); err != nil {
 			return nil, fmt.Errorf("parse active-cmd line %q: %w", line, err)
 		}
+		if strings.TrimSpace(r.PDA) == "" || !isLowerHex(r.AppHash, 64) || strings.TrimSpace(r.Version) == "" {
+			return nil, fmt.Errorf("active-cmd returned an incomplete release: %q", line)
+		}
 		refs = append(refs, releaseRef{PDA: r.PDA, AppHash: r.AppHash, Version: r.Version})
 	}
 	if err := sc.Err(); err != nil {
@@ -179,50 +217,57 @@ func (c *commandOps) ActiveReleases(appID string) ([]releaseRef, error) {
 	return refs, nil
 }
 
-func (c *commandOps) RegisterRelease(appID, newAppHash, newVersion string) (releaseRef, error) {
-	if _, err := c.exec(c.opts.registerCmd, map[string]string{
-		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_NEW_VERSION": newVersion,
-	}); err != nil {
-		return releaseRef{}, err
-	}
-	// Re-read to obtain the freshly-registered PDA (and confirm it is Active).
-	active, err := c.ActiveReleases(appID)
-	if err != nil {
-		return releaseRef{}, err
-	}
-	for _, r := range active {
-		if r.AppHash == newAppHash {
-			return r, nil
-		}
-	}
-	return releaseRef{}, fmt.Errorf("register-cmd completed but appHash %s is not Active", newAppHash)
-}
-
-func (c *commandOps) RevokeRelease(pda string) error {
-	_, err := c.exec(c.opts.revokeCmd, map[string]string{"MEL_PDA": pda})
+func (c *commandOps) Build(candidateReceiptPath string) error {
+	_, err := c.exec(c.opts.buildCmd, map[string]string{
+		"MEL_APP_ID": c.opts.appID, "MEL_NEW_APP_HASH": c.opts.newAppHash,
+		"MEL_NEW_VERSION": c.opts.newVersion, "MEL_CANDIDATE_RECEIPT_OUT": candidateReceiptPath,
+	})
 	return err
 }
 
-func (c *commandOps) Stage(appID, newAppHash string) (string, error) {
-	out, err := c.exec(c.opts.stageCmd, map[string]string{"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash})
-	if err != nil {
-		return "", err
-	}
-	var parsed struct {
-		StageID string `json:"stageId"`
-	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &parsed); err != nil {
-		return "", fmt.Errorf("parse stage-cmd output: %w", err)
-	}
-	if parsed.StageID == "" {
-		return "", errors.New("stage-cmd returned an empty stageId")
-	}
-	return parsed.StageID, nil
+func (c *commandOps) RegisterRelease(appID, newAppHash, newVersion, nonce, releaseJSONPath, receiptPath string) error {
+	_, err := c.exec(c.opts.registerCmd, map[string]string{
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_NEW_VERSION": newVersion,
+		"MEL_RELEASE_NONCE": nonce, "MEL_RELEASE_JSON_OUT": releaseJSONPath,
+		"MEL_REGISTER_RECEIPT_OUT": receiptPath,
+	})
+	return err
 }
 
-func (c *commandOps) Promote(appID, newAppHash, stageID string) error {
+func (c *commandOps) ReleaseStatus(pda string) (releaseStatus, error) {
+	out, err := c.exec(c.opts.statusCmd, map[string]string{"MEL_PDA": pda})
+	if err != nil {
+		return releaseStatus{}, err
+	}
+	var parsed releaseStatus
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &parsed); err != nil {
+		return releaseStatus{}, fmt.Errorf("parse status-cmd output: %w", err)
+	}
+	if parsed.PDA == "" || !isLowerHex(parsed.AppHash, 64) || parsed.Version == "" || parsed.Status == "" {
+		return releaseStatus{}, errors.New("status-cmd returned an incomplete exact-PDA status")
+	}
+	return parsed, nil
+}
+
+func (c *commandOps) RevokeRelease(pda, receiptPath string) error {
+	_, err := c.exec(c.opts.revokeCmd, map[string]string{
+		"MEL_PDA": pda, "MEL_REVOKE_RECEIPT_OUT": receiptPath,
+	})
+	return err
+}
+
+func (c *commandOps) Stage(appID, newAppHash, releaseHash, receiptPath string) error {
+	_, err := c.exec(c.opts.stageCmd, map[string]string{
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_STAGE_RECEIPT_OUT": receiptPath,
+	})
+	return err
+}
+
+func (c *commandOps) Promote(appID, newAppHash, releaseHash, stageID, receiptPath string) error {
 	_, err := c.exec(c.opts.promoteCmd, map[string]string{
-		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_STAGE_ID": stageID,
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_NEW_VERSION": c.opts.newVersion, "MEL_STAGE_ID": stageID, "MEL_PROMOTE_RECEIPT_OUT": receiptPath,
 	})
 	return err
 }

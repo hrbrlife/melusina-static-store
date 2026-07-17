@@ -74,23 +74,38 @@ import (
 	"strings"
 )
 
-const receiptSchema = "melusina-app-publish-supersede-v1"
+const receiptSchema = "melusina-app-publish-wal-v2"
 
 // WAL states (forward-only). See the package doc for the invariant each holds.
 const (
 	stateInit       = "INIT"
+	stateBuilt      = "BUILT"
 	stateRegistered = "REGISTERED"
 	stateStaged     = "STAGED"
 	statePromoted   = "PROMOTED"
 	stateRevoked    = "REVOKED"
+	stateVerified   = "VERIFIED"
 	stateDone       = "DONE"
 )
 
 // releaseRef identifies one on-chain ReleaseEntry for an app.
 type releaseRef struct {
-	PDA     string
-	AppHash string
-	Version string
+	PDA     string `json:"pda"`
+	AppHash string `json:"appHash"`
+	Version string `json:"version"`
+}
+
+type releaseStatus struct {
+	PDA     string `json:"pda"`
+	AppHash string `json:"appHash"`
+	Version string `json:"version"`
+	Status  string `json:"status"`
+}
+
+// BuildOps materializes one immutable, verified candidate receipt. The build
+// runs under the same per-app lock as every later mutation.
+type BuildOps interface {
+	Build(candidateReceiptPath string) error
 }
 
 // ChainOps is the minimal on-chain surface the orchestrator drives. Production
@@ -104,10 +119,12 @@ type ChainOps interface {
 	ActiveReleases(appID string) ([]releaseRef, error)
 	// RegisterRelease makes the NEW ReleaseEntry (appID, newAppHash, newVersion)
 	// Active and returns it. Idempotent: if already Active, returns it unchanged.
-	RegisterRelease(appID, newAppHash, newVersion string) (releaseRef, error)
+	RegisterRelease(appID, newAppHash, newVersion, releaseNonce, releaseJSONPath, receiptPath string) error
+	// ReleaseStatus reads the exact declared PDA, including Revoked entries.
+	ReleaseStatus(pda string) (releaseStatus, error)
 	// RevokeRelease flips the ReleaseEntry at pda from Active to Revoked.
 	// Idempotent: revoking an already-revoked or absent PDA is a no-op success.
-	RevokeRelease(pda string) error
+	RevokeRelease(pda, receiptPath string) error
 }
 
 // StoreOps is the minimal served-catalog surface. Promote MUST be the atomic,
@@ -116,9 +133,9 @@ type ChainOps interface {
 // new complete catalog, never a partial one.
 type StoreOps interface {
 	// Stage privately stages the new bytes and returns a verified stage id.
-	Stage(appID, newAppHash string) (stageID string, err error)
+	Stage(appID, newAppHash, releaseHash, receiptPath string) error
 	// Promote atomically points the served catalog + pointer at newAppHash.
-	Promote(appID, newAppHash, stageID string) error
+	Promote(appID, newAppHash, releaseHash, stageID, receiptPath string) error
 	// ServedAppHash returns the appHash the store currently serves for appID,
 	// or "" if nothing is served yet.
 	ServedAppHash(appID string) (string, error)
@@ -129,13 +146,18 @@ type StoreOps interface {
 // no others (it does not dynamically discover what to revoke), so the revoke
 // scope is auditable up front.
 type Params struct {
-	WALPath    string
-	AppID      string
-	NewAppHash string
-	NewVersion string
-	StalePDAs  []string
-	Chain      ChainOps
-	Store      StoreOps
+	WALPath         string
+	LockPath        string
+	ReceiptDir      string
+	ReleaseJSONPath string
+	AppID           string
+	NewAppHash      string
+	NewVersion      string
+	ReleaseNonce    string
+	StalePDAs       []string
+	Build           BuildOps
+	Chain           ChainOps
+	Store           StoreOps
 
 	// afterStep is a test-only crash seam fired after a state is durably
 	// journaled; returning an error models a process death at that boundary.
@@ -146,20 +168,42 @@ type Params struct {
 // Receipt is the durable WAL record. It is the single source of truth for
 // resuming an interrupted publish.
 type Receipt struct {
-	Schema        string   `json:"schema"`
-	State         string   `json:"state"`
-	AppID         string   `json:"appId"`
-	NewAppHash    string   `json:"newAppHash"`
-	NewVersion    string   `json:"newVersion"`
-	NewReleasePDA string   `json:"newReleasePda,omitempty"`
-	StalePDAs     []string `json:"stalePdas"`
-	StageID       string   `json:"stageId,omitempty"`
-	LedgerID      string   `json:"ledgerId"`
+	Schema           string                 `json:"schema"`
+	State            string                 `json:"state"`
+	AppID            string                 `json:"appId"`
+	NewAppHash       string                 `json:"newAppHash"`
+	NewVersion       string                 `json:"newVersion"`
+	ReleaseNonce     string                 `json:"releaseNonce"`
+	ReleaseHash      string                 `json:"releaseHash,omitempty"`
+	NewReleasePDA    string                 `json:"newReleasePda,omitempty"`
+	StalePDAs        []string               `json:"stalePdas"`
+	ActiveBefore     []releaseRef           `json:"activeBefore,omitempty"`
+	ActiveAfter      []releaseRef           `json:"activeAfter,omitempty"`
+	StageID          string                 `json:"stageId,omitempty"`
+	ServedAppHash    string                 `json:"servedAppHash,omitempty"`
+	LedgerID         string                 `json:"ledgerId"`
+	CandidateReceipt artifactRef            `json:"candidateReceipt,omitempty"`
+	ReleaseJSON      artifactRef            `json:"releaseJson,omitempty"`
+	RegisterReceipt  artifactRef            `json:"registerReceipt,omitempty"`
+	StageReceipt     artifactRef            `json:"stageReceipt,omitempty"`
+	PromoteReceipt   artifactRef            `json:"promoteReceipt,omitempty"`
+	RevokeReceipts   map[string]artifactRef `json:"revokeReceipts,omitempty"`
+	CompletedAtUnix  int64                  `json:"completedAtUnix,omitempty"`
 }
 
 func (p Params) validate() error {
 	if strings.TrimSpace(p.WALPath) == "" {
 		return errors.New("WALPath is required")
+	}
+	for label, path := range map[string]string{
+		"LockPath": p.LockPath, "ReceiptDir": p.ReceiptDir, "ReleaseJSONPath": p.ReleaseJSONPath,
+	} {
+		if strings.TrimSpace(path) == "" {
+			return fmt.Errorf("%s is required", label)
+		}
+		if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+			return fmt.Errorf("%s must be an absolute clean path", label)
+		}
 	}
 	if !filepath.IsAbs(p.WALPath) || filepath.Clean(p.WALPath) != p.WALPath {
 		return errors.New("WALPath must be an absolute clean path")
@@ -167,14 +211,11 @@ func (p Params) validate() error {
 	if strings.TrimSpace(p.AppID) == "" {
 		return errors.New("AppID is required")
 	}
-	if strings.TrimSpace(p.NewAppHash) == "" {
-		return errors.New("NewAppHash is required")
+	if !isLowerHex(p.NewAppHash, 64) {
+		return errors.New("NewAppHash must be 64 lowercase hex characters")
 	}
 	if strings.TrimSpace(p.NewVersion) == "" {
 		return errors.New("NewVersion is required")
-	}
-	if len(p.StalePDAs) == 0 {
-		return errors.New("StalePDAs must name at least one prior Active release to retire")
 	}
 	seen := map[string]bool{}
 	for _, pda := range p.StalePDAs {
@@ -186,8 +227,11 @@ func (p Params) validate() error {
 		}
 		seen[pda] = true
 	}
-	if p.Chain == nil || p.Store == nil {
-		return errors.New("Chain and Store ops are required")
+	if p.Build == nil || p.Chain == nil || p.Store == nil {
+		return errors.New("Build, Chain, and Store ops are required")
+	}
+	if p.ReleaseNonce != "" && !isLowerHex(p.ReleaseNonce, 32) {
+		return errors.New("ReleaseNonce must be 32 lowercase hex characters")
 	}
 	return nil
 }
@@ -199,13 +243,35 @@ func RunSupersede(p Params) (Receipt, error) {
 	if err := p.validate(); err != nil {
 		return Receipt{}, err
 	}
+	lock, err := acquireAppLock(p.LockPath)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer lock.Close()
+	return runSupersedeLocked(p)
+}
+
+func runSupersedeLocked(p Params) (Receipt, error) {
 	rec, err := loadOrSeedReceipt(p)
 	if err != nil {
 		return rec, err
 	}
+	if rec.State == stateDone {
+		if err := verifyCompletedReceipt(p, &rec); err != nil {
+			return rec, fmt.Errorf("completed publish revalidation: %w", err)
+		}
+		return rec, nil
+	}
 	for rec.State != stateDone {
 		switch rec.State {
 		case stateInit:
+			if err := ensureBuilt(p, &rec); err != nil {
+				return rec, fmt.Errorf("build-candidate: %w", err)
+			}
+			if err := advance(p, &rec, stateBuilt); err != nil {
+				return rec, err
+			}
+		case stateBuilt:
 			if err := ensureRegistered(p, &rec); err != nil {
 				return rec, fmt.Errorf("register-new: %w", err)
 			}
@@ -238,6 +304,14 @@ func RunSupersede(p Params) (Receipt, error) {
 				return rec, err
 			}
 		case stateRevoked:
+			if err := ensureFinalVerified(p, &rec); err != nil {
+				return rec, fmt.Errorf("verify-terminal: %w", err)
+			}
+			if err := advance(p, &rec, stateVerified); err != nil {
+				return rec, err
+			}
+		case stateVerified:
+			rec.CompletedAtUnix = nowUnix()
 			if err := advance(p, &rec, stateDone); err != nil {
 				return rec, err
 			}
@@ -246,6 +320,40 @@ func RunSupersede(p Params) (Receipt, error) {
 		}
 	}
 	return rec, nil
+}
+
+func ensureBuilt(p Params, rec *Receipt) error {
+	path := candidateReceiptPath(p)
+	if rec.CandidateReceipt.SHA256 != "" {
+		if err := verifyArtifactRef(rec.CandidateReceipt); err != nil {
+			return err
+		}
+		ref, err := validateCandidateReceipt(rec.CandidateReceipt.Path, rec.AppID, rec.NewVersion)
+		if err != nil {
+			return err
+		}
+		if ref != rec.CandidateReceipt {
+			return errors.New("candidate receipt reference changed")
+		}
+		return nil
+	}
+	if err := p.Build.Build(path); err != nil {
+		return err
+	}
+	ref, err := validateCandidateReceipt(path, rec.AppID, rec.NewVersion)
+	if err != nil {
+		return err
+	}
+	active, err := p.Chain.ActiveReleases(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if err := validateDeclaredInitialActive(active, rec.StalePDAs, rec.NewAppHash); err != nil {
+		return err
+	}
+	rec.CandidateReceipt = ref
+	rec.ActiveBefore = sortedReleaseRefs(active)
+	return nil
 }
 
 func advance(p Params, rec *Receipt, next string) error {
@@ -263,45 +371,105 @@ func advance(p Params, rec *Receipt, next string) error {
 
 // ensureRegistered makes the new release Active on-chain, idempotently.
 func ensureRegistered(p Params, rec *Receipt) error {
+	if rec.RegisterReceipt.SHA256 != "" {
+		if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
+			return err
+		}
+		if err := verifyArtifactRef(rec.ReleaseJSON); err != nil {
+			return err
+		}
+		release, releaseRef, err := validateFinalReleaseJSON(rec.ReleaseJSON.Path, rec)
+		if err != nil {
+			return err
+		}
+		registerRef, err := validateRegisterReceipt(rec.RegisterReceipt.Path, release)
+		if err != nil {
+			return err
+		}
+		if releaseRef != rec.ReleaseJSON || registerRef != rec.RegisterReceipt || release.ReleaseHash != rec.ReleaseHash || release.ReleaseEntryPDA != rec.NewReleasePDA {
+			return errors.New("persisted register artifacts do not match the WAL")
+		}
+		return verifyRegisteredLive(p, rec)
+	}
 	active, err := p.Chain.ActiveReleases(rec.AppID)
 	if err != nil {
 		return err
 	}
-	for _, r := range active {
-		if r.AppHash == rec.NewAppHash {
-			rec.NewReleasePDA = r.PDA // already Active from a prior attempt
-			return nil
-		}
+	_ = active // register adapter is idempotent and must always materialize its native receipt.
+	receiptPath := registerReceiptPath(p)
+	if err := p.Chain.RegisterRelease(rec.AppID, rec.NewAppHash, rec.NewVersion, rec.ReleaseNonce, p.ReleaseJSONPath, receiptPath); err != nil {
+		return err
 	}
-	ref, err := p.Chain.RegisterRelease(rec.AppID, rec.NewAppHash, rec.NewVersion)
+	release, releaseRef, err := validateFinalReleaseJSON(p.ReleaseJSONPath, rec)
 	if err != nil {
 		return err
 	}
-	rec.NewReleasePDA = ref.PDA
-	return nil
+	registerRef, err := validateRegisterReceipt(receiptPath, release)
+	if err != nil {
+		return err
+	}
+	rec.ReleaseHash = release.ReleaseHash
+	rec.NewReleasePDA = release.ReleaseEntryPDA
+	rec.ReleaseJSON = releaseRef
+	rec.RegisterReceipt = registerRef
+	return verifyRegisteredLive(p, rec)
 }
 
 func ensureStaged(p Params, rec *Receipt) error {
-	if rec.StageID != "" {
-		return nil // already staged from a prior attempt
+	if rec.StageReceipt.SHA256 != "" {
+		if err := verifyArtifactRef(rec.StageReceipt); err != nil {
+			return err
+		}
+		stage, _, err := validateStageReceipt(rec.StageReceipt.Path, rec)
+		if err != nil {
+			return err
+		}
+		if stage.StageID != rec.StageID {
+			return errors.New("persisted stageId does not match native stage receipt")
+		}
+		return nil
 	}
-	stageID, err := p.Store.Stage(rec.AppID, rec.NewAppHash)
+	path := stageReceiptPath(p)
+	if err := p.Store.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, path); err != nil {
+		return err
+	}
+	stage, ref, err := validateStageReceipt(path, rec)
 	if err != nil {
 		return err
 	}
-	rec.StageID = stageID
+	rec.StageID = stage.StageID
+	rec.StageReceipt = ref
 	return nil
 }
 
 func ensurePromoted(p Params, rec *Receipt) error {
+	if rec.PromoteReceipt.SHA256 != "" {
+		if err := verifyArtifactRef(rec.PromoteReceipt); err != nil {
+			return err
+		}
+		if _, _, err := validatePromoteReceipt(rec.PromoteReceipt.Path, rec); err != nil {
+			return err
+		}
+	} else {
+		path := promoteReceiptPath(p)
+		if err := p.Store.Promote(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, path); err != nil {
+			return err
+		}
+		_, ref, err := validatePromoteReceipt(path, rec)
+		if err != nil {
+			return err
+		}
+		rec.PromoteReceipt = ref
+	}
 	served, err := p.Store.ServedAppHash(rec.AppID)
 	if err != nil {
 		return err
 	}
-	if served == rec.NewAppHash {
-		return nil // already serving new from a prior attempt
+	if served != rec.NewAppHash {
+		return fmt.Errorf("promotion receipt exists but store serves %q, want %q", served, rec.NewAppHash)
 	}
-	return p.Store.Promote(rec.AppID, rec.NewAppHash, rec.StageID)
+	rec.ServedAppHash = served
+	return nil
 }
 
 // ensureOldRevoked retires exactly the pre-declared StalePDAs. It refuses to
@@ -321,11 +489,106 @@ func ensureOldRevoked(p Params, rec *Receipt) error {
 		if pda == rec.NewReleasePDA {
 			return fmt.Errorf("StalePDAs names the new release %s — refusing to revoke it", pda)
 		}
-		if err := p.Chain.RevokeRelease(pda); err != nil {
-			return fmt.Errorf("revoke %s: %w", pda, err)
+		before, err := p.Chain.ReleaseStatus(pda)
+		if err != nil {
+			return fmt.Errorf("pre-read %s: %w", pda, err)
+		}
+		old, ok := findReleaseRef(rec.ActiveBefore, pda)
+		if !ok || before.PDA != pda || before.AppHash != old.AppHash || before.Version != old.Version {
+			return fmt.Errorf("exact-PDA pre-read for %s does not match the initial Active snapshot", pda)
+		}
+		if before.Status != "Active" && before.Status != "Revoked" {
+			return fmt.Errorf("exact-PDA pre-read for %s returned status %q", pda, before.Status)
+		}
+		if rec.RevokeReceipts == nil {
+			rec.RevokeReceipts = make(map[string]artifactRef)
+		}
+		if prior := rec.RevokeReceipts[pda]; prior.SHA256 != "" {
+			if err := verifyArtifactRef(prior); err != nil {
+				return err
+			}
+		} else {
+			path := revokeReceiptPath(p, pda)
+			if err := p.Chain.RevokeRelease(pda, path); err != nil {
+				return fmt.Errorf("revoke %s: %w", pda, err)
+			}
+			ref, err := validateRevokeReceipt(path, pda, before.Status == "Revoked")
+			if err != nil {
+				return err
+			}
+			rec.RevokeReceipts[pda] = ref
+			if err := writeReceiptDurable(p.WALPath, *rec); err != nil {
+				return fmt.Errorf("journal revoke receipt %s: %w", pda, err)
+			}
+		}
+		after, err := p.Chain.ReleaseStatus(pda)
+		if err != nil {
+			return fmt.Errorf("post-read %s: %w", pda, err)
+		}
+		if after.PDA != pda || after.Status != "Revoked" {
+			return fmt.Errorf("revoke %s did not converge to Revoked", pda)
 		}
 	}
 	return nil
+}
+
+func ensureFinalVerified(p Params, rec *Receipt) error {
+	active, err := p.Chain.ActiveReleases(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if len(active) != 1 || active[0].PDA != rec.NewReleasePDA || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.NewVersion {
+		return fmt.Errorf("terminal Active set is not exactly the new release: %+v", active)
+	}
+	served, err := p.Store.ServedAppHash(rec.AppID)
+	if err != nil {
+		return err
+	}
+	if served != rec.NewAppHash {
+		return fmt.Errorf("terminal served appHash %q != %q", served, rec.NewAppHash)
+	}
+	rec.ActiveAfter = sortedReleaseRefs(active)
+	rec.ServedAppHash = served
+	return nil
+}
+
+func verifyCompletedReceipt(p Params, rec *Receipt) error {
+	if rec.CompletedAtUnix <= 0 || rec.ReleaseHash == "" || rec.NewReleasePDA == "" || rec.StageID == "" {
+		return errors.New("DONE WAL is missing terminal fields")
+	}
+	if err := ensureBuilt(p, rec); err != nil {
+		return err
+	}
+	if err := ensureRegistered(p, rec); err != nil {
+		return err
+	}
+	if err := ensureStaged(p, rec); err != nil {
+		return err
+	}
+	if err := ensurePromoted(p, rec); err != nil {
+		return err
+	}
+	for _, pda := range rec.StalePDAs {
+		ref := rec.RevokeReceipts[pda]
+		if err := verifyArtifactRef(ref); err != nil {
+			return fmt.Errorf("revoke receipt %s: %w", pda, err)
+		}
+		if _, err := validateRevokeReceipt(ref.Path, pda, true); err != nil {
+			// A receipt for the actual transition has alreadyRevoked=false. On
+			// completed replay either form is valid; only its exact hash and PDA
+			// binding matter here.
+			var native revokeNativeReceipt
+			parsed, readErr := readNativeJSON(ref.Path, &native)
+			if readErr != nil || parsed != ref || native.Schema != "melusina-revoke-release-receipt-v1" || native.ReleaseEntryPDA != pda || native.Status != "Revoked" {
+				return fmt.Errorf("revoke receipt %s binding mismatch", pda)
+			}
+		}
+		status, err := p.Chain.ReleaseStatus(pda)
+		if err != nil || status.Status != "Revoked" {
+			return fmt.Errorf("stale PDA %s is not still Revoked", pda)
+		}
+	}
+	return ensureFinalVerified(p, rec)
 }
 
 // servedReleaseIsActive reports whether the release the store currently serves
@@ -372,13 +635,20 @@ func loadOrSeedReceipt(p Params) (Receipt, error) {
 		return Receipt{}, err
 	}
 	seed := Receipt{
-		Schema:     receiptSchema,
-		State:      stateInit,
-		AppID:      p.AppID,
-		NewAppHash: p.NewAppHash,
-		NewVersion: p.NewVersion,
-		StalePDAs:  append([]string(nil), p.StalePDAs...),
-		LedgerID:   ledgerID,
+		Schema:       receiptSchema,
+		State:        stateInit,
+		AppID:        p.AppID,
+		NewAppHash:   p.NewAppHash,
+		NewVersion:   p.NewVersion,
+		ReleaseNonce: p.ReleaseNonce,
+		StalePDAs:    append([]string(nil), p.StalePDAs...),
+		LedgerID:     ledgerID,
+	}
+	if seed.ReleaseNonce == "" {
+		seed.ReleaseNonce, err = randomHex(16)
+		if err != nil {
+			return Receipt{}, err
+		}
 	}
 	if err := writeReceiptExclusive(p.WALPath, seed); err != nil {
 		if errors.Is(err, os.ErrExist) {
@@ -412,11 +682,17 @@ func validateReceiptBinding(rec Receipt, p Params) error {
 	if rec.NewVersion != p.NewVersion {
 		return fmt.Errorf("newVersion %q != %q", rec.NewVersion, p.NewVersion)
 	}
+	if p.ReleaseNonce != "" && rec.ReleaseNonce != p.ReleaseNonce {
+		return fmt.Errorf("releaseNonce %q != requested override", rec.ReleaseNonce)
+	}
+	if !isLowerHex(rec.ReleaseNonce, 32) {
+		return errors.New("persisted releaseNonce is malformed")
+	}
 	if !sameStringSet(rec.StalePDAs, p.StalePDAs) {
 		return errors.New("stalePdas set differs")
 	}
 	switch rec.State {
-	case stateInit, stateRegistered, stateStaged, statePromoted, stateRevoked, stateDone:
+	case stateInit, stateBuilt, stateRegistered, stateStaged, statePromoted, stateRevoked, stateVerified, stateDone:
 	default:
 		return fmt.Errorf("unknown persisted state %q", rec.State)
 	}

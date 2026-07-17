@@ -1,4 +1,64 @@
-# publish-supersede — the no-gap app republish orchestrator (card 0055)
+# publish-app-release — fast v2 app publisher contribution
+
+The candidate operator entry point is `scripts/publish-app-release.sh`. It builds this
+vendor-pinned Go command and then holds one per-app lock across the complete
+release:
+
+```
+INIT -> BUILT -> REGISTERED -> STAGED -> PROMOTED -> REVOKED -> VERIFIED -> DONE
+```
+
+This branch is an isolated contribution. Riker and
+`SYSTEM-RELEASE-RAIL-SHELL` own review and integration into the one canonical
+production publisher; this branch does not merge or deploy itself.
+
+It supports both a first publication (`--stale-pda` omitted, initial Active set
+must be zero) and a supersede (every initial Active PDA must be declared with a
+repeatable `--stale-pda`). There is no Publish Tzar and no revoke-first mode.
+The authorized vertical supplies local allowlisted command adapters; remote
+store data never supplies a command, unit name, path, or credential.
+
+## Native receipt contract
+
+The command adapters are invoked with fixed environment variables and must
+atomically materialize JSON files. Operation banners on stdout are ignored.
+
+| adapter | required output |
+|---|---|
+| `--build-cmd` | `$MEL_CANDIDATE_RECEIPT_OUT`, schema `melusina-app-candidate-receipt-v1` |
+| `--register-cmd` | finalized `$MEL_RELEASE_JSON_OUT` plus `$MEL_REGISTER_RECEIPT_OUT`; consume the WAL-pinned `$MEL_RELEASE_NONCE` |
+| `--stage-cmd` | raw verified `cmd/submit --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"` receipt |
+| `--promote-cmd` | raw verified `cmd/submit --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"` receipt |
+| `--revoke-cmd` | `$MEL_REVOKE_RECEIPT_OUT`, bound to the exact `$MEL_PDA` |
+
+`cmd/submit` is therefore integrated through its receipt-file API, never by
+scraping human stdout. The WAL hashes the candidate receipt, finalized
+`RELEASE.json`, register/stage/promote receipts, and every exact-PDA revoke
+receipt. A successful invocation emits exactly one strict
+`melusina-app-publish-terminal-receipt-v1` JSON document and durably writes the
+same document as `<receipt-dir>/terminal.json`.
+
+The register adapter must make its operation idempotent. On restart it receives
+the identical 32-lowercase-hex nonce stored before BUILD, so
+`sha256(appHash||version||nonce)` reproduces the already-registered
+`releaseHash`; this is the restart-safe rule from commit `7d9108a8`.
+
+The read adapters are deliberately separate from mutators:
+
+- `--active-cmd`: JSONL `{pda,version,appHash}` for every Active entry.
+- `--status-cmd`: one `{pda,version,appHash,status}` for the exact `$MEL_PDA`.
+- `--served-cmd`: the currently served appHash only.
+
+`cmd/list-active-releases` supports both `-app-id` (including a zero-state first
+publish) and `-status-pda` (including already-Revoked success). Before a revoke,
+the engine requires the exact PDA's current identity to match its durable
+initial Active snapshot; after the adapter returns it requires `Revoked`.
+
+All paths (`--wal`, `--lock-dir`, `--receipt-dir`, `--release-json`) must be
+absolute and clean. The same WAL may only resume the same appId, appHash,
+version, nonce override, and stale-PDA set. Artifact drift fails closed.
+
+## No-gap supersede property (card 0055)
 
 Replaces an app's Active on-chain `ReleaseEntry` with a strictly-greater one
 **without ever leaving the app with zero Active releases**.
@@ -44,7 +104,7 @@ and revokes the old **last**.
 ## The no-gap ordering
 
 ```
-INIT -> REGISTERED -> STAGED -> PROMOTED -> REVOKED -> DONE
+INIT -> BUILT -> REGISTERED -> STAGED -> PROMOTED -> REVOKED -> VERIFIED -> DONE
 ```
 
 | state | on-chain Active | served bytes | app dark? |

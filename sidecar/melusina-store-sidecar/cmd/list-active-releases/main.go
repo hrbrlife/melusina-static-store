@@ -18,6 +18,8 @@
 // Usage:
 //
 //	list-active-releases -rpc-url <url> -known-pda <any-known-ReleaseEntry-PDA-for-this-app>
+//	list-active-releases -rpc-url <url> -app-id <52-char-Sandstorm-appId>
+//	list-active-releases -rpc-url <url> -status-pda <exact-ReleaseEntry-PDA>
 //
 // Prints one JSON line per Active entry: {pda, version, appHash}. Read-only —
 // makes zero on-chain writes.
@@ -55,20 +57,35 @@ type activeEntry struct {
 
 func main() {
 	rpcURL := flag.String("rpc-url", "", "Solana JSON-RPC endpoint (required)")
-	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; required — used to read app_id)")
+	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; derives app_id)")
+	appIDText := flag.String("app-id", "", "52-character Sandstorm appId (supports zero-state first publication)")
+	statusPDA := flag.String("status-pda", "", "read one exact ReleaseEntry PDA including Revoked status")
 	programIDFlag := flag.String("program-id", defaultLicenseProgramID, "license-registry program id")
 	flag.Parse()
-	if *rpcURL == "" || *knownPDA == "" {
-		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> -known-pda <pda>")
+	modes := 0
+	for _, value := range []string{*knownPDA, *appIDText, *statusPDA} {
+		if value != "" {
+			modes++
+		}
+	}
+	if *rpcURL == "" || modes != 1 {
+		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> exactly one of {-known-pda <pda>, -app-id <appId>, -status-pda <pda>}")
 		os.Exit(2)
 	}
-	if err := run(*rpcURL, *knownPDA, *programIDFlag); err != nil {
+	if *statusPDA != "" {
+		if err := runStatus(*rpcURL, *statusPDA); err != nil {
+			fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if err := run(*rpcURL, *knownPDA, *appIDText, *programIDFlag); err != nil {
 		fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(rpcURL, knownPDA, programIDB58 string) error {
+func run(rpcURL, knownPDA, appIDText, programIDB58 string) error {
 	programID, err := primitives.PubkeyFromBase58(programIDB58)
 	if err != nil {
 		return fmt.Errorf("bad -program-id: %w", err)
@@ -77,16 +94,24 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	data, err := cr.GetAccountInfo(ctx, knownPDA)
-	if err != nil {
-		return fmt.Errorf("fetch known PDA %s: %w", knownPDA, err)
-	}
-	if data == nil {
-		return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
-	}
-	appID, err := verify.ReadReleaseEntryAppID(data)
-	if err != nil {
-		return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+	var appID [32]byte
+	if appIDText != "" {
+		appID, err = decodeSandstormAppID(appIDText)
+		if err != nil {
+			return fmt.Errorf("decode -app-id: %w", err)
+		}
+	} else {
+		data, fetchErr := cr.GetAccountInfo(ctx, knownPDA)
+		if fetchErr != nil {
+			return fmt.Errorf("fetch known PDA %s: %w", knownPDA, fetchErr)
+		}
+		if data == nil {
+			return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
+		}
+		appID, err = verify.ReadReleaseEntryAppID(data)
+		if err != nil {
+			return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+		}
 	}
 	fmt.Fprintf(os.Stderr, "app_id (base58 of raw bytes): %s\n", primitives.EncodeBase58(appID[:]))
 
@@ -113,6 +138,71 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	}
 	fmt.Fprintf(os.Stderr, "%d Active ReleaseEntry account(s) found for this app_id\n", found)
 	return nil
+}
+
+func runStatus(rpcURL, pda string) error {
+	cr := verify.NewRPCClient(rpcURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	data, err := cr.GetAccountInfo(ctx, pda)
+	if err != nil {
+		return fmt.Errorf("fetch exact PDA %s: %w", pda, err)
+	}
+	if data == nil {
+		return fmt.Errorf("exact PDA %s not found", pda)
+	}
+	meta, err := readReleaseEntryMinimal(data)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(struct {
+		PDA     string `json:"pda"`
+		Version string `json:"version"`
+		AppHash string `json:"appHash"`
+		Status  string `json:"status"`
+	}{PDA: pda, Version: meta.version, AppHash: fmt.Sprintf("%x", meta.appHash), Status: meta.status.String()})
+}
+
+const sandstormBase32Digits = "0123456789acdefghjkmnpqrstuvwxyz"
+
+func decodeSandstormAppID(value string) ([32]byte, error) {
+	var out [32]byte
+	if len(value) != 52 {
+		return out, fmt.Errorf("want 52 characters, got %d", len(value))
+	}
+	var buffer uint64
+	bits := 0
+	offset := 0
+	for _, ch := range value {
+		idx := bytes.IndexByte([]byte(sandstormBase32Digits), byte(ch))
+		if idx < 0 {
+			return out, fmt.Errorf("invalid character %q", ch)
+		}
+		buffer = (buffer << 5) | uint64(idx)
+		bits += 5
+		if bits >= 8 {
+			bits -= 8
+			if offset < len(out) {
+				out[offset] = byte(buffer >> bits)
+				offset++
+			}
+			if bits == 0 {
+				buffer = 0
+			} else {
+				buffer &= (1 << bits) - 1
+			}
+		}
+	}
+	if offset != len(out) {
+		return out, fmt.Errorf("decoded %d bytes, want 32", offset)
+	}
+	// 52 base32 digits carry 260 bits. Sandstorm's canonical encoding pads the
+	// final four bits with zero; accepting non-zero padding would give multiple
+	// textual appIds for the same on-chain 32-byte identity.
+	if bits != 4 || buffer != 0 {
+		return out, errors.New("non-canonical non-zero appId padding")
+	}
+	return out, nil
 }
 
 type programAccount struct {

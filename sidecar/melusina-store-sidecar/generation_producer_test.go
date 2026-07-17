@@ -1,0 +1,123 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+)
+
+func sampleShellGeneration() componentrelease.DesiredGeneration {
+	return componentrelease.DesiredGeneration{
+		GenerationID:       63,
+		StoreID:            "melusina-os-root-store",
+		Channel:            "dev",
+		SignedAtUnix:       1784281821,
+		PreviousGeneration: 62,
+		Components: []componentrelease.ComponentRelease{{
+			ComponentID:    "sandstorm-shell",
+			ComponentClass: componentrelease.ClassShell,
+			Version:        "build-63",
+			Build:          63,
+			ArtifactName:   "sandstorm-4b8b4c6b5ca595a39c3e7427103dbcd776ae9fb70492057836cf768a312b0356.tar.xz",
+			SHA256:         "4b8b4c6b5ca595a39c3e7427103dbcd776ae9fb70492057836cf768a312b0356",
+			SizeBytes:      176787848,
+			BundleURL:      "https://bazaar.melusina-os.org/releases/shell/sandstorm-4b8b4c6b5ca595a39c3e7427103dbcd776ae9fb70492057836cf768a312b0356.tar.xz",
+			Chain: componentrelease.ChainAuthority{
+				Kind:          componentrelease.AuthorityInstallerRelease,
+				Program:       "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+				MasterNftMint: "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+				ReleasePDA:    "FMRFyGPzrefaYiETSLTDw8fHqix8GVcGuri31qTZVtgY",
+			},
+		}},
+	}
+}
+
+const testLicenseMint = "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN"
+
+func TestDesiredGenerationProducerServes(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	signed, err := componentrelease.Sign(op, sampleShellGeneration())
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	raw, err := json.Marshal(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dist := t.TempDir()
+	if err := persistDesiredGeneration(dist, raw); err != nil {
+		t.Fatalf("persist: %v", err)
+	}
+
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist}, operator: op}
+	rec := httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200 got %d: %s", rec.Code, rec.Body.String())
+	}
+	var back componentrelease.DesiredGeneration
+	if err := json.Unmarshal(rec.Body.Bytes(), &back); err != nil {
+		t.Fatalf("served body not valid json: %v", err)
+	}
+	pub, err := operatorSignPublicKey(op)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := componentrelease.Verify(pub, "melusina-os-root-store", back); err != nil {
+		t.Fatalf("served generation does not verify: %v", err)
+	}
+	if back.GenerationID != 63 {
+		t.Fatalf("served wrong generation: %d", back.GenerationID)
+	}
+}
+
+func TestDesiredGenerationProducerFailClosedWhenAbsent(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: t.TempDir()}, operator: op}
+	rec := httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 when no generation persisted, got %d", rec.Code)
+	}
+}
+
+func TestDesiredGenerationProducerRefusesForeignSigner(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	rogue := newTestIdentity(t, "rogue-operator", testLicenseMint, "bazaar.melusina-os.org")
+	signed, err := componentrelease.Sign(rogue, sampleShellGeneration())
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(signed)
+	dist := t.TempDir()
+	if err := persistDesiredGeneration(dist, raw); err != nil {
+		t.Fatal(err)
+	}
+	// Service holds op, but the persisted generation was signed by rogue -> refused.
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist}, operator: op}
+	rec := httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 for a foreign-signed generation, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDesiredGenerationProducerRefusesWrongDestination(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	signed, _ := componentrelease.Sign(op, sampleShellGeneration()) // storeId = melusina-os-root-store
+	raw, _ := json.Marshal(signed)
+	dist := t.TempDir()
+	if err := persistDesiredGeneration(dist, raw); err != nil {
+		t.Fatal(err)
+	}
+	// Service configured for a different store identity -> destination mismatch.
+	svc := &publishService{cfg: Config{StoreID: "some-other-store", DistDir: dist}, operator: op}
+	rec := httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 for wrong destination storeId, got %d", rec.Code)
+	}
+}

@@ -49,16 +49,16 @@ type Config struct {
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
 	RootStoreURL    string `json:"root_store_url"`
 	// PublicBaseURL is THIS store's own public origin — the absolute
-	// https://bazaar.<domain> URL the install-side melusina-update-checker.py
-	// fetches /update/manifest.json from and downloads bundles from. The sidecar
-	// listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
+	// https://bazaar.<domain> URL the external host update controller fetches
+	// /update/generation.json from and downloads component bundles from. The
+	// sidecar listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
 	// behind the bazaar TLS edge, so it cannot derive its public origin from
 	// cfg.Domain or by sniffing the request Host (doctrine §2.10: network-facing
 	// endpoints are set explicitly in the deployer, sidecars never sniff their
-	// environment; signing an attacker-influenced Host into the manifest would
-	// also be a signing-oracle footgun). The signed update manifest's bundle_url
-	// is built from this base. Unset => GET /update/manifest.json fails closed
-	// (503): a bundle advertised on an internal/guessed host is unreachable.
+	// environment; signing an attacker-influenced Host into a bundleUrl would also
+	// be a signing-oracle footgun). Each component's bundleUrl in the signed
+	// desired generation is built from this base. Unset => publishing a generation
+	// whose bundles would be advertised on an internal/guessed host fails closed.
 	// Example: "https://bazaar.melusina-os.org".
 	PublicBaseURL string `json:"public_base_url"`
 	// ReleaseMasterNftMint is the Master NFT mint used to derive

@@ -72,6 +72,11 @@ type PollDeps struct {
 	Now             func() int64
 	Apply           ApplyDeps
 	RuntimeObserver func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) (RuntimeEvidence, error)
+	// RuntimeBinder independently proves that the reported PID is systemd's
+	// current MainPID and that its /proc executable still has the expected hash.
+	// Nil selects the production systemd+/proc binder; the injection exists so
+	// the deep-stable and recovery paths can be tested without a live systemd.
+	RuntimeBinder func(context.Context, RuntimeEvidence, componentrelease.ComponentInstall, string, string) error
 }
 
 func cursorFromGeneration(vg VerifiedGeneration) *GenerationCursor {
@@ -217,26 +222,8 @@ func (deps PollDeps) runtimeGate(vg VerifiedGeneration) func(context.Context, co
 		if err := validateRuntimeEvidenceTuple(ev, vg, c); err != nil {
 			return err
 		}
-		// Independently bind the running process: read systemd MainPID, hash
-		// /proc/<pid>/exe, then RE-READ the PID to reject a swap race between hash
-		// and confirmation (new bytes on disk + old process must not pass).
-		pid1, err := systemdMainPID(ctx, install.ServiceUnit)
-		if err != nil {
-			return fmt.Errorf("read MainPID for %s: %w", install.ServiceUnit, err)
-		}
-		exeHash, err := procExeSHA256(pid1)
-		if err != nil {
-			return fmt.Errorf("hash /proc/%d/exe: %w", pid1, err)
-		}
-		pid2, err := systemdMainPID(ctx, install.ServiceUnit)
-		if err != nil {
-			return fmt.Errorf("re-read MainPID for %s: %w", install.ServiceUnit, err)
-		}
-		if pid1 != pid2 || ev.PID != pid1 {
-			return fmt.Errorf("MainPID moved (%d->%d) or report PID %d mismatch during runtime bind of %s", pid1, pid2, ev.PID, c.ComponentID)
-		}
-		if !strings.EqualFold(exeHash, c.SHA256) {
-			return fmt.Errorf("/proc/%d/exe hash %s != desired %s for %s", pid1, exeHash, c.SHA256, c.ComponentID)
+		if err := deps.bindRuntimeProcess(ctx, ev, install, c.ComponentID, c.SHA256); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -255,6 +242,38 @@ func validateRuntimeEvidenceTuple(ev RuntimeEvidence, vg VerifiedGeneration, c c
 	}
 	if !strings.EqualFold(ev.ArtifactSHA256, c.SHA256) {
 		return fmt.Errorf("runtime report ArtifactSHA256 %s != desired %s", ev.ArtifactSHA256, c.SHA256)
+	}
+	return nil
+}
+
+// bindRuntimeProcess binds a self-report to the currently-running systemd
+// process. It is shared by initial application, crash recovery, and the
+// deep-stable pre-receipt check: a one-time proof at apply is not enough if the
+// unit can later restart or its release-info endpoint can change.
+func (deps PollDeps) bindRuntimeProcess(ctx context.Context, ev RuntimeEvidence, install componentrelease.ComponentInstall, componentID, expectedSHA string) error {
+	if deps.RuntimeBinder != nil {
+		return deps.RuntimeBinder(ctx, ev, install, componentID, expectedSHA)
+	}
+	// Independently bind the running process: read systemd MainPID, hash
+	// /proc/<pid>/exe, then RE-READ the PID to reject a swap race between hash
+	// and confirmation (new bytes on disk + old process must not pass).
+	pid1, err := systemdMainPID(ctx, install.ServiceUnit)
+	if err != nil {
+		return fmt.Errorf("read MainPID for %s: %w", install.ServiceUnit, err)
+	}
+	exeHash, err := procExeSHA256(pid1)
+	if err != nil {
+		return fmt.Errorf("hash /proc/%d/exe: %w", pid1, err)
+	}
+	pid2, err := systemdMainPID(ctx, install.ServiceUnit)
+	if err != nil {
+		return fmt.Errorf("re-read MainPID for %s: %w", install.ServiceUnit, err)
+	}
+	if pid1 != pid2 || ev.PID != pid1 {
+		return fmt.Errorf("MainPID moved (%d->%d) or report PID %d mismatch during runtime bind of %s", pid1, pid2, ev.PID, componentID)
+	}
+	if !strings.EqualFold(exeHash, expectedSHA) {
+		return fmt.Errorf("/proc/%d/exe hash %s != desired %s for %s", pid1, exeHash, expectedSHA, componentID)
 	}
 	return nil
 }
@@ -326,12 +345,24 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 		ci, ok := ad.Registry.Components[id]
 		return ci, ok
 	}
+	entryFor := make(map[string]WALEntry, len(entries))
+	for _, e := range entries {
+		entryFor[e.ComponentID] = e
+	}
 	observe := func(id string) (string, bool) {
 		running := ""
 		if ad.Observe != nil {
 			running = ad.Observe(id)
 		}
-		return running, deps.componentHealthy(ctx, id, running, installFor)
+		e, ok := entryFor[id]
+		if !ok {
+			return running, false
+		}
+		install, ok := installFor(id)
+		if !ok {
+			return running, false
+		}
+		return running, deps.componentHealthy(ctx, e, running, install)
 	}
 
 	// A member still in StateApplying/StateRestarted means a crash interrupted the
@@ -366,22 +397,27 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 	return nil
 }
 
-// componentHealthy binds the running process through RuntimeObserver: a component is
-// healthy only when its structured self-report names this component with a concrete
-// ArtifactSHA256. With no observer wired it degrades to "a resolvable running build".
-func (deps PollDeps) componentHealthy(ctx context.Context, id, runningHash string, installFor func(string) (componentrelease.ComponentInstall, bool)) bool {
-	if deps.RuntimeObserver == nil {
-		return strings.TrimSpace(runningHash) != ""
-	}
-	install, ok := installFor(id)
-	if !ok {
+// componentHealthy is the later-tick/recovery equivalent of RuntimeGate. A
+// nonempty self-report is not enough: before a component can recover or mint a
+// deep-stable receipt, its on-disk target, full desired tuple, and independently
+// bound running process must still agree with the persisted WAL.
+func (deps PollDeps) componentHealthy(ctx context.Context, entry WALEntry, runningHash string, install componentrelease.ComponentInstall) bool {
+	if !strings.EqualFold(strings.TrimSpace(runningHash), entry.ToHash) {
 		return false
 	}
-	ev, err := deps.RuntimeObserver(ctx, componentrelease.ComponentRelease{ComponentID: id}, install)
+	if deps.RuntimeObserver == nil {
+		return true
+	}
+	component := componentReleaseFromWAL(entry)
+	ev, err := deps.RuntimeObserver(ctx, component, install)
 	if err != nil {
 		return false
 	}
-	return ev.ComponentID == id && strings.TrimSpace(ev.ArtifactSHA256) != ""
+	vg := VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: entry.GenerationID}}
+	if err := validateRuntimeEvidenceTuple(ev, vg, component); err != nil {
+		return false
+	}
+	return deps.bindRuntimeProcess(ctx, ev, install, component.ComponentID, component.SHA256) == nil
 }
 
 // generationDeepStable reports whether EVERY member of a generation is healthy-unstable
@@ -408,6 +444,14 @@ func (deps PollDeps) finalizeGenerationAtomic(ctx context.Context, ad ApplyDeps,
 		install, ok := installFor(e.ComponentID)
 		if !ok {
 			return false // cannot resolve the install — leave the generation active for retry
+		}
+		running := ""
+		if ad.Observe != nil {
+			running = ad.Observe(e.ComponentID)
+		}
+		if !deps.componentHealthy(ctx, e, running, install) {
+			deps.rollbackGeneration(ctx, ad, members, installFor, "pre-complete runtime re-verify refused "+e.ComponentID)
+			return false
 		}
 		if ad.ChainGate != nil {
 			if err := ad.ChainGate(ctx, componentReleaseFromWAL(e), install); err != nil {

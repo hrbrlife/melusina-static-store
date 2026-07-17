@@ -108,8 +108,39 @@ func TestFetchAndVerifyGenerationHappy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid generation rejected: %v", err)
 	}
-	if got.GenerationID != 1 || got.StoreID != "melusina-os-root-store" {
-		t.Fatalf("wrong generation returned: %+v", got)
+	if got.Doc.GenerationID != 1 || got.Doc.StoreID != "melusina-os-root-store" {
+		t.Fatalf("wrong generation returned: %+v", got.Doc)
+	}
+	if got.RawSHA256 == "" {
+		t.Fatal("VerifiedGeneration missing raw served-bytes digest")
+	}
+}
+
+func TestAcceptAgainstCursor(t *testing.T) {
+	// genesis cursor accepts any first generation
+	if err := AcceptAgainstCursor(GenerationCursor{}, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 5}, RawSHA256: "aa"}); err != nil {
+		t.Fatalf("genesis cursor rejected: %v", err)
+	}
+	cursor := GenerationCursor{GenerationID: 5, RawSHA256: "committed-digest"}
+	// downgrade refused
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 4}, RawSHA256: "x"}); err == nil {
+		t.Fatal("downgrade accepted")
+	}
+	// same generation, different bytes = equivocation refused
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 5}, RawSHA256: "DIFFERENT"}); err == nil {
+		t.Fatal("equivocation accepted")
+	}
+	// same generation, same bytes = no-op accepted
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 5}, RawSHA256: "committed-digest"}); err != nil {
+		t.Fatalf("same-gen same-bytes rejected: %v", err)
+	}
+	// forward generation not chaining onto the committed one = refused
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 6, PreviousGeneration: 4}, RawSHA256: "y"}); err == nil {
+		t.Fatal("chain break accepted")
+	}
+	// valid forward advance (6 chains onto committed 5)
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 6, PreviousGeneration: 5}, RawSHA256: "z"}); err != nil {
+		t.Fatalf("valid forward advance rejected: %v", err)
 	}
 }
 

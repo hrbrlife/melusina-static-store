@@ -3,6 +3,8 @@ package hostupdate
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +13,15 @@ import (
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+// VerifiedGeneration is a fully-verified desired generation plus the sha256 of the
+// EXACT served bytes. The raw digest is what the poller persists (a Generation
+// cursor) to refuse equivocation/replay — the same generation id must never be
+// served with different bytes.
+type VerifiedGeneration struct {
+	Doc       componentrelease.DesiredGeneration
+	RawSHA256 string
+}
 
 // maxGenerationBytes bounds the fetched desired-generation document. A generation
 // is small typed JSON (component metadata, not artifacts); a lying origin cannot
@@ -45,8 +56,8 @@ type FetchOptions struct {
 //   - componentrelease.Verify checks the operator signature, the destination
 //     storeId, and the canonical generationHash;
 //   - the document's bundleOrigin must equal the pinned origin.
-func FetchAndVerifyGeneration(ctx context.Context, get componentrelease.HTTPGetter, opts FetchOptions) (componentrelease.DesiredGeneration, error) {
-	var zero componentrelease.DesiredGeneration
+func FetchAndVerifyGeneration(ctx context.Context, get componentrelease.HTTPGetter, opts FetchOptions) (VerifiedGeneration, error) {
+	var zero VerifiedGeneration
 	origin := strings.TrimRight(strings.TrimSpace(opts.ExpectedBundleOrigin), "/")
 	if origin == "" {
 		return zero, errors.New("no pinned bundle origin")
@@ -96,7 +107,47 @@ func FetchAndVerifyGeneration(ctx context.Context, get componentrelease.HTTPGett
 	if strings.TrimRight(strings.TrimSpace(doc.BundleOrigin), "/") != origin {
 		return zero, fmt.Errorf("generation bundleOrigin %q != pinned origin %q", doc.BundleOrigin, origin)
 	}
-	return doc, nil
+	rawSum := sha256.Sum256(body)
+	return VerifiedGeneration{Doc: doc, RawSHA256: hex.EncodeToString(rawSum[:])}, nil
+}
+
+// GenerationCursor is the poller's PERSISTED anti-replay state: the last generation
+// it acted on and that generation's raw served-bytes digest.
+type GenerationCursor struct {
+	Schema       string `json:"schema"`
+	GenerationID uint64 `json:"generationId"`
+	RawSHA256    string `json:"rawSha256"`
+}
+
+// AcceptAgainstCursor decides whether a freshly fetched+verified generation may be
+// acted on, given the poller's persisted cursor. Fail-closed anti-equivocation /
+// replay:
+//   - refuse a generation OLDER than the committed one (downgrade);
+//   - refuse the SAME generation id served with a DIFFERENT raw digest (the store
+//     equivocated — same version, different bytes);
+//   - refuse a forward generation whose previousGeneration != the committed
+//     generation (a fork or a skipped generation in the chain).
+//
+// A genesis cursor (GenerationID 0) accepts any first generation.
+func AcceptAgainstCursor(cursor GenerationCursor, vg VerifiedGeneration) error {
+	if cursor.GenerationID == 0 {
+		return nil
+	}
+	gen := vg.Doc.GenerationID
+	switch {
+	case gen < cursor.GenerationID:
+		return fmt.Errorf("stale generation %d < committed %d (downgrade refused)", gen, cursor.GenerationID)
+	case gen == cursor.GenerationID:
+		if !strings.EqualFold(vg.RawSHA256, cursor.RawSHA256) {
+			return fmt.Errorf("equivocation: generation %d served raw digest %s != committed %s", gen, vg.RawSHA256, cursor.RawSHA256)
+		}
+		return nil // same generation, same bytes — already committed, no-op
+	default: // gen > cursor.GenerationID
+		if vg.Doc.PreviousGeneration != cursor.GenerationID {
+			return fmt.Errorf("chain break: generation %d previousGeneration %d != committed %d", gen, vg.Doc.PreviousGeneration, cursor.GenerationID)
+		}
+		return nil
+	}
 }
 
 // assertNoDuplicateJSONKeys walks the document and refuses a duplicate key in any

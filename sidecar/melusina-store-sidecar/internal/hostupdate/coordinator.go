@@ -156,29 +156,44 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if !ok {
 		return nil, fmt.Errorf("no adapter registered for applyKind %q", install.ApplyKind)
 	}
+	marker, err := planRuntimeMarker(deps.RuntimeMarkerBackupDir, generationID, c, install)
+	if err != nil {
+		return nil, fmt.Errorf("plan runtime marker: %w", err)
+	}
 	entry := WALEntry{
-		ComponentID:       c.ComponentID,
-		ComponentClass:    c.ComponentClass,
-		GenerationID:      generationID,
-		AutoApply:         deps.Policy.AutoApply,
-		ApplyKind:         install.ApplyKind,
-		FromHash:          installedHash,
-		ToHash:            c.SHA256,
-		ToVersion:         c.Version,
-		ContentHash:       c.ContentSHA256,
-		Chain:             c.Chain,
-		StagedPath:        filepath.Join(deps.StagingRoot, c.ComponentID),
-		PriorPath:         priorBackupPath(install.InstallRoot, installedHash),
-		DeepStableSeconds: deps.Policy.DeepStableSeconds,
-		OpenedAtUnix:      deps.now(),
+		ComponentID:              c.ComponentID,
+		ComponentClass:           c.ComponentClass,
+		GenerationID:             generationID,
+		AutoApply:                deps.Policy.AutoApply,
+		ApplyKind:                install.ApplyKind,
+		FromHash:                 installedHash,
+		ToHash:                   c.SHA256,
+		ToVersion:                c.Version,
+		ContentHash:              c.ContentSHA256,
+		Chain:                    c.Chain,
+		StagedPath:               filepath.Join(deps.StagingRoot, c.ComponentID),
+		PriorPath:                priorBackupPath(install.InstallRoot, installedHash),
+		DeepStableSeconds:        deps.Policy.DeepStableSeconds,
+		OpenedAtUnix:             deps.now(),
+		RuntimeMarkerPath:        marker.Path,
+		RuntimeMarkerPriorPath:   marker.PriorPath,
+		RuntimeMarkerPriorSHA256: marker.PriorSHA,
 	}
 	if err := deps.WAL.Open(entry); err != nil {
 		return nil, err
 	}
+	// The exact old marker is retained only AFTER its rollback path/hash has
+	// been durably recorded in the WAL, and BEFORE any later marker/binary
+	// mutation. A crash before this succeeds is still StateStaged, so recovery
+	// discards without touching the live component.
+	if err := PersistRuntimeMarkerFloor(marker); err != nil {
+		_ = deps.WAL.discard(c.ComponentID)
+		return nil, fmt.Errorf("persist runtime marker rollback floor: %w", err)
+	}
 	fail := func(err error, rb componentrelease.Rollback) (componentrelease.Rollback, error) {
 		if rb != nil {
 			_ = rb(ctx)
-		} else if entry.FromHash != "" {
+		} else if entry.FromHash != "" || entry.RuntimeMarkerPath != "" {
 			_ = RollbackFromWAL(ctx, entry, install, deps.Runner)
 		}
 		_, _ = deps.WAL.Rollback(c.ComponentID, deps.now(), err.Error())
@@ -228,7 +243,22 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if err := deps.WAL.Advance(c.ComponentID, StateApplying, nil); err != nil {
 		return fail(fmt.Errorf("wal applying: %w", err), nil)
 	}
+	// The EnvironmentFile changes before the adapter's unit restart, never after:
+	// the new process can only report the signed generation/version it was started
+	// with. The WAL already contains the exact prior marker for crash recovery.
+	if err := WriteRuntimeMarker(marker, generationID, c); err != nil {
+		return fail(fmt.Errorf("write runtime marker: %w", err), nil)
+	}
 	rb, err := adapter.Apply(ctx, staged, c, install)
+	if rb != nil {
+		adapterRollback := rb
+		rb = func(rbctx context.Context) error {
+			if markerErr := RestoreRuntimeMarkerFromWAL(entry, install); markerErr != nil {
+				return fmt.Errorf("restore runtime marker before binary rollback: %w", markerErr)
+			}
+			return adapterRollback(rbctx)
+		}
+	}
 	if err != nil {
 		return fail(fmt.Errorf("apply: %w", err), rb) // HOLD req2: rb is non-nil even on failed restart
 	}
@@ -254,6 +284,10 @@ type ApplyDeps struct {
 	WAL         *WALStore
 	Runner      CommandRunner
 	StagingRoot string
+	// RuntimeMarkerBackupDir holds retained pre-apply EnvironmentFiles. It is
+	// controller-owned state (not a remote path); the registry names only the
+	// specific RuntimeEnvFile consumed by the service unit.
+	RuntimeMarkerBackupDir string
 	// Observe returns a component's currently-installed artifact hash (for delta).
 	Observe func(componentID string) (installedHash string)
 	// ChainGate runs the per-class on-chain Active + hash gate BEFORE any mutation

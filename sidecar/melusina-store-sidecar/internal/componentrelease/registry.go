@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -97,6 +98,14 @@ type ComponentInstall struct {
 	// http://127.0.0.1/melusina/release-info for the shell). Names a fact source,
 	// not an action.
 	SelfReportURL string `json:"selfReportUrl,omitempty"`
+	// RuntimeEnvFile is the root-owned, install-local systemd EnvironmentFile that
+	// supplies the signed runtime tuple to this component at exec time. The remote
+	// DesiredGeneration can never choose this path. Before a mutation the controller
+	// persists its exact prior bytes in the WAL; it atomically writes the desired
+	// generation/version/hash before the unit restart, and restores the prior file
+	// before a rollback restart. A unit that does not consume this file fails the
+	// structured runtime gate rather than minting a receipt for an old process.
+	RuntimeEnvFile string `json:"runtimeEnvFile,omitempty"`
 
 	KeepOldBuilds int `json:"keepOldBuilds,omitempty"` // pruning floor for tarball-symlink-swap
 }
@@ -140,6 +149,9 @@ func (ci ComponentInstall) validate(key string) error {
 	}
 	if len(ci.HealthCommand) == 0 {
 		return fmt.Errorf("registry %s: healthCommand must be a non-empty argv (a health gate is mandatory)", key)
+	}
+	if ci.RuntimeEnvFile != "" && (!filepath.IsAbs(ci.RuntimeEnvFile) || filepath.Clean(ci.RuntimeEnvFile) != ci.RuntimeEnvFile) {
+		return fmt.Errorf("registry %s: runtimeEnvFile must be an absolute clean path", key)
 	}
 	if ci.KeepOldBuilds < 0 {
 		return fmt.Errorf("registry %s: keepOldBuilds must be non-negative", key)

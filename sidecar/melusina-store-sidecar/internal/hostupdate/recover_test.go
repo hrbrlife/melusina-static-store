@@ -34,7 +34,16 @@ func TestKillAfterSwapRollsBackFromWAL(t *testing.T) {
 	priorBytes := []byte("PRIOR-BINARY-swaprail-gen1")
 	newBytes := []byte("NEW-BINARY-swaprail-gen2-UNSTABLE")
 	priorPath := filepath.Join(dir, ".rrs-prev", "swaprail."+hashBytes(priorBytes)[:12])
+	runtimeMarkerPath := filepath.Join(dir, "runtime", "swaprail.env")
+	priorRuntimeMarker := []byte("RRS_GENERATION_ID=1\nRRS_SIDECAR_VERSION=gen-1\n")
+	priorRuntimePath := filepath.Join(dir, "runtime-backups", "swaprail", "gen2-before.env")
 	if err := os.MkdirAll(filepath.Dir(priorPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(runtimeMarkerPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(priorRuntimePath), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	// The retained prior (adapter kept it before swap).
@@ -45,19 +54,30 @@ func TestKillAfterSwapRollsBackFromWAL(t *testing.T) {
 	if err := os.WriteFile(installRoot, newBytes, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// The process was started with the NEW marker just before the controller
+	// crashed. Recovery must restore the retained old marker BEFORE its restart.
+	if err := os.WriteFile(runtimeMarkerPath, []byte("RRS_GENERATION_ID=2\nRRS_SIDECAR_VERSION=gen-2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(priorRuntimePath, priorRuntimeMarker, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	entry := WALEntry{
 		ComponentID: "swaprail", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
 		FromHash: hashBytes(priorBytes), FromVersion: "gen-1",
 		ToHash: hashBytes(newBytes), ToVersion: "gen-2",
-		StagedPath:        filepath.Join(dir, "staging", "swaprail"),
-		PriorPath:         priorPath,
-		DeepStableSeconds: 120,
+		StagedPath:               filepath.Join(dir, "staging", "swaprail"),
+		PriorPath:                priorPath,
+		RuntimeMarkerPath:        runtimeMarkerPath,
+		RuntimeMarkerPriorPath:   priorRuntimePath,
+		RuntimeMarkerPriorSHA256: hashBytes(priorRuntimeMarker),
+		DeepStableSeconds:        120,
 	}
 	install := componentrelease.ComponentInstall{
 		ComponentID: "swaprail", ComponentClass: componentrelease.ClassSidecar,
 		ApplyKind: componentrelease.ApplyBinaryReplace, InstallRoot: installRoot,
-		ServiceUnit: "swaprail.service", HealthCommand: []string{"/bin/true"},
+		ServiceUnit: "swaprail.service", HealthCommand: []string{"/bin/true"}, RuntimeEnvFile: runtimeMarkerPath,
 	}
 	runner := &fakeRunner{}
 
@@ -71,6 +91,9 @@ func TestKillAfterSwapRollsBackFromWAL(t *testing.T) {
 	}
 	if string(got) != string(priorBytes) {
 		t.Fatalf("installed binary not restored to prior: got %q", got)
+	}
+	if marker, err := os.ReadFile(runtimeMarkerPath); err != nil || string(marker) != string(priorRuntimeMarker) {
+		t.Fatalf("runtime marker not restored before rollback restart: marker=%q err=%v", marker, err)
 	}
 	// It must have restarted the unit once.
 	if len(runner.calls) != 1 || runner.calls[0][0] != "systemctl" || runner.calls[0][2] != "swaprail.service" {

@@ -277,11 +277,17 @@ func sampleRegistry() ComponentRegistry {
 	}
 }
 
-func TestRegistryLoadAndResolveAllowlist(t *testing.T) {
-	p := writeRegistry(t, sampleRegistry())
-	reg, err := LoadComponentRegistry(p)
+func TestRegistryParseAndResolveAllowlist(t *testing.T) {
+	// Content is validated via parseComponentRegistry so this passes in a non-root
+	// test env; LoadComponentRegistry's on-host trust gate (root owner / perms /
+	// no-symlink) is exercised by the adversarial overlay's negative cases.
+	raw, err := json.Marshal(sampleRegistry())
 	if err != nil {
-		t.Fatalf("LoadComponentRegistry: %v", err)
+		t.Fatal(err)
+	}
+	reg, err := parseComponentRegistry(raw)
+	if err != nil {
+		t.Fatalf("parseComponentRegistry: %v", err)
 	}
 	// A component in the allowlist with matching class resolves.
 	shell := ComponentRelease{ComponentID: "sandstorm-shell", ComponentClass: ClassShell}

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // ComponentRegistry is the INSTALL-LOCAL, root-owned allowlist that maps a
@@ -168,31 +169,59 @@ func (r ComponentRegistry) Validate() error {
 // apply any component it cannot map to a vetted host-action recipe.
 func LoadComponentRegistry(path string) (ComponentRegistry, error) {
 	var reg ComponentRegistry
-	info, err := os.Stat(path)
+	// No-follow: never trust a SYMLINKED allowlist — a non-root user could point
+	// it at their own file.
+	li, err := os.Lstat(path)
 	if err != nil {
-		return reg, fmt.Errorf("stat component registry %s: %w", path, err)
+		return reg, fmt.Errorf("lstat component registry %s: %w", path, err)
 	}
-	// A root-owned allowlist that grants HOST ACTIONS must not be writable by
-	// group or world — a non-owner-writable trust file is not trustworthy.
-	if perm := info.Mode().Perm(); perm&0o022 != 0 {
-		return reg, fmt.Errorf("component registry %s is group/world-writable (%#o); a root-owned host-action allowlist must be 0644 or stricter", path, perm)
+	if li.Mode()&os.ModeSymlink != 0 {
+		return reg, fmt.Errorf("component registry %s is a symlink; a root host-action allowlist must be a real file", path)
+	}
+	if !li.Mode().IsRegular() {
+		return reg, fmt.Errorf("component registry %s is not a regular file", path)
+	}
+	// Owner must be ROOT (uid 0): a host-action allowlist ownable by a non-root
+	// user is not a root trust root.
+	st, ok := li.Sys().(*syscall.Stat_t)
+	if !ok {
+		return reg, fmt.Errorf("component registry %s: cannot determine file owner", path)
+	}
+	if st.Uid != 0 {
+		return reg, fmt.Errorf("component registry %s is owned by uid %d, not root; a host-action allowlist must be root-owned", path, st.Uid)
+	}
+	// Not group/world-writable.
+	if perm := li.Mode().Perm(); perm&0o022 != 0 {
+		return reg, fmt.Errorf("component registry %s is group/world-writable (%#o); must be 0644 or stricter", path, perm)
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return reg, fmt.Errorf("read component registry %s: %w", path, err)
 	}
+	reg, err = parseComponentRegistry(raw)
+	if err != nil {
+		return reg, fmt.Errorf("component registry %s: %w", path, err)
+	}
+	return reg, nil
+}
+
+// parseComponentRegistry strictly decodes + validates registry CONTENT with no
+// on-host file gate (ownership/perms/symlink). Split out so content can be unit-
+// tested without a root-owned file; LoadComponentRegistry layers the host trust
+// gate on top.
+func parseComponentRegistry(raw []byte) (ComponentRegistry, error) {
+	var reg ComponentRegistry
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&reg); err != nil {
-		return reg, fmt.Errorf("parse component registry %s: %w", path, err)
+		return reg, fmt.Errorf("parse: %w", err)
 	}
-	// Reject trailing data after the single registry object — a second JSON value
-	// smuggled after the allowlist must not be silently ignored.
+	// Reject trailing data after the single registry object.
 	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
-		return reg, fmt.Errorf("component registry %s: unexpected trailing data after the registry object", path)
+		return reg, fmt.Errorf("unexpected trailing data after the registry object")
 	}
 	if err := reg.Validate(); err != nil {
-		return reg, fmt.Errorf("component registry %s: %w", path, err)
+		return reg, err
 	}
 	return reg, nil
 }

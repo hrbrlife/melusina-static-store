@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
@@ -64,10 +67,75 @@ func loadCurrentGeneration(distDir string) (componentrelease.DesiredGeneration, 
 	if err != nil {
 		return doc, nil, err
 	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	// STRICT decode: an unknown field (a smuggled host action), a duplicate key
+	// (ambiguous to other parsers), or trailing data are all refused rather than
+	// silently normalized — the served bytes must have exactly one meaning.
+	if err := assertNoDuplicateJSONKeys(raw); err != nil {
+		return doc, nil, fmt.Errorf("desired generation %s: %w", p, err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&doc); err != nil {
 		return doc, nil, fmt.Errorf("parse desired generation %s: %w", p, err)
 	}
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return doc, nil, fmt.Errorf("desired generation %s: unexpected trailing data", p)
+	}
 	return doc, raw, nil
+}
+
+// assertNoDuplicateJSONKeys walks the document with a streaming token scanner and
+// rejects a duplicate key in any object. Go's encoding/json silently keeps the
+// LAST duplicate, so a signed doc could carry a decoy "storeId":"wrong" before the
+// real one and mean different things to different parsers — refused here.
+func assertNoDuplicateJSONKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	return scanNoDupKeys(dec)
+}
+
+func scanNoDupKeys(dec *json.Decoder) error {
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := t.(json.Delim)
+	if !ok {
+		return nil // scalar
+	}
+	switch delim {
+	case '{':
+		seen := make(map[string]bool)
+		for dec.More() {
+			kt, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			key, _ := kt.(string)
+			if seen[key] {
+				return fmt.Errorf("duplicate JSON key %q", key)
+			}
+			seen[key] = true
+			if err := scanNoDupKeys(dec); err != nil {
+				return err
+			}
+		}
+		_, err = dec.Token() // consume '}'
+		return err
+	case '[':
+		for dec.More() {
+			if err := scanNoDupKeys(dec); err != nil {
+				return err
+			}
+		}
+		_, err = dec.Token() // consume ']'
+		return err
+	}
+	return nil
+}
+
+// sameOrigin compares two origins ignoring only a trailing slash.
+func sameOrigin(a, b string) bool {
+	return strings.TrimRight(a, "/") == strings.TrimRight(b, "/") && a != ""
 }
 
 // handleDesiredGeneration serves GET /update/generation.json: the operator-signed
@@ -98,6 +166,18 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 	// dropped onto the served tree is refused, not served.
 	if err := componentrelease.Verify(pub, s.cfg.StoreID, doc); err != nil {
 		http.Error(w, "check=verify_generation: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	// Origin pin: even a validly-operator-signed generation must advertise THIS
+	// store's configured public origin — the served bundle host is the store's own
+	// bazaar, never a foreign origin. Fail-closed if the store has no configured
+	// origin to pin against.
+	if s.cfg.PublicBaseURL == "" {
+		http.Error(w, "generation gate not initialized (no public_base_url to pin the origin)", http.StatusServiceUnavailable)
+		return
+	}
+	if !sameOrigin(doc.BundleOrigin, s.cfg.PublicBaseURL) {
+		http.Error(w, "check=origin_pin: generation bundleOrigin does not match this store's public_base_url", http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

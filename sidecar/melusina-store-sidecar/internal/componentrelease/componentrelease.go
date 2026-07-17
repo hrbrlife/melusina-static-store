@@ -41,6 +41,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -240,10 +241,22 @@ func componentReleaseDigest(c ComponentRelease) [32]byte {
 	return sha256.Sum256(msg)
 }
 
-// sortedComponents returns a copy of the components sorted by ComponentID so the
-// signed order is canonical regardless of how the caller assembled the slice.
+// sortedComponents returns a copy of the components sorted by ComponentID, with
+// each component's Requires also copied + sorted by ComponentID, so BOTH the
+// signed digest AND the serialized wire form are canonical regardless of how the
+// caller assembled the slice (two docs with the same dependency set in a
+// different order produce identical bytes).
 func sortedComponents(components []ComponentRelease) []ComponentRelease {
-	out := append([]ComponentRelease(nil), components...)
+	out := make([]ComponentRelease, len(components))
+	copy(out, components)
+	for i := range out {
+		if len(out[i].Requires) > 0 {
+			reqs := make([]ComponentDependency, len(out[i].Requires))
+			copy(reqs, out[i].Requires)
+			sort.Slice(reqs, func(a, b int) bool { return reqs[a].ComponentID < reqs[b].ComponentID })
+			out[i].Requires = reqs
+		}
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ComponentID < out[j].ComponentID })
 	return out
 }
@@ -510,10 +523,15 @@ func (c ComponentRelease) validate() error {
 	if c.PreviousSHA256 != "" && !isLowerHex(c.PreviousSHA256, 64) {
 		return fmt.Errorf("component %s: previousSha256 must be 64 lowercase hex chars", c.ComponentID)
 	}
+	seenDep := make(map[string]bool, len(c.Requires))
 	for _, d := range c.Requires {
 		if !safeComponentID(d.ComponentID) {
 			return fmt.Errorf("component %s: dependency id %q is not a safe identity token", c.ComponentID, d.ComponentID)
 		}
+		if seenDep[d.ComponentID] {
+			return fmt.Errorf("component %s: duplicate dependency on %q (two conflicting constraints)", c.ComponentID, d.ComponentID)
+		}
+		seenDep[d.ComponentID] = true
 	}
 	return nil
 }
@@ -660,7 +678,13 @@ func isSafeArtifactName(s string) bool {
 // GitHub (the retired gh-pages path). Mirrors update_manifest.assertBundleURLOnBazaar.
 func assertBundleURLOnBazaar(u string) error {
 	if !strings.HasPrefix(u, "https://") {
-		return fmt.Errorf("bundleUrl must be an absolute https:// URL, got %q", u)
+		return fmt.Errorf("must be an absolute https:// URL, got %q", u)
+	}
+	parsed, err := url.Parse(u)
+	if err != nil || parsed.Host == "" {
+		// "https://" or "https:///path" has no host — it would make EVERY https
+		// host eligible. Reject an origin/URL without a concrete host.
+		return fmt.Errorf("must be an absolute https:// URL with a host, got %q", u)
 	}
 	lower := strings.ToLower(u)
 	for _, bad := range []string{"github.com", "githubusercontent.com", "github.io"} {

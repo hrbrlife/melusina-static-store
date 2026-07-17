@@ -57,7 +57,7 @@ func TestDesiredGenerationProducerServes(t *testing.T) {
 		t.Fatalf("persist: %v", err)
 	}
 
-	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist}, operator: op}
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}, operator: op}
 	rec := httptest.NewRecorder()
 	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
 	if rec.Code != http.StatusOK {
@@ -81,7 +81,7 @@ func TestDesiredGenerationProducerServes(t *testing.T) {
 
 func TestDesiredGenerationProducerFailClosedWhenAbsent(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
-	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: t.TempDir()}, operator: op}
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: t.TempDir(), PublicBaseURL: "https://bazaar.melusina-os.org"}, operator: op}
 	rec := httptest.NewRecorder()
 	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
 	if rec.Code != http.StatusServiceUnavailable {
@@ -102,7 +102,7 @@ func TestDesiredGenerationProducerRefusesForeignSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Service holds op, but the persisted generation was signed by rogue -> refused.
-	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist}, operator: op}
+	svc := &publishService{cfg: Config{StoreID: "melusina-os-root-store", DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}, operator: op}
 	rec := httptest.NewRecorder()
 	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
 	if rec.Code != http.StatusServiceUnavailable {
@@ -119,7 +119,7 @@ func TestDesiredGenerationProducerRefusesWrongDestination(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Service configured for a different store identity -> destination mismatch.
-	svc := &publishService{cfg: Config{StoreID: "some-other-store", DistDir: dist}, operator: op}
+	svc := &publishService{cfg: Config{StoreID: "some-other-store", DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}, operator: op}
 	rec := httptest.NewRecorder()
 	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
 	if rec.Code != http.StatusServiceUnavailable {

@@ -97,8 +97,13 @@ type RecoveryOutcome struct {
 	Err         error
 }
 
-// RecoverAll runs the crash-recovery pass over every active WAL entry at
-// controller startup. For each entry it consults RecoveryDecision with the
+// RecoverAll runs a crash-recovery pass over every active WAL entry INDEPENDENTLY.
+// It is the per-component primitive; the controller startup path is
+// RecoverGenerations, which groups entries by generation and recovers each ATOMICALLY
+// (never completing one member while a sibling rolls back). Use RecoverAll only when
+// every active entry is known to be a standalone single-component generation.
+//
+// For each entry it consults RecoveryDecision with the
 // observed running hash + health, then executes:
 //   - discard: no mutation happened (staged) — drop the WAL;
 //   - complete: target + healthy + deep-stable elapsed — finalize applied;

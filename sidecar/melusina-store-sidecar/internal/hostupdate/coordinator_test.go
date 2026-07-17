@@ -139,6 +139,247 @@ func TestCompleteAfterStableChainRevokedRollsBack(t *testing.T) {
 	}
 }
 
+// binReplaceGenFixture writes a real binary-replace component (installed = new bytes,
+// a retained prior that hashes to fromHash) and drives its WAL to targetState under
+// generation gen. Returns the install root.
+func binReplaceGenFixture(t *testing.T, ws *WALStore, dir, id string, gen uint64, priorBytes, newBytes []byte, targetState WALState, openedAt int64, chain componentrelease.ChainAuthority) string {
+	t.Helper()
+	installRoot := filepath.Join(dir, id)
+	priorPath := filepath.Join(dir, ".rrs-prev-"+id, id+"."+hashBytes(priorBytes)[:12])
+	if err := os.MkdirAll(filepath.Dir(priorPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(priorPath, priorBytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installRoot, newBytes, 0o755); err != nil { // running the NEW build post-swap
+		t.Fatal(err)
+	}
+	if err := ws.Open(WALEntry{
+		ComponentID: id, GenerationID: gen, ApplyKind: componentrelease.ApplyBinaryReplace,
+		FromHash: hashBytes(priorBytes), FromVersion: "g-prev", ToHash: hashBytes(newBytes), ToVersion: "g-new",
+		PriorPath: priorPath, DeepStableSeconds: 120, AppliedAtUnix: openedAt, OpenedAtUnix: openedAt, Chain: chain,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	switch targetState {
+	case StateStaged:
+	case StateApplying:
+		if err := ws.Advance(id, StateApplying, nil); err != nil {
+			t.Fatal(err)
+		}
+	case StateRestarted:
+		for _, s := range []WALState{StateApplying, StateRestarted} {
+			if err := ws.Advance(id, s, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+	case StateHealthyUnstable:
+		for _, s := range []WALState{StateApplying, StateRestarted} {
+			if err := ws.Advance(id, s, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := ws.Advance(id, StateHealthyUnstable, func(en *WALEntry) { en.AppliedAtUnix = openedAt }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return installRoot
+}
+
+// recoverDeps wires a two-component binary-replace registry + observe map for the
+// generation-recovery tests.
+func recoverDeps(t *testing.T, ws *WALStore, roots map[string]string, running map[string]string, healthy map[string]bool, now int64, chain func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error) (func(string) (componentrelease.ComponentInstall, bool), func(string) (string, bool), *fakeRunner, ApplyDeps) {
+	t.Helper()
+	installFor := func(id string) (componentrelease.ComponentInstall, bool) {
+		root, ok := roots[id]
+		if !ok {
+			return componentrelease.ComponentInstall{}, false
+		}
+		return componentrelease.ComponentInstall{ComponentID: id, InstallRoot: root, ServiceUnit: id + ".service", ApplyKind: componentrelease.ApplyBinaryReplace}, true
+	}
+	observe := func(id string) (string, bool) { return running[id], healthy[id] }
+	runner := &fakeRunner{}
+	deps := ApplyDeps{WAL: ws, Runner: runner, Now: func() int64 { return now }, ChainGate: chain}
+	return installFor, observe, runner, deps
+}
+
+func TestRecoverGenerationsNoMixedGeneration(t *testing.T) {
+	// The card's generation-atomicity gate: a crash left the sidecar (applied first)
+	// healthy+deep-stable (blind recovery would COMPLETE it) and the shell (applied
+	// second) mid-swap (blind recovery would ROLL IT BACK) — a mixed generation.
+	// RecoverGenerations must roll back BOTH.
+	dir := t.TempDir()
+	ws, err := NewWALStore(filepath.Join(dir, "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	priorA, newA := []byte("PRIOR-sidecar"), []byte("NEW-sidecar")
+	priorB, newB := []byte("PRIOR-shell"), []byte("NEW-shell")
+	rootA := binReplaceGenFixture(t, ws, dir, "store-sidecar", 2, priorA, newA, StateHealthyUnstable, 1000, componentrelease.ChainAuthority{})
+	rootB := binReplaceGenFixture(t, ws, dir, "sandstorm-shell", 2, priorB, newB, StateApplying, 1050, componentrelease.ChainAuthority{})
+
+	installFor, observe, runner, deps := recoverDeps(t, ws,
+		map[string]string{"store-sidecar": rootA, "sandstorm-shell": rootB},
+		map[string]string{"store-sidecar": hashBytes(newA), "sandstorm-shell": hashBytes(newB)},
+		map[string]bool{"store-sidecar": true, "sandstorm-shell": false},
+		1200, nil)
+
+	outcomes, err := RecoverGenerations(context.Background(), installFor, observe, deps)
+	if err != nil {
+		t.Fatalf("RecoverGenerations: %v", err)
+	}
+	byID := map[string]RecoveryOutcome{}
+	for _, o := range outcomes {
+		if o.Err != nil {
+			t.Fatalf("%s recovery errored: %v", o.ComponentID, o.Err)
+		}
+		byID[o.ComponentID] = o
+	}
+	if byID["store-sidecar"].Action != RecoverRollback || byID["sandstorm-shell"].Action != RecoverRollback {
+		t.Fatalf("generation not rolled back atomically: %+v", byID)
+	}
+	if got, _ := os.ReadFile(rootA); string(got) != string(priorA) {
+		t.Fatalf("sidecar not restored to prior (mixed generation!): %q", got)
+	}
+	if got, _ := os.ReadFile(rootB); string(got) != string(priorB) {
+		t.Fatalf("shell not restored to prior: %q", got)
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("expected one restart per rolled-back member, got %d: %v", len(runner.calls), runner.calls)
+	}
+	for _, id := range []string{"store-sidecar", "sandstorm-shell"} {
+		if _, ok, _ := ws.Load(id); ok {
+			t.Fatalf("%s WAL not finalized after generation rollback", id)
+		}
+	}
+}
+
+func TestRecoverGenerationsAllHealthyCompletes(t *testing.T) {
+	dir := t.TempDir()
+	ws, err := NewWALStore(filepath.Join(dir, "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	chain := componentrelease.ChainAuthority{Kind: "installer_release", Program: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"}
+	priorA, newA := []byte("PRIOR-a"), []byte("NEW-a")
+	priorB, newB := []byte("PRIOR-b"), []byte("NEW-b")
+	rootA := binReplaceGenFixture(t, ws, dir, "store-sidecar", 2, priorA, newA, StateHealthyUnstable, 1000, chain)
+	rootB := binReplaceGenFixture(t, ws, dir, "sandstorm-shell", 2, priorB, newB, StateHealthyUnstable, 1050, chain)
+
+	installFor, observe, runner, deps := recoverDeps(t, ws,
+		map[string]string{"store-sidecar": rootA, "sandstorm-shell": rootB},
+		map[string]string{"store-sidecar": hashBytes(newA), "sandstorm-shell": hashBytes(newB)},
+		map[string]bool{"store-sidecar": true, "sandstorm-shell": true},
+		1200, // both windows elapsed (>1000/1050 + 120)
+		func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
+			return nil
+		})
+
+	outcomes, err := RecoverGenerations(context.Background(), installFor, observe, deps)
+	if err != nil {
+		t.Fatalf("RecoverGenerations: %v", err)
+	}
+	for _, o := range outcomes {
+		if o.Action != RecoverComplete || o.Err != nil {
+			t.Fatalf("%s not completed: %s (%v)", o.ComponentID, o.Action, o.Err)
+		}
+	}
+	// Completing never restarts and never touches the installed bytes.
+	if len(runner.calls) != 0 {
+		t.Fatalf("complete must not restart: %v", runner.calls)
+	}
+	if got, _ := os.ReadFile(rootA); string(got) != string(newA) {
+		t.Fatalf("sidecar bytes changed on complete: %q", got)
+	}
+	for _, id := range []string{"store-sidecar", "sandstorm-shell"} {
+		if _, ok, _ := ws.Load(id); ok {
+			t.Fatalf("%s WAL not finalized applied", id)
+		}
+	}
+}
+
+func TestRecoverGenerationsChainRevokedRollsBackWholeGeneration(t *testing.T) {
+	// Both members are target+healthy+deep-stable, but the chain revoked one while
+	// the controller was DOWN. The recovery-time chain re-verify must downgrade the
+	// WHOLE generation to a rollback rather than seal a partial success.
+	dir := t.TempDir()
+	ws, err := NewWALStore(filepath.Join(dir, "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	chain := componentrelease.ChainAuthority{Kind: "installer_release", Program: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"}
+	priorA, newA := []byte("PRIOR-a2"), []byte("NEW-a2")
+	priorB, newB := []byte("PRIOR-b2"), []byte("NEW-b2")
+	rootA := binReplaceGenFixture(t, ws, dir, "store-sidecar", 2, priorA, newA, StateHealthyUnstable, 1000, chain)
+	rootB := binReplaceGenFixture(t, ws, dir, "sandstorm-shell", 2, priorB, newB, StateHealthyUnstable, 1050, chain)
+
+	installFor, observe, runner, deps := recoverDeps(t, ws,
+		map[string]string{"store-sidecar": rootA, "sandstorm-shell": rootB},
+		map[string]string{"store-sidecar": hashBytes(newA), "sandstorm-shell": hashBytes(newB)},
+		map[string]bool{"store-sidecar": true, "sandstorm-shell": true},
+		1200,
+		func(_ context.Context, c componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
+			if c.ComponentID == "sandstorm-shell" {
+				return fmt.Errorf("shell release revoked on-chain during downtime")
+			}
+			return nil
+		})
+
+	outcomes, err := RecoverGenerations(context.Background(), installFor, observe, deps)
+	if err != nil {
+		t.Fatalf("RecoverGenerations: %v", err)
+	}
+	for _, o := range outcomes {
+		if o.Action != RecoverRollback || o.Err != nil {
+			t.Fatalf("%s not rolled back on chain revocation: %s (%v)", o.ComponentID, o.Action, o.Err)
+		}
+	}
+	if got, _ := os.ReadFile(rootA); string(got) != string(priorA) {
+		t.Fatalf("sidecar not rolled back though its OWN chain was fine (atomicity): %q", got)
+	}
+	if got, _ := os.ReadFile(rootB); string(got) != string(priorB) {
+		t.Fatalf("revoked shell not rolled back: %q", got)
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("expected one restart per rolled-back member, got %d", len(runner.calls))
+	}
+}
+
+func TestRecoverGenerationsWaitsWhenWindowOpen(t *testing.T) {
+	// All members target+healthy but a deep-stable window is still open -> the whole
+	// generation WAITS (poll loop finishes it); nothing is completed or rolled back.
+	dir := t.TempDir()
+	ws, err := NewWALStore(filepath.Join(dir, "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	priorA, newA := []byte("PRIOR-w"), []byte("NEW-w")
+	rootA := binReplaceGenFixture(t, ws, dir, "store-sidecar", 3, priorA, newA, StateHealthyUnstable, 1000, componentrelease.ChainAuthority{})
+	installFor, observe, runner, deps := recoverDeps(t, ws,
+		map[string]string{"store-sidecar": rootA},
+		map[string]string{"store-sidecar": hashBytes(newA)},
+		map[string]bool{"store-sidecar": true},
+		1060, // only 60s of the 120s window elapsed
+		func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
+			t.Fatal("chain gate must not run while the window is still open")
+			return nil
+		})
+	outcomes, err := RecoverGenerations(context.Background(), installFor, observe, deps)
+	if err != nil {
+		t.Fatalf("RecoverGenerations: %v", err)
+	}
+	if len(outcomes) != 1 || outcomes[0].Action != RecoverWait {
+		t.Fatalf("expected a single wait outcome, got %+v", outcomes)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("wait must not mutate the host: %v", runner.calls)
+	}
+	if e, ok, _ := ws.Load("store-sidecar"); !ok || e.State != StateHealthyUnstable {
+		t.Fatal("waiting member must stay in-flight healthy-unstable")
+	}
+}
+
 // fakeAdapter is an in-memory Adapter for coordinator tests. Apply mutates a
 // shared installed-hash map and returns a rollback closure that restores the
 // prior hash; Probe can be made to fail for a chosen component.

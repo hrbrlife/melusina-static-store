@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
@@ -313,6 +314,212 @@ func componentReleaseFromWAL(e WALEntry) componentrelease.ComponentRelease {
 		ContentSHA256:  e.ContentHash,
 		Chain:          e.Chain,
 	}
+}
+
+// RecoverGenerations is the generation-transaction-aware crash-recovery pass that
+// the controller runs at startup — the replacement for a blind per-component
+// RecoverAll. It groups every active WAL entry by its generation and recovers each
+// generation ATOMICALLY, so a crash mid-generation can never leave a mixed system:
+// a generation where one component completed while a sibling rolled back.
+//
+// Within one interrupted ApplyGeneration the active WALs are the earlier members
+// (healthy-unstable, awaiting the deep-stable Complete) plus at most one in-progress
+// member (staged/applying/restarted). The per-generation decision is:
+//
+//   - ANY member cannot coherently reach the target (mid-swap, or not target+healthy),
+//     OR the generation is PARTIAL (some members applied, some never mutated)
+//     -> ROLL BACK THE WHOLE GENERATION to the prior coherent state;
+//   - every member was only staged (no mutation) -> DISCARD ALL (nothing happened);
+//   - every member is target+healthy but at least one deep-stable window is still
+//     open -> WAIT (leave the whole generation for the poll loop);
+//   - every member is target+healthy+deep-stable -> re-verify the chain for ALL of
+//     them and, only if every one is still Active, COMPLETE ALL; a single chain
+//     refusal downgrades the whole generation to a rollback (atomic, never mixed).
+//
+// It operates purely from persisted WAL state + the install-local registry, so a
+// brand-new process after a crash (or reboot) recovers with no in-memory context.
+func RecoverGenerations(
+	ctx context.Context,
+	installFor func(componentID string) (componentrelease.ComponentInstall, bool),
+	observe func(componentID string) (runningHash string, healthy bool),
+	deps ApplyDeps,
+) ([]RecoveryOutcome, error) {
+	entries, err := deps.WAL.LoadAll()
+	if err != nil {
+		return nil, err
+	}
+	byGen := map[uint64][]WALEntry{}
+	var genOrder []uint64
+	for _, e := range entries {
+		if _, seen := byGen[e.GenerationID]; !seen {
+			genOrder = append(genOrder, e.GenerationID)
+		}
+		byGen[e.GenerationID] = append(byGen[e.GenerationID], e)
+	}
+	sort.Slice(genOrder, func(i, j int) bool { return genOrder[i] < genOrder[j] })
+
+	var outcomes []RecoveryOutcome
+	for _, gid := range genOrder {
+		outcomes = append(outcomes, deps.recoverOneGeneration(ctx, byGen[gid], installFor, observe)...)
+	}
+	return outcomes, nil
+}
+
+func mutatedState(s WALState) bool {
+	return s == StateApplying || s == StateRestarted || s == StateHealthyUnstable
+}
+
+// recoverOneGeneration classifies then atomically recovers one generation's members
+// (see RecoverGenerations). The whole-generation action is decided from the full
+// member set BEFORE any mutation, so recovery itself can never produce a partial
+// result.
+func (deps ApplyDeps) recoverOneGeneration(
+	ctx context.Context,
+	members []WALEntry,
+	installFor func(componentID string) (componentrelease.ComponentInstall, bool),
+	observe func(componentID string) (runningHash string, healthy bool),
+) []RecoveryOutcome {
+	now := deps.now()
+	anyRollback, anyStaged, anyMutated, anyWait := false, false, false, false
+	for _, e := range members {
+		running, healthy := "", false
+		if observe != nil {
+			running, healthy = observe(e.ComponentID)
+		}
+		switch RecoveryDecision(e, running, healthy, now) {
+		case RecoverRollback:
+			anyRollback = true
+		case RecoverDiscard:
+			anyStaged = true
+		case RecoverWait:
+			anyWait = true
+		}
+		if mutatedState(e.State) {
+			anyMutated = true
+		}
+	}
+
+	switch {
+	// A member can't reach target, or the generation is partial (applied + staged mix).
+	case anyRollback || (anyStaged && anyMutated):
+		return deps.rollbackWholeGeneration(ctx, members, installFor, "generation transaction: recovery could not coherently reach target")
+	// Nothing was mutated — pure staged intents.
+	case anyStaged: // && !anyMutated
+		return deps.discardWholeGeneration(members)
+	// All target+healthy, but a deep-stable window is still open — the poll loop finishes.
+	case anyWait:
+		return waitWholeGeneration(members)
+	// All target+healthy+deep-stable — chain-verify all, then complete all (or roll back all).
+	default:
+		return deps.completeWholeGeneration(ctx, members, installFor)
+	}
+}
+
+// reverseByOpenOrder returns member indices in reverse apply order (latest-opened
+// first) — the safe order to roll a generation back, mirroring ApplyGeneration's
+// reverse-of-applied rollback.
+func reverseByOpenOrder(members []WALEntry) []int {
+	idx := make([]int, len(members))
+	for i := range members {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool {
+		return members[idx[a]].OpenedAtUnix > members[idx[b]].OpenedAtUnix
+	})
+	return idx
+}
+
+func (deps ApplyDeps) rollbackWholeGeneration(ctx context.Context, members []WALEntry, installFor func(string) (componentrelease.ComponentInstall, bool), reason string) []RecoveryOutcome {
+	outcomes := make([]RecoveryOutcome, len(members))
+	for _, i := range reverseByOpenOrder(members) {
+		e := members[i]
+		oc := RecoveryOutcome{ComponentID: e.ComponentID}
+		if !mutatedState(e.State) {
+			// Staged, never mutated — just drop the lock.
+			oc.Action = RecoverDiscard
+			oc.Err = deps.WAL.discard(e.ComponentID)
+			outcomes[i] = oc
+			continue
+		}
+		oc.Action = RecoverRollback
+		install, ok := installFor(e.ComponentID)
+		if !ok {
+			oc.Err = fmt.Errorf("no registry install for component %s", e.ComponentID)
+			outcomes[i] = oc // leave WAL active — next pass retries, fail-closed
+			continue
+		}
+		if err := RollbackFromWAL(ctx, e, install, deps.Runner); err != nil {
+			oc.Err = err
+			outcomes[i] = oc // leave WAL active — next pass retries
+			continue
+		}
+		_, oc.Err = deps.WAL.Rollback(e.ComponentID, deps.now(), reason)
+		outcomes[i] = oc
+	}
+	return outcomes
+}
+
+func (deps ApplyDeps) discardWholeGeneration(members []WALEntry) []RecoveryOutcome {
+	outcomes := make([]RecoveryOutcome, len(members))
+	for i, e := range members {
+		outcomes[i] = RecoveryOutcome{ComponentID: e.ComponentID, Action: RecoverDiscard, Err: deps.WAL.discard(e.ComponentID)}
+	}
+	return outcomes
+}
+
+func waitWholeGeneration(members []WALEntry) []RecoveryOutcome {
+	outcomes := make([]RecoveryOutcome, len(members))
+	for i, e := range members {
+		outcomes[i] = RecoveryOutcome{ComponentID: e.ComponentID, Action: RecoverWait}
+	}
+	return outcomes
+}
+
+// completeWholeGeneration re-verifies the chain for every member and completes them
+// all — but a single chain refusal downgrades the WHOLE generation to a rollback, so
+// a release revoked while the controller was DOWN never seals as a partial success.
+func (deps ApplyDeps) completeWholeGeneration(ctx context.Context, members []WALEntry, installFor func(string) (componentrelease.ComponentInstall, bool)) []RecoveryOutcome {
+	installs := make([]componentrelease.ComponentInstall, len(members))
+	for i, e := range members {
+		install, ok := installFor(e.ComponentID)
+		if !ok {
+			// Can't gate/complete without the install — fail the generation closed
+			// (leave WALs active for the next pass rather than seal a half result).
+			outcomes := make([]RecoveryOutcome, len(members))
+			for j, m := range members {
+				outcomes[j] = RecoveryOutcome{ComponentID: m.ComponentID, Action: RecoverWait, Err: fmt.Errorf("no registry install for component %s", e.ComponentID)}
+			}
+			return outcomes
+		}
+		installs[i] = install
+	}
+	// Read-only chain re-verify of ALL members before committing anything.
+	if deps.ChainGate != nil {
+		for i, e := range members {
+			if err := deps.ChainGate(ctx, componentReleaseFromWAL(e), installs[i]); err != nil {
+				return deps.rollbackWholeGeneration(ctx, members, installFor, "generation transaction: chain re-verify refused "+e.ComponentID+" at recovery: "+err.Error())
+			}
+		}
+	}
+	// All still Active — seal each terminal-applied.
+	outcomes := make([]RecoveryOutcome, len(members))
+	for i, e := range members {
+		oc := RecoveryOutcome{ComponentID: e.ComponentID, Action: RecoverComplete}
+		if e.State == StateRestarted {
+			if err := deps.WAL.Advance(e.ComponentID, StateHealthyUnstable, func(en *WALEntry) {
+				if en.AppliedAtUnix == 0 {
+					en.AppliedAtUnix = e.AppliedAtUnix
+				}
+			}); err != nil {
+				oc.Err = err
+				outcomes[i] = oc
+				continue
+			}
+		}
+		_, oc.Err = deps.WAL.Complete(e.ComponentID, deps.now())
+		outcomes[i] = oc
+	}
+	return outcomes
 }
 
 // priorBackupPath mirrors the binary-replace adapter's retained-prior convention

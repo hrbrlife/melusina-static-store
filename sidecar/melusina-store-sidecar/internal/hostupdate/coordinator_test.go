@@ -139,3 +139,36 @@ func TestApplyGenerationLaterFailureRollsBackWholeGeneration(t *testing.T) {
 		t.Fatal("sidecar WAL not finalized after generation rollback")
 	}
 }
+
+func TestApplyGenerationPolicyFlipCancelsAndRollsBack(t *testing.T) {
+	// Auto-apply is ON when the sidecar mutates, then the admin flips it OFF before
+	// the shell mutates. The shell is cancelled (no mutation) and the earlier sidecar
+	// is rolled back — the host is never left with a partial generation.
+	deps, fa, gen := coordSetup(t, "fake-coord-policy", nil)
+	oldHash := strings.Repeat("0", 64)
+	calls := 0
+	deps.PolicyReload = func() UpdatePolicy {
+		calls++
+		return UpdatePolicy{AutoApply: calls == 1, DeepStableSeconds: 120}
+	}
+	outcomes, err := ApplyGeneration(context.Background(), gen, deps)
+	if err == nil {
+		t.Fatal("expected the generation to abort when auto-apply flips off mid-apply")
+	}
+	byID := map[string]ApplyOutcome{}
+	for _, o := range outcomes {
+		byID[o.ComponentID] = o
+	}
+	if byID["sandstorm-shell"].Status != ApplyStatusCancelled {
+		t.Fatalf("shell not cancelled by the policy flip: %s", byID["sandstorm-shell"].Status)
+	}
+	if byID["store-sidecar"].Status != ApplyStatusRolledBack {
+		t.Fatalf("earlier-applied sidecar not rolled back on policy cancel: %s", byID["store-sidecar"].Status)
+	}
+	if fa.installed["store-sidecar"] != oldHash {
+		t.Fatalf("sidecar left mutated after policy cancel: %s", fa.installed["store-sidecar"])
+	}
+	if fa.installed["sandstorm-shell"] != oldHash {
+		t.Fatalf("shell mutated despite the cancel: %s", fa.installed["sandstorm-shell"])
+	}
+}

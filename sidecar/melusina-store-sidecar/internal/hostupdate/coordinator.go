@@ -2,6 +2,7 @@ package hostupdate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -16,7 +17,14 @@ const (
 	ApplyStatusApplied    ApplyStatus = "applied"     // swapped + healthy (awaiting deep-stable Complete)
 	ApplyStatusRolledBack ApplyStatus = "rolled-back" // failed, or rolled back by the generation transaction
 	ApplyStatusRefused    ApplyStatus = "refused"     // allowlist / chain-gate refusal — NO mutation
+	ApplyStatusCancelled  ApplyStatus = "cancelled"   // auto-apply turned OFF before this component mutated (staged only)
 )
+
+// errPolicyCancelled is returned by applyOne when the shell-writable policy is
+// re-read just before mutation and auto-apply is now OFF. The component itself has
+// NOT mutated (still staged), but the generation transaction rolls back any EARLIER
+// applied components.
+var errPolicyCancelled = errors.New("cancelled: auto-apply turned off before mutation")
 
 // ApplyOutcome records what happened to one component.
 type ApplyOutcome struct {
@@ -38,8 +46,14 @@ type ApplyDeps struct {
 	// (the controller's authority gate; the adapter never touches the chain). A
 	// non-nil error refuses the whole generation fail-closed.
 	ChainGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
-	Policy    UpdatePolicy
-	Now       func() int64
+	// PolicyReload re-reads the shell-writable policy immediately BEFORE each
+	// component's mutation. If it returns auto-apply OFF, that component is
+	// cancelled (staged only, no mutation) and the generation is rolled back — the
+	// admin can abort an in-flight generation by toggling auto-apply off. Nil skips
+	// the mid-apply re-read (the entry-time Policy is authoritative).
+	PolicyReload func() UpdatePolicy
+	Policy       UpdatePolicy
+	Now          func() int64
 }
 
 func (d ApplyDeps) now() int64 {
@@ -124,12 +138,16 @@ func ApplyGeneration(ctx context.Context, gen componentrelease.DesiredGeneration
 	for _, p := range toApply {
 		rb, err := deps.applyOne(ctx, gen.GenerationID, p.c, p.install, p.installed)
 		if err != nil {
-			outcomes[p.c.ComponentID].Status = ApplyStatusRolledBack
-			outcomes[p.c.ComponentID].Err = err
+			if errors.Is(err, errPolicyCancelled) {
+				outcomes[p.c.ComponentID].Status = ApplyStatusCancelled
+			} else {
+				outcomes[p.c.ComponentID].Status = ApplyStatusRolledBack
+				outcomes[p.c.ComponentID].Err = err
+			}
 			// Generation transaction: roll back every earlier applied component so
 			// the host returns to the prior COHERENT generation, not a mix.
-			rollbackApplied("generation transaction: " + p.c.ComponentID + " failed")
-			return collectOutcomes(order, outcomes), fmt.Errorf("apply %s failed; generation rolled back: %w", p.c.ComponentID, err)
+			rollbackApplied("generation transaction: " + p.c.ComponentID + " " + string(outcomes[p.c.ComponentID].Status))
+			return collectOutcomes(order, outcomes), fmt.Errorf("apply %s aborted; generation rolled back: %w", p.c.ComponentID, err)
 		}
 		done = append(done, applied{p.c.ComponentID, rb})
 		outcomes[p.c.ComponentID].Status = ApplyStatusApplied
@@ -179,6 +197,14 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	}
 	if err := adapter.Verify(ctx, staged, c, install); err != nil {
 		return fail(fmt.Errorf("verify: %w", err), nil)
+	}
+	// SEAM 2: re-read the shell-writable policy IMMEDIATELY before mutation. If the
+	// admin flipped auto-apply OFF between the poll-entry gate and now, cancel — the
+	// component is still staged (no mutation), so discard its WAL; ApplyGeneration
+	// rolls back any earlier applied members of this generation.
+	if deps.PolicyReload != nil && !deps.PolicyReload().AutoApply {
+		_ = deps.WAL.discard(c.ComponentID)
+		return nil, errPolicyCancelled
 	}
 	if err := deps.WAL.Advance(c.ComponentID, StateApplying, nil); err != nil {
 		return fail(fmt.Errorf("wal applying: %w", err), nil)

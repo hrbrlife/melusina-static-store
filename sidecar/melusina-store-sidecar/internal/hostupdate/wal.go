@@ -213,11 +213,11 @@ func ensureSecureDir(dir string) error {
 	if err != nil {
 		return fmt.Errorf("lstat %s: %w", abs, err)
 	}
-	// Refuse a WORLD-writable trust dir (the critical exposure). Group-writable is
-	// not rejected here because ordinary temp/build dirs are group-writable on this
-	// platform; the deployer installs the production WAL root root-owned 0700/0755.
-	if fi.Mode().Perm()&0o002 != 0 {
-		return fmt.Errorf("WAL directory %s is world-writable (%#o)", abs, fi.Mode().Perm())
+	// Refuse a GROUP- or WORLD-writable trust dir — a non-owner-writable WAL root is
+	// not a trust root. (The production WAL root is installed root-owned 0700/0755;
+	// a standard-umask temp dir is 0755, which passes.)
+	if fi.Mode().Perm()&0o022 != 0 {
+		return fmt.Errorf("WAL directory %s is group/world-writable (%#o)", abs, fi.Mode().Perm())
 	}
 	return nil
 }
@@ -399,6 +399,20 @@ func (w *WALStore) Complete(componentID string, nowUnix int64) (WALEntry, error)
 // receipt with the failure reason.
 func (w *WALStore) Rollback(componentID string, nowUnix int64, reason string) (WALEntry, error) {
 	return w.finalize(componentID, StateRolledBack, nowUnix, reason)
+}
+
+// discard removes the active WAL for a component that never mutated the host
+// (staged). No terminal receipt is written — nothing happened to record — and the
+// per-component lock is released.
+func (w *WALStore) discard(componentID string) error {
+	active, err := w.activePath(componentID)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(active); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("discard active wal: %w", err)
+	}
+	return fsyncDir(w.activeDir)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

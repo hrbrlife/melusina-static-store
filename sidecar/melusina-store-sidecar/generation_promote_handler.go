@@ -211,6 +211,14 @@ func (s *publishService) verifySidecarComponentOnChain(ctx context.Context, c co
 	if sid.BinaryHash != artifactHash {
 		return fmt.Errorf("component %s: on-chain sidecar binary_hash %x != served sha256 %x", c.ComponentID, sid.BinaryHash[:], artifactHash[:])
 	}
+	// The 3-PDA SidecarIdentity check above is necessary but NOT sufficient: the
+	// deployed program's require_active_sidecar_cascade also requires License,
+	// GlobalSidecarApproval (hash-bound), LocalSidecarApproval, ResellerSidecar-
+	// Approval and ResellerEntry all Active. Mirror the full cascade so a reseller/
+	// license/global/local revocation cannot leave the identity looking green.
+	if err := s.verifyFiveFactCascade(ctx, componentReleaseChainView{sidecarID: sidecarID, licenseMint: licenseMint}, artifactHash); err != nil {
+		return fmt.Errorf("component %s: sidecar authorization cascade: %w", c.ComponentID, err)
+	}
 	return s.verifyComponentServedBytes(c)
 }
 

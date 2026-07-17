@@ -29,6 +29,10 @@ type mockChainReader struct {
 	foundationApp   map[string]mockFoundationApp
 	sidecarIdentity map[string]mockSidecarIdentity
 
+	// rawAccounts backs fetchRawAccount (the cascade raw-read capability): base58
+	// address -> account data. Owner is always programID for seeded accounts.
+	rawAccounts map[string][]byte
+
 	// global error injection: if set, the named Fetch returns this error.
 	releaseErr    error
 	authzErr      error
@@ -89,6 +93,7 @@ func newMockChainReader() *mockChainReader {
 		installerEntry:  map[string]mockInstallerEntry{},
 		foundationApp:   map[string]mockFoundationApp{},
 		sidecarIdentity: map[string]mockSidecarIdentity{},
+		rawAccounts:     map[string][]byte{},
 	}
 }
 

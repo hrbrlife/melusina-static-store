@@ -126,6 +126,10 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 		m := newMockChainReader()
 		if seed {
 			m.sidecarIdentity[sidPDA.Base58()] = mockSidecarIdentity{sid: sid}
+			// Seed an all-Active 5-fact cascade so the require_active_sidecar_cascade
+			// mirror passes on the happy path (refuse-cases fail earlier, at the
+			// identity/hash check, before the cascade is reached).
+			seedValidCascade(t, m, licenseMint, "swaprail", sum)
 		}
 		return &publishService{cfg: cfg, cr: m}
 	}

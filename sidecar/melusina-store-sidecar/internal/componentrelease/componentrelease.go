@@ -133,9 +133,17 @@ type ComponentRelease struct {
 	Build          int64  `json:"build,omitempty"`
 
 	ArtifactName string `json:"artifactName"` // immutable served filename, e.g. sandstorm-<sha>.tar.xz
-	SHA256       string `json:"sha256"`       // lowercase hex; == on-chain release hash of the artifact
-	SizeBytes    int64  `json:"sizeBytes"`    // exact byte size
-	BundleURL    string `json:"bundleUrl"`    // absolute https on the bazaar; a locator, not a host action
+	SHA256       string `json:"sha256"`       // lowercase hex sha256 of the SERVED ARTIFACT BYTES (what the consumer downloads + verifies)
+	// ContentSHA256 is the CONTENT identity pinned on-chain, DISTINCT from the
+	// served-artifact SHA256 when the two differ. For an app (release_v2) the chain
+	// pins app_hash = the tree-hash over {app.spk, metadata.json}, which is NOT
+	// sha256(the served spk file) — so an app MUST carry both (SHA256 = served
+	// bytes, ContentSHA256 = the ReleaseEntry-pinned app tree hash). For whole-file
+	// installer_release artifacts (shell/sidecar/data) the on-chain installer_hash
+	// == sha256(file), so ContentSHA256 may be omitted (defaults to SHA256).
+	ContentSHA256 string `json:"contentSha256,omitempty"`
+	SizeBytes     int64  `json:"sizeBytes"` // exact byte size of the served artifact
+	BundleURL     string `json:"bundleUrl"` // absolute https under the generation's bundleOrigin; a locator, not a host action
 
 	Chain       ChainAuthority `json:"chain"` // on-chain authority reference (per-class)
 	ReleaseHash string         `json:"releaseHash,omitempty"`
@@ -161,6 +169,7 @@ type DesiredGeneration struct {
 	GenerationHash     string             `json:"generationHash"` // lowercase hex sha256 of the canonical component set (content identity)
 	StoreID            string             `json:"storeId"`        // store operator identity, e.g. "melusina-os-root-store"
 	OperatorPubkey     string             `json:"operatorPubkey"` // base58 ed25519 signer; MUST be in the target's pinned store policy
+	BundleOrigin       string             `json:"bundleOrigin"`   // absolute https origin every component bundleUrl MUST be under (the pinned bazaar; the controller also checks this == its configured origin)
 	Channel            string             `json:"channel"`        // dev|stable
 	SignedAtUnix       int64              `json:"signedAtUnix"`   // signed publication time
 	PreviousGeneration uint64             `json:"previousGeneration"`
@@ -202,6 +211,7 @@ func componentReleaseDigest(c ComponentRelease) [32]byte {
 	msg = writeU64(msg, uint64(c.Build))
 	msg = writeLenPrefixed(msg, c.ArtifactName)
 	msg = writeLenPrefixed(msg, strings.ToLower(c.SHA256))
+	msg = writeLenPrefixed(msg, strings.ToLower(c.ContentSHA256))
 	msg = writeU64(msg, uint64(c.SizeBytes))
 	msg = writeLenPrefixed(msg, c.BundleURL)
 	msg = writeLenPrefixed(msg, c.Chain.Kind)
@@ -265,6 +275,7 @@ func desiredGenerationMessage(doc DesiredGeneration, contentHash [32]byte) []byt
 	msg = writeU64(msg, doc.GenerationID)
 	msg = writeLenPrefixed(msg, doc.StoreID)
 	msg = writeLenPrefixed(msg, doc.OperatorPubkey)
+	msg = writeLenPrefixed(msg, doc.BundleOrigin)
 	msg = writeLenPrefixed(msg, doc.Channel)
 	msg = writeU64(msg, uint64(doc.SignedAtUnix))
 	msg = writeU64(msg, doc.PreviousGeneration)
@@ -321,7 +332,12 @@ func Verify(authorized ed25519.PublicKey, expectedStoreID string, doc DesiredGen
 	if err := doc.validateUnsigned(); err != nil {
 		return err
 	}
-	if expectedStoreID != "" && doc.StoreID != expectedStoreID {
+	// Destination is a MANDATORY fail-closed check: an empty expectedStoreID is a
+	// destination bypass, not a wildcard. The consumer must pin its own storeId.
+	if expectedStoreID == "" {
+		return errors.New("expectedStoreID (destination) is required — refusing to verify without a pinned destination")
+	}
+	if doc.StoreID != expectedStoreID {
 		return fmt.Errorf("desired-generation destination mismatch: doc storeId %q != expected %q", doc.StoreID, expectedStoreID)
 	}
 	if len(authorized) != ed25519.PublicKeySize {
@@ -331,9 +347,12 @@ func Verify(authorized ed25519.PublicKey, expectedStoreID string, doc DesiredGen
 	if doc.OperatorPubkey != authB58 {
 		return fmt.Errorf("desired-generation signer mismatch: doc operator %q != authorized %q", doc.OperatorPubkey, authB58)
 	}
+	// generationHash must be the EXACT canonical (lowercase hex) content hash — an
+	// uppercase/noncanonical value is rejected, not case-folded, so the served
+	// bytes have exactly one valid representation.
 	contentHash := GenerationContentHash(doc.Components)
-	if !strings.EqualFold(doc.GenerationHash, hex.EncodeToString(contentHash[:])) {
-		return errors.New("desired-generation content hash does not match component set (generation drift)")
+	if doc.GenerationHash != hex.EncodeToString(contentHash[:]) {
+		return errors.New("desired-generation content hash is not the canonical lowercase-hex content hash of the component set (generation drift or noncanonical hash)")
 	}
 	sig, err := primitives.DecodeBase58(doc.OperatorSignature)
 	if err != nil {
@@ -387,6 +406,20 @@ func validAuthority(a string) bool {
 		return true
 	}
 	return false
+}
+
+// authorityForClass returns the ONE on-chain authority kind a component class is
+// allowed to ride. Empty for an unknown class.
+func authorityForClass(class string) string {
+	switch class {
+	case ClassShell, ClassData:
+		return AuthorityInstallerRelease
+	case ClassSidecar:
+		return AuthoritySidecarIdentity
+	case ClassApp:
+		return AuthorityReleaseV2
+	}
+	return ""
 }
 
 // validate checks a component's on-chain authority reference is internally
@@ -455,6 +488,19 @@ func (c ComponentRelease) validate() error {
 	if err := c.Chain.validate(); err != nil {
 		return fmt.Errorf("component %s: %w", c.ComponentID, err)
 	}
+	// class <-> on-chain authority must agree — the authority model IS the class
+	// (a shell cannot ride a sidecar_identity, a sidecar cannot ride installer_release).
+	if want := authorityForClass(c.ComponentClass); c.Chain.Kind != want {
+		return fmt.Errorf("component %s: class %q requires authority kind %q, got %q", c.ComponentID, c.ComponentClass, want, c.Chain.Kind)
+	}
+	// contentSha256 = the on-chain-pinned content hash, distinct from the served
+	// artifact sha256. An app MUST carry it (ReleaseEntry pins app_hash != sha256(spk)).
+	if c.ContentSHA256 != "" && !isLowerHex(c.ContentSHA256, 64) {
+		return fmt.Errorf("component %s: contentSha256 must be 64 lowercase hex chars", c.ComponentID)
+	}
+	if c.ComponentClass == ClassApp && c.ContentSHA256 == "" {
+		return fmt.Errorf("component %s: app class requires contentSha256 (the ReleaseEntry-pinned app tree hash, distinct from the served artifact sha256)", c.ComponentID)
+	}
 	if c.ReleaseHash != "" && !isLowerHex(c.ReleaseHash, 64) {
 		return fmt.Errorf("component %s: releaseHash must be 64 lowercase hex chars", c.ComponentID)
 	}
@@ -490,9 +536,16 @@ func (doc DesiredGeneration) validateUnsigned() error {
 	if doc.SignedAtUnix <= 0 {
 		return errors.New("signedAtUnix must be a positive unix time")
 	}
+	// bundleOrigin is the single pinned https origin every component's bundleUrl
+	// must be under — a component cannot point a fetch at an arbitrary host.
+	if err := assertBundleURLOnBazaar(doc.BundleOrigin); err != nil {
+		return fmt.Errorf("bundleOrigin: %w", err)
+	}
+	originPrefix := strings.TrimRight(doc.BundleOrigin, "/") + "/"
 	if len(doc.Components) == 0 {
 		return errors.New("a generation must name at least one component")
 	}
+	isUpdate := doc.PreviousGeneration > 0
 	seen := make(map[string]bool, len(doc.Components))
 	for _, c := range doc.Components {
 		if seen[c.ComponentID] {
@@ -501,6 +554,20 @@ func (doc DesiredGeneration) validateUnsigned() error {
 		seen[c.ComponentID] = true
 		if err := c.validate(); err != nil {
 			return err
+		}
+		if !strings.HasPrefix(c.BundleURL, originPrefix) {
+			return fmt.Errorf("component %s: bundleUrl %q is not under the pinned bundleOrigin %q", c.ComponentID, c.BundleURL, doc.BundleOrigin)
+		}
+		// An UPDATE generation (previousGeneration > 0) must carry, per component,
+		// the rollback floor (previousSha256 + previousVersion) and the release/
+		// stage identity — without them health-gated rollback has no exact target.
+		if isUpdate {
+			if c.PreviousSHA256 == "" || strings.TrimSpace(c.PreviousVersion) == "" {
+				return fmt.Errorf("component %s: an update generation requires previousSha256 + previousVersion (rollback floor)", c.ComponentID)
+			}
+			if c.ReleaseHash == "" || c.StageID == "" {
+				return fmt.Errorf("component %s: an update generation requires releaseHash + stageId (release/stage identity)", c.ComponentID)
+			}
 		}
 	}
 	// Every dependency must reference a component present in this generation.
@@ -511,7 +578,51 @@ func (doc DesiredGeneration) validateUnsigned() error {
 			}
 		}
 	}
+	// The dependency graph must be acyclic (the controller applies in topological
+	// order; a cycle has no valid apply order).
+	if cycle := dependencyCycle(doc.Components); cycle != "" {
+		return fmt.Errorf("component dependency cycle involving %s", cycle)
+	}
 	return nil
+}
+
+// dependencyCycle returns a component id participating in a requires[] cycle, or
+// "" if the graph is acyclic. Standard white/gray/black DFS.
+func dependencyCycle(components []ComponentRelease) string {
+	graph := make(map[string][]string, len(components))
+	for _, c := range components {
+		for _, d := range c.Requires {
+			graph[c.ComponentID] = append(graph[c.ComponentID], d.ComponentID)
+		}
+	}
+	const (
+		white = 0
+		gray  = 1
+		black = 2
+	)
+	color := make(map[string]int, len(components))
+	var found string
+	var visit func(string) bool
+	visit = func(n string) bool {
+		color[n] = gray
+		for _, m := range graph[n] {
+			if color[m] == gray {
+				found = m
+				return true
+			}
+			if color[m] == white && visit(m) {
+				return true
+			}
+		}
+		color[n] = black
+		return false
+	}
+	for _, c := range components {
+		if color[c.ComponentID] == white && visit(c.ComponentID) {
+			return found
+		}
+	}
+	return ""
 }
 
 // Component returns the entry for id, or false if absent.

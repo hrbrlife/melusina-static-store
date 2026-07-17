@@ -48,7 +48,8 @@ Every binding the card requires the signed desired-generation document to carry:
 | schema + generation identity | `schema`, `generationId` (monotonic), `generationHash` (sha256 of the component set) |
 | component ID and class | `components[].componentId`, `components[].componentClass` |
 | version/build and immutable artifact name | `components[].version`, `components[].build`, `components[].artifactName` |
-| exact SHA-256 and byte size | `components[].sha256`, `components[].sizeBytes` |
+| exact SHA-256 and byte size | `components[].sha256` (served artifact bytes), `components[].contentSha256` (on-chain-pinned content hash, distinct for `app` where app_hash ≠ sha256(spk)), `components[].sizeBytes` |
+| pinned artifact origin | `bundleOrigin` — every `components[].bundleUrl` MUST be under it (no arbitrary origin) |
 | signed publication time | `signedAtUnix` |
 | channel | `channel` |
 | required/minimum component dependencies | `components[].requires[]` = `{componentId, minVersion, minGeneration}` |
@@ -255,6 +256,7 @@ read-only inventory and adapter design only.
 
 - [x] Types + canonical message + Sign/Verify + registry — `internal/componentrelease/` (builds, tests green)
 - [x] `ChainAuthority` (installer_release / release_v2 / sidecar_identity cascade), class taxonomy shell/sidecar/app/data, 6 `ApplyKind`s, `Adapter` seam — extension for card 000b (tests green)
+- [x] Adversarial hardening — VERIFIER overlay (10 probes) GREEN: distinct `contentSha256` (P0), `bundleOrigin` pinning, `Verify` rejects empty destination + noncanonical `generationHash`, class↔authority agreement, update generations require rollback+release+stage bindings, dependency cycles rejected, registry loader rejects trailing JSON + group/world-writable allowlist, `RegisterAdapter` rejects duplicate kind. Convention: `binary-replace` installRoot = full absolute exe path; registry componentId = on-chain sidecar seed id.
 - [ ] Producer: replace `handleUpdateManifest` with a signed `DesiredGeneration` endpoint (task A, next)
 - [ ] Canonical self-service publisher (task B)
 - [ ] Out-of-shell host controller: WAL, per-component lock, atomic apply, health-gated rollback, receipts (task C)

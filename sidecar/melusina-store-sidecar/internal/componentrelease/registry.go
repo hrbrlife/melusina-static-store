@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -74,10 +75,14 @@ type ComponentInstall struct {
 	ComponentID    string `json:"componentId"`
 	ComponentClass string `json:"componentClass"` // must equal the remote doc's class for this id
 
-	ApplyKind      string `json:"applyKind"`                // tarball-symlink-swap | binary-replace
-	InstallRoot    string `json:"installRoot"`              // absolute; e.g. /opt/sandstorm or /usr/local/bin
+	ApplyKind string `json:"applyKind"` // one of the ApplyKind constants
+	// InstallRoot is absolute. Convention (SIDECARS idx 21092, RAIL-CONTROL 21095):
+	// for binary-replace it is the FULL absolute executable path (the temp+rename
+	// target, e.g. /opt/watchdog/watchdog), unambiguous; for the versioned-<gen>
+	// kinds it is the generation-root directory (e.g. /opt/sandstorm).
+	InstallRoot    string `json:"installRoot"`
 	StagingDir     string `json:"stagingDir"`               // absolute; where a verified bundle is downloaded before mutation
-	CurrentSymlink string `json:"currentSymlink,omitempty"` // absolute; tarball-symlink-swap only
+	CurrentSymlink string `json:"currentSymlink,omitempty"` // absolute; required for the versioned-<gen> kinds
 	ServiceUnit    string `json:"serviceUnit"`              // systemd unit restarted after swap, e.g. sandstorm.service
 
 	// HealthCommand is the argv executed (once the service is back) to prove the
@@ -163,6 +168,15 @@ func (r ComponentRegistry) Validate() error {
 // apply any component it cannot map to a vetted host-action recipe.
 func LoadComponentRegistry(path string) (ComponentRegistry, error) {
 	var reg ComponentRegistry
+	info, err := os.Stat(path)
+	if err != nil {
+		return reg, fmt.Errorf("stat component registry %s: %w", path, err)
+	}
+	// A root-owned allowlist that grants HOST ACTIONS must not be writable by
+	// group or world — a non-owner-writable trust file is not trustworthy.
+	if perm := info.Mode().Perm(); perm&0o022 != 0 {
+		return reg, fmt.Errorf("component registry %s is group/world-writable (%#o); a root-owned host-action allowlist must be 0644 or stricter", path, perm)
+	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return reg, fmt.Errorf("read component registry %s: %w", path, err)
@@ -171,6 +185,11 @@ func LoadComponentRegistry(path string) (ComponentRegistry, error) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&reg); err != nil {
 		return reg, fmt.Errorf("parse component registry %s: %w", path, err)
+	}
+	// Reject trailing data after the single registry object — a second JSON value
+	// smuggled after the allowlist must not be silently ignored.
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return reg, fmt.Errorf("component registry %s: unexpected trailing data after the registry object", path)
 	}
 	if err := reg.Validate(); err != nil {
 		return reg, fmt.Errorf("component registry %s: %w", path, err)

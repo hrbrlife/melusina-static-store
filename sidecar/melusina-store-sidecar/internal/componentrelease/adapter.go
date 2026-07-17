@@ -1,6 +1,10 @@
 package componentrelease
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+)
 
 // Adapter is the controller's per-ApplyKind plugin seam. The out-of-shell host
 // update controller (built by SYSTEM-RELEASE-RAIL-SHELL, task C) owns the
@@ -72,12 +76,20 @@ type Rollback func(ctx context.Context) error
 // is refused).
 var adapters = map[string]Adapter{}
 
-// RegisterAdapter installs an adapter for its Kind(). Last registration wins;
-// intended to be called once per kind from the controller's startup.
-func RegisterAdapter(a Adapter) {
-	if a != nil {
-		adapters[a.Kind()] = a
+// RegisterAdapter installs an adapter for its Kind(). It REFUSES a duplicate
+// registration (returns an error and keeps the first) rather than silently
+// replacing it — the protocol guarantees exactly one adapter per kind, so a
+// second registration is a wiring bug the controller's startup must surface.
+func RegisterAdapter(a Adapter) error {
+	if a == nil {
+		return errors.New("nil adapter")
 	}
+	k := a.Kind()
+	if _, exists := adapters[k]; exists {
+		return fmt.Errorf("adapter for kind %q already registered (duplicate registration refused)", k)
+	}
+	adapters[k] = a
+	return nil
 }
 
 // AdapterFor returns the adapter for an ApplyKind, or false if none is

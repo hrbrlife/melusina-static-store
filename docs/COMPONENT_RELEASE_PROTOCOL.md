@@ -1,0 +1,219 @@
+# Melusina v2 component-release protocol (`melusina-desired-generation-v1`)
+
+Owner lane: **SYSTEM-RELEASE-RAIL-SHELL** (card 000a). This is the greenfield
+typed component-release protocol that replaces the shell-only signed update
+manifest. It is the **shared contract** that card 000b (SYSTEM-RELEASE-RAIL-
+SIDECARS) consumes: sidecars, the shell, and apps are all releases in this one
+signed desired-generation system.
+
+Reference implementation:
+`sidecar/melusina-store-sidecar/internal/componentrelease/` (Go, importable by
+both the store producer and the out-of-shell host controller).
+Tests: `componentrelease_test.go` (round-trip sign/verify, tamper/drift/wrong-
+destination/wrong-signer rejection, allowlist enforcement).
+
+---
+
+## 1. The load-bearing separation
+
+Two documents, two authorities. This is the invariant everything else defends.
+
+| | REMOTE signed document | INSTALL-LOCAL registry |
+|---|---|---|
+| type | `DesiredGeneration` (`melusina-desired-generation-v1`) | `ComponentRegistry` (`melusina-component-registry-v1`) |
+| authority | store operator ed25519 signature | root-owned file on the target, provisioned by the deployer |
+| answers | **WHAT** artifact each component should be | **HOW** each component is installed on THIS host |
+| carries | component id/class, version/build, immutable artifact name, exact sha256 + byte size, channel, deps, on-chain authority (kind+PDA+master mint), store operator identity/destination, release/stage identity, previous-generation rollback floor, detached signature | install root, staging dir, current symlink, service unit, apply kind, health command, restart command, self-report URL, keep-old count |
+| NEVER carries | host paths, commands, systemd units, health commands | anything trusted from the network |
+
+> The remote document may identify artifacts and version constraints; it must
+> **never** choose host paths, commands, units, or health commands. A component
+> id absent from the local allowlist is **refused** — a signed remote document
+> can advance an allowlisted component to a new artifact, but can never introduce
+> a new host action or a new unit. (`ComponentRegistry.ResolveComponent`.)
+
+Because both the producer (store sidecar) and the consumer (host controller) are
+Go and import the same package, there is **one** canonicalization and **one**
+verify implementation — no cross-language byte-matching to drift (the failure
+mode of the old Python/Go shell-only manifest).
+
+---
+
+## 2. Required bindings → fields (card A checklist)
+
+Every binding the card requires the signed desired-generation document to carry:
+
+| Required binding | Field(s) |
+|---|---|
+| schema + generation identity | `schema`, `generationId` (monotonic), `generationHash` (sha256 of the component set) |
+| component ID and class | `components[].componentId`, `components[].componentClass` |
+| version/build and immutable artifact name | `components[].version`, `components[].build`, `components[].artifactName` |
+| exact SHA-256 and byte size | `components[].sha256`, `components[].sizeBytes` |
+| signed publication time | `signedAtUnix` |
+| channel | `channel` |
+| required/minimum component dependencies | `components[].requires[]` = `{componentId, minVersion, minGeneration}` |
+| on-chain authority kind and PDA/reference | `components[].authorityKind` (`installer_release`\|`release_v2`), `components[].releasePda`, `components[].masterNftMint` |
+| store operator identity / destination | `storeId`, `operatorPubkey` |
+| release/stage identity | `components[].releaseHash`, `components[].stageId` |
+| previous release or rollback floor | generation floor `previousGeneration`; per-component `components[].previousSha256`, `components[].previousVersion` |
+| detached operator signature over canonical bytes | `operatorSignature` (base58 ed25519) |
+
+**Why the document carries the current pointer.** The on-chain `license-registry`
+program enforces **no exactly-one-Active** invariant for either release class
+(App `ReleaseEntry` = register/revoke; Installer `ReleaseEntry` =
+register/revoke/supersede, forward-only). "Which release is current" is not a
+chain fact — it is decided by this signed document. `generationId` is therefore
+the authoritative current-generation selector, and the chain records are
+per-artifact attestations the consumer re-verifies (Active + hash match), not a
+version selector.
+
+---
+
+## 3. CURRENT (shell-only) vs REQUIRED (desired-generation)
+
+The live store serves `GET /update/manifest.json` — 8 fields, single component:
+
+```
+build, version, channel, tarball, sha256, size, bundle_url, signature
+```
+
+| Current field | Desired-generation equivalent | Delta |
+|---|---|---|
+| build | `components[].build` | per-component |
+| version | `components[].version` | per-component |
+| channel | `channel` | generation-level |
+| tarball | `components[].artifactName` | per-component |
+| sha256 | `components[].sha256` | per-component |
+| size | `components[].sizeBytes` | per-component |
+| bundle_url | `components[].bundleUrl` | per-component |
+| signature | `operatorSignature` | over the whole generation |
+| — | `schema`, `generationId`, `generationHash`, `storeId`, `operatorPubkey`, `signedAtUnix`, `previousGeneration` | **NEW** |
+| — | `components[].componentId/componentClass` | **NEW** (multi-component) |
+| — | `components[].authorityKind/masterNftMint/releasePda/releaseHash/stageId` | **NEW** (chain authority) |
+| — | `components[].previousSha256/previousVersion` | **NEW** (per-component rollback floor) |
+| — | `components[].requires[]` | **NEW** (dependency ordering) |
+
+The shell-only manifest producer (`update_manifest.go`) and its unsigned
+descriptor (`update/shell-release.json`) are **deleted in the same change** —
+no compatibility branch (greenfield doctrine).
+
+---
+
+## 4. Canonical bytes + signature
+
+Domain-separated, length-prefixed, integer-only — the repo idiom
+(`appCatalogPointerMessage`, `stageReceiptMessage`).
+
+- Strings: 4-byte big-endian length prefix, then raw bytes. No two distinct
+  field sets can collide by concatenation.
+- Integers: big-endian (`uint64`/`uint32`). No floats anywhere.
+- Components are **sorted by `componentId`** before hashing/signing; order is not
+  signable freedom.
+- `componentReleaseDigest(c)` = `sha256("melusina-component-release-v1\0" || all
+  fields length-prefixed || sorted requires)`.
+- `generationHash` = `sha256("melusina-desired-generation-v1\0" || count || each
+  sorted componentDigest)`.
+- Signed message = `"melusina-desired-generation-v1\0" || generationId ||
+  storeId || operatorPubkey || channel || signedAtUnix || previousGeneration ||
+  generationHash`. Signed with the boot-identity operator key; `operatorSignature`
+  is base58 of the 64-byte ed25519 signature.
+
+`Verify(authorized, expectedStoreID, doc)` is **fail-closed** and checks, in
+order: schema; structural validation; destination (`storeId == expectedStoreID`);
+signer (`operatorPubkey == base58(authorized)`, where `authorized` is pinned from
+the consumer's own store policy, never from the document); content hash
+(`generationHash` recomputed == stored, else *generation drift*); signature.
+
+---
+
+## 5. Publisher rejection matrix (card B) — enforced by the v2 envelope + this doc
+
+The canonical self-service publisher POSTs through the store's existing v2
+envelope gate (`handler.go` preflight + vendored `envelope.Verify`), which
+already rejects:
+
+- v1 artifact envelopes (`Protocol != 2`; v2 `DomainTag` in canonical bytes);
+- wrong signer (`ExpectedSignerPubkeyB58` pinned from `Policy.AcceptPublishers`);
+- wrong destination (`ExpectedDestination` = store operator identity);
+- wrong route/purpose (`Method==POST && Target==route`, `ExpectedKind =
+  KindPublishRequest`, `RequestHash = sha256(spk)`);
+- expired envelope (tight window `(0, 30min]`);
+- replayed nonce (durable crash-safe `publish_nonce` ledger, scope
+  `source.digest|dest.digest`).
+
+This protocol adds: **hash drift** (`sha256`/`generationHash` mismatch) and
+**generation drift** (content hash ≠ component set) rejection, plus **promote
+CAS** against the expected generation at the store's single-writer `/publish`
+mutex. Authorization stays fail-closed; each authorized vertical invokes the same
+tool itself (no Publish Tzar).
+
+---
+
+## 6. Install-local component registry (allowlist)
+
+`/etc/melusina/component-registry.json` (root-owned; deployer-provisioned):
+
+```json
+{
+  "schema": "melusina-component-registry-v1",
+  "components": {
+    "sandstorm-shell": {
+      "componentId": "sandstorm-shell", "componentClass": "shell",
+      "applyKind": "tarball-symlink-swap",
+      "installRoot": "/opt/sandstorm", "stagingDir": "/opt/sandstorm/staging",
+      "currentSymlink": "/opt/sandstorm/latest", "serviceUnit": "sandstorm.service",
+      "healthCommand": ["/opt/melusina/bin/shell-health"],
+      "selfReportUrl": "http://127.0.0.1/melusina/release-info",
+      "keepOldBuilds": 2
+    }
+  }
+}
+```
+
+- `applyKind` is one of a **fixed, code-defined** set (`tarball-symlink-swap`,
+  `binary-replace`); an unknown kind fails closed.
+- `healthCommand` is mandatory (a health gate can never be weakened by the
+  remote document).
+- `selfReportUrl` is the endpoint the controller polls after restart to confirm
+  *running build/hash == applied artifact* (the shell already exposes
+  `GET /melusina/release-info`).
+- `ResolveComponent` refuses any component id not in the allowlist and any
+  class disagreement between the remote document and the registry.
+
+Runtime policy (auto-apply ON/OFF, check frequency) is a **separate**,
+shell-writable file (`/var/melusina/update-policy.json`, admin-panel-owned), so
+the security allowlist (root) and operator preference (shell) never mix.
+
+---
+
+## 7. For card 000b (sidecar adapters) — how a sidecar joins the generation
+
+Each production sidecar becomes:
+
+1. **One `ComponentRelease` entry** in the signed generation:
+   `componentClass: "sidecar"`, its own `componentId`, `artifactName`, `sha256`,
+   `sizeBytes`, `bundleUrl` on the bazaar, `authorityKind: "installer_release"`
+   with its own `releasePda`/`masterNftMint`, and `requires` for any ordering
+   (e.g. the store sidecar before dependents).
+2. **One `ComponentRegistry` entry** on each host that runs it:
+   `applyKind: "binary-replace"` (ELF) or `tarball-symlink-swap`, its
+   `installRoot`, `serviceUnit`, and a real `healthCommand`.
+
+The generic out-of-process updater (000b) reuses the **same** `DesiredGeneration`
+fetch+`Verify`, the same allowlist resolution, and the same WAL/rollback host
+controller as the shell — only the registry entries differ. Dependency ordering
+across components uses `requires[].componentId` within one generation.
+
+**000b must not write protocol/schema changes** without agreement from this lane
+and Riker. Consume the exact commit announced on agentchat; until then, do
+read-only inventory and adapter design only.
+
+---
+
+## 8. Status
+
+- [x] Types + canonical message + Sign/Verify + registry — `internal/componentrelease/` (builds, tests green)
+- [ ] Producer: replace `handleUpdateManifest` with a signed `DesiredGeneration` endpoint (task A, next)
+- [ ] Canonical self-service publisher (task B)
+- [ ] Out-of-shell host controller: WAL, per-component lock, atomic apply, health-gated rollback, receipts (task C)
+- [ ] Shell admin panel visibility + policy wiring (task D)

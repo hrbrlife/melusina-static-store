@@ -99,6 +99,12 @@ type WALEntry struct {
 	DeadlineUnix        int64           `json:"deadlineUnix,omitempty"`
 	Trigger             string          `json:"trigger,omitempty"`
 	RuntimeEvidence     RuntimeEvidence `json:"runtimeEvidence,omitempty"`
+	// RuntimeMarker* persists the exact install-local EnvironmentFile rollback
+	// floor. It is written before the component restart so a fresh controller can
+	// restore the old generation/version marker before restarting the old binary.
+	RuntimeMarkerPath        string `json:"runtimeMarkerPath,omitempty"`
+	RuntimeMarkerPriorPath   string `json:"runtimeMarkerPriorPath,omitempty"`
+	RuntimeMarkerPriorSHA256 string `json:"runtimeMarkerPriorSha256,omitempty"`
 }
 
 func (e WALEntry) validate() error {
@@ -116,6 +122,26 @@ func (e WALEntry) validate() error {
 	}
 	if e.DeepStableSeconds < 0 {
 		return errors.New("deepStableSeconds must be non-negative")
+	}
+	if e.RuntimeMarkerPath == "" {
+		if e.RuntimeMarkerPriorPath != "" || e.RuntimeMarkerPriorSHA256 != "" {
+			return errors.New("runtime marker prior fields require runtimeMarkerPath")
+		}
+	} else {
+		if !filepath.IsAbs(e.RuntimeMarkerPath) || filepath.Clean(e.RuntimeMarkerPath) != e.RuntimeMarkerPath {
+			return errors.New("runtimeMarkerPath must be an absolute clean path")
+		}
+		if e.RuntimeMarkerPriorPath == "" && e.RuntimeMarkerPriorSHA256 != "" {
+			return errors.New("runtimeMarkerPriorSha256 requires runtimeMarkerPriorPath")
+		}
+		if e.RuntimeMarkerPriorPath != "" {
+			if !filepath.IsAbs(e.RuntimeMarkerPriorPath) || filepath.Clean(e.RuntimeMarkerPriorPath) != e.RuntimeMarkerPriorPath {
+				return errors.New("runtimeMarkerPriorPath must be an absolute clean path")
+			}
+			if !isLowerHex64(e.RuntimeMarkerPriorSHA256) {
+				return errors.New("runtimeMarkerPriorSha256 must be 64 lowercase hex chars")
+			}
+		}
 	}
 	return nil
 }

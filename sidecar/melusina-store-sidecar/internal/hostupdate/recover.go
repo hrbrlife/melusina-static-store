@@ -67,6 +67,12 @@ func rollbackBinaryReplace(ctx context.Context, entry WALEntry, install componen
 	if !filepath.IsAbs(install.InstallRoot) {
 		return fmt.Errorf("installRoot %q is not absolute", install.InstallRoot)
 	}
+	// Restore the exact old EnvironmentFile BEFORE restarting the old binary.
+	// Otherwise a rollback can run old bytes under the new generation/version and
+	// falsely pass an application-level self-report.
+	if err := RestoreRuntimeMarkerFromWAL(entry, install); err != nil {
+		return fmt.Errorf("restore runtime marker: %w", err)
+	}
 	// Brand-new component (no prior artifact): the exact-old-state restore is to
 	// UNINSTALL the just-swapped binary and stop the unit.
 	if entry.FromHash == "" || entry.PriorPath == "" {

@@ -49,10 +49,11 @@ func buildPollDeps(cfg ControllerConfig, expectedUID uint32) (hostupdate.PollDep
 	}
 
 	apply := hostupdate.ApplyDeps{
-		Registry:    registry,
-		WAL:         wal,
-		Runner:      hostupdate.DefaultRunner(),
-		StagingRoot: cfg.stagingRoot(),
+		Registry:               registry,
+		WAL:                    wal,
+		Runner:                 hostupdate.DefaultRunner(),
+		StagingRoot:            cfg.stagingRoot(),
+		RuntimeMarkerBackupDir: filepath.Join(cfg.StateDir, "runtime-marker-backups"),
 		Observe: func(id string) string {
 			ci, ok := registry.Components[id]
 			if !ok {

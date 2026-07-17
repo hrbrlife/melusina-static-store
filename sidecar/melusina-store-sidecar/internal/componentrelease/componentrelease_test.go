@@ -272,6 +272,7 @@ func sampleRegistry() ComponentRegistry {
 				StagingDir:     "/var/lib/melusina-store/staging",
 				ServiceUnit:    "melusina-store.service",
 				HealthCommand:  []string{"/usr/local/bin/store-health"},
+				RuntimeEnvFile: "/var/lib/melusina-update/runtime/melusina-store-sidecar.env",
 			},
 		},
 	}
@@ -341,5 +342,15 @@ func TestRegistryPythonVenvRequiresSymlink(t *testing.T) {
 	}
 	if err := reg.Validate(); err == nil {
 		t.Fatal("Validate accepted python-venv without a currentSymlink")
+	}
+}
+
+func TestRegistryRejectsNonCanonicalRuntimeEnvFile(t *testing.T) {
+	reg := sampleRegistry()
+	e := reg.Components["melusina-store-sidecar"]
+	e.RuntimeEnvFile = "/var/lib/melusina-update/runtime/../attacker.env"
+	reg.Components[e.ComponentID] = e
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted a non-canonical runtimeEnvFile")
 	}
 }

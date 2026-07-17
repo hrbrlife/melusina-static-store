@@ -35,6 +35,14 @@ import (
 var Version = "dev"
 
 func main() {
+	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
+	// honest first generation on a virgin target and EXITS — it never opens a listener.
+	// Selection is explicit (a subcommand), never a silent server-startup fallback.
+	if len(os.Args) > 1 && os.Args[1] == "genesis-bootstrap" {
+		runGenesisBootstrapSubcommand(os.Args[2:])
+		return
+	}
+
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")
 	distOverride := flag.String("dist", "", "override dist_dir from config")
@@ -168,6 +176,58 @@ func main() {
 	}
 	<-idleClosed
 	log.Printf("stopped")
+}
+
+// runGenesisBootstrapSubcommand establishes the honest first-generation trust root
+// on a virgin target, then exits. It reuses the exact server boot preamble — config
+// load, program-id pinning, on-chain reader, operator derivation from the deploy
+// shards, and the process-lifetime writer lock — so genesis runs under the SAME
+// verified operator identity and single-writer exclusion the serving store uses. A
+// read-only store (no operator provisioned) cannot mint a trust root and is refused.
+func runGenesisBootstrapSubcommand(args []string) {
+	fs := flag.NewFlagSet("genesis-bootstrap", flag.ExitOnError)
+	configPath := fs.String("config", "store.config.json", "path to operator config (JSON)")
+	distOverride := fs.String("dist", "", "override dist_dir from config")
+	_ = fs.Parse(args)
+
+	log.Printf("melusina-store-sidecar %s genesis-bootstrap", Version)
+	cfg, err := LoadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	if *distOverride != "" {
+		cfg.DistDir = *distOverride
+	}
+	if err := validateCatalogStorageRoots(cfg); err != nil {
+		log.Fatalf("config after overrides: %v", err)
+	}
+	setProgramIDFromConfig(cfg.ProgramID)
+
+	var cr chainReader
+	if cfg.RPCURL != "" {
+		cr = newStoreRPCReader(cfg.RPCURL)
+	}
+	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	bootCancel()
+	if err != nil {
+		log.Fatalf("boot identity: %v", err)
+	}
+	if operator == nil {
+		log.Fatalf("genesis-bootstrap requires a write-capable operator (boot_identity.shards_dir must be provisioned) — a first-publish trust root cannot be established read-only")
+	}
+
+	writerLockPath := filepath.Join(cfg.CatalogMigrationStateDir, "writer.lock")
+	writerLock, err := acquireExistingWriterLock(writerLockPath)
+	if err != nil {
+		log.Fatalf("catalog writer exclusion: %v", err)
+	}
+	defer writerLock.Close()
+
+	if err := runCatalogGenesisBootstrap(cfg, operator); err != nil {
+		log.Fatalf("genesis bootstrap: %v", err)
+	}
+	log.Printf("genesis bootstrap complete: honest first-generation trust root sealed (no fabricated 1.0.3->1.0.4 migration); start the server to serve it")
 }
 
 // acquireExistingWriterLock opens an apply-helper-created lock without

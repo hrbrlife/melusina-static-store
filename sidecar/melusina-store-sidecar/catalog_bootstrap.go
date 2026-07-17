@@ -30,6 +30,18 @@ const (
 	catalogNonceSentinelName    = "nonce-ledger-v1.initialized"
 	catalogNonceSentinelSchema  = "melusina-publish-nonce-ledger-initialized-v1"
 	maxCatalogBootstrapJSON     = 64 << 10
+
+	// Genesis (first-install) bootstrap. This is the HONEST virgin path, distinct
+	// from the v104 migration above: it establishes the first-generation trust root
+	// on a target that never had a prior 1.0.x install, so it records NO
+	// fromVersion/toVersion and NO caller-invented prior chain receipt/PDA — the
+	// existence of those legacy fields is exactly what a fabricated migration would
+	// forge, and a genesis record's strict schema makes them unrepresentable.
+	catalogGenesisStateSchema  = "melusina-catalog-genesis-v1"
+	catalogGenesisStateName    = "catalog-genesis.json"
+	catalogGenesisStateNext    = "catalog-genesis.json.next"
+	catalogGenesisInstallMark  = "genesis"
+	catalogGenesisIndexRelPath = "apps/index.json"
 )
 
 type catalogMigrationState struct {
@@ -43,6 +55,21 @@ type catalogMigrationState struct {
 	ExpectedInstalledELFSHA256 string `json:"expectedInstalledElfSha256"`
 	NewELFSHA256               string `json:"newElfSha256"`
 	LedgerID                   string `json:"ledgerId"`
+}
+
+// catalogGenesisState is the honest first-install trust-root record. Unlike
+// catalogMigrationState it carries NO fromVersion/toVersion and NO prior
+// sourceChainReceipt/installerReleasePDA/expectedInstalledELF — a genesis target
+// had no predecessor, so those fields would be fabricated provenance. The strict
+// JSON decoder (DisallowUnknownFields) makes any such legacy field a hard decode
+// failure, and validateCatalogGenesisState pins Install=="genesis".
+type catalogGenesisState struct {
+	Schema        string `json:"schema"`
+	State         string `json:"state"`
+	Install       string `json:"install"`
+	NewELFSHA256  string `json:"newElfSha256"`
+	ArchiveSHA256 string `json:"archiveSha256"`
+	LedgerID      string `json:"ledgerId"`
 }
 
 type catalogNonceSentinel struct {
@@ -109,6 +136,28 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 	if err := requireOwnedSecureDirectory(cfg.PrivateStageDir, 0o700, opts.expectedUID); err != nil {
 		return catalogRuntime{}, fmt.Errorf("catalog bootstrap private-stage directory: %w", err)
 	}
+
+	// Trust-root selection is explicit, never silent: a v104 migration state and a
+	// genesis state are mutually exclusive. Both present is an ambiguous provenance
+	// and is refused. A genesis state routes startup to committed-genesis validation
+	// (the genesis WRITE happens only in the separate genesis entrypoint, never here).
+	migStatePath := filepath.Join(cfg.CatalogMigrationStateDir, catalogMigrationStateName)
+	genStatePath := filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName)
+	migExists, err := lstatExists(migStatePath)
+	if err != nil {
+		return catalogRuntime{}, fmt.Errorf("catalog bootstrap inspect migration state: %w", err)
+	}
+	genExists, err := lstatExists(genStatePath)
+	if err != nil {
+		return catalogRuntime{}, fmt.Errorf("catalog bootstrap inspect genesis state: %w", err)
+	}
+	if migExists && genExists {
+		return catalogRuntime{}, errors.New("catalog bootstrap: both a v104 migration and a genesis trust root are present — ambiguous provenance, refusing")
+	}
+	if genExists {
+		return bootstrapCatalogRuntimeFromGenesis(cfg, runtime, genStatePath, opts)
+	}
+
 	statePath := filepath.Join(cfg.CatalogMigrationStateDir, catalogMigrationStateName)
 	state, err := readCatalogMigrationState(statePath, opts.expectedUID)
 	if err != nil {
@@ -146,7 +195,7 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 			if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
 				return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
 			}
-			ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
+			ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state.LedgerID, opts)
 			if err != nil {
 				return catalogRuntime{}, fmt.Errorf("catalog bootstrap initializing-current recovery: %w", err)
 			}
@@ -157,41 +206,9 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 			runtime.appNonces = ledger
 			return runtime, nil
 		}
-		if err := validateCatalogTree(cfg.DistDir); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap flat 1.0.3 validation: %w", err)
-		}
-		if err := initializeOrValidateRolloutRoot(cfg, true, opts.expectedUID); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
-		}
-		sentinelPath := filepath.Join(cfg.CatalogGenerationRoot, catalogNonceSentinelName)
-		sentinelExists, err := lstatExists(sentinelPath)
+		ledger, err := initializeCatalogGenerationAndLedger(cfg, runtime.catalogGenerations, ledgerRoot, state.LedgerID, opts)
 		if err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap inspect nonce sentinel: %w", err)
-		}
-		if sentinelExists {
-			if err := validateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
-				return catalogRuntime{}, fmt.Errorf("catalog bootstrap existing nonce sentinel: %w", err)
-			}
-			if _, err := openPublishNonceLedger(ledgerRoot, state.LedgerID, opts.nonce); err != nil {
-				return catalogRuntime{}, fmt.Errorf("catalog bootstrap sentinel-bound ledger is unavailable: %w", err)
-			}
-		} else if err := initializeOrResumeCatalogLedger(ledgerRoot, state.LedgerID, opts); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap nonce ledger: %w", err)
-		}
-		if err := runtime.catalogGenerations.ensureRoot(); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap generation root: %w", err)
-		}
-		if err := initializeOrValidateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap sentinel: %w", err)
-		}
-		if _, err := runtime.catalogGenerations.BootstrapFromFlat(cfg.DistDir, func(snapshot AppCatalogSnapshot) error {
-			return validateCatalogTree(snapshot.Root)
-		}); err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap generation: %w", err)
-		}
-		ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
-		if err != nil {
-			return catalogRuntime{}, fmt.Errorf("catalog bootstrap post-switch validation: %w", err)
+			return catalogRuntime{}, fmt.Errorf("catalog bootstrap: %w", err)
 		}
 		state.State = "committed"
 		if err := writeCatalogMigrationState(statePath, state, opts.expectedUID); err != nil {
@@ -203,7 +220,7 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 		if err := initializeOrValidateRolloutRoot(cfg, false, opts.expectedUID); err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap rollout root: %w", err)
 		}
-		ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state, opts)
+		ledger, err := validateCommittedCatalogBootstrap(cfg, runtime.catalogGenerations, ledgerRoot, state.LedgerID, opts)
 		if err != nil {
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap committed validation: %w", err)
 		}
@@ -212,6 +229,49 @@ func bootstrapCatalogRuntimeWithOptions(cfg Config, writeCapable bool, opts cata
 	default:
 		return catalogRuntime{}, fmt.Errorf("catalog bootstrap: invalid migration state %q", state.State)
 	}
+}
+
+// initializeCatalogGenerationAndLedger is the shared, hardened first-generation
+// mechanism used by BOTH the v104 migration and the genesis trust root: validate
+// the flat catalog, create the rollout root, initialize-or-resume the bounded nonce
+// ledger under its identity sentinel, seal the FIRST immutable generation from the
+// flat catalog, then validate the committed result. It is provenance-neutral — it
+// takes only a ledger ID — so the caller's state record (migration vs genesis) is
+// the SOLE place that records which kind of install produced this generation.
+func initializeCatalogGenerationAndLedger(cfg Config, store AppCatalogGenerationStore, ledgerRoot, ledgerID string, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
+	if err := validateCatalogTree(cfg.DistDir); err != nil {
+		return nil, fmt.Errorf("flat catalog validation: %w", err)
+	}
+	if err := initializeOrValidateRolloutRoot(cfg, true, opts.expectedUID); err != nil {
+		return nil, fmt.Errorf("rollout root: %w", err)
+	}
+	sentinelPath := filepath.Join(cfg.CatalogGenerationRoot, catalogNonceSentinelName)
+	sentinelExists, err := lstatExists(sentinelPath)
+	if err != nil {
+		return nil, fmt.Errorf("inspect nonce sentinel: %w", err)
+	}
+	if sentinelExists {
+		if err := validateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, ledgerID, opts.expectedUID); err != nil {
+			return nil, fmt.Errorf("existing nonce sentinel: %w", err)
+		}
+		if _, err := openPublishNonceLedger(ledgerRoot, ledgerID, opts.nonce); err != nil {
+			return nil, fmt.Errorf("sentinel-bound ledger is unavailable: %w", err)
+		}
+	} else if err := initializeOrResumeCatalogLedger(ledgerRoot, ledgerID, opts); err != nil {
+		return nil, fmt.Errorf("nonce ledger: %w", err)
+	}
+	if err := store.ensureRoot(); err != nil {
+		return nil, fmt.Errorf("generation root: %w", err)
+	}
+	if err := initializeOrValidateCatalogSentinel(cfg.CatalogGenerationRoot, ledgerRoot, ledgerID, opts.expectedUID); err != nil {
+		return nil, fmt.Errorf("sentinel: %w", err)
+	}
+	if _, err := store.BootstrapFromFlat(cfg.DistDir, func(snapshot AppCatalogSnapshot) error {
+		return validateCatalogTree(snapshot.Root)
+	}); err != nil {
+		return nil, fmt.Errorf("bootstrap generation: %w", err)
+	}
+	return validateCommittedCatalogBootstrap(cfg, store, ledgerRoot, ledgerID, opts)
 }
 
 func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID uint32) error {
@@ -234,7 +294,7 @@ func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID u
 	return requireOwnedSecureDirectory(root, 0o700, expectedUID)
 }
 
-func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationStore, ledgerRoot string, state catalogMigrationState, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
+func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationStore, ledgerRoot, ledgerID string, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
 	rollouts, err := exactRolloutStates(cfg)
 	if err != nil {
 		return nil, err
@@ -254,10 +314,10 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	if err != nil {
 		return nil, fmt.Errorf("select catalog retention predecessor: %w", err)
 	}
-	if err := validateCatalogSentinel(store.Root, ledgerRoot, state.LedgerID, opts.expectedUID); err != nil {
+	if err := validateCatalogSentinel(store.Root, ledgerRoot, ledgerID, opts.expectedUID); err != nil {
 		return nil, err
 	}
-	ledger, err := openPublishNonceLedger(ledgerRoot, state.LedgerID, opts.nonce)
+	ledger, err := openPublishNonceLedger(ledgerRoot, ledgerID, opts.nonce)
 	if err != nil {
 		return nil, fmt.Errorf("open nonce ledger: %w", err)
 	}

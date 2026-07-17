@@ -144,13 +144,30 @@ Optional manual/bell trigger (admin-initiated immediate check):
 - The controller has no writer.lock dependency (that is the store's concern); its
   only lock is its own `controller.lock`.
 
-## Known hardening follow-ups (flagged, not blocking build)
+## Chain-gate PDA integrity
 
-- The chain gate confirms the operator-signed `ChainAuthority` PDAs are Active +
-  hash-pinned. The PDA addresses are signature-backed (bound by
-  `componentrelease.Verify`); an independent **seed re-derivation** cross-check
-  (derive Identity/Global/Local/Release PDAs from mints + ids and compare to the
-  doc's PDA fields) is a future hardening, not yet implemented here.
+The chain gate DERIVES every PDA LOCALLY from the config-pinned program + master/
+license mints and the Anchor seeds, and REFUSES any component whose document-claimed
+PDA != the seed-derived PDA (constant-time compare) BEFORE fetching any account
+(ratified 21164/21166). Seeds:
+
+- `SidecarIdentityEntry`: `["sidecar_identity", licenseMint, sidecarId, keyVersion(u32 LE)]`
+- `GlobalSidecarApproval`: `["global_sidecar", masterMint, sidecarId]`
+- `LocalSidecarApproval`: `["local_sidecar", licenseMint, sidecarId]`
+- `InstallerReleaseEntry`: `["installer_release", masterMint, installerHash]`
+- `ReleaseEntry` (release_v2): `["release_v2", masterMint, appHash]`
+- `LicenseEntry` / `ResellerSidecarApproval`: derived from licenseMint / the
+  LicenseEntry-carried reseller mint (never the document).
+
+Once the address is proven seed-derived, the gate confirms Active + hash pin. The
+sidecar path additionally requires `LicenseEntry` Active with the pinned master and,
+for a resold license, an Active `ResellerSidecarApproval`. (`ResellerEntry` status is
+enforced by the store's publish-side five-fact cascade; the controller lacks a
+`verify.RPCClient` `ResellerEntry` reader, so that record is not re-checked
+controller-side — a shared-cascade extraction would add it.)
+
+## Known follow-ups (flagged, not blocking build)
+
 - `RuntimeObserver`/`Observe` assume the binary-replace shape (`SelfReportURL`,
   `InstallRoot` = the executable file); the versioned-`<gen>` apply kinds need
   their own installed-hash resolution when those adapters land.

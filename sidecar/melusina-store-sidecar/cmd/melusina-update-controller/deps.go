@@ -43,7 +43,10 @@ func buildPollDeps(cfg ControllerConfig, expectedUID uint32) (hostupdate.PollDep
 	if err != nil {
 		return hostupdate.PollDeps{}, fmt.Errorf("open WAL store: %w", err)
 	}
-	chain := newSolanaChainGate(cfg)
+	chain, err := newSolanaChainGate(cfg)
+	if err != nil {
+		return hostupdate.PollDeps{}, fmt.Errorf("chain gate: %w", err)
+	}
 
 	apply := hostupdate.ApplyDeps{
 		Registry:    registry,

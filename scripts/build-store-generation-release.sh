@@ -76,6 +76,7 @@ build_once() {
     "$stage/DEPLOYMENT-CONTRACT.md"
   printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"builds\":2,\"byteIdentical\":true}" \
     >"$stage/BUILD-PROVENANCE.json"
+  find "$stage" -type d -exec chmod 0755 {} +
   chmod 0755 "$stage/bin/melusina-store-sidecar"
   chmod 0644 "$stage/BUILD-PROVENANCE.json"
   find "$stage" -exec touch -h -d "@$SOURCE_EPOCH" {} +

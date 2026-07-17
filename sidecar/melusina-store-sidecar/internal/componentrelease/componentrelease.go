@@ -55,6 +55,11 @@ import (
 const (
 	DesiredGenerationSchema = "melusina-desired-generation-v1"
 	ComponentRegistrySchema = "melusina-component-registry-v1"
+	// RuntimeReleaseInfoSchema is the exact, structured self-report emitted by
+	// a running release component. It is intentionally distinct from the
+	// signed DesiredGeneration schema: it binds a local process to a desired
+	// component release but carries no authority to choose host actions.
+	RuntimeReleaseInfoSchema = "melusina-runtime-release-info-v1"
 )
 
 // desiredGenerationDomain and componentReleaseDomain domain-separate the two

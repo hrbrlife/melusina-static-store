@@ -214,11 +214,8 @@ func (deps PollDeps) runtimeGate(vg VerifiedGeneration) func(context.Context, co
 		if err != nil {
 			return fmt.Errorf("runtime observer %s: %w", c.ComponentID, err)
 		}
-		if ev.ComponentID != c.ComponentID || ev.GenerationID != vg.Doc.GenerationID {
-			return fmt.Errorf("runtime report tuple mismatch for %s: got component=%s generation=%d", c.ComponentID, ev.ComponentID, ev.GenerationID)
-		}
-		if !strings.EqualFold(ev.ArtifactSHA256, c.SHA256) {
-			return fmt.Errorf("runtime report ArtifactSHA256 %s != desired %s", ev.ArtifactSHA256, c.SHA256)
+		if err := validateRuntimeEvidenceTuple(ev, vg, c); err != nil {
+			return err
 		}
 		// Independently bind the running process: read systemd MainPID, hash
 		// /proc/<pid>/exe, then RE-READ the PID to reject a swap race between hash
@@ -243,6 +240,23 @@ func (deps PollDeps) runtimeGate(vg VerifiedGeneration) func(context.Context, co
 		}
 		return nil
 	}
+}
+
+// validateRuntimeEvidenceTuple verifies every field the runtime evidence
+// contract promises before the controller consults systemd. Keeping this pure
+// makes every mismatch directly unit-testable and prevents a future caller from
+// silently dropping schema or version while retaining the artifact hash check.
+func validateRuntimeEvidenceTuple(ev RuntimeEvidence, vg VerifiedGeneration, c componentrelease.ComponentRelease) error {
+	if ev.Schema != componentrelease.RuntimeReleaseInfoSchema {
+		return fmt.Errorf("runtime report schema %q != required %q for %s", ev.Schema, componentrelease.RuntimeReleaseInfoSchema, c.ComponentID)
+	}
+	if ev.ComponentID != c.ComponentID || ev.GenerationID != vg.Doc.GenerationID || ev.Version != c.Version {
+		return fmt.Errorf("runtime report tuple mismatch for %s: got component=%s generation=%d version=%q", c.ComponentID, ev.ComponentID, ev.GenerationID, ev.Version)
+	}
+	if !strings.EqualFold(ev.ArtifactSHA256, c.SHA256) {
+		return fmt.Errorf("runtime report ArtifactSHA256 %s != desired %s", ev.ArtifactSHA256, c.SHA256)
+	}
+	return nil
 }
 
 func systemdMainPID(ctx context.Context, unit string) (int, error) {

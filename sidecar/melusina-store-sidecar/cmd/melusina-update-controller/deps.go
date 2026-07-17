@@ -162,10 +162,8 @@ func newRuntimeObserver() func(context.Context, componentrelease.ComponentReleas
 		if int64(len(raw)) > maxReleaseInfoBytes {
 			return hostupdate.RuntimeEvidence{}, errors.New("release-info exceeds bounded read limit")
 		}
-		var r releaseInfoReport
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&r); err != nil {
+		r, err := decodeReleaseInfo(raw)
+		if err != nil {
 			return hostupdate.RuntimeEvidence{}, fmt.Errorf("decode %s release-info: %w", c.ComponentID, err)
 		}
 		return hostupdate.RuntimeEvidence{
@@ -177,6 +175,77 @@ func newRuntimeObserver() func(context.Context, componentrelease.ComponentReleas
 			ArtifactSHA256: r.ArtifactSHA256,
 		}, nil
 	}
+}
+
+// decodeReleaseInfo accepts exactly one object with the six canonical runtime
+// fields. json.Decoder's DisallowUnknownFields is necessary but insufficient:
+// it accepts duplicate keys (last one wins) and does not itself prove EOF.
+// Runtime identity cannot be order-dependent, so reject folded duplicates and
+// trailing JSON before decoding the typed report.
+func decodeReleaseInfo(raw []byte) (releaseInfoReport, error) {
+	if err := validateReleaseInfoObject(raw); err != nil {
+		return releaseInfoReport{}, err
+	}
+	var r releaseInfoReport
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&r); err != nil {
+		return releaseInfoReport{}, err
+	}
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return releaseInfoReport{}, errors.New("release-info has trailing data")
+	}
+	return r, nil
+}
+
+func validateReleaseInfoObject(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	token, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	if delim, ok := token.(json.Delim); !ok || delim != '{' {
+		return errors.New("release-info must be one JSON object")
+	}
+	allowed := map[string]struct{}{
+		"schema": {}, "componentId": {}, "generationId": {},
+		"version": {}, "pid": {}, "artifactSha256": {},
+	}
+	seen := map[string]string{}
+	for dec.More() {
+		token, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		key, ok := token.(string)
+		if !ok {
+			return errors.New("release-info object key is not a string")
+		}
+		if _, ok := allowed[key]; !ok {
+			return fmt.Errorf("release-info has unknown field %q", key)
+		}
+		folded := strings.ToLower(key)
+		if prior, exists := seen[folded]; exists {
+			return fmt.Errorf("release-info has duplicate or case-shadowed field %q vs %q", prior, key)
+		}
+		seen[folded] = key
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return err
+		}
+	}
+	if token, err := dec.Token(); err != nil {
+		return err
+	} else if delim, ok := token.(json.Delim); !ok || delim != '}' {
+		return errors.New("release-info object did not terminate")
+	}
+	if len(seen) != len(allowed) {
+		return errors.New("release-info is missing one or more required fields")
+	}
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return errors.New("release-info has trailing data")
+	}
+	return nil
 }
 
 // observeFor returns the currently-installed artifact hash for the delta check that

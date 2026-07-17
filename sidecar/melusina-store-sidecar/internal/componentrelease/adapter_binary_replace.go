@@ -1,6 +1,6 @@
 package componentrelease
 
-// PROPOSED reviewed patch (rev-2) from SYSTEM-RELEASE-RAIL-SIDECARS (card 000b) for
+// PROPOSED reviewed patch (rev-3) for SYSTEM-RELEASE-RAIL-SIDECARS (card 000b) and
 // the SHELL controller module. Target file:
 //   internal/componentrelease/adapter_binary_replace.go
 // Wire in the controller startup:  RegisterAdapter(NewBinaryReplaceAdapter(nil))
@@ -30,6 +30,12 @@ package componentrelease
 //   split fetchers: Stage uses an origin-pinned, no-redirect bundle getter; Probe
 //   uses a loopback-only, no-redirect getter. One permissive client cannot serve
 //   both. An injected getter (tests / controller override) is used for both.
+//
+// rev-3 closes the verifier's post-Verify mutation cases: Apply reopens staged
+// and prior executables O_NOFOLLOW, rehashes while copying into fresh same-dir
+// temps, checks the signed size/hash before rename, fsyncs file+directory, and
+// refuses an installed target that differs from PreviousSHA256. Thus neither a
+// path swap nor same-size byte mutation can cross the final mutation boundary.
 //
 // Division of trust (adapter.go): the CONTROLLER runs the chain-authority gate
 // before Apply; this adapter never touches the chain. Stdlib only.
@@ -143,9 +149,12 @@ func (a *binaryReplaceAdapter) Verify(ctx context.Context, staged Staged, desire
 	}
 	// Re-hash the on-disk bytes (defence in depth: what Apply installs, not the
 	// streamed measurement).
-	got, err := sha256File(staged.Path)
+	got, gotSize, err := measureRegularFileNoFollow(staged.Path)
 	if err != nil {
 		return fmt.Errorf("binary-replace verify %s: re-hash: %w", desired.ComponentID, err)
+	}
+	if gotSize != desired.SizeBytes {
+		return fmt.Errorf("binary-replace verify %s: on-disk size %d != desired %d", desired.ComponentID, gotSize, desired.SizeBytes)
 	}
 	if !strings.EqualFold(got, desired.SHA256) {
 		return fmt.Errorf("binary-replace verify %s: on-disk sha256 %s != desired %s", desired.ComponentID, got, strings.ToLower(desired.SHA256))
@@ -153,6 +162,17 @@ func (a *binaryReplaceAdapter) Verify(ctx context.Context, staged Staged, desire
 	// Floor equality: refuse re-applying the exact prior artifact (replay / no-op).
 	if desired.PreviousSHA256 != "" && strings.EqualFold(desired.SHA256, desired.PreviousSHA256) {
 		return fmt.Errorf("binary-replace verify %s: desired sha256 equals previousSha256 (replay refused)", desired.ComponentID)
+	}
+	// A non-genesis update is permitted to replace only the exact signed rollback
+	// floor. Refuse drift before the controller opens its mutation window.
+	if desired.PreviousSHA256 != "" {
+		priorSHA, _, err := measureRegularFileNoFollow(install.InstallRoot)
+		if err != nil {
+			return fmt.Errorf("binary-replace verify %s: measure installed rollback floor: %w", desired.ComponentID, err)
+		}
+		if !strings.EqualFold(priorSHA, desired.PreviousSHA256) {
+			return fmt.Errorf("binary-replace verify %s: installed sha256 %s != signed previousSha256 %s", desired.ComponentID, priorSHA, strings.ToLower(desired.PreviousSHA256))
+		}
 	}
 	return nil
 }
@@ -163,6 +183,16 @@ func (a *binaryReplaceAdapter) Verify(ctx context.Context, staged Staged, desire
 // prior binary in place AND returns a usable Rollback (never nil).
 func (a *binaryReplaceAdapter) Apply(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) (Rollback, error) {
 	target := install.InstallRoot
+	// Revalidate the exact candidate immediately before any live mutation. Apply
+	// later copies through a no-follow fd and re-hashes while writing its temp, so
+	// replacing the path (or mutating its bytes) after Verify cannot install it.
+	stagedSHA, stagedSize, err := measureRegularFileNoFollow(staged.Path)
+	if err != nil {
+		return nil, fmt.Errorf("binary-replace apply %s: revalidate staged file: %w", desired.ComponentID, err)
+	}
+	if stagedSize != desired.SizeBytes || !strings.EqualFold(stagedSHA, desired.SHA256) {
+		return nil, fmt.Errorf("binary-replace apply %s: staged bytes changed after Verify (size=%d sha256=%s)", desired.ComponentID, stagedSize, stagedSHA)
+	}
 	backupDir := prevBackupDir(target)
 	if err := os.MkdirAll(backupDir, 0o755); err != nil {
 		return nil, fmt.Errorf("binary-replace apply %s: backup dir: %w", desired.ComponentID, err)
@@ -170,15 +200,28 @@ func (a *binaryReplaceAdapter) Apply(ctx context.Context, staged Staged, desired
 
 	// 1. Retain the exact prior binary (if the target exists) for rollback.
 	var backupPath string
+	var priorSHA string
+	var priorSize int64
 	if _, statErr := os.Stat(target); statErr == nil {
-		prevSHA, herr := sha256File(target)
+		var herr error
+		priorSHA, priorSize, herr = measureRegularFileNoFollow(target)
 		if herr != nil {
 			return nil, fmt.Errorf("binary-replace apply %s: hash prior: %w", desired.ComponentID, herr)
 		}
-		backupPath = filepath.Join(backupDir, filepath.Base(target)+"."+shortSHA(prevSHA))
-		if err := atomicCopy(target, backupPath, 0o755); err != nil {
+		if desired.PreviousSHA256 == "" {
+			return nil, fmt.Errorf("binary-replace apply %s: existing target has no signed previousSha256 floor", desired.ComponentID)
+		}
+		if !strings.EqualFold(priorSHA, desired.PreviousSHA256) {
+			return nil, fmt.Errorf("binary-replace apply %s: installed sha256 %s != signed previousSha256 %s", desired.ComponentID, priorSHA, strings.ToLower(desired.PreviousSHA256))
+		}
+		backupPath = filepath.Join(backupDir, filepath.Base(target)+"."+shortSHA(priorSHA))
+		if err := atomicCopyVerified(target, backupPath, 0o755, priorSHA, priorSize); err != nil {
 			return nil, fmt.Errorf("binary-replace apply %s: retain prior: %w", desired.ComponentID, err)
 		}
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return nil, fmt.Errorf("binary-replace apply %s: stat prior: %w", desired.ComponentID, statErr)
+	} else if desired.PreviousSHA256 != "" {
+		return nil, fmt.Errorf("binary-replace apply %s: signed previousSha256 supplied but installed target is missing", desired.ComponentID)
 	}
 
 	// rollback restores the EXACT prior binary and restarts. Built before restart so
@@ -188,22 +231,30 @@ func (a *binaryReplaceAdapter) Apply(ctx context.Context, staged Staged, desired
 			_ = os.Remove(target) // fresh install: remove new + stop
 			return stop(rbctx, install)
 		}
-		if err := atomicCopy(backupPath, target, 0o755); err != nil {
+		if err := atomicCopyVerified(backupPath, target, 0o755, priorSHA, priorSize); err != nil {
 			return fmt.Errorf("binary-replace rollback %s: restore prior: %w", desired.ComponentID, err)
 		}
 		return restart(rbctx, install)
 	}
 
 	// 2. Atomic replace: staged bytes -> fresh temp on the SAME dir/fs -> rename.
-	if err := atomicCopy(staged.Path, target, 0o755); err != nil {
+	if err := atomicCopyVerified(staged.Path, target, 0o755, desired.SHA256, desired.SizeBytes); err != nil {
 		return rollback, fmt.Errorf("binary-replace apply %s: atomic replace: %w", desired.ComponentID, err)
+	}
+	installedSHA, installedSize, err := measureRegularFileNoFollow(target)
+	if err != nil || installedSize != desired.SizeBytes || !strings.EqualFold(installedSHA, desired.SHA256) {
+		if err == nil {
+			err = fmt.Errorf("installed size=%d sha256=%s, want size=%d sha256=%s", installedSize, installedSHA, desired.SizeBytes, strings.ToLower(desired.SHA256))
+		}
+		_ = rollback(ctx)
+		return rollback, fmt.Errorf("binary-replace apply %s: post-install measurement: %w", desired.ComponentID, err)
 	}
 
 	// 3. Restart exactly once. On failure, restore the prior binary in place and
 	//    hand back the usable rollback.
 	if err := restart(ctx, install); err != nil {
 		if backupPath != "" {
-			_ = atomicCopy(backupPath, target, 0o755)
+			_ = atomicCopyVerified(backupPath, target, 0o755, priorSHA, priorSize)
 		} else {
 			_ = os.Remove(target)
 		}
@@ -378,17 +429,27 @@ func noRedirectGet(ctx context.Context, url string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func sha256File(path string) (string, error) {
-	f, err := os.Open(path)
+// measureRegularFileNoFollow binds measurement to a real regular-file inode.
+// Symlinks, devices, directories and FIFOs are never valid executable artifacts.
+func measureRegularFileNoFollow(path string) (string, int64, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+	info, err := f.Stat()
+	if err != nil {
+		return "", 0, err
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	if !info.Mode().IsRegular() {
+		return "", 0, fmt.Errorf("%s is not a regular file", path)
+	}
+	h := sha256.New()
+	n, err := io.Copy(h, f)
+	if err != nil {
+		return "", 0, err
+	}
+	return hex.EncodeToString(h.Sum(nil)), n, nil
 }
 
 func shortSHA(s string) string {
@@ -398,40 +459,70 @@ func shortSHA(s string) string {
 	return s
 }
 
-// atomicCopy writes src to a FRESH unique temp beside dst, fsyncs it, then renames
-// it into place so a crash cannot leave a torn executable. The temp is created with
-// os.CreateTemp (fresh random name — no preexisting path, no symlink to follow).
-func atomicCopy(src, dst string, mode os.FileMode) error {
-	in, err := os.Open(src)
+// atomicCopyVerified opens src without following symlinks, streams the exact
+// expected bytes into a fresh same-directory temp while hashing them, and only
+// renames after size+hash match. This closes the Verify->Apply path race: even if
+// an attacker replaces or mutates the staged path, unverified bytes never reach
+// dst. The temp file and destination directory are fsynced for crash durability.
+func atomicCopyVerified(src, dst string, mode os.FileMode, wantSHA string, wantSize int64) error {
+	in, err := os.OpenFile(src, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("source %s is not a regular file", src)
+	}
+	if wantSize < 0 {
+		return fmt.Errorf("invalid expected size %d", wantSize)
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".rrs-*")
 	if err != nil {
 		return err
 	}
 	tmpName := tmp.Name()
-	if _, err := io.Copy(tmp, in); err != nil {
+	removeTemp := true
+	defer func() {
+		if removeTemp {
+			_ = os.Remove(tmpName)
+		}
+	}()
+	h := sha256.New()
+	n, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(in, wantSize+1))
+	if err != nil {
 		tmp.Close()
-		_ = os.Remove(tmpName)
+		return err
+	}
+	gotSHA := hex.EncodeToString(h.Sum(nil))
+	if n != wantSize || !strings.EqualFold(gotSHA, wantSHA) {
+		tmp.Close()
+		return fmt.Errorf("source changed or mismatched (size=%d sha256=%s, want size=%d sha256=%s)", n, gotSHA, wantSize, strings.ToLower(wantSHA))
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
 		return err
 	}
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
-		_ = os.Remove(tmpName)
-		return err
-	}
-	if err := tmp.Chmod(mode); err != nil {
-		tmp.Close()
-		_ = os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpName)
 		return err
 	}
-	return os.Rename(tmpName, dst)
+	if err := os.Rename(tmpName, dst); err != nil {
+		return err
+	}
+	removeTemp = false
+	dir, err := os.Open(filepath.Dir(dst))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
 
 func restart(ctx context.Context, install ComponentInstall) error {

@@ -3,12 +3,141 @@ package hostupdate
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+// stageToHealthyUnstable Opens a WAL entry and advances it staged->applying->
+// restarted->healthy-unstable (the state at which the deep-stable Complete gate
+// runs), stamping AppliedAtUnix. It returns the persisted (reloaded) entry.
+func stageToHealthyUnstable(t *testing.T, ws *WALStore, e WALEntry) WALEntry {
+	t.Helper()
+	if err := ws.Open(e); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []WALState{StateApplying, StateRestarted} {
+		if err := ws.Advance(e.ComponentID, s, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ws.Advance(e.ComponentID, StateHealthyUnstable, func(en *WALEntry) { en.AppliedAtUnix = e.AppliedAtUnix }); err != nil {
+		t.Fatal(err)
+	}
+	loaded, ok, err := ws.Load(e.ComponentID)
+	if err != nil || !ok {
+		t.Fatalf("reload healthy-unstable entry: ok=%v err=%v", ok, err)
+	}
+	return loaded
+}
+
+func TestCompleteAfterStableWaitsForWindow(t *testing.T) {
+	ws, err := NewWALStore(filepath.Join(t.TempDir(), "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded := stageToHealthyUnstable(t, ws, WALEntry{
+		ComponentID: "store-sidecar", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
+		ToHash: strings.Repeat("1", 64), ToVersion: "g2", DeepStableSeconds: 120, AppliedAtUnix: 1000,
+	})
+	inst := componentrelease.ComponentInstall{ComponentID: "store-sidecar", InstallRoot: "/opt/x", ServiceUnit: "x.service", ApplyKind: componentrelease.ApplyBinaryReplace}
+	// Only 60s of the 120s window elapsed -> must WAIT (no completion, no chain call).
+	deps := ApplyDeps{WAL: ws, Runner: &fakeRunner{}, Now: func() int64 { return 1060 },
+		ChainGate: func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
+			t.Fatal("chain gate must not run before the deep-stable window elapses")
+			return nil
+		}}
+	done, err := CompleteAfterStable(context.Background(), loaded, inst, deps)
+	if err != nil || done {
+		t.Fatalf("expected wait (false,nil), got done=%v err=%v", done, err)
+	}
+	if e, ok, _ := ws.Load("store-sidecar"); !ok || e.State != StateHealthyUnstable {
+		t.Fatal("WAL must remain in-flight healthy-unstable during the wait")
+	}
+}
+
+func TestCompleteAfterStableChainStillActiveCompletes(t *testing.T) {
+	ws, err := NewWALStore(filepath.Join(t.TempDir(), "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded := stageToHealthyUnstable(t, ws, WALEntry{
+		ComponentID: "store-sidecar", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
+		ToHash: strings.Repeat("1", 64), ToVersion: "g2", DeepStableSeconds: 120, AppliedAtUnix: 1000,
+		Chain: componentrelease.ChainAuthority{Kind: "installer_release", Program: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"},
+	})
+	inst := componentrelease.ComponentInstall{ComponentID: "store-sidecar", InstallRoot: "/opt/x", ServiceUnit: "x.service", ApplyKind: componentrelease.ApplyBinaryReplace}
+	var gated componentrelease.ComponentRelease
+	deps := ApplyDeps{WAL: ws, Runner: &fakeRunner{}, Now: func() int64 { return 1200 }, // 200s > 120s window
+		ChainGate: func(_ context.Context, c componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
+			gated = c
+			return nil
+		}}
+	done, err := CompleteAfterStable(context.Background(), loaded, inst, deps)
+	if err != nil || !done {
+		t.Fatalf("expected completion (true,nil), got done=%v err=%v", done, err)
+	}
+	// The pre-Complete gate re-checked the EXACT persisted hash + authority.
+	if gated.SHA256 != strings.Repeat("1", 64) || gated.Chain.Kind != "installer_release" {
+		t.Fatalf("chain gate did not receive the persisted release: %+v", gated)
+	}
+	if _, ok, _ := ws.Load("store-sidecar"); ok {
+		t.Fatal("WAL must be finalized (terminal applied) after completion")
+	}
+}
+
+func TestCompleteAfterStableChainRevokedRollsBack(t *testing.T) {
+	// The deep-stable window elapsed, but the release was REVOKED on-chain during it.
+	// The pre-Complete gate must refuse to seal a success and instead restore the
+	// exact prior binary + a rolled-back receipt.
+	dir := t.TempDir()
+	ws, err := NewWALStore(filepath.Join(dir, "wal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	installRoot := filepath.Join(dir, "store")
+	priorBytes := []byte("PRIOR-store-gen1")
+	newBytes := []byte("NEW-store-gen2")
+	priorPath := filepath.Join(dir, ".rrs-prev", "store."+hashBytes(priorBytes)[:12])
+	if err := os.MkdirAll(filepath.Dir(priorPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(priorPath, priorBytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installRoot, newBytes, 0o755); err != nil { // running the NEW build
+		t.Fatal(err)
+	}
+	loaded := stageToHealthyUnstable(t, ws, WALEntry{
+		ComponentID: "store-sidecar", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
+		FromHash: hashBytes(priorBytes), FromVersion: "g1", ToHash: hashBytes(newBytes), ToVersion: "g2",
+		PriorPath: priorPath, DeepStableSeconds: 120, AppliedAtUnix: 1000,
+		Chain: componentrelease.ChainAuthority{Kind: "installer_release", Program: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"},
+	})
+	inst := componentrelease.ComponentInstall{ComponentID: "store-sidecar", InstallRoot: installRoot, ServiceUnit: "store.service", ApplyKind: componentrelease.ApplyBinaryReplace}
+	runner := &fakeRunner{}
+	deps := ApplyDeps{WAL: ws, Runner: runner, Now: func() int64 { return 1200 },
+		ChainGate: func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
+			return fmt.Errorf("installer release revoked on-chain during deep-stable")
+		}}
+	done, err := CompleteAfterStable(context.Background(), loaded, inst, deps)
+	if done || err == nil {
+		t.Fatalf("expected pre-complete rollback (false,err), got done=%v err=%v", done, err)
+	}
+	if got, _ := os.ReadFile(installRoot); string(got) != string(priorBytes) {
+		t.Fatalf("host not restored to prior after pre-complete refusal: %q", got)
+	}
+	if len(runner.calls) != 1 || runner.calls[0][0] != "systemctl" {
+		t.Fatalf("restart not issued once on rollback: %v", runner.calls)
+	}
+	e, ok, _ := ws.Load("store-sidecar")
+	if ok {
+		t.Fatalf("WAL must be finalized rolled-back, still active: %s", e.State)
+	}
+}
 
 // fakeAdapter is an in-memory Adapter for coordinator tests. Apply mutates a
 // shared installed-hash map and returns a rollback closure that restores the

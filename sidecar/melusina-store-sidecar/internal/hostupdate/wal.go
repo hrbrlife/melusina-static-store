@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
 
 const walSchema = "melusina-hostupdate-wal-v1"
@@ -58,19 +60,29 @@ func (s WALState) terminal() bool { return s == StateApplied || s == StateRolled
 
 // WALEntry is the durable intent + progress for one component apply.
 type WALEntry struct {
-	Schema       string   `json:"schema"`
-	ComponentID  string   `json:"componentId"`
-	GenerationID uint64   `json:"generationId"`
-	AutoApply    bool     `json:"autoApply"`
-	ApplyKind    string   `json:"applyKind"`
-	FromHash     string   `json:"fromHash,omitempty"` // prior artifact sha256 (rollback target); empty if brand-new
-	FromVersion  string   `json:"fromVersion,omitempty"`
-	ToHash       string   `json:"toHash"` // target artifact sha256
-	ToVersion    string   `json:"toVersion"`
-	StagedPath   string   `json:"stagedPath"`          // verified staged artifact (pre-apply)
-	PriorPath    string   `json:"priorPath,omitempty"` // RETAINED prior artifact — kept until terminal (retention invariant)
-	State        WALState `json:"state"`
-	OpenedAtUnix int64    `json:"openedAtUnix"`
+	Schema         string `json:"schema"`
+	ComponentID    string `json:"componentId"`
+	ComponentClass string `json:"componentClass,omitempty"` // persisted so the pre-Complete chain re-verify can reconstruct the ComponentRelease from disk
+	GenerationID   uint64 `json:"generationId"`
+	AutoApply      bool   `json:"autoApply"`
+	ApplyKind      string `json:"applyKind"`
+	FromHash       string `json:"fromHash,omitempty"` // prior artifact sha256 (rollback target); empty if brand-new
+	FromVersion    string `json:"fromVersion,omitempty"`
+	ToHash         string `json:"toHash"` // target artifact sha256 (served bytes)
+	ToVersion      string `json:"toVersion"`
+	// ContentHash is the on-chain CONTENT identity (app tree hash for release_v2),
+	// distinct from ToHash when the served bytes differ from the chain-pinned hash
+	// (apps). Persisted so the pre-Complete chain re-verify checks the SAME hash the
+	// mutation-time gate did. Empty means it equals ToHash (whole-file artifacts).
+	ContentHash string `json:"contentHash,omitempty"`
+	// Chain is the on-chain authority reference, persisted so a later poll tick or a
+	// fresh post-crash process can re-run the chain gate (pre-Complete) entirely from
+	// the WAL — the running host never trusts the remote document to re-verify.
+	Chain        componentrelease.ChainAuthority `json:"chain,omitempty"`
+	StagedPath   string                          `json:"stagedPath"`          // verified staged artifact (pre-apply)
+	PriorPath    string                          `json:"priorPath,omitempty"` // RETAINED prior artifact — kept until terminal (retention invariant)
+	State        WALState                        `json:"state"`
+	OpenedAtUnix int64                           `json:"openedAtUnix"`
 	// AppliedAtUnix marks when the component first became target+healthy — the
 	// start of the deep-stable window.
 	AppliedAtUnix     int64  `json:"appliedAtUnix,omitempty"`

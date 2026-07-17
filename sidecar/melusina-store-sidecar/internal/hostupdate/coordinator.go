@@ -180,12 +180,15 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	}
 	entry := WALEntry{
 		ComponentID:       c.ComponentID,
+		ComponentClass:    c.ComponentClass,
 		GenerationID:      generationID,
 		AutoApply:         deps.Policy.AutoApply,
 		ApplyKind:         install.ApplyKind,
 		FromHash:          installedHash,
 		ToHash:            c.SHA256,
 		ToVersion:         c.Version,
+		ContentHash:       c.ContentSHA256,
+		Chain:             c.Chain,
 		StagedPath:        filepath.Join(deps.StagingRoot, c.ComponentID),
 		PriorPath:         priorBackupPath(install.InstallRoot, installedHash),
 		DeepStableSeconds: deps.Policy.DeepStableSeconds,
@@ -250,6 +253,66 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		return fail(fmt.Errorf("wal healthy: %w", err), rb)
 	}
 	return rb, nil
+}
+
+// CompleteAfterStable finalizes a healthy-unstable component as terminal-applied,
+// but ONLY after BOTH gates pass: (a) the deep-stable window has elapsed, and
+// (b) the on-chain authority STILL attests the exact running hash. This is the
+// pre-Complete chain re-verify (SEAM 3): a release revoked or superseded DURING
+// the deep-stable window must not be sealed as a terminal success — the controller
+// instead rolls the host back to the exact prior artifact.
+//
+// It operates entirely from the PERSISTED WAL entry + the install-local registry
+// (chain authority, prior path, and prior hash all live on disk), so a later poll
+// tick or a fresh post-crash process can run it without any in-memory state.
+//
+// Returns (completed, error):
+//   - deep-stable not yet elapsed              -> (false, nil): the caller waits + retries.
+//   - chain re-verify fails, rolled back to prior -> (false, err).
+//   - chain re-verify passes, sealed applied    -> (true, nil).
+func CompleteAfterStable(ctx context.Context, entry WALEntry, install componentrelease.ComponentInstall, deps ApplyDeps) (bool, error) {
+	if entry.State != StateHealthyUnstable {
+		return false, fmt.Errorf("component %s is %s, not healthy-unstable; cannot complete", entry.ComponentID, entry.State)
+	}
+	applied := entry.AppliedAtUnix
+	if applied == 0 || deps.now()-applied < entry.DeepStableSeconds {
+		return false, nil // deep-stable window not yet elapsed — keep probing
+	}
+	// Pre-Complete chain gate: re-verify the EXACT running hash is still on-chain
+	// Active before sealing the receipt. Reconstruct the release from the WAL so the
+	// re-check is identical to the mutation-time gate but needs no remote document.
+	if deps.ChainGate != nil {
+		if err := deps.ChainGate(ctx, componentReleaseFromWAL(entry), install); err != nil {
+			// Revoked/superseded during deep-stable: restore the exact prior artifact
+			// and seal a rolled-back receipt — a disavowed release is not a success.
+			if rbErr := RollbackFromWAL(ctx, entry, install, deps.Runner); rbErr != nil {
+				return false, fmt.Errorf("pre-complete chain refuse for %s AND rollback failed (chain=%v; rollback=%w)", entry.ComponentID, err, rbErr)
+			}
+			if _, rbErr := deps.WAL.Rollback(entry.ComponentID, deps.now(), "pre-complete chain re-verify: "+err.Error()); rbErr != nil {
+				return false, rbErr
+			}
+			return false, fmt.Errorf("pre-complete chain re-verify refused %s; rolled back to prior: %w", entry.ComponentID, err)
+		}
+	}
+	if _, err := deps.WAL.Complete(entry.ComponentID, deps.now()); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// componentReleaseFromWAL reconstructs the minimal ComponentRelease the chain gate
+// needs (id, class, version, both hashes, on-chain authority) from a persisted WAL
+// entry, so the pre-Complete re-verify checks the very same artifact the
+// mutation-time gate did — without re-fetching the remote generation.
+func componentReleaseFromWAL(e WALEntry) componentrelease.ComponentRelease {
+	return componentrelease.ComponentRelease{
+		ComponentID:    e.ComponentID,
+		ComponentClass: e.ComponentClass,
+		Version:        e.ToVersion,
+		SHA256:         e.ToHash,
+		ContentSHA256:  e.ContentHash,
+		Chain:          e.Chain,
+	}
 }
 
 // priorBackupPath mirrors the binary-replace adapter's retained-prior convention

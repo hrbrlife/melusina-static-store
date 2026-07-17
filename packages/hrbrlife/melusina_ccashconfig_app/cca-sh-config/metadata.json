@@ -1,9 +1,9 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "4558b9ad0caf47c316c529fdef054f84",
+  "packageId": "531c98438cee0e67b547c9d165e3caf7",
   "name": "ccash Config",
-  "version": "0.0.47",
-  "versionNumber": 55,
+  "version": "0.0.48",
+  "versionNumber": 56,
   "shortDescription": "Admin pearl for ccash \u2014 controls procedure templates, hook allowlist, and per-install routing",
   "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
   "categories": [
@@ -30,6 +30,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.0.47",
-  "sha256": "4558b9ad0caf47c316c529fdef054f84865c514334904ce6c2cd8a44566ad127"
+  "marketingVersion": "0.0.48",
+  "sha256": "531c98438cee0e67b547c9d165e3caf7d84217ab7659495998f19e5a1e057c6a"
 }

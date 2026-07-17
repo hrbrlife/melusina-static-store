@@ -56,10 +56,47 @@ func newGenesisFixture(t *testing.T) (Config, catalogBootstrapOptions) {
 		expectedUID:       uint32(os.Getuid()),
 		expectedGID:       uint32(os.Getgid()),
 		nonce:             defaultPublishNonceLedgerOptions(),
-		operatorPublicKey: make(ed25519.PublicKey, ed25519.PublicKeySize),
+		operatorPublicKey: deterministicNonzeroGenesisKey(),
 	}
 	opts.nonce.Now = func() time.Time { return now }
 	return cfg, opts
+}
+
+// deterministicNonzeroGenesisKey is a fixed, non-zero 32-byte ed25519 public key
+// for genesis fixtures. It must be non-zero because the genesis seal path now
+// fail-closes on an all-zero (identity-point) operator authority.
+func deterministicNonzeroGenesisKey() ed25519.PublicKey {
+	k := make(ed25519.PublicKey, ed25519.PublicKeySize)
+	for i := range k {
+		k[i] = 0x42
+	}
+	return k
+}
+
+// TestProvisionalGenesisRefusesMalformedOperatorAuthority pins the fail-closed
+// authority precheck: a genesis must never seal under a missing, wrong-length, or
+// all-zero operator key, and must accept a well-formed non-zero key.
+func TestProvisionalGenesisRefusesMalformedOperatorAuthority(t *testing.T) {
+	if err := requireGenesisOperatorAuthority(deterministicNonzeroGenesisKey()); err != nil {
+		t.Fatalf("well-formed non-zero operator key was refused: %v", err)
+	}
+	for name, key := range map[string]ed25519.PublicKey{
+		"nil":       nil,
+		"too_short": make(ed25519.PublicKey, ed25519.PublicKeySize-1),
+		"too_long":  make(ed25519.PublicKey, ed25519.PublicKeySize+1),
+		"all_zero":  make(ed25519.PublicKey, ed25519.PublicKeySize),
+	} {
+		if err := requireGenesisOperatorAuthority(key); err == nil {
+			t.Fatalf("malformed operator key %q was accepted", name)
+		}
+	}
+
+	// End-to-end: the seal entrypoint itself must refuse the all-zero authority.
+	cfg, opts := newGenesisFixture(t)
+	opts.operatorPublicKey = make(ed25519.PublicKey, ed25519.PublicKeySize)
+	if err := runCatalogGenesisBootstrapWithOptions(cfg, opts); err == nil {
+		t.Fatal("genesis seal accepted an all-zero operator authority")
+	}
 }
 
 // (b) + (c): honest genesis is accepted, produces a consistent trust root, and the
@@ -170,8 +207,11 @@ func TestProvisionalGenesisRejectsNonGenesisInstallMarker(t *testing.T) {
 // migration record (it is an upgrade target, not virgin), and startup refuses when
 // BOTH are present (ambiguous provenance).
 func TestProvisionalGenesisRefusesMigrationTargetAndAmbiguity(t *testing.T) {
-	// A genuine migration fixture (authorized v104 state present).
+	// A genuine migration fixture (authorized v104 state present). Give it a valid
+	// non-zero authority so this case isolates the virgin/migration-exclusion gate
+	// rather than tripping the operator-authority precheck first.
 	cfg, opts, _ := newCatalogBootstrapFixture(t, "authorized")
+	opts.operatorPublicKey = deterministicNonzeroGenesisKey()
 	if err := runCatalogGenesisBootstrapWithOptions(cfg, opts); err == nil ||
 		!strings.Contains(err.Error(), "not a virgin install") {
 		t.Fatalf("genesis did not refuse an existing migration target: %v", err)

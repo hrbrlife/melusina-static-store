@@ -31,6 +31,28 @@ import (
 // refuses an incomplete one. A genesis and a v104 migration state are mutually
 // exclusive; both present is ambiguous provenance and is refused.
 
+// requireGenesisOperatorAuthority refuses a genesis operator public key that is
+// missing, not exactly 32 bytes, or all-zero. The all-zero ed25519 point is a
+// syntactically-valid length but is never a real signing authority; because a
+// virgin catalog is empty, no downstream pointer-signature verification would
+// ever exercise it, so the seal path itself must reject it.
+func requireGenesisOperatorAuthority(key ed25519.PublicKey) error {
+	if len(key) != ed25519.PublicKeySize {
+		return errors.New("operator public key must be a 32-byte ed25519 key")
+	}
+	allZero := true
+	for _, b := range key {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+	if allZero {
+		return errors.New("operator public key is all-zero (not a valid signing authority)")
+	}
+	return nil
+}
+
 // runCatalogGenesisBootstrap establishes the honest first-generation trust root on a
 // virgin target. It requires a write-capable operator — a first-publish authority
 // root cannot be established by a read-only store — and never runs at server startup.
@@ -52,6 +74,15 @@ func runCatalogGenesisBootstrap(cfg Config, operator *identity.Private) error {
 // crash-resumable: a re-run of a committed genesis re-validates, and a re-run of an
 // interrupted one resumes rather than reseeding.
 func runCatalogGenesisBootstrapWithOptions(cfg Config, opts catalogBootstrapOptions) error {
+	// Fail-closed authority precheck BEFORE any filesystem mutation or seal. A
+	// genesis binds the first-publish trust root to this operator key; an empty
+	// first catalog has no pointer signatures to exercise it, so this is the only
+	// gate that catches a missing, wrong-length, or all-zero (ed25519
+	// identity-point) key. Such a key is not a real signing authority and must
+	// never seal a genesis.
+	if err := requireGenesisOperatorAuthority(opts.operatorPublicKey); err != nil {
+		return fmt.Errorf("catalog genesis authority: %w", err)
+	}
 	for name, path := range map[string]string{
 		"dist_dir": cfg.DistDir, "private_stage_dir": cfg.PrivateStageDir,
 		"catalog_generation_root":     cfg.CatalogGenerationRoot,

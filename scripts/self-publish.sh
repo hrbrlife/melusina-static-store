@@ -275,20 +275,21 @@ if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
   trap 'rm -f "${ACTIVE_JSON:-}" "${ACTIVE_PDAS:-}"' EXIT
   "$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" >"$ACTIVE_JSON" \
     || fail "  Active ReleaseEntry enumeration failed; refusing to revoke without a complete chain view"
-  python3 - "$NEW_PDA" <"$ACTIVE_JSON" >"$ACTIVE_PDAS" <<'PY' \
+  python3 - "$NEW_PDA" "$ACTIVE_JSON" >"$ACTIVE_PDAS" <<'PY' \
     || fail "  Active ReleaseEntry enumeration was malformed; refusing to revoke"
 import json, sys
-new_pda = sys.argv[1]
+new_pda, active_json_path = sys.argv[1:]
 seen = set()
-for raw in sys.stdin:
-    raw = raw.strip()
-    if not raw:
-        continue
-    entry = json.loads(raw)
-    pda = entry.get("pda")
-    if not isinstance(pda, str) or not pda or pda in seen:
-        raise SystemExit("invalid or duplicate Active ReleaseEntry PDA")
-    seen.add(pda)
+with open(active_json_path, encoding="utf-8") as active_json:
+    for raw in active_json:
+        raw = raw.strip()
+        if not raw:
+            continue
+        entry = json.loads(raw)
+        pda = entry.get("pda")
+        if not isinstance(pda, str) or not pda or pda in seen:
+            raise SystemExit("invalid or duplicate Active ReleaseEntry PDA")
+        seen.add(pda)
 if new_pda not in seen:
     raise SystemExit("just-registered ReleaseEntry is not Active")
 for pda in sorted(seen - {new_pda}):
@@ -334,15 +335,16 @@ if $REVOKE_STALE && ! skip_step ceremony && ! $DRY_RUN; then
   trap 'rm -f "${ACTIVE_JSON:-}" "${ACTIVE_PDAS:-}" "${FINAL_ACTIVE_JSON:-}"' EXIT
   "$LIST_BIN" -rpc-url "$RPC_URL" -known-pda "$NEW_PDA" >"$FINAL_ACTIVE_JSON" \
     || fail "  final Active ReleaseEntry enumeration failed"
-  python3 - "$NEW_PDA" "$EXPECTED_APP_HASH" <"$FINAL_ACTIVE_JSON" <<'PY' \
+  python3 - "$NEW_PDA" "$EXPECTED_APP_HASH" "$FINAL_ACTIVE_JSON" <<'PY' \
     || fail "  post-promote chain state is not exactly the new Active ReleaseEntry"
 import json, sys
-want_pda, want_hash = sys.argv[1:]
+want_pda, want_hash, active_json_path = sys.argv[1:]
 entries = []
-for raw in sys.stdin:
-    raw = raw.strip()
-    if raw:
-        entries.append(json.loads(raw))
+with open(active_json_path, encoding="utf-8") as active_json:
+    for raw in active_json:
+        raw = raw.strip()
+        if raw:
+            entries.append(json.loads(raw))
 if len(entries) != 1 or entries[0].get("pda") != want_pda or entries[0].get("appHash", "").lower() != want_hash.lower():
     raise SystemExit("expected exactly the promoted PDA with the RELEASE.json appHash")
 PY

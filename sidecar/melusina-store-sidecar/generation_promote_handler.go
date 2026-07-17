@@ -15,7 +15,9 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // ── canonical publisher: envelope-authorized generation promote (POST /publish/generation) ──
@@ -162,11 +164,54 @@ func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c co
 			return fmt.Errorf("component %s: %w", c.ComponentID, err)
 		}
 		return s.verifyComponentServedBytes(c)
-	case componentrelease.AuthorityReleaseV2, componentrelease.AuthoritySidecarIdentity:
-		return fmt.Errorf("component %s: on-chain re-verify for authority %q is not yet wired in the promote handler (installer_release only)", c.ComponentID, c.Chain.Kind)
+	case componentrelease.AuthoritySidecarIdentity:
+		return s.verifySidecarComponentOnChain(ctx, c)
+	case componentrelease.AuthorityReleaseV2:
+		return fmt.Errorf("component %s: on-chain re-verify for release_v2 (app) is not yet wired in the promote handler (arrives with the app-publisher half)", c.ComponentID)
 	default:
 		return fmt.Errorf("component %s: unknown authority kind %q", c.ComponentID, c.Chain.Kind)
 	}
+}
+
+// verifySidecarComponentOnChain re-verifies a sidecar-class component. The promote
+// handler already gates on a ROOT StoreOperatorAuthorization, so the root operator
+// is trusted to name a legitimate sidecar; the store re-derives the
+// SidecarIdentityEntry PDA itself (never trusting the publisher's claimed PDA),
+// requires it Active, and requires its on-chain binary_hash to equal the served
+// artifact sha256. The full Global/Local approval cascade is the external
+// controller's apply-time gate (ADAPTER-DESIGN §4), not the store's release gate.
+func (s *publishService) verifySidecarComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
+	sidecarID := strings.TrimSpace(c.Chain.SidecarID)
+	if err := primitives.ValidateSidecarID(sidecarID); err != nil {
+		return fmt.Errorf("component %s: bad sidecarId: %w", c.ComponentID, err)
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.LicenseNftMint))
+	if err != nil {
+		return fmt.Errorf("component %s: bad licenseNftMint: %w", c.ComponentID, err)
+	}
+	keyVersion := c.Chain.KeyVersion
+	if keyVersion == 0 {
+		keyVersion = 1
+	}
+	sidPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, programID)
+	if err != nil {
+		return fmt.Errorf("component %s: derive SidecarIdentityEntry PDA: %w", c.ComponentID, err)
+	}
+	sid, err := s.cr.FetchSidecarIdentity(ctx, sidPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("component %s: fetch SidecarIdentityEntry %s: %w", c.ComponentID, sidPDA.Base58(), err)
+	}
+	if err := sid.Status.RequireActive(); err != nil {
+		return fmt.Errorf("component %s: sidecar identity status %s not Active: %w", c.ComponentID, sid.Status, err)
+	}
+	artifactHash, err := hash32FromHex(c.SHA256)
+	if err != nil {
+		return fmt.Errorf("component %s: bad sha256: %w", c.ComponentID, err)
+	}
+	if sid.BinaryHash != artifactHash {
+		return fmt.Errorf("component %s: on-chain sidecar binary_hash %x != served sha256 %x", c.ComponentID, sid.BinaryHash[:], artifactHash[:])
+	}
+	return s.verifyComponentServedBytes(c)
 }
 
 // verifyComponentServedBytes confirms the artifact the generation points at is

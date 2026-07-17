@@ -15,7 +15,10 @@ import (
 	"testing"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 func TestVerifyComponentServedBytes(t *testing.T) {
@@ -75,16 +78,74 @@ func TestVerifyComponentReleaseOnChainFailClosed(t *testing.T) {
 	if err := svc.verifyComponentReleaseOnChain(ctx, app); err == nil {
 		t.Fatal("app-class component accepted (must be pending/refused)")
 	}
-	// sidecar (sidecar_identity) re-verify is not yet wired -> refused.
-	sc := sidecarComp("x-sidecar", strings.Repeat("a", 64), "1")
-	if err := svc.verifyComponentReleaseOnChain(ctx, sc); err == nil {
-		t.Fatal("sidecar component accepted (must be pending/refused)")
-	}
 	// Unknown authority kind -> refused.
 	unk := shellComp("x-unk", strings.Repeat("a", 64), "1")
 	unk.Chain.Kind = "bogus-authority"
 	if err := svc.verifyComponentReleaseOnChain(ctx, unk); err == nil {
 		t.Fatal("unknown authority kind accepted")
+	}
+}
+
+func TestVerifySidecarComponentOnChain(t *testing.T) {
+	dist := t.TempDir()
+	content := []byte("swaprail-elf-bytes-for-sidecar-reverify")
+	sum := sha256.Sum256(content)
+	shaHex := hex.EncodeToString(sum[:])
+	name := "swaprail-" + shaHex[:8] + ".bin"
+	dir := filepath.Join(dist, "releases", "sidecar")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	licenseMint, err := primitives.PubkeyFromBase58(testLicenseMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidPDA, _, err := pda.SidecarIdentity(licenseMint, "swaprail", 1, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := componentrelease.ComponentRelease{
+		ComponentID:    "swaprail",
+		ComponentClass: componentrelease.ClassSidecar,
+		SHA256:         shaHex,
+		BundleURL:      "https://bazaar.melusina-os.org/releases/sidecar/" + name,
+		Chain: componentrelease.ChainAuthority{
+			Kind:           componentrelease.AuthoritySidecarIdentity,
+			LicenseNftMint: testLicenseMint,
+			SidecarID:      "swaprail",
+			KeyVersion:     1,
+		},
+	}
+	cfg := Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}
+	svcWith := func(sid verify.SidecarIdentity, seed bool) *publishService {
+		m := newMockChainReader()
+		if seed {
+			m.sidecarIdentity[sidPDA.Base58()] = mockSidecarIdentity{sid: sid}
+		}
+		return &publishService{cfg: cfg, cr: m}
+	}
+	ctx := context.Background()
+
+	// Active + binary_hash == served sha256 -> accepted.
+	if err := svcWith(verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: sum}, true).verifyComponentReleaseOnChain(ctx, c); err != nil {
+		t.Fatalf("valid sidecar re-verify rejected: %v", err)
+	}
+	// On-chain binary_hash differs from the served artifact -> refused.
+	if err := svcWith(verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: sha256.Sum256([]byte("different"))}, true).verifyComponentReleaseOnChain(ctx, c); err == nil {
+		t.Fatal("accepted a sidecar whose on-chain binary_hash differs from the served bytes")
+	}
+	// Non-Active identity -> refused.
+	if err := svcWith(verify.SidecarIdentity{Status: verify.AttestationStatusRevoked, BinaryHash: sum}, true).verifyComponentReleaseOnChain(ctx, c); err == nil {
+		t.Fatal("accepted a non-Active sidecar identity")
+	}
+	// No on-chain identity at the derived PDA -> refused.
+	if err := svcWith(verify.SidecarIdentity{}, false).verifyComponentReleaseOnChain(ctx, c); err == nil {
+		t.Fatal("accepted a sidecar with no on-chain identity")
 	}
 }
 

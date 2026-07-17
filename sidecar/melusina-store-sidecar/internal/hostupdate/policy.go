@@ -43,10 +43,10 @@ type UpdatePolicy struct {
 // and a 15-minute promote-to-healthy deadline.
 func DefaultUpdatePolicy() UpdatePolicy {
 	return UpdatePolicy{
-		Schema:                 updatePolicySchema,
-		AutoApply:              false,
-		PollIntervalSeconds:    300,
-		DeepStableSeconds:      120,
+		Schema:              updatePolicySchema,
+		AutoApply:           false,
+		PollIntervalSeconds: 300,
+		DeepStableSeconds:   120,
 		// promote-to-healthy budget. The card's <=15min (900s) bound is measured
 		// from PROMOTE to terminal-healthy and INCLUDES the up-to-5min discovery
 		// latency, so the apply deadline must leave room: poll(300) + promote(600)
@@ -59,6 +59,11 @@ func DefaultUpdatePolicy() UpdatePolicy {
 // shell-writable policy decides whether/how often to apply, never how briefly to
 // call a component healthy — a too-short window would seal a flapping build.
 const deepStableFloorSeconds int64 = 120
+
+// Validate exposes the policy's budget + deep-stable-floor invariants to external
+// callers (the controller binary validates its config-derived policy with the SAME
+// rule the shell-writable policy file is held to).
+func (p UpdatePolicy) Validate() error { return p.validate() }
 
 func (p UpdatePolicy) validate() error {
 	if p.Schema != updatePolicySchema {

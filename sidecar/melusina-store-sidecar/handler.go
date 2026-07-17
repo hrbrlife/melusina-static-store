@@ -265,6 +265,13 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 			"surface": "read + gated /publish (on-chain verified, single writer)",
 		})
 	})
+	// Runtime identity is intentionally a separate exact route, ahead of the
+	// static read surface.  The external update controller only accepts a
+	// post-restart release after this handler names the tuple supplied by the
+	// install-local systemd EnvironmentFile and the controller independently
+	// binds its PID to systemd+/proc.  A store without that local marker returns
+	// 503 instead of fabricating a version from its binary or catalog.
+	mux.HandleFunc("/release-info", handleRuntimeReleaseInfo)
 
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)

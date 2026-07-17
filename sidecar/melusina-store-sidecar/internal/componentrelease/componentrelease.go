@@ -65,24 +65,54 @@ var (
 	componentReleaseDomain  = []byte("melusina-component-release-v1\x00")
 )
 
-// Component classes. A class is advisory metadata that a consumer cross-checks
-// against its local registry entry; it never selects a host action by itself.
+// Component classes select the ON-CHAIN AUTHORITY model a consumer verifies; a
+// class is NOT an apply strategy (that is the registry's ApplyKind, chosen
+// locally). shell => InstallerReleaseEntry; sidecar => SidecarIdentityEntry +
+// approval cascade; app => ReleaseEntry; data => a separately-versioned data
+// artifact riding a sidecar/installer authority (e.g. the OpenSanctions dataset).
 const (
 	ClassShell   = "shell"
 	ClassSidecar = "sidecar"
-	ClassPython  = "python"
 	ClassApp     = "app"
+	ClassData    = "data"
 )
 
-// On-chain authority kinds. installer_release => InstallerReleaseEntry PDA
-// (["installer_release", master_nft_mint, installer_hash], register/revoke/
-// supersede, forward-only) used by whole-file system artifacts (shell, sidecar,
-// python). release_v2 => ReleaseEntry PDA (["release_v2", master_nft_mint,
-// app_hash], register/revoke) used by Sandstorm app packages.
+// On-chain authority kinds.
+//   - installer_release => InstallerReleaseEntry PDA (["installer_release",
+//     master_nft_mint, installer_hash], register/revoke/supersede, forward-only)
+//     for whole-file system artifacts (shell + data blobs).
+//   - release_v2 => ReleaseEntry PDA (["release_v2", master_nft_mint, app_hash],
+//     register/revoke) for Sandstorm app packages.
+//   - sidecar_identity => the SidecarIdentityEntry (["sidecar_identity",
+//     license_nft_mint, sidecar_id, key_version_le]) three-PDA cascade: the
+//     identity references a GlobalSidecarApproval (["global_sidecar",
+//     master_nft_mint, sidecar_id]) and a LocalSidecarApproval (["local_sidecar",
+//     license_nft_mint, sidecar_id]). Verified as a whole for production sidecars.
 const (
 	AuthorityInstallerRelease = "installer_release"
 	AuthorityReleaseV2        = "release_v2"
+	AuthoritySidecarIdentity  = "sidecar_identity"
 )
+
+// ChainAuthority is the per-component on-chain authority reference. Which fields
+// are populated depends on Kind. It is a set of CLAIMS the consumer re-verifies
+// against the chain (the PDAs must exist, be Active, and pin this artifact hash)
+// — never trusted on its own.
+type ChainAuthority struct {
+	Kind    string `json:"kind"`    // installer_release | release_v2 | sidecar_identity
+	Program string `json:"program"` // base58 program id, e.g. 7anRCW8U...
+
+	MasterNftMint  string `json:"masterNftMint,omitempty"`  // installer_release/release_v2 seed; global-approval seed
+	LicenseNftMint string `json:"licenseNftMint,omitempty"` // sidecar_identity / local-approval seed
+	ReleasePDA     string `json:"releasePda,omitempty"`     // installer_release | release_v2: InstallerReleaseEntry / ReleaseEntry
+
+	// sidecar_identity cascade:
+	SidecarID         string `json:"sidecarId,omitempty"`
+	KeyVersion        uint32 `json:"keyVersion,omitempty"`
+	IdentityPDA       string `json:"identityPda,omitempty"`       // SidecarIdentityEntry
+	GlobalApprovalPDA string `json:"globalApprovalPda,omitempty"` // GlobalSidecarApproval
+	LocalApprovalPDA  string `json:"localApprovalPda,omitempty"`  // LocalSidecarApproval
+}
 
 // ComponentDependency expresses a required/minimum other-component constraint the
 // consumer must satisfy from the SAME generation before applying this component.
@@ -107,11 +137,9 @@ type ComponentRelease struct {
 	SizeBytes    int64  `json:"sizeBytes"`    // exact byte size
 	BundleURL    string `json:"bundleUrl"`    // absolute https on the bazaar; a locator, not a host action
 
-	AuthorityKind string `json:"authorityKind"` // installer_release | release_v2
-	MasterNftMint string `json:"masterNftMint"` // base58; PDA seed
-	ReleasePDA    string `json:"releasePda"`    // base58; InstallerReleaseEntry or ReleaseEntry PDA
-	ReleaseHash   string `json:"releaseHash,omitempty"`
-	StageID       string `json:"stageId,omitempty"`
+	Chain       ChainAuthority `json:"chain"` // on-chain authority reference (per-class)
+	ReleaseHash string         `json:"releaseHash,omitempty"`
+	StageID     string         `json:"stageId,omitempty"`
 
 	// Per-component rollback floor: the exact artifact a consumer restores to on a
 	// failed apply of THIS component. The generation-level PreviousGeneration is
@@ -176,9 +204,16 @@ func componentReleaseDigest(c ComponentRelease) [32]byte {
 	msg = writeLenPrefixed(msg, strings.ToLower(c.SHA256))
 	msg = writeU64(msg, uint64(c.SizeBytes))
 	msg = writeLenPrefixed(msg, c.BundleURL)
-	msg = writeLenPrefixed(msg, c.AuthorityKind)
-	msg = writeLenPrefixed(msg, c.MasterNftMint)
-	msg = writeLenPrefixed(msg, c.ReleasePDA)
+	msg = writeLenPrefixed(msg, c.Chain.Kind)
+	msg = writeLenPrefixed(msg, c.Chain.Program)
+	msg = writeLenPrefixed(msg, c.Chain.MasterNftMint)
+	msg = writeLenPrefixed(msg, c.Chain.LicenseNftMint)
+	msg = writeLenPrefixed(msg, c.Chain.ReleasePDA)
+	msg = writeLenPrefixed(msg, c.Chain.SidecarID)
+	msg = writeU64(msg, uint64(c.Chain.KeyVersion))
+	msg = writeLenPrefixed(msg, c.Chain.IdentityPDA)
+	msg = writeLenPrefixed(msg, c.Chain.GlobalApprovalPDA)
+	msg = writeLenPrefixed(msg, c.Chain.LocalApprovalPDA)
 	msg = writeLenPrefixed(msg, strings.ToLower(c.ReleaseHash))
 	msg = writeLenPrefixed(msg, strings.ToLower(c.StageID))
 	msg = writeLenPrefixed(msg, strings.ToLower(c.PreviousSHA256))
@@ -340,7 +375,7 @@ func safeComponentID(s string) bool {
 
 func validClass(c string) bool {
 	switch c {
-	case ClassShell, ClassSidecar, ClassPython, ClassApp:
+	case ClassShell, ClassSidecar, ClassApp, ClassData:
 		return true
 	}
 	return false
@@ -348,10 +383,45 @@ func validClass(c string) bool {
 
 func validAuthority(a string) bool {
 	switch a {
-	case AuthorityInstallerRelease, AuthorityReleaseV2:
+	case AuthorityInstallerRelease, AuthorityReleaseV2, AuthoritySidecarIdentity:
 		return true
 	}
 	return false
+}
+
+// validate checks a component's on-chain authority reference is internally
+// complete for its kind. It does NOT touch the chain — the consumer's controller
+// re-derives + fetches these PDAs and confirms Active + hash pin at apply time.
+func (ca ChainAuthority) validate() error {
+	if !validAuthority(ca.Kind) {
+		return fmt.Errorf("invalid chain authority kind %q", ca.Kind)
+	}
+	if strings.TrimSpace(ca.Program) == "" {
+		return errors.New("empty chain.program")
+	}
+	switch ca.Kind {
+	case AuthorityInstallerRelease, AuthorityReleaseV2:
+		if strings.TrimSpace(ca.MasterNftMint) == "" {
+			return fmt.Errorf("%s: empty masterNftMint", ca.Kind)
+		}
+		if strings.TrimSpace(ca.ReleasePDA) == "" {
+			return fmt.Errorf("%s: empty releasePda", ca.Kind)
+		}
+	case AuthoritySidecarIdentity:
+		if strings.TrimSpace(ca.LicenseNftMint) == "" {
+			return errors.New("sidecar_identity: empty licenseNftMint")
+		}
+		if strings.TrimSpace(ca.MasterNftMint) == "" {
+			return errors.New("sidecar_identity: empty masterNftMint (global-approval seed)")
+		}
+		if !safeComponentID(ca.SidecarID) {
+			return errors.New("sidecar_identity: sidecarId is not a safe identity token")
+		}
+		if strings.TrimSpace(ca.IdentityPDA) == "" || strings.TrimSpace(ca.GlobalApprovalPDA) == "" || strings.TrimSpace(ca.LocalApprovalPDA) == "" {
+			return errors.New("sidecar_identity: identityPda, globalApprovalPda and localApprovalPda are all required (three-PDA cascade)")
+		}
+	}
+	return nil
 }
 
 // validate checks one component entry: real artifact identity, a plausible
@@ -382,14 +452,8 @@ func (c ComponentRelease) validate() error {
 	if err := assertBundleURLOnBazaar(c.BundleURL); err != nil {
 		return fmt.Errorf("component %s: %w", c.ComponentID, err)
 	}
-	if !validAuthority(c.AuthorityKind) {
-		return fmt.Errorf("component %s: invalid authorityKind %q", c.ComponentID, c.AuthorityKind)
-	}
-	if strings.TrimSpace(c.MasterNftMint) == "" {
-		return fmt.Errorf("component %s: empty masterNftMint", c.ComponentID)
-	}
-	if strings.TrimSpace(c.ReleasePDA) == "" {
-		return fmt.Errorf("component %s: empty releasePda", c.ComponentID)
+	if err := c.Chain.validate(); err != nil {
+		return fmt.Errorf("component %s: %w", c.ComponentID, err)
 	}
 	if c.ReleaseHash != "" && !isLowerHex(c.ReleaseHash, 64) {
 		return fmt.Errorf("component %s: releaseHash must be 64 lowercase hex chars", c.ComponentID)

@@ -52,11 +52,28 @@ Every binding the card requires the signed desired-generation document to carry:
 | signed publication time | `signedAtUnix` |
 | channel | `channel` |
 | required/minimum component dependencies | `components[].requires[]` = `{componentId, minVersion, minGeneration}` |
-| on-chain authority kind and PDA/reference | `components[].authorityKind` (`installer_release`\|`release_v2`), `components[].releasePda`, `components[].masterNftMint` |
+| on-chain authority kind and PDA/reference | `components[].chain` (`ChainAuthority`): `kind` (`installer_release`\|`release_v2`\|`sidecar_identity`), `program`, and the kind-specific references — see §2a |
 | store operator identity / destination | `storeId`, `operatorPubkey` |
 | release/stage identity | `components[].releaseHash`, `components[].stageId` |
 | previous release or rollback floor | generation floor `previousGeneration`; per-component `components[].previousSha256`, `components[].previousVersion` |
 | detached operator signature over canonical bytes | `operatorSignature` (base58 ed25519) |
+
+### 2a. Class taxonomy and per-class chain authority (`ChainAuthority`)
+
+`componentClass` selects the **on-chain authority model**, not the apply
+strategy (that is the registry's `applyKind`, chosen locally). Classes:
+`shell`, `sidecar`, `app`, `data`. Each component carries a `ChainAuthority`:
+
+| `chain.kind` | class | verified references (all re-checked on-chain by the controller) |
+|---|---|---|
+| `installer_release` | shell, data | `program`, `masterNftMint`, `releasePda` → InstallerReleaseEntry `["installer_release", master_nft_mint, installer_hash]` (Active, hash-pinned, forward-only) |
+| `release_v2` | app | `program`, `masterNftMint`, `releasePda` → ReleaseEntry `["release_v2", master_nft_mint, app_hash]` |
+| `sidecar_identity` | sidecar | `program`, `licenseNftMint`, `masterNftMint`, `sidecarId`, `keyVersion`, `identityPda` → SidecarIdentityEntry `["sidecar_identity", license_nft_mint, sidecar_id, key_version_le]`, plus its `globalApprovalPda` → GlobalSidecarApproval `["global_sidecar", master_nft_mint, sidecar_id]` and `localApprovalPda` → LocalSidecarApproval `["local_sidecar", license_nft_mint, sidecar_id]` (the **three-PDA cascade**) |
+
+Validation (`ChainAuthority.validate`) enforces that every reference required by
+the kind is present; the sidecar cascade fails closed unless all three PDAs are
+named. The chain gate itself (Active + hash pin + downgrade check) is performed
+by the controller, once per component, keyed by class.
 
 **Why the document carries the current pointer.** The on-chain `license-registry`
 program enforces **no exactly-one-Active** invariant for either release class
@@ -170,8 +187,13 @@ tool itself (no Publish Tzar).
 }
 ```
 
-- `applyKind` is one of a **fixed, code-defined** set (`tarball-symlink-swap`,
-  `binary-replace`); an unknown kind fails closed.
+- `applyKind` is one of a **fixed, code-defined** set — one `Adapter` per kind
+  (adapter.go): `binary-replace` (go_elf single ELF + store), `tarball-symlink-
+  swap` (shell), `python-venv` (creeper), `bundle-multibin` (vintage, remotebak),
+  `oci-stack` (fineract-core), `data-artifact` (OpenSanctions dataset). An unknown
+  kind fails closed. Kinds installing into a versioned `<gen>` dir
+  (`tarball-symlink-swap`, `python-venv`, `bundle-multibin`, `data-artifact`)
+  require an absolute `currentSymlink`.
 - `healthCommand` is mandatory (a health gate can never be weakened by the
   remote document).
 - `selfReportUrl` is the endpoint the controller polls after restart to confirm
@@ -188,15 +210,34 @@ the security allowlist (root) and operator preference (shell) never mix.
 
 ## 7. For card 000b (sidecar adapters) — how a sidecar joins the generation
 
+**Seam decision (answer to the 000b ADAPTER-DESIGN proposal).** Adapters live
+**inside this controller module** (`adapter.go`: the `Adapter` interface
+`Stage→Verify→Apply→Probe(→Rollback)` + `RegisterAdapter`/`AdapterFor`, one per
+`ApplyKind`) — the arch lock is one Go binary, and cross-repo plugin
+registration would invert the dependency. 000b contributes: (1) the
+**install-local registry data** for all 13 sidecars; (2) **determinism source
+fixes** in each sidecar repo (standardize `go_elf` on swaprail's
+`CGO_ENABLED=0 -trimpath -buildvcs=false -ldflags=-buildid=` recipe — per-repo
+work, not a schema change, but it gates the "build twice byte-identical" proof);
+(3) any genuinely new adapter as a **reviewed patch** into this module. The
+`ComponentType` enum in the proposal is split as designed here: coarse
+chain-authority `componentClass` in the signed doc (`shell`/`sidecar`/`app`/
+`data`) vs local `applyKind` strategy in the registry. Division of trust: the
+**controller** runs the on-chain authority gate per class; the **adapter** does
+artifact size/sha256/downgrade + atomic apply/probe/rollback.
+
 Each production sidecar becomes:
 
 1. **One `ComponentRelease` entry** in the signed generation:
    `componentClass: "sidecar"`, its own `componentId`, `artifactName`, `sha256`,
-   `sizeBytes`, `bundleUrl` on the bazaar, `authorityKind: "installer_release"`
-   with its own `releasePda`/`masterNftMint`, and `requires` for any ordering
-   (e.g. the store sidecar before dependents).
+   `sizeBytes`, `bundleUrl` on the bazaar, and `chain: {kind: "sidecar_identity",
+   program, licenseNftMint, masterNftMint, sidecarId, keyVersion, identityPda,
+   globalApprovalPda, localApprovalPda}` (the three-PDA cascade), plus `requires`
+   for ordering (e.g. the store sidecar before dependents; the OpenSanctions
+   `data` component before its `python-venv` code component).
 2. **One `ComponentRegistry` entry** on each host that runs it:
-   `applyKind: "binary-replace"` (ELF) or `tarball-symlink-swap`, its
+   `applyKind` from the six (`binary-replace` for a go_elf sidecar,
+   `python-venv`, `bundle-multibin`, `oci-stack`, `data-artifact`), its
    `installRoot`, `serviceUnit`, and a real `healthCommand`.
 
 The generic out-of-process updater (000b) reuses the **same** `DesiredGeneration`
@@ -213,6 +254,7 @@ read-only inventory and adapter design only.
 ## 8. Status
 
 - [x] Types + canonical message + Sign/Verify + registry — `internal/componentrelease/` (builds, tests green)
+- [x] `ChainAuthority` (installer_release / release_v2 / sidecar_identity cascade), class taxonomy shell/sidecar/app/data, 6 `ApplyKind`s, `Adapter` seam — extension for card 000b (tests green)
 - [ ] Producer: replace `handleUpdateManifest` with a signed `DesiredGeneration` endpoint (task A, next)
 - [ ] Canonical self-service publisher (task B)
 - [ ] Out-of-shell host controller: WAL, per-component lock, atomic apply, health-gated rollback, receipts (task C)

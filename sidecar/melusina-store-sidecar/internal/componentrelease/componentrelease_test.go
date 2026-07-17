@@ -58,9 +58,17 @@ func sampleGeneration() DesiredGeneration {
 				SHA256:         "a78567eb117efdcf1e31449b63dfacac1ec25f85a5ee32a970e73bd9f5a0d6af",
 				SizeBytes:      12345678,
 				BundleURL:      "https://bazaar.melusina-os.org/releases/sidecar/melusina-store-sidecar-1.0.7.bin",
-				AuthorityKind:  AuthorityInstallerRelease,
-				MasterNftMint:  "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-				ReleasePDA:     "FMRFyGPzrefaYiETSLTDw8fHqix8GVcGuri31qTZVtgY",
+				Chain: ChainAuthority{
+					Kind:              AuthoritySidecarIdentity,
+					Program:           "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+					LicenseNftMint:    "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN",
+					MasterNftMint:     "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+					SidecarID:         "melusina-store-sidecar",
+					KeyVersion:        1,
+					IdentityPDA:       "H95UEaQMdoXk2s6y8kY6oYcU1r8Fq3aVqk6t6Z9y1abc",
+					GlobalApprovalPDA: "G1oba1Approva1PdaFor5tore5idecarXyz123456789",
+					LocalApprovalPDA:  "Loca1Approva1PdaFor5tore5idecarAbc987654321",
+				},
 			},
 			{
 				ComponentID:    "sandstorm-shell",
@@ -71,9 +79,12 @@ func sampleGeneration() DesiredGeneration {
 				SHA256:         "4b8b4c6b5ca595a39c3e7427103dbcd776ae9fb70492057836cf768a312b0356",
 				SizeBytes:      176787848,
 				BundleURL:      "https://bazaar.melusina-os.org/releases/shell/sandstorm-4b8b4c6b5ca595a39c3e7427103dbcd776ae9fb70492057836cf768a312b0356.tar.xz",
-				AuthorityKind:  AuthorityInstallerRelease,
-				MasterNftMint:  "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-				ReleasePDA:     "FMRFyGPzrefaYiETSLTDw8fHqix8GVcGuri31qTZVtgY",
+				Chain: ChainAuthority{
+					Kind:          AuthorityInstallerRelease,
+					Program:       "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+					MasterNftMint: "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+					ReleasePDA:    "FMRFyGPzrefaYiETSLTDw8fHqix8GVcGuri31qTZVtgY",
+				},
 				Requires: []ComponentDependency{
 					{ComponentID: "melusina-store-sidecar", MinVersion: "1.0.7"},
 				},
@@ -195,6 +206,26 @@ func TestValidateRejectsDanglingDependency(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsIncompleteSidecarCascade(t *testing.T) {
+	op, _ := testOperator(t)
+	gen := sampleGeneration()
+	// Components[0] (melusina-store-sidecar) uses the sidecar_identity three-PDA
+	// cascade; dropping one PDA must be refused.
+	gen.Components[0].Chain.LocalApprovalPDA = ""
+	if _, err := Sign(op, gen); err == nil {
+		t.Fatal("Sign accepted a sidecar_identity component missing a cascade PDA")
+	}
+}
+
+func TestValidateRejectsSidecarWithoutLicenseMint(t *testing.T) {
+	op, _ := testOperator(t)
+	gen := sampleGeneration()
+	gen.Components[0].Chain.LicenseNftMint = ""
+	if _, err := Sign(op, gen); err == nil {
+		t.Fatal("Sign accepted a sidecar_identity component without a licenseNftMint")
+	}
+}
+
 func writeRegistry(t *testing.T, reg ComponentRegistry) string {
 	t.Helper()
 	raw, err := json.Marshal(reg)
@@ -277,5 +308,23 @@ func TestRegistryRejectsUnknownApplyKind(t *testing.T) {
 	reg.Components["sandstorm-shell"] = e
 	if err := reg.Validate(); err == nil {
 		t.Fatal("Validate accepted an unknown apply kind")
+	}
+}
+
+func TestRegistryPythonVenvRequiresSymlink(t *testing.T) {
+	reg := sampleRegistry()
+	reg.Components["creeper"] = ComponentInstall{
+		ComponentID:    "creeper",
+		ComponentClass: ClassSidecar,
+		ApplyKind:      ApplyPythonVenv,
+		InstallRoot:    "/opt/creeper",
+		StagingDir:     "/opt/creeper/staging",
+		// CurrentSymlink deliberately omitted -> python-venv installs into a
+		// versioned <gen> dir and requires it.
+		ServiceUnit:   "creeper.service",
+		HealthCommand: []string{"/opt/melusina/bin/creeper-health"},
+	}
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted python-venv without a currentSymlink")
 	}
 }

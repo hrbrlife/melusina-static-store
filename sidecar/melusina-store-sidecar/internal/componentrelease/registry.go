@@ -26,17 +26,46 @@ type ComponentRegistry struct {
 }
 
 // ApplyKind selects one of a FIXED, code-defined set of install strategies the
-// controller knows how to execute. It is chosen locally; the remote document
-// never carries it. A registry naming an unknown apply kind fails closed.
+// controller knows how to execute (one Adapter per kind — see adapter.go). It is
+// chosen LOCALLY; the remote document never carries it. A registry naming an
+// unknown apply kind fails closed. These six cover all 13 production sidecars +
+// the shell (SIDECARS INVENTORY.md): go_elf→binary-replace, shell→tarball-
+// symlink-swap, creeper→python-venv, vintage/remotebak→bundle-multibin,
+// fineract-core→oci-stack, OpenSanctions dataset→data-artifact.
 const (
 	// ApplyTarballSymlinkSwap: extract the bundle tar to a versioned dir under
 	// InstallRoot, atomically repoint CurrentSymlink, restart ServiceUnit. This is
 	// the Sandstorm shell's mechanism (sandstorm-rel-<build>-<sha8> + latest).
 	ApplyTarballSymlinkSwap = "tarball-symlink-swap"
 	// ApplyBinaryReplace: atomically replace a single executable at InstallRoot
-	// (temp + rename), restart ServiceUnit. This is the store-sidecar ELF mechanism.
+	// (temp + rename), restart ServiceUnit. store-sidecar ELF + all go_elf sidecars.
 	ApplyBinaryReplace = "binary-replace"
+	// ApplyPythonVenv: stage a versioned tree + venv under a <gen> dir, atomically
+	// repoint CurrentSymlink, restart. Code and (optionally) a separate data
+	// component are distinct generation entries.
+	ApplyPythonVenv = "python-venv"
+	// ApplyBundleMultibin: a tar.xz carrying N executables/units; stop dependent
+	// units in order, repoint the <gen> dir, start in order, probe all, roll the
+	// whole generation dir back on any failure.
+	ApplyBundleMultibin = "bundle-multibin"
+	// ApplyOCIStack: digest-pinned OCI images via compose; verify digests ==
+	// desired, compose pull+up, health, compose rollback to the prior digest set.
+	ApplyOCIStack = "oci-stack"
+	// ApplyDataArtifact: a large, separately-cadenced data blob (e.g. the ~4GB
+	// OpenSanctions FTS5 dataset) staged + verified + atomically swapped under its
+	// own component, so code updates never re-ingest the data.
+	ApplyDataArtifact = "data-artifact"
 )
+
+// applyKindNeedsSymlink reports whether a kind installs into a versioned <gen>
+// directory selected by CurrentSymlink (vs an in-place single-file/compose swap).
+func applyKindNeedsSymlink(k string) bool {
+	switch k {
+	case ApplyTarballSymlinkSwap, ApplyPythonVenv, ApplyBundleMultibin, ApplyDataArtifact:
+		return true
+	}
+	return false
+}
 
 // ComponentInstall is one host-action recipe. Every field here is a HOST ACTION
 // or host-local fact that the target owns; none of it may originate from the
@@ -72,7 +101,7 @@ func validAbsPath(p string) bool {
 
 func validApplyKind(k string) bool {
 	switch k {
-	case ApplyTarballSymlinkSwap, ApplyBinaryReplace:
+	case ApplyTarballSymlinkSwap, ApplyBinaryReplace, ApplyPythonVenv, ApplyBundleMultibin, ApplyOCIStack, ApplyDataArtifact:
 		return true
 	}
 	return false
@@ -97,8 +126,8 @@ func (ci ComponentInstall) validate(key string) error {
 	if !validAbsPath(ci.StagingDir) {
 		return fmt.Errorf("registry %s: stagingDir must be an absolute path", key)
 	}
-	if ci.ApplyKind == ApplyTarballSymlinkSwap && !validAbsPath(ci.CurrentSymlink) {
-		return fmt.Errorf("registry %s: tarball-symlink-swap requires an absolute currentSymlink", key)
+	if applyKindNeedsSymlink(ci.ApplyKind) && !validAbsPath(ci.CurrentSymlink) {
+		return fmt.Errorf("registry %s: applyKind %q installs into a versioned <gen> dir and requires an absolute currentSymlink", key, ci.ApplyKind)
 	}
 	if strings.TrimSpace(ci.ServiceUnit) == "" {
 		return fmt.Errorf("registry %s: empty serviceUnit", key)

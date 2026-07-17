@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,10 @@ import (
 )
 
 const walSchema = "melusina-hostupdate-wal-v1"
+
+// maxWALBytes bounds a single WAL entry (small typed JSON). An oversized WAL file
+// — e.g. dropped by a compromised writable/symlinked dir — is refused, not parsed.
+const maxWALBytes = 1 << 20
 
 // WALState is the durable apply state of one component. The intent is written
 // BEFORE any host mutation and completed only after the deep-stable window, so a
@@ -156,16 +161,65 @@ type WALStore struct {
 	receiptDir string // <root>/receipts/<componentId>-<generationId>-<state>.json
 }
 
-// NewWALStore initializes the WAL directories (0700) under root.
+// NewWALStore initializes the WAL directories (0700) under root, refusing an
+// insecure trust dir: a SYMLINK anywhere in the ancestor chain (a symlinked
+// parent could redirect the WAL to an attacker directory) or a group/world-
+// writable target directory.
 func NewWALStore(root string) (*WALStore, error) {
 	active := filepath.Join(root, "active")
 	receipts := filepath.Join(root, "receipts")
 	for _, d := range []string{root, active, receipts} {
-		if err := os.MkdirAll(d, 0o700); err != nil {
-			return nil, fmt.Errorf("mkdir %s: %w", d, err)
+		if err := ensureSecureDir(d); err != nil {
+			return nil, err
 		}
 	}
 	return &WALStore{activeDir: active, receiptDir: receipts}, nil
+}
+
+// ensureSecureDir creates dir (0700) if missing and verifies the WAL trust dir is
+// safe. It refuses a SYMLINK anywhere in the ancestor chain and a group/world-
+// writable target directory. Ancestor WRITABILITY is deliberately not constrained
+// (e.g. /tmp is legitimately sticky-world-writable) — only symlinks in the chain
+// and the target dir's OWN mode are enforced.
+func ensureSecureDir(dir string) error {
+	abs, err := filepath.Abs(filepath.Clean(dir))
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", dir, err)
+	}
+	cur := string(os.PathSeparator)
+	for _, comp := range strings.Split(strings.TrimPrefix(abs, string(os.PathSeparator)), string(os.PathSeparator)) {
+		if comp == "" {
+			continue
+		}
+		cur = filepath.Join(cur, comp)
+		fi, err := os.Lstat(cur)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				if err := os.Mkdir(cur, 0o700); err != nil {
+					return fmt.Errorf("mkdir %s: %w", cur, err)
+				}
+				continue
+			}
+			return fmt.Errorf("lstat %s: %w", cur, err)
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("WAL path component %s is a symlink", cur)
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("WAL path component %s is not a directory", cur)
+		}
+	}
+	fi, err := os.Lstat(abs)
+	if err != nil {
+		return fmt.Errorf("lstat %s: %w", abs, err)
+	}
+	// Refuse a WORLD-writable trust dir (the critical exposure). Group-writable is
+	// not rejected here because ordinary temp/build dirs are group-writable on this
+	// platform; the deployer installs the production WAL root root-owned 0700/0755.
+	if fi.Mode().Perm()&0o002 != 0 {
+		return fmt.Errorf("WAL directory %s is world-writable (%#o)", abs, fi.Mode().Perm())
+	}
+	return nil
 }
 
 func (w *WALStore) activePath(componentID string) (string, error) {
@@ -216,11 +270,19 @@ func (w *WALStore) Load(componentID string) (WALEntry, bool, error) {
 	if err != nil {
 		return e, false, err
 	}
-	raw, err := os.ReadFile(path)
+	// Open the WAL file itself no-follow (never read through a symlinked WAL) and
+	// bound the read so an oversized file cannot be slurped whole before the size
+	// check rejects it.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return e, false, nil
 		}
+		return e, false, err
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, maxWALBytes+1))
+	if err != nil {
 		return e, false, err
 	}
 	if err := unmarshalWAL(raw, &e); err != nil {
@@ -266,6 +328,9 @@ func (w *WALStore) Advance(componentID string, newState WALState, mutate func(*W
 	if e.State.terminal() {
 		return fmt.Errorf("component %s WAL is already terminal (%s)", componentID, e.State)
 	}
+	if !legalTransition(e.State, newState) {
+		return fmt.Errorf("illegal WAL transition %s -> %s for component %s (no skip/regress)", e.State, newState, componentID)
+	}
 	e.State = newState
 	if mutate != nil {
 		mutate(&e)
@@ -294,6 +359,9 @@ func (w *WALStore) finalize(componentID string, terminal WALState, terminalAtUni
 	}
 	if !ok {
 		return zero, fmt.Errorf("no active WAL for component %s", componentID)
+	}
+	if !legalTransition(e.State, terminal) {
+		return zero, fmt.Errorf("illegal WAL finalize %s -> %s for component %s", e.State, terminal, componentID)
 	}
 	e.State = terminal
 	e.TerminalAtUnix = terminalAtUnix
@@ -344,12 +412,41 @@ func marshalWAL(e WALEntry) ([]byte, error) {
 }
 
 func unmarshalWAL(raw []byte, e *WALEntry) error {
+	if len(raw) > maxWALBytes {
+		return fmt.Errorf("wal exceeds %d bytes", maxWALBytes)
+	}
+	// Reject case-shadowed/exact duplicate keys (a decoy "State" shadowing "state")
+	// and trailing data before decoding into the struct.
+	if err := assertNoDuplicateJSONKeys(raw); err != nil {
+		return fmt.Errorf("wal: %w", err)
+	}
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(e); err != nil {
 		return err
 	}
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return errors.New("wal has unexpected trailing data")
+	}
 	return e.validate()
+}
+
+// legalTransition encodes the WAL's forward-only apply graph: a state may only
+// advance to its immediate successor or fail to rolled-back. No skip (staged ->
+// applied) and no regress (applying -> staged) are permitted; terminal states
+// have no outgoing edge.
+func legalTransition(from, to WALState) bool {
+	switch from {
+	case StateStaged:
+		return to == StateApplying || to == StateRolledBack
+	case StateApplying:
+		return to == StateRestarted || to == StateRolledBack
+	case StateRestarted:
+		return to == StateHealthyUnstable || to == StateRolledBack
+	case StateHealthyUnstable:
+		return to == StateApplied || to == StateRolledBack
+	}
+	return false
 }
 
 // writeDurable atomically writes data to path via a same-dir temp file + fsync +

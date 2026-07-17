@@ -7,9 +7,13 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 )
 
 const updatePolicySchema = "melusina-update-policy-v1"
+
+// maxPolicyBytes bounds the shell-writable policy file (small typed JSON).
+const maxPolicyBytes = 1 << 20
 
 // UpdatePolicy is the OPERATOR-preference half of the controller's config: the
 // check cadence, whether verified updates auto-apply or only notify, and the
@@ -74,12 +78,37 @@ func (p UpdatePolicy) validate() error {
 // defaults fill any zero timing fields before validation so a partial admin edit
 // (e.g. only autoApply) is still coherent.
 func LoadUpdatePolicy(path string) (UpdatePolicy, error) {
-	raw, err := os.ReadFile(path)
+	fi, err := os.Lstat(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return DefaultUpdatePolicy(), nil
 		}
+		return UpdatePolicy{}, fmt.Errorf("lstat update policy %s: %w", path, err)
+	}
+	// The policy is shell-writable, but a SYMLINK (redirecting the read elsewhere)
+	// or a non-regular file is refused, and the read is size-bounded + no-follow.
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return UpdatePolicy{}, fmt.Errorf("update policy %s is a symlink; refusing", path)
+	}
+	if !fi.Mode().IsRegular() {
+		return UpdatePolicy{}, fmt.Errorf("update policy %s is not a regular file", path)
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return UpdatePolicy{}, fmt.Errorf("open update policy %s: %w", path, err)
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, maxPolicyBytes+1))
+	if err != nil {
 		return UpdatePolicy{}, fmt.Errorf("read update policy %s: %w", path, err)
+	}
+	if int64(len(raw)) > maxPolicyBytes {
+		return UpdatePolicy{}, fmt.Errorf("update policy %s exceeds %d bytes", path, maxPolicyBytes)
+	}
+	// Reject case-shadowed/exact duplicate keys (a decoy "AutoApply" shadowing
+	// "autoApply") before decoding.
+	if err := assertNoDuplicateJSONKeys(raw); err != nil {
+		return UpdatePolicy{}, fmt.Errorf("update policy %s: %w", path, err)
 	}
 	p := DefaultUpdatePolicy()
 	// Decode over the defaults: absent JSON keys keep their default, present keys

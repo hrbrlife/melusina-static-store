@@ -100,8 +100,10 @@ func FetchAndVerifyGeneration(ctx context.Context, get componentrelease.HTTPGett
 }
 
 // assertNoDuplicateJSONKeys walks the document and refuses a duplicate key in any
-// object — Go's json silently keeps the LAST, so a signed doc could carry a decoy
-// value another parser reads instead.
+// object — INCLUDING a CASE-SHADOWED duplicate. Go's encoding/json matches struct
+// fields case-INSENSITIVELY, so {"storeId":expected,"StoreID":decoy} would let a
+// decoy target the same trusted field with parser-order-dependent meaning; both
+// spellings are rejected (strings.EqualFold), as is an exact duplicate.
 func assertNoDuplicateJSONKeys(raw []byte) error {
 	return scanNoDupKeys(json.NewDecoder(strings.NewReader(string(raw))))
 }
@@ -117,17 +119,19 @@ func scanNoDupKeys(dec *json.Decoder) error {
 	}
 	switch delim {
 	case '{':
-		seen := make(map[string]bool)
+		var keys []string
 		for dec.More() {
 			kt, err := dec.Token()
 			if err != nil {
 				return err
 			}
 			key, _ := kt.(string)
-			if seen[key] {
-				return fmt.Errorf("duplicate JSON key %q", key)
+			for _, k := range keys {
+				if strings.EqualFold(k, key) {
+					return fmt.Errorf("case-shadowed duplicate JSON key %q vs %q", k, key)
+				}
 			}
-			seen[key] = true
+			keys = append(keys, key)
 			if err := scanNoDupKeys(dec); err != nil {
 				return err
 			}

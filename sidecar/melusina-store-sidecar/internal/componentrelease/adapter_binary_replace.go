@@ -228,7 +228,15 @@ func (a *binaryReplaceAdapter) Probe(ctx context.Context, desired ComponentRelea
 			return fmt.Errorf("binary-replace probe %s: self-report fetch: %w", desired.ComponentID, err)
 		}
 		defer body.Close()
-		raw, _ := io.ReadAll(io.LimitReader(body, 1<<20))
+		raw, err := io.ReadAll(io.LimitReader(body, maxSelfReportBytes+1))
+		if err != nil {
+			return fmt.Errorf("binary-replace probe %s: read self-report: %w", desired.ComponentID, err)
+		}
+		// An oversized body is REFUSED, never truncated — a valid prefix must not
+		// be able to hide trailing bytes that a lenient parser would honour.
+		if len(raw) > maxSelfReportBytes {
+			return fmt.Errorf("binary-replace probe %s: self-report exceeds %d bytes", desired.ComponentID, maxSelfReportBytes)
+		}
 		if !selfReportBindsHash(raw, desired.SHA256) {
 			return fmt.Errorf("binary-replace probe %s: self-report does not bind the applied hash %s in a structured field", desired.ComponentID, strings.ToLower(desired.SHA256))
 		}
@@ -238,25 +246,95 @@ func (a *binaryReplaceAdapter) Probe(ctx context.Context, desired ComponentRelea
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-// selfReportBindsHash requires the self-report to be a JSON object in which some
-// field's value is EXACTLY the applied hash (case-insensitive full match). A hash
-// merely embedded inside a longer string (e.g. a status message) is NOT accepted.
+// selfReportHashField is the ONE structured field a self-report must carry whose
+// value is the running artifact's sha256. Binding a specific field (not "any
+// string field that happens to equal the hash") prevents a status message or an
+// unrelated field from laundering the desired hash.
+const selfReportHashField = "artifactSha256"
+
+// maxSelfReportBytes bounds the probe's self-report read. An oversized body is
+// refused (never truncated) so a valid prefix cannot hide trailing bytes.
+const maxSelfReportBytes = 1 << 20
+
+// selfReportBindsHash requires the self-report to be a single JSON object whose
+// EXACT `artifactSha256` field equals the applied hash. It refuses: a hash in any
+// other field (laundering), a case-shadowed duplicate of the field (a decoy
+// `ArtifactSha256` that encoding/json would fold onto the same struct field), and
+// trailing data after the object.
 func selfReportBindsHash(raw []byte, want string) bool {
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &obj); err != nil {
+	want = strings.ToLower(strings.TrimSpace(want))
+	if want == "" {
 		return false
 	}
-	want = strings.ToLower(strings.TrimSpace(want))
-	for _, rawVal := range obj {
-		var s string
-		if err := json.Unmarshal(rawVal, &s); err != nil {
-			continue // not a string field
-		}
-		if strings.ToLower(strings.TrimSpace(s)) == want {
-			return true
-		}
+	if selfReportHasFoldedDuplicateKeys(raw) {
+		return false
 	}
-	return false
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	var obj map[string]json.RawMessage
+	if err := dec.Decode(&obj); err != nil {
+		return false
+	}
+	if dec.More() {
+		return false // trailing data after the object
+	}
+	rawVal, ok := obj[selfReportHashField]
+	if !ok {
+		return false // the hash is not in the exact named field
+	}
+	var s string
+	if err := json.Unmarshal(rawVal, &s); err != nil {
+		return false
+	}
+	return strings.ToLower(strings.TrimSpace(s)) == want
+}
+
+// selfReportHasFoldedDuplicateKeys reports whether any object in the document has
+// two keys equal under case folding (strings.EqualFold) — the ambiguity a
+// case-insensitive struct decode would resolve order-dependently.
+func selfReportHasFoldedDuplicateKeys(raw []byte) bool {
+	return scanFoldedDupKeys(json.NewDecoder(strings.NewReader(string(raw)))) != nil
+}
+
+func scanFoldedDupKeys(dec *json.Decoder) error {
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := t.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delim {
+	case '{':
+		var keys []string
+		for dec.More() {
+			kt, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			key, _ := kt.(string)
+			for _, k := range keys {
+				if strings.EqualFold(k, key) {
+					return fmt.Errorf("case-shadowed duplicate key %q vs %q", k, key)
+				}
+			}
+			keys = append(keys, key)
+			if err := scanFoldedDupKeys(dec); err != nil {
+				return err
+			}
+		}
+		_, err = dec.Token()
+		return err
+	case '[':
+		for dec.More() {
+			if err := scanFoldedDupKeys(dec); err != nil {
+				return err
+			}
+		}
+		_, err = dec.Token()
+		return err
+	}
+	return nil
 }
 
 func defaultBundleGet(ctx context.Context, url string) (io.ReadCloser, error) {

@@ -62,6 +62,9 @@ func TestWALAdvanceAndComplete(t *testing.T) {
 	if err := w.Advance("sandstorm-shell", StateApplying, nil); err != nil {
 		t.Fatalf("advance applying: %v", err)
 	}
+	if err := w.Advance("sandstorm-shell", StateRestarted, nil); err != nil {
+		t.Fatalf("advance restarted: %v", err)
+	}
 	if err := w.Advance("sandstorm-shell", StateHealthyUnstable, func(e *WALEntry) { e.AppliedAtUnix = 1784281900 }); err != nil {
 		t.Fatalf("advance healthy: %v", err)
 	}

@@ -269,6 +269,11 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
+	// POST /publish/generation: envelope-authorized promote of the next signed
+	// desired generation (canonical publisher's promote step). Re-verifies the
+	// store operator + each component on-chain + served bytes under the
+	// single-writer lock, then composes + CAS-promotes + operator-signs it.
+	mux.HandleFunc("/publish/generation", svc.handleGeneratePromote)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
 	// ── DESIRED-GENERATION producer (GET /update/generation.json) ──────────────

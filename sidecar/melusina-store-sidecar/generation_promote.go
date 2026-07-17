@@ -78,6 +78,15 @@ func (s *publishService) loadCurrentGenerationOrNil() (*componentrelease.Desired
 // violation, or a validation failure all return an error and leave the current
 // generation untouched.
 func (s *publishService) promoteGeneration(req GenerationPromoteRequest, now time.Time) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.promoteGenerationLocked(req, now)
+}
+
+// promoteGenerationLocked is the promote body; the caller MUST hold s.mu. The
+// HTTP handler holds the lock across the per-class on-chain re-verify AND this
+// promote so a concurrent publish cannot slip between the verify and the CAS.
+func (s *publishService) promoteGenerationLocked(req GenerationPromoteRequest, now time.Time) ([]byte, error) {
 	if req.Schema != generationPromoteSchema {
 		return nil, fmt.Errorf("generation promote schema mismatch: %q", req.Schema)
 	}
@@ -88,10 +97,6 @@ func (s *publishService) promoteGeneration(req GenerationPromoteRequest, now tim
 	if origin == "" {
 		return nil, errors.New("no public_base_url to pin the bundle origin")
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	current, err := s.loadCurrentGenerationOrNil()
 	if err != nil {
 		return nil, fmt.Errorf("load current generation: %w", err)

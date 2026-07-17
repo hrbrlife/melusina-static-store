@@ -7,10 +7,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
+
+type testOperationContainment struct{ cmd *exec.Cmd }
+
+func (s *testOperationContainment) Configure(cmd *exec.Cmd) {
+	s.cmd = cmd
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+}
+func (s *testOperationContainment) Terminate() error {
+	if s.cmd == nil || s.cmd.Process == nil {
+		return nil
+	}
+	err := syscall.Kill(-s.cmd.Process.Pid, syscall.SIGKILL)
+	if err == syscall.ESRCH {
+		return nil
+	}
+	return err
+}
+func (s *testOperationContainment) Cleanup() error { return nil }
+
+func init() {
+	newOperationContainment = func(string) (operationContainment, error) {
+		return &testOperationContainment{}, nil
+	}
+}
+
+func TestProductionContainmentRejectsOrdinaryDirectory(t *testing.T) {
+	if scope, err := newCgroupOperationContainment(t.TempDir()); err == nil {
+		_ = scope.Cleanup()
+		t.Fatal("ordinary filesystem directory was accepted as delegated cgroup-v2 containment")
+	}
+}
 
 type wrapperState struct {
 	Entries    map[string]releaseStatus `json:"entries"`
@@ -49,10 +82,22 @@ func TestCommandWrapperHelper(t *testing.T) {
 	switch action {
 	case "build":
 		failAfterMutation()
+		mustHelper(os.MkdirAll(filepath.Dir(os.Getenv("MEL_CANDIDATE_RECEIPT_OUT")), 0o700))
+		spkPath := filepath.Join(filepath.Dir(os.Getenv("MEL_CANDIDATE_RECEIPT_OUT")), "wrapper-candidate.spk")
+		metadataPath := filepath.Join(filepath.Dir(os.Getenv("MEL_CANDIDATE_RECEIPT_OUT")), "wrapper-metadata.json")
+		spk := []byte("test candidate spk\n")
+		metadata := []byte("{\"appId\":\"app-ccash-go-htmx\",\"version\":\"0.3.64\"}\n")
+		mustHelper(os.WriteFile(spkPath, spk, 0o600))
+		mustHelper(os.WriteFile(metadataPath, metadata, 0o600))
+		spkHash := sha256.Sum256(spk)
+		metadataHash := sha256.Sum256(metadata)
 		mustHelper(writeTestJSON(os.Getenv("MEL_CANDIDATE_RECEIPT_OUT"), map[string]any{
-			"schema":   "melusina-app-candidate-receipt-v1",
-			"app":      map[string]any{"appId": os.Getenv("MEL_APP_ID"), "version": os.Getenv("MEL_NEW_VERSION")},
-			"artifact": map[string]any{"sha256": strings.Repeat("b", 64), "size": 99},
+			"schema":       "melusina-app-candidate-receipt-v1",
+			"source":       map[string]any{"revision": "cccccccccccccccccccccccccccccccccccccccc", "pushedRemoteRef": "refs/remotes/origin/test", "dirty": false, "sourceDateEpoch": 1},
+			"app":          map[string]any{"appId": os.Getenv("MEL_APP_ID"), "packageId": hex.EncodeToString(spkHash[:])[:32], "version": os.Getenv("MEL_NEW_VERSION")},
+			"artifact":     map[string]any{"path": spkPath, "sha256": hex.EncodeToString(spkHash[:]), "size": len(spk)},
+			"metadata":     map[string]any{"path": metadataPath, "sha256": hex.EncodeToString(metadataHash[:]), "size": len(metadata)},
+			"verification": map[string]any{"spk": "valid", "packageIdMatchesSha256": true},
 		}))
 	case "active":
 		w := bufio.NewWriter(os.Stdout)
@@ -69,7 +114,7 @@ func TestCommandWrapperHelper(t *testing.T) {
 		}
 		_ = json.NewEncoder(os.Stdout).Encode(e)
 	case "register":
-		pda := "PDA-wrapper-new"
+		pda := "11111111111111111111111111111111"
 		already := false
 		for _, e := range state.Entries {
 			if e.AppHash == os.Getenv("MEL_NEW_APP_HASH") && e.Status == "Active" {
@@ -84,6 +129,10 @@ func TestCommandWrapperHelper(t *testing.T) {
 			"$schema": "melusina-release-v1", "appHash": os.Getenv("MEL_NEW_APP_HASH"),
 			"releaseHash": releaseHash, "version": os.Getenv("MEL_NEW_VERSION"),
 			"releaseNonce": os.Getenv("MEL_RELEASE_NONCE"), "releaseEntryPda": pda,
+			"signedAtUnix": 1, "MasterNftMint": "11111111111111111111111111111111",
+			"licenseSquadsVault": "11111111111111111111111111111111",
+			"authorSig":          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			"quorumPolicy":       map[string]any{"threshold": 1, "memberCount": 1, "multisigPda": "11111111111111111111111111111111"},
 		}))
 		r := map[string]any{
 			"schema": "melusina-register-release-receipt-v1", "releaseEntryPda": pda,
@@ -97,19 +146,23 @@ func TestCommandWrapperHelper(t *testing.T) {
 	case "stage":
 		failAfterMutation()
 		mustHelper(writeTestJSON(os.Getenv("MEL_STAGE_RECEIPT_OUT"), map[string]any{
-			"schema": "melusina-app-stage-receipt-v1", "stageId": "wrapper-stage",
+			"schema": "melusina-app-stage-receipt-v1", "stageId": os.Getenv("MEL_NEW_APP_HASH"),
 			"appId": os.Getenv("MEL_APP_ID"), "appHash": os.Getenv("MEL_NEW_APP_HASH"),
-			"releaseHash": os.Getenv("MEL_RELEASE_HASH"),
+			"releaseHash": os.Getenv("MEL_RELEASE_HASH"), "servingDomainHash": strings.Repeat("4", 64),
+			"storedAt": 1, "operatorSignature": strings.Repeat("1", 64),
 		}))
 	case "promote":
 		state.Served = os.Getenv("MEL_NEW_APP_HASH")
 		failAfterMutation()
+		domain, sig := strings.Repeat("4", 64), strings.Repeat("1", 64)
+		spkHash := sha256.Sum256([]byte("test candidate spk\n"))
+		stage := map[string]any{"schema": "melusina-app-stage-receipt-v1", "stageId": os.Getenv("MEL_STAGE_ID"), "appId": os.Getenv("MEL_APP_ID"), "appHash": os.Getenv("MEL_NEW_APP_HASH"), "releaseHash": os.Getenv("MEL_RELEASE_HASH"), "servingDomainHash": domain, "storedAt": 1, "operatorSignature": sig}
 		mustHelper(writeTestJSON(os.Getenv("MEL_PROMOTE_RECEIPT_OUT"), map[string]any{
 			"schema": "melusina-app-promotion-receipt-v1", "appHash": os.Getenv("MEL_NEW_APP_HASH"),
-			"releaseHash": os.Getenv("MEL_RELEASE_HASH"),
-			"stage":       map[string]any{"stageId": os.Getenv("MEL_STAGE_ID"), "appId": os.Getenv("MEL_APP_ID"), "appHash": os.Getenv("MEL_NEW_APP_HASH")},
-			"rollout":     map[string]any{"appId": os.Getenv("MEL_APP_ID"), "currentStageId": os.Getenv("MEL_STAGE_ID"), "currentAppHash": os.Getenv("MEL_NEW_APP_HASH"), "currentVersion": os.Getenv("MEL_NEW_VERSION")},
-			"catalog":     map[string]any{"appId": os.Getenv("MEL_APP_ID"), "stageId": os.Getenv("MEL_STAGE_ID"), "appHash": os.Getenv("MEL_NEW_APP_HASH"), "releaseHash": os.Getenv("MEL_RELEASE_HASH"), "version": os.Getenv("MEL_NEW_VERSION")},
+			"releaseHash": os.Getenv("MEL_RELEASE_HASH"), "servingDomainHash": domain, "storedAt": 1, "operatorSignature": sig,
+			"stage":   stage,
+			"rollout": map[string]any{"schema": "melusina-app-rollout-v1", "appId": os.Getenv("MEL_APP_ID"), "currentStageId": os.Getenv("MEL_STAGE_ID"), "currentAppHash": os.Getenv("MEL_NEW_APP_HASH"), "currentVersion": os.Getenv("MEL_NEW_VERSION"), "activatedAt": 1, "servingDomainHash": domain, "operatorSignature": sig},
+			"catalog": map[string]any{"schema": "melusina-app-catalog-pointer-v1", "appId": os.Getenv("MEL_APP_ID"), "packageId": hex.EncodeToString(spkHash[:])[:32], "stageId": os.Getenv("MEL_STAGE_ID"), "appHash": os.Getenv("MEL_NEW_APP_HASH"), "releaseHash": os.Getenv("MEL_RELEASE_HASH"), "version": os.Getenv("MEL_NEW_VERSION"), "catalogSha256": strings.Repeat("5", 64), "servingDomainHash": domain, "publishedAt": 1, "operatorSignature": sig},
 		}))
 		save()
 	case "revoke":
@@ -147,6 +200,7 @@ func wrapperCommand(action string) string {
 }
 
 func wrapperArgs(dir string, first bool) []string {
+	_ = os.Chmod(dir, 0o700)
 	args := []string{
 		"--wal", filepath.Join(dir, "wal.json"),
 		"--lock-dir", filepath.Join(dir, "locks"),
@@ -157,6 +211,7 @@ func wrapperArgs(dir string, first bool) []string {
 		"--status-cmd", wrapperCommand("status"), "--register-cmd", wrapperCommand("register"),
 		"--stage-cmd", wrapperCommand("stage"), "--promote-cmd", wrapperCommand("promote"),
 		"--revoke-cmd", wrapperCommand("revoke"), "--served-cmd", wrapperCommand("served"),
+		"--adapter-cgroup-root", filepath.Join(dir, "test-cgroup"),
 		"--op-timeout", "20s",
 	}
 	if !first {

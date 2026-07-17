@@ -22,21 +22,35 @@ store data never supplies a command, unit name, path, or credential.
 
 The command adapters are invoked with fixed environment variables and must
 atomically materialize JSON files. Operation banners on stdout are ignored.
+Every adapter is born atomically inside its own delegated cgroup-v2 subtree.
+`--adapter-cgroup-root` must name the publisher service's `Delegate=yes`
+subtree. Missing delegation, cgroup-v2, or writable `cgroup.kill` is a hard
+refusal; there is no process-group-only fallback. Thus timeout and nominal
+success both reap `setsid`/double-fork descendants before the publisher returns.
 
 | adapter | required output |
 |---|---|
-| `--build-cmd` | `$MEL_CANDIDATE_RECEIPT_OUT`, schema `melusina-app-candidate-receipt-v1` |
+| `--build-cmd` | `$MEL_CANDIDATE_RECEIPT_OUT`, schema `melusina-app-candidate-receipt-v1`, binding absolute SPK + metadata paths, sizes and SHA-256 values |
 | `--register-cmd` | finalized `$MEL_RELEASE_JSON_OUT` plus `$MEL_REGISTER_RECEIPT_OUT`; consume the WAL-pinned `$MEL_RELEASE_NONCE` |
 | `--stage-cmd` | raw verified `cmd/submit --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"` receipt |
 | `--promote-cmd` | raw verified `cmd/submit --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"` receipt |
 | `--revoke-cmd` | `$MEL_REVOKE_RECEIPT_OUT`, bound to the exact `$MEL_PDA` |
 
 `cmd/submit` is therefore integrated through its receipt-file API, never by
-scraping human stdout. The WAL hashes the candidate receipt, finalized
-`RELEASE.json`, register/stage/promote receipts, and every exact-PDA revoke
+scraping human stdout. The WAL hashes the candidate receipt, exact SPK and
+metadata bytes, recomputed canonical appHash, finalized `RELEASE.json`,
+register/stage/promote receipts, and every exact-PDA revoke
 receipt. A successful invocation emits exactly one strict
 `melusina-app-publish-terminal-receipt-v1` JSON document and durably writes the
 same document as `<receipt-dir>/terminal.json`.
+
+Before stage, the publisher independently recomputes the canonical tree hash
+over the exact candidate `{app.spk, metadata.json}` and requires it to equal
+`--new-app-hash`. The stage adapter receives those exact paths and hashes in
+`MEL_CANDIDATE_SPK`, `MEL_CANDIDATE_SPK_SHA256`,
+`MEL_CANDIDATE_METADATA`, `MEL_CANDIDATE_METADATA_SHA256`, and
+`MEL_CANDIDATE_APP_HASH`; a receipt for unrelated bytes cannot become a
+terminal publish receipt.
 
 The register adapter must make its operation idempotent. On restart it receives
 the identical 32-lowercase-hex nonce stored before BUILD, so
@@ -57,6 +71,13 @@ initial Active snapshot; after the adapter returns it requires `Revoked`.
 All paths (`--wal`, `--lock-dir`, `--receipt-dir`, `--release-json`) must be
 absolute and clean. The same WAL may only resume the same appId, appHash,
 version, nonce override, and stale-PDA set. Artifact drift fails closed.
+WAL and native JSON reject duplicate keys and trailing values. Resuming from
+any advanced WAL state revalidates every cumulative native artifact and the
+live Active/served boundary before the next mutation; the state label alone is
+never authority. Publisher-owned state directories and no-follow regular-file
+opens prevent lock/WAL/receipt symlink substitution. The per-operation cgroup
+prevents an adapter descendant from surviving timeout or returning success in
+the background.
 
 ## No-gap supersede property (card 0055)
 

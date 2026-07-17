@@ -32,6 +32,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -48,24 +49,25 @@ func (s *stringList) Set(v string) error {
 }
 
 type cliOptions struct {
-	wal          string
-	lockDir      string
-	receiptDir   string
-	releaseJSON  string
-	appID        string
-	newAppHash   string
-	newVersion   string
-	releaseNonce string
-	stalePDAs    stringList
-	buildCmd     string
-	activeCmd    string
-	statusCmd    string
-	registerCmd  string
-	stageCmd     string
-	promoteCmd   string
-	revokeCmd    string
-	servedCmd    string
-	opTimeout    time.Duration
+	wal               string
+	lockDir           string
+	receiptDir        string
+	releaseJSON       string
+	appID             string
+	newAppHash        string
+	newVersion        string
+	releaseNonce      string
+	stalePDAs         stringList
+	buildCmd          string
+	activeCmd         string
+	statusCmd         string
+	registerCmd       string
+	stageCmd          string
+	promoteCmd        string
+	revokeCmd         string
+	servedCmd         string
+	opTimeout         time.Duration
+	adapterCgroupRoot string
 }
 
 func main() {
@@ -129,6 +131,7 @@ func parseCLI(args []string) (cliOptions, error) {
 	fs.StringVar(&o.revokeCmd, "revoke-cmd", "", "governed off-box ceremony: revoke the ReleaseEntry at MEL_PDA (required)")
 	fs.StringVar(&o.servedCmd, "served-cmd", "", "read-only: prints the served app_hash for MEL_APP_ID (required)")
 	fs.DurationVar(&o.opTimeout, "op-timeout", 8*time.Minute, "per-command timeout")
+	fs.StringVar(&o.adapterCgroupRoot, "adapter-cgroup-root", "", "absolute delegated cgroup-v2 subtree for per-command containment (required)")
 	if err := fs.Parse(args); err != nil {
 		return cliOptions{}, err
 	}
@@ -142,6 +145,7 @@ func parseCLI(args []string) (cliOptions, error) {
 		"--build-cmd":    o.buildCmd,
 		"--register-cmd": o.registerCmd, "--stage-cmd": o.stageCmd,
 		"--promote-cmd": o.promoteCmd, "--revoke-cmd": o.revokeCmd, "--served-cmd": o.servedCmd,
+		"--adapter-cgroup-root": o.adapterCgroupRoot,
 	}
 	for name, val := range required {
 		if strings.TrimSpace(val) == "" {
@@ -151,7 +155,7 @@ func parseCLI(args []string) (cliOptions, error) {
 	if len(o.stalePDAs) > 0 && strings.TrimSpace(o.statusCmd) == "" {
 		return cliOptions{}, errors.New("--status-cmd is required when --stale-pda is present")
 	}
-	for name, path := range map[string]string{"--wal": o.wal, "--lock-dir": o.lockDir, "--receipt-dir": o.receiptDir, "--release-json": o.releaseJSON} {
+	for name, path := range map[string]string{"--wal": o.wal, "--lock-dir": o.lockDir, "--receipt-dir": o.receiptDir, "--release-json": o.releaseJSON, "--adapter-cgroup-root": o.adapterCgroupRoot} {
 		if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 			return cliOptions{}, fmt.Errorf("%s must be an absolute clean path", name)
 		}
@@ -168,21 +172,85 @@ func appLockPath(dir, appID string) string {
 // governed commands.
 type commandOps struct{ opts cliOptions }
 
+const maxAdapterOutputBytes = 4 << 20
+
+type cappedWriter struct {
+	b        strings.Builder
+	limit    int
+	overflow bool
+}
+
+func (w *cappedWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	remaining := w.limit - w.b.Len()
+	if remaining > 0 {
+		if remaining > len(p) {
+			remaining = len(p)
+		}
+		_, _ = w.b.Write(p[:remaining])
+	}
+	if remaining < len(p) {
+		w.overflow = true
+	}
+	return n, nil
+}
+
+func (w *cappedWriter) String() string { return w.b.String() }
+
 func (c *commandOps) exec(cmdStr string, env map[string]string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.opts.opTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr)
-	cmd.Env = os.Environ()
-	for k, v := range env {
-		cmd.Env = append(cmd.Env, k+"="+v)
+	scope, err := newOperationContainment(c.opts.adapterCgroupRoot)
+	if err != nil {
+		return "", fmt.Errorf("adapter containment: %w", err)
 	}
-	var stdout, stderr strings.Builder
+	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr)
+	scope.Configure(cmd)
+	cmd.Cancel = scope.Terminate
+	cmd.WaitDelay = 500 * time.Millisecond
+	cmd.Env = environmentWithOverrides(os.Environ(), env)
+	var stdout, stderr cappedWriter
+	stdout.limit, stderr.limit = maxAdapterOutputBytes, maxAdapterOutputBytes
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	if err := cmd.Start(); err != nil {
+		_ = scope.Cleanup()
+		return "", err
+	}
+	runErr := cmd.Wait()
+	cleanupErr := scope.Cleanup()
+	if ctx.Err() != nil {
+		runErr = ctx.Err()
+	}
+	if cleanupErr != nil {
+		return "", fmt.Errorf("adapter containment cleanup: %w", cleanupErr)
+	}
+	if runErr != nil {
+		return "", fmt.Errorf("%w: %s", runErr, strings.TrimSpace(stderr.String()))
+	}
+	if stdout.overflow || stderr.overflow {
+		return "", fmt.Errorf("adapter output exceeds %d-byte bound", maxAdapterOutputBytes)
 	}
 	return stdout.String(), nil
+}
+
+func environmentWithOverrides(base []string, overrides map[string]string) []string {
+	out := make([]string, 0, len(base)+len(overrides))
+	for _, item := range base {
+		key, _, _ := strings.Cut(item, "=")
+		if _, replaced := overrides[key]; !replaced {
+			out = append(out, item)
+		}
+	}
+	keys := make([]string, 0, len(overrides))
+	for key := range overrides {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		out = append(out, key+"="+overrides[key])
+	}
+	return out
 }
 
 func (c *commandOps) ActiveReleases(appID string) ([]releaseRef, error) {
@@ -203,7 +271,7 @@ func (c *commandOps) ActiveReleases(appID string) ([]releaseRef, error) {
 			Version string `json:"version"`
 			AppHash string `json:"appHash"`
 		}
-		if err := json.Unmarshal([]byte(line), &r); err != nil {
+		if err := decodeOneJSON([]byte(line), &r, true); err != nil {
 			return nil, fmt.Errorf("parse active-cmd line %q: %w", line, err)
 		}
 		if strings.TrimSpace(r.PDA) == "" || !isLowerHex(r.AppHash, 64) || strings.TrimSpace(r.Version) == "" {
@@ -240,7 +308,7 @@ func (c *commandOps) ReleaseStatus(pda string) (releaseStatus, error) {
 		return releaseStatus{}, err
 	}
 	var parsed releaseStatus
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &parsed); err != nil {
+	if err := decodeOneJSON([]byte(strings.TrimSpace(out)), &parsed, true); err != nil {
 		return releaseStatus{}, fmt.Errorf("parse status-cmd output: %w", err)
 	}
 	if parsed.PDA == "" || !isLowerHex(parsed.AppHash, 64) || parsed.Version == "" || parsed.Status == "" {
@@ -256,10 +324,12 @@ func (c *commandOps) RevokeRelease(pda, receiptPath string) error {
 	return err
 }
 
-func (c *commandOps) Stage(appID, newAppHash, releaseHash, receiptPath string) error {
+func (c *commandOps) Stage(appID, newAppHash, releaseHash string, candidate candidateBinding, receiptPath string) error {
 	_, err := c.exec(c.opts.stageCmd, map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": newAppHash, "MEL_RELEASE_HASH": releaseHash,
-		"MEL_STAGE_RECEIPT_OUT": receiptPath,
+		"MEL_CANDIDATE_SPK": candidate.SPK.Path, "MEL_CANDIDATE_SPK_SHA256": candidate.SPK.SHA256,
+		"MEL_CANDIDATE_METADATA": candidate.Metadata.Path, "MEL_CANDIDATE_METADATA_SHA256": candidate.Metadata.SHA256,
+		"MEL_CANDIDATE_APP_HASH": candidate.AppHash, "MEL_STAGE_RECEIPT_OUT": receiptPath,
 	})
 	return err
 }

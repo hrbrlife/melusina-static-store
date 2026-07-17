@@ -53,10 +53,21 @@ else
 fi
 export SOURCE_DATE_EPOCH="$source_epoch"
 
+repro_dir="$(mktemp -d)"
+trap 'rm -rf "$repro_dir"' EXIT
+
 rm -f "$SPK_OUT"
 make -C "$APP_DIR" build
 make -C "$APP_DIR" pack-local
 [[ -f "$SPK_OUT" ]] || { echo "pack-local did not create $SPK_OUT" >&2; exit 2; }
+cp --reflink=auto -- "$SPK_OUT" "$repro_dir/first.spk"
+cp --reflink=auto -- "$METADATA" "$repro_dir/first.metadata.json"
+rm -f "$SPK_OUT"
+make -C "$APP_DIR" build
+make -C "$APP_DIR" pack-local
+[[ -f "$SPK_OUT" ]] || { echo "second pack-local did not create $SPK_OUT" >&2; exit 2; }
+cmp -s "$repro_dir/first.spk" "$SPK_OUT" || { echo "candidate SPK is not reproducible" >&2; exit 2; }
+cmp -s "$repro_dir/first.metadata.json" "$METADATA" || { echo "candidate metadata changed during reproducibility proof" >&2; exit 2; }
 
 dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
 [[ -z "$dirty" ]] || {
@@ -75,6 +86,9 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   echo "packageId $package_id does not match sha256 prefix ${spk_sha:0:32}" >&2
   exit 2
 }
+spk_path="$(realpath -e "$SPK_OUT")"
+metadata_path="$(realpath -e "$METADATA")"
+metadata_sha="$(sha256sum "$metadata_path" | awk '{print $1}')"
 
 readarray -t source_meta < <(python3 - "$METADATA" <<'PY'
 import json, sys
@@ -91,22 +105,33 @@ PY
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
   python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_epoch" "$app_id" "$package_id" \
-    "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
-import json, os, sys
-out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
+	    "${source_meta[1]:-}" "$spk_path" "$spk_sha" "$(stat -c%s "$spk_path")" \
+	    "$metadata_path" "$metadata_sha" "$(stat -c%s "$metadata_path")" <<'PY'
+import json, os, sys, tempfile
+out, revision, pushed_ref, epoch, app_id, package_id, version, spk_path, spk_sha, spk_size, metadata_path, metadata_sha, metadata_size = sys.argv[1:]
 doc = {
     "schema": "melusina-app-candidate-receipt-v1",
     "source": {"revision": revision, "pushedRemoteRef": pushed_ref, "dirty": False, "sourceDateEpoch": int(epoch)},
     "app": {"appId": app_id, "packageId": package_id, "version": version},
-    "artifact": {"sha256": sha, "size": int(size)},
+    "artifact": {"path": spk_path, "sha256": spk_sha, "size": int(spk_size)},
+    "metadata": {"path": metadata_path, "sha256": metadata_sha, "size": int(metadata_size)},
     "verification": {"spk": "valid", "packageIdMatchesSha256": True},
 }
-tmp = out + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
+directory = os.path.dirname(out)
+os.makedirs(directory, mode=0o700, exist_ok=True)
+fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(out) + ".", suffix=".tmp", dir=directory)
+with os.fdopen(fd, "w", encoding="utf-8") as f:
     json.dump(doc, f, indent=2, sort_keys=True)
     f.write("\n")
+    f.flush()
+    os.fsync(f.fileno())
 os.chmod(tmp, 0o600)
 os.replace(tmp, out)
+dirfd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(dirfd)
+finally:
+    os.close(dirfd)
 PY
 fi
 

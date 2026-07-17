@@ -133,7 +133,7 @@ type ChainOps interface {
 // new complete catalog, never a partial one.
 type StoreOps interface {
 	// Stage privately stages the new bytes and returns a verified stage id.
-	Stage(appID, newAppHash, releaseHash, receiptPath string) error
+	Stage(appID, newAppHash, releaseHash string, candidate candidateBinding, receiptPath string) error
 	// Promote atomically points the served catalog + pointer at newAppHash.
 	Promote(appID, newAppHash, releaseHash, stageID, receiptPath string) error
 	// ServedAppHash returns the appHash the store currently serves for appID,
@@ -168,27 +168,32 @@ type Params struct {
 // Receipt is the durable WAL record. It is the single source of truth for
 // resuming an interrupted publish.
 type Receipt struct {
-	Schema           string                 `json:"schema"`
-	State            string                 `json:"state"`
-	AppID            string                 `json:"appId"`
-	NewAppHash       string                 `json:"newAppHash"`
-	NewVersion       string                 `json:"newVersion"`
-	ReleaseNonce     string                 `json:"releaseNonce"`
-	ReleaseHash      string                 `json:"releaseHash,omitempty"`
-	NewReleasePDA    string                 `json:"newReleasePda,omitempty"`
-	StalePDAs        []string               `json:"stalePdas"`
-	ActiveBefore     []releaseRef           `json:"activeBefore,omitempty"`
-	ActiveAfter      []releaseRef           `json:"activeAfter,omitempty"`
-	StageID          string                 `json:"stageId,omitempty"`
-	ServedAppHash    string                 `json:"servedAppHash,omitempty"`
-	LedgerID         string                 `json:"ledgerId"`
-	CandidateReceipt artifactRef            `json:"candidateReceipt,omitempty"`
-	ReleaseJSON      artifactRef            `json:"releaseJson,omitempty"`
-	RegisterReceipt  artifactRef            `json:"registerReceipt,omitempty"`
-	StageReceipt     artifactRef            `json:"stageReceipt,omitempty"`
-	PromoteReceipt   artifactRef            `json:"promoteReceipt,omitempty"`
-	RevokeReceipts   map[string]artifactRef `json:"revokeReceipts,omitempty"`
-	CompletedAtUnix  int64                  `json:"completedAtUnix,omitempty"`
+	Schema                string                 `json:"schema"`
+	State                 string                 `json:"state"`
+	AppID                 string                 `json:"appId"`
+	NewAppHash            string                 `json:"newAppHash"`
+	NewVersion            string                 `json:"newVersion"`
+	ReleaseNonce          string                 `json:"releaseNonce"`
+	ReleaseHash           string                 `json:"releaseHash,omitempty"`
+	NewReleasePDA         string                 `json:"newReleasePda,omitempty"`
+	StalePDAs             []string               `json:"stalePdas"`
+	ActiveBefore          []releaseRef           `json:"activeBefore,omitempty"`
+	ActiveAfter           []releaseRef           `json:"activeAfter,omitempty"`
+	StageID               string                 `json:"stageId,omitempty"`
+	ServedAppHash         string                 `json:"servedAppHash,omitempty"`
+	LedgerID              string                 `json:"ledgerId"`
+	StartedAtUnix         int64                  `json:"startedAtUnix"`
+	CandidateReceipt      artifactRef            `json:"candidateReceipt,omitempty"`
+	CandidateSPK          artifactRef            `json:"candidateSpk,omitempty"`
+	CandidateMetadata     artifactRef            `json:"candidateMetadata,omitempty"`
+	CandidateAppHash      string                 `json:"candidateAppHash,omitempty"`
+	InitialActiveVerified bool                   `json:"initialActiveVerified,omitempty"`
+	ReleaseJSON           artifactRef            `json:"releaseJson,omitempty"`
+	RegisterReceipt       artifactRef            `json:"registerReceipt,omitempty"`
+	StageReceipt          artifactRef            `json:"stageReceipt,omitempty"`
+	PromoteReceipt        artifactRef            `json:"promoteReceipt,omitempty"`
+	RevokeReceipts        map[string]artifactRef `json:"revokeReceipts,omitempty"`
+	CompletedAtUnix       int64                  `json:"completedAtUnix,omitempty"`
 }
 
 func (p Params) validate() error {
@@ -233,6 +238,63 @@ func (p Params) validate() error {
 	if p.ReleaseNonce != "" && !isLowerHex(p.ReleaseNonce, 32) {
 		return errors.New("ReleaseNonce must be 32 lowercase hex characters")
 	}
+	if err := validateReservedPaths(p); err != nil {
+		return err
+	}
+	return nil
+}
+
+func reservedPaths(p Params) map[string]string {
+	paths := map[string]string{
+		"WAL": p.WALPath, "lock": p.LockPath, "RELEASE.json": p.ReleaseJSONPath,
+		"candidate receipt": candidateReceiptPath(p), "candidate SPK snapshot": filepath.Join(p.ReceiptDir, "candidate.snapshot.spk"),
+		"candidate metadata snapshot": filepath.Join(p.ReceiptDir, "candidate.snapshot.metadata.json"),
+		"register receipt":            registerReceiptPath(p), "stage receipt": stageReceiptPath(p),
+		"promote receipt": promoteReceiptPath(p), "terminal receipt": terminalReceiptPath(p),
+	}
+	for _, pda := range p.StalePDAs {
+		paths["revoke receipt "+pda] = revokeReceiptPath(p, pda)
+	}
+	return paths
+}
+
+func validateReservedPaths(p Params) error {
+	seen := make(map[string]string)
+	for label, path := range reservedPaths(p) {
+		if prior, ok := seen[path]; ok {
+			return fmt.Errorf("reserved publisher paths alias: %s and %s both use %s", prior, label, path)
+		}
+		seen[path] = label
+	}
+	return nil
+}
+
+func prepareStatePaths(p Params) error {
+	for _, dir := range []string{filepath.Dir(p.LockPath), filepath.Dir(p.WALPath), p.ReceiptDir, filepath.Dir(p.ReleaseJSONPath)} {
+		if err := ensureOwnedPrivateDir(dir); err != nil {
+			return err
+		}
+	}
+	for _, path := range reservedPaths(p) {
+		if err := validateExistingPrivateFile(path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateCandidatePathSeparation(p Params, binding candidateBinding) error {
+	reserved := reservedPaths(p)
+	for label, path := range map[string]string{"candidate SPK": binding.SPK.Path, "candidate metadata": binding.Metadata.Path} {
+		for reservedLabel, reservedPath := range reserved {
+			if path == reservedPath {
+				return fmt.Errorf("%s aliases reserved %s path %s", label, reservedLabel, path)
+			}
+		}
+	}
+	if binding.SPK.Path == binding.Metadata.Path {
+		return errors.New("candidate SPK and metadata paths alias")
+	}
 	return nil
 }
 
@@ -241,6 +303,9 @@ func (p Params) validate() error {
 // exactly the new release Active and served.
 func RunSupersede(p Params) (Receipt, error) {
 	if err := p.validate(); err != nil {
+		return Receipt{}, err
+	}
+	if err := prepareStatePaths(p); err != nil {
 		return Receipt{}, err
 	}
 	lock, err := acquireAppLock(p.LockPath)
@@ -257,10 +322,13 @@ func runSupersedeLocked(p Params) (Receipt, error) {
 		return rec, err
 	}
 	if rec.State == stateDone {
-		if err := verifyCompletedReceipt(p, &rec); err != nil {
+		if err := verifyCompletedReceipt(p, &rec, true); err != nil {
 			return rec, fmt.Errorf("completed publish revalidation: %w", err)
 		}
 		return rec, nil
+	}
+	if err := verifyResumeBoundary(p, &rec); err != nil {
+		return rec, fmt.Errorf("resume boundary %s: %w", rec.State, err)
 	}
 	for rec.State != stateDone {
 		switch rec.State {
@@ -311,6 +379,12 @@ func runSupersedeLocked(p Params) (Receipt, error) {
 				return rec, err
 			}
 		case stateVerified:
+			// Never trust the state label alone. A crash-corrupted or operator-
+			// supplied WAL must prove every cumulative artifact plus the current
+			// live Active/served state before it can become terminal.
+			if err := verifyCompletedReceipt(p, &rec, false); err != nil {
+				return rec, fmt.Errorf("verify-before-done: %w", err)
+			}
 			rec.CompletedAtUnix = nowUnix()
 			if err := advance(p, &rec, stateDone); err != nil {
 				return rec, err
@@ -322,25 +396,101 @@ func runSupersedeLocked(p Params) (Receipt, error) {
 	return rec, nil
 }
 
-func ensureBuilt(p Params, rec *Receipt) error {
-	path := candidateReceiptPath(p)
-	if rec.CandidateReceipt.SHA256 != "" {
-		if err := verifyArtifactRef(rec.CandidateReceipt); err != nil {
+func verifyResumeBoundary(p Params, rec *Receipt) error {
+	rank := map[string]int{
+		stateInit: 0, stateBuilt: 1, stateRegistered: 2, stateStaged: 3,
+		statePromoted: 4, stateRevoked: 5, stateVerified: 6,
+	}[rec.State]
+	if rank >= 1 {
+		if err := ensureBuilt(p, rec); err != nil {
 			return err
 		}
-		ref, err := validateCandidateReceipt(rec.CandidateReceipt.Path, rec.AppID, rec.NewVersion)
+	}
+	if rank == 1 {
+		active, err := p.Chain.ActiveReleases(rec.AppID)
 		if err != nil {
 			return err
 		}
-		if ref != rec.CandidateReceipt {
-			return errors.New("candidate receipt reference changed")
+		if err := validateBuiltResumeActive(active, rec); err != nil {
+			return err
+		}
+	}
+	if rank >= 2 {
+		if err := ensureRegistered(p, rec); err != nil {
+			return err
+		}
+	}
+	if rank >= 3 {
+		if err := ensureStaged(p, rec); err != nil {
+			return err
+		}
+	}
+	if rank >= 4 {
+		if err := ensurePromoted(p, rec); err != nil {
+			return err
+		}
+	}
+	if rank >= 5 {
+		if err := verifyRevokeEvidence(p, rec); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateBuiltResumeActive accepts exactly the two legitimate projections at
+// the BUILT crash boundary: register has not run yet, or register committed the
+// intended new entry but the WAL/register receipt was not durably advanced.
+func validateBuiltResumeActive(active []releaseRef, rec *Receipt) error {
+	if err := validateDeclaredInitialActive(rec.ActiveBefore, rec.StalePDAs, rec.NewAppHash); err != nil {
+		return fmt.Errorf("invalid WAL initial snapshot: %w", err)
+	}
+	wantOld := sortedReleaseRefs(rec.ActiveBefore)
+	got := sortedReleaseRefs(active)
+	if sameReleaseRefs(got, wantOld) {
+		return nil
+	}
+	var intendedNew []releaseRef
+	var old []releaseRef
+	for _, ref := range got {
+		if ref.AppHash == rec.NewAppHash && ref.Version == rec.NewVersion {
+			intendedNew = append(intendedNew, ref)
+		} else {
+			old = append(old, ref)
+		}
+	}
+	if len(intendedNew) == 1 && sameReleaseRefs(sortedReleaseRefs(old), wantOld) {
+		return nil
+	}
+	return errors.New("current Active set is neither the WAL initial snapshot nor that snapshot plus exactly the intended new release")
+}
+
+func ensureBuilt(p Params, rec *Receipt) error {
+	path := candidateReceiptPath(p)
+	if rec.CandidateReceipt.SHA256 != "" {
+		binding, err := validatePersistedCandidate(rec.CandidateReceipt, rec.CandidateSPK, rec.CandidateMetadata, rec.AppID, rec.NewVersion, rec.NewAppHash)
+		if err != nil {
+			return err
+		}
+		if binding.Receipt != rec.CandidateReceipt || binding.SPK != rec.CandidateSPK || binding.Metadata != rec.CandidateMetadata || binding.AppHash != rec.CandidateAppHash {
+			return errors.New("candidate byte binding changed")
+		}
+		if !rec.InitialActiveVerified {
+			return errors.New("candidate WAL lacks the initial Active-set verification marker")
 		}
 		return nil
 	}
 	if err := p.Build.Build(path); err != nil {
 		return err
 	}
-	ref, err := validateCandidateReceipt(path, rec.AppID, rec.NewVersion)
+	binding, err := validateCandidateReceipt(path, rec.AppID, rec.NewVersion, rec.NewAppHash)
+	if err != nil {
+		return err
+	}
+	if err := validateCandidatePathSeparation(p, binding); err != nil {
+		return err
+	}
+	binding, err = snapshotCandidate(binding, p.ReceiptDir)
 	if err != nil {
 		return err
 	}
@@ -351,13 +501,31 @@ func ensureBuilt(p Params, rec *Receipt) error {
 	if err := validateDeclaredInitialActive(active, rec.StalePDAs, rec.NewAppHash); err != nil {
 		return err
 	}
-	rec.CandidateReceipt = ref
+	rec.CandidateReceipt = binding.Receipt
+	rec.CandidateSPK = binding.SPK
+	rec.CandidateMetadata = binding.Metadata
+	rec.CandidateAppHash = binding.AppHash
+	rec.InitialActiveVerified = true
 	rec.ActiveBefore = sortedReleaseRefs(active)
+	return nil
+}
+
+func verifyCandidateBinding(rec *Receipt) error {
+	binding, err := validatePersistedCandidate(rec.CandidateReceipt, rec.CandidateSPK, rec.CandidateMetadata, rec.AppID, rec.NewVersion, rec.NewAppHash)
+	if err != nil {
+		return err
+	}
+	if binding.AppHash != rec.CandidateAppHash {
+		return errors.New("candidate appHash binding changed")
+	}
 	return nil
 }
 
 func advance(p Params, rec *Receipt, next string) error {
 	rec.State = next
+	if err := validateReceiptState(*rec); err != nil {
+		return fmt.Errorf("refusing invalid state transition to %s: %w", next, err)
+	}
 	if err := writeReceiptDurable(p.WALPath, *rec); err != nil {
 		return fmt.Errorf("journal state %s: %w", next, err)
 	}
@@ -371,6 +539,9 @@ func advance(p Params, rec *Receipt, next string) error {
 
 // ensureRegistered makes the new release Active on-chain, idempotently.
 func ensureRegistered(p Params, rec *Receipt) error {
+	if err := verifyCandidateBinding(rec); err != nil {
+		return err
+	}
 	if rec.RegisterReceipt.SHA256 != "" {
 		if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
 			return err
@@ -416,6 +587,9 @@ func ensureRegistered(p Params, rec *Receipt) error {
 }
 
 func ensureStaged(p Params, rec *Receipt) error {
+	if err := verifyCandidateBinding(rec); err != nil {
+		return err
+	}
 	if rec.StageReceipt.SHA256 != "" {
 		if err := verifyArtifactRef(rec.StageReceipt); err != nil {
 			return err
@@ -430,7 +604,8 @@ func ensureStaged(p Params, rec *Receipt) error {
 		return nil
 	}
 	path := stageReceiptPath(p)
-	if err := p.Store.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, path); err != nil {
+	candidate := candidateBinding{Receipt: rec.CandidateReceipt, SPK: rec.CandidateSPK, Metadata: rec.CandidateMetadata, AppHash: rec.CandidateAppHash}
+	if err := p.Store.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, candidate, path); err != nil {
 		return err
 	}
 	stage, ref, err := validateStageReceipt(path, rec)
@@ -443,6 +618,9 @@ func ensureStaged(p Params, rec *Receipt) error {
 }
 
 func ensurePromoted(p Params, rec *Receipt) error {
+	if err := verifyCandidateBinding(rec); err != nil {
+		return err
+	}
 	if rec.PromoteReceipt.SHA256 != "" {
 		if err := verifyArtifactRef(rec.PromoteReceipt); err != nil {
 			return err
@@ -478,12 +656,34 @@ func ensurePromoted(p Params, rec *Receipt) error {
 // reached this state without a live-serving new release cannot open a 0-Active
 // gap. Revoke is idempotent, so a partially-completed revoke resumes cleanly.
 func ensureOldRevoked(p Params, rec *Receipt) error {
+	if err := verifyCandidateBinding(rec); err != nil {
+		return err
+	}
 	ok, err := servedReleaseIsActive(p.Chain, p.Store, rec.AppID, rec.NewAppHash)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return errors.New("refusing to revoke: the new release is not both Active and served")
+	}
+	declared := make(map[string]struct{}, len(rec.StalePDAs))
+	for _, pda := range rec.StalePDAs {
+		declared[pda] = struct{}{}
+	}
+	for pda, prior := range rec.RevokeReceipts {
+		if _, ok := declared[pda]; !ok {
+			return fmt.Errorf("WAL contains an undeclared revoke receipt for %s", pda)
+		}
+		if prior.SHA256 == "" {
+			return fmt.Errorf("WAL contains an incomplete revoke receipt for %s", pda)
+		}
+		if err := verifyArtifactRef(prior); err != nil {
+			return err
+		}
+		validated, err := validatePersistedRevokeReceipt(prior.Path, pda)
+		if err != nil || validated != prior {
+			return fmt.Errorf("persisted revoke receipt %s binding mismatch", pda)
+		}
 	}
 	for _, pda := range rec.StalePDAs {
 		if pda == rec.NewReleasePDA {
@@ -506,6 +706,10 @@ func ensureOldRevoked(p Params, rec *Receipt) error {
 		if prior := rec.RevokeReceipts[pda]; prior.SHA256 != "" {
 			if err := verifyArtifactRef(prior); err != nil {
 				return err
+			}
+			validated, err := validatePersistedRevokeReceipt(prior.Path, pda)
+			if err != nil || validated != prior {
+				return fmt.Errorf("persisted revoke receipt %s binding mismatch", pda)
 			}
 		} else {
 			path := revokeReceiptPath(p, pda)
@@ -552,8 +756,8 @@ func ensureFinalVerified(p Params, rec *Receipt) error {
 	return nil
 }
 
-func verifyCompletedReceipt(p Params, rec *Receipt) error {
-	if rec.CompletedAtUnix <= 0 || rec.ReleaseHash == "" || rec.NewReleasePDA == "" || rec.StageID == "" {
+func verifyCompletedReceipt(p Params, rec *Receipt, requireCompleted bool) error {
+	if (requireCompleted && rec.CompletedAtUnix <= 0) || rec.ReleaseHash == "" || rec.NewReleasePDA == "" || rec.StageID == "" {
 		return errors.New("DONE WAL is missing terminal fields")
 	}
 	if err := ensureBuilt(p, rec); err != nil {
@@ -568,27 +772,28 @@ func verifyCompletedReceipt(p Params, rec *Receipt) error {
 	if err := ensurePromoted(p, rec); err != nil {
 		return err
 	}
+	if err := verifyRevokeEvidence(p, rec); err != nil {
+		return err
+	}
+	return ensureFinalVerified(p, rec)
+}
+
+func verifyRevokeEvidence(p Params, rec *Receipt) error {
 	for _, pda := range rec.StalePDAs {
 		ref := rec.RevokeReceipts[pda]
 		if err := verifyArtifactRef(ref); err != nil {
 			return fmt.Errorf("revoke receipt %s: %w", pda, err)
 		}
-		if _, err := validateRevokeReceipt(ref.Path, pda, true); err != nil {
-			// A receipt for the actual transition has alreadyRevoked=false. On
-			// completed replay either form is valid; only its exact hash and PDA
-			// binding matter here.
-			var native revokeNativeReceipt
-			parsed, readErr := readNativeJSON(ref.Path, &native)
-			if readErr != nil || parsed != ref || native.Schema != "melusina-revoke-release-receipt-v1" || native.ReleaseEntryPDA != pda || native.Status != "Revoked" {
-				return fmt.Errorf("revoke receipt %s binding mismatch", pda)
-			}
+		validated, err := validatePersistedRevokeReceipt(ref.Path, pda)
+		if err != nil || validated != ref {
+			return fmt.Errorf("revoke receipt %s binding mismatch", pda)
 		}
 		status, err := p.Chain.ReleaseStatus(pda)
 		if err != nil || status.Status != "Revoked" {
 			return fmt.Errorf("stale PDA %s is not still Revoked", pda)
 		}
 	}
-	return ensureFinalVerified(p, rec)
+	return nil
 }
 
 // servedReleaseIsActive reports whether the release the store currently serves
@@ -635,14 +840,15 @@ func loadOrSeedReceipt(p Params) (Receipt, error) {
 		return Receipt{}, err
 	}
 	seed := Receipt{
-		Schema:       receiptSchema,
-		State:        stateInit,
-		AppID:        p.AppID,
-		NewAppHash:   p.NewAppHash,
-		NewVersion:   p.NewVersion,
-		ReleaseNonce: p.ReleaseNonce,
-		StalePDAs:    append([]string(nil), p.StalePDAs...),
-		LedgerID:     ledgerID,
+		Schema:        receiptSchema,
+		State:         stateInit,
+		AppID:         p.AppID,
+		NewAppHash:    p.NewAppHash,
+		NewVersion:    p.NewVersion,
+		ReleaseNonce:  p.ReleaseNonce,
+		StalePDAs:     append([]string(nil), p.StalePDAs...),
+		LedgerID:      ledgerID,
+		StartedAtUnix: nowUnix(),
 	}
 	if seed.ReleaseNonce == "" {
 		seed.ReleaseNonce, err = randomHex(16)
@@ -673,6 +879,9 @@ func validateReceiptBinding(rec Receipt, p Params) error {
 	if rec.Schema != receiptSchema {
 		return fmt.Errorf("schema %q is not %q", rec.Schema, receiptSchema)
 	}
+	if rec.StartedAtUnix <= 0 {
+		return errors.New("persisted start time is malformed")
+	}
 	if rec.AppID != p.AppID {
 		return fmt.Errorf("appId %q != %q", rec.AppID, p.AppID)
 	}
@@ -696,6 +905,94 @@ func validateReceiptBinding(rec Receipt, p Params) error {
 	default:
 		return fmt.Errorf("unknown persisted state %q", rec.State)
 	}
+	if err := validateReceiptPaths(rec, p); err != nil {
+		return err
+	}
+	return validateReceiptState(rec)
+}
+
+func validateReceiptPaths(rec Receipt, p Params) error {
+	expected := map[string]string{
+		"candidate receipt":  rec.CandidateReceipt.Path,
+		"candidate SPK":      rec.CandidateSPK.Path,
+		"candidate metadata": rec.CandidateMetadata.Path,
+		"RELEASE.json":       rec.ReleaseJSON.Path,
+		"register receipt":   rec.RegisterReceipt.Path,
+		"stage receipt":      rec.StageReceipt.Path,
+		"promote receipt":    rec.PromoteReceipt.Path,
+	}
+	want := map[string]string{
+		"candidate receipt":  candidateReceiptPath(p),
+		"candidate SPK":      filepath.Join(p.ReceiptDir, "candidate.snapshot.spk"),
+		"candidate metadata": filepath.Join(p.ReceiptDir, "candidate.snapshot.metadata.json"),
+		"RELEASE.json":       p.ReleaseJSONPath,
+		"register receipt":   registerReceiptPath(p),
+		"stage receipt":      stageReceiptPath(p),
+		"promote receipt":    promoteReceiptPath(p),
+	}
+	for label, got := range expected {
+		if got != "" && got != want[label] {
+			return fmt.Errorf("WAL %s path %s is not canonical %s", label, got, want[label])
+		}
+	}
+	declared := make(map[string]struct{}, len(rec.StalePDAs))
+	for _, pda := range rec.StalePDAs {
+		declared[pda] = struct{}{}
+	}
+	for pda, ref := range rec.RevokeReceipts {
+		if _, ok := declared[pda]; !ok {
+			return fmt.Errorf("WAL contains an undeclared revoke receipt for %s", pda)
+		}
+		if ref.Path != "" && ref.Path != revokeReceiptPath(p, pda) {
+			return fmt.Errorf("WAL revoke receipt path for %s is not canonical", pda)
+		}
+	}
+	return nil
+}
+
+func validateReceiptState(rec Receipt) error {
+	rank := map[string]int{
+		stateInit: 0, stateBuilt: 1, stateRegistered: 2, stateStaged: 3,
+		statePromoted: 4, stateRevoked: 5, stateVerified: 6, stateDone: 7,
+	}[rec.State]
+	if rank >= 1 {
+		if !rec.InitialActiveVerified || rec.CandidateAppHash != rec.NewAppHash || rec.CandidateReceipt.SHA256 == "" || rec.CandidateSPK.SHA256 == "" || rec.CandidateMetadata.SHA256 == "" {
+			return errors.New("BUILT-or-later WAL lacks the exact candidate-byte/initial-Active binding")
+		}
+	}
+	if rank >= 2 && (rec.ReleaseHash == "" || rec.NewReleasePDA == "" || rec.ReleaseJSON.SHA256 == "" || rec.RegisterReceipt.SHA256 == "") {
+		return errors.New("REGISTERED-or-later WAL lacks release/register evidence")
+	}
+	if rank >= 3 && (rec.StageID == "" || rec.StageReceipt.SHA256 == "") {
+		return errors.New("STAGED-or-later WAL lacks stage evidence")
+	}
+	if rank >= 4 && (rec.PromoteReceipt.SHA256 == "" || rec.ServedAppHash != rec.NewAppHash) {
+		return errors.New("PROMOTED-or-later WAL lacks promote/served evidence")
+	}
+	if rank >= 5 {
+		for _, pda := range rec.StalePDAs {
+			if rec.RevokeReceipts[pda].SHA256 == "" {
+				return fmt.Errorf("REVOKED-or-later WAL lacks revoke evidence for %s", pda)
+			}
+		}
+	}
+	declared := make(map[string]struct{}, len(rec.StalePDAs))
+	for _, pda := range rec.StalePDAs {
+		declared[pda] = struct{}{}
+	}
+	for pda := range rec.RevokeReceipts {
+		if _, ok := declared[pda]; !ok {
+			return fmt.Errorf("WAL contains revoke evidence for undeclared PDA %s", pda)
+		}
+	}
+	if rank >= 6 {
+		if len(rec.ActiveAfter) != 1 || rec.ActiveAfter[0].PDA != rec.NewReleasePDA || rec.ActiveAfter[0].AppHash != rec.NewAppHash || rec.ActiveAfter[0].Version != rec.NewVersion || rec.ServedAppHash != rec.NewAppHash {
+			return errors.New("VERIFIED-or-later WAL lacks the exact terminal Active/served state")
+		}
+	}
+	if rank >= 7 && rec.CompletedAtUnix <= 0 {
+		return errors.New("DONE WAL lacks completion time")
+	}
 	return nil
 }
 
@@ -709,6 +1006,18 @@ func sameStringSet(a, b []string) bool {
 	sort.Strings(bc)
 	for i := range ac {
 		if ac[i] != bc[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sameReleaseRefs(a, b []releaseRef) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}

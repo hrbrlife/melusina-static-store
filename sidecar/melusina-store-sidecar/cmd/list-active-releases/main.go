@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"bytes"
@@ -124,8 +125,7 @@ func run(rpcURL, knownPDA, appIDText, programIDB58 string) error {
 	for _, acct := range accounts {
 		meta, err := readReleaseEntryMinimal(acct.data)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip %s: decode error: %v\n", acct.pubkey, err)
-			continue
+			return fmt.Errorf("refuse incomplete Active set: decode %s: %w", acct.pubkey, err)
 		}
 		if meta.appID != appID {
 			continue
@@ -223,10 +223,17 @@ type storeRPCError struct {
 }
 
 type programAccountsResponse struct {
-	Result []struct {
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id"`
+	Result  []struct {
 		Pubkey  string `json:"pubkey"`
 		Account struct {
-			Data []string `json:"data"`
+			Data       []string `json:"data"`
+			Executable bool     `json:"executable"`
+			Lamports   uint64   `json:"lamports"`
+			Owner      string   `json:"owner"`
+			RentEpoch  uint64   `json:"rentEpoch"`
+			Space      uint64   `json:"space"`
 		} `json:"account"`
 	} `json:"result"`
 	Error *storeRPCError `json:"error,omitempty"`
@@ -267,29 +274,123 @@ func getProgramAccountsByAppID(ctx context.Context, rpcURL, programIDB58 string,
 		return nil, err
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("RPC HTTP status %s", resp.Status)
+	}
+	const maxRPCResponse = 16 << 20
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxRPCResponse+1))
 	if err != nil {
 		return nil, err
 	}
+	if len(raw) > maxRPCResponse {
+		return nil, fmt.Errorf("RPC response exceeds %d-byte bound", maxRPCResponse)
+	}
 	var parsed programAccountsResponse
-	if err := json.Unmarshal(raw, &parsed); err != nil {
+	if err := decodeStrictRPCJSON(raw, &parsed); err != nil {
 		return nil, fmt.Errorf("decode response: %w (body=%s)", err, string(raw))
 	}
+	if parsed.JSONRPC != "2.0" || parsed.ID != 1 {
+		return nil, errors.New("RPC response jsonrpc/id mismatch")
+	}
 	if parsed.Error != nil {
+		if parsed.Result != nil || parsed.Error.Code == 0 || strings.TrimSpace(parsed.Error.Message) == "" {
+			return nil, errors.New("malformed RPC error response")
+		}
 		return nil, fmt.Errorf("rpc error %d: %s", parsed.Error.Code, parsed.Error.Message)
+	}
+	if parsed.Result == nil {
+		return nil, errors.New("RPC success response omits result")
 	}
 	out := make([]programAccount, 0, len(parsed.Result))
 	for _, r := range parsed.Result {
 		if len(r.Account.Data) == 0 {
-			continue
+			return nil, fmt.Errorf("RPC account %s has no data", r.Pubkey)
 		}
 		decoded, err := decodeBase64(r.Account.Data[0])
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("decode RPC account %s: %w", r.Pubkey, err)
 		}
 		out = append(out, programAccount{pubkey: r.Pubkey, data: decoded})
 	}
 	return out, nil
+}
+
+func decodeStrictRPCJSON(raw []byte, dst any) error {
+	if err := rejectDuplicateRPCJSONKeys(raw); err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		return err
+	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return errors.New("multiple JSON values")
+		}
+		return err
+	}
+	return nil
+}
+
+func rejectDuplicateRPCJSONKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var walk func() error
+	walk = func() error {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		delim, ok := tok.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delim {
+		case '{':
+			seen := map[string]struct{}{}
+			for dec.More() {
+				keyToken, err := dec.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return errors.New("JSON object key is not a string")
+				}
+				folded := strings.ToLower(key)
+				if _, exists := seen[folded]; exists {
+					return fmt.Errorf("duplicate JSON object key %q", key)
+				}
+				seen[folded] = struct{}{}
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token()
+			return err
+		case '[':
+			for dec.More() {
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token()
+			return err
+		default:
+			return fmt.Errorf("unexpected JSON delimiter %q", delim)
+		}
+	}
+	if err := walk(); err != nil {
+		return err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		if err == nil {
+			return errors.New("multiple JSON values")
+		}
+		return err
+	}
+	return nil
 }
 
 type releaseEntryMinimal struct {

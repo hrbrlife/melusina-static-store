@@ -5,28 +5,33 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 type terminalReceipt struct {
-	Schema           string                 `json:"schema"`
-	Outcome          string                 `json:"outcome"`
-	LedgerID         string                 `json:"ledgerId"`
-	AppID            string                 `json:"appId"`
-	AppHash          string                 `json:"appHash"`
-	Version          string                 `json:"version"`
-	ReleaseHash      string                 `json:"releaseHash"`
-	ReleaseNonce     string                 `json:"releaseNonce"`
-	ReleaseEntryPDA  string                 `json:"releaseEntryPda"`
-	StageID          string                 `json:"stageId"`
-	StalePDAs        []string               `json:"stalePdas"`
-	ActiveBefore     []releaseRef           `json:"activeBefore"`
-	ActiveAfter      []releaseRef           `json:"activeAfter"`
-	ServedAppHash    string                 `json:"servedAppHash"`
-	CandidateReceipt artifactRef            `json:"candidateReceipt"`
-	ReleaseJSON      artifactRef            `json:"releaseJson"`
-	NativeReceipts   map[string]artifactRef `json:"nativeReceipts"`
-	RevokeReceipts   map[string]artifactRef `json:"revokeReceipts"`
-	CompletedAtUnix  int64                  `json:"completedAtUnix"`
+	Schema            string                 `json:"schema"`
+	Outcome           string                 `json:"outcome"`
+	LedgerID          string                 `json:"ledgerId"`
+	AppID             string                 `json:"appId"`
+	AppHash           string                 `json:"appHash"`
+	Version           string                 `json:"version"`
+	ReleaseHash       string                 `json:"releaseHash"`
+	ReleaseNonce      string                 `json:"releaseNonce"`
+	ReleaseEntryPDA   string                 `json:"releaseEntryPda"`
+	StageID           string                 `json:"stageId"`
+	StalePDAs         []string               `json:"stalePdas"`
+	ActiveBefore      []releaseRef           `json:"activeBefore"`
+	ActiveAfter       []releaseRef           `json:"activeAfter"`
+	ServedAppHash     string                 `json:"servedAppHash"`
+	CandidateReceipt  artifactRef            `json:"candidateReceipt"`
+	CandidateSPK      artifactRef            `json:"candidateSpk"`
+	CandidateMetadata artifactRef            `json:"candidateMetadata"`
+	ReleaseJSON       artifactRef            `json:"releaseJson"`
+	NativeReceipts    map[string]artifactRef `json:"nativeReceipts"`
+	RevokeReceipts    map[string]artifactRef `json:"revokeReceipts"`
+	StartedAtUnix     int64                  `json:"startedAtUnix"`
+	CompletedAtUnix   int64                  `json:"completedAtUnix"`
+	DurationSeconds   int64                  `json:"durationSeconds"`
 }
 
 func newTerminalReceipt(r Receipt) terminalReceipt {
@@ -36,19 +41,38 @@ func newTerminalReceipt(r Receipt) terminalReceipt {
 		ReleaseHash: r.ReleaseHash, ReleaseNonce: r.ReleaseNonce, ReleaseEntryPDA: r.NewReleasePDA,
 		StageID: r.StageID, StalePDAs: r.StalePDAs, ActiveBefore: r.ActiveBefore,
 		ActiveAfter: r.ActiveAfter, ServedAppHash: r.ServedAppHash,
-		CandidateReceipt: r.CandidateReceipt, ReleaseJSON: r.ReleaseJSON,
+		CandidateReceipt: r.CandidateReceipt, CandidateSPK: r.CandidateSPK,
+		CandidateMetadata: r.CandidateMetadata, ReleaseJSON: r.ReleaseJSON,
 		NativeReceipts: map[string]artifactRef{
 			"register": r.RegisterReceipt, "stage": r.StageReceipt, "promote": r.PromoteReceipt,
 		},
-		RevokeReceipts: r.RevokeReceipts, CompletedAtUnix: r.CompletedAtUnix,
+		RevokeReceipts: r.RevokeReceipts, StartedAtUnix: r.StartedAtUnix,
+		CompletedAtUnix: r.CompletedAtUnix, DurationSeconds: r.CompletedAtUnix - r.StartedAtUnix,
 	}
 }
 
 func writeTerminalReceiptDurable(path string, receipt terminalReceipt) error {
-	if receipt.Outcome != "accepted" || receipt.CompletedAtUnix <= 0 || len(receipt.ActiveAfter) != 1 || receipt.ServedAppHash != receipt.AppHash {
+	if receipt.Outcome != "accepted" || receipt.StartedAtUnix <= 0 || receipt.CompletedAtUnix < receipt.StartedAtUnix || receipt.DurationSeconds != receipt.CompletedAtUnix-receipt.StartedAtUnix || len(receipt.ActiveAfter) != 1 || receipt.ActiveAfter[0].PDA != receipt.ReleaseEntryPDA || receipt.ActiveAfter[0].AppHash != receipt.AppHash || receipt.ActiveAfter[0].Version != receipt.Version || receipt.ServedAppHash != receipt.AppHash {
 		return errors.New("refusing to emit an incomplete terminal receipt")
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	candidate, err := validatePersistedCandidate(receipt.CandidateReceipt, receipt.CandidateSPK, receipt.CandidateMetadata, receipt.AppID, receipt.Version, receipt.AppHash)
+	if err != nil || candidate.Receipt != receipt.CandidateReceipt || candidate.SPK != receipt.CandidateSPK || candidate.Metadata != receipt.CandidateMetadata {
+		return errors.New("refusing terminal receipt whose candidate bytes are not bound to appHash")
+	}
+	if err := verifyArtifactRef(receipt.ReleaseJSON); err != nil {
+		return err
+	}
+	for _, ref := range receipt.NativeReceipts {
+		if err := verifyArtifactRef(ref); err != nil {
+			return err
+		}
+	}
+	for _, ref := range receipt.RevokeReceipts {
+		if err := verifyArtifactRef(ref); err != nil {
+			return err
+		}
+	}
+	if err := ensureOwnedPrivateDir(filepath.Dir(path)); err != nil {
 		return err
 	}
 	raw, err := json.MarshalIndent(receipt, "", "  ")
@@ -56,8 +80,12 @@ func writeTerminalReceiptDurable(path string, receipt terminalReceipt) error {
 		return err
 	}
 	raw = append(raw, '\n')
-	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	tmpID, err := randomHex(12)
+	if err != nil {
+		return err
+	}
+	tmp := filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+"."+tmpID+".tmp")
+	f, err := openFileNoFollow(tmp, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}

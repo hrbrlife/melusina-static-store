@@ -19,7 +19,7 @@ const (
 	oldPDA  = "PDA-old-0763"
 	oldHash = "1111111111111111111111111111111111111111111111111111111111111111"
 	oldVer  = "0.3.63"
-	newHash = "2222222222222222222222222222222222222222222222222222222222222222"
+	newHash = "cb8147ca16dfe21d2dc34e160f4cd50c6750b023587ceb6210504b48305d67dd"
 	newVer  = "0.3.64"
 )
 
@@ -52,10 +52,28 @@ type fakeChain struct {
 type fakeBuild struct{}
 
 func (fakeBuild) Build(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	spkPath := filepath.Join(filepath.Dir(path), "candidate.spk")
+	metadataPath := filepath.Join(filepath.Dir(path), "candidate-metadata.json")
+	spk := []byte("test candidate spk\n")
+	metadata := []byte("{\"appId\":\"app-ccash-go-htmx\",\"version\":\"0.3.64\"}\n")
+	if err := os.WriteFile(spkPath, spk, 0o600); err != nil {
+		return err
+	}
+	if err := os.WriteFile(metadataPath, metadata, 0o600); err != nil {
+		return err
+	}
+	spkHash := sha256.Sum256(spk)
+	metadataHash := sha256.Sum256(metadata)
 	return writeTestJSON(path, map[string]any{
-		"schema":   "melusina-app-candidate-receipt-v1",
-		"app":      map[string]any{"appId": tAppID, "version": newVer},
-		"artifact": map[string]any{"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "size": 42},
+		"schema":       "melusina-app-candidate-receipt-v1",
+		"source":       map[string]any{"revision": strings.Repeat("c", 40), "pushedRemoteRef": "refs/remotes/origin/test", "dirty": false, "sourceDateEpoch": 1},
+		"app":          map[string]any{"appId": tAppID, "packageId": hex.EncodeToString(spkHash[:])[:32], "version": newVer},
+		"artifact":     map[string]any{"path": spkPath, "sha256": hex.EncodeToString(spkHash[:]), "size": len(spk)},
+		"metadata":     map[string]any{"path": metadataPath, "sha256": hex.EncodeToString(metadataHash[:]), "size": len(metadata)},
+		"verification": map[string]any{"spk": "valid", "packageIdMatchesSha256": true},
 	})
 }
 
@@ -84,7 +102,7 @@ func (c *fakeChain) RegisterRelease(appID, appHash, version, nonce, releaseJSONP
 	}
 	if found == nil {
 		c.nextPDA++
-		pda := "PDA-new-" + itoa(c.nextPDA)
+		pda := "11111111111111111111111111111111"
 		found = &chainEntry{pda: pda, appID: appID, appHash: appHash, version: version, active: true}
 		c.entries[pda] = found
 	}
@@ -95,12 +113,16 @@ func (c *fakeChain) RegisterRelease(appID, appHash, version, nonce, releaseJSONP
 	releaseHash := hex.EncodeToString(h[:])
 	if err := writeTestJSON(releaseJSONPath, map[string]any{
 		"$schema": "melusina-release-v1", "appHash": appHash, "releaseHash": releaseHash,
-		"version": version, "releaseNonce": nonce, "releaseEntryPda": found.pda,
+		"version": version, "releaseNonce": nonce, "releaseEntryPda": "11111111111111111111111111111111",
+		"signedAtUnix": 1, "MasterNftMint": "11111111111111111111111111111111",
+		"licenseSquadsVault": "11111111111111111111111111111111",
+		"authorSig":          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+		"quorumPolicy":       map[string]any{"threshold": 1, "memberCount": 1, "multisigPda": "11111111111111111111111111111111"},
 	}); err != nil {
 		return err
 	}
 	receipt := map[string]any{
-		"schema": "melusina-register-release-receipt-v1", "releaseEntryPda": found.pda,
+		"schema": "melusina-register-release-receipt-v1", "releaseEntryPda": "11111111111111111111111111111111",
 		"releaseHash": releaseHash, "status": "Active", "alreadyRegistered": already,
 	}
 	if !already {
@@ -168,7 +190,16 @@ type fakeStore struct {
 	fault  *faultPlan
 }
 
-func (s *fakeStore) Stage(appID, appHash, releaseHash, receiptPath string) error {
+func (s *fakeStore) Stage(appID, appHash, releaseHash string, candidate candidateBinding, receiptPath string) error {
+	if filepath.Base(candidate.SPK.Path) != "candidate.snapshot.spk" || filepath.Base(candidate.Metadata.Path) != "candidate.snapshot.metadata.json" {
+		return errors.New("stage did not receive publisher-owned candidate snapshots")
+	}
+	if err := verifyArtifactRef(candidate.SPK); err != nil {
+		return err
+	}
+	if err := verifyArtifactRef(candidate.Metadata); err != nil {
+		return err
+	}
 	if err := s.fault.maybe("stage:before"); err != nil {
 		return err
 	}
@@ -176,8 +207,9 @@ func (s *fakeStore) Stage(appID, appHash, releaseHash, receiptPath string) error
 		return err
 	}
 	return writeTestJSON(receiptPath, map[string]any{
-		"schema": "melusina-app-stage-receipt-v1", "stageId": "stage-" + appHash,
+		"schema": "melusina-app-stage-receipt-v1", "stageId": appHash,
 		"appId": appID, "appHash": appHash, "releaseHash": releaseHash,
+		"servingDomainHash": strings.Repeat("4", 64), "storedAt": 1, "operatorSignature": strings.Repeat("1", 64),
 	})
 }
 
@@ -189,11 +221,16 @@ func (s *fakeStore) Promote(appID, appHash, releaseHash, stageID, receiptPath st
 	if err := s.fault.maybe("promote:after"); err != nil {
 		return err
 	}
+	spkHash := sha256.Sum256([]byte("test candidate spk\n"))
+	domain := strings.Repeat("4", 64)
+	sig := strings.Repeat("1", 64)
+	stage := map[string]any{"schema": "melusina-app-stage-receipt-v1", "stageId": stageID, "appId": appID, "appHash": appHash, "releaseHash": releaseHash, "servingDomainHash": domain, "storedAt": 1, "operatorSignature": sig}
 	return writeTestJSON(receiptPath, map[string]any{
 		"schema": "melusina-app-promotion-receipt-v1", "appHash": appHash, "releaseHash": releaseHash,
-		"stage":   map[string]any{"stageId": stageID, "appId": appID, "appHash": appHash},
-		"rollout": map[string]any{"appId": appID, "currentStageId": stageID, "currentAppHash": appHash, "currentVersion": newVer},
-		"catalog": map[string]any{"appId": appID, "stageId": stageID, "appHash": appHash, "releaseHash": releaseHash, "version": newVer},
+		"servingDomainHash": domain, "storedAt": 1, "operatorSignature": sig,
+		"stage":   stage,
+		"rollout": map[string]any{"schema": "melusina-app-rollout-v1", "appId": appID, "currentStageId": stageID, "currentAppHash": appHash, "currentVersion": newVer, "activatedAt": 1, "servingDomainHash": domain, "operatorSignature": sig},
+		"catalog": map[string]any{"schema": "melusina-app-catalog-pointer-v1", "appId": appID, "packageId": hex.EncodeToString(spkHash[:])[:32], "stageId": stageID, "appHash": appHash, "releaseHash": releaseHash, "version": newVer, "catalogSha256": strings.Repeat("5", 64), "servingDomainHash": domain, "publishedAt": 1, "operatorSignature": sig},
 	})
 }
 
@@ -229,6 +266,7 @@ func newWorld() (*fakeChain, *fakeStore) {
 
 func baseParams(wal string, ch *fakeChain, st *fakeStore) Params {
 	dir := filepath.Dir(wal)
+	_ = os.Chmod(dir, 0o700)
 	return Params{
 		WALPath:         wal,
 		LockPath:        filepath.Join(dir, "app.lock"),
@@ -479,6 +517,207 @@ func TestSupersede_WALBindingMismatch(t *testing.T) {
 	other.NewVersion = "0.3.65"
 	if _, err := RunSupersede(other); err == nil {
 		t.Fatalf("expected binding-mismatch refusal, got nil")
+	}
+}
+
+func TestSupersede_RejectsCandidateBytesNotMatchingRequestedAppHash(t *testing.T) {
+	dir := t.TempDir()
+	ch, st := newWorld()
+	p := baseParams(filepath.Join(dir, "publish.wal.json"), ch, st)
+	p.NewAppHash = strings.Repeat("2", 64)
+	_, err := RunSupersede(p)
+	if err == nil || !strings.Contains(err.Error(), "candidate appHash") {
+		t.Fatalf("candidate/content mismatch must fail before registration, got %v", err)
+	}
+	if ch.activeCountDirect(tAppID) != 1 || st.servedDirect(tAppID) != oldHash {
+		t.Fatalf("candidate mismatch mutated live state")
+	}
+}
+
+func TestSupersede_RejectsForgedAdvancedWALBeforeMutation(t *testing.T) {
+	for _, state := range []string{statePromoted, stateVerified} {
+		t.Run(state, func(t *testing.T) {
+			dir := t.TempDir()
+			ch, st := newWorld()
+			p := baseParams(filepath.Join(dir, "publish.wal.json"), ch, st)
+			forged := Receipt{
+				Schema: receiptSchema, State: state, AppID: p.AppID, NewAppHash: p.NewAppHash,
+				NewVersion: p.NewVersion, ReleaseNonce: strings.Repeat("a", 32),
+				StalePDAs: append([]string(nil), p.StalePDAs...), LedgerID: strings.Repeat("b", 32),
+				ServedAppHash: p.NewAppHash,
+			}
+			if err := writeReceiptExclusive(p.WALPath, forged); err != nil {
+				t.Fatal(err)
+			}
+			_, err := RunSupersede(p)
+			if err == nil || !strings.Contains(err.Error(), "WAL") {
+				t.Fatalf("forged %s WAL must fail closed, got %v", state, err)
+			}
+			if ch.activeCountDirect(tAppID) != 1 || st.servedDirect(tAppID) != oldHash {
+				t.Fatalf("forged %s WAL triggered mutation", state)
+			}
+		})
+	}
+}
+
+func TestStrictJSONRejectsDuplicateKeysEverywhere(t *testing.T) {
+	for _, raw := range [][]byte{
+		[]byte(`{"schema":"melusina-app-publish-wal-v2","schema":"shadow"}`),
+		[]byte(`{"schema":"melusina-app-publish-wal-v2","Schema":"shadow"}`),
+	} {
+		var rec Receipt
+		if err := decodeStrictJSON(raw, &rec); err == nil || !strings.Contains(err.Error(), "duplicate") {
+			t.Fatalf("WAL duplicate key accepted: %v", err)
+		}
+		var native map[string]any
+		if err := decodeOneJSON(raw, &native, false); err == nil || !strings.Contains(err.Error(), "duplicate") {
+			t.Fatalf("native receipt duplicate key accepted: %v", err)
+		}
+	}
+}
+
+func TestCandidateReceiptRejectsNullRequiredBoolean(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "candidate.json")
+	if err := (fakeBuild{}).Build(path); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw = []byte(strings.Replace(string(raw), `"dirty": false`, `"dirty": null`, 1))
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateCandidateReceipt(path, tAppID, newVer, newHash); err == nil || !strings.Contains(err.Error(), "clean pushed-source provenance") {
+		t.Fatalf("null dirty flag was accepted: %v", err)
+	}
+}
+
+func TestPublisherRejectsReservedPathAliasing(t *testing.T) {
+	dir := t.TempDir()
+	ch, st := newWorld()
+	p := baseParams(filepath.Join(dir, "publish.wal.json"), ch, st)
+	p.WALPath = candidateReceiptPath(p)
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "reserved publisher paths alias") {
+		t.Fatalf("WAL/candidate alias was accepted: %v", err)
+	}
+}
+
+func TestPublisherRejectsIntermediateStateDirectorySymlink(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "target")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureOwnedPrivateDir(filepath.Join(link, "nested")); err == nil || !strings.Contains(err.Error(), "not a symlink") {
+		t.Fatalf("intermediate symlink was accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "nested")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("symlink target was mutated, stat err=%v", err)
+	}
+}
+
+func TestSupersede_RejectsSnapshotDriftBeforeFirstMutation(t *testing.T) {
+	dir := t.TempDir()
+	ch, st := newWorld()
+	p := baseParams(filepath.Join(dir, "publish.wal.json"), ch, st)
+	p.afterStep = func(state string) error {
+		if state == stateBuilt {
+			return errInjected
+		}
+		return nil
+	}
+	if _, err := RunSupersede(p); !errors.Is(err, errInjected) {
+		t.Fatalf("setup crash: %v", err)
+	}
+	snapshot := filepath.Join(p.ReceiptDir, "candidate.snapshot.spk")
+	if err := os.Chmod(snapshot, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(snapshot, []byte("tampered\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p.afterStep = nil
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "artifact drift") {
+		t.Fatalf("snapshot drift was accepted: %v", err)
+	}
+	if ch.activeCountDirect(tAppID) != 1 || st.servedDirect(tAppID) != oldHash {
+		t.Fatal("snapshot drift reached a mutation")
+	}
+}
+
+func TestSupersede_ValidatesEveryPersistedRevokeReceiptBeforeAnyFurtherRevoke(t *testing.T) {
+	dir := t.TempDir()
+	ch, st := newWorld()
+	secondPDA := "PDA-old-second"
+	ch.entries[secondPDA] = &chainEntry{pda: secondPDA, appID: tAppID, appHash: strings.Repeat("2", 64), version: "0.3.62", active: true}
+	p := baseParams(filepath.Join(dir, "publish.wal.json"), ch, st)
+	p.StalePDAs = []string{oldPDA, secondPDA}
+	p.afterStep = func(state string) error {
+		if state == statePromoted {
+			return errInjected
+		}
+		return nil
+	}
+	if _, err := RunSupersede(p); !errors.Is(err, errInjected) {
+		t.Fatalf("setup crash: %v", err)
+	}
+	badPath := revokeReceiptPath(p, secondPDA)
+	bad := []byte(`{"schema":"wrong","releaseEntryPda":"PDA-old-second","status":"Revoked"}` + "\n")
+	if err := os.WriteFile(badPath, bad, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := sha256.Sum256(bad)
+	rec, ok, err := readReceipt(p.WALPath)
+	if err != nil || !ok {
+		t.Fatalf("read setup WAL: ok=%v err=%v", ok, err)
+	}
+	rec.RevokeReceipts = map[string]artifactRef{secondPDA: {Path: badPath, SHA256: hex.EncodeToString(h[:]), Size: int64(len(bad))}}
+	if err := writeReceiptDurable(p.WALPath, rec); err != nil {
+		t.Fatal(err)
+	}
+	p.afterStep = nil
+	if _, err := RunSupersede(p); err == nil || !strings.Contains(err.Error(), "persisted revoke receipt") {
+		t.Fatalf("corrupt later receipt was accepted: %v", err)
+	}
+	if !ch.entries[oldPDA].active || !ch.entries[secondPDA].active {
+		t.Fatal("a stale release was revoked before the full persisted-receipt prepass succeeded")
+	}
+}
+
+func TestPublisherStateFilesRejectSymlinks(t *testing.T) {
+	dir := t.TempDir()
+	victim := filepath.Join(dir, "victim")
+	if err := os.WriteFile(victim, []byte("DO-NOT-TOUCH"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	lockPath := filepath.Join(dir, "lock")
+	if err := os.Symlink(victim, lockPath); err != nil {
+		t.Fatal(err)
+	}
+	if lock, err := acquireAppLock(lockPath); err == nil {
+		lock.Close()
+		t.Fatal("symlinked per-app lock was accepted")
+	}
+	walPath := filepath.Join(dir, "wal.json")
+	if err := os.Symlink(victim, walPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := readReceipt(walPath); err == nil {
+		t.Fatal("symlinked WAL was accepted")
+	}
+	raw, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "DO-NOT-TOUCH" {
+		t.Fatalf("symlink target was mutated: %q", raw)
 	}
 }
 

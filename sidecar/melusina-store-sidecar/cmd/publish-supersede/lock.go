@@ -11,12 +11,22 @@ import (
 type appLock struct{ file *os.File }
 
 func acquireAppLock(path string) (*appLock, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := ensureOwnedPrivateDir(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	f, err := openFileNoFollow(path, syscall.O_CREAT|syscall.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	st, statOK := info.Sys().(*syscall.Stat_t)
+	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || !statOK || int(st.Uid) != os.Geteuid() || st.Nlink != 1 {
+		_ = f.Close()
+		return nil, errors.New("per-app lock must be a private regular file")
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = f.Close()

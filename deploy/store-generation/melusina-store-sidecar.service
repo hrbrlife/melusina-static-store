@@ -1,0 +1,36 @@
+[Unit]
+Description=Melusina Store Sidecar (signed desired-generation producer)
+Documentation=https://github.com/hrbrlife/melusina-static-store/blob/main/docs/COMPONENT_RELEASE_PROTOCOL.md
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/melusina/store/store.config.json
+ConditionFileIsExecutable=/opt/melusina-store/current/bin/melusina-store-sidecar
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+ExecStart=/opt/melusina-store/current/bin/melusina-store-sidecar -config /etc/melusina/store/store.config.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=45s
+TimeoutStopSec=15s
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/etc/melusina/store
+ReadWritePaths=/var/lib/melusina-store /var/lib/melusina-store-private /var/lib/melusina-store-catalog /var/lib/melusina-store-migrations
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=melusina-store-sidecar
+
+[Install]
+WantedBy=multi-user.target

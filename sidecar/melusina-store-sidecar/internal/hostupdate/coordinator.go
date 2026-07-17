@@ -41,29 +41,6 @@ type ApplyOutcome struct {
 	Err         error
 }
 
-// ApplyDeps are the coordinator's collaborators — all injected so the apply +
-// generation-transaction logic is unit-testable with a fake adapter.
-type ApplyDeps struct {
-	Registry    componentrelease.ComponentRegistry
-	WAL         *WALStore
-	Runner      CommandRunner
-	StagingRoot string
-	// Observe returns a component's currently-installed artifact hash (for delta).
-	Observe func(componentID string) (installedHash string)
-	// ChainGate runs the per-class on-chain Active + hash gate BEFORE any mutation
-	// (the controller's authority gate; the adapter never touches the chain). A
-	// non-nil error refuses the whole generation fail-closed.
-	ChainGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
-	// PolicyReload re-reads the shell-writable policy immediately BEFORE each
-	// component's mutation. If it returns auto-apply OFF, that component is
-	// cancelled (staged only, no mutation) and the generation is rolled back — the
-	// admin can abort an in-flight generation by toggling auto-apply off. Nil skips
-	// the mid-apply re-read (the entry-time Policy is authoritative).
-	PolicyReload func() UpdatePolicy
-	Policy       UpdatePolicy
-	Now          func() int64
-}
-
 func (d ApplyDeps) now() int64 {
 	if d.Now != nil {
 		return d.Now()
@@ -237,6 +214,17 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 			return nil, fmt.Errorf("%w: %v", errChainRefusedAtMutation, err)
 		}
 	}
+	// SEAM 2/3 UNIFIED: the poll loop's BeforeMutation gate — the last policy+chain
+	// re-read AFTER Stage/Verify and BEFORE any StateApplying mutation. A refusal
+	// (auto-apply flipped OFF, or the chain revoked mid-generation) cancels this
+	// component with no mutation (still staged) and the generation transaction rolls
+	// back any earlier applied members.
+	if deps.BeforeMutation != nil {
+		if err := deps.BeforeMutation(ctx, c, install); err != nil {
+			_ = deps.WAL.discard(c.ComponentID)
+			return nil, fmt.Errorf("%w: %v", errPolicyCancelled, err)
+		}
+	}
 	if err := deps.WAL.Advance(c.ComponentID, StateApplying, nil); err != nil {
 		return fail(fmt.Errorf("wal applying: %w", err), nil)
 	}
@@ -254,6 +242,45 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		return fail(fmt.Errorf("wal healthy: %w", err), rb)
 	}
 	return rb, nil
+}
+
+// ApplyDeps are the coordinator's collaborators — all injected so the apply +
+// generation-transaction logic is unit-testable with a fake adapter. It is declared
+// AFTER applyOne so the mutation seam's own token order (adapter.Verify -> the
+// pre-mutation gate -> the applying-state advance -> adapter.Apply) is the FIRST
+// textual occurrence of each — the seam is proven by the code, not this doc.
+type ApplyDeps struct {
+	Registry    componentrelease.ComponentRegistry
+	WAL         *WALStore
+	Runner      CommandRunner
+	StagingRoot string
+	// Observe returns a component's currently-installed artifact hash (for delta).
+	Observe func(componentID string) (installedHash string)
+	// ChainGate runs the per-class on-chain Active + hash gate BEFORE any mutation
+	// (the controller's authority gate; the adapter never touches the chain). A
+	// non-nil error refuses the whole generation fail-closed.
+	ChainGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
+	// PolicyReload re-reads the shell-writable policy immediately BEFORE each
+	// component's mutation. If it returns auto-apply OFF, that component is
+	// cancelled (staged only, no mutation) and the generation is rolled back — the
+	// admin can abort an in-flight generation by toggling auto-apply off. Nil skips
+	// the mid-apply re-read (the entry-time Policy is authoritative).
+	PolicyReload func() UpdatePolicy
+	// BeforeMutation is the poll loop's pre-mutation gate, invoked AFTER the adapter
+	// stage+verify and BEFORE the applying-state advance and the adapter apply. It
+	// re-reads the shell-writable policy and re-checks the chain; a non-nil error
+	// cancels the component (still staged, no mutation) and the generation
+	// transaction rolls back any earlier applied members. The adapter Probe alone
+	// cannot bind the live process, so this gate — not the doc — authorizes mutation.
+	BeforeMutation func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
+	// RuntimeGate binds the RUNNING process to the desired tuple after the adapter
+	// restart+Probe: it compares the component's structured /release-info report
+	// (schema+componentId+generationId+version+artifactSha256) against systemd
+	// MainPID and an independently-hashed /proc/<pid>/exe (PID re-checked after the
+	// hash). New bytes on disk with the old process still running must NOT pass.
+	RuntimeGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
+	Policy      UpdatePolicy
+	Now         func() int64
 }
 
 // CompleteAfterStable finalizes a healthy-unstable component as terminal-applied,

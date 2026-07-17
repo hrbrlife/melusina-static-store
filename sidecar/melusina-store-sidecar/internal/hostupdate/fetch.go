@@ -114,9 +114,10 @@ func FetchAndVerifyGeneration(ctx context.Context, get componentrelease.HTTPGett
 // GenerationCursor is the poller's PERSISTED anti-replay state: the last generation
 // it acted on and that generation's raw served-bytes digest.
 type GenerationCursor struct {
-	Schema       string `json:"schema"`
-	GenerationID uint64 `json:"generationId"`
-	RawSHA256    string `json:"rawSha256"`
+	Schema         string `json:"schema,omitempty"`
+	GenerationID   uint64 `json:"generationId"`
+	GenerationHash string `json:"generationHash,omitempty"`
+	RawSHA256      string `json:"rawSha256"`
 }
 
 // AcceptAgainstCursor decides whether a freshly fetched+verified generation may be
@@ -140,6 +141,12 @@ func AcceptAgainstCursor(cursor GenerationCursor, vg VerifiedGeneration) error {
 	case gen == cursor.GenerationID:
 		if !strings.EqualFold(vg.RawSHA256, cursor.RawSHA256) {
 			return fmt.Errorf("equivocation: generation %d served raw digest %s != committed %s", gen, vg.RawSHA256, cursor.RawSHA256)
+		}
+		// Same id + same raw bytes but a DIFFERENT signed generationHash is also
+		// equivocation — the operator re-signed the same generation id over
+		// different canonical content (only meaningful when the cursor pins a hash).
+		if cursor.GenerationHash != "" && !strings.EqualFold(vg.Doc.GenerationHash, cursor.GenerationHash) {
+			return fmt.Errorf("equivocation: generation %d generationHash %s != committed %s", gen, vg.Doc.GenerationHash, cursor.GenerationHash)
 		}
 		return nil // same generation, same bytes — already committed, no-op
 	default: // gen > cursor.GenerationID

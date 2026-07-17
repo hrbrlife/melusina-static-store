@@ -89,6 +89,16 @@ type WALEntry struct {
 	DeepStableSeconds int64  `json:"deepStableSeconds"`
 	TerminalAtUnix    int64  `json:"terminalAtUnix,omitempty"`
 	LastError         string `json:"lastError,omitempty"`
+	// Terminal-proof bindings (the accepted receipt is reconstructed from these):
+	// RawGenerationSHA256 is the sha256 of the EXACT signed desired-generation bytes
+	// this apply came from; DeadlineUnix is the promote-to-healthy deadline;
+	// Trigger records what fired this apply (a manual/one-shot trigger can never
+	// mint a timer-qualified receipt); RuntimeEvidence is the bound running-process
+	// tuple (schema+componentId+generationId+version+pid+/proc/<pid>/exe hash).
+	RawGenerationSHA256 string          `json:"rawGenerationSha256,omitempty"`
+	DeadlineUnix        int64           `json:"deadlineUnix,omitempty"`
+	Trigger             string          `json:"trigger,omitempty"`
+	RuntimeEvidence     RuntimeEvidence `json:"runtimeEvidence,omitempty"`
 }
 
 func (e WALEntry) validate() error {
@@ -385,7 +395,11 @@ func (w *WALStore) finalize(componentID string, terminal WALState, terminalAtUni
 		return zero, err
 	}
 	receipt := filepath.Join(w.receiptDir, fmt.Sprintf("%s-gen%d-%s.json", e.ComponentID, e.GenerationID, terminal))
-	if err := writeDurable(receipt, raw); err != nil {
+	// The accepted terminal receipt is APPEND-ONLY: O_EXCL refuses to overwrite an
+	// existing receipt (a receipt is written exactly once per component+generation+
+	// terminal-state). A failed receipt write returns BEFORE the active WAL is
+	// removed, so the component stays recoverable rather than silently terminalized.
+	if err := writeReceiptExclusive(receipt, raw); err != nil {
 		return zero, fmt.Errorf("write terminal receipt: %w", err)
 	}
 	active, err := w.activePath(componentID)
@@ -477,6 +491,29 @@ func legalTransition(from, to WALState) bool {
 
 // writeDurable atomically writes data to path via a same-dir temp file + fsync +
 // rename + dir fsync, so a reader (or a crash) never sees a torn WAL.
+// writeReceiptExclusive writes an APPEND-ONLY receipt: O_CREATE|O_EXCL|O_NOFOLLOW
+// refuses to overwrite (or follow a symlinked) existing receipt, then fsyncs the
+// file and its parent dir so the accepted receipt is durable.
+func writeReceiptExclusive(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(path)
+		return fmt.Errorf("write receipt: %w", err)
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("fsync receipt: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close receipt: %w", err)
+	}
+	return fsyncDir(filepath.Dir(path))
+}
+
 func writeDurable(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")

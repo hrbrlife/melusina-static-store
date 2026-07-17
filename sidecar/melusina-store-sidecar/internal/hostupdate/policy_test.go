@@ -14,8 +14,8 @@ func TestDefaultUpdatePolicyIsSafe(t *testing.T) {
 	if p.PollIntervalSeconds != 300 {
 		t.Fatalf("default poll interval = %d, want 300 (5 min)", p.PollIntervalSeconds)
 	}
-	if p.PromoteDeadlineSeconds != 900 {
-		t.Fatalf("default promote deadline = %d, want 900 (<=15 min)", p.PromoteDeadlineSeconds)
+	if p.PromoteDeadlineSeconds != 600 {
+		t.Fatalf("default promote deadline = %d, want 600 (discovery 300 + promote 600 = 900s end-to-end budget)", p.PromoteDeadlineSeconds)
 	}
 	if err := p.validate(); err != nil {
 		t.Fatalf("default policy invalid: %v", err)
@@ -45,7 +45,7 @@ func TestLoadUpdatePolicyPartialEditKeepsDefaults(t *testing.T) {
 	if !got.AutoApply {
 		t.Fatal("autoApply override not applied")
 	}
-	if got.PollIntervalSeconds != 300 || got.PromoteDeadlineSeconds != 900 || got.DeepStableSeconds != 120 {
+	if got.PollIntervalSeconds != 300 || got.PromoteDeadlineSeconds != 600 || got.DeepStableSeconds != 120 {
 		t.Fatalf("absent timing fields did not keep defaults: %+v", got)
 	}
 }
@@ -88,7 +88,7 @@ func TestLoadUpdatePolicyCoercesZeroTimingToDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if got.PollIntervalSeconds != 300 || got.PromoteDeadlineSeconds != 900 {
+	if got.PollIntervalSeconds != 300 || got.PromoteDeadlineSeconds != 600 {
 		t.Fatalf("explicit-zero timing not coerced to default: %+v", got)
 	}
 }

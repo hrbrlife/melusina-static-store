@@ -47,9 +47,18 @@ func DefaultUpdatePolicy() UpdatePolicy {
 		AutoApply:              false,
 		PollIntervalSeconds:    300,
 		DeepStableSeconds:      120,
-		PromoteDeadlineSeconds: 900,
+		// promote-to-healthy budget. The card's <=15min (900s) bound is measured
+		// from PROMOTE to terminal-healthy and INCLUDES the up-to-5min discovery
+		// latency, so the apply deadline must leave room: poll(300) + promote(600)
+		// = 900. Keep the default at 600 so worst-case discovery+promote <= 900.
+		PromoteDeadlineSeconds: 600,
 	}
 }
+
+// deepStableFloorSeconds is the controller-owned minimum deep-stable window. The
+// shell-writable policy decides whether/how often to apply, never how briefly to
+// call a component healthy — a too-short window would seal a flapping build.
+const deepStableFloorSeconds int64 = 120
 
 func (p UpdatePolicy) validate() error {
 	if p.Schema != updatePolicySchema {
@@ -68,6 +77,16 @@ func (p UpdatePolicy) validate() error {
 	// deep-stable hold — so it must be at least as long as deep-stable.
 	if p.PromoteDeadlineSeconds < p.DeepStableSeconds {
 		return fmt.Errorf("promoteDeadlineSeconds %d must be >= deepStableSeconds %d", p.PromoteDeadlineSeconds, p.DeepStableSeconds)
+	}
+	// Root-owned deep-stable floor: the shell may not shorten the healthy-hold
+	// below the controller minimum (a 0/near-0 window would seal a flapping build).
+	if p.DeepStableSeconds < deepStableFloorSeconds {
+		return fmt.Errorf("deepStableSeconds %d below controller-owned floor %d", p.DeepStableSeconds, deepStableFloorSeconds)
+	}
+	// End-to-end budget: worst-case promote-to-healthy = discovery latency (up to
+	// one poll interval) + the apply deadline must stay within the card's 900s.
+	if p.PollIntervalSeconds+p.PromoteDeadlineSeconds > 900 {
+		return fmt.Errorf("discovery+promote budget %d+%d exceeds 900s", p.PollIntervalSeconds, p.PromoteDeadlineSeconds)
 	}
 	return nil
 }

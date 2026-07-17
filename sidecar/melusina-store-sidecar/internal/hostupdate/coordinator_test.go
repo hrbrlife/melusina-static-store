@@ -172,3 +172,44 @@ func TestApplyGenerationPolicyFlipCancelsAndRollsBack(t *testing.T) {
 		t.Fatalf("shell mutated despite the cancel: %s", fa.installed["sandstorm-shell"])
 	}
 }
+
+func TestApplyGenerationChainRevokedMidGenerationRollsBack(t *testing.T) {
+	// The chain gate passes for BOTH components at the batch preflight, then the
+	// shell's release is revoked on-chain before the shell mutates (its second gate
+	// call, in applyOne). The shell is REFUSED (never mutated) and the earlier-applied
+	// sidecar is rolled back — the mutation-time re-check closes the preflight->mutate
+	// window that the batch preflight alone leaves open.
+	deps, fa, gen := coordSetup(t, "fake-coord-chain", nil)
+	oldHash := strings.Repeat("0", 64)
+	shellGateCalls := 0
+	deps.ChainGate = func(_ context.Context, c componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
+		if c.ComponentID == "sandstorm-shell" {
+			shellGateCalls++
+			if shellGateCalls >= 2 { // preflight (call 1) passes; the mutation-time re-check (call 2) fails
+				return fmt.Errorf("installer release revoked on-chain")
+			}
+		}
+		return nil
+	}
+	outcomes, err := ApplyGeneration(context.Background(), gen, deps)
+	if err == nil {
+		t.Fatal("expected the generation to abort when the chain revokes a release mid-apply")
+	}
+	byID := map[string]ApplyOutcome{}
+	for _, o := range outcomes {
+		byID[o.ComponentID] = o
+	}
+	if byID["sandstorm-shell"].Status != ApplyStatusRefused {
+		t.Fatalf("shell not refused by the mutation-time chain gate: %s", byID["sandstorm-shell"].Status)
+	}
+	if byID["store-sidecar"].Status != ApplyStatusRolledBack {
+		t.Fatalf("earlier-applied sidecar not rolled back on chain revocation: %s", byID["store-sidecar"].Status)
+	}
+	if fa.installed["store-sidecar"] != oldHash || fa.installed["sandstorm-shell"] != oldHash {
+		t.Fatalf("host left mutated after chain-revocation abort: %v", fa.installed)
+	}
+	// The refused shell never mutated -> its WAL was discarded (no terminal receipt).
+	if _, ok, _ := deps.WAL.Load("sandstorm-shell"); ok {
+		t.Fatal("refused shell left an active WAL")
+	}
+}

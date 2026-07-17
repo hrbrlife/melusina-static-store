@@ -26,6 +26,13 @@ const (
 // applied components.
 var errPolicyCancelled = errors.New("cancelled: auto-apply turned off before mutation")
 
+// errChainRefusedAtMutation is returned by applyOne when the on-chain authority gate
+// is re-run immediately before THIS component's mutation and the release is no longer
+// Active for the exact hash (revoked/superseded since the batch preflight). The
+// component has NOT mutated (still staged); the generation transaction rolls back any
+// EARLIER applied components.
+var errChainRefusedAtMutation = errors.New("refused: on-chain authority no longer attests this component at mutation time")
+
 // ApplyOutcome records what happened to one component.
 type ApplyOutcome struct {
 	ComponentID string
@@ -138,9 +145,15 @@ func ApplyGeneration(ctx context.Context, gen componentrelease.DesiredGeneration
 	for _, p := range toApply {
 		rb, err := deps.applyOne(ctx, gen.GenerationID, p.c, p.install, p.installed)
 		if err != nil {
-			if errors.Is(err, errPolicyCancelled) {
+			switch {
+			case errors.Is(err, errPolicyCancelled):
+				// Staged only, no mutation — the admin toggled auto-apply off.
 				outcomes[p.c.ComponentID].Status = ApplyStatusCancelled
-			} else {
+			case errors.Is(err, errChainRefusedAtMutation):
+				// Staged only, no mutation — the chain disavowed this hash mid-generation.
+				outcomes[p.c.ComponentID].Status = ApplyStatusRefused
+				outcomes[p.c.ComponentID].Err = err
+			default:
 				outcomes[p.c.ComponentID].Status = ApplyStatusRolledBack
 				outcomes[p.c.ComponentID].Err = err
 			}
@@ -205,6 +218,20 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if deps.PolicyReload != nil && !deps.PolicyReload().AutoApply {
 		_ = deps.WAL.discard(c.ComponentID)
 		return nil, errPolicyCancelled
+	}
+	// SEAM 3: re-run the on-chain authority gate for THIS component's exact hash
+	// immediately before mutation. ApplyGeneration's batch preflight proved the whole
+	// apply set Active before ANY mutation, but a multi-component generation leaves a
+	// window (earlier components staging/applying/probing) in which the chain could
+	// revoke or supersede this release. A refusal here means NO mutation (still
+	// staged): discard the WAL and let the generation transaction roll back any
+	// earlier applied members — the host never lands a component the chain just
+	// disavowed.
+	if deps.ChainGate != nil {
+		if err := deps.ChainGate(ctx, c, install); err != nil {
+			_ = deps.WAL.discard(c.ComponentID)
+			return nil, fmt.Errorf("%w: %v", errChainRefusedAtMutation, err)
+		}
 	}
 	if err := deps.WAL.Advance(c.ComponentID, StateApplying, nil); err != nil {
 		return fail(fmt.Errorf("wal applying: %w", err), nil)

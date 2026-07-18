@@ -6,12 +6,14 @@ APP_DIR=""
 METADATA=""
 RECEIPT_OUT=""
 SPK_OUT=""
+METADATA_OUT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --metadata) METADATA="$2"; shift 2 ;;
     --receipt-out) RECEIPT_OUT="$2"; shift 2 ;;
     --spk-out) SPK_OUT="$2"; shift 2 ;;
+    --metadata-out) METADATA_OUT="$2"; shift 2 ;;
     *) [[ -z "$APP_DIR" ]] || { echo "unknown argument: $1" >&2; exit 2; }; APP_DIR="$1"; shift ;;
   esac
 done
@@ -53,8 +55,29 @@ else
 fi
 export SOURCE_DATE_EPOCH="$source_epoch"
 
+# spkmodule's post-pack hook legitimately derives metadata.packageId from the
+# exact new SPK. Preserve that generated metadata outside the source checkout
+# and restore the committed source file afterwards. Any other mutation remains
+# a hard failure: a release candidate is never allowed to smuggle a source edit.
+METADATA_BASELINE="$(mktemp)"
+cp "$METADATA" "$METADATA_BASELINE"
+restore_metadata() {
+  cp "$METADATA_BASELINE" "$METADATA"
+  rm -f "$METADATA_BASELINE"
+}
+trap restore_metadata EXIT
+
 rm -f "$SPK_OUT"
-make -C "$APP_DIR" build
+# The historic Pearl Make path requires a source-tree RELEASE.json before it
+# will package. That release binds a mutable source tree, while the greenfield
+# rail binds the exact files it serves: {app.spk, metadata.json}. Keep the old
+# path available for legacy callers, but package greenfield candidates without
+# embedding its incompatible ceremony.
+MAKE_VARS=()
+if [[ "${MEL_RELEASE_GREENFIELD_PACK:-}" == "1" ]]; then
+  MAKE_VARS+=("APP_PEARL_ENABLED=no")
+fi
+make -C "$APP_DIR" "${MAKE_VARS[@]}" build
 # The historic helper target was only present in the hermetic fixture. Real
 # MSB apps expose the normal spkmodule `pack` target. Prefer an explicit
 # operator override, then retain pack-local compatibility for a repository
@@ -66,7 +89,10 @@ if [[ -z "$PACK_TARGET" ]]; then
   # `make -q target` reports whether target is up-to-date, not whether it
   # exists, so inspect Make's parsed rule database without executing a target.
   make_target_exists() {
-    make -C "$APP_DIR" -prRn 2>/dev/null | grep -qE "^$1:"
+    # Do not use grep -q here: with pipefail it closes the pipe early, Make
+    # receives SIGPIPE while dumping its database, and a real target looks
+    # absent. Let grep consume the complete database instead.
+    make -C "$APP_DIR" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
   }
   if make_target_exists pack-local; then
     PACK_TARGET="pack-local"
@@ -77,8 +103,37 @@ if [[ -z "$PACK_TARGET" ]]; then
     exit 2
   fi
 fi
-make -C "$APP_DIR" "$PACK_TARGET"
+make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
+
+if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then
+  [[ -n "$METADATA_OUT" ]] || {
+    echo "pack generated metadata.json; pass --metadata-out to preserve the exact staged metadata without dirtying source" >&2
+    exit 2
+  }
+  generated_ok="$(python3 - "$METADATA_BASELINE" "$METADATA" "$SPK_OUT" <<'PY'
+import hashlib, json, sys
+before, after, spk = sys.argv[1:]
+old = json.load(open(before, encoding="utf-8"))
+new = json.load(open(after, encoding="utf-8"))
+expected = hashlib.sha256(open(spk, "rb").read()).hexdigest()[:32]
+old.pop("packageId", "")
+package_id = new.pop("packageId", "")
+print("yes" if old == new and package_id == expected else "no")
+PY
+)"
+  [[ "$generated_ok" == yes ]] || {
+    echo "pack mutated metadata beyond the generated packageId; refusing to publish" >&2
+    exit 2
+  }
+  mkdir -p "$(dirname "$METADATA_OUT")"
+  cp "$METADATA" "$METADATA_OUT"
+fi
+
+# Restore before examining Git state so a deterministic packageId update never
+# dirties the committed source revision used to build this candidate.
+restore_metadata
+trap - EXIT
 
 dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
 [[ -z "$dirty" ]] || {
@@ -98,7 +153,8 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   exit 2
 }
 
-readarray -t source_meta < <(python3 - "$METADATA" <<'PY'
+candidate_metadata="${METADATA_OUT:-$METADATA}"
+readarray -t source_meta < <(python3 - "$candidate_metadata" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))
 print(d.get("appId", ""))

@@ -17,6 +17,7 @@ pack:
 else
 pack-local:
 	@printf 'candidate-bytes' > app.spk
+	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}' | cut -c1-32); printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
 endif
 MAKE
@@ -53,6 +54,18 @@ assert d["source"]["dirty"] is False
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/main"
 assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
+PY
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# A post-pack packageId derivation is the only permitted source mutation. The
+# helper snapshots it for staging and restores the committed metadata file.
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MUTATE_METADATA=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/generated-metadata.json" --receipt-out "$WORK/generated-receipt.json"
+python3 - "$WORK/generated-metadata.json" "$APP/metadata.json" <<'PY'
+import json, sys
+generated, source = map(lambda p: json.load(open(p)), sys.argv[1:])
+assert generated["packageId"]
+assert "packageId" not in source
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

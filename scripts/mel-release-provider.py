@@ -193,7 +193,11 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
 
     # The package Makefile writes its ignored app.spk in the committed source
     # tree. pack-app-candidate enforces source cleanliness before and after it.
-    run([str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--receipt-out", str(work / "source-build.json")])
+    built_metadata = work / "metadata.json"
+    run(
+        [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
+        extra_env={"MEL_RELEASE_GREENFIELD_PACK": "1"},
+    )
     built_spk = source / "app.spk"
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
@@ -202,7 +206,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     shutil.copytree(catalog_package(app_id), catalog, symlinks=False)
     run(
         [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
-        extra_env={"SOURCE_METADATA_PATH": str(source / "metadata.json")},
+        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"
@@ -291,7 +295,11 @@ def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out
 
 def executor_env() -> dict[str, str]:
     members = env("MEL_RELEASE_SQUADS_MEMBERS", required=True)
-    return {"SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True), "SQUADS_MEMBER_KEYPAIRS": members}
+    return {
+        "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
+        "SQUADS_MEMBER_KEYPAIRS": members,
+        "SQUADS_NODE_MODULES": env("MEL_RELEASE_SQUADS_NODE_MODULES", default="/home/user/Desktop/Melusina/deployer/scripts/node_modules"),
+    }
 
 
 def executor() -> Path:
@@ -337,6 +345,7 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
         "--master-mint", env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "--version", version, "--state-out", str(state_path),
         "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,
         "--author-keypair", env("MEL_RELEASE_AUTHOR_KEYPAIR", required=True), "--transaction-index", str(transaction_index),
+        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
     ])
     state = read_json(state_path)
     if state.get("appHash") != app_hash or state.get("releaseHash") != hashlib.sha256((app_hash + version + nonce).encode()).hexdigest():
@@ -381,8 +390,9 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
         raise ProviderError("Squads did not execute the registered proposal")
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
     run([
-        str(pearl), "finalize-release", "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
+        str(pearl), "finalize-release", "--app-dir", str(context["catalogDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
+        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
     ])
     shutil.copyfile(context["releasePath"], final_release_out)
     signatures = [v for v in result.get("auditSigs", {}).values() if isinstance(v, str) and v]

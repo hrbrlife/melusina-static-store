@@ -74,6 +74,7 @@ type options struct {
 	verifiedSlot  uint64
 	timeout       time.Duration
 	generationOut string
+	envelopeOut   string
 }
 
 func main() {
@@ -94,6 +95,7 @@ func parseFlags(args []string) (options, error) {
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher's verified chain slot (must be nonzero)")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "promote plus read-back timeout")
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
+	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for /publish/generation atomically; do not contact the store")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -167,6 +169,30 @@ func run(args []string, stdout io.Writer) error {
 	}
 	if signed.Payload.Method != http.MethodPost || signed.Payload.Target != generationPromoteTarget {
 		return errors.New("internal error: signed envelope does not bind POST /publish/generation")
+	}
+
+	// The deployer needs a signed body before a virgin guest exists. Emit the
+	// exact wire body (envelope + base64 request) without putting publisher keys
+	// on the target or requiring a live store URL. The body is immutable input to
+	// the later authorized POST; it is not a promotion receipt.
+	if strings.TrimSpace(o.envelopeOut) != "" {
+		body, err := json.Marshal(generationPromoteBody{
+			Envelope:   signed,
+			RequestB64: base64.StdEncoding.EncodeToString(requestBytes),
+		})
+		if err != nil {
+			return fmt.Errorf("marshal signed generation envelope: %w", err)
+		}
+		if err := atomicWrite(o.envelopeOut, body); err != nil {
+			return fmt.Errorf("write signed generation envelope: %w", err)
+		}
+		return json.NewEncoder(stdout).Encode(map[string]any{
+			"status":        "SIGNED_GENERATION_ENVELOPE_OK",
+			"envelopePath":  o.envelopeOut,
+			"requestSha256": hex.EncodeToString(sum[:]),
+			"target":        generationPromoteTarget,
+			"expiresAtMs":   signed.Payload.ExpiresAtMs,
+		})
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), o.timeout)

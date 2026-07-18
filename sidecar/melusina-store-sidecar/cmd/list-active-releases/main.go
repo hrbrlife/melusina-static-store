@@ -16,7 +16,7 @@ package main
 
 import (
 	"context"
-	"encoding/base32"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -117,24 +117,23 @@ func run(rpcURL, knownPDA, appIDText, programIDB58 string) error {
 	return nil
 }
 
-// decodeSandstormAppID decodes Sandstorm's lower-case base32hex form. App IDs
-// are the 32-byte immutable key stored in ReleaseEntry.app_id; the old
-// -known-pda-only interface made a first publish impossible to enumerate
-// safely, because no known ReleaseEntry exists until after the ceremony.
+// decodeSandstormAppID derives the ReleaseEntry app_id representation. The
+// user-visible Sandstorm id is an immutable lower-case 52-character token, but
+// ReleaseEntry stores SHA-256(the appId text), as do the store submit and
+// catalog paths. Decoding it as base32 produced a different key (and rejects
+// real ids containing characters outside base32hex), so no prior releases were
+// found for a perfectly valid app.
 func decodeSandstormAppID(value string) ([32]byte, error) {
 	var out [32]byte
 	if len(value) != 52 || strings.ToLower(value) != value {
-		return out, errors.New("Sandstorm appId must be exactly 52 lower-case base32hex characters")
+		return out, errors.New("Sandstorm appId must be exactly 52 lower-case characters")
 	}
-	raw, err := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(value))
-	if err != nil {
-		return out, err
+	for _, r := range value {
+		if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') {
+			return out, errors.New("Sandstorm appId contains an invalid character")
+		}
 	}
-	if len(raw) != len(out) {
-		return out, fmt.Errorf("Sandstorm appId decoded to %d bytes, want %d", len(raw), len(out))
-	}
-	copy(out[:], raw)
-	return out, nil
+	return sha256.Sum256([]byte(value)), nil
 }
 
 type programAccount struct {

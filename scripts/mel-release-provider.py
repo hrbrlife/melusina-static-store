@@ -332,6 +332,40 @@ def next_index(multisig: str, vault: str) -> int:
     return index
 
 
+def release_entry_exists(pda: str) -> bool:
+    """Read only: decide whether an approved ReleaseEntry is already on-chain.
+
+    This makes approve retry-safe when execution succeeded but receipt
+    finalization was interrupted. The subsequent pearl finalizer still decodes
+    and cryptographically binds the account before accepting it.
+    """
+    rpc = env("MEL_RELEASE_RPC_URL", required=True)
+    request = urllib.request.Request(
+        rpc,
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": "confirmed"}]}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            reply = json.loads(response.read())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
+    if reply.get("error"):
+        raise ProviderError(f"read ReleaseEntry {pda}: {reply['error']}")
+    return isinstance(reply.get("result"), dict) and reply["result"].get("value") is not None
+
+
+def finalize_release(context: dict[str, Any]) -> None:
+    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
+    run([
+        str(pearl), "finalize-release", "--app-dir", str(context["catalogDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
+        "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
+        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
+        "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
+        "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
+    ])
+
+
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
     context = require_context(app_id)
     if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig or env("MEL_RELEASE_SQUADS_VAULT", required=True) != vault:
@@ -347,6 +381,8 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
         "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,
         "--author-keypair", env("MEL_RELEASE_AUTHOR_KEYPAIR", required=True), "--transaction-index", str(transaction_index),
         "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
+        "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
+        "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
     ])
     state = read_json(state_path)
     if state.get("appHash") != app_hash or state.get("releaseHash") != hashlib.sha256((app_hash + version + nonce).encode()).hexdigest():
@@ -380,27 +416,25 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
     ed_ix = state.get("ed25519Instruction")
     if not isinstance(ed_ix, dict):
         raise ProviderError("prepared ceremony state lacks Ed25519 instruction")
-    ed_path = Path(context["statePath"]).with_name("ed25519.ix.json")
-    write_json(ed_path, ed_ix)
-    raw = run([
-        "node", str(executor()), "--execute-existing", str(state["transactionIndex"]), "--pre-execute-ix", str(ed_path),
-        "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True),
-    ], extra_env=executor_env())
-    result = last_json(raw)
-    if result.get("status") != "executed":
-        raise ProviderError("Squads did not execute the registered proposal")
-    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
-    run([
-        str(pearl), "finalize-release", "--app-dir", str(context["catalogDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
-        "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
-        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
-    ])
+    already_registered = release_entry_exists(str(state["releaseEntryPda"]))
+    result: dict[str, Any] = {"auditSigs": {}}
+    if not already_registered:
+        ed_path = Path(context["statePath"]).with_name("ed25519.ix.json")
+        write_json(ed_path, ed_ix)
+        raw = run([
+            "node", str(executor()), "--execute-existing", str(state["transactionIndex"]), "--pre-execute-ix", str(ed_path),
+            "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True),
+        ], extra_env=executor_env())
+        result = last_json(raw)
+        if result.get("status") != "executed":
+            raise ProviderError("Squads did not execute the registered proposal")
+    finalize_release(context)
     shutil.copyfile(context["releasePath"], final_release_out)
     signatures = [v for v in result.get("auditSigs", {}).values() if isinstance(v, str) and v]
     signatures.extend(v.get("signature") for v in result.get("auditSigs", {}).get("approvals", []) if isinstance(v, dict) and isinstance(v.get("signature"), str))
     write_json(receipt_out, {
         "schema": "melusina-register-release-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
-        "releaseHash": state["releaseHash"], "status": "Active", "transactionSignatures": signatures,
+        "releaseHash": state["releaseHash"], "status": "Active", "alreadyRegistered": already_registered, "transactionSignatures": signatures,
     })
 
 

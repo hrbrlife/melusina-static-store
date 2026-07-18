@@ -16,6 +16,7 @@ import (
 // runs), stamping AppliedAtUnix. It returns the persisted (reloaded) entry.
 func stageToHealthyUnstable(t *testing.T, ws *WALStore, e WALEntry) WALEntry {
 	t.Helper()
+	e = withTestReceiptBindings(e)
 	if err := ws.Open(e); err != nil {
 		t.Fatal(err)
 	}
@@ -155,11 +156,11 @@ func binReplaceGenFixture(t *testing.T, ws *WALStore, dir, id string, gen uint64
 	if err := os.WriteFile(installRoot, newBytes, 0o755); err != nil { // running the NEW build post-swap
 		t.Fatal(err)
 	}
-	if err := ws.Open(WALEntry{
+	if err := ws.Open(withTestReceiptBindings(WALEntry{
 		ComponentID: id, GenerationID: gen, ApplyKind: componentrelease.ApplyBinaryReplace,
 		FromHash: hashBytes(priorBytes), FromVersion: "g-prev", ToHash: hashBytes(newBytes), ToVersion: "g-new",
 		PriorPath: priorPath, DeepStableSeconds: 120, AppliedAtUnix: openedAt, OpenedAtUnix: openedAt, Chain: chain,
-	}); err != nil {
+	})); err != nil {
 		t.Fatal(err)
 	}
 	switch targetState {
@@ -438,13 +439,19 @@ func coordSetup(t *testing.T, kind string, fail map[string]bool) (ApplyDeps, *fa
 		t.Fatal(err)
 	}
 	deps := ApplyDeps{
-		Registry:    reg,
-		WAL:         ws,
-		Runner:      &fakeRunner{},
-		StagingRoot: t.TempDir(),
-		Observe:     func(id string) string { return fa.installed[id] },
-		Policy:      UpdatePolicy{AutoApply: true, DeepStableSeconds: 120},
-		Now:         func() int64 { return 1784281900 },
+		Registry:            reg,
+		WAL:                 ws,
+		Runner:              &fakeRunner{},
+		StagingRoot:         t.TempDir(),
+		Observe:             func(id string) string { return fa.installed[id] },
+		Policy:              UpdatePolicy{AutoApply: true, DeepStableSeconds: 120},
+		Now:                 func() int64 { return 1784281900 },
+		RawGenerationSHA256: strings.Repeat("c", 64),
+		DeadlineUnix:        1784291900,
+		Trigger:             PollTriggerTimer,
+		RuntimeGate: func(_ context.Context, c componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) (RuntimeEvidence, error) {
+			return RuntimeEvidence{Schema: componentrelease.RuntimeReleaseInfoSchema, ComponentID: c.ComponentID, GenerationID: 2, Version: c.Version, PID: 1234, ArtifactSHA256: c.SHA256}, nil
+		},
 	}
 	// The shell requires the sidecar first (dependency order).
 	gen := componentrelease.DesiredGeneration{
@@ -478,6 +485,9 @@ func TestApplyGenerationTwoComponentsSucceed(t *testing.T) {
 	// Both WALs are in-flight (healthy-unstable), awaiting deep-stable Complete.
 	if e, ok, _ := deps.WAL.Load("store-sidecar"); !ok || e.State != StateHealthyUnstable {
 		t.Fatalf("sidecar WAL not healthy-unstable")
+	} else if e.RawGenerationSHA256 != strings.Repeat("c", 64) || e.DeadlineUnix != 1784291900 || e.Trigger != string(PollTriggerTimer) ||
+		e.RuntimeEvidence.ComponentID != "store-sidecar" || e.RuntimeEvidence.ArtifactSHA256 != strings.Repeat("1", 64) {
+		t.Fatalf("healthy WAL omitted terminal-proof bindings: %+v", e)
 	}
 }
 

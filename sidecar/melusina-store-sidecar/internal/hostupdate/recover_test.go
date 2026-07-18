@@ -132,19 +132,19 @@ func TestRecoverAllDrivesDecisions(t *testing.T) {
 	priorPath := filepath.Join(dir, "prior")
 	_ = os.WriteFile(priorPath, priorBytes, 0o755)
 
-	staged := WALEntry{
+	staged := withTestReceiptBindings(WALEntry{
 		ComponentID: "creeper", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
 		ToHash: hashBytes(newBytes), ToVersion: "g2", DeepStableSeconds: 120,
-	}
+	})
 	if err := ws.Open(staged); err != nil {
 		t.Fatal(err)
 	}
 	// One applying entry mid-swap -> rollback.
-	applying := WALEntry{
+	applying := withTestReceiptBindings(WALEntry{
 		ComponentID: "swaprail", GenerationID: 2, ApplyKind: componentrelease.ApplyBinaryReplace,
 		FromHash: hashBytes(priorBytes), ToHash: hashBytes(newBytes), ToVersion: "g2",
-		PriorPath: priorPath, DeepStableSeconds: 120,
-	}
+		PriorPath: priorPath, DeepStableSeconds: 120, DeadlineUnix: 9_000_000_001,
+	})
 	if err := ws.Open(applying); err != nil {
 		t.Fatal(err)
 	}

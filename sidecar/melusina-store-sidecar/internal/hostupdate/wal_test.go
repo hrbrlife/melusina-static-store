@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
 
 const (
@@ -13,7 +15,7 @@ const (
 )
 
 func sampleEntry() WALEntry {
-	return WALEntry{
+	return withTestReceiptBindings(WALEntry{
 		ComponentID:       "sandstorm-shell",
 		GenerationID:      63,
 		AutoApply:         true,
@@ -26,7 +28,31 @@ func sampleEntry() WALEntry {
 		PriorPath:         "/opt/sandstorm/.prev/sandstorm-62",
 		DeepStableSeconds: 300,
 		OpenedAtUnix:      1784281821,
+	})
+}
+
+// withTestReceiptBindings gives fixtures the exact fields a real PollOnce wires
+// from a verified generation. Keeping it explicit in tests makes the WAL's
+// terminal-proof requirement visible rather than silently accepting legacy
+// receipts that have no source, deadline, trigger, or runtime identity.
+func withTestReceiptBindings(e WALEntry) WALEntry {
+	if e.OpenedAtUnix == 0 {
+		e.OpenedAtUnix = 1000
 	}
+	if e.DeadlineUnix == 0 {
+		e.DeadlineUnix = e.OpenedAtUnix + 10_000
+	}
+	e.RawGenerationSHA256 = strings.Repeat("c", 64)
+	e.Trigger = string(PollTriggerTimer)
+	e.RuntimeEvidence = RuntimeEvidence{
+		Schema:         componentrelease.RuntimeReleaseInfoSchema,
+		ComponentID:    e.ComponentID,
+		GenerationID:   e.GenerationID,
+		Version:        e.ToVersion,
+		PID:            1234,
+		ArtifactSHA256: e.ToHash,
+	}
+	return e
 }
 
 func TestWALOpenIsExclusivePerComponentLock(t *testing.T) {
@@ -88,6 +114,49 @@ func TestWALAdvanceAndComplete(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("no terminal applied receipt retained")
+	}
+}
+
+func TestWALCompleteRefusesMissingTerminalProofBindings(t *testing.T) {
+	w, err := NewWALStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := sampleEntry()
+	e.RawGenerationSHA256 = "" // legacy state records cannot mint an accepted receipt.
+	if err := w.Open(e); err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []WALState{StateApplying, StateRestarted, StateHealthyUnstable} {
+		if err := w.Advance("sandstorm-shell", state, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.Complete("sandstorm-shell", 1784282300); err == nil {
+		t.Fatal("Complete accepted a receipt without the exact raw generation digest")
+	}
+	if _, ok, err := w.Load("sandstorm-shell"); err != nil || !ok {
+		t.Fatalf("failed terminal validation must retain a recoverable WAL: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestWALCompleteRefusesUnboundRuntimeEvidence(t *testing.T) {
+	w, err := NewWALStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := sampleEntry()
+	e.RuntimeEvidence.PID = 0
+	if err := w.Open(e); err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []WALState{StateApplying, StateRestarted, StateHealthyUnstable} {
+		if err := w.Advance("sandstorm-shell", state, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.Complete("sandstorm-shell", 1784282300); err == nil {
+		t.Fatal("Complete accepted a receipt without bound running-process evidence")
 	}
 }
 

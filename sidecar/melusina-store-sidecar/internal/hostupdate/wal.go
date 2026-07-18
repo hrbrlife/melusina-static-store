@@ -146,6 +146,41 @@ func (e WALEntry) validate() error {
 	return nil
 }
 
+// validateTerminalReceiptBindings makes a terminal WAL receipt a proof artifact
+// rather than a state-transition log. The raw signed-generation digest, bounded
+// deadline, and actual trigger are required for every terminal result; a success
+// additionally needs the runtime tuple that was bound to the running process at
+// apply time. Rollback receipts intentionally may lack runtime evidence because
+// an unhealthy or interrupted new process has no truthful target runtime tuple.
+func (e WALEntry) validateTerminalReceiptBindings() error {
+	if !isLowerHex64(e.RawGenerationSHA256) {
+		return errors.New("terminal receipt rawGenerationSha256 must be 64 lowercase hex chars")
+	}
+	if e.OpenedAtUnix <= 0 || e.DeadlineUnix <= e.OpenedAtUnix {
+		return errors.New("terminal receipt deadlineUnix must be after openedAtUnix")
+	}
+	if e.TerminalAtUnix <= 0 || e.TerminalAtUnix > e.DeadlineUnix {
+		return errors.New("terminal receipt timestamp exceeds deadlineUnix")
+	}
+	switch PollTrigger(e.Trigger) {
+	case PollTriggerTimer, PollTriggerBell, PollTriggerManual:
+	default:
+		return fmt.Errorf("terminal receipt has invalid trigger %q", e.Trigger)
+	}
+	if e.State != StateApplied {
+		return nil
+	}
+	if e.RuntimeEvidence.Schema != componentrelease.RuntimeReleaseInfoSchema ||
+		e.RuntimeEvidence.ComponentID != e.ComponentID ||
+		e.RuntimeEvidence.GenerationID != e.GenerationID ||
+		e.RuntimeEvidence.Version != e.ToVersion ||
+		e.RuntimeEvidence.PID <= 0 ||
+		!strings.EqualFold(e.RuntimeEvidence.ArtifactSHA256, e.ToHash) {
+		return errors.New("terminal applied receipt lacks a bound runtime evidence tuple")
+	}
+	return nil
+}
+
 // RecoveryAction is what a crash-recovery pass must do for one WAL entry, given
 // the observed running-build hash + health at controller startup.
 type RecoveryAction string
@@ -397,6 +432,38 @@ func (w *WALStore) Advance(componentID string, newState WALState, mutate func(*W
 	return writeDurable(path, raw)
 }
 
+// UpdateActive durably refreshes evidence on an in-flight WAL without advancing
+// its state. It exists for later-tick proof refreshes: deep-stable completion must
+// retain the runtime tuple that was re-bound immediately before the terminal
+// receipt, not merely the tuple observed at the initial restart.
+func (w *WALStore) UpdateActive(componentID string, mutate func(*WALEntry)) error {
+	e, ok, err := w.Load(componentID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("no active WAL for component %s", componentID)
+	}
+	if e.State.terminal() {
+		return fmt.Errorf("component %s WAL is already terminal (%s)", componentID, e.State)
+	}
+	if mutate != nil {
+		mutate(&e)
+	}
+	if err := e.validate(); err != nil {
+		return err
+	}
+	path, err := w.activePath(componentID)
+	if err != nil {
+		return err
+	}
+	raw, err := marshalWAL(e)
+	if err != nil {
+		return err
+	}
+	return writeDurable(path, raw)
+}
+
 // finalize writes the terminal receipt and removes the active WAL. The terminal
 // state (applied / rolled-back) is retained forever as the receipt.
 func (w *WALStore) finalize(componentID string, terminal WALState, terminalAtUnix int64, lastErr string) (WALEntry, error) {
@@ -415,6 +482,9 @@ func (w *WALStore) finalize(componentID string, terminal WALState, terminalAtUni
 	e.TerminalAtUnix = terminalAtUnix
 	if lastErr != "" {
 		e.LastError = lastErr
+	}
+	if err := e.validateTerminalReceiptBindings(); err != nil {
+		return zero, err
 	}
 	raw, err := marshalWAL(e)
 	if err != nil {

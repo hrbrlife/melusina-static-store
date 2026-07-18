@@ -173,6 +173,7 @@ func TestApplyFailureRestoresRuntimeMarkerBeforeAdapterRollback(t *testing.T) {
 		WAL: ws, Runner: &fakeRunner{}, StagingRoot: filepath.Join(dir, "staging"),
 		RuntimeMarkerBackupDir: filepath.Join(dir, "runtime-backups"),
 		Policy:                 UpdatePolicy{AutoApply: true}, Now: func() int64 { return 100 },
+		RawGenerationSHA256: strings.Repeat("c", 64), DeadlineUnix: 1000, Trigger: PollTriggerTimer,
 	}
 	if _, err := deps.applyOne(context.Background(), 2, c, install, oldHash); err == nil {
 		t.Fatal("applyOne unexpectedly succeeded despite probe failure")
@@ -249,6 +250,10 @@ func TestApplyWritesRuntimeMarkerBeforeAdapterRestartAndRollback(t *testing.T) {
 		WAL: ws, Runner: &fakeRunner{}, StagingRoot: filepath.Join(dir, "staging"),
 		RuntimeMarkerBackupDir: filepath.Join(dir, "runtime-backups"),
 		Policy:                 UpdatePolicy{AutoApply: true}, Now: func() int64 { return 100 },
+		RawGenerationSHA256: strings.Repeat("c", 64), DeadlineUnix: 1000, Trigger: PollTriggerTimer,
+		RuntimeGate: func(_ context.Context, got componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) (RuntimeEvidence, error) {
+			return RuntimeEvidence{Schema: componentrelease.RuntimeReleaseInfoSchema, ComponentID: got.ComponentID, GenerationID: 2, Version: got.Version, PID: 1234, ArtifactSHA256: got.SHA256}, nil
+		},
 	}
 	rb, err := deps.applyOne(context.Background(), 2, c, install, strings.Repeat("1", 64))
 	if err != nil || !adapter.saw {

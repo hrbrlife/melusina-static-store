@@ -167,7 +167,7 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 	// then per component Stage->Verify->BeforeMutation(policy+chain re-read)->apply->
 	// restart->Probe->RuntimeGate->healthy-unstable. Completion (LastCommitted) is
 	// deferred to a LATER tick's deep-stable service — the first apply never seals.
-	applyDeps := deps.applyDepsFor(vg, trigger)
+	applyDeps := deps.applyDepsFor(vg, trigger, policy, now)
 	if _, err := ApplyGeneration(ctx, vg.Doc, applyDeps); err != nil {
 		_ = deps.State.Store(ctx, state)
 		return fmt.Errorf("apply generation %d: %w", vg.Doc.GenerationID, err)
@@ -178,11 +178,20 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 
 // applyDepsFor wires the poll loop's gates into the coordinator: BeforeMutation is
 // the pre-mutation policy+chain re-read; RuntimeGate binds the running process.
-func (deps PollDeps) applyDepsFor(vg VerifiedGeneration, trigger PollTrigger) ApplyDeps {
+func (deps PollDeps) applyDepsFor(vg VerifiedGeneration, trigger PollTrigger, policy UpdatePolicy, now int64) ApplyDeps {
 	ad := deps.Apply
 	if ad.Now == nil {
 		ad.Now = deps.Now
 	}
+	// These values are durable receipt bindings, not display metadata. The exact
+	// bytes fetched above, the deadline budget selected for this cycle, and the
+	// caller trigger must follow every component through WAL recovery to terminal
+	// receipt. A manual/bell cycle is deliberately recorded as such and therefore
+	// cannot later be presented as timer-driven proof.
+	ad.Policy = policy
+	ad.RawGenerationSHA256 = vg.RawSHA256
+	ad.DeadlineUnix = now + policy.PromoteDeadlineSeconds
+	ad.Trigger = trigger
 	if ad.BeforeMutation == nil {
 		ad.BeforeMutation = func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error {
 			p, err := deps.LoadPolicy(ctx)
@@ -210,22 +219,22 @@ func (deps PollDeps) applyDepsFor(vg VerifiedGeneration, trigger PollTrigger) Ap
 // tuple to equal the desired (schema/componentId/generationId/version/artifactSha256),
 // and independently confirms the process: systemd MainPID -> /proc/<pid>/exe hash
 // == desired artifactSha256, re-reading the PID AFTER hashing to catch a swap race.
-func (deps PollDeps) runtimeGate(vg VerifiedGeneration) func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
-	return func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error {
+func (deps PollDeps) runtimeGate(vg VerifiedGeneration) func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) (RuntimeEvidence, error) {
+	return func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) (RuntimeEvidence, error) {
 		if deps.RuntimeObserver == nil {
-			return nil
+			return RuntimeEvidence{}, fmt.Errorf("runtime observer missing for %s", c.ComponentID)
 		}
 		ev, err := deps.RuntimeObserver(ctx, c, install)
 		if err != nil {
-			return fmt.Errorf("runtime observer %s: %w", c.ComponentID, err)
+			return RuntimeEvidence{}, fmt.Errorf("runtime observer %s: %w", c.ComponentID, err)
 		}
 		if err := validateRuntimeEvidenceTuple(ev, vg, c); err != nil {
-			return err
+			return RuntimeEvidence{}, err
 		}
 		if err := deps.bindRuntimeProcess(ctx, ev, install, c.ComponentID, c.SHA256); err != nil {
-			return err
+			return RuntimeEvidence{}, err
 		}
-		return nil
+		return ev, nil
 	}
 }
 
@@ -402,22 +411,37 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 // deep-stable receipt, its on-disk target, full desired tuple, and independently
 // bound running process must still agree with the persisted WAL.
 func (deps PollDeps) componentHealthy(ctx context.Context, entry WALEntry, runningHash string, install componentrelease.ComponentInstall) bool {
+	_, ok := deps.componentRuntimeEvidence(ctx, entry, runningHash, install)
+	return ok
+}
+
+// componentRuntimeEvidence performs the later-tick runtime re-bind and returns
+// the exact evidence observed now. The caller persists it immediately before a
+// terminal receipt, so the receipt describes the running process at completion
+// rather than only the process that first became healthy.
+func (deps PollDeps) componentRuntimeEvidence(ctx context.Context, entry WALEntry, runningHash string, install componentrelease.ComponentInstall) (RuntimeEvidence, bool) {
 	if !strings.EqualFold(strings.TrimSpace(runningHash), entry.ToHash) {
-		return false
+		return RuntimeEvidence{}, false
 	}
 	if deps.RuntimeObserver == nil {
-		return true
+		// Test-only/degraded compatibility: ordinary health callers may proceed,
+		// but production PollOnce always wires an observer and terminal validation
+		// still requires the previously persisted evidence tuple.
+		return RuntimeEvidence{}, true
 	}
 	component := componentReleaseFromWAL(entry)
 	ev, err := deps.RuntimeObserver(ctx, component, install)
 	if err != nil {
-		return false
+		return RuntimeEvidence{}, false
 	}
 	vg := VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: entry.GenerationID}}
 	if err := validateRuntimeEvidenceTuple(ev, vg, component); err != nil {
-		return false
+		return RuntimeEvidence{}, false
 	}
-	return deps.bindRuntimeProcess(ctx, ev, install, component.ComponentID, component.SHA256) == nil
+	if err := deps.bindRuntimeProcess(ctx, ev, install, component.ComponentID, component.SHA256); err != nil {
+		return RuntimeEvidence{}, false
+	}
+	return ev, true
 }
 
 // generationDeepStable reports whether EVERY member of a generation is healthy-unstable
@@ -440,6 +464,7 @@ func generationDeepStable(members []WALEntry, now int64) bool {
 // rolls back the WHOLE generation via RollbackFromWAL), then Completes every member.
 // Returns true only when the whole generation was sealed terminal-applied.
 func (deps PollDeps) finalizeGenerationAtomic(ctx context.Context, ad ApplyDeps, members []WALEntry, installFor func(string) (componentrelease.ComponentInstall, bool)) bool {
+	refreshedEvidence := make(map[string]RuntimeEvidence, len(members))
 	for _, e := range members {
 		install, ok := installFor(e.ComponentID)
 		if !ok {
@@ -449,9 +474,13 @@ func (deps PollDeps) finalizeGenerationAtomic(ctx context.Context, ad ApplyDeps,
 		if ad.Observe != nil {
 			running = ad.Observe(e.ComponentID)
 		}
-		if !deps.componentHealthy(ctx, e, running, install) {
+		ev, healthy := deps.componentRuntimeEvidence(ctx, e, running, install)
+		if !healthy {
 			deps.rollbackGeneration(ctx, ad, members, installFor, "pre-complete runtime re-verify refused "+e.ComponentID)
 			return false
+		}
+		if ev.Schema != "" {
+			refreshedEvidence[e.ComponentID] = ev
 		}
 		if ad.ChainGate != nil {
 			if err := ad.ChainGate(ctx, componentReleaseFromWAL(e), install); err != nil {
@@ -461,6 +490,11 @@ func (deps PollDeps) finalizeGenerationAtomic(ctx context.Context, ad ApplyDeps,
 		}
 	}
 	for _, e := range members {
+		if ev, ok := refreshedEvidence[e.ComponentID]; ok {
+			if err := ad.WAL.UpdateActive(e.ComponentID, func(current *WALEntry) { current.RuntimeEvidence = ev }); err != nil {
+				return false
+			}
+		}
 		if _, err := ad.WAL.Complete(e.ComponentID, ad.now()); err != nil {
 			return false // exceptional (e.g. receipt already present) — leave active for retry
 		}

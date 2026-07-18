@@ -178,6 +178,9 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		RuntimeMarkerPath:        marker.Path,
 		RuntimeMarkerPriorPath:   marker.PriorPath,
 		RuntimeMarkerPriorSHA256: marker.PriorSHA,
+		RawGenerationSHA256:      deps.RawGenerationSHA256,
+		DeadlineUnix:             deps.DeadlineUnix,
+		Trigger:                  string(deps.Trigger),
 	}
 	if err := deps.WAL.Open(entry); err != nil {
 		return nil, err
@@ -268,7 +271,17 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if err := adapter.Probe(ctx, c, install); err != nil {
 		return fail(fmt.Errorf("probe: %w", err), rb)
 	}
-	if err := deps.WAL.Advance(c.ComponentID, StateHealthyUnstable, func(e *WALEntry) { e.AppliedAtUnix = deps.now() }); err != nil {
+	var evidence RuntimeEvidence
+	if deps.RuntimeGate == nil {
+		return fail(fmt.Errorf("runtime gate missing for %s", c.ComponentID), rb)
+	}
+	if evidence, err = deps.RuntimeGate(ctx, c, install); err != nil {
+		return fail(fmt.Errorf("runtime gate: %w", err), rb)
+	}
+	if err := deps.WAL.Advance(c.ComponentID, StateHealthyUnstable, func(e *WALEntry) {
+		e.AppliedAtUnix = deps.now()
+		e.RuntimeEvidence = evidence
+	}); err != nil {
 		return fail(fmt.Errorf("wal healthy: %w", err), rb)
 	}
 	return rb, nil
@@ -307,12 +320,19 @@ type ApplyDeps struct {
 	// transaction rolls back any earlier applied members. The adapter Probe alone
 	// cannot bind the live process, so this gate — not the doc — authorizes mutation.
 	BeforeMutation func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
+	// RawGenerationSHA256, DeadlineUnix, and Trigger bind every terminal receipt to
+	// the exact signed bytes, its policy budget, and the invocation provenance. They
+	// are set by PollDeps at the moment it fetches a VerifiedGeneration; callers that
+	// omit them can stage/apply for tests, but cannot finalize a success receipt.
+	RawGenerationSHA256 string
+	DeadlineUnix        int64
+	Trigger             PollTrigger
 	// RuntimeGate binds the RUNNING process to the desired tuple after the adapter
 	// restart+Probe: it compares the component's structured /release-info report
 	// (schema+componentId+generationId+version+artifactSha256) against systemd
 	// MainPID and an independently-hashed /proc/<pid>/exe (PID re-checked after the
 	// hash). New bytes on disk with the old process still running must NOT pass.
-	RuntimeGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) error
+	RuntimeGate func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) (RuntimeEvidence, error)
 	Policy      UpdatePolicy
 	Now         func() int64
 }

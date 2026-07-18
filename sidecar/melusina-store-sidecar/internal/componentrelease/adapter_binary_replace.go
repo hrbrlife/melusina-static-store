@@ -56,6 +56,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // HTTPGetter fetches a URL body. Injectable so the controller can pass its shared,
@@ -66,6 +67,15 @@ type binaryReplaceAdapter struct {
 	stageGet HTTPGetter // origin-pinned bundle fetch
 	probeGet HTTPGetter // loopback-only self-report fetch
 }
+
+// Health probes run after systemd has accepted a restart, not after the process
+// has necessarily bound its listening socket.  A single immediate curl therefore
+// turns ordinary process startup into a false rollback.  Keep the readiness
+// window bounded and require the complete health+self-report proof on every
+// attempt; a unit that never becomes ready still fails closed and rolls back.
+const binaryReplaceProbeWindow = 30 * time.Second
+
+var binaryReplaceProbeRetryInterval = 250 * time.Millisecond
 
 // NewBinaryReplaceAdapter returns the binary-replace adapter. A nil getter selects
 // the split default policies (origin-pinned no-redirect for Stage, loopback-only
@@ -270,27 +280,50 @@ func (a *binaryReplaceAdapter) Probe(ctx context.Context, desired ComponentRelea
 	if len(install.HealthCommand) == 0 {
 		return fmt.Errorf("binary-replace probe %s: empty healthCommand (registry invariant violated)", desired.ComponentID)
 	}
-	if err := runArgv(ctx, install.HealthCommand); err != nil {
-		return fmt.Errorf("binary-replace probe %s: health command failed: %w", desired.ComponentID, err)
+	probeCtx, cancel := context.WithTimeout(ctx, binaryReplaceProbeWindow)
+	defer cancel()
+	var last error
+	for {
+		if err := a.probeOnce(probeCtx, desired, install); err == nil {
+			return nil
+		} else {
+			last = err
+		}
+		timer := time.NewTimer(binaryReplaceProbeRetryInterval)
+		select {
+		case <-probeCtx.Done():
+			timer.Stop()
+			return fmt.Errorf("binary-replace probe %s: not ready within %s: %w", desired.ComponentID, binaryReplaceProbeWindow, last)
+		case <-timer.C:
+		}
 	}
-	if install.SelfReportURL != "" {
-		body, err := a.probeGet(ctx, install.SelfReportURL)
-		if err != nil {
-			return fmt.Errorf("binary-replace probe %s: self-report fetch: %w", desired.ComponentID, err)
-		}
-		defer body.Close()
-		raw, err := io.ReadAll(io.LimitReader(body, maxSelfReportBytes+1))
-		if err != nil {
-			return fmt.Errorf("binary-replace probe %s: read self-report: %w", desired.ComponentID, err)
-		}
-		// An oversized body is REFUSED, never truncated — a valid prefix must not
-		// be able to hide trailing bytes that a lenient parser would honour.
-		if len(raw) > maxSelfReportBytes {
-			return fmt.Errorf("binary-replace probe %s: self-report exceeds %d bytes", desired.ComponentID, maxSelfReportBytes)
-		}
-		if !selfReportBindsHash(raw, desired.SHA256) {
-			return fmt.Errorf("binary-replace probe %s: self-report does not bind the applied hash %s in a structured field", desired.ComponentID, strings.ToLower(desired.SHA256))
-		}
+}
+
+// probeOnce proves that the component is serving its health surface and, when
+// configured, that the surface binds the exact newly applied artifact hash.
+func (a *binaryReplaceAdapter) probeOnce(ctx context.Context, desired ComponentRelease, install ComponentInstall) error {
+	if err := runArgv(ctx, install.HealthCommand); err != nil {
+		return fmt.Errorf("health command failed: %w", err)
+	}
+	if install.SelfReportURL == "" {
+		return nil
+	}
+	body, err := a.probeGet(ctx, install.SelfReportURL)
+	if err != nil {
+		return fmt.Errorf("self-report fetch: %w", err)
+	}
+	defer body.Close()
+	raw, err := io.ReadAll(io.LimitReader(body, maxSelfReportBytes+1))
+	if err != nil {
+		return fmt.Errorf("read self-report: %w", err)
+	}
+	// An oversized body is REFUSED, never truncated — a valid prefix must not
+	// be able to hide trailing bytes that a lenient parser would honour.
+	if len(raw) > maxSelfReportBytes {
+		return fmt.Errorf("self-report exceeds %d bytes", maxSelfReportBytes)
+	}
+	if !selfReportBindsHash(raw, desired.SHA256) {
+		return fmt.Errorf("self-report does not bind the applied hash %s in a structured field", strings.ToLower(desired.SHA256))
 	}
 	return nil
 }

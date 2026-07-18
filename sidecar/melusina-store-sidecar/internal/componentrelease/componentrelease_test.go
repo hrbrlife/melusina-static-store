@@ -235,6 +235,20 @@ func TestValidateRejectsSidecarWithoutLicenseMint(t *testing.T) {
 	}
 }
 
+func TestUpdateSidecarDoesNotRequireAppStageIdentity(t *testing.T) {
+	// Sidecars are sealed by SidecarIdentity.binary_hash and the signed desired
+	// generation; releaseHash/stageId are app-SPK staging identities and must not
+	// be fabricated for a binary-replace N+1.
+	op, _ := testOperator(t)
+	gen := sampleGeneration()
+	gen.Components = gen.Components[:1]
+	gen.Components[0].ReleaseHash = ""
+	gen.Components[0].StageID = ""
+	if _, err := Sign(op, gen); err != nil {
+		t.Fatalf("Sign rejected a sidecar update without app stage identity: %v", err)
+	}
+}
+
 func writeRegistry(t *testing.T, reg ComponentRegistry) string {
 	t.Helper()
 	raw, err := json.Marshal(reg)

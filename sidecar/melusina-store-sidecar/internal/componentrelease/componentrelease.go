@@ -581,15 +581,21 @@ func (doc DesiredGeneration) validateUnsigned() error {
 		if !strings.HasPrefix(c.BundleURL, originPrefix) {
 			return fmt.Errorf("component %s: bundleUrl %q is not under the pinned bundleOrigin %q", c.ComponentID, c.BundleURL, doc.BundleOrigin)
 		}
-		// An UPDATE generation (previousGeneration > 0) must carry, per component,
-		// the rollback floor (previousSha256 + previousVersion) and the release/
-		// stage identity — without them health-gated rollback has no exact target.
+		// An UPDATE generation (previousGeneration > 0) must carry the rollback
+		// floor (previousSha256 + previousVersion) for every component: this is
+		// what lets the adapter restore the exact prior artifact.
 		if isUpdate {
 			if c.PreviousSHA256 == "" || strings.TrimSpace(c.PreviousVersion) == "" {
 				return fmt.Errorf("component %s: an update generation requires previousSha256 + previousVersion (rollback floor)", c.ComponentID)
 			}
-			if c.ReleaseHash == "" || c.StageID == "" {
-				return fmt.Errorf("component %s: an update generation requires releaseHash + stageId (release/stage identity)", c.ComponentID)
+			// releaseHash + stageId identify an app's durable staged-SPK receipt.
+			// They are not sidecar/shell release facts: those classes bind their
+			// exact artifact through their own on-chain authority (for example a
+			// SidecarIdentity binary hash) plus the signed generation hash. Making
+			// every class invent app-stage identifiers made a legitimate sidecar
+			// N+1 impossible to promote after genesis.
+			if c.ComponentClass == ClassApp && (c.ReleaseHash == "" || c.StageID == "") {
+				return fmt.Errorf("component %s: an app update requires releaseHash + stageId (release/stage identity)", c.ComponentID)
 			}
 		}
 	}

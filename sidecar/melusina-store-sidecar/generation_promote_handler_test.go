@@ -199,6 +199,16 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	forgedMetadata := []byte(`{"appTitle":"Forged metadata"}`)
+	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), forgedMetadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
+		t.Fatal("accepted valid served SPK with metadata that does not match the ReleaseEntry tree hash")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), f.metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	// A valid ReleaseEntry plus a separately signed pointer to another package is
 	// still not this component. The app selection is part of the authority.
 	wrongPointer := pointer

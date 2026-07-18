@@ -254,20 +254,11 @@ func validateReleaseInfoObject(raw []byte) error {
 // InstallRoot is the executable file. Any error yields "" — an unknown delta safely
 // means "do not skip", never a false skip.
 func observeFor(install componentrelease.ComponentInstall) string {
-	info, err := os.Lstat(install.InstallRoot)
-	if err != nil || !info.Mode().IsRegular() {
-		return ""
-	}
-	f, err := os.Open(install.InstallRoot)
+	sha, err := componentrelease.InstalledArtifactSHA256(install)
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(h.Sum(nil))
+	return sha
 }
 
 func newNotifier(path string) func(context.Context, hostupdate.VerifiedGeneration) error {

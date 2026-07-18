@@ -58,9 +58,24 @@ func RollbackFromWAL(ctx context.Context, entry WALEntry, install componentrelea
 	switch entry.ApplyKind {
 	case componentrelease.ApplyBinaryReplace:
 		return rollbackBinaryReplace(ctx, entry, install, runner)
+	case componentrelease.ApplyTarballSymlinkSwap:
+		return rollbackTarballSymlinkSwap(ctx, entry, install, runner)
 	default:
 		return fmt.Errorf("rollback for applyKind %q not implemented", entry.ApplyKind)
 	}
+}
+
+func rollbackTarballSymlinkSwap(ctx context.Context, entry WALEntry, install componentrelease.ComponentInstall, runner CommandRunner) error {
+	if err := RestoreRuntimeMarkerFromWAL(entry, install); err != nil {
+		return fmt.Errorf("restore runtime marker: %w", err)
+	}
+	if err := componentrelease.RestoreTarballCurrent(install, entry.PriorPath, entry.FromHash, entry.ToHash); err != nil {
+		return fmt.Errorf("restore prior tarball generation: %w", err)
+	}
+	if entry.FromHash == "" || entry.PriorPath == "" {
+		return runner.Run(ctx, stopArgv(install))
+	}
+	return runner.Run(ctx, restartArgv(install))
 }
 
 func rollbackBinaryReplace(ctx context.Context, entry WALEntry, install componentrelease.ComponentInstall, runner CommandRunner) error {

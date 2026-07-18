@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -263,12 +264,17 @@ func (deps PollDeps) bindRuntimeProcess(ctx context.Context, ev RuntimeEvidence,
 	if deps.RuntimeBinder != nil {
 		return deps.RuntimeBinder(ctx, ev, install, componentID, expectedSHA)
 	}
-	// Independently bind the running process: read systemd MainPID, hash
-	// /proc/<pid>/exe, then RE-READ the PID to reject a swap race between hash
-	// and confirmation (new bytes on disk + old process must not pass).
+	// Independently bind the running process. Binary-replace releases bind the
+	// executable bytes directly. A tarball release's signed artifact is the
+	// archive, so it instead binds (a) the selected current generation's local
+	// metadata to that archive and (b) /proc/<pid>/exe to a file inside that exact
+	// selected generation. Neither case permits a process swap race.
 	pid1, err := systemdMainPID(ctx, install.ServiceUnit)
 	if err != nil {
 		return fmt.Errorf("read MainPID for %s: %w", install.ServiceUnit, err)
+	}
+	if install.ApplyKind == componentrelease.ApplyTarballSymlinkSwap {
+		return bindTarballRuntimeProcess(ctx, ev, install, componentID, expectedSHA, pid1)
 	}
 	exeHash, err := procExeSHA256(pid1)
 	if err != nil {
@@ -285,6 +291,48 @@ func (deps PollDeps) bindRuntimeProcess(ctx context.Context, ev RuntimeEvidence,
 		return fmt.Errorf("/proc/%d/exe hash %s != desired %s for %s", pid1, exeHash, expectedSHA, componentID)
 	}
 	return nil
+}
+
+func bindTarballRuntimeProcess(ctx context.Context, ev RuntimeEvidence, install componentrelease.ComponentInstall, componentID, expectedSHA string, pid1 int) error {
+	target1, err := componentrelease.TarballCurrentTargetForArtifact(install, expectedSHA)
+	if err != nil {
+		return fmt.Errorf("resolve current tarball generation for %s: %w", componentID, err)
+	}
+	exeLink := fmt.Sprintf("/proc/%d/exe", pid1)
+	exePath, err := filepath.EvalSymlinks(exeLink)
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", exeLink, err)
+	}
+	info, err := os.Stat(exePath)
+	if err != nil || !info.Mode().IsRegular() {
+		if err == nil {
+			err = fmt.Errorf("not a regular file")
+		}
+		return fmt.Errorf("inspect %s: %w", exeLink, err)
+	}
+	pid2, err := systemdMainPID(ctx, install.ServiceUnit)
+	if err != nil {
+		return fmt.Errorf("re-read MainPID for %s: %w", install.ServiceUnit, err)
+	}
+	target2, err := componentrelease.TarballCurrentTargetForArtifact(install, expectedSHA)
+	if err != nil {
+		return fmt.Errorf("re-read current tarball generation for %s: %w", componentID, err)
+	}
+	if pid1 != pid2 || ev.PID != pid1 {
+		return fmt.Errorf("MainPID moved (%d->%d) or report PID %d mismatch during runtime bind of %s", pid1, pid2, ev.PID, componentID)
+	}
+	if target1 != target2 {
+		return fmt.Errorf("current tarball target moved (%s -> %s) during runtime bind of %s", target1, target2, componentID)
+	}
+	if !pathUnder(target1, exePath) {
+		return fmt.Errorf("/proc/%d/exe %s is outside selected generation %s for %s", pid1, exePath, target1, componentID)
+	}
+	return nil
+}
+
+func pathUnder(root, path string) bool {
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(path))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
 func systemdMainPID(ctx context.Context, unit string) (int, error) {

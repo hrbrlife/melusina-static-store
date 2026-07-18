@@ -160,6 +160,10 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if err != nil {
 		return nil, fmt.Errorf("plan runtime marker: %w", err)
 	}
+	priorPath, err := priorPathFor(install, installedHash)
+	if err != nil {
+		return nil, fmt.Errorf("resolve persisted rollback floor: %w", err)
+	}
 	entry := WALEntry{
 		ComponentID:              c.ComponentID,
 		ComponentClass:           c.ComponentClass,
@@ -172,7 +176,7 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		ContentHash:              c.ContentSHA256,
 		Chain:                    c.Chain,
 		StagedPath:               filepath.Join(deps.StagingRoot, c.ComponentID),
-		PriorPath:                priorBackupPath(install.InstallRoot, installedHash),
+		PriorPath:                priorPath,
 		DeepStableSeconds:        deps.Policy.DeepStableSeconds,
 		OpenedAtUnix:             deps.now(),
 		RuntimeMarkerPath:        marker.Path,
@@ -616,6 +620,27 @@ func priorBackupPath(installRoot, priorSHA256 string) string {
 		sha = sha[:12]
 	}
 	return filepath.Join(filepath.Dir(installRoot), ".rrs-prev", filepath.Base(installRoot)+"."+sha)
+}
+
+// priorPathFor stores an adapter-specific rollback handle BEFORE any mutation.
+// A binary floor is a retained sibling executable; a tarball floor is the exact
+// current generation directory whose verified metadata binds it to installedHash.
+func priorPathFor(install componentrelease.ComponentInstall, installedHash string) (string, error) {
+	if installedHash == "" {
+		return "", nil
+	}
+	switch install.ApplyKind {
+	case componentrelease.ApplyBinaryReplace:
+		return priorBackupPath(install.InstallRoot, installedHash), nil
+	case componentrelease.ApplyTarballSymlinkSwap:
+		return componentrelease.TarballCurrentTargetForArtifact(install, installedHash)
+	default:
+		// Only wired production kinds reach this path. Preserve the conventional
+		// retained-file handle for an adapter injected by a unit test or a future
+		// reviewed adapter; recovery still refuses an unimplemented kind rather
+		// than guessing how to restore it.
+		return priorBackupPath(install.InstallRoot, installedHash), nil
+	}
 }
 
 func collectOutcomes(order []componentrelease.ComponentRelease, m map[string]*ApplyOutcome) []ApplyOutcome {

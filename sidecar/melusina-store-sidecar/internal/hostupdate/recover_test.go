@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,6 +116,61 @@ func TestRollbackRefusesTamperedPrior(t *testing.T) {
 	install := componentrelease.ComponentInstall{ComponentID: "swaprail", InstallRoot: installRoot, ServiceUnit: "swaprail.service"}
 	if err := RollbackFromWAL(context.Background(), entry, install, &fakeRunner{}); err == nil {
 		t.Fatal("RollbackFromWAL restored a prior whose bytes do not match fromHash")
+	}
+}
+
+// TestKillAfterTarballSwapRollsBackFromWAL is the shell equivalent of the
+// binary crash gate: a fresh controller must restore the exact prior generation
+// directory selected by the persisted WAL, not merely leave a convenient link.
+func TestKillAfterTarballSwapRollsBackFromWAL(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "sandstorm")
+	oldHash := strings.Repeat("a", 64)
+	newHash := strings.Repeat("b", 64)
+	oldDir := filepath.Join(root, "release-old")
+	newDir := filepath.Join(root, "release-new")
+	for _, d := range []string{oldDir, newDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeMeta := func(dir, hash, version string) {
+		b, err := json.Marshal(map[string]any{
+			"schema": "melusina-tarball-release-artifact-v1", "artifactSha256": hash,
+			"artifactSizeBytes": 123, "version": version,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".rrs-release-artifact.json"), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeMeta(oldDir, oldHash, "build-62")
+	writeMeta(newDir, newHash, "build-63")
+	current := filepath.Join(root, "latest")
+	if err := os.Symlink(newDir, current); err != nil {
+		t.Fatal(err)
+	}
+	entry := WALEntry{
+		ComponentID: "sandstorm-shell", GenerationID: 63, ApplyKind: componentrelease.ApplyTarballSymlinkSwap,
+		FromHash: oldHash, ToHash: newHash, PriorPath: oldDir,
+	}
+	install := componentrelease.ComponentInstall{
+		ComponentID: "sandstorm-shell", ComponentClass: componentrelease.ClassShell,
+		ApplyKind: componentrelease.ApplyTarballSymlinkSwap, InstallRoot: root, CurrentSymlink: current,
+		ServiceUnit: "sandstorm.service", HealthCommand: []string{"/bin/true"},
+	}
+	runner := &fakeRunner{}
+	if err := RollbackFromWAL(context.Background(), entry, install, runner); err != nil {
+		t.Fatal(err)
+	}
+	target, err := filepath.EvalSymlinks(current)
+	if err != nil || target != oldDir {
+		t.Fatalf("current = %q, %v; want %q", target, err, oldDir)
+	}
+	if len(runner.calls) != 1 || runner.calls[0][0] != "systemctl" || runner.calls[0][2] != "sandstorm.service" {
+		t.Fatalf("exact rollback restart not issued: %v", runner.calls)
 	}
 }
 

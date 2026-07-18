@@ -430,7 +430,7 @@ func extractTarXZNoFollow(archivePath, target string) error {
 			if hdr.FileInfo().Mode().Perm()&0o022 != 0 {
 				return fmt.Errorf("archive dir %q is group/world writable", hdr.Name)
 			}
-			if err := os.MkdirAll(out, hdr.FileInfo().Mode().Perm()&0o755); err != nil {
+			if err := ensureTarballDir(target, out, hdr.FileInfo().Mode().Perm()&0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg, tar.TypeRegA:
@@ -440,7 +440,7 @@ func extractTarXZNoFollow(archivePath, target string) error {
 			if hdr.FileInfo().Mode().Perm()&0o022 != 0 {
 				return fmt.Errorf("archive file %q is group/world writable", hdr.Name)
 			}
-			if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			if err := ensureTarballDir(target, filepath.Dir(out), 0o755); err != nil {
 				return err
 			}
 			outf, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, hdr.FileInfo().Mode().Perm()&0o755)
@@ -461,11 +461,81 @@ func extractTarXZNoFollow(archivePath, target string) error {
 				return copyErr
 			}
 			total += n
+		case tar.TypeSymlink:
+			if err := ensureTarballDir(target, filepath.Dir(out), 0o755); err != nil {
+				return err
+			}
+			if err := validateTarballSymlink(target, out, hdr.Linkname); err != nil {
+				return fmt.Errorf("unsafe archive symlink %q -> %q: %w", hdr.Name, hdr.Linkname, err)
+			}
+			if err := os.Symlink(hdr.Linkname, out); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("archive entry %q has forbidden type %d", hdr.Name, hdr.Typeflag)
 		}
 	}
 	return syncDir(target)
+}
+
+// The current shell archive contains a small set of ABI compatibility links
+// into the operating system's library directories (and ordinary relative links
+// inside its bundled tree). Absolute links are therefore not broadly allowed:
+// this fixed, code-defined list is the entire host reference surface. A remote
+// generation cannot expand it, and arbitrary paths such as /etc or /proc fail.
+var approvedTarballAbsoluteSymlinkPrefixes = []string{"/usr/lib/", "/usr/lib32/"}
+
+func validateTarballSymlink(root, out, link string) error {
+	if strings.TrimSpace(link) == "" || strings.Contains(link, "\\") || strings.IndexByte(link, 0) >= 0 {
+		return errors.New("empty or malformed link target")
+	}
+	if filepath.IsAbs(link) {
+		for _, prefix := range approvedTarballAbsoluteSymlinkPrefixes {
+			if strings.HasPrefix(link, prefix) {
+				return nil
+			}
+		}
+		return errors.New("absolute target is outside the code-defined system-library allowlist")
+	}
+	resolved := filepath.Clean(filepath.Join(filepath.Dir(out), filepath.FromSlash(link)))
+	if !pathWithin(root, resolved) {
+		return errors.New("relative target escapes extracted generation")
+	}
+	return nil
+}
+
+// ensureTarballDir walks from the fresh extraction root using Lstat. It never
+// follows a previously-created symlink, preventing a hostile archive from
+// creating `link -> /outside` and then placing `link/file` in a later member.
+func ensureTarballDir(root, dir string, mode os.FileMode) error {
+	if !pathWithin(root, dir) {
+		return errors.New("directory escapes extraction root")
+	}
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return err
+	}
+	cur := root
+	if rel == "." {
+		return nil
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if errors.Is(err, os.ErrNotExist) {
+			if err := os.Mkdir(cur, mode); err != nil {
+				return err
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return fmt.Errorf("archive parent %s is not a real directory", cur)
+		}
+	}
+	return nil
 }
 
 func safeTarballName(name string) (string, error) {

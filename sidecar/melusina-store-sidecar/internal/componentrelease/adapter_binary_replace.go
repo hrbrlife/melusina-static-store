@@ -111,7 +111,15 @@ func (a *binaryReplaceAdapter) Stage(ctx context.Context, desired ComponentRelea
 	if err := os.MkdirAll(workDir, 0o755); err != nil {
 		return Staged{}, fmt.Errorf("binary-replace stage %s: workdir: %w", desired.ComponentID, err)
 	}
-	dst := filepath.Join(workDir, desired.ComponentID+".staged")
+	// The staging name is bound to the desired artifact rather than just the
+	// component. A retained O_EXCL file from a rolled-back generation must not
+	// block a different, later signed generation; it is still never overwritten
+	// or followed.
+	stageKey, err := stageArtifactKey(desired.SHA256)
+	if err != nil {
+		return Staged{}, fmt.Errorf("binary-replace stage %s: %w", desired.ComponentID, err)
+	}
+	dst := filepath.Join(workDir, desired.ComponentID+"."+stageKey+".staged")
 	// O_EXCL|O_NOFOLLOW: refuse a preexisting or symlinked staged path rather than
 	// follow it and overwrite an attacker-chosen target.
 	f, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o755)
@@ -490,6 +498,17 @@ func shortSHA(s string) string {
 		return s[:12]
 	}
 	return s
+}
+
+func stageArtifactKey(sha string) (string, error) {
+	sha = strings.ToLower(strings.TrimSpace(sha))
+	if len(sha) != 64 {
+		return "", fmt.Errorf("desired sha256 must be 64 hex chars, got %d", len(sha))
+	}
+	if _, err := hex.DecodeString(sha); err != nil {
+		return "", fmt.Errorf("desired sha256 is not hex: %w", err)
+	}
+	return sha[:16], nil
 }
 
 // atomicCopyVerified opens src without following symlinks, streams the exact

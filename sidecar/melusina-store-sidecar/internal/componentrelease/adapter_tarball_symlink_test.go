@@ -20,6 +20,7 @@ type tarTestEntry struct {
 	body     []byte
 	typeflag byte
 	linkname string
+	mode     int64
 }
 
 func tarXZ(t *testing.T, entries ...tarTestEntry) []byte {
@@ -35,7 +36,11 @@ func tarXZ(t *testing.T, entries ...tarTestEntry) []byte {
 		if typeflag == 0 {
 			typeflag = tar.TypeReg
 		}
-		h := &tar.Header{Name: e.name, Mode: 0o755, Typeflag: typeflag, Linkname: e.linkname, Size: int64(len(e.body))}
+		mode := e.mode
+		if mode == 0 {
+			mode = 0o755
+		}
+		h := &tar.Header{Name: e.name, Mode: mode, Typeflag: typeflag, Linkname: e.linkname, Size: int64(len(e.body))}
 		if typeflag == tar.TypeDir {
 			h.Size = 0
 		}
@@ -217,6 +222,31 @@ func TestTarballExtractorRefusesWriteUnderPriorSymlink(t *testing.T) {
 	}
 	if err := extractTarXZNoFollow(path, filepath.Join(root, "out")); err == nil {
 		t.Fatal("extractor followed prior symlink as parent")
+	}
+}
+
+func TestTarballExtractorStripsGroupWorldWritableModes(t *testing.T) {
+	archive := tarXZ(t,
+		tarTestEntry{name: "mutable-dir", typeflag: tar.TypeDir, mode: 0o777},
+		tarTestEntry{name: "mutable-dir/file", body: []byte("not mutable after extraction"), mode: 0o666},
+	)
+	root := t.TempDir()
+	path := filepath.Join(root, "archive.tar.xz")
+	if err := os.WriteFile(path, archive, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(root, "out")
+	if err := extractTarXZNoFollow(path, out); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(out, "mutable-dir"), filepath.Join(out, "mutable-dir", "file")} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm()&0o022 != 0 {
+			t.Fatalf("extracted %s remains group/world writable: %04o", path, info.Mode().Perm())
+		}
 	}
 }
 

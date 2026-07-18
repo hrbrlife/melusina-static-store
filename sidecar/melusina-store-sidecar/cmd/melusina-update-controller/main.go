@@ -51,11 +51,12 @@ func main() {
 		log.Fatalf("controller staging root: %v", err)
 	}
 
-	// The binary-replace adapter is the one host-action recipe wired today; nil
-	// selects the split no-redirect(stage)/loopback(probe) fetchers. Additional
-	// adapters register here as they land. A duplicate registration is a fatal
-	// wiring bug (RegisterAdapter refuses it).
+	// Built-in host-action recipes. Nil selects split no-redirect
+	// origin(stage)/loopback(probe) fetchers. A duplicate registration is fatal.
 	if err := componentrelease.RegisterAdapter(componentrelease.NewBinaryReplaceAdapter(nil)); err != nil {
+		log.Fatalf("controller adapter wiring: %v", err)
+	}
+	if err := componentrelease.RegisterAdapter(componentrelease.NewTarballSymlinkAdapter(nil)); err != nil {
 		log.Fatalf("controller adapter wiring: %v", err)
 	}
 

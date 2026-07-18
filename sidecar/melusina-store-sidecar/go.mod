@@ -10,7 +10,8 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
+	github.com/ulikunitz/xz v0.5.12
+	golang.org/x/crypto v0.28.0
 )
 
 // Local path replaces — shared/* is part of the Melusina monorepo, not

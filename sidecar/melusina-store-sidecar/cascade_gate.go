@@ -137,6 +137,20 @@ func (c *borshCursor) u32() int {
 func (c *borshCursor) skipU64()    { c.skip(8) }
 func (c *borshCursor) skipPubkey() { c.skip(32) }
 
+// skipOptionPubkey skips Borsh Option<Pubkey>.  The tag alone is not the
+// whole field when the live license is Squads-custodied: tag=Some is followed
+// by the 32-byte vault/multisig key.  Treat an unknown tag as malformed rather
+// than risking a later field (such as status) being read at the wrong offset.
+func (c *borshCursor) skipOptionPubkey() {
+	switch c.u8() {
+	case 0: // None
+	case 1: // Some(pubkey)
+		c.skipPubkey()
+	default:
+		c.fail("cascade option pubkey has invalid tag")
+	}
+}
+
 // skipString skips a borsh string (u32 length prefix + bytes).
 func (c *borshCursor) skipString() {
 	n := c.u32()
@@ -227,8 +241,8 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	lc.skip(3)        // threshold + keyholder counters
 	lc.skipPubkey()   // owner
 	lc.skip(1)        // custody_mode
-	lc.skip(1)        // squads_vault Option flag (=0 None in probe layout)
-	lc.skip(1)        // squads_multisig Option flag
+	lc.skipOptionPubkey() // squads_vault Option<Pubkey>
+	lc.skipOptionPubkey() // squads_multisig Option<Pubkey>
 	licStatus := lc.u8()
 	if lc.err != nil {
 		return fmt.Errorf("parse LicenseEntry: %w", lc.err)

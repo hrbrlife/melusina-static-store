@@ -57,7 +57,15 @@ func mkLicenseAccount(license, reseller, master primitives.Pubkey) []byte {
 	b = append(b, 1, 1, 1)             // threshold/keyholder counters
 	b = append(b, make([]byte, 32)...) // owner
 	b = append(b, 1)                   // custody_mode
-	b = append(b, 0, 0)                // squads_vault=None, squads_multisig=None
+	// Live pilot licenses are Squads-custodied. Keeping both options Some here
+	// prevents a decoder that skips only the tags from falsely reading the first
+	// vault byte as the status field.
+	var vault, multisig [32]byte
+	vault[0], multisig[0] = 0xf8, 0x42 // nonzero proves we skip each full Pubkey
+	b = append(b, 1) // squads_vault=Some
+	b = append(b, vault[:]...)
+	b = append(b, 1) // squads_multisig=Some
+	b = append(b, multisig[:]...)
 	b = append(b, 0)                   // status = Active
 	b = mkPutU64(b, 1)                 // activated_at
 	b = append(b, 0)                   // revoked_at=None

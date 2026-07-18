@@ -427,23 +427,20 @@ func extractTarXZNoFollow(archivePath, target string) error {
 		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if hdr.FileInfo().Mode().Perm()&0o022 != 0 {
-				return fmt.Errorf("archive dir %q is group/world writable", hdr.Name)
-			}
-			if err := ensureTarballDir(target, out, hdr.FileInfo().Mode().Perm()&0o755); err != nil {
+			if err := ensureTarballDir(target, out, normalizedTarballMode(hdr.FileInfo().Mode())); err != nil {
 				return err
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			if hdr.Size < 0 || hdr.Size > maxTarballExtractBytes-total {
 				return fmt.Errorf("archive size limit exceeded")
 			}
-			if hdr.FileInfo().Mode().Perm()&0o022 != 0 {
-				return fmt.Errorf("archive file %q is group/world writable", hdr.Name)
-			}
 			if err := ensureTarballDir(target, filepath.Dir(out), 0o755); err != nil {
 				return err
 			}
-			outf, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, hdr.FileInfo().Mode().Perm()&0o755)
+			// Legacy shell bundles carry many 0664/0775 entries. Preserve only the
+			// executable/read bits while stripping all group/world write bits: an
+			// archive may never create a locally-mutable live generation.
+			outf, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, normalizedTarballMode(hdr.FileInfo().Mode()))
 			if err != nil {
 				return err
 			}
@@ -476,6 +473,10 @@ func extractTarXZNoFollow(archivePath, target string) error {
 		}
 	}
 	return syncDir(target)
+}
+
+func normalizedTarballMode(mode os.FileMode) os.FileMode {
+	return mode.Perm() & 0o755
 }
 
 // The current shell archive contains a small set of ABI compatibility links

@@ -33,7 +33,17 @@ type Family struct {
 	Apps   []App
 }
 
-// LoadFamily parses the manifest at path.
+// LoadFamily parses the manifest at path. The manifest has one fixed shape
+// (2-space indentation: families -> <family> -> apps -> <app> -> scalar fields).
+// The parser is deliberately targeted rather than a general YAML dependency, but
+// it FAILS CLOSED: inside an `apps:` block — the ONLY region where a silently
+// dropped line would drop an app or an app field — any line that does not match an
+// expected production is an error, and a tab in a line's indentation (which YAML
+// forbids and which would corrupt this space-based indent detection, silently
+// re-homing the line to column 0) is an error anywhere. Descriptive material
+// OUTSIDE the apps blocks (the schema preamble, the env:/defaults: blocks,
+// family-level squads: bodies, and the trailing closure keys including the folded
+// `out_of_scope_note` block scalar) is intentionally ignored.
 func LoadFamily(path string) (*Family, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -41,16 +51,18 @@ func LoadFamily(path string) (*Family, error) {
 	}
 	defer f.Close()
 
-	fam := &Family{}
-	var (
-		inFamilies   bool
-		curFamily    string
-		inApps       bool
-		curApp       *App
+	const (
 		familyIndent = 2
 		appsIndent   = 4
 		appIndent    = 6
 		fieldIndent  = 8
+	)
+	fam := &Family{}
+	var (
+		inFamilies bool
+		curFamily  string
+		inApps     bool
+		curApp     *App
 	)
 	flush := func() {
 		if curApp != nil {
@@ -61,40 +73,78 @@ func LoadFamily(path string) (*Family, error) {
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	blockIndent := -1 // when >= 0, skip a `key: >`/`key: |` block-scalar body indented > this
+	lineNo := 0
 	for sc.Scan() {
+		lineNo++
 		raw := sc.Text()
 		line := stripComment(raw)
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+		if hasTabInIndent(raw) {
+			return nil, fmt.Errorf("release-family manifest %s line %d: tab in indentation is not allowed: %q", path, lineNo, raw)
+		}
 		indent := leadingSpaces(line)
+		// Consume the indented body of a block scalar (e.g. out_of_scope_note: >).
+		if blockIndent >= 0 {
+			if indent > blockIndent {
+				continue
+			}
+			blockIndent = -1
+		}
 		key, val, hasVal := splitKV(strings.TrimSpace(line))
+		if hasVal && isBlockScalarIndicator(val) {
+			blockIndent = indent
+		}
+
+		// Dedent: a line below the app-field column closes the current app; a
+		// column-0 line closes the family scope entirely.
+		if inApps && indent < appIndent {
+			flush()
+			inApps = false
+		}
+		if indent == 0 {
+			flush()
+			inApps = false
+		}
 
 		switch {
 		case indent == 0 && key == "schema":
 			fam.Schema = unquote(val)
 		case indent == 0 && key == "families":
 			inFamilies = true
-		case inFamilies && indent == familyIndent && !hasVal:
+		case indent == 0:
+			// Descriptive top-level scalar (frozen, component_class, closed, count,
+			// out_of_scope_note, ...) — intentionally ignored.
+		case !inFamilies:
+			// Pre-families env:/defaults: block bodies — intentionally ignored.
+		case indent == familyIndent && !hasVal:
 			// New family header.
 			flush()
 			curFamily = key
 			inApps = false
-		case inFamilies && indent == appsIndent && key == "apps":
+		case indent == appsIndent && key == "apps":
 			inApps = true
-		case inFamilies && indent == appsIndent && key != "apps":
-			// Some other family-level block (e.g. squads:) — leave the apps scope.
+		case indent == appsIndent:
+			// A family-level block header other than apps (e.g. squads:) — leave the
+			// apps scope; its body is ignored by the !inApps arm below.
 			flush()
 			inApps = false
-		case inFamilies && inApps && indent == appIndent && !hasVal:
-			// New app header.
+		case !inApps:
+			// Family-level block body (squads: children, etc.) below a non-apps
+			// header — intentionally ignored.
+		case indent == appIndent && !hasVal:
+			// New app header inside apps:.
 			flush()
 			curApp = &App{Family: curFamily, Name: key}
-		case inFamilies && inApps && indent == fieldIndent && curApp != nil && hasVal:
+		case indent == fieldIndent && curApp != nil && hasVal:
 			assignAppField(curApp, key, unquote(val))
 		default:
-			// Deeper/other lines (per-app comments already stripped, squads bodies,
-			// closure keys) are ignored by design.
+			// Inside an apps: block but matching no expected production: a
+			// mis-indented or reshaped line that would otherwise silently drop an
+			// app or a field. Fail closed.
+			return nil, fmt.Errorf("release-family manifest %s line %d: unexpected line inside the %q apps block (indent %d): %q", path, lineNo, curFamily, indent, strings.TrimSpace(raw))
 		}
 	}
 	if err := sc.Err(); err != nil {
@@ -203,4 +253,39 @@ func unquote(s string) string {
 		return s[1 : len(s)-1]
 	}
 	return s
+}
+
+// hasTabInIndent reports whether the leading whitespace of raw contains a tab.
+// YAML forbids tabs for indentation; because this parser measures indentation in
+// spaces, a tab would be miscounted (silently re-homing the line to column 0), so
+// the loader fails closed on it instead of dropping the line.
+func hasTabInIndent(raw string) bool {
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case ' ':
+			continue
+		case '\t':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// isBlockScalarIndicator reports whether a mapping value is a YAML block-scalar
+// header ('>' or '|', optionally followed by a chomping/indentation indicator such
+// as '>-', '|+', or '|2'). The manifest uses one (out_of_scope_note: >);
+// recognizing it lets the parser skip the indented body rather than misread those
+// continuation lines as families/apps.
+func isBlockScalarIndicator(v string) bool {
+	if v == "" || (v[0] != '>' && v[0] != '|') {
+		return false
+	}
+	for i := 1; i < len(v); i++ {
+		if c := v[i]; c != '-' && c != '+' && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
 }

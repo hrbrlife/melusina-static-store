@@ -116,3 +116,70 @@ func TestSelectUnknownFails(t *testing.T) {
 		t.Fatal("expected error for unknown selector")
 	}
 }
+
+// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 8 apps)
+// so the fail-closed parser is exercised against every legitimate shape it must
+// still accept: family-level squads: bodies, quoted values with spaces, unknown
+// per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
+// trailing-comment stripping, and the folded `out_of_scope_note: >` block scalar.
+func TestLoadFamilyRealManifest(t *testing.T) {
+	const realPath = "/home/user/Desktop/agentchat/fleet/release-family.yaml"
+	if _, err := os.Stat(realPath); err != nil {
+		t.Skipf("real manifest not present (%v)", err)
+	}
+	fam, err := LoadFamily(realPath)
+	if err != nil {
+		t.Fatalf("LoadFamily(real): %v", err)
+	}
+	if len(fam.Apps) != 8 {
+		names := make([]string, len(fam.Apps))
+		for i, a := range fam.Apps {
+			names[i] = a.Family + "/" + a.Name
+		}
+		t.Fatalf("want 8 apps, got %d: %v", len(fam.Apps), names)
+	}
+	for _, sel := range []string{
+		"popaye", "ccash-domain-template", "ccashconfig", "cyberteller",
+		"cyberteller-config", "dueprocess", "namedcoin", "namedcoin-admin",
+	} {
+		if _, err := fam.Select(sel); err != nil {
+			t.Fatalf("Select(%q): %v", sel, err)
+		}
+	}
+	// The odd-one-out keeps its quoted catalog name with a space.
+	admin, err := fam.Select("namedcoin-admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "namedcoin" {
+		t.Fatalf("namedcoin-admin fields wrong: %+v", admin)
+	}
+}
+
+// TestLoadFamilyFailsClosedOnTabIndent proves a tab-indented app field is rejected
+// rather than silently re-homed to column 0 and dropped.
+func TestLoadFamilyFailsClosedOnTabIndent(t *testing.T) {
+	const m = "schema: s\nfamilies:\n  fam:\n    apps:\n      app1:\n        appId: abc\n\t        source_path: x\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.yaml")
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFamily(path); err == nil {
+		t.Fatal("expected fail-closed error on tab indentation")
+	}
+}
+
+// TestLoadFamilyFailsClosedOnMisindentedField proves a reshaped/mis-indented line
+// inside an apps: block is an error, not a silent skip.
+func TestLoadFamilyFailsClosedOnMisindentedField(t *testing.T) {
+	const m = "schema: s\nfamilies:\n  fam:\n    apps:\n      app1:\n        appId: abc\n          source_path: too-deep\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.yaml")
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFamily(path); err == nil {
+		t.Fatal("expected fail-closed error on a mis-indented line inside apps")
+	}
+}

@@ -234,6 +234,20 @@ func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *
 		return 0, "", false, errors.New("internal error: signed envelope does not bind POST /publish/generation")
 	}
 
+	// Superset preservation (audit FIX 4): capture the component set of the
+	// generation served at this floor BEFORE the promote, so we can prove the
+	// promote folds ours in WITHOUT silently dropping another app's component. A
+	// 404 means no prior generation — nothing to preserve.
+	var prevComponentIDs []string
+	if _, prevDoc, perr := fetchAndVerifyGeneration(ctx, client, c.StoreURL, c.StoreID, operatorKey); perr == nil {
+		prevComponentIDs = make([]string, 0, len(prevDoc.Components))
+		for _, pc := range prevDoc.Components {
+			prevComponentIDs = append(prevComponentIDs, pc.ComponentID)
+		}
+	} else if !errors.Is(perr, errNoGenerationServed) {
+		return 0, "", false, perr
+	}
+
 	result, status, err := postPromote(ctx, client, c.StoreURL, signed, requestBytes)
 	if err != nil {
 		return 0, "", status == http.StatusConflict, err
@@ -256,6 +270,13 @@ func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *
 	}
 	if got.SHA256 != comp.SHA256 || got.ContentSHA256 != comp.ContentSHA256 || got.Version != comp.Version {
 		return 0, "", false, fmt.Errorf("served component %q does not match the candidate binding", comp.ComponentID)
+	}
+	// Prove the promote is a strict SUPERSET: every component present before it must
+	// still be present (a single-component promote must never drop another app's).
+	for _, id := range prevComponentIDs {
+		if _, present := doc.Component(id); !present {
+			return 0, "", false, fmt.Errorf("promoted generation dropped previously-served component %q (generation superset violated)", id)
+		}
 	}
 	return doc.GenerationID, doc.GenerationHash, false, nil
 }

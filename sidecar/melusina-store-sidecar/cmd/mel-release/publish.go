@@ -16,8 +16,11 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -94,7 +97,7 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 	}
 
 	candPath := c.candidatePath(app.AppID)
-	if err := writeCandidate(c, app, rec, candPath); err != nil {
+	if err := ensureCandidate(c, app, rec, candPath); err != nil {
 		return "", err
 	}
 	return candPath, nil
@@ -125,6 +128,17 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	for _, r := range active {
 		if r.AppHash == b.AppHash {
 			return fmt.Errorf("new app_hash %s is already Active before the registration boundary", b.AppHash)
+		}
+		// Monotonicity gate: the new version MUST be strictly greater than every
+		// currently-Active release, matching how the store orders release versions
+		// (verifyReleaseVersionForward / semverGreater in release_version.go). Refuse
+		// an equal or lower version so a downgrade can never supersede a live release.
+		greater, err := versionStrictlyGreater(rec.Version, r.Version)
+		if err != nil {
+			return fmt.Errorf("compare new version %q against Active %q: %w", rec.Version, r.Version, err)
+		}
+		if !greater {
+			return fmt.Errorf("new version %q is not strictly greater than the current Active version %q (%s)", rec.Version, r.Version, r.PDA)
 		}
 		stale = append(stale, r.PDA)
 	}
@@ -239,10 +253,13 @@ func deriveReleasePDA(masterMintB58, appHashHex, programB58 string) (string, err
 	return pda.ToBase58(rel[:]), nil
 }
 
-// writeCandidate assembles and durably writes the immutable candidate receipt —
-// the full pre-image of the frozen componentrelease app entry plus the staging +
-// proposal proofs the approve side needs.
-func writeCandidate(c Config, app App, rec walReceipt, path string) error {
+// buildCandidate assembles the immutable candidate receipt — the full pre-image
+// of the frozen componentrelease app entry plus the staging + proposal proofs the
+// approve side needs. CreatedAtUnix is left zero (it is a recording timestamp
+// stamped only when the candidate is first written), so the result is fully
+// deterministic in {config, app, WAL}: the same PROPOSED state always reproduces
+// the same substantive candidate.
+func buildCandidate(c Config, app App, rec walReceipt) candidateReceipt {
 	comp := candidateComponent{
 		ComponentID:    rec.AppID,
 		ComponentClass: "app",
@@ -262,7 +279,7 @@ func writeCandidate(c Config, app App, rec walReceipt, path string) error {
 		PreviousSHA256:  rec.PreviousSHA256,
 		PreviousVersion: rec.PreviousVersion,
 	}
-	cand := candidateReceipt{
+	return candidateReceipt{
 		Schema:       candidateSchema,
 		AppID:        rec.AppID,
 		PublishSlug:  app.PublishSlug,
@@ -278,16 +295,120 @@ func writeCandidate(c Config, app App, rec walReceipt, path string) error {
 			TransactionPDA: rec.TransactionPDA,
 			Instruction:    "register_release_entry",
 		},
-		StalePDAs:     rec.StalePDAs,
-		StoreID:       c.StoreID,
-		BundleOrigin:  c.BundleOrigin,
-		Channel:       c.Channel,
-		CreatedAtUnix: time.Now().UTC().Unix(),
+		StalePDAs:    rec.StalePDAs,
+		StoreID:      c.StoreID,
+		BundleOrigin: c.BundleOrigin,
+		Channel:      c.Channel,
 	}
+}
+
+// candidateDigest is a stable sha256 over the candidate's substantive fields
+// (everything except the CreatedAtUnix recording timestamp). It lets a resuming
+// publish prove a re-derived candidate matches the one already frozen on disk.
+func candidateDigest(cand candidateReceipt) (string, error) {
+	cand.CreatedAtUnix = 0
+	raw, err := json.Marshal(cand)
+	if err != nil {
+		return "", err
+	}
+	return sha256Hex(raw), nil
+}
+
+// ensureCandidate writes the immutable candidate exactly once, on the first
+// transition into PROPOSED. On resume the candidate already exists: it is LOADED
+// and re-verified (its substantive digest must equal the freshly re-derived one)
+// and is NEVER rewritten, so the frozen candidate receipt — the sole thing the
+// approve side re-validates against — stays byte-immutable. A digest mismatch
+// (config/WAL drift that would have changed the candidate) fails closed.
+func ensureCandidate(c Config, app App, rec walReceipt, path string) error {
+	cand := buildCandidate(c, app, rec)
+	want, err := candidateDigest(cand)
+	if err != nil {
+		return err
+	}
+	existing, _, err := readCandidate(path)
+	if err == nil {
+		got, derr := candidateDigest(existing)
+		if derr != nil {
+			return derr
+		}
+		if got != want {
+			return fmt.Errorf("existing immutable candidate %s has substantive digest %s but this run would produce %s — refusing to overwrite the frozen candidate", path, got, want)
+		}
+		return nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("read existing candidate %s: %w", path, err)
+	}
+	cand.CreatedAtUnix = time.Now().UTC().Unix()
 	raw, err := json.MarshalIndent(cand, "", "  ")
 	if err != nil {
 		return err
 	}
 	raw = append(raw, '\n')
 	return writeDurable(path, raw)
+}
+
+// versionStrictlyGreater reports whether next is a strictly greater release
+// version than current. It mirrors the store's monotonic ordering exactly
+// (semverGreater/parseSemver in release_version.go, which the store's
+// verifyReleaseVersionForward enforces): strip an optional leading "v" and "+build"
+// suffix, reject pre-release ("-") versions, then compare dot-separated numeric
+// fields field-wise (a missing trailing field is 0). It is duplicated here rather
+// than imported because that gate lives in the store's separate package main.
+func versionStrictlyGreater(next, current string) (bool, error) {
+	n, err := parseReleaseSemver(next)
+	if err != nil {
+		return false, fmt.Errorf("submitted version %q: %w", next, err)
+	}
+	c, err := parseReleaseSemver(current)
+	if err != nil {
+		return false, fmt.Errorf("current version %q: %w", current, err)
+	}
+	max := len(n)
+	if len(c) > max {
+		max = len(c)
+	}
+	for i := 0; i < max; i++ {
+		var nv, cv int
+		if i < len(n) {
+			nv = n[i]
+		}
+		if i < len(c) {
+			cv = c[i]
+		}
+		if nv > cv {
+			return true, nil
+		}
+		if nv < cv {
+			return false, nil
+		}
+	}
+	return false, nil
+}
+
+func parseReleaseSemver(v string) ([]int, error) {
+	v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
+	if v == "" {
+		return nil, errors.New("empty version")
+	}
+	if strings.Contains(v, "-") {
+		return nil, errors.New("pre-release versions are not accepted by the monotonic gate")
+	}
+	if i := strings.IndexByte(v, '+'); i >= 0 {
+		v = v[:i]
+	}
+	parts := strings.Split(v, ".")
+	out := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if p == "" {
+			return nil, errors.New("empty numeric segment")
+		}
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("non-numeric segment %q", p)
+		}
+		out = append(out, n)
+	}
+	return out, nil
 }

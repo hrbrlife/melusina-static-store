@@ -3,12 +3,30 @@ package componentrelease
 import (
 	"context"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestLoopbackDialAddressRejectsRemoteResolution(t *testing.T) {
+	_, err := loopbackDialAddress("rrs-store-pilot.melusina-os.org", "8443", []net.IPAddr{{IP: net.ParseIP("203.0.113.9")}})
+	if err == nil || !strings.Contains(err.Error(), "outside loopback") {
+		t.Fatalf("remote resolution must be refused, got %v", err)
+	}
+}
+
+func TestLoopbackDialAddressPinsVerifiedLoopback(t *testing.T) {
+	got, err := loopbackDialAddress("rrs-store-pilot.melusina-os.org", "8443", []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}, {IP: net.ParseIP("::1")}})
+	if err != nil {
+		t.Fatalf("loopback resolution refused: %v", err)
+	}
+	if got != "127.0.0.1:8443" {
+		t.Fatalf("dial address = %q, want loopback pin", got)
+	}
+}
 
 func TestBinaryReplaceProbeWaitsForServiceReadiness(t *testing.T) {
 	ready := filepath.Join(t.TempDir(), "ready")

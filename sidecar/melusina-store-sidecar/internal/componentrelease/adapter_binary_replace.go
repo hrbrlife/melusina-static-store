@@ -48,6 +48,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	neturl "net/url"
 	"os"
@@ -441,20 +442,63 @@ func defaultLoopbackGet(ctx context.Context, url string) (io.ReadCloser, error) 
 	if err != nil {
 		return nil, err
 	}
-	switch u.Hostname() {
-	case "127.0.0.1", "localhost", "::1":
-	default:
-		return nil, fmt.Errorf("self-report must be loopback, got host %q", u.Hostname())
+	host := u.Hostname()
+	if host == "" {
+		return nil, fmt.Errorf("self-report has no hostname")
 	}
-	return noRedirectGet(ctx, url)
-}
+	if u.Scheme != "https" {
+		return nil, fmt.Errorf("self-report must use https, got %q", u.Scheme)
+	}
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("resolve self-report host %q: %w", host, err)
+	}
 
-func noRedirectGet(ctx context.Context, url string) (io.ReadCloser, error) {
-	client := &http.Client{
+	// Keep the signed TLS hostname in the request so certificate verification is
+	// real, but pin the dial target to the just-verified loopback address.  This
+	// supports a component certificate for its chain-bound DNS identity without
+	// turning a registry self-report into a remote network capability.
+	dialAddr, err := loopbackDialAddress(host, u.Port(), ips)
+	if err != nil {
+		return nil, err
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	dialer := &net.Dialer{}
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return dialer.DialContext(ctx, network, dialAddr)
+	}
+	return noRedirectGetWithClient(ctx, url, &http.Client{
+		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return errors.New("redirects are not allowed")
 		},
+	})
+}
+
+func loopbackDialAddress(host, port string, ips []net.IPAddr) (string, error) {
+	if len(ips) == 0 {
+		return "", fmt.Errorf("self-report host %q resolved to no addresses", host)
 	}
+	for _, ip := range ips {
+		if !ip.IP.IsLoopback() {
+			return "", fmt.Errorf("self-report host %q resolved outside loopback: %s", host, ip.IP)
+		}
+	}
+	if port == "" {
+		port = "443"
+	}
+	return net.JoinHostPort(ips[0].IP.String(), port), nil
+}
+
+func noRedirectGet(ctx context.Context, url string) (io.ReadCloser, error) {
+	return noRedirectGetWithClient(ctx, url, &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errors.New("redirects are not allowed")
+		},
+	})
+}
+
+func noRedirectGetWithClient(ctx context.Context, url string, client *http.Client) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

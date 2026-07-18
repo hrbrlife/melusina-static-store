@@ -55,8 +55,22 @@ func withTestReceiptBindings(e WALEntry) WALEntry {
 	return e
 }
 
+// secureWALRoot makes the fixture model the controller-owned WAL root rather
+// than inherit the caller's umask. NewWALStore deliberately rejects a
+// group/world-writable root, so passing t.TempDir() directly makes this package
+// spuriously fail under a normal collaborative umask such as 0002 before the
+// adversarial WAL cases even execute.
+func secureWALRoot(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatalf("chmod fixture WAL root: %v", err)
+	}
+	return dir
+}
+
 func TestWALOpenIsExclusivePerComponentLock(t *testing.T) {
-	w, err := NewWALStore(t.TempDir())
+	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +92,7 @@ func TestWALOpenIsExclusivePerComponentLock(t *testing.T) {
 }
 
 func TestWALAdvanceAndComplete(t *testing.T) {
-	w, err := NewWALStore(t.TempDir())
+	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +132,7 @@ func TestWALAdvanceAndComplete(t *testing.T) {
 }
 
 func TestWALCompleteRefusesMissingTerminalProofBindings(t *testing.T) {
-	w, err := NewWALStore(t.TempDir())
+	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +155,7 @@ func TestWALCompleteRefusesMissingTerminalProofBindings(t *testing.T) {
 }
 
 func TestWALCompleteRefusesUnboundRuntimeEvidence(t *testing.T) {
-	w, err := NewWALStore(t.TempDir())
+	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +175,7 @@ func TestWALCompleteRefusesUnboundRuntimeEvidence(t *testing.T) {
 }
 
 func TestWALRollbackRetainsReceipt(t *testing.T) {
-	w, err := NewWALStore(t.TempDir())
+	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,9 +199,16 @@ func TestWALRollbackRetainsReceipt(t *testing.T) {
 }
 
 func TestWALAdvanceRefusesTerminal(t *testing.T) {
-	w, _ := NewWALStore(t.TempDir())
-	_ = w.Open(sampleEntry())
-	_, _ = w.Rollback("sandstorm-shell", 1, "x")
+	w, err := NewWALStore(secureWALRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Open(sampleEntry()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Rollback("sandstorm-shell", 1, "x"); err != nil {
+		t.Fatal(err)
+	}
 	if err := w.Advance("sandstorm-shell", StateApplying, nil); err == nil {
 		t.Fatal("Advance on a cleared/terminal WAL should fail")
 	}
@@ -228,8 +249,13 @@ func TestRecoveryDecision(t *testing.T) {
 }
 
 func TestWALRejectsUnknownFieldOnDecode(t *testing.T) {
-	w, _ := NewWALStore(t.TempDir())
-	_ = w.Open(sampleEntry())
+	w, err := NewWALStore(secureWALRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Open(sampleEntry()); err != nil {
+		t.Fatal(err)
+	}
 	p := filepath.Join(w.activeDir, "sandstorm-shell.wal")
 	// Corrupt the on-disk WAL with an unknown field; Load must refuse it.
 	if err := os.WriteFile(p, []byte(`{"schema":"melusina-hostupdate-wal-v1","componentId":"sandstorm-shell","toHash":"`+toHash+`","state":"staged","deepStableSeconds":1,"hostAction":"rm -rf"}`), 0o600); err != nil {

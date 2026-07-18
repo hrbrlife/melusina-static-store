@@ -183,7 +183,7 @@ func ensureStaged(c Config, prov SignerProvider, rec *walReceipt) error {
 		return verifyArtifactRef(rec.StageReceiptRef)
 	}
 	stagePath := c.receiptPath(rec.AppID, "stage.json")
-	if err := prov.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, stagePath); err != nil {
+	if err := prov.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.ReleaseNonce, stagePath); err != nil {
 		return err
 	}
 	s, ref, err := readStageReceipt(stagePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash)

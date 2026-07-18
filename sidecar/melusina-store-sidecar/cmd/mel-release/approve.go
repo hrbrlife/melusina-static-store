@@ -154,7 +154,7 @@ func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
 		return verifyRegisteredLive(prov, rec)
 	}
 	registerPath := c.receiptPath(rec.AppID, "register.json")
-	if err := prov.ApproveRegister(rec.AppID, rec.TransactionPDA, registerPath); err != nil {
+	if err := prov.ApproveRegister(rec.AppID, rec.TransactionPDA, registerPath, rec.ReleaseJSON.Path); err != nil {
 		return err
 	}
 	ref, err := readRegisterReceipt(registerPath, rec.NewReleasePDA, rec.ReleaseHash)

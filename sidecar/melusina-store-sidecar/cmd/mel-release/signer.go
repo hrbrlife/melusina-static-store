@@ -63,7 +63,7 @@ type SignerProvider interface {
 	// Stage privately stages the new bytes at the store and writes a store-signed
 	// stage receipt (schema melusina-app-stage-receipt-v1). No Active ReleaseEntry
 	// is required to stage — staging is not catalog-visible.
-	Stage(appID, appHash, releaseHash, receiptOut string) error
+	Stage(appID, appHash, releaseHash, releaseNonce, receiptOut string) error
 
 	// ProposeRegister creates the UNEXECUTED Squads register_release_entry proposal
 	// and writes RELEASE.json (releaseJSONOut) + a proposal receipt (proposeOut,
@@ -74,7 +74,7 @@ type SignerProvider interface {
 	// ApproveRegister executes the authorized Squads approval of transactionPda,
 	// landing register_release_entry -> ReleaseEntry Active, and writes a register
 	// receipt (registerOut, schema melusina-register-release-receipt-v1).
-	ApproveRegister(appID, transactionPda, registerOut string) error
+	ApproveRegister(appID, transactionPda, registerOut, finalReleaseOut string) error
 
 	// Promote durably promotes the staged bytes into the served catalog + signed
 	// pointer and writes a promotion receipt (schema melusina-app-promotion-receipt-v1).
@@ -98,8 +98,10 @@ func newExecProvider(c Config) *execProvider {
 		command: c.SignerProvider,
 		env: map[string]string{
 			"MEL_RELEASE_RPC_URL":         c.RPCURL,
+			"MEL_RELEASE_STATE_DIR":       c.StateDir,
 			"MEL_RELEASE_STORE_URL":       c.StoreURL,
 			"MEL_RELEASE_STORE_PUBKEY":    c.StorePubkey,
+			"MEL_RELEASE_PUBLISHER_KEY":   c.PublisherKey,
 			"MEL_RELEASE_SQUADS_MULTISIG": c.SquadsMultisig,
 			"MEL_RELEASE_SQUADS_VAULT":    c.SquadsVault,
 			"MEL_PROGRAM_ID":              c.ProgramID,
@@ -187,9 +189,10 @@ func (e *execProvider) ServedAppHash(appID string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (e *execProvider) Stage(appID, appHash, releaseHash, receiptOut string) error {
+func (e *execProvider) Stage(appID, appHash, releaseHash, releaseNonce, receiptOut string) error {
 	_, err := e.run("stage", map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_RELEASE_NONCE":     releaseNonce,
 		"MEL_STAGE_RECEIPT_OUT": receiptOut,
 	})
 	return err
@@ -204,10 +207,10 @@ func (e *execProvider) ProposeRegister(appID, appHash, version, nonce, multisig,
 	return err
 }
 
-func (e *execProvider) ApproveRegister(appID, transactionPda, registerOut string) error {
+func (e *execProvider) ApproveRegister(appID, transactionPda, registerOut, finalReleaseOut string) error {
 	_, err := e.run("approve-register", map[string]string{
 		"MEL_APP_ID": appID, "MEL_TRANSACTION_PDA": transactionPda,
-		"MEL_REGISTER_RECEIPT_OUT": registerOut,
+		"MEL_REGISTER_RECEIPT_OUT": registerOut, "MEL_FINAL_RELEASE_JSON_OUT": finalReleaseOut,
 	})
 	return err
 }

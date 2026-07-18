@@ -11,9 +11,14 @@ mkdir -p "$APP" "$BIN"
 cat > "$APP/Makefile" <<'MAKE'
 build:
 	@:
+ifeq ($(PACK_MODE),pack)
+pack:
+	@printf 'candidate-bytes-pack' > app.spk
+else
 pack-local:
 	@printf 'candidate-bytes' > app.spk
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
+endif
 MAKE
 cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
@@ -50,6 +55,16 @@ assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# The real MSB spkmodule trees provide `pack`, not the fixture-only
+# `pack-local` helper. Target discovery must select it without an override.
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk PACK_MODE=pack \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/pack-receipt.json"
+python3 - "$WORK/pack-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["app"]["packageId"] == d["artifact"]["sha256"][:32]
+PY
 
 printf 'local-only\n' >> "$APP/tracked.txt"
 git -C "$APP" add tracked.txt

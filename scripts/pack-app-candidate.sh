@@ -55,8 +55,30 @@ export SOURCE_DATE_EPOCH="$source_epoch"
 
 rm -f "$SPK_OUT"
 make -C "$APP_DIR" build
-make -C "$APP_DIR" pack-local
-[[ -f "$SPK_OUT" ]] || { echo "pack-local did not create $SPK_OUT" >&2; exit 2; }
+# The historic helper target was only present in the hermetic fixture. Real
+# MSB apps expose the normal spkmodule `pack` target. Prefer an explicit
+# operator override, then retain pack-local compatibility for a repository
+# that deliberately provides it, then fall back to the common `pack` target.
+# Do not guess a target that Make does not declare: publishing must stop before
+# producing a candidate rather than treating an arbitrary artifact as an SPK.
+PACK_TARGET="${MEL_RELEASE_PACK_TARGET:-}"
+if [[ -z "$PACK_TARGET" ]]; then
+  # `make -q target` reports whether target is up-to-date, not whether it
+  # exists, so inspect Make's parsed rule database without executing a target.
+  make_target_exists() {
+    make -C "$APP_DIR" -prRn 2>/dev/null | grep -qE "^$1:"
+  }
+  if make_target_exists pack-local; then
+    PACK_TARGET="pack-local"
+  elif make_target_exists pack; then
+    PACK_TARGET="pack"
+  else
+    echo "app Makefile declares neither pack-local nor pack; set MEL_RELEASE_PACK_TARGET explicitly" >&2
+    exit 2
+  fi
+fi
+make -C "$APP_DIR" "$PACK_TARGET"
+[[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
 
 dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
 [[ -z "$dirty" ]] || {

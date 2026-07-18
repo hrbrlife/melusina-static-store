@@ -318,6 +318,15 @@ func bindTarballRuntimeProcess(ctx context.Context, ev RuntimeEvidence, install 
 	if err != nil {
 		return fmt.Errorf("re-read current tarball generation for %s: %w", componentID, err)
 	}
+	return validateTarballRuntimeBinding(ev, componentID, pid1, pid2, target1, target2, exePath)
+}
+
+// validateTarballRuntimeBinding is the pure final gate for a tarball runtime
+// proof. Keeping the race-sensitive tuple check independent of systemd and
+// /proc I/O makes the deny cases executable: a report from a different PID, a
+// PID or current-target swap, or an executable outside the selected immutable
+// generation cannot be accidentally accepted by a future binder refactor.
+func validateTarballRuntimeBinding(ev RuntimeEvidence, componentID string, pid1, pid2 int, target1, target2, exePath string) error {
 	if pid1 != pid2 || ev.PID != pid1 {
 		return fmt.Errorf("MainPID moved (%d->%d) or report PID %d mismatch during runtime bind of %s", pid1, pid2, ev.PID, componentID)
 	}

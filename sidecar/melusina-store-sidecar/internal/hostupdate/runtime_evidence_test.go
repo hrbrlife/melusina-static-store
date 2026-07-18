@@ -91,3 +91,34 @@ func TestComponentHealthyRechecksPersistedWALTupleBeforeReceipt(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateTarballRuntimeBindingRejectsEveryProcessAndGenerationSwap(t *testing.T) {
+	const (
+		component  = "sandstorm-shell"
+		generation = "/opt/sandstorm/releases/gen-7-acde"
+		executable = generation + "/sandstorm"
+	)
+	good := RuntimeEvidence{PID: 4242}
+	if err := validateTarballRuntimeBinding(good, component, 4242, 4242, generation, generation, executable); err != nil {
+		t.Fatalf("valid selected-generation runtime binding refused: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name                  string
+		ev                    RuntimeEvidence
+		pid1, pid2            int
+		target1, target2, exe string
+	}{
+		{"report-pid-mismatch", RuntimeEvidence{PID: 4243}, 4242, 4242, generation, generation, executable},
+		{"main-pid-moved", good, 4242, 4243, generation, generation, executable},
+		{"current-target-moved", good, 4242, 4242, generation, "/opt/sandstorm/releases/gen-8-bdef", executable},
+		{"executable-outside-generation", good, 4242, 4242, generation, generation, "/usr/local/bin/sandstorm"},
+		{"sibling-prefix-is-not-under-generation", good, 4242, 4242, generation, generation, generation + "-evil/sandstorm"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateTarballRuntimeBinding(tc.ev, component, tc.pid1, tc.pid2, tc.target1, tc.target2, tc.exe); err == nil {
+				t.Fatal("accepted a tarball runtime binding with a moved process or generation")
+			}
+		})
+	}
+}

@@ -19,6 +19,7 @@ type tarTestEntry struct {
 	name     string
 	body     []byte
 	typeflag byte
+	linkname string
 }
 
 func tarXZ(t *testing.T, entries ...tarTestEntry) []byte {
@@ -34,7 +35,7 @@ func tarXZ(t *testing.T, entries ...tarTestEntry) []byte {
 		if typeflag == 0 {
 			typeflag = tar.TypeReg
 		}
-		h := &tar.Header{Name: e.name, Mode: 0o755, Typeflag: typeflag, Size: int64(len(e.body))}
+		h := &tar.Header{Name: e.name, Mode: 0o755, Typeflag: typeflag, Linkname: e.linkname, Size: int64(len(e.body))}
 		if typeflag == tar.TypeDir {
 			h.Size = 0
 		}
@@ -154,13 +155,14 @@ func TestTarballAdapterRefusesMutatedArchiveAtApply(t *testing.T) {
 	}
 }
 
-func TestTarballExtractorRejectsTraversalAndLinks(t *testing.T) {
+func TestTarballExtractorRejectsTraversalAndUnsafeLinks(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		entry tarTestEntry
 	}{
 		{"traversal", tarTestEntry{name: "../outside", body: []byte("bad")}},
-		{"symlink", tarTestEntry{name: "bin/link", typeflag: tar.TypeSymlink}},
+		{"absolute-symlink", tarTestEntry{name: "bin/link", typeflag: tar.TypeSymlink, linkname: "/etc/shadow"}},
+		{"escaping-relative-symlink", tarTestEntry{name: "bin/link", typeflag: tar.TypeSymlink, linkname: "../../outside"}},
 		{"hardlink", tarTestEntry{name: "bin/link", typeflag: tar.TypeLink}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -177,6 +179,44 @@ func TestTarballExtractorRejectsTraversalAndLinks(t *testing.T) {
 				t.Fatalf("extractor wrote outside target: %v", err)
 			}
 		})
+	}
+}
+
+func TestTarballExtractorAcceptsContainedAndApprovedSystemLinks(t *testing.T) {
+	archive := tarXZ(t,
+		tarTestEntry{name: "sandstorm", body: []byte("shell")},
+		tarTestEntry{name: "bin/spk", typeflag: tar.TypeSymlink, linkname: "../sandstorm"},
+		tarTestEntry{name: "lib/libcurl.so.4", typeflag: tar.TypeSymlink, linkname: "/usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0"},
+	)
+	root := t.TempDir()
+	path := filepath.Join(root, "archive.tar.xz")
+	if err := os.WriteFile(path, archive, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(root, "out")
+	if err := extractTarXZNoFollow(path, out); err != nil {
+		t.Fatal(err)
+	}
+	if target, err := os.Readlink(filepath.Join(out, "bin", "spk")); err != nil || target != "../sandstorm" {
+		t.Fatalf("relative link = %q, %v", target, err)
+	}
+	if target, err := os.Readlink(filepath.Join(out, "lib", "libcurl.so.4")); err != nil || target != "/usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0" {
+		t.Fatalf("system link = %q, %v", target, err)
+	}
+}
+
+func TestTarballExtractorRefusesWriteUnderPriorSymlink(t *testing.T) {
+	archive := tarXZ(t,
+		tarTestEntry{name: "link", typeflag: tar.TypeSymlink, linkname: "/usr/lib/"},
+		tarTestEntry{name: "link/escaped", body: []byte("must-not-write")},
+	)
+	root := t.TempDir()
+	path := filepath.Join(root, "archive.tar.xz")
+	if err := os.WriteFile(path, archive, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractTarXZNoFollow(path, filepath.Join(root, "out")); err == nil {
+		t.Fatal("extractor followed prior symlink as parent")
 	}
 }
 

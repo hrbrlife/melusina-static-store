@@ -481,8 +481,10 @@ func (s *revokeGuardStubProvider) ReleaseStatus(pda string) (releaseStatus, erro
 	}
 	return releaseStatus{PDA: pda, Status: "Active"}, nil
 }
-func (s *revokeGuardStubProvider) ServedAppHash(string) (string, error)               { return s.served, nil }
-func (s *revokeGuardStubProvider) Stage(string, string, string, string, string) error { return nil }
+func (s *revokeGuardStubProvider) ServedAppHash(string) (string, error) { return s.served, nil }
+func (s *revokeGuardStubProvider) Stage(string, string, string, string, string, string) error {
+	return nil
+}
 func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string) error {
 	return nil
 }

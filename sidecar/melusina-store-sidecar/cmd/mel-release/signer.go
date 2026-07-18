@@ -63,7 +63,7 @@ type SignerProvider interface {
 	// Stage privately stages the new bytes at the store and writes a store-signed
 	// stage receipt (schema melusina-app-stage-receipt-v1). No Active ReleaseEntry
 	// is required to stage — staging is not catalog-visible.
-	Stage(appID, appHash, releaseHash, releaseNonce, receiptOut string) error
+	Stage(appID, appHash, releaseHash, version, releaseNonce, receiptOut string) error
 
 	// ProposeRegister creates the UNEXECUTED Squads register_release_entry proposal
 	// and writes RELEASE.json (releaseJSONOut) + a proposal receipt (proposeOut,
@@ -189,9 +189,9 @@ func (e *execProvider) ServedAppHash(appID string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (e *execProvider) Stage(appID, appHash, releaseHash, releaseNonce, receiptOut string) error {
+func (e *execProvider) Stage(appID, appHash, releaseHash, version, releaseNonce, receiptOut string) error {
 	_, err := e.run("stage", map[string]string{
-		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash, "MEL_NEW_VERSION": version,
 		"MEL_RELEASE_NONCE":     releaseNonce,
 		"MEL_STAGE_RECEIPT_OUT": receiptOut,
 	})

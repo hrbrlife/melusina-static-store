@@ -307,7 +307,7 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// is refused (403). Fail-closed: with no chain reader, SPK serves 503.
 	flatStatic := http.FileServer(http.Dir(cfg.DistDir))
 	static := requestScopedStatic{flat: flatStatic}
-	gate := newServeGate(cfg, cr, static)
+	gate := newServeGate(cfg, cr, static, svc.operator)
 	var readSurface http.Handler = gate
 	if runtime.appNonces != nil && runtime.catalogGenerations.Root != "" {
 		readSurface = newGenerationHTTP(runtime.catalogGenerations, gate)

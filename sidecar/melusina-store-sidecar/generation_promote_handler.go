@@ -514,6 +514,16 @@ func (s *publishService) verifyComponentServedBytes(c componentrelease.Component
 		return fmt.Errorf("component %s: served artifact not found (%s): %w", c.ComponentID, rel, err)
 	}
 	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("component %s: stat served artifact: %w", c.ComponentID, err)
+	}
+	if !st.Mode().IsRegular() {
+		return fmt.Errorf("component %s: served artifact is not a regular file", c.ComponentID)
+	}
+	if st.Size() != c.SizeBytes {
+		return fmt.Errorf("component %s: served artifact size %d != component size %d", c.ComponentID, st.Size(), c.SizeBytes)
+	}
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return fmt.Errorf("component %s: hash served artifact: %w", c.ComponentID, err)

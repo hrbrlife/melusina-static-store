@@ -41,6 +41,7 @@ func TestVerifyComponentServedBytes(t *testing.T) {
 		ComponentID: "sandstorm-shell",
 		BundleURL:   "https://bazaar.melusina-os.org/releases/shell/" + name,
 		SHA256:      shaHex,
+		SizeBytes:   int64(len(content)),
 	}
 	if err := svc.verifyComponentServedBytes(ok); err != nil {
 		t.Fatalf("valid served bytes rejected: %v", err)
@@ -339,6 +340,7 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 		ComponentID:    "swaprail",
 		ComponentClass: componentrelease.ClassSidecar,
 		SHA256:         shaHex,
+		SizeBytes:      int64(len(content)),
 		BundleURL:      "https://bazaar.melusina-os.org/releases/sidecar/" + name,
 		Chain: componentrelease.ChainAuthority{
 			Kind:           componentrelease.AuthoritySidecarIdentity,

@@ -16,6 +16,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -516,6 +517,91 @@ func TestServeGate_InstallerReleaseActive(t *testing.T) {
 	}
 	if got, want := w.Header().Get("X-Store-InstallerHash"), hex.EncodeToString(hash[:]); got != want {
 		t.Fatalf("X-Store-InstallerHash=%q, want %q", got, want)
+	}
+}
+
+// TestServeGate_SidecarRequiresCurrentSignedGenerationAndCascade proves the
+// narrow sidecar route used by the first release-rail cycle. A sidecar binary is
+// not an installer release: it is downloadable only when the exact current
+// operator-signed generation names it and its live SidecarIdentity cascade pins
+// those bytes. A sibling filename and a revoked identity both remain refused.
+func TestServeGate_SidecarRequiresCurrentSignedGenerationAndCascade(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.StoreID = "rrs-store"
+	cfg.PublicBaseURL = "https://bazaar.melusina-os.org:8443"
+
+	body := []byte("sidecar bytes bound to current desired generation")
+	hash := sha256.Sum256(body)
+	name := "rrs-store-" + hex.EncodeToString(hash[:8]) + ".bin"
+	writeReleaseArtifact(t, cfg.DistDir, componentrelease.ClassSidecar, name, body)
+	writeReleaseArtifact(t, cfg.DistDir, componentrelease.ClassSidecar, "not-current.bin", body)
+
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	license, err := primitives.PubkeyFromBase58(testLicenseMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidPDA, _, err := pda.SidecarIdentity(license, "swaprail", 1, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := componentrelease.ComponentRelease{
+		ComponentID:    "swaprail",
+		ComponentClass: componentrelease.ClassSidecar,
+		Version:        "1.0.8",
+		ArtifactName:   name,
+		SHA256:         hex.EncodeToString(hash[:]),
+		SizeBytes:      int64(len(body)),
+		BundleURL:      cfg.PublicBaseURL + "/releases/sidecar/" + name,
+		Chain: componentrelease.ChainAuthority{
+			Kind:              componentrelease.AuthoritySidecarIdentity,
+			Program:           programID.Base58(),
+			MasterNftMint:     testLicenseMint,
+			LicenseNftMint:    testLicenseMint,
+			SidecarID:         "swaprail",
+			KeyVersion:        1,
+			IdentityPDA:       sidPDA.Base58(),
+			GlobalApprovalPDA: "global-approved-by-derived-cascade",
+			LocalApprovalPDA:  "local-approved-by-derived-cascade",
+		},
+	}
+	doc, err := componentrelease.Sign(op, componentrelease.DesiredGeneration{
+		GenerationID:       1,
+		StoreID:            cfg.StoreID,
+		BundleOrigin:       cfg.PublicBaseURL,
+		Channel:            "dev",
+		SignedAtUnix:       1784380000,
+		PreviousGeneration: 0,
+		Components:         []componentrelease.ComponentRelease{component},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistDesiredGeneration(cfg.DistDir, raw); err != nil {
+		t.Fatal(err)
+	}
+
+	m := newMockChainReader()
+	m.sidecarIdentity[sidPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: hash}}
+	seedValidCascade(t, m, license, "swaprail", hash)
+	g := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)), op)
+
+	if w := serveGet(t, g, http.MethodGet, "/releases/sidecar/"+name); w.Code != http.StatusOK {
+		t.Fatalf("current signed sidecar want 200, got %d: %s", w.Code, w.Body.String())
+	} else if got, want := w.Header().Get("X-Store-SidecarHash"), hex.EncodeToString(hash[:]); got != want {
+		t.Fatalf("X-Store-SidecarHash=%q, want %q", got, want)
+	}
+	if w := serveGet(t, g, http.MethodGet, "/releases/sidecar/not-current.bin"); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "not named") {
+		t.Fatalf("unnamed sidecar want 403 not-named, got %d: %s", w.Code, w.Body.String())
+	}
+	m.sidecarIdentity[sidPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{Status: verify.AttestationStatusRevoked, BinaryHash: hash}}
+	if w := serveGet(t, g, http.MethodGet, "/releases/sidecar/"+name); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "sidecar identity status") {
+		t.Fatalf("revoked identity want 403, got %d: %s", w.Code, w.Body.String())
 	}
 }
 

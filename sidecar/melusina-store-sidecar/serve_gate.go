@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,7 +16,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
 
 // ── SERVE-TIME on-chain gate (B1-01; canon §5b) ───────────────────────────────
@@ -46,6 +49,7 @@ import (
 type serveGate struct {
 	cfg        Config
 	cr         chainReader
+	operator   *identity.Private
 	distDir    string
 	fileServer http.Handler
 
@@ -88,7 +92,7 @@ var errServeNoChainReader = errors.New("serve gate not initialized (no on-chain 
 // newServeGate builds the gate wrapping fileServer (the byte-identical static
 // surface). It reads the serve-verify TTL from config (0/unset => 60s; negative
 // => caching disabled).
-func newServeGate(cfg Config, cr chainReader, fileServer http.Handler) *serveGate {
+func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators ...*identity.Private) *serveGate {
 	ttl := 60 * time.Second
 	switch {
 	case cfg.ServeVerifyTTLSeconds < 0:
@@ -100,9 +104,14 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler) *serveGat
 	if refresh < 15*time.Second {
 		refresh = 15 * time.Second // floor so disk isn't rescanned too aggressively
 	}
+	var operator *identity.Private
+	if len(operators) > 0 {
+		operator = operators[0]
+	}
 	return &serveGate{
 		cfg:            cfg,
 		cr:             cr,
+		operator:       operator,
 		distDir:        cfg.DistDir,
 		fileServer:     fileServer,
 		verifyTTL:      ttl,
@@ -277,7 +286,18 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	var fileHash [32]byte
 	copy(fileHash[:], hasher.Sum(nil))
 
-	hashHex, err := g.gateInstallerRelease(r.Context(), fileHash)
+	var hashHex string
+	if class == componentrelease.ClassSidecar {
+		// Sidecars do not ride InstallerReleaseEntry. They are downloadable only
+		// when the exact artifact is named by this store's current
+		// operator-signed DesiredGeneration AND its active SidecarIdentity
+		// cascade re-verifies against these bytes. Do not route sidecars through
+		// the installer gate: that makes a valid sidecar generation impossible to
+		// fetch while weakening neither authority model.
+		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, st.Size())
+	} else {
+		hashHex, err = g.gateInstallerRelease(r.Context(), fileHash)
+	}
 	if err != nil {
 		code := http.StatusForbidden
 		if errors.Is(err, errReleaseMasterMintRequired) {
@@ -294,9 +314,68 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
 	w.Header().Set("X-Store-Release-Class", class)
-	w.Header().Set("X-Store-InstallerHash", hashHex)
+	if class == componentrelease.ClassSidecar {
+		w.Header().Set("X-Store-SidecarHash", hashHex)
+	} else {
+		w.Header().Set("X-Store-InstallerHash", hashHex)
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, name, st.ModTime(), f)
+}
+
+// gateSignedSidecarGeneration verifies the only sidecar download authority:
+// the current operator-signed DesiredGeneration must name this exact URL, size
+// and hash, and the active SidecarIdentity + full authorization cascade must
+// pin the same bytes. This deliberately has no cache: revocation of any one
+// cascade fact must take effect on the next sidecar download.
+func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name string, fileHash [32]byte, size int64) (string, error) {
+	if g.operator == nil {
+		return "", errors.New("sidecar generation gate not initialized (no operator identity)")
+	}
+	pub, err := operatorSignPublicKey(g.operator)
+	if err != nil {
+		return "", fmt.Errorf("sidecar generation operator key: %w", err)
+	}
+	doc, _, err := loadCurrentGeneration(g.distDir)
+	if err != nil {
+		return "", fmt.Errorf("sidecar generation load: %w", err)
+	}
+	if err := componentrelease.Verify(pub, g.cfg.StoreID, doc); err != nil {
+		return "", fmt.Errorf("sidecar generation verify: %w", err)
+	}
+	if !sameOrigin(doc.BundleOrigin, g.cfg.PublicBaseURL) {
+		return "", errors.New("sidecar generation origin does not match this store's public_base_url")
+	}
+	wantURL := strings.TrimRight(doc.BundleOrigin, "/") + "/releases/" + class + "/" + name
+	wantHash := hex.EncodeToString(fileHash[:])
+	var matched *componentrelease.ComponentRelease
+	for i := range doc.Components {
+		c := &doc.Components[i]
+		if c.ComponentClass != componentrelease.ClassSidecar || c.ArtifactName != name || c.BundleURL != wantURL {
+			continue
+		}
+		if matched != nil {
+			return "", errors.New("sidecar generation names this artifact more than once")
+		}
+		matched = c
+	}
+	if matched == nil {
+		return "", errors.New("sidecar artifact is not named by the current signed generation")
+	}
+	if matched.SHA256 != wantHash {
+		return "", fmt.Errorf("sidecar generation sha256 %s != served sha256 %s", matched.SHA256, wantHash)
+	}
+	if matched.SizeBytes != size {
+		return "", fmt.Errorf("sidecar generation size %d != served size %d", matched.SizeBytes, size)
+	}
+	// Reuse the same live chain verifier used by promotion. It derives every PDA
+	// from the component facts and verifies SidecarIdentity plus the five-fact
+	// cascade; it never trusts a publisher-supplied address alone.
+	verifier := &publishService{cfg: g.cfg, cr: g.cr}
+	if err := verifier.verifySidecarComponentOnChain(ctx, *matched); err != nil {
+		return "", fmt.Errorf("sidecar chain gate: %w", err)
+	}
+	return wantHash, nil
 }
 
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be

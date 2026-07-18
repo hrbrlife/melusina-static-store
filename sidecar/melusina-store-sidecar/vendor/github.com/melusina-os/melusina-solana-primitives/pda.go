@@ -126,6 +126,7 @@ var (
 	SeedInstallAdmin        = []byte("install_admin")
 	SeedOrganizationMember  = []byte("organization_member")
 	SeedLicense             = []byte("license")
+	SeedReseller            = []byte("reseller")
 	SeedGlobalApp           = []byte("global_app")
 	SeedResellerApp         = []byte("reseller_app")
 	SeedLocalApp            = []byte("local_app")
@@ -202,6 +203,14 @@ func DeriveOrganizationMember(licenseMint, member Pubkey, programID Pubkey) (Pub
 // DeriveLicense returns LicenseEntry[licenseMint].
 func DeriveLicense(licenseMint Pubkey, programID Pubkey) (Pubkey, PDABump, error) {
 	return FindProgramAddress([][]byte{SeedLicense, licenseMint[:]}, programID, nil)
+}
+
+// DeriveReseller returns ResellerEntry[resellerMint]. The reseller entity is
+// an authority parent of every reseller app/sidecar approval. Consumers must
+// verify its Active status in addition to the child approval: a revoke leaves
+// the child PDA address well formed but must deny the entire cascade.
+func DeriveReseller(resellerMint Pubkey, programID Pubkey) (Pubkey, PDABump, error) {
+	return FindProgramAddress([][]byte{SeedReseller, resellerMint[:]}, programID, nil)
 }
 
 // DeriveGlobalApp returns GlobalAppApproval[masterMint, appHash].

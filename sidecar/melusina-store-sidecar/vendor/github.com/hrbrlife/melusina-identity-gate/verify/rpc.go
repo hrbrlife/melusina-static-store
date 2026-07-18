@@ -188,6 +188,20 @@ func (c *RPCClient) FetchResellerSidecarStatus(ctx context.Context, addressBase5
 	return ReadSidecarApprovalStatusReseller(data)
 }
 
+// FetchResellerEntryStatus fetches the ResellerEntry authority-parent PDA.
+// A reseller-sidecar approval is not independently sufficient: the deployed
+// program rejects the whole child cascade once this parent is Revoked.
+func (c *RPCClient) FetchResellerEntryStatus(ctx context.Context, addressBase58 string) (ResellerStatus, error) {
+	data, err := c.GetAccountInfo(ctx, addressBase58)
+	if err != nil {
+		return 0, err
+	}
+	if data == nil {
+		return 0, ErrPDANotFound
+	}
+	return ReadResellerEntryStatus(data)
+}
+
 // FetchLicenseEntryTLSFingerprint fetches a LicenseEntry PDA and
 // returns its [32]byte tls_cert_fingerprint. Used by the trust-bundle
 // loader's CrossCheckOnChain helper (B8) to assert the bundle's

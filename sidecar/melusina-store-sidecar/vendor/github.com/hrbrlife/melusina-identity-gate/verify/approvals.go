@@ -45,6 +45,36 @@ func (s ApprovalStatus) RequireActive() error {
 	return fmt.Errorf("%w: %s", ErrStatusNotActive, s)
 }
 
+// ResellerStatus mirrors state/reseller.rs. It deliberately has its own type:
+// although its current wire values match Active=0 / Revoked=1, treating a
+// reseller entity as an approval would allow a future approval-only variant to
+// be accepted by this authority-parent reader.
+type ResellerStatus uint8
+
+const (
+	ResellerStatusActive  ResellerStatus = 0
+	ResellerStatusRevoked ResellerStatus = 1
+)
+
+func (s ResellerStatus) String() string {
+	switch s {
+	case ResellerStatusActive:
+		return "Active"
+	case ResellerStatusRevoked:
+		return "Revoked"
+	default:
+		return fmt.Sprintf("Unknown(%d)", uint8(s))
+	}
+}
+
+// RequireActive returns nil only for an on-chain Active reseller entity.
+func (s ResellerStatus) RequireActive() error {
+	if s == ResellerStatusActive {
+		return nil
+	}
+	return fmt.Errorf("%w: %s", ErrStatusNotActive, s)
+}
+
 // AttestationStatus mirrors the Anchor enum at state/attestation.rs:7
 // (Active=0, Revoked=1, Superseded=2). Used by ReleaseEntry and the
 // identity-entry family. Distinct from ApprovalStatus because it adds the
@@ -1035,6 +1065,67 @@ func ReadSidecarApprovalStatusReseller(data []byte) (ApprovalStatus, error) {
 		return 0, fmt.Errorf("reseller_sidecar: approved_by: %w", err)
 	}
 	return ReadStatusByte(data, offset)
+}
+
+// ReadResellerEntryStatus decodes the authority-parent ResellerEntry PDA.
+// Layout from state/reseller.rs:
+//
+//	discriminator | reseller_nft_mint | master_nft_mint | edition_number
+//	  | owner | name (String) | territory (String) | issuance_limit (u32)
+//	  | licenses_issued (u32) | parent_reseller (Option<Pubkey>)
+//	  | total_sub_resellers (u32) | active_sub_resellers (u32)
+//	  | category (Option<String>) | status (u8) | ...
+//
+// The status is not fixed-offset because both name and territory are
+// variable-length and category is optional. This reader walks every preceding
+// Borsh field and rejects malformed tags, truncation, and unknown enum values.
+func ReadResellerEntryStatus(data []byte) (ResellerStatus, error) {
+	offset := AccountDiscriminatorLen
+	var err error
+	if offset, err = SkipPubkey(data, offset); err != nil { // reseller_nft_mint
+		return 0, fmt.Errorf("reseller: reseller_nft_mint: %w", err)
+	}
+	if offset, err = SkipPubkey(data, offset); err != nil { // master_nft_mint
+		return 0, fmt.Errorf("reseller: master_nft_mint: %w", err)
+	}
+	if offset, err = SkipI64(data, offset); err != nil { // edition_number u64
+		return 0, fmt.Errorf("reseller: edition_number: %w", err)
+	}
+	if offset, err = SkipPubkey(data, offset); err != nil { // owner
+		return 0, fmt.Errorf("reseller: owner: %w", err)
+	}
+	if offset, err = SkipBorshString(data, offset); err != nil { // name
+		return 0, fmt.Errorf("reseller: name: %w", err)
+	}
+	if offset, err = SkipBorshString(data, offset); err != nil { // territory
+		return 0, fmt.Errorf("reseller: territory: %w", err)
+	}
+	if offset, err = skip(data, offset, 4); err != nil { // issuance_limit u32
+		return 0, fmt.Errorf("reseller: issuance_limit: %w", err)
+	}
+	if offset, err = skip(data, offset, 4); err != nil { // licenses_issued u32
+		return 0, fmt.Errorf("reseller: licenses_issued: %w", err)
+	}
+	if offset, err = SkipBorshOption(data, offset, SkipPubkey); err != nil { // parent_reseller
+		return 0, fmt.Errorf("reseller: parent_reseller: %w", err)
+	}
+	if offset, err = skip(data, offset, 4); err != nil { // total_sub_resellers u32
+		return 0, fmt.Errorf("reseller: total_sub_resellers: %w", err)
+	}
+	if offset, err = skip(data, offset, 4); err != nil { // active_sub_resellers u32
+		return 0, fmt.Errorf("reseller: active_sub_resellers: %w", err)
+	}
+	if offset, err = SkipBorshOption(data, offset, SkipBorshString); err != nil { // category
+		return 0, fmt.Errorf("reseller: category: %w", err)
+	}
+	if offset >= len(data) {
+		return 0, errors.New("reseller: buffer too short for status")
+	}
+	status := ResellerStatus(data[offset])
+	if status != ResellerStatusActive && status != ResellerStatusRevoked {
+		return status, fmt.Errorf("reseller: unknown ResellerStatus byte: %d", data[offset])
+	}
+	return status, nil
 }
 
 // ReadGlobalSidecarBinaryHash decodes the [32]byte binary_hash field

@@ -166,7 +166,7 @@ func (g *solanaChainGate) gateReleaseV2(ctx context.Context, c componentrelease.
 // license/master mints + seeds and refuses any doc != derived BEFORE any fetch, then
 // confirms the identity + global + local approvals are Active and hash-pinned, and
 // finally the LicenseEntry is Active with the pinned master (and, when the license is
-// resold, the reseller sidecar approval is Active).
+// resold, both the reseller entity and its reseller-sidecar approval are Active).
 func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrelease.ComponentRelease, want [32]byte) error {
 	if c.Chain.LicenseNftMint != g.licenseB58 {
 		return fmt.Errorf("chain gate %s: licenseNftMint pin mismatch", c.ComponentID)
@@ -243,9 +243,9 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 		return fmt.Errorf("chain gate %s: local approval binary_hash %s != artifact %s", c.ComponentID, hex32(lHash), hex32(want))
 	}
 
-	// Phase 3 — LicenseEntry Active + pinned master, and the reseller sidecar approval
-	// when the license is resold. The reseller mint is read from the CHAIN LicenseEntry,
-	// never the document.
+	// Phase 3 — LicenseEntry Active + pinned master, and the reseller entity +
+	// sidecar approval when the license is resold. The reseller mint is read from
+	// the CHAIN LicenseEntry, never the document.
 	return g.gateLicenseAndReseller(ctx, c, sidecarID)
 }
 
@@ -268,6 +268,17 @@ func (g *solanaChainGate) gateLicenseAndReseller(ctx context.Context, c componen
 		return nil // direct (non-resold) license — no reseller cascade
 	}
 	resellerMint := primitives.Pubkey(lic.ResellerNFTMint)
+	resellerPDA, _, err := primitives.DeriveReseller(resellerMint, g.program)
+	if err != nil {
+		return fmt.Errorf("chain gate %s: derive ResellerEntry PDA: %w", c.ComponentID, err)
+	}
+	resellerStatus, err := g.rpc.FetchResellerEntryStatus(ctx, resellerPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("chain gate %s: fetch ResellerEntry: %w", c.ComponentID, err)
+	}
+	if err := resellerStatus.RequireActive(); err != nil {
+		return fmt.Errorf("chain gate %s: reseller entry not Active: %w", c.ComponentID, err)
+	}
 	raPDA, _, err := primitives.DeriveResellerSidecar(resellerMint, sidecarID, g.program)
 	if err != nil {
 		return fmt.Errorf("chain gate %s: derive ResellerSidecarApproval PDA: %w", c.ComponentID, err)

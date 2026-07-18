@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -17,6 +22,149 @@ func randPubkeyB58(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return primitives.EncodeBase58(b[:])
+}
+
+func gateAppendU32(dst []byte, v uint32) []byte {
+	var b [4]byte
+	binary.LittleEndian.PutUint32(b[:], v)
+	return append(dst, b[:]...)
+}
+
+func gateAppendU64(dst []byte, v uint64) []byte {
+	var b [8]byte
+	binary.LittleEndian.PutUint64(b[:], v)
+	return append(dst, b[:]...)
+}
+
+func gateAppendString(dst []byte, v string) []byte {
+	dst = gateAppendU32(dst, uint32(len(v)))
+	return append(dst, v...)
+}
+
+// gateLicenseFixture contains exactly the Borsh fields walked by
+// verify.ReadLicenseEntrySummary. This direct-RPC test needs the deployed
+// layout, not a chain-program emulator.
+func gateLicenseFixture(license, reseller, master primitives.Pubkey) []byte {
+	b := make([]byte, 8)
+	b = append(b, license[:]...)
+	b = append(b, reseller[:]...)
+	b = append(b, master[:]...)
+	b = gateAppendU64(b, 1)
+	b = gateAppendString(b, "acceptance.example")
+	b = gateAppendString(b, "https://acceptance.example/install")
+	b = append(b, make([]byte, 32)...)
+	b = append(b, 1, 1, 1)
+	b = append(b, make([]byte, 32)...)
+	b = append(b, 1, 0, 0) // custody mode; squads vault/multisig None
+	b = append(b, 0)       // Active
+	b = gateAppendU64(b, 1)
+	b = append(b, 0) // revoked_at None
+	b = gateAppendU32(b, 0)
+	b = gateAppendU32(b, 0)
+	b = append(b, 0, 0)
+	b = append(b, make([]byte, 32)...)
+	b = append(b, 0)
+	b = gateAppendString(b, "")
+	b = gateAppendString(b, "")
+	b = gateAppendU32(b, 0)
+	b = append(b, make([]byte, 32)...)
+	b = gateAppendU64(b, 0)
+	return b
+}
+
+func gateResellerFixture(reseller, master primitives.Pubkey, status byte) []byte {
+	b := make([]byte, 8)
+	b = append(b, reseller[:]...)
+	b = append(b, master[:]...)
+	b = gateAppendU64(b, 1)
+	b = append(b, make([]byte, 32)...)
+	b = gateAppendString(b, "acceptance reseller")
+	b = gateAppendString(b, "test")
+	b = gateAppendU32(b, 100)
+	b = gateAppendU32(b, 1)
+	b = append(b, 0) // parent_reseller=None
+	b = gateAppendU32(b, 0)
+	b = gateAppendU32(b, 0)
+	b = append(b, 0) // category=None
+	b = append(b, status)
+	return b
+}
+
+// TestGateLicenseAndResellerRejectsRevokedParent proves the controller asks for
+// the seed-derived ResellerEntry before it ever considers the child approval.
+// The deployed program's sidecar instructions have the same parent-Active
+// constraint; accepting a still-Active child below this revoked parent would
+// make a controller apply a generation the chain itself would refuse.
+func TestGateLicenseAndResellerRejectsRevokedParent(t *testing.T) {
+	g, cfg := newOfflineGate(t)
+	program := mustPubkey(t, cfg.ProgramID)
+	license := mustPubkey(t, cfg.LicenseNftMint)
+	master := mustPubkey(t, cfg.MasterNftMint)
+	var reseller primitives.Pubkey
+	reseller[0] = 0x7a
+
+	licensePDA, _, err := primitives.DeriveLicense(license, program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resellerPDA, _, err := primitives.DeriveReseller(reseller, program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childPDA, _, err := primitives.DeriveResellerSidecar(reseller, "rrs-store", program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := gateResellerFixture(reseller, master, 1) // ResellerStatus::Revoked
+
+	accounts := map[string][]byte{
+		licensePDA.Base58():  gateLicenseFixture(license, reseller, master),
+		resellerPDA.Base58(): parent,
+	}
+	var requested []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var req struct {
+			Params []json.RawMessage `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Params) == 0 {
+			t.Fatalf("decode RPC request: %v", err)
+		}
+		var addr string
+		if err := json.Unmarshal(req.Params[0], &addr); err != nil {
+			t.Fatalf("decode RPC address: %v", err)
+		}
+		requested = append(requested, addr)
+		if data, ok := accounts[addr]; ok {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"jsonrpc": "2.0", "id": 1,
+				"result": map[string]any{"context": map[string]any{}, "value": map[string]any{
+					"data":  []string{base64.StdEncoding.EncodeToString(data), "base64"},
+					"owner": program.Base58(),
+				}},
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"context": map[string]any{}, "value": nil},
+		})
+	}))
+	defer server.Close()
+	g.rpc.Endpoint = server.URL
+
+	err = g.gateLicenseAndReseller(context.Background(), componentrelease.ComponentRelease{ComponentID: "rrs-store"}, "rrs-store")
+	if err == nil || !strings.Contains(err.Error(), "reseller entry not Active") {
+		t.Fatalf("revoked reseller parent was not refused: %v", err)
+	}
+	if len(requested) != 2 || requested[0] != licensePDA.Base58() || requested[1] != resellerPDA.Base58() {
+		t.Fatalf("expected LicenseEntry then seed-derived ResellerEntry reads, got %v", requested)
+	}
+	for _, got := range requested {
+		if got == childPDA.Base58() {
+			t.Fatalf("controller reached child approval before refusing revoked parent: %v", requested)
+		}
+	}
 }
 
 func mustPubkey(t *testing.T, b58 string) primitives.Pubkey {

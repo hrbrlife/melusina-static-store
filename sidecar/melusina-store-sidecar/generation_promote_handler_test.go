@@ -156,6 +156,49 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("valid app component refused: %v", err)
 	}
+	// The publisher must bind the descriptors it reads, not merely Lstat a
+	// public-tree path and then follow a later attacker-installed symlink.
+	outside := t.TempDir()
+	outsidePackage := filepath.Join(outside, "package.spk")
+	if err := os.WriteFile(outsidePackage, f.spk, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	packagePath := filepath.Join(dist, "packages", packageID)
+	if err := os.Remove(packagePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsidePackage, packagePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
+		t.Fatal("accepted app package through a final-path symlink")
+	}
+	if err := os.Remove(packagePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(packagePath, f.spk, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pointerPath := filepath.Join(dist, "apps", "pointers", appID+".json")
+	outsidePointer := filepath.Join(outside, "pointer.json")
+	if err := os.WriteFile(outsidePointer, pointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(pointerPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsidePointer, pointerPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
+		t.Fatal("accepted app catalog pointer through a final-path symlink")
+	}
+	if err := os.Remove(pointerPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pointerPath, pointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	// The release_v2 ContentSHA256 is the tree hash over the exact pair
 	// {app.spk, metadata.json}. A signed catalog pointer must never be able to
 	// pair an arbitrary new SPK with an old, otherwise-valid ReleaseEntry.

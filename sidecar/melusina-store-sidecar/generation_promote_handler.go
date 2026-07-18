@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -277,12 +278,9 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 	}
 
 	pointerPath := filepath.Join(s.cfg.DistDir, "apps", "pointers", c.ComponentID+".json")
-	pointerBody, err := os.ReadFile(pointerPath)
+	pointerBody, err := readDistRegularNoFollow(pointerPath, maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read signed app catalog pointer: %w", c.ComponentID, err)
-	}
-	if int64(len(pointerBody)) > maxAppCatalogJSONBytes {
-		return fmt.Errorf("component %s: signed app catalog pointer exceeds size limit", c.ComponentID)
 	}
 	if err := assertNoDuplicateJSONKeys(pointerBody); err != nil {
 		return fmt.Errorf("component %s: signed app catalog pointer: %w", c.ComponentID, err)
@@ -317,12 +315,9 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: signed app catalog pointer stageId mismatch", c.ComponentID)
 	}
 
-	indexBody, err := os.ReadFile(filepath.Join(s.cfg.DistDir, "apps", "index.json"))
+	indexBody, err := readDistRegularNoFollow(filepath.Join(s.cfg.DistDir, "apps", "index.json"), maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read app catalog index: %w", c.ComponentID, err)
-	}
-	if int64(len(indexBody)) > maxAppCatalogJSONBytes {
-		return fmt.Errorf("component %s: app catalog index exceeds size limit", c.ComponentID)
 	}
 	if err := assertNoDuplicateJSONKeys(indexBody); err != nil {
 		return fmt.Errorf("component %s: app catalog index: %w", c.ComponentID, err)
@@ -349,34 +344,20 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: app catalog has no selected package", c.ComponentID)
 	}
 	metadataPath := filepath.Join(s.cfg.DistDir, "signatures", c.ComponentID, "metadata.json")
-	metadataInfo, err := os.Lstat(metadataPath)
-	if err != nil {
-		return fmt.Errorf("component %s: lstat served app metadata: %w", c.ComponentID, err)
-	}
-	if !metadataInfo.Mode().IsRegular() {
-		return fmt.Errorf("component %s: served app metadata is not a regular file", c.ComponentID)
-	}
-	if metadataInfo.Size() > maxAppCatalogJSONBytes {
-		return fmt.Errorf("component %s: served app metadata exceeds size limit", c.ComponentID)
-	}
-	metadata, err := os.ReadFile(metadataPath)
+	metadata, err := readDistRegularNoFollow(metadataPath, maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read served app metadata: %w", c.ComponentID, err)
 	}
 
 	packagePath := filepath.Join(s.cfg.DistDir, "packages", packageID)
-	info, err := os.Lstat(packagePath)
-	if err != nil {
-		return fmt.Errorf("component %s: lstat served app package: %w", c.ComponentID, err)
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("component %s: served app package is not a regular file", c.ComponentID)
-	}
-	f, err := os.Open(packagePath)
+	f, size, err := openDistRegularNoFollow(packagePath)
 	if err != nil {
 		return fmt.Errorf("component %s: open served app package: %w", c.ComponentID, err)
 	}
 	defer f.Close()
+	if size != c.SizeBytes {
+		return fmt.Errorf("component %s: served app package size %d != component size %d", c.ComponentID, size, c.SizeBytes)
+	}
 	h := sha256.New()
 	n, err := io.Copy(h, f)
 	if err != nil {
@@ -399,6 +380,51 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: served {app.spk,metadata.json} contentSha256 %s != component contentSha256 %s", c.ComponentID, gotContentHash, c.ContentSHA256)
 	}
 	return nil
+}
+
+// readDistRegularNoFollow reads a bounded, final regular file from the serving
+// tree. Promotion is an authority decision, so an Lstat followed by os.ReadFile
+// is insufficient: a replace-to-symlink race would otherwise let bytes outside
+// DistDir participate in an on-chain promotion. The descriptor is the object
+// that is checked and read.
+func readDistRegularNoFollow(path string, limit int64) ([]byte, error) {
+	f, size, err := openDistRegularNoFollow(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if size > limit {
+		return nil, fmt.Errorf("regular file size %d exceeds cap %d", size, limit)
+	}
+	body, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("regular file grew beyond cap %d while reading", limit)
+	}
+	return body, nil
+}
+
+// openDistRegularNoFollow opens and validates the final path through the same
+// descriptor. Callers still bind bytes/size themselves, so an in-place writer
+// cannot turn a later hash into a trusted claim.
+func openDistRegularNoFollow(path string) (*os.File, int64, error) {
+	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	f := os.NewFile(uintptr(fd), path)
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, 0, err
+	}
+	if !info.Mode().IsRegular() {
+		_ = f.Close()
+		return nil, 0, fmt.Errorf("unsafe non-regular file mode %s", info.Mode())
+	}
+	return f, info.Size(), nil
 }
 
 // verifySidecarComponentOnChain re-verifies a sidecar-class component. The promote

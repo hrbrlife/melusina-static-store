@@ -17,6 +17,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -210,8 +211,9 @@ func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c co
 // verifyAppComponentOnChain re-derives the ReleaseEntry PDA from the app's
 // content hash (the on-chain tree hash, deliberately distinct from the served
 // SPK hash), requires that exact account to be Active and hash-pinned, then
-// proves the advertised SPK bytes are actually served by this store. Neither a
-// publisher-supplied PDA nor a matching artifact hash alone is authority.
+// proves the advertised SPK AND catalog metadata recompute to that tree hash.
+// Neither a publisher-supplied PDA, a matching artifact hash, nor a
+// store-signed pointer alone is authority.
 func (s *publishService) verifyAppComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
 	if c.ComponentClass != componentrelease.ClassApp {
 		return fmt.Errorf("component %s: release_v2 authority requires app class", c.ComponentID)
@@ -346,6 +348,21 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 	if !found {
 		return fmt.Errorf("component %s: app catalog has no selected package", c.ComponentID)
 	}
+	metadataPath := filepath.Join(s.cfg.DistDir, "signatures", c.ComponentID, "metadata.json")
+	metadataInfo, err := os.Lstat(metadataPath)
+	if err != nil {
+		return fmt.Errorf("component %s: lstat served app metadata: %w", c.ComponentID, err)
+	}
+	if !metadataInfo.Mode().IsRegular() {
+		return fmt.Errorf("component %s: served app metadata is not a regular file", c.ComponentID)
+	}
+	if metadataInfo.Size() > maxAppCatalogJSONBytes {
+		return fmt.Errorf("component %s: served app metadata exceeds size limit", c.ComponentID)
+	}
+	metadata, err := os.ReadFile(metadataPath)
+	if err != nil {
+		return fmt.Errorf("component %s: read served app metadata: %w", c.ComponentID, err)
+	}
 
 	packagePath := filepath.Join(s.cfg.DistDir, "packages", packageID)
 	info, err := os.Lstat(packagePath)
@@ -370,6 +387,16 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != strings.ToLower(strings.TrimSpace(c.SHA256)) {
 		return fmt.Errorf("component %s: served app package sha256 %s != component sha256 %s", c.ComponentID, got, c.SHA256)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("component %s: rewind served app package for content binding: %w", c.ComponentID, err)
+	}
+	gotContentHash, err := apphash.Canonical(f, metadata)
+	if err != nil {
+		return fmt.Errorf("component %s: recompute served app contentSha256: %w", c.ComponentID, err)
+	}
+	if gotContentHash != strings.ToLower(strings.TrimSpace(c.ContentSHA256)) {
+		return fmt.Errorf("component %s: served {app.spk,metadata.json} contentSha256 %s != component contentSha256 %s", c.ComponentID, gotContentHash, c.ContentSHA256)
 	}
 	return nil
 }

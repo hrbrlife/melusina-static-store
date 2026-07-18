@@ -109,6 +109,12 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dist, "apps", "pointers"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(dist, "signatures", appID), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), f.metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -149,6 +155,49 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	svc := &publishService{cfg: Config{DistDir: dist, Domain: cfg.Domain, PublicBaseURL: cfg.PublicBaseURL}, operator: op, cr: m}
 	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("valid app component refused: %v", err)
+	}
+	// The release_v2 ContentSHA256 is the tree hash over the exact pair
+	// {app.spk, metadata.json}. A signed catalog pointer must never be able to
+	// pair an arbitrary new SPK with an old, otherwise-valid ReleaseEntry.
+	forgedSPK := []byte("arbitrary unpinned app bytes")
+	forgedSum := sha256.Sum256(forgedSPK)
+	forgedPackageID := hex.EncodeToString(forgedSum[:])[:32]
+	if err := os.WriteFile(filepath.Join(dist, "packages", forgedPackageID), forgedSPK, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	forgedIndex := []byte(`{"apps":[{"appId":"` + appID + `","packageId":"` + forgedPackageID + `"}]}`)
+	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), forgedIndex, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	forgedPointer := pointer
+	forgedPointer.PackageID = forgedPackageID
+	forgedIndexHash := sha256.Sum256(forgedIndex)
+	forgedPointer.CatalogSHA256 = hex.EncodeToString(forgedIndexHash[:])
+	message, err = appCatalogPointerMessage(forgedPointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	forgedPointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
+	forgedPointerBody, err := json.Marshal(forgedPointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), forgedPointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	forged := c
+	forged.ArtifactName = forgedPackageID
+	forged.BundleURL = cfg.PublicBaseURL + "/packages/" + forgedPackageID
+	forged.SHA256 = hex.EncodeToString(forgedSum[:])
+	forged.SizeBytes = int64(len(forgedSPK))
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), forged); err == nil {
+		t.Fatal("accepted arbitrary served SPK under a valid but different ReleaseEntry tree hash")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
+		t.Fatal(err)
 	}
 	// A valid ReleaseEntry plus a separately signed pointer to another package is
 	// still not this component. The app selection is part of the authority.

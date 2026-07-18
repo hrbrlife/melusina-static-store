@@ -339,6 +339,13 @@ func procExeSHA256(pid int) (string, error) {
 // no store wired) is a no-op.
 func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *ControllerState, now int64) error {
 	ad := deps.Apply
+	// Active-generation completion happens on a later timer process, outside
+	// applyDepsFor().  Carry the poll clock into that path as well: a nil clock
+	// otherwise yields terminalAtUnix=0, which the receipt validator correctly
+	// refuses, leaving a healthy generation permanently unsealed.
+	if ad.Now == nil {
+		ad.Now = deps.Now
+	}
 	if ad.WAL == nil {
 		return nil
 	}

@@ -152,7 +152,13 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, _, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, true /* requireRoot */); err != nil {
+	// A store may originate its own sidecar/app desired generation under its
+	// domain-scoped operator authorization.  Root authority is necessary only
+	// when this generation carries an installer artifact, because the program
+	// reserves is_root for the canonical melusina-os.org store domain. Requiring
+	// root unconditionally made a correctly-attested non-root sidecar store
+	// impossible to promote at all.
+	if _, _, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, generationPromoteRequiresRoot(req.Components)); err != nil {
 		http.Error(w, "check=store_operator: "+err.Error(), http.StatusForbidden)
 		return
 	}
@@ -181,6 +187,18 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		"servedSha256":       hex.EncodeToString(rawHash[:]),
 		"path":               "/update/generation.json",
 	})
+}
+
+// generationPromoteRequiresRoot keeps the root-store boundary narrow: only
+// installer-release artifacts can require the canonical root store. Unknown
+// authority kinds remain fail-closed later in verifyComponentReleaseOnChain.
+func generationPromoteRequiresRoot(components []componentrelease.ComponentRelease) bool {
+	for _, component := range components {
+		if component.Chain.Kind == componentrelease.AuthorityInstallerRelease {
+			return true
+		}
+	}
+	return false
 }
 
 // verifyComponentReleaseOnChain re-verifies ONE component against the chain and

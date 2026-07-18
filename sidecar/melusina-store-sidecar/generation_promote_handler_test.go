@@ -68,6 +68,31 @@ func TestVerifyComponentServedBytes(t *testing.T) {
 	}
 }
 
+func TestGenerationPromoteRequiresRootOnlyForInstallerArtifacts(t *testing.T) {
+	installer := shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")
+	installer.Chain.Kind = componentrelease.AuthorityInstallerRelease
+	if !generationPromoteRequiresRoot([]componentrelease.ComponentRelease{installer}) {
+		t.Fatal("installer generation must require root store authority")
+	}
+
+	sidecar := installer
+	sidecar.ComponentClass = componentrelease.ClassSidecar
+	sidecar.Chain.Kind = componentrelease.AuthoritySidecarIdentity
+	if generationPromoteRequiresRoot([]componentrelease.ComponentRelease{sidecar}) {
+		t.Fatal("sidecar-only generation must use its active domain-scoped store operator authorization")
+	}
+
+	app := installer
+	app.ComponentClass = componentrelease.ClassApp
+	app.Chain.Kind = componentrelease.AuthorityReleaseV2
+	if generationPromoteRequiresRoot([]componentrelease.ComponentRelease{app}) {
+		t.Fatal("app-only generation must use its active domain-scoped store operator authorization")
+	}
+	if !generationPromoteRequiresRoot([]componentrelease.ComponentRelease{sidecar, installer}) {
+		t.Fatal("mixed generation containing an installer must require root store authority")
+	}
+}
+
 func TestVerifyComponentReleaseOnChainFailClosed(t *testing.T) {
 	svc := &publishService{cfg: Config{PublicBaseURL: "https://bazaar.melusina-os.org"}}
 	ctx := context.Background()

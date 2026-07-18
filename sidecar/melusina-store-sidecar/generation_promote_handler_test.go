@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -213,5 +214,98 @@ func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(body)))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("non-accepted publisher want 403 got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleGeneratePromoteRejectsCrossRouteEnvelopeAndDuplicateJSON(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	publisher := newTestIdentity(t, "generation-publisher", testLicenseMint, "publisher.example.org")
+	svc := &publishService{
+		cfg: Config{
+			DistDir:       t.TempDir(),
+			PublicBaseURL: "https://bazaar.melusina-os.org",
+			StoreID:       "melusina-os-root-store",
+			Policy:        Policy{AcceptPublishers: []string{publisher.Public().SignPubkeyB58}},
+		},
+		operator: op,
+		cr:       &mockChainReader{},
+		nonces:   envelope.NewMemoryNonceCache(),
+	}
+
+	reqJSON, err := json.Marshal(promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(reqJSON)
+	sign := func(target string) envelope.Signed {
+		t.Helper()
+		sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, op.Public(), envelope.SignOptions{
+			Method:      http.MethodPost,
+			Target:      target,
+			Body:        reqJSON,
+			BodyHash:    hex.EncodeToString(sum[:]),
+			RequestHash: hex.EncodeToString(sum[:]),
+			TTL:         5 * time.Minute,
+			Chain: envelope.ChainEvidence{
+				ChainID:      "solana:devnet",
+				ProgramID:    "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+				VerifiedSlot: 12345,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sig
+	}
+
+	// A publisher accepted by policy still cannot replay a signed /publish
+	// request to the generation route. The chain reader is deliberately empty;
+	// a 401 proves purpose is checked before any chain/persist mutation.
+	crossRoute, err := json.Marshal(generationPromoteBody{
+		Envelope:   sign("/publish"),
+		RequestB64: base64.StdEncoding.EncodeToString(reqJSON),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(crossRoute)))
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "envelope_purpose") {
+		t.Fatalf("cross-route envelope got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Duplicated wrapper keys are rejected before auth extraction, so a parser
+	// cannot choose a different envelope/request pairing than an auditor.
+	duplicateOuter := []byte(`{"envelope":{},"envelope":{},"request_b64":""}`)
+	rec = httptest.NewRecorder()
+	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(duplicateOuter)))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "duplicate JSON key") {
+		t.Fatalf("duplicate outer got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A correctly route-bound envelope carrying an ambiguous promote request is
+	// also refused before the chain reader could inspect a normalized component.
+	duplicateRequest := []byte(`{"schema":"melusina-generation-promote-v1","schema":"melusina-generation-promote-v1"}`)
+	dupSum := sha256.Sum256(duplicateRequest)
+	dupSig, err := envelope.Sign(envelope.KindPublishRequest, publisher, op.Public(), envelope.SignOptions{
+		Method:      http.MethodPost,
+		Target:      "/publish/generation",
+		Body:        duplicateRequest,
+		BodyHash:    hex.EncodeToString(dupSum[:]),
+		RequestHash: hex.EncodeToString(dupSum[:]),
+		TTL:         5 * time.Minute,
+		Chain:       envelope.ChainEvidence{ChainID: "solana:devnet", ProgramID: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", VerifiedSlot: 12346},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dupBody, err := json.Marshal(generationPromoteBody{Envelope: dupSig, RequestB64: base64.StdEncoding.EncodeToString(duplicateRequest)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec = httptest.NewRecorder()
+	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(dupBody)))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "promote_request") || !strings.Contains(rec.Body.String(), "duplicate JSON key") {
+		t.Fatalf("duplicate promote request got %d: %s", rec.Code, rec.Body.String())
 	}
 }

@@ -39,6 +39,10 @@ type generationPromoteBody struct {
 	RequestB64 string          `json:"request_b64"`
 }
 
+// A promotion carries release facts and an envelope, never an artifact. Keep
+// this endpoint narrowly bounded instead of inheriting the app-SPK upload cap.
+const maxGenerationPromoteBody int64 = 1 << 20 // 1 MiB
+
 func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -51,13 +55,31 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		http.Error(w, "generation promote gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
 		return
 	}
-	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
+	if err := limitPublishBody(r, maxGenerationPromoteBody); err != nil {
+		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	// json.Decoder otherwise silently keeps the last duplicate key. The wire
+	// wrapper contains both the authorization envelope and its bound request, so
+	// reject ambiguity before extracting either of them.
+	if err := assertNoDuplicateJSONKeys(rawBody); err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	var body generationPromoteBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	decBody := json.NewDecoder(bytes.NewReader(rawBody))
+	decBody.DisallowUnknownFields()
+	if err := decBody.Decode(&body); err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := decBody.Decode(new(json.RawMessage)); err != io.EOF {
+		http.Error(w, "check=request: unexpected trailing data", http.StatusBadRequest)
 		return
 	}
 	requestBytes, err := base64.StdEncoding.DecodeString(body.RequestB64)
@@ -89,9 +111,20 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
+	// A valid publish envelope for another endpoint must never be replayable at
+	// this route. Verify() authenticates the signed payload; the route owns this
+	// explicit purpose comparison.
+	if body.Envelope.Payload.Method != http.MethodPost || body.Envelope.Payload.Target != "/publish/generation" {
+		http.Error(w, "check=envelope_purpose: signed purpose must be POST /publish/generation", http.StatusUnauthorized)
+		return
+	}
 
 	// Strict-decode the promote request (an unknown field is a smuggled host
 	// action; a duplicate/trailing is ambiguity — refuse).
+	if err := assertNoDuplicateJSONKeys(requestBytes); err != nil {
+		http.Error(w, "check=promote_request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 	var req GenerationPromoteRequest
 	dec := json.NewDecoder(bytes.NewReader(requestBytes))
 	dec.DisallowUnknownFields()

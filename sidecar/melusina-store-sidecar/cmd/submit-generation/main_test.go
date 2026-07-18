@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +76,98 @@ func TestPostPromoteUsesOnlyTheRouteBoundEnvelope(t *testing.T) {
 	signed.Payload.Target = "/publish"
 	if _, err := postPromote(context.Background(), client, server.URL, signed, requestBytes); err == nil {
 		t.Fatal("sent a cross-route envelope")
+	}
+}
+
+func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T) {
+	tmp := t.TempDir()
+	var publisherSign, publisherBox, storeSign, storeBox [32]byte
+	for i := range publisherSign {
+		publisherSign[i] = 0x11
+		publisherBox[i] = 0x22
+		storeSign[i] = 0x33
+		storeBox[i] = 0x44
+	}
+	publisherRef := identity.Ref{
+		Kind: identity.KindPearl, ChainID: defaultChainID, ProgramID: defaultProgramID,
+		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
+		PearlIDHash: strings.Repeat("a", 64), KeyVersion: 1,
+	}
+	publisher, err := identity.NewPrivate(publisherRef, publisherSign, publisherBox)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherPath := filepath.Join(tmp, "publisher.json")
+	publisherRaw, err := json.Marshal(publisherKeyFile{
+		Ref: publisherRef, SignSeed: hex.EncodeToString(publisherSign[:]), BoxSeed: hex.EncodeToString(publisherBox[:]),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(publisherPath, publisherRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storeRef := identity.Ref{
+		Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: defaultProgramID,
+		LicenseMint: "store-license", Domain: "store.example", PDA: "store-pda", SidecarID: "rrs-store", KeyVersion: 1,
+	}
+	store, err := identity.NewPrivate(storeRef, storeSign, storeBox)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(tmp, "store-public.json")
+	storeRaw, err := json.Marshal(store.Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(storePath, storeRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request := []byte(`{"schema":"melusina-generation-promote-v1","channel":"stable","expectedCurrentGeneration":0,"components":[{}]}`)
+	requestPath := filepath.Join(tmp, "request.json")
+	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	envelopePath := filepath.Join(tmp, "out", "signed-generation.json")
+	var stdout bytes.Buffer
+	// Deliberately unreachable: envelope-out must return before it attempts any
+	// HTTP request. The exact bound body is for a later authorized target POST.
+	err = run([]string{
+		"--store", "https://127.0.0.1:1", "--store-id", "rrs-store", "--request", requestPath,
+		"--publisher-key", publisherPath, "--store-pubkey", storePath, "--timeout", "1ms",
+		"--envelope-out", envelopePath,
+	}, &stdout)
+	if err != nil {
+		t.Fatalf("offline envelope output: %v", err)
+	}
+	var body generationPromoteBody
+	got, err := os.ReadFile(envelopePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(got, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Envelope.Payload.Method != http.MethodPost || body.Envelope.Payload.Target != generationPromoteTarget {
+		t.Fatalf("offline body lost route binding: %#v", body.Envelope.Payload)
+	}
+	if body.Envelope.Payload.Source.Digest() != publisher.Public().Digest() || body.Envelope.Payload.Destination.Digest() != store.Public().Digest() {
+		t.Fatal("offline body bound the wrong publisher or store identity")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(body.RequestB64)
+	if err != nil || !bytes.Equal(decoded, request) {
+		t.Fatalf("offline body did not preserve exact request bytes: %q / %v", decoded, err)
+	}
+	if info, err := os.Stat(envelopePath); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("signed envelope must be atomically private: mode=%v err=%v", func() os.FileMode {
+			if info == nil {
+				return 0
+			}
+			return info.Mode().Perm()
+		}(), err)
+	}
+	if !strings.Contains(stdout.String(), "SIGNED_GENERATION_ENVELOPE_OK") {
+		t.Fatalf("unexpected offline result: %s", stdout.String())
 	}
 }
 

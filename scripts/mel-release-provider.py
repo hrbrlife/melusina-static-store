@@ -221,10 +221,11 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     apphash = run([str(ensure_bin("apphash", "./cmd/apphash")), "-spk", str(spk), "-metadata", str(metadata)]).strip()
     if len(apphash) != 64 or any(c not in "0123456789abcdef" for c in apphash):
         raise ProviderError("canonical apphash command returned an invalid digest")
-    release_doc = read_json(release)
-    master = str(release_doc.get("masterNftMint", env("MEL_RELEASE_MASTER_NFT_MINT")))
-    if not master:
-        raise ProviderError("candidate RELEASE.json lacks masterNftMint; set MEL_RELEASE_MASTER_NFT_MINT")
+    # A catalog RELEASE.json is an old, mutable handoff artifact and may carry
+    # an offline placeholder. The governed authority is configured outside the
+    # catalog and must be the same value used to derive/propose the ReleaseEntry.
+    # Never let an inherited catalog field silently replace that authority.
+    master = env("MEL_RELEASE_MASTER_NFT_MINT", required=True)
 
     context = {
         "schema": "melusina-mel-release-provider-context-v1",

@@ -60,7 +60,7 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 		LedgerID:     ledger,
 	}
 	walPath := c.walPath(app.AppID)
-	rec, err := loadOrSeedWAL(walPath, seed)
+	rec, err := loadOrSeedWAL(c, walPath, seed)
 	if err != nil {
 		return "", err
 	}

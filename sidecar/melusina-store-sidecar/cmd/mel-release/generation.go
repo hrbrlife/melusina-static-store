@@ -37,6 +37,11 @@ const (
 	maxGenerationBytes      = 1 << 20
 )
 
+// errNoGenerationServed marks a 404 read-back: no generation is served yet, which
+// the idempotency probe treats as a clean "component not present" rather than an
+// error.
+var errNoGenerationServed = errors.New("no generation served")
+
 type publisherKeyFile struct {
 	Ref      identity.Ref `json:"ref"`
 	SignSeed string       `json:"sign_seed_hex"`
@@ -90,8 +95,20 @@ func componentFromCandidate(c candidateReceipt) componentrelease.ComponentReleas
 	}
 }
 
+// maxGenerationCASAttempts bounds the compare-and-swap retry loop for the case
+// where a concurrent app's approve wins the global generation pointer between our
+// read of expectedCurrentGeneration and our POST (per-app locks do not serialize
+// two different apps).
+const maxGenerationCASAttempts = 6
+
 // submitGeneration promotes the candidate's single component and returns the
-// verified served GenerationID/hash. It is the approve-side GENERATED step.
+// verified served GenerationID/hash. It is the approve-side GENERATED step, and
+// it is idempotent: if the served, operator-verified generation ALREADY folds
+// this exact component (a crash between the store folding it and the WAL
+// advancing to GENERATED, or a concurrent promote that already carried it), it
+// reuses that generation with NO new POST — it never mints a redundant
+// whole-system generation on resume. Concurrent pointer contention is resolved
+// by a bounded CAS retry against the refreshed floor.
 func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 	comp := componentFromCandidate(cand)
 
@@ -116,11 +133,67 @@ func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 	defer cancel()
 	client := &http.Client{Timeout: timeout}
 
-	expected, err := fetchCurrentGenerationID(ctx, client, c.StoreURL)
-	if err != nil {
+	// Idempotent resume/no-op: the served generation is the durable guard. If it
+	// already carries our component at the candidate's identity, we are done.
+	if gid, ghash, ok, err := servedGenerationHas(ctx, client, c, operatorKey, comp); err != nil {
 		return 0, "", err
+	} else if ok {
+		return gid, ghash, nil
 	}
 
+	var lastConflict error
+	for attempt := 0; attempt < maxGenerationCASAttempts; attempt++ {
+		expected, err := fetchCurrentGenerationID(ctx, client, c.StoreURL)
+		if err != nil {
+			return 0, "", err
+		}
+		gid, ghash, conflict, err := promoteOnce(ctx, client, c, publisher, destination, operatorKey, comp, expected)
+		if err == nil {
+			return gid, ghash, nil
+		}
+		if !conflict {
+			return 0, "", err
+		}
+		lastConflict = err
+		// Another app advanced the global pointer. If that advance already carried
+		// our component we are done; otherwise retry against the fresh floor.
+		if gid, ghash, ok, err := servedGenerationHas(ctx, client, c, operatorKey, comp); err != nil {
+			return 0, "", err
+		} else if ok {
+			return gid, ghash, nil
+		}
+	}
+	return 0, "", fmt.Errorf("generation promote did not converge after %d CAS attempts: %w", maxGenerationCASAttempts, lastConflict)
+}
+
+// servedGenerationHas fetches and operator-verifies the currently served
+// generation and reports whether it already contains comp at the candidate's
+// SHA256/ContentSHA256/Version identity. A 404 (no generation served yet) is a
+// clean "not present" with no error.
+func servedGenerationHas(ctx context.Context, client *http.Client, c Config, operatorKey []byte, comp componentrelease.ComponentRelease) (uint64, string, bool, error) {
+	_, doc, err := fetchAndVerifyGeneration(ctx, client, c.StoreURL, c.StoreID, operatorKey)
+	if err != nil {
+		if errors.Is(err, errNoGenerationServed) {
+			return 0, "", false, nil
+		}
+		return 0, "", false, err
+	}
+	got, ok := doc.Component(comp.ComponentID)
+	if !ok {
+		return 0, "", false, nil
+	}
+	if got.SHA256 != comp.SHA256 || got.ContentSHA256 != comp.ContentSHA256 || got.Version != comp.Version {
+		// A DIFFERENT release of the same component is served; we must promote ours.
+		return 0, "", false, nil
+	}
+	return doc.GenerationID, doc.GenerationHash, true, nil
+}
+
+// promoteOnce signs and POSTs a single-component promote at the given floor, then
+// reads back and verifies the served generation. The bool return is true when the
+// failure was a store CAS/lost-update conflict (HTTP 409), which the caller may
+// retry against a refreshed floor.
+func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *identity.Private, destination identity.Public, operatorKey []byte, comp componentrelease.ComponentRelease, expected uint64) (uint64, string, bool, error) {
 	request := generationPromoteRequest{
 		Schema:                    generationPromoteSchema,
 		Channel:                   c.Channel,
@@ -129,9 +202,13 @@ func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 	}
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
 
+	timeout := time.Duration(c.OpTimeoutSecs) * time.Second
+	if timeout <= 0 {
+		timeout = 60 * time.Second
+	}
 	ttl := timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
@@ -151,65 +228,65 @@ func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 		},
 	})
 	if err != nil {
-		return 0, "", fmt.Errorf("sign promote envelope: %w", err)
+		return 0, "", false, fmt.Errorf("sign promote envelope: %w", err)
 	}
 	if signed.Payload.Method != http.MethodPost || signed.Payload.Target != generationPromoteTarget {
-		return 0, "", errors.New("internal error: signed envelope does not bind POST /publish/generation")
+		return 0, "", false, errors.New("internal error: signed envelope does not bind POST /publish/generation")
 	}
 
-	result, err := postPromote(ctx, client, c.StoreURL, signed, requestBytes)
+	result, status, err := postPromote(ctx, client, c.StoreURL, signed, requestBytes)
 	if err != nil {
-		return 0, "", err
+		return 0, "", status == http.StatusConflict, err
 	}
 
 	raw, doc, err := fetchAndVerifyGeneration(ctx, client, c.StoreURL, c.StoreID, operatorKey)
 	if err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
 	servedSum := sha256.Sum256(raw)
 	if result.GenerationID != doc.GenerationID || result.PreviousGeneration != doc.PreviousGeneration ||
 		result.GenerationHash != doc.GenerationHash || result.ServedSHA256 != hex.EncodeToString(servedSum[:]) ||
 		result.Path != generationServedPath {
-		return 0, "", fmt.Errorf("promote response does not bind the verified served generation: %#v", result)
+		return 0, "", false, fmt.Errorf("promote response does not bind the verified served generation: %#v", result)
 	}
 	// Prove OUR component is actually present in the served generation.
 	got, ok := doc.Component(comp.ComponentID)
 	if !ok {
-		return 0, "", fmt.Errorf("served generation does not contain component %q", comp.ComponentID)
+		return 0, "", false, fmt.Errorf("served generation does not contain component %q", comp.ComponentID)
 	}
 	if got.SHA256 != comp.SHA256 || got.ContentSHA256 != comp.ContentSHA256 || got.Version != comp.Version {
-		return 0, "", fmt.Errorf("served component %q does not match the candidate binding", comp.ComponentID)
+		return 0, "", false, fmt.Errorf("served component %q does not match the candidate binding", comp.ComponentID)
 	}
-	return doc.GenerationID, doc.GenerationHash, nil
+	return doc.GenerationID, doc.GenerationHash, false, nil
 }
 
-func postPromote(ctx context.Context, client *http.Client, store string, signed envelope.Signed, requestBytes []byte) (generationPromoteResult, error) {
+func postPromote(ctx context.Context, client *http.Client, store string, signed envelope.Signed, requestBytes []byte) (generationPromoteResult, int, error) {
 	var result generationPromoteResult
 	body, err := json.Marshal(generationPromoteBody{Envelope: signed, RequestB64: base64.StdEncoding.EncodeToString(requestBytes)})
 	if err != nil {
-		return result, fmt.Errorf("marshal promote request: %w", err)
+		return result, 0, fmt.Errorf("marshal promote request: %w", err)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(store, "/")+generationPromoteTarget, bytes.NewReader(body))
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return result, fmt.Errorf("generation promote POST: %w", err)
+		return result, 0, fmt.Errorf("generation promote POST: %w", err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxGenerationBytes))
 	if err != nil {
-		return result, err
+		return result, resp.StatusCode, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return result, fmt.Errorf("store rejected generation promote: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		return result, resp.StatusCode, fmt.Errorf("store rejected generation promote: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
-		return result, fmt.Errorf("decode generation promote result: %w", err)
+		return result, resp.StatusCode, fmt.Errorf("decode generation promote result: %w", err)
 	}
-	return result, nil
+	return result, resp.StatusCode, nil
 }
 
 func fetchAndVerifyGeneration(ctx context.Context, client *http.Client, store, storeID string, operatorKey []byte) ([]byte, componentrelease.DesiredGeneration, error) {
@@ -227,6 +304,9 @@ func fetchAndVerifyGeneration(ctx context.Context, client *http.Client, store, s
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxGenerationBytes+1))
 	if err != nil {
 		return nil, zero, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, zero, errNoGenerationServed
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, zero, fmt.Errorf("promoted generation read-back HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))

@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 const walSchema = "melusina-mel-release-wal-v1"
@@ -175,16 +177,30 @@ func journalWAL(path string, rec *walReceipt) error {
 
 // loadOrSeedWAL loads an existing WAL (validating it binds the same publish) or
 // seeds a fresh INIT receipt keyed on the immutable appId.
-func loadOrSeedWAL(path string, seed walReceipt) (walReceipt, error) {
+//
+// walPath/candidatePath are keyed on appId only (no version component), so a
+// COMPLETED release for a prior version otherwise permanently blocks the next
+// version bump for the same app. When the existing WAL is terminal (DONE) at a
+// DIFFERENT version, its terminal receipts are archived under history/ and a
+// fresh INIT is seeded — the tool's whole purpose is repeated per-app bumps. An
+// INCOMPLETE WAL at a different version still fails closed (never mid-flight).
+func loadOrSeedWAL(c Config, path string, seed walReceipt) (walReceipt, error) {
 	existing, ok, err := readWAL(path)
 	if err != nil {
 		return walReceipt{}, err
 	}
 	if ok {
 		if err := checkWALBinding(existing, seed); err != nil {
-			return walReceipt{}, fmt.Errorf("existing WAL binds a different publish: %w", err)
+			if !rotatableCompleted(existing, seed) {
+				return walReceipt{}, fmt.Errorf("existing WAL binds a different publish: %w", err)
+			}
+			if err := rotateCompletedWAL(c, existing, path); err != nil {
+				return walReceipt{}, fmt.Errorf("rotate completed WAL for %s: %w", seed.AppID, err)
+			}
+			// fall through and seed a fresh INIT for the new version
+		} else {
+			return existing, nil
 		}
-		return existing, nil
 	}
 	if err := seedWAL(path, seed); err != nil {
 		if errors.Is(err, os.ErrExist) {
@@ -202,6 +218,63 @@ func loadOrSeedWAL(path string, seed walReceipt) (walReceipt, error) {
 		return walReceipt{}, err
 	}
 	return seed, nil
+}
+
+// rotatableCompleted reports whether an existing WAL is a *completed* (DONE)
+// release for the same app at a DIFFERENT version — the sole case where the next
+// version bump archives the terminal state and seeds fresh rather than failing
+// closed. Anything else (wrong schema, incomplete state, unknown state) is not
+// rotatable and must fail closed.
+func rotatableCompleted(existing, seed walReceipt) bool {
+	return existing.Schema == walSchema &&
+		existing.AppID == seed.AppID &&
+		existing.State == stateDone &&
+		existing.Version != seed.Version
+}
+
+// rotateCompletedWAL archives the terminal WAL + candidate + terminal receipt of
+// a completed release into a per-version history directory so the fresh INIT can
+// be seeded (and the stale candidate cannot be mistaken for the new one). The
+// immutable evidence is preserved, not deleted.
+func rotateCompletedWAL(c Config, existing walReceipt, walPath string) error {
+	appDir := c.appStateDir(existing.AppID)
+	suffix := existing.LedgerID
+	if suffix == "" {
+		suffix = fmt.Sprintf("done-%d", existing.CompletedAtUnix)
+	}
+	histDir := filepath.Join(appDir, "history", safeSegment(existing.Version)+"-"+safeSegment(suffix))
+	if err := os.MkdirAll(histDir, 0o700); err != nil {
+		return err
+	}
+	for _, name := range []string{"wal.json", "candidate.json", "terminal.json"} {
+		src := filepath.Join(appDir, name)
+		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := os.Rename(src, filepath.Join(histDir, name)); err != nil {
+			return err
+		}
+	}
+	return fsyncDir(appDir)
+}
+
+// safeSegment maps an arbitrary string to a single filesystem-safe path segment.
+func safeSegment(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	if b.Len() == 0 {
+		return "seg"
+	}
+	return b.String()
 }
 
 func checkWALBinding(rec, seed walReceipt) error {

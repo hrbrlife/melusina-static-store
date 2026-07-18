@@ -174,6 +174,64 @@ func TestKillAfterTarballSwapRollsBackFromWAL(t *testing.T) {
 	}
 }
 
+// TestRollbackTarballRefusesOutOfRootPrior proves that PriorPath is not an
+// ambient host-action capability just because it came from persisted WAL. A
+// forged or corrupted WAL must not repoint current outside the install-local
+// root, and must fail before restarting the service.
+func TestRollbackTarballRefusesOutOfRootPrior(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "sandstorm")
+	newHash := strings.Repeat("b", 64)
+	priorHash := strings.Repeat("a", 64)
+	newDir := filepath.Join(root, "release-new")
+	outside := filepath.Join(dir, "outside-release")
+	for _, d := range []string{newDir, outside} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeMeta := func(dir, hash string) {
+		b, err := json.Marshal(map[string]any{
+			"schema": "melusina-tarball-release-artifact-v1", "artifactSha256": hash,
+			"artifactSizeBytes": 123, "version": "build-test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".rrs-release-artifact.json"), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeMeta(newDir, newHash)
+	// Give the out-of-root target otherwise-valid metadata: root containment,
+	// not merely metadata parsing, is the boundary this test exercises.
+	writeMeta(outside, priorHash)
+	current := filepath.Join(root, "latest")
+	if err := os.Symlink(newDir, current); err != nil {
+		t.Fatal(err)
+	}
+	entry := WALEntry{
+		ComponentID: "sandstorm-shell", ApplyKind: componentrelease.ApplyTarballSymlinkSwap,
+		FromHash: priorHash, ToHash: newHash, PriorPath: outside,
+	}
+	install := componentrelease.ComponentInstall{
+		ComponentID: "sandstorm-shell", ComponentClass: componentrelease.ClassShell,
+		ApplyKind: componentrelease.ApplyTarballSymlinkSwap, InstallRoot: root, CurrentSymlink: current,
+		ServiceUnit: "sandstorm.service", HealthCommand: []string{"/bin/true"},
+	}
+	runner := &fakeRunner{}
+	if err := RollbackFromWAL(context.Background(), entry, install, runner); err == nil {
+		t.Fatal("RollbackFromWAL accepted an out-of-root tarball PriorPath")
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("rollback restarted after rejecting PriorPath: %v", runner.calls)
+	}
+	target, err := filepath.EvalSymlinks(current)
+	if err != nil || target != newDir {
+		t.Fatalf("current mutated after refused rollback: target=%q err=%v, want %q", target, err, newDir)
+	}
+}
+
 func TestRecoverAllDrivesDecisions(t *testing.T) {
 	dir := t.TempDir()
 	ws, err := NewWALStore(filepath.Join(dir, "wal"))

@@ -21,6 +21,12 @@ unless both ELFs and both archives are byte-identical. The archive contains no
 tenant key, shard, certificate, RPC credential, mutable catalog, or chain
 receipt.
 
+The archive includes `bin/boot-identity-prep` beside the store ELF. The
+deployer uses this exact, checksummed tool during its staged prepare phase to
+derive the `register_sidecar_identity` input from the archived store ELF, the
+fresh TLS certificate, and the root-owned shard set. It must never hand-compose
+those identity fields or build the preparer on the target.
+
 ## Deployer-owned inputs
 
 The deployer, not the remote generation document, owns all host actions and

@@ -67,6 +67,12 @@ build_once() {
     export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
     go build -mod=vendor -trimpath -ldflags "-buildid= -X main.Version=$VERSION" \
       -o "$stage/bin/melusina-store-sidecar" .
+    # The first-install deployer must derive the SidecarIdentity register
+    # material from this exact archive ELF, TLS certificate and shard set.
+    # Package the canonical preparer rather than asking deployment code to
+    # reconstruct its JSON or build Go on the target.
+    go build -mod=vendor -trimpath -ldflags "-buildid=" \
+      -o "$stage/bin/boot-identity-prep" ./cmd/boot-identity-prep
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \
     "$stage/systemd/melusina-store-sidecar.service"
@@ -77,7 +83,7 @@ build_once() {
   printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"builds\":2,\"byteIdentical\":true}" \
     >"$stage/BUILD-PROVENANCE.json"
   find "$stage" -type d -exec chmod 0755 {} +
-  chmod 0755 "$stage/bin/melusina-store-sidecar"
+  chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep"
   chmod 0644 "$stage/BUILD-PROVENANCE.json"
   find "$stage" -exec touch -h -d "@$SOURCE_EPOCH" {} +
   (
@@ -88,7 +94,7 @@ build_once() {
       | env -u XZ_OPT -u XZ_DEFAULTS xz --threads=1 --check=crc64 --lzma2=preset=9e -c \
         >"$out/store-generation-$VERSION.tar.xz"
   )
-  sha256sum "$stage/bin/melusina-store-sidecar" "$out/store-generation-$VERSION.tar.xz" \
+  sha256sum "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" "$out/store-generation-$VERSION.tar.xz" \
     | sed "s#  $stage/bin/#  #; s#  $out/#  #" >"$out/SHA256SUMS"
 }
 
@@ -96,12 +102,14 @@ mkdir -p "$TMP/out-1" "$TMP/out-2"
 build_once "$W1" "$TMP/out-1"
 build_once "$W2" "$TMP/out-2"
 cmp "$TMP/out-1/stage/bin/melusina-store-sidecar" "$TMP/out-2/stage/bin/melusina-store-sidecar"
+cmp "$TMP/out-1/stage/bin/boot-identity-prep" "$TMP/out-2/stage/bin/boot-identity-prep"
 cmp "$TMP/out-1/store-generation-$VERSION.tar.xz" "$TMP/out-2/store-generation-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
 
 PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-generation-$VERSION.output.XXXXXX")"
 chmod 0755 "$PUBLISH_TMP"
 install -m 0755 "$TMP/out-1/stage/bin/melusina-store-sidecar" "$PUBLISH_TMP/melusina-store-sidecar"
+install -m 0755 "$TMP/out-1/stage/bin/boot-identity-prep" "$PUBLISH_TMP/boot-identity-prep"
 install -m 0644 "$TMP/out-1/store-generation-$VERSION.tar.xz" "$PUBLISH_TMP/store-generation-$VERSION.tar.xz"
 install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
 install -m 0644 "$TMP/out-1/stage/BUILD-PROVENANCE.json" "$PUBLISH_TMP/BUILD-PROVENANCE.json"

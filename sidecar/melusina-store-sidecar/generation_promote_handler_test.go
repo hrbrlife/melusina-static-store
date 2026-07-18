@@ -89,28 +89,88 @@ func TestVerifyComponentReleaseOnChainFailClosed(t *testing.T) {
 
 func TestVerifyAppComponentOnChain(t *testing.T) {
 	cfg, _ := testConfig(t)
+	cfg.Domain = "bazaar.melusina-os.org"
+	cfg.PublicBaseURL = "https://bazaar.melusina-os.org"
 	f := buildValidFixture(t, cfg, testMaster)
 	m := newMockChainReader()
 	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive}
 	dist := t.TempDir()
-	name := "test-app.spk"
-	dir := filepath.Join(dist, "releases", "app")
+	spkSum := sha256.Sum256(f.spk)
+	packageID := hex.EncodeToString(spkSum[:])[:32]
+	dir := filepath.Join(dist, "packages")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, name), f.spk, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, packageID), f.spk, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	spkSum := sha256.Sum256(f.spk)
-	c := componentrelease.ComponentRelease{
-		ComponentID: "test-app", ComponentClass: componentrelease.ClassApp, Version: f.rel.Version,
-		SHA256: hex.EncodeToString(spkSum[:]), ContentSHA256: f.rel.AppHash, SizeBytes: int64(len(f.spk)),
-		BundleURL: "https://bazaar.melusina-os.org/releases/app/" + name,
-		Chain:     componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: programID.Base58(), MasterNftMint: testMaster, ReleasePDA: f.relPDA},
+	appID := "test-app"
+	indexBody := []byte(`{"apps":[{"appId":"` + appID + `","packageId":"` + packageID + `"}]}`)
+	if err := os.MkdirAll(filepath.Join(dist, "apps", "pointers"), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	svc := &publishService{cfg: Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}, cr: m}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	indexHash := sha256.Sum256(indexBody)
+	domainHash := primitives.StoreDomainHash(cfg.Domain)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	pointer := AppCatalogPointer{
+		Schema:            appCatalogPointerSchema,
+		AppID:             appID,
+		PackageID:         packageID,
+		Version:           f.rel.Version,
+		AppHash:           f.rel.AppHash,
+		ReleaseHash:       f.rel.ReleaseHash,
+		StageID:           strings.Repeat("1", 64),
+		CatalogSHA256:     hex.EncodeToString(indexHash[:]),
+		ServingDomainHash: hex.EncodeToString(domainHash[:]),
+		PublishedAt:       1,
+	}
+	message, err := appCatalogPointerMessage(pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
+	pointerBody, err := json.Marshal(pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := componentrelease.ComponentRelease{
+		ComponentID: appID, ComponentClass: componentrelease.ClassApp, Version: f.rel.Version,
+		SHA256: hex.EncodeToString(spkSum[:]), ContentSHA256: f.rel.AppHash, SizeBytes: int64(len(f.spk)),
+		ArtifactName: packageID, BundleURL: cfg.PublicBaseURL + "/packages/" + packageID,
+		ReleaseHash: f.rel.ReleaseHash, StageID: pointer.StageID,
+		Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: programID.Base58(), MasterNftMint: testMaster, ReleasePDA: f.relPDA},
+	}
+	svc := &publishService{cfg: Config{DistDir: dist, Domain: cfg.Domain, PublicBaseURL: cfg.PublicBaseURL}, operator: op, cr: m}
 	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("valid app component refused: %v", err)
+	}
+	// A valid ReleaseEntry plus a separately signed pointer to another package is
+	// still not this component. The app selection is part of the authority.
+	wrongPointer := pointer
+	wrongPointer.PackageID = strings.Repeat("0", 32)
+	message, err = appCatalogPointerMessage(wrongPointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrongPointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
+	wrongPointerBody, err := json.Marshal(wrongPointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), wrongPointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
+		t.Fatal("accepted app ReleaseEntry with signed pointer to a different package")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
+		t.Fatal(err)
 	}
 	for _, mutate := range []func(*componentrelease.ComponentRelease){
 		func(x *componentrelease.ComponentRelease) { x.Chain.ReleasePDA = testProg },

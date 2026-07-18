@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -244,7 +245,133 @@ func (s *publishService) verifyAppComponentOnChain(ctx context.Context, c compon
 	if err := meta.Status.RequireActive(); err != nil {
 		return fmt.Errorf("component %s: ReleaseEntry not Active: %w", c.ComponentID, err)
 	}
-	return s.verifyComponentServedBytes(c)
+	return s.verifyAppComponentServedBytes(c)
+}
+
+// verifyAppComponentServedBytes binds an app-class ComponentRelease to the
+// store's already-signed catalog selection. Apps are deliberately different
+// from host artifacts: their SPKs are served as /packages/<packageId>, never
+// under /releases/. A matching ReleaseEntry and an arbitrary SPK hash are not
+// enough; the exact current signed pointer and apps/index.json must select the
+// same package for the same app before a DesiredGeneration may name it.
+func (s *publishService) verifyAppComponentServedBytes(c componentrelease.ComponentRelease) error {
+	if s.operator == nil {
+		return fmt.Errorf("component %s: store operator identity is required to verify app catalog pointer", c.ComponentID)
+	}
+	origin := strings.TrimRight(strings.TrimSpace(s.cfg.PublicBaseURL), "/")
+	prefix := origin + "/packages/"
+	if !strings.HasPrefix(c.BundleURL, prefix) {
+		return fmt.Errorf("component %s: app bundleUrl %q is not an exact package URL under %s", c.ComponentID, c.BundleURL, prefix)
+	}
+	packageID := strings.TrimPrefix(c.BundleURL, prefix)
+	if !validCatalogPackageID(packageID) {
+		return fmt.Errorf("component %s: app bundleUrl packageId %q is invalid", c.ComponentID, packageID)
+	}
+	if strings.TrimSpace(c.ArtifactName) != packageID {
+		return fmt.Errorf("component %s: app artifactName %q != bundle packageId %q", c.ComponentID, c.ArtifactName, packageID)
+	}
+	if !isSafePathSegment(c.ComponentID) {
+		return fmt.Errorf("component %s: unsafe appId", c.ComponentID)
+	}
+
+	pointerPath := filepath.Join(s.cfg.DistDir, "apps", "pointers", c.ComponentID+".json")
+	pointerBody, err := os.ReadFile(pointerPath)
+	if err != nil {
+		return fmt.Errorf("component %s: read signed app catalog pointer: %w", c.ComponentID, err)
+	}
+	if int64(len(pointerBody)) > maxAppCatalogJSONBytes {
+		return fmt.Errorf("component %s: signed app catalog pointer exceeds size limit", c.ComponentID)
+	}
+	if err := assertNoDuplicateJSONKeys(pointerBody); err != nil {
+		return fmt.Errorf("component %s: signed app catalog pointer: %w", c.ComponentID, err)
+	}
+	var pointer AppCatalogPointer
+	dec := json.NewDecoder(bytes.NewReader(pointerBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&pointer); err != nil {
+		return fmt.Errorf("component %s: decode signed app catalog pointer: %w", c.ComponentID, err)
+	}
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return fmt.Errorf("component %s: signed app catalog pointer has trailing data", c.ComponentID)
+	}
+	operatorPub, err := operatorSignPublicKey(s.operator)
+	if err != nil {
+		return fmt.Errorf("component %s: operator public key: %w", c.ComponentID, err)
+	}
+	if err := verifyAppCatalogPointer(operatorPub, pointer); err != nil {
+		return fmt.Errorf("component %s: signed app catalog pointer: %w", c.ComponentID, err)
+	}
+	domainHash := primitives.StoreDomainHash(s.cfg.Domain)
+	wantDomainHash := hex.EncodeToString(domainHash[:])
+	if pointer.AppID != c.ComponentID || pointer.PackageID != packageID ||
+		pointer.Version != c.Version || pointer.AppHash != c.ContentSHA256 ||
+		pointer.ServingDomainHash != wantDomainHash {
+		return fmt.Errorf("component %s: signed app catalog pointer does not bind this app/package/version/content/domain", c.ComponentID)
+	}
+	if c.ReleaseHash != "" && pointer.ReleaseHash != c.ReleaseHash {
+		return fmt.Errorf("component %s: signed app catalog pointer releaseHash mismatch", c.ComponentID)
+	}
+	if c.StageID != "" && pointer.StageID != c.StageID {
+		return fmt.Errorf("component %s: signed app catalog pointer stageId mismatch", c.ComponentID)
+	}
+
+	indexBody, err := os.ReadFile(filepath.Join(s.cfg.DistDir, "apps", "index.json"))
+	if err != nil {
+		return fmt.Errorf("component %s: read app catalog index: %w", c.ComponentID, err)
+	}
+	if int64(len(indexBody)) > maxAppCatalogJSONBytes {
+		return fmt.Errorf("component %s: app catalog index exceeds size limit", c.ComponentID)
+	}
+	if err := assertNoDuplicateJSONKeys(indexBody); err != nil {
+		return fmt.Errorf("component %s: app catalog index: %w", c.ComponentID, err)
+	}
+	indexHash := sha256.Sum256(indexBody)
+	if pointer.CatalogSHA256 != hex.EncodeToString(indexHash[:]) {
+		return fmt.Errorf("component %s: signed app catalog pointer catalog sha256 mismatch", c.ComponentID)
+	}
+	var index catalogIndex
+	if err := json.Unmarshal(indexBody, &index); err != nil {
+		return fmt.Errorf("component %s: decode app catalog index: %w", c.ComponentID, err)
+	}
+	found := false
+	for _, app := range index.Apps {
+		if strings.TrimSpace(app.AppID) != c.ComponentID {
+			continue
+		}
+		if found || strings.TrimSpace(app.PackageID) != packageID {
+			return fmt.Errorf("component %s: app catalog does not select exactly the signed package", c.ComponentID)
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("component %s: app catalog has no selected package", c.ComponentID)
+	}
+
+	packagePath := filepath.Join(s.cfg.DistDir, "packages", packageID)
+	info, err := os.Lstat(packagePath)
+	if err != nil {
+		return fmt.Errorf("component %s: lstat served app package: %w", c.ComponentID, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("component %s: served app package is not a regular file", c.ComponentID)
+	}
+	f, err := os.Open(packagePath)
+	if err != nil {
+		return fmt.Errorf("component %s: open served app package: %w", c.ComponentID, err)
+	}
+	defer f.Close()
+	h := sha256.New()
+	n, err := io.Copy(h, f)
+	if err != nil {
+		return fmt.Errorf("component %s: hash served app package: %w", c.ComponentID, err)
+	}
+	if n != c.SizeBytes {
+		return fmt.Errorf("component %s: served app package size %d != component size %d", c.ComponentID, n, c.SizeBytes)
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != strings.ToLower(strings.TrimSpace(c.SHA256)) {
+		return fmt.Errorf("component %s: served app package sha256 %s != component sha256 %s", c.ComponentID, got, c.SHA256)
+	}
+	return nil
 }
 
 // verifySidecarComponentOnChain re-verifies a sidecar-class component. The promote

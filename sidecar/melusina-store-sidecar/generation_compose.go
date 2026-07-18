@@ -48,10 +48,13 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 //   - takes the id set = union(current, updates), each id appearing once;
 //   - for an updated id uses the update entry, minting a version if it is empty;
 //   - for an unchanged id carries the current entry forward verbatim;
-//   - on an UPDATE generation, sets each component's rollback floor
-//     (previousSha256/previousVersion) to the CURRENT generation's value for that
-//     id (the exact artifact a failed apply restores to), or to the component's
-//     own value for a brand-new component (no older artifact to fall back to).
+//   - on an UPDATE generation, preserves an explicitly supplied rollback floor
+//     (previousSha256/previousVersion). This lets a target-scoped publisher retry
+//     after a previously promoted generation failed before it was committed by
+//     the target: the signed floor remains the target's actual running artifact,
+//     not merely the last advertised artifact. If the publisher supplies no
+//     floor, it uses the CURRENT generation's component as the normal sequential
+//     release default. A partially supplied floor is refused.
 //
 // The result is NOT signed and NOT promoted — the store operator signs it and the
 // promote step swaps it under generationCAS.
@@ -100,8 +103,10 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 	components := make([]componentrelease.ComponentRelease, 0, len(ids))
 	for _, id := range ids {
 		var c componentrelease.ComponentRelease
+		updated := false
 		if u, ok := updByID[id]; ok {
 			c = u
+			updated = true
 			if strings.TrimSpace(c.Version) == "" {
 				c.Version = mintComponentVersion(genID, c.SHA256)
 			}
@@ -109,7 +114,11 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 			c = curByID[id] // unchanged: carry forward verbatim
 		}
 		if isUpdate {
-			if cur, ok := curByID[id]; ok {
+			if updated && (c.PreviousSHA256 != "" || strings.TrimSpace(c.PreviousVersion) != "") {
+				if c.PreviousSHA256 == "" || strings.TrimSpace(c.PreviousVersion) == "" {
+					return componentrelease.DesiredGeneration{}, fmt.Errorf("component update %q has a partial rollback floor", id)
+				}
+			} else if cur, ok := curByID[id]; ok {
 				c.PreviousSHA256 = cur.SHA256
 				c.PreviousVersion = cur.Version
 			} else {

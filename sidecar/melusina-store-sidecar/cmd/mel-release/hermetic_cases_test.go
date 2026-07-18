@@ -454,3 +454,102 @@ func TestHermeticVerifiedResume(t *testing.T) {
 		t.Fatalf("VERIFIED->DONE resume touched the store: post %d->%d fold %d->%d", postBefore, post, foldBefore, fold)
 	}
 }
+
+// ── regression: ensureOldRevoked must actually refuse, not just be present ──
+//
+// Adversarial-audit finding (2026-07-18): every existing WAL-driven test
+// exercises ensureOldRevoked only via the normal forward sequence, where
+// REGISTERED/PROMOTED always precede REVOKED, so its precondition is
+// trivially true in every path the suite drove — deleting the guard
+// entirely left the whole suite green. This test calls ensureOldRevoked
+// directly against a stub where the new release is NOT (yet) both Active
+// and served, proving the refusal actually fires.
+
+type revokeGuardStubProvider struct {
+	served  string
+	active  []releaseRef
+	revoked map[string]bool
+}
+
+func (s *revokeGuardStubProvider) Build(string, string, string) error { return nil }
+func (s *revokeGuardStubProvider) ActiveReleases(string) ([]releaseRef, error) {
+	return s.active, nil
+}
+func (s *revokeGuardStubProvider) ReleaseStatus(pda string) (releaseStatus, error) {
+	if s.revoked != nil && s.revoked[pda] {
+		return releaseStatus{PDA: pda, Status: "Revoked"}, nil
+	}
+	return releaseStatus{PDA: pda, Status: "Active"}, nil
+}
+func (s *revokeGuardStubProvider) ServedAppHash(string) (string, error) { return s.served, nil }
+func (s *revokeGuardStubProvider) Stage(string, string, string, string) error { return nil }
+func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string) error {
+	return nil
+}
+func (s *revokeGuardStubProvider) ApproveRegister(string, string, string) error { return nil }
+func (s *revokeGuardStubProvider) Promote(string, string, string, string, string, string) error {
+	return nil
+}
+func (s *revokeGuardStubProvider) RevokeRelease(pda, receiptOut string) error {
+	if s.revoked == nil {
+		s.revoked = map[string]bool{}
+	}
+	s.revoked[pda] = true
+	rec := revokeReceipt{
+		Schema:               revokeSchema,
+		ReleaseEntryPDA:      pda,
+		Status:               "Revoked",
+		TransactionSignature: "fakeSigFor" + pda,
+	}
+	raw, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(receiptOut, raw, 0o600)
+}
+
+func TestEnsureOldRevokedRefusesWhenNewReleaseNotLiveYet(t *testing.T) {
+	dir := t.TempDir()
+	cfg := Config{StateDir: dir}
+	walPath := cfg.walPath(testAppID)
+	if err := os.MkdirAll(cfg.appStateDir(testAppID), 0o700); err != nil {
+		t.Fatalf("mkdir appStateDir: %v", err)
+	}
+	rec := &walReceipt{
+		AppID:         testAppID,
+		NewAppHash:    "newhash123",
+		NewReleasePDA: "PDA_NEW",
+		StalePDAs:     []string{"PDA_STALE"},
+	}
+
+	// Case A: store serves nothing yet (new release not promoted/served).
+	stub := &revokeGuardStubProvider{served: "", active: nil}
+	if err := ensureOldRevoked(cfg, stub, walPath, rec); err == nil {
+		t.Fatalf("ensureOldRevoked must refuse when nothing is served yet, got nil error")
+	}
+
+	// Case B: store serves a DIFFERENT hash than the new release (stale-serving).
+	stub = &revokeGuardStubProvider{served: "someOtherHash", active: []releaseRef{{PDA: "PDA_NEW", AppHash: "newhash123"}}}
+	if err := ensureOldRevoked(cfg, stub, walPath, rec); err == nil {
+		t.Fatalf("ensureOldRevoked must refuse when served hash != the new release's hash, got nil error")
+	}
+
+	// Case C: served matches, but the new release is NOT in the Active set
+	// (e.g. approval landed but a later read shows it not yet Active).
+	stub = &revokeGuardStubProvider{served: "newhash123", active: nil}
+	if err := ensureOldRevoked(cfg, stub, walPath, rec); err == nil {
+		t.Fatalf("ensureOldRevoked must refuse when the new release isn't in ActiveReleases, got nil error")
+	}
+
+	// Case D (control): once genuinely Active AND served, it must proceed
+	// and actually revoke the stale PDA — proves this isn't just permanently
+	// refusing everything.
+	stub = &revokeGuardStubProvider{served: "newhash123", active: []releaseRef{{PDA: "PDA_NEW", AppHash: "newhash123"}}}
+	rec.RevokeReceipts = nil
+	if err := ensureOldRevoked(cfg, stub, walPath, rec); err != nil {
+		t.Fatalf("ensureOldRevoked should succeed once the new release is genuinely Active+served: %v", err)
+	}
+	if _, ok := rec.RevokeReceipts["PDA_STALE"]; !ok {
+		t.Fatalf("expected a recorded revoke receipt for PDA_STALE, got none")
+	}
+}

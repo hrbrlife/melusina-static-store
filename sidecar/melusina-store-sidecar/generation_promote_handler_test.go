@@ -71,18 +71,56 @@ func TestVerifyComponentReleaseOnChainFailClosed(t *testing.T) {
 	svc := &publishService{cfg: Config{PublicBaseURL: "https://bazaar.melusina-os.org"}}
 	ctx := context.Background()
 
-	// app (release_v2) re-verify is not yet wired -> refused, never silently ok.
+	// app (release_v2) must fail closed without a real chain reader.
 	app := shellComp("x-app", strings.Repeat("a", 64), "1")
 	app.ComponentClass = componentrelease.ClassApp
 	app.Chain.Kind = componentrelease.AuthorityReleaseV2
 	if err := svc.verifyComponentReleaseOnChain(ctx, app); err == nil {
-		t.Fatal("app-class component accepted (must be pending/refused)")
+		t.Fatal("app-class component accepted without an app ReleaseEntry re-verify")
 	}
 	// Unknown authority kind -> refused.
 	unk := shellComp("x-unk", strings.Repeat("a", 64), "1")
 	unk.Chain.Kind = "bogus-authority"
 	if err := svc.verifyComponentReleaseOnChain(ctx, unk); err == nil {
 		t.Fatal("unknown authority kind accepted")
+	}
+}
+
+func TestVerifyAppComponentOnChain(t *testing.T) {
+	cfg, _ := testConfig(t)
+	f := buildValidFixture(t, cfg, testMaster)
+	m := newMockChainReader()
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive}
+	dist := t.TempDir()
+	name := "test-app.spk"
+	dir := filepath.Join(dist, "releases", "app")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), f.spk, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spkSum := sha256.Sum256(f.spk)
+	c := componentrelease.ComponentRelease{
+		ComponentID: "test-app", ComponentClass: componentrelease.ClassApp, Version: f.rel.Version,
+		SHA256: hex.EncodeToString(spkSum[:]), ContentSHA256: f.rel.AppHash, SizeBytes: int64(len(f.spk)),
+		BundleURL: "https://bazaar.melusina-os.org/releases/app/" + name,
+		Chain:     componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: programID.Base58(), MasterNftMint: testMaster, ReleasePDA: f.relPDA},
+	}
+	svc := &publishService{cfg: Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}, cr: m}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
+		t.Fatalf("valid app component refused: %v", err)
+	}
+	for _, mutate := range []func(*componentrelease.ComponentRelease){
+		func(x *componentrelease.ComponentRelease) { x.Chain.ReleasePDA = testProg },
+		func(x *componentrelease.ComponentRelease) { x.ContentSHA256 = strings.Repeat("0", 64) },
+		func(x *componentrelease.ComponentRelease) { x.Chain.Program = testMaster },
+	} {
+		bad := c
+		mutate(&bad)
+		if err := svc.verifyComponentReleaseOnChain(context.Background(), bad); err == nil {
+			t.Fatal("accepted forged app authority")
+		}
 	}
 }
 

@@ -167,10 +167,51 @@ func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c co
 	case componentrelease.AuthoritySidecarIdentity:
 		return s.verifySidecarComponentOnChain(ctx, c)
 	case componentrelease.AuthorityReleaseV2:
-		return fmt.Errorf("component %s: on-chain re-verify for release_v2 (app) is not yet wired in the promote handler (arrives with the app-publisher half)", c.ComponentID)
+		return s.verifyAppComponentOnChain(ctx, c)
 	default:
 		return fmt.Errorf("component %s: unknown authority kind %q", c.ComponentID, c.Chain.Kind)
 	}
+}
+
+// verifyAppComponentOnChain re-derives the ReleaseEntry PDA from the app's
+// content hash (the on-chain tree hash, deliberately distinct from the served
+// SPK hash), requires that exact account to be Active and hash-pinned, then
+// proves the advertised SPK bytes are actually served by this store. Neither a
+// publisher-supplied PDA nor a matching artifact hash alone is authority.
+func (s *publishService) verifyAppComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
+	if c.ComponentClass != componentrelease.ClassApp {
+		return fmt.Errorf("component %s: release_v2 authority requires app class", c.ComponentID)
+	}
+	if strings.TrimSpace(c.Chain.Program) != programID.Base58() {
+		return fmt.Errorf("component %s: chain program %q != pinned %q", c.ComponentID, c.Chain.Program, programID.Base58())
+	}
+	contentHash, err := hash32FromHex(c.ContentSHA256)
+	if err != nil {
+		return fmt.Errorf("component %s: bad app contentSha256: %w", c.ComponentID, err)
+	}
+	master, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.MasterNftMint))
+	if err != nil {
+		return fmt.Errorf("component %s: bad masterNftMint: %w", c.ComponentID, err)
+	}
+	derived, _, err := pda.Release(master, contentHash, programID)
+	if err != nil {
+		return fmt.Errorf("component %s: derive ReleaseEntry PDA: %w", c.ComponentID, err)
+	}
+	claimed, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.ReleasePDA))
+	if err != nil || claimed != derived {
+		return fmt.Errorf("component %s: ReleaseEntry PDA does not equal the locally derived content-hash PDA", c.ComponentID)
+	}
+	meta, err := s.cr.FetchReleaseEntryMeta(ctx, derived.Base58())
+	if err != nil {
+		return fmt.Errorf("component %s: fetch ReleaseEntry %s: %w", c.ComponentID, derived.Base58(), err)
+	}
+	if meta.AppHash != contentHash {
+		return fmt.Errorf("component %s: on-chain app_hash %x != contentSha256 %x", c.ComponentID, meta.AppHash[:], contentHash[:])
+	}
+	if err := meta.Status.RequireActive(); err != nil {
+		return fmt.Errorf("component %s: ReleaseEntry not Active: %w", c.ComponentID, err)
+	}
+	return s.verifyComponentServedBytes(c)
 }
 
 // verifySidecarComponentOnChain re-verifies a sidecar-class component. The promote

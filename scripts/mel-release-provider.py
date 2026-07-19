@@ -154,7 +154,7 @@ def catalog_package(app_id: str) -> Path:
 
 def require_context(app_id: str) -> dict[str, Any]:
     context = read_json(context_path(app_id))
-    for key in ("catalogDir", "spkPath", "metadataPath", "releasePath", "statePath"):
+    for key in ("catalogDir", "ceremonyDir", "spkPath", "metadataPath", "releasePath", "statePath"):
         if not context.get(key):
             raise ProviderError(f"provider context lacks {key}")
     return context
@@ -210,7 +210,18 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"
-    release = catalog / "RELEASE.json"
+    # The on-chain ReleaseEntry AppHash is the canonical two-file tree
+    # {app.spk, metadata.json}.  The catalog directory also carries mutable
+    # presentation assets (icons, descriptions, screenshots), which the Pearl
+    # tool would otherwise fold into its whole-directory hash.  Give the Pearl
+    # ceremony a private, minimal tree so its AppHash exactly matches the store
+    # serve-gate and the ReleaseEntry contract.
+    ceremony = work / "ceremony"
+    ceremony.mkdir(mode=0o700)
+    shutil.copyfile(spk, ceremony / "app.spk")
+    shutil.copyfile(metadata, ceremony / "metadata.json")
+    release = ceremony / "RELEASE.json"
+    shutil.copyfile(catalog / "RELEASE.json", release)
     meta = read_json(metadata)
     if meta.get("appId") != app_id:
         raise ProviderError("staged metadata appId drift")
@@ -232,6 +243,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "appId": app_id,
         "sourceDir": str(source),
         "catalogDir": str(catalog),
+        "ceremonyDir": str(ceremony),
         "spkPath": str(spk),
         "metadataPath": str(metadata),
         "releasePath": str(release),
@@ -358,11 +370,8 @@ def release_entry_exists(pda: str) -> bool:
 def finalize_release(context: dict[str, Any]) -> None:
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
     run([
-        str(pearl), "finalize-release", "--app-dir", str(context["catalogDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
+        str(pearl), "finalize-release", "--app-dir", str(context["ceremonyDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
-        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
-        "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
-        "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
     ])
 
 
@@ -375,12 +384,11 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     state_path = clean_abs(str(context["statePath"]), "provider statePath")
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
     run([
-        str(pearl), "propose-release", "--dry-run", "--app-dir", str(clean_abs(str(context["catalogDir"]), "provider catalogDir")),
+        str(pearl), "propose-release", "--dry-run", "--app-dir", str(clean_abs(str(context["ceremonyDir"]), "provider ceremonyDir")),
         "--app-id", app_id, "--release-json", str(release_path), "--license-mint", env("MEL_RELEASE_LICENSE_MINT", required=True),
         "--master-mint", env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "--version", version, "--state-out", str(state_path),
         "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,
         "--author-keypair", env("MEL_RELEASE_AUTHOR_KEYPAIR", required=True), "--transaction-index", str(transaction_index),
-        "--artifact-spk", str(context["spkPath"]), "--artifact-metadata", str(context["metadataPath"]),
         "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
         "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
     ])

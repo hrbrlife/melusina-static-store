@@ -38,6 +38,13 @@ type Config struct {
 	StateDir      string // MEL_RELEASE_STATE_DIR      (default ~/.mel-release or /tmp fallback)
 	PublisherKey  string // MEL_RELEASE_PUBLISHER_KEY  (env:NAME or path; required by approve)
 	OpTimeoutSecs int    // MEL_RELEASE_OP_TIMEOUT_SECS (default 480)
+	// AllowGlobalReleaseRevoke is deliberately OFF by default. ReleaseEntry is
+	// keyed by {master, appHash}, not by a store/install target, so automatically
+	// revoking every other Active entry while publishing to one target would
+	// mutate unrelated stores. Normal approval retains global release history and
+	// lets the target's signed pointer select its desired release. A global
+	// retirement needs an explicit, separately reviewed opt-in.
+	AllowGlobalReleaseRevoke bool // MEL_RELEASE_ALLOW_GLOBAL_REVOKE=yes
 }
 
 func loadConfig() (Config, error) {
@@ -56,6 +63,12 @@ func loadConfig() (Config, error) {
 	}
 	c.BundleOrigin = envOr("MEL_RELEASE_BUNDLE_ORIGIN", strings.TrimRight(c.StoreURL, "/"))
 	c.OpTimeoutSecs = 480
+	if revoke := strings.TrimSpace(os.Getenv("MEL_RELEASE_ALLOW_GLOBAL_REVOKE")); revoke != "" {
+		if revoke != "yes" {
+			return Config{}, errors.New("MEL_RELEASE_ALLOW_GLOBAL_REVOKE must be exactly 'yes' when set")
+		}
+		c.AllowGlobalReleaseRevoke = true
+	}
 
 	var missing []string
 	for name, val := range map[string]string{

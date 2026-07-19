@@ -147,7 +147,9 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 		if !greater {
 			return fmt.Errorf("new version %q is not strictly greater than the current Active version %q (%s)", rec.Version, r.Version, r.PDA)
 		}
-		stale = append(stale, r.PDA)
+		if c.AllowGlobalReleaseRevoke {
+			stale = append(stale, r.PDA)
+		}
 	}
 
 	relHash := sha256Hex([]byte(b.AppHash + rec.Version + rec.ReleaseNonce))
@@ -159,6 +161,10 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	rec.PreviousSHA256 = b.PreviousSHA256
 	rec.PreviousVersion = b.PreviousVersion
 	rec.ReleaseHash = relHash
+	// Active ReleaseEntries are global app authority/history, not scoped to this
+	// store or install. The target pointer/generation selects what this target
+	// serves. Never infer that another Active entry is stale merely because this
+	// target is publishing a newer candidate.
 	rec.StalePDAs = stale
 	rec.ActiveBefore = active
 	rec.BuildReceipt = ref

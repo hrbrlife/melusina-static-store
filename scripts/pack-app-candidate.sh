@@ -120,8 +120,11 @@ old = json.load(open(before, encoding="utf-8"))
 new = json.load(open(after, encoding="utf-8"))
 expected = hashlib.sha256(open(spk, "rb").read()).hexdigest()[:32]
 old.pop("packageId", "")
+old.pop("sha256", "")
 package_id = new.pop("packageId", "")
-print("yes" if old == new and package_id == expected else "no")
+sha256 = new.pop("sha256", "")
+full_sha = hashlib.sha256(open(spk, "rb").read()).hexdigest()
+print("yes" if old == new and package_id == expected and sha256 in ("", full_sha) else "no")
 PY
 )"
   [[ "$generated_ok" == yes ]] || {

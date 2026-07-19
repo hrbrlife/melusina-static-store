@@ -525,14 +525,14 @@ func (s *revokeGuardStubProvider) ReleaseStatus(pda string) (releaseStatus, erro
 	return releaseStatus{PDA: pda, Status: "Active"}, nil
 }
 func (s *revokeGuardStubProvider) ServedAppHash(string) (string, error) { return s.served, nil }
-func (s *revokeGuardStubProvider) Stage(string, string, string, string, string, string) error {
+func (s *revokeGuardStubProvider) Stage(App, string, string, string, string, string) error {
 	return nil
 }
 func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string) error {
 	return nil
 }
 func (s *revokeGuardStubProvider) ApproveRegister(string, string, string, string) error { return nil }
-func (s *revokeGuardStubProvider) Promote(string, string, string, string, string, string) error {
+func (s *revokeGuardStubProvider) Promote(App, string, string, string, string, string) error {
 	return nil
 }
 func (s *revokeGuardStubProvider) RevokeRelease(pda, receiptOut string) error {

@@ -30,6 +30,9 @@ families:
         source_path:  ccash_go_htmx                 # dir != slug != catalog
         publish_slug: ccash
         catalog_name: popaye
+        catalog_developer: hrbrlife
+        catalog_repo: CCASH
+        catalog_slug: popaye
         role:         "flagship proof app"
 
       dueprocess:
@@ -84,7 +87,7 @@ func TestLoadFamilyParsesApps(t *testing.T) {
 	if popaye.AppID != "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510" {
 		t.Fatalf("popaye appId = %q", popaye.AppID)
 	}
-	if popaye.PublishSlug != "ccash" || popaye.CatalogName != "popaye" || popaye.SourcePath != "ccash_go_htmx" {
+	if popaye.PublishSlug != "ccash" || popaye.CatalogName != "popaye" || popaye.SourcePath != "ccash_go_htmx" || popaye.CatalogDeveloper != "hrbrlife" || popaye.CatalogRepo != "CCASH" || popaye.CatalogSlug != "popaye" {
 		t.Fatalf("popaye fields wrong: %+v", popaye)
 	}
 	if popaye.Family != "ccash" {
@@ -104,6 +107,18 @@ func TestLoadFamilyParsesApps(t *testing.T) {
 	}
 	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "namedcoin" {
 		t.Fatalf("admin fields wrong: %+v", admin)
+	}
+}
+
+func TestRequireCompleteCatalogSlot(t *testing.T) {
+	if err := requireCompleteCatalogSlot(App{AppID: "app"}); err != nil {
+		t.Fatalf("empty optional slot: %v", err)
+	}
+	if err := requireCompleteCatalogSlot(App{AppID: "app", CatalogDeveloper: "hrbrlife", CatalogRepo: "AI_Lagoon", CatalogSlug: "ai-lagoon"}); err != nil {
+		t.Fatalf("complete slot: %v", err)
+	}
+	if err := requireCompleteCatalogSlot(App{AppID: "app", CatalogDeveloper: "hrbrlife"}); err == nil {
+		t.Fatal("partial catalog slot unexpectedly accepted")
 	}
 }
 

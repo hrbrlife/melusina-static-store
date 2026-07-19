@@ -85,7 +85,7 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 				return "", err
 			}
 		case stateBuilt:
-			if err := ensureStaged(c, prov, &rec); err != nil {
+			if err := ensureStaged(c, prov, app, &rec); err != nil {
 				return "", fmt.Errorf("stage: %w", err)
 			}
 			if err := advanceWAL(walPath, &rec, stateStaged); err != nil {
@@ -191,12 +191,12 @@ func verifyAppHash(b buildReceipt) error {
 	return nil
 }
 
-func ensureStaged(c Config, prov SignerProvider, rec *walReceipt) error {
+func ensureStaged(c Config, prov SignerProvider, app App, rec *walReceipt) error {
 	if rec.StageReceiptRef.SHA256 != "" {
 		return verifyArtifactRef(rec.StageReceiptRef)
 	}
 	stagePath := c.receiptPath(rec.AppID, "stage.json")
-	if err := prov.Stage(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, stagePath); err != nil {
+	if err := prov.Stage(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, stagePath); err != nil {
 		return err
 	}
 	s, ref, err := readStageReceipt(stagePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash)

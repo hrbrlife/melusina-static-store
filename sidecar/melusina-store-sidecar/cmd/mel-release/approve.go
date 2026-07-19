@@ -68,7 +68,7 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 				return "", err
 			}
 		case stateRegistered:
-			if err := ensurePromoted(c, prov, &rec); err != nil {
+			if err := ensurePromoted(c, prov, app, &rec); err != nil {
 				return "", fmt.Errorf("promote: %w", err)
 			}
 			if err := advanceWAL(walPath, &rec, statePromoted); err != nil {
@@ -179,10 +179,10 @@ func verifyRegisteredLive(prov SignerProvider, rec *walReceipt) error {
 	return fmt.Errorf("registered release %s is not Active on-chain", rec.NewReleasePDA)
 }
 
-func ensurePromoted(c Config, prov SignerProvider, rec *walReceipt) error {
+func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) error {
 	if rec.PromoteReceipt.SHA256 == "" {
 		promotePath := c.receiptPath(rec.AppID, "promote.json")
-		if err := prov.Promote(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
+		if err := prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
 			return err
 		}
 		ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)

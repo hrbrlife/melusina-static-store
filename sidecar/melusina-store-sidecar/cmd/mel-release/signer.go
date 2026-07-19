@@ -63,7 +63,7 @@ type SignerProvider interface {
 	// Stage privately stages the new bytes at the store and writes a store-signed
 	// stage receipt (schema melusina-app-stage-receipt-v1). No Active ReleaseEntry
 	// is required to stage — staging is not catalog-visible.
-	Stage(appID, appHash, releaseHash, version, releaseNonce, receiptOut string) error
+	Stage(app App, appHash, releaseHash, version, releaseNonce, receiptOut string) error
 
 	// ProposeRegister creates the UNEXECUTED Squads register_release_entry proposal
 	// and writes RELEASE.json (releaseJSONOut) + a proposal receipt (proposeOut,
@@ -78,7 +78,7 @@ type SignerProvider interface {
 
 	// Promote durably promotes the staged bytes into the served catalog + signed
 	// pointer and writes a promotion receipt (schema melusina-app-promotion-receipt-v1).
-	Promote(appID, appHash, releaseHash, version, stageID, receiptOut string) error
+	Promote(app App, appHash, releaseHash, version, stageID, receiptOut string) error
 
 	// RevokeRelease flips the ReleaseEntry at pda Active -> Revoked and writes a
 	// revoke receipt (schema melusina-revoke-release-receipt-v1). Idempotent.
@@ -189,11 +189,17 @@ func (e *execProvider) ServedAppHash(appID string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (e *execProvider) Stage(appID, appHash, releaseHash, version, releaseNonce, receiptOut string) error {
+func (e *execProvider) Stage(app App, appHash, releaseHash, version, releaseNonce, receiptOut string) error {
+	if err := requireCompleteCatalogSlot(app); err != nil {
+		return err
+	}
 	_, err := e.run("stage", map[string]string{
-		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash, "MEL_NEW_VERSION": version,
-		"MEL_RELEASE_NONCE":     releaseNonce,
-		"MEL_STAGE_RECEIPT_OUT": receiptOut,
+		"MEL_APP_ID": app.AppID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash, "MEL_NEW_VERSION": version,
+		"MEL_RELEASE_NONCE":             releaseNonce,
+		"MEL_STAGE_RECEIPT_OUT":         receiptOut,
+		"MEL_RELEASE_CATALOG_DEVELOPER": app.CatalogDeveloper,
+		"MEL_RELEASE_CATALOG_REPO":      app.CatalogRepo,
+		"MEL_RELEASE_CATALOG_SLUG":      app.CatalogSlug,
 	})
 	return err
 }
@@ -215,12 +221,36 @@ func (e *execProvider) ApproveRegister(appID, transactionPda, registerOut, final
 	return err
 }
 
-func (e *execProvider) Promote(appID, appHash, releaseHash, version, stageID, receiptOut string) error {
+func (e *execProvider) Promote(app App, appHash, releaseHash, version, stageID, receiptOut string) error {
+	if err := requireCompleteCatalogSlot(app); err != nil {
+		return err
+	}
 	_, err := e.run("promote", map[string]string{
-		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_APP_ID": app.AppID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
 		"MEL_NEW_VERSION": version, "MEL_STAGE_ID": stageID, "MEL_PROMOTE_RECEIPT_OUT": receiptOut,
+		"MEL_RELEASE_CATALOG_DEVELOPER": app.CatalogDeveloper,
+		"MEL_RELEASE_CATALOG_REPO":      app.CatalogRepo,
+		"MEL_RELEASE_CATALOG_SLUG":      app.CatalogSlug,
 	})
 	return err
+}
+
+// requireCompleteCatalogSlot rejects a half-specified catalog location before a
+// provider command can accidentally point stage and promotion at different
+// paths. A slot is optional for an already-known catalog entry, but a first
+// publish must carry all three immutable path segments to the store.
+func requireCompleteCatalogSlot(app App) error {
+	fields := []string{app.CatalogDeveloper, app.CatalogRepo, app.CatalogSlug}
+	empty := 0
+	for _, field := range fields {
+		if strings.TrimSpace(field) == "" {
+			empty++
+		}
+	}
+	if empty != 0 && empty != len(fields) {
+		return fmt.Errorf("app %q catalog slot must set catalog_developer, catalog_repo, and catalog_slug together", app.AppID)
+	}
+	return nil
 }
 
 func (e *execProvider) RevokeRelease(pda, receiptOut string) error {

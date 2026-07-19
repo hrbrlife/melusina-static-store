@@ -57,6 +57,36 @@ func TestExecProviderRejectsPartialCatalogSlotBeforeInvocation(t *testing.T) {
 	}
 }
 
+func TestExecProviderBindsApprovalCeremonyFacts(t *testing.T) {
+	dir := t.TempDir()
+	capture := filepath.Join(dir, "capture")
+	script := filepath.Join(dir, "capture-provider.sh")
+	const body = `#!/bin/sh
+printf '%s|%s|%s|%s|%s|%s\n' "$MEL_APP_ID" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HASH" "$MEL_NEW_VERSION" "$MEL_RELEASE_NONCE" "$MEL_TRANSACTION_PDA" > "$MEL_CAPTURE"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MEL_CAPTURE", capture)
+	t.Setenv("MEL_NEW_APP_HASH", "ambient-app-hash")
+	t.Setenv("MEL_RELEASE_HASH", "ambient-release-hash")
+	p := &execProvider{command: script, timeout: time.Second}
+	appHash := strings.Repeat("a", 64)
+	releaseHash := strings.Repeat("b", 64)
+	nonce := strings.Repeat("c", 32)
+	if err := p.ApproveRegister("app-id", appHash, releaseHash, "0.7.23", nonce, "transaction-pda", filepath.Join(dir, "register.json"), filepath.Join(dir, "release.json")); err != nil {
+		t.Fatalf("ApproveRegister: %v", err)
+	}
+	got, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "app-id|" + appHash + "|" + releaseHash + "|0.7.23|" + nonce + "|transaction-pda\n"
+	if string(got) != want {
+		t.Fatalf("approval ceremony binding = %q, want %q", got, want)
+	}
+}
+
 // propose-release is an external command with case-sensitive flags. Keep the
 // provider spelling pinned so the governed publish path cannot get as far as a
 // private stage and then fail before producing its proposal.

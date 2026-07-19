@@ -74,7 +74,7 @@ type SignerProvider interface {
 	// ApproveRegister executes the authorized Squads approval of transactionPda,
 	// landing register_release_entry -> ReleaseEntry Active, and writes a register
 	// receipt (registerOut, schema melusina-register-release-receipt-v1).
-	ApproveRegister(appID, transactionPda, registerOut, finalReleaseOut string) error
+	ApproveRegister(appID, appHash, releaseHash, version, nonce, transactionPda, registerOut, finalReleaseOut string) error
 
 	// Promote durably promotes the staged bytes into the served catalog + signed
 	// pointer and writes a promotion receipt (schema melusina-app-promotion-receipt-v1).
@@ -214,9 +214,10 @@ func (e *execProvider) ProposeRegister(appID, appHash, releaseHash, version, non
 	return err
 }
 
-func (e *execProvider) ApproveRegister(appID, transactionPda, registerOut, finalReleaseOut string) error {
+func (e *execProvider) ApproveRegister(appID, appHash, releaseHash, version, nonce, transactionPda, registerOut, finalReleaseOut string) error {
 	_, err := e.run("approve-register", map[string]string{
-		"MEL_APP_ID": appID, "MEL_TRANSACTION_PDA": transactionPda,
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce, "MEL_TRANSACTION_PDA": transactionPda,
 		"MEL_REGISTER_RECEIPT_OUT": registerOut, "MEL_FINAL_RELEASE_JSON_OUT": finalReleaseOut,
 	})
 	return err

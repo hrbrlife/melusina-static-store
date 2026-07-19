@@ -130,6 +130,22 @@ PY
   }
   mkdir -p "$(dirname "$METADATA_OUT")"
   cp "$METADATA" "$METADATA_OUT"
+elif [[ -n "$METADATA_OUT" ]]; then
+  # Some valid app Makefiles leave product metadata immutable during `pack`.
+  # The candidate receipt still needs metadata whose packageId binds the exact
+  # SPK. Derive that *staged copy* here rather than changing source or asking
+  # a legacy package target to publish a mutable release record.
+  candidate_pkg="$(sha256sum "$SPK_OUT" | awk '{print substr($1, 1, 32)}')"
+  mkdir -p "$(dirname "$METADATA_OUT")"
+  python3 - "$METADATA_BASELINE" "$METADATA_OUT" "$candidate_pkg" <<'PY'
+import json, sys
+src, dst, package_id = sys.argv[1:]
+d = json.load(open(src, encoding="utf-8"))
+d["packageId"] = package_id
+with open(dst, "w", encoding="utf-8") as f:
+    json.dump(d, f, indent=2, sort_keys=True)
+    f.write("\n")
+PY
 fi
 
 # Restore before examining Git state so a deterministic packageId update never
@@ -160,6 +176,7 @@ readarray -t source_meta < <(python3 - "$candidate_metadata" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))
 print(d.get("appId", ""))
+print(d.get("packageId", ""))
 print(d.get("marketingVersion") or d.get("version") or "")
 PY
 )
@@ -167,11 +184,15 @@ PY
   echo "source metadata appId ${source_meta[0]} does not match package appId $app_id" >&2
   exit 2
 }
+[[ "${source_meta[1]:-}" == "$package_id" ]] || {
+  echo "staged metadata packageId ${source_meta[1]:-<empty>} does not match packageId $package_id" >&2
+  exit 2
+}
 
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
   python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_epoch" "$app_id" "$package_id" \
-    "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
+    "${source_meta[2]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
 import json, os, sys
 out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
 doc = {

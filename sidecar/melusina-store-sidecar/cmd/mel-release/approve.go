@@ -11,13 +11,14 @@ package main
 //	              the prior release is still Active + on-chain).
 //	GENERATED  -> submit the single-component signed DesiredGeneration and
 //	              read-back-verify it via componentrelease.Verify.
-//	REVOKED    -> revoke exactly the pre-declared stale ReleaseEntry(s) LAST,
-//	              only after the new release is both Active AND served.
-//	VERIFIED   -> exactly-1-Active == new, served == new.
+//	REVOKED    -> complete the global-retirement boundary. Normal target-scoped
+//	              approval retains global history; explicit global revocation is
+//	              a separately opted-in operation.
+//	VERIFIED   -> this target serves the new hash and that hash is Active.
 //	DONE       -> immutable terminal receipt.
 //
-// The sole Active->Revoked transition is strictly after PROMOTED, so the served
-// release is always Active-backed (no-0-Active, Invariant 2).
+// When global retirement is explicitly enabled, its Active->Revoked transition
+// is strictly after PROMOTED, so the served release is always Active-backed.
 
 import (
 	"encoding/json"
@@ -91,7 +92,7 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 				return "", err
 			}
 		case stateRevoked:
-			if err := ensureFinalVerified(prov, &rec); err != nil {
+			if err := ensureFinalVerified(c, prov, &rec); err != nil {
 				return "", fmt.Errorf("verify-terminal: %w", err)
 			}
 			if err := advanceWAL(walPath, &rec, stateVerified); err != nil {
@@ -108,7 +109,7 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 	}
 
 	termPath := filepath.Join(c.appStateDir(app.AppID), "terminal.json")
-	if err := writeTerminal(rec, termPath); err != nil {
+	if err := writeTerminal(c, rec, termPath); err != nil {
 		return "", err
 	}
 	return termPath, nil
@@ -203,11 +204,15 @@ func ensurePromoted(c Config, prov SignerProvider, rec *walReceipt) error {
 	return nil
 }
 
-// ensureOldRevoked retires exactly the pre-declared stale ReleaseEntries, LAST.
-// It asserts the new release is Active AND served before revoking anything and
-// refuses to revoke the new release. Revoke is idempotent, so a partial revoke
-// resumes cleanly.
+// ensureOldRevoked only performs global ReleaseEntry retirement when the caller
+// explicitly opted in. A ReleaseEntry has no target/install discriminator: using
+// its global Active state as this target's supersession set would revoke releases
+// that another store may still serve. Normal approval therefore retains history
+// and relies on the target's signed pointer/generation to select its release.
 func ensureOldRevoked(c Config, prov SignerProvider, walPath string, rec *walReceipt) error {
+	if !c.AllowGlobalReleaseRevoke {
+		return nil
+	}
 	ok, err := servedReleaseIsActive(prov, rec.AppID, rec.NewAppHash)
 	if err != nil {
 		return err
@@ -258,13 +263,23 @@ func ensureOldRevoked(c Config, prov SignerProvider, walPath string, rec *walRec
 	return nil
 }
 
-func ensureFinalVerified(prov SignerProvider, rec *walReceipt) error {
+func ensureFinalVerified(c Config, prov SignerProvider, rec *walReceipt) error {
 	active, err := prov.ActiveReleases(rec.AppID)
 	if err != nil {
 		return err
 	}
-	if len(active) != 1 || active[0].PDA != rec.NewReleasePDA || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.Version {
-		return fmt.Errorf("terminal Active set is not exactly the new release: %+v", active)
+	found := false
+	for _, entry := range active {
+		if entry.PDA == rec.NewReleasePDA && entry.AppHash == rec.NewAppHash && entry.Version == rec.Version {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("terminal Active set does not contain the target release %s: %+v", rec.NewReleasePDA, active)
+	}
+	if c.AllowGlobalReleaseRevoke && (len(active) != 1 || active[0].PDA != rec.NewReleasePDA || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.Version) {
+		return fmt.Errorf("global-retirement terminal Active set is not exactly the new release: %+v", active)
 	}
 	served, err := prov.ServedAppHash(rec.AppID)
 	if err != nil {
@@ -321,10 +336,15 @@ type terminalReceipt struct {
 	ServedAppHash   string                 `json:"servedAppHash"`
 	NativeReceipts  map[string]artifactRef `json:"nativeReceipts"`
 	RevokeReceipts  map[string]artifactRef `json:"revokeReceipts"`
+	ReleaseScope    string                 `json:"releaseScope"`
 	CompletedAtUnix int64                  `json:"completedAtUnix"`
 }
 
-func writeTerminal(rec walReceipt, path string) error {
+func writeTerminal(c Config, rec walReceipt, path string) error {
+	scope := "target-pointer"
+	if c.AllowGlobalReleaseRevoke {
+		scope = "global-supersede"
+	}
 	t := terminalReceipt{
 		Schema: "melusina-mel-release-terminal-receipt-v1", Outcome: "accepted",
 		LedgerID: rec.LedgerID, AppID: rec.AppID, AppHash: rec.NewAppHash, Version: rec.Version,
@@ -335,9 +355,16 @@ func writeTerminal(rec walReceipt, path string) error {
 			"build": rec.BuildReceipt, "stage": rec.StageReceiptRef, "releaseJson": rec.ReleaseJSON,
 			"proposal": rec.ProposalReceipt, "register": rec.RegisterReceipt, "promote": rec.PromoteReceipt,
 		},
-		RevokeReceipts: rec.RevokeReceipts, CompletedAtUnix: rec.CompletedAtUnix,
+		RevokeReceipts: rec.RevokeReceipts, ReleaseScope: scope, CompletedAtUnix: rec.CompletedAtUnix,
 	}
-	if t.CompletedAtUnix <= 0 || len(t.ActiveAfter) != 1 || t.ServedAppHash != t.AppHash {
+	active := false
+	for _, entry := range t.ActiveAfter {
+		if entry.PDA == t.ReleaseEntryPDA && entry.AppHash == t.AppHash && entry.Version == t.Version {
+			active = true
+			break
+		}
+	}
+	if t.CompletedAtUnix <= 0 || !active || t.ServedAppHash != t.AppHash || (c.AllowGlobalReleaseRevoke && len(t.ActiveAfter) != 1) {
 		return fmt.Errorf("refusing to emit an incomplete terminal receipt")
 	}
 	raw, err := json.MarshalIndent(t, "", "  ")

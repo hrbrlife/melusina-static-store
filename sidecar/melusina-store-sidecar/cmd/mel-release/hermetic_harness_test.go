@@ -396,6 +396,9 @@ func newHarness(t *testing.T) *harness {
 		StateDir:       filepath.Join(base, "state"),
 		PublisherKey:   pubKeyPath,
 		OpTimeoutSecs:  60,
+		// Existing supersede fixtures explicitly exercise the separately opted-in
+		// global-retirement path. Production defaults to target-pointer scope.
+		AllowGlobalReleaseRevoke: true,
 	}
 
 	return &harness{

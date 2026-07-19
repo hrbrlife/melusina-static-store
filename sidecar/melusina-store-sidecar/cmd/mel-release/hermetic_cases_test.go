@@ -172,6 +172,49 @@ func TestHermeticHappyPath(t *testing.T) {
 	}
 }
 
+// A ReleaseEntry is global authority, while a store pointer/generation is
+// target-scoped. The normal path must never revoke an unrelated target's active
+// release just because this target publishes a newer one.
+func TestTargetScopedApprovalRetainsGlobalReleaseHistory(t *testing.T) {
+	h := newHarness(t)
+	h.cfg.AllowGlobalReleaseRevoke = false
+	v1 := h.fx.Versions["1.0.1"]
+
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	mustNoErr(t, "approve", h.approve())
+	mustState(h, stateDone)
+
+	if h.status(h.pdaOld) != "Active" || !h.activeHas(h.pdaOld) {
+		t.Fatalf("target-scoped approval revoked unrelated global release %s", h.pdaOld)
+	}
+	if h.status(v1.PdaNew) != "Active" || !h.activeHas(v1.PdaNew) {
+		t.Fatalf("target release %s is not Active", v1.PdaNew)
+	}
+	if got := h.provState().Served; got != v1.AppHash {
+		t.Fatalf("target store serves %q, want %q", got, v1.AppHash)
+	}
+	rec := h.wal()
+	if len(rec.StalePDAs) != 0 || len(rec.RevokeReceipts) != 0 {
+		t.Fatalf("target-scoped WAL attempted global retirement: stale=%v receipts=%v", rec.StalePDAs, rec.RevokeReceipts)
+	}
+	for _, op := range h.callOps() {
+		if op == "revoke" {
+			t.Fatalf("target-scoped approval issued a global revoke")
+		}
+	}
+	var terminal terminalReceipt
+	raw, err := os.ReadFile(filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json"))
+	if err != nil {
+		t.Fatalf("read terminal receipt: %v", err)
+	}
+	if err := json.Unmarshal(raw, &terminal); err != nil {
+		t.Fatalf("decode terminal receipt: %v", err)
+	}
+	if terminal.ReleaseScope != "target-pointer" {
+		t.Fatalf("terminal release scope = %q, want target-pointer", terminal.ReleaseScope)
+	}
+}
+
 // ── CASE 2: interrupt/resume across every op-backed WAL state ────────────────────
 
 func TestHermeticInterruptResume(t *testing.T) {
@@ -512,7 +555,7 @@ func (s *revokeGuardStubProvider) RevokeRelease(pda, receiptOut string) error {
 
 func TestEnsureOldRevokedRefusesWhenNewReleaseNotLiveYet(t *testing.T) {
 	dir := t.TempDir()
-	cfg := Config{StateDir: dir}
+	cfg := Config{StateDir: dir, AllowGlobalReleaseRevoke: true}
 	walPath := cfg.walPath(testAppID)
 	if err := os.MkdirAll(cfg.appStateDir(testAppID), 0o700); err != nil {
 		t.Fatalf("mkdir appStateDir: %v", err)

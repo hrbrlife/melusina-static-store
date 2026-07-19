@@ -3,7 +3,8 @@
 // apps, keyed on the IMMUTABLE appId). It replaces the three separate clients —
 // cmd/submit (store stage/publish), cmd/publish-supersede (no-gap register/
 // promote/revoke WAL), and cmd/submit-generation (signed DesiredGeneration) —
-// with two subcommands split at a real authority boundary:
+// with two release subcommands split at a real authority boundary, plus a
+// receipt-only manifest command for clean deployment:
 //
 //	mel-release publish --app <appId|slug|name> --version <v>
 //	    Build + local app_hash pre-check + private store stage + UNEXECUTED Squads
@@ -16,6 +17,10 @@
 //	    pointer (no-gap), submit + read-back-verify the single-component signed
 //	    DesiredGeneration in the frozen componentrelease release_v2 format, then
 //	    revoke the stale ReleaseEntry LAST, and emit the terminal receipt.
+//
+//	mel-release manifest --out <absolute-path>
+//	    Re-read every accepted terminal receipt and write the exact immutable
+//	    clean-install package manifest. It refuses partial/unserved releases.
 //
 // Config is env-only (MEL_RELEASE_*). mel-release holds no chain key: every
 // governed act is delegated to MEL_RELEASE_SIGNER_PROVIDER (see signer.go) and
@@ -79,13 +84,28 @@ func run(args []string) error {
 		fmt.Printf("APPROVE_OK terminal=%s\n", path)
 		return nil
 
+	case "manifest":
+		fs := flag.NewFlagSet("manifest", flag.ContinueOnError)
+		out := fs.String("out", "", "absolute output path for the governed clean-install manifest (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		if *out == "" {
+			return fmt.Errorf("manifest requires --out")
+		}
+		if err := runManifest(cfg, fam, *out); err != nil {
+			return err
+		}
+		fmt.Printf("MANIFEST_OK path=%s\n", *out)
+		return nil
+
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve)", sub)
+		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release <publish|approve> --app <appId|slug|name> [--version <v>]")
+	return fmt.Errorf("usage: mel-release <publish|approve> --app <appId|slug|name> [--version <v>] | manifest --out <absolute-path>")
 }

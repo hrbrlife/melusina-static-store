@@ -211,10 +211,15 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 			want: "appHash mismatch",
 		},
 		{
-			name: "release-byte-drift-with-same-fields",
+			name: "release-immutable-intent-drift",
 			mutate: func(t *testing.T, generation string) {
 				path := filepath.Join(generation, "attest", "app-one", "RELEASE.json")
-				body := []byte(readFile(t, path))
+				var release ReleaseJSON
+				if err := json.Unmarshal([]byte(readFile(t, path)), &release); err != nil {
+					t.Fatal(err)
+				}
+				release.ReleaseHash = strings.Repeat("c", 64)
+				body := mustJSON(t, release)
 				if err := os.Chmod(path, 0o644); err != nil {
 					t.Fatal(err)
 				}
@@ -225,7 +230,9 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 					t.Fatal(err)
 				}
 			},
-			want: "bytes differ from exact staged candidate",
+			// Snapshot validation catches the signed-pointer/release mismatch before
+			// the staged-intent comparison is reached.
+			want: "selected release intent mismatch",
 		},
 		{
 			name: "nested-member-owner-mismatch",
@@ -260,6 +267,44 @@ func TestAppCatalogRecoveryRejectsWritableOrSubstitutedSelectedBytes(t *testing.
 				t.Fatalf("unsafe generation accepted: %v", err)
 			}
 		})
+	}
+}
+
+func TestAppCatalogRecoveryAcceptsCeremonyFinalizedRelease(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	id := appCatalogGenerationPrefix + strings.Repeat("c", 32)
+	writeRecoveryGeneration(t, root, id, []string{"app-one"}, priv)
+	if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, id, "attest", "app-one", "RELEASE.json")
+	var release ReleaseJSON
+	if err := json.Unmarshal([]byte(readFile(t, path)), &release); err != nil {
+		t.Fatal(err)
+	}
+	// These are the fields that cannot exist until the Squads ceremony has
+	// registered the release.  They must not turn a valid staged candidate into
+	// an unrecoverable cold-start catalog.
+	release.SignedAtUnix = 1_700_000_123
+	release.ReleaseEntryPda = "chain-final-release-entry"
+	release.AuthorSig = "chain-final-author-signature"
+	release.QuorumPolicy = QuorumPolicy{Threshold: 3, MemberCount: 4, MultisigPda: "core-app-team"}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, path, mustJSON(t, release))
+	if err := os.Chmod(path, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	// The test modifies a sealed fixture, so reseal it before exercising the
+	// recovery verifier; production catalog generations are sealed before the
+	// current selector can point at them.
+	if err := syncAndSealCatalogTree(filepath.Join(root, id)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err != nil {
+		t.Fatalf("ceremony-finalized release rejected: %v", err)
 	}
 }
 

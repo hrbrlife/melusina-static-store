@@ -123,7 +123,6 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 		}{
 			"SPK":      {path: filepath.ToSlash(filepath.Join("packages", pointer.PackageID)), want: stagedSPK},
 			"metadata": {path: filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), want: stagedMetadata},
-			"release":  {path: filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), want: stagedRelease},
 		} {
 			got, err := readSnapshotFileExact(snapshot, check.path, int64(len(check.want)))
 			if err != nil {
@@ -133,6 +132,58 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 				return fmt.Errorf("generation %s bytes differ from exact staged candidate for %s", name, appID)
 			}
 		}
+		// A stage is intentionally created before the Squads ceremony: its
+		// RELEASE.json is therefore provisional.  The catalog correctly serves
+		// the ceremony-final representation, whose timestamp, ReleaseEntry PDA,
+		// author signature, and quorum policy necessarily differ.  Do not require
+		// byte identity across that authority transition.  Instead bind every
+		// immutable release-intent field to the durable private stage.  The signed
+		// catalog pointer has already bound this same appHash/releaseHash/version
+		// selection to the sealed catalog generation above.
+		servedRelease, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppCatalogJSONBytes)
+		if err != nil {
+			return fmt.Errorf("read finalized release for %s: %w", appID, err)
+		}
+		if err := validateFinalizedReleaseAgainstStage(stagedRelease, servedRelease); err != nil {
+			return fmt.Errorf("generation release finalization differs from staged immutable intent for %s: %w", appID, err)
+		}
+	}
+	return nil
+}
+
+// validateFinalizedReleaseAgainstStage permits only the fields that the chain
+// ceremony is expected to finalize after a private candidate is staged.  It is
+// deliberately not a generic "same parsed JSON" check: changing any release
+// identity field would make the sealed catalog disagree with the exact staged
+// candidate selected by the signed pointer.
+func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) error {
+	var staged, finalized ReleaseJSON
+	if err := json.Unmarshal(stagedBytes, &staged); err != nil {
+		return fmt.Errorf("decode staged release: %w", err)
+	}
+	if err := json.Unmarshal(finalizedBytes, &finalized); err != nil {
+		return fmt.Errorf("decode finalized release: %w", err)
+	}
+	if staged.Schema != finalized.Schema {
+		return errors.New("schema changed")
+	}
+	if staged.AppHash != finalized.AppHash {
+		return errors.New("appHash changed")
+	}
+	if staged.ReleaseHash != finalized.ReleaseHash {
+		return errors.New("releaseHash changed")
+	}
+	if staged.Version != finalized.Version {
+		return errors.New("version changed")
+	}
+	if staged.MasterNftMint != finalized.MasterNftMint {
+		return errors.New("masterNftMint changed")
+	}
+	if staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
+		return errors.New("licenseSquadsVault changed")
+	}
+	if staged.ReleaseNonce != finalized.ReleaseNonce {
+		return errors.New("releaseNonce changed")
 	}
 	return nil
 }

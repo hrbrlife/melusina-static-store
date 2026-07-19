@@ -1,0 +1,54 @@
+schema: melusina-release-family-v1
+# Account-opening proof constellation. appId is authoritative; source paths and
+# catalog names are deliberately descriptive because they historically differ.
+families:
+  money-path:
+    apps:
+      welcome:
+        appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
+        source_path: /home/user/Desktop/worktrees/governed-dueprocess-0163/welcome-pearl
+        publish_slug: welcome-pearl
+        catalog_name: Welcome pearl
+        role: public-account-opening-entry
+      namedcoin:
+        appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
+        source_path: /home/user/Desktop/worktrees/melrelease-health-namedcoin
+        publish_slug: namedcoin
+        catalog_name: NamedCoin
+        role: identity-attestation-gate
+      namedcoin-admin:
+        appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
+        source_path: /home/user/Desktop/worktrees/melrelease-health-namedcoin-admin
+        publish_slug: namedcoin-admin
+        catalog_name: NamedCoin Admin
+        role: issuer-operations
+      popaye:
+        appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
+        source_path: /home/user/Desktop/worktrees/governed-popaye-0167
+        publish_slug: popaye
+        catalog_name: popaye
+        role: account-opening-and-client-money-ui
+      ccashconfig:
+        appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
+        source_path: /home/user/Desktop/melusina_ccashconfig_app
+        publish_slug: ccashconfig
+        catalog_name: ccashconfig
+        role: central-connection-hub
+      dueprocess:
+        appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
+        source_path: /home/user/Desktop/worktrees/governed-dueprocess-0163
+        publish_slug: dueprocess
+        catalog_name: dueprocess
+        role: four-eyes-casework
+      cyberteller:
+        appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
+        source_path: /home/user/Desktop/cyberteller
+        publish_slug: cyberteller
+        catalog_name: cyberteller
+        role: crypto-deposit-and-swap
+      fineract-setup:
+        appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
+        source_path: /home/user/Desktop/worktrees/codex-fineract-setup-release/fineract-sidecar
+        publish_slug: fineract-setup
+        catalog_name: fineract-setup
+        role: ledger-setup-and-trust-bundle

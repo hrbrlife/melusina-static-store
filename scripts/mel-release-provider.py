@@ -123,6 +123,7 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
                     "publish_slug": str(spec.get("publish_slug", "")),
+                    "catalog_path": str(spec.get("catalog_path", "")),
                 }
     raise ProviderError(f"immutable appId {app_id} is not declared in release-family.yaml")
 
@@ -139,7 +140,26 @@ def source_path(app_id: str) -> Path:
     return path
 
 
-def catalog_package(app_id: str) -> Path | None:
+def catalog_package(app_id: str, declared_path: str = "") -> Path | None:
+    """Return the catalog slot for an app.
+
+    App IDs are authoritative, but an old static store can contain historical
+    duplicate slots.  A reviewed release-family entry may name the canonical
+    relative slot; this selects it without deleting or silently publishing the
+    other historical copy.  Undeclared apps remain fail-closed on ambiguity.
+    """
+    packages = (ROOT / "packages").resolve()
+    if declared_path:
+        rel = Path(declared_path)
+        if rel.is_absolute() or ".." in rel.parts or str(rel) in ("", "."):
+            raise ProviderError(f"unsafe catalog_path for {app_id}: {declared_path!r}")
+        selected = (packages / rel).resolve()
+        if packages not in selected.parents or not (selected / "metadata.json").is_file():
+            raise ProviderError(f"declared catalog_path is not a catalog package: {declared_path!r}")
+        if read_json(selected / "metadata.json").get("appId") != app_id:
+            raise ProviderError(f"declared catalog_path appId drift for {app_id}")
+        return selected
+
     matches: list[Path] = []
     for metadata in (ROOT / "packages").rglob("metadata.json"):
         try:
@@ -150,6 +170,23 @@ def catalog_package(app_id: str) -> Path | None:
     if len(matches) > 1:
         raise ProviderError(f"expected exactly one catalog package for {app_id}, found {len(matches)}")
     return matches[0] if matches else None
+
+
+def copy_catalog_presentation(origin: Path, catalog: Path) -> None:
+    """Copy only catalog-facing material, never an old embedded app image."""
+    catalog.mkdir(mode=0o700)
+    for name in (
+        "metadata.json", "description.md", "changelog.md", "icon.svg",
+        "icon.png", "app-grid.svg", "grain.svg", "market.svg",
+        "capabilities.json", "release-tag.txt",
+    ):
+        candidate = origin / name
+        if candidate.is_file():
+            shutil.copy2(candidate, catalog / name)
+    for dirname in ("icons", "screenshots"):
+        candidate = origin / dirname
+        if candidate.is_dir():
+            shutil.copytree(candidate, catalog / dirname, symlinks=False)
 
 
 def seed_catalog_package(source: Path, app_id: str, work: Path) -> Path:
@@ -163,21 +200,12 @@ def seed_catalog_package(source: Path, app_id: str, work: Path) -> Path:
     until the separate stage, approval, and promotion operations succeed.
     """
     catalog = work / "catalog"
-    existing = catalog_package(app_id)
+    existing = catalog_package(app_id, app_spec(app_id)["catalog_path"])
     if existing is not None:
-        shutil.copytree(existing, catalog, symlinks=False)
+        copy_catalog_presentation(existing, catalog)
         return catalog
 
-    catalog.mkdir(mode=0o700)
-    shutil.copy2(source / "metadata.json", catalog / "metadata.json")
-    for name in ("description.md", "changelog.md", "icon.svg", "icon.png", "app-grid.svg", "grain.svg", "market.svg"):
-        candidate = source / name
-        if candidate.is_file():
-            shutil.copy2(candidate, catalog / name)
-    for dirname in ("icons", "screenshots"):
-        candidate = source / dirname
-        if candidate.is_dir():
-            shutil.copytree(candidate, catalog / dirname, symlinks=False)
+    copy_catalog_presentation(source, catalog)
     return catalog
 
 

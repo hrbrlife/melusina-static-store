@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROVIDER="$ROOT/scripts/mel-release-provider.sh"
+FAMILY_ADAPTER="$ROOT/scripts/mel-release-family-provider.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -85,4 +86,11 @@ grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/sc
 # master in the license slot creates a proposal that can never truthfully bind
 # the app release. Keep this exact provider contract under test.
 grep -Fq -- '--license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT"' "$PROVIDER"
+# The Go CLI has authority only as an immutable appId.  It must resolve that
+# through the reviewed family manifest, never from a caller-controlled source
+# directory; keep the adapter's guard part of this provider contract.
+bash -n "$FAMILY_ADAPTER"
+grep -Fq 'MEL_RELEASE_CONFIG' "$FAMILY_ADAPTER"
+grep -Fq 'refusing to package a dirty app checkout' "$FAMILY_ADAPTER"
+grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$FAMILY_ADAPTER"
 echo "mel-release-provider contract: PASS"

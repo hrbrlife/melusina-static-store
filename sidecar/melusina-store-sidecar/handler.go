@@ -281,6 +281,10 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// store operator + each component on-chain + served bytes under the
 	// single-writer lock, then composes + CAS-promotes + operator-signs it.
 	mux.HandleFunc("/publish/generation", svc.handleGeneratePromote)
+	// Temporary bootstrap for hosts that still consume the pre-generation shell
+	// manifest.  It derives that compatibility document from the already-signed,
+	// chain-verified current DesiredGeneration; it never accepts artifact facts.
+	mux.HandleFunc("/publish/legacy-manifest-bootstrap", svc.handleLegacyManifestBootstrap)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
 	// ── DESIRED-GENERATION producer (GET /update/generation.json) ──────────────

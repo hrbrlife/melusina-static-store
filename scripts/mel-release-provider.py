@@ -139,7 +139,7 @@ def source_path(app_id: str) -> Path:
     return path
 
 
-def catalog_package(app_id: str) -> Path:
+def catalog_package(app_id: str) -> Path | None:
     matches: list[Path] = []
     for metadata in (ROOT / "packages").rglob("metadata.json"):
         try:
@@ -147,9 +147,61 @@ def catalog_package(app_id: str) -> Path:
                 matches.append(metadata.parent)
         except ProviderError:
             continue
-    if len(matches) != 1:
+    if len(matches) > 1:
         raise ProviderError(f"expected exactly one catalog package for {app_id}, found {len(matches)}")
-    return matches[0]
+    return matches[0] if matches else None
+
+
+def seed_catalog_package(source: Path, app_id: str, work: Path) -> Path:
+    """Create the private candidate catalog slot for an unregistered app.
+
+    A first governed release must not be forced through the legacy publisher
+    merely because static_store has never carried that app before.  The seed
+    lives only under the provider state directory; it copies tracked product
+    metadata and presentation assets, then stage-into-catalog creates the
+    SPK/metadata/RELEASE triple atomically.  No served catalog tree is changed
+    until the separate stage, approval, and promotion operations succeed.
+    """
+    catalog = work / "catalog"
+    existing = catalog_package(app_id)
+    if existing is not None:
+        shutil.copytree(existing, catalog, symlinks=False)
+        return catalog
+
+    catalog.mkdir(mode=0o700)
+    shutil.copy2(source / "metadata.json", catalog / "metadata.json")
+    for name in ("description.md", "changelog.md", "icon.svg", "icon.png", "app-grid.svg", "grain.svg", "market.svg"):
+        candidate = source / name
+        if candidate.is_file():
+            shutil.copy2(candidate, catalog / name)
+    for dirname in ("icons", "screenshots"):
+        candidate = source / dirname
+        if candidate.is_dir():
+            shutil.copytree(candidate, catalog / dirname, symlinks=False)
+    return catalog
+
+
+def stage_candidate_catalog(source_spk: Path, source_metadata: Path, catalog: Path, app_id: str) -> None:
+    """Place a verified package candidate in private provider state.
+
+    This deliberately does *not* invoke the legacy catalog staging helper:
+    that helper creates an offline RELEASE.json placeholder, which is neither
+    an on-chain approval nor safe release evidence.  A candidate is only the
+    immutable {SPK, metadata} pair.  The later governed proposal is the first
+    operation allowed to create a release document.
+    """
+    if not source_spk.is_file() or not source_metadata.is_file():
+        raise ProviderError("candidate SPK and generated metadata are required")
+    metadata = read_json(source_metadata)
+    if metadata.get("appId") != app_id:
+        raise ProviderError("candidate metadata appId drift")
+    artifact_sha = hex_sha(source_spk)
+    if metadata.get("packageId") != artifact_sha[:32]:
+        raise ProviderError("candidate metadata packageId does not bind the SPK sha256")
+    shutil.copy2(source_spk, catalog / "app.spk")
+    shutil.copy2(source_metadata, catalog / "metadata.json")
+    # Never inherit an old/stubbed RELEASE.json into a fresh candidate.
+    (catalog / "RELEASE.json").unlink(missing_ok=True)
 
 
 def require_context(app_id: str) -> dict[str, Any]:
@@ -202,11 +254,12 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
 
-    catalog = work / "catalog"
-    shutil.copytree(catalog_package(app_id), catalog, symlinks=False)
-    run(
-        [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
-        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
+    catalog = seed_catalog_package(source, app_id, work)
+    stage_candidate_catalog(
+        built_spk,
+        built_metadata if built_metadata.is_file() else source / "metadata.json",
+        catalog,
+        app_id,
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"
@@ -253,7 +306,18 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
 
 def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
     release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
-    release = read_json(release_path)
+    # Candidate build intentionally has no RELEASE.json.  Create a private,
+    # explicitly provisional draft only when staging/proposing needs its
+    # fields.  It is never served or treated as an approval; finalize-release
+    # replaces it from the executed on-chain ReleaseEntry.
+    release = read_json(release_path) if release_path.is_file() else {
+        "$schema": "melusina-release-v1",
+        "signedAtUnix": 0,
+        "licenseSquadsVault": "",
+        "releaseEntryPda": "",
+        "authorSig": "",
+        "quorumPolicy": {"threshold": 0, "memberCount": 0, "multisigPda": "", "signatureCount": 0, "signatures": []},
+    }
     release.update({
         "$schema": "melusina-release-v1",
         "appHash": app_hash,

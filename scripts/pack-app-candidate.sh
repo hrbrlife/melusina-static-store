@@ -74,9 +74,11 @@ rm -f "$SPK_OUT"
 # path available for legacy callers, but package greenfield candidates without
 # embedding its incompatible ceremony.
 MAKE_VARS=()
-if [[ "${MEL_RELEASE_GREENFIELD_PACK:-}" == "1" ]]; then
-  MAKE_VARS+=("APP_PEARL_ENABLED=no")
-fi
+# The candidate is deliberately built before a Squads/on-chain approval
+# exists.  This mode validates the signed SPK and generated metadata but does
+# not request, invent, or embed RELEASE.json; approve is the sole attestation
+# writer.  It is a hard error if the app's spkmodule lacks this mode.
+MAKE_VARS+=("MEL_RELEASE_CANDIDATE_PACK=1")
 make -C "$APP_DIR" "${MAKE_VARS[@]}" build
 # The historic helper target was only present in the hermetic fixture. Real
 # MSB apps expose the normal spkmodule `pack` target. Prefer an explicit

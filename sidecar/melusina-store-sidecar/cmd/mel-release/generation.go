@@ -30,17 +30,66 @@ import (
 )
 
 const (
-	generationPromoteSchema = "melusina-generation-promote-v1"
-	generationPromoteTarget = "/publish/generation"
-	generationServedPath    = "/update/generation.json"
-	defaultChainID          = "solana:devnet"
-	maxGenerationBytes      = 1 << 20
+	generationPromoteSchema   = "melusina-generation-promote-v1"
+	generationPromoteTarget   = "/publish/generation"
+	generationServedPath      = "/update/generation.json"
+	generationReadinessSchema = "melusina-generation-promote-readiness-v1"
+	defaultChainID            = "solana:devnet"
+	maxGenerationBytes        = 1 << 20
 )
 
 // errNoGenerationServed marks a 404 read-back: no generation is served yet, which
 // the idempotency probe treats as a clean "component not present" rather than an
 // error.
 var errNoGenerationServed = errors.New("no generation served")
+
+// requireGenerationPromotionReady is the publish-side interlock for the two
+// command release protocol. A candidate may be privately staged and a Squads
+// ReleaseEntry proposal may be created only when the RUNNING store advertises
+// that it can complete approve's final signed DesiredGeneration promotion.
+// Without this check an old store binary can strand a real chain proposal after
+// the approve boundary, which is exactly the half-release the split protocol is
+// meant to prevent.
+func requireGenerationPromotionReady(c Config) error {
+	timeout := time.Duration(c.OpTimeoutSecs) * time.Second
+	if timeout <= 0 {
+		timeout = 60 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.StoreURL, "/")+generationPromoteTarget, nil)
+	if err != nil {
+		return fmt.Errorf("build generation readiness request: %w", err)
+	}
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
+	if err != nil {
+		return fmt.Errorf("read generation readiness: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	if err != nil {
+		return fmt.Errorf("read generation readiness body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("store lacks approval-side generation promotion (GET %s: HTTP %d: %s)", generationPromoteTarget, resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	var status struct {
+		Schema string `json:"schema"`
+		Status string `json:"status"`
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&status); err != nil {
+		return fmt.Errorf("decode generation readiness: %w", err)
+	}
+	if err := dec.Decode(new(json.RawMessage)); err != io.EOF {
+		return errors.New("generation readiness has trailing data")
+	}
+	if status.Schema != generationReadinessSchema || status.Status != "ready" {
+		return fmt.Errorf("store returned invalid generation readiness %q/%q", status.Schema, status.Status)
+	}
+	return nil
+}
 
 type publisherKeyFile struct {
 	Ref      identity.Ref `json:"ref"`

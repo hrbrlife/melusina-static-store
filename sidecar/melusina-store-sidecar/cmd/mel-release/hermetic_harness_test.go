@@ -88,6 +88,18 @@ func (s *fakeStore) handleGet(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *fakeStore) handlePost(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"schema": generationReadinessSchema,
+			"status": "ready",
+		})
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.postCount++

@@ -47,6 +47,23 @@ type generationPromoteBody struct {
 const maxGenerationPromoteBody int64 = 1 << 20 // 1 MiB
 
 func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Request) {
+	// Publish must fail before it creates an irreversible ReleaseEntry proposal
+	// when the running store cannot also complete the approval-side generation
+	// promotion. A read-only readiness document is the contract checked by
+	// mel-release publish. It deliberately discloses neither policy keys nor
+	// staged content.
+	if r.Method == http.MethodGet {
+		if s.cr == nil || s.operator == nil {
+			http.Error(w, "generation promote gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"schema": "melusina-generation-promote-readiness-v1",
+			"status": "ready",
+		})
+		return
+	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

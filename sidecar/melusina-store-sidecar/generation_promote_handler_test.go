@@ -390,11 +390,19 @@ func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 		nonces:   envelope.NewMemoryNonceCache(),
 	}
 
-	// 405 wrong method.
+	// Read-only readiness lets publish refuse an old store before it creates a
+	// private stage or an unexecuted ReleaseEntry proposal.
 	rec := httptest.NewRecorder()
 	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodGet, "/publish/generation", nil))
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("GET want 405 got %d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET readiness want 200 got %d", rec.Code)
+	}
+	var readiness map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &readiness); err != nil {
+		t.Fatalf("decode readiness: %v", err)
+	}
+	if readiness["schema"] != "melusina-generation-promote-readiness-v1" || readiness["status"] != "ready" {
+		t.Fatalf("unexpected readiness: %#v", readiness)
 	}
 
 	// 503 when the chain reader / operator is unwired.

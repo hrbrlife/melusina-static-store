@@ -34,11 +34,16 @@ const (
 // ControllerState is the durable poll-loop state. LastSeen/Pending track the most
 // recent discovered generation (Pending is what an OFF controller notified about);
 // LastCommitted is the last generation taken all the way to a terminal, deep-stable
-// applied receipt. The cursors are the anti-replay/anti-equivocation authority.
+// applied receipt. LastTerminal is the last generation whose application reached a
+// terminal outcome, including a durable rolled-back receipt. It is deliberately
+// separate from LastCommitted: the next signed recovery generation must chain from
+// a failed generation without pretending that failed bytes became healthy.
+// The cursors are the anti-replay/anti-equivocation authority.
 type ControllerState struct {
 	LastSeen          *GenerationCursor `json:"lastSeen,omitempty"`
 	Pending           *GenerationCursor `json:"pending,omitempty"`
 	LastCommitted     *GenerationCursor `json:"lastCommitted,omitempty"`
+	LastTerminal      *GenerationCursor `json:"lastTerminal,omitempty"`
 	LastDiscoveryUnix int64             `json:"lastDiscoveryUnix,omitempty"`
 	LastTimerTickUnix int64             `json:"lastTimerTickUnix,omitempty"`
 	LastTrigger       PollTrigger       `json:"lastTrigger,omitempty"`
@@ -85,6 +90,45 @@ func cursorFromGeneration(vg VerifiedGeneration) *GenerationCursor {
 		GenerationHash: vg.Doc.GenerationHash,
 		RawSHA256:      vg.RawSHA256,
 	}
+}
+
+// continuityCursor is the immutable sequence floor. A terminal rollback advances
+// it even though LastCommitted remains on the prior healthy generation: otherwise
+// the controller rejects the publisher's next signed recovery generation as a
+// chain break and keeps retrying the known-bad pointer forever.
+func continuityCursor(state ControllerState) *GenerationCursor {
+	if state.LastTerminal != nil && (state.LastCommitted == nil || state.LastTerminal.GenerationID >= state.LastCommitted.GenerationID) {
+		return state.LastTerminal
+	}
+	return state.LastCommitted
+}
+
+func recordTerminalCursor(state *ControllerState, cursor *GenerationCursor) {
+	if cursor == nil {
+		return
+	}
+	if state.LastTerminal == nil || cursor.GenerationID >= state.LastTerminal.GenerationID {
+		state.LastTerminal = cursor
+	}
+}
+
+// generationRolledBack returns true only for a real terminal rollback. A
+// cancellation or pre-mutation refusal remains retryable and must not advance the
+// continuity floor. Skipped members are allowed because they already had the
+// desired bytes when another member in the same generation failed and rolled back.
+func generationRolledBack(outcomes []ApplyOutcome) bool {
+	rolledBack := false
+	for _, outcome := range outcomes {
+		switch outcome.Status {
+		case ApplyStatusRolledBack:
+			rolledBack = true
+		case ApplyStatusSkipped:
+			// Already at target; no rollback was needed for this member.
+		default:
+			return false
+		}
+	}
+	return rolledBack
 }
 
 // PollOnce runs one poll iteration. It never mutates on an OFF policy, never trusts
@@ -139,13 +183,15 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 		}
 	}
 
-	// Anti-replay / continuity against the committed cursor.
-	if state.LastCommitted != nil {
-		if err := AcceptAgainstCursor(*state.LastCommitted, vg); err != nil {
+	// Anti-replay / continuity against the terminal cursor. A rolled-back
+	// generation is terminal for sequence purposes but is intentionally not a
+	// healthy committed generation.
+	if cursor := continuityCursor(state); cursor != nil {
+		if err := AcceptAgainstCursor(*cursor, vg); err != nil {
 			return err
 		}
-		if vg.Doc.GenerationID == state.LastCommitted.GenerationID {
-			return deps.State.Store(ctx, state) // exact committed generation — no-op
+		if vg.Doc.GenerationID == cursor.GenerationID {
+			return deps.State.Store(ctx, state) // exact terminal generation — no-op
 		}
 	}
 
@@ -168,7 +214,12 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 	// restart->Probe->RuntimeGate->healthy-unstable. Completion (LastCommitted) is
 	// deferred to a LATER tick's deep-stable service — the first apply never seals.
 	applyDeps := deps.applyDepsFor(vg, trigger, policy, now)
-	if _, err := ApplyGeneration(ctx, vg.Doc, applyDeps); err != nil {
+	outcomes, err := ApplyGeneration(ctx, vg.Doc, applyDeps)
+	if err != nil {
+		if generationRolledBack(outcomes) {
+			recordTerminalCursor(&state, cursorFromGeneration(vg))
+			state.Pending = nil
+		}
 		_ = deps.State.Store(ctx, state)
 		return fmt.Errorf("apply generation %d: %w", vg.Doc.GenerationID, err)
 	}
@@ -407,7 +458,9 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 			continue // a member is still inside its deep-stable window — leave the generation
 		}
 		if deps.finalizeGenerationAtomic(ctx, ad, members, installFor) {
-			state.LastCommitted = committedCursorForGeneration(members)
+			cursor := committedCursorForGeneration(members)
+			state.LastCommitted = cursor
+			recordTerminalCursor(state, cursor)
 		}
 	}
 	return nil
@@ -522,7 +575,8 @@ func (deps PollDeps) rollbackGeneration(ctx context.Context, ad ApplyDeps, membe
 
 // advanceCommittedForCompletedGenerations promotes the durable committed cursor to
 // the HIGHEST generation whose every member's recovery action was Complete. A
-// generation with any rollback/discard leaves the committed cursor untouched.
+// rolled-back generation advances only LastTerminal, preserving the distinction
+// between sequence continuity and the last known healthy bytes.
 func advanceCommittedForCompletedGenerations(state *ControllerState, entries []WALEntry, outcomes []RecoveryOutcome) {
 	genOf := map[string]uint64{}
 	members := map[uint64][]WALEntry{}
@@ -531,6 +585,7 @@ func advanceCommittedForCompletedGenerations(state *ControllerState, entries []W
 		members[e.GenerationID] = append(members[e.GenerationID], e)
 	}
 	completes := map[uint64]int{}
+	rollbacks := map[uint64]int{}
 	tainted := map[uint64]bool{}
 	for _, oc := range outcomes {
 		gid := genOf[oc.ComponentID]
@@ -543,6 +598,9 @@ func advanceCommittedForCompletedGenerations(state *ControllerState, entries []W
 			}
 		case RecoverRollback, RecoverDiscard:
 			tainted[gid] = true
+			if oc.Action == RecoverRollback && oc.Err == nil {
+				rollbacks[gid]++
+			}
 		}
 	}
 	var gids []uint64
@@ -552,7 +610,13 @@ func advanceCommittedForCompletedGenerations(state *ControllerState, entries []W
 	sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
 	for _, gid := range gids {
 		if !tainted[gid] && completes[gid] == len(members[gid]) {
-			state.LastCommitted = committedCursorForGeneration(members[gid])
+			cursor := committedCursorForGeneration(members[gid])
+			state.LastCommitted = cursor
+			recordTerminalCursor(state, cursor)
+			continue
+		}
+		if rollbacks[gid] == len(members[gid]) {
+			recordTerminalCursor(state, committedCursorForGeneration(members[gid]))
 		}
 	}
 }

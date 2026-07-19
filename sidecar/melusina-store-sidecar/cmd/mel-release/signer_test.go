@@ -100,11 +100,11 @@ func TestProviderUsesPearlToolsCanonicalSquadsProgramFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(raw)
-	if !strings.Contains(text, "--squads-program-id \"$MEL_RELEASE_SQUADS_PROGRAM_ID\"") {
-		t.Fatalf("provider %s does not use pearl-tool's canonical --squads-program-id flag", path)
+	if !strings.Contains(text, "--Squads-program-id \"$MEL_RELEASE_SQUADS_PROGRAM_ID\"") {
+		t.Fatalf("provider %s does not use pearl-tool's canonical --Squads-program-id flag", path)
 	}
-	if strings.Contains(text, "--Squads-program-id") {
-		t.Fatalf("provider %s still contains unsupported uppercase --Squads-program-id", path)
+	if strings.Contains(text, "--squads-program-id") {
+		t.Fatalf("provider %s still contains unsupported lowercase --squads-program-id", path)
 	}
 }
 

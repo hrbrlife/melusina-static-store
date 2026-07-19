@@ -81,18 +81,21 @@ async function approveExecute(statePath) {
     process.stdout.write(JSON.stringify({alreadyExecuted:true,transactionSignatures:[]})+"\n"); return;
   }
   const signatures=[];
-  for (const member of members()) {
-    try {
-      const signature=await multisig.rpc.proposalApprove({connection,feePayer:member,member,multisigPda,transactionIndex,memo:`approve ReleaseEntry ${state.appID}`});
-      await confirm(connection,signature); signatures.push(signature);
-    } catch (err) {
-      // Re-running after a process crash commonly sees "already approved".
-      // Refresh below and only fail if the proposal remains below quorum.
-      if (!/already|duplicate/i.test(String(err))) throw err;
+  if (before === "Active") {
+    for (const member of members()) {
+      try {
+        const signature=await multisig.rpc.proposalApprove({connection,feePayer:member,member,multisigPda,transactionIndex,memo:`approve ReleaseEntry ${state.appID}`});
+        await confirm(connection,signature); signatures.push(signature);
+      } catch (err) {
+        // Re-running after a process crash can meet quorum between the initial
+        // read and this member's vote. Re-read the proposal below rather than
+        // treating an already-approved member as a reason to strand it.
+        if (!/already|duplicate|invalid proposal status/i.test(String(err))) throw err;
+      }
     }
   }
   proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
-  if (String(proposal.pretty().status) !== "Active") throw new Error(`proposal is not executable after approvals: ${String(proposal.pretty().status)}`);
+  if (String(proposal.pretty().status) !== "Approved") throw new Error(`proposal is not executable after approvals: ${String(proposal.pretty().status)}`);
   const payer=members()[0];
   const {instruction: executeIx,lookupTableAccounts}=await multisig.instructions.vaultTransactionExecute({connection,multisigPda,transactionIndex,member:payer.publicKey});
   const message=new TransactionMessage({payerKey:payer.publicKey,recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,instructions:[decodeIx(state.ed25519Instruction),executeIx]}).compileToV0Message(lookupTableAccounts);

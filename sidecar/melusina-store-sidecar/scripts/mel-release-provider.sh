@@ -73,6 +73,21 @@ submit_cmd() {
   fi
 }
 
+# A catalog slot is needed only when an app is not yet present in the store.
+# Accept an absent triple for existing entries, but never accept a partial path:
+# that would let staging and promotion disagree about the visible package slot.
+catalog_slot_args() {
+  local developer="${MEL_RELEASE_CATALOG_DEVELOPER:-}"
+  local repo="${MEL_RELEASE_CATALOG_REPO:-}"
+  local slug="${MEL_RELEASE_CATALOG_SLUG:-}"
+  SUBMIT_CATALOG_SLOT_ARGS=()
+  if [[ -z "$developer" && -z "$repo" && -z "$slug" ]]; then
+    return
+  fi
+  [[ -n "$developer" && -n "$repo" && -n "$slug" ]] || die "catalog slot requires MEL_RELEASE_CATALOG_DEVELOPER, MEL_RELEASE_CATALOG_REPO, and MEL_RELEASE_CATALOG_SLUG together"
+  SUBMIT_CATALOG_SLOT_ARGS=(--developer "$developer" --repo "$repo" --slug "$slug")
+}
+
 readonly OP="${1:-}"
 [[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke}"
 case "$OP" in
@@ -162,7 +177,15 @@ with urllib.request.urlopen(url, timeout=20) as r: doc = json.load(r)
 items = doc.get("apps", doc if isinstance(doc, list) else [])
 hits = [x for x in items if isinstance(x, dict) and x.get("appId") == app]
 if len(hits) > 1: raise SystemExit("ambiguous catalog appId")
-if hits: print(hits[0].get("appHash", ""))
+if hits:
+    item = hits[0]
+    # The signed store catalog binds the release authority under attest; older
+    # fixtures exposed appHash at the top level. Accept either representation,
+    # but never infer a hash from another app or a package filename.
+    value = item.get("appHash", "")
+    if not value and isinstance(item.get("attest"), dict):
+        value = item["attest"].get("appHash", "")
+    print(value)
 PY
 }
 
@@ -183,10 +206,11 @@ doc={"$schema":"melusina-release-v1","appHash":apphash,"releaseHash":rhash,"vers
 with open(out,"w",encoding="utf-8") as f: json.dump(doc,f,sort_keys=True);f.write("\n")
 os.chmod(out,0o600)
 PY
+  catalog_slot_args
   submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
     --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
-    --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
+    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
 }
 
 need_ceremony_env() {
@@ -230,7 +254,7 @@ PY
   "$MEL_RELEASE_PEARL_TOOL" propose-release --dry-run --app-dir "$state/material" --release-json "$material_release" \
     --license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT" \
     --version "$MEL_NEW_VERSION" --app-id "$MEL_APP_ID" --state-out "$ceremony" \
-    --program-id "$MEL_PROGRAM_ID" --Squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
+    --program-id "$MEL_PROGRAM_ID" --squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
     --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" \
     --quorum-threshold "$MEL_RELEASE_SQUADS_THRESHOLD" --quorum-member-count "$MEL_RELEASE_SQUADS_MEMBER_COUNT" \
     --author-keypair "$MEL_RELEASE_AUTHOR_KEYPAIR" --transaction-index "$index"
@@ -281,10 +305,11 @@ promote() {
   [[ -f "$state/material/app.spk" && -f "$state/material/metadata.json" && -f "$release" ]] || die "promotion material or finalized release JSON is missing"
   [[ "$(json_get "$release" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "final release appHash differs from promotion request"
   [[ "$(json_get "$release" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "final release hash differs from promotion request"
+  catalog_slot_args
   submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
     --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
-    --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
+    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
 }
 
 release_status() {

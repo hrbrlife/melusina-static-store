@@ -18,13 +18,16 @@ import (
 // App is one release-family app entry. AppID is the sole identity; Slug/CatalogName
 // /SourcePath are descriptive and may all differ from each other and from AppID.
 type App struct {
-	Family      string
-	Name        string
-	AppID       string
-	SourcePath  string
-	PublishSlug string
-	CatalogName string
-	Role        string
+	Family           string
+	Name             string
+	AppID            string
+	SourcePath       string
+	PublishSlug      string
+	CatalogName      string
+	CatalogDeveloper string
+	CatalogRepo      string
+	CatalogSlug      string
+	Role             string
 }
 
 // Family manifest, closed at the 8-app CCASH/Popaye + NamedCoin surface.
@@ -208,6 +211,12 @@ func assignAppField(a *App, key, val string) {
 		a.PublishSlug = val
 	case "catalog_name":
 		a.CatalogName = val
+	case "catalog_developer":
+		a.CatalogDeveloper = val
+	case "catalog_repo":
+		a.CatalogRepo = val
+	case "catalog_slug":
+		a.CatalogSlug = val
 	case "role":
 		a.Role = val
 	}

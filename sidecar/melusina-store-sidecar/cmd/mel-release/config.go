@@ -29,14 +29,15 @@ type Config struct {
 	StoreURL       string // MEL_RELEASE_STORE_URL — bare https origin (required)
 	StorePubkey    string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
 
-	// Additional env-only settings (all MEL_RELEASE_*-prefixed, all with defaults
-	// except the publisher key, which is required only for `approve`).
+	// Additional env-only settings. The publisher envelope identity is required
+	// for both halves: private staging is itself a signed store mutation, so
+	// publish must fail before building if it cannot sign the stage request.
 	StoreID       string // MEL_RELEASE_STORE_ID       (default melusina-os-root-store)
 	BundleOrigin  string // MEL_RELEASE_BUNDLE_ORIGIN  (default = StoreURL)
 	Channel       string // MEL_RELEASE_CHANNEL        (default dev)
 	ProgramID     string // MEL_RELEASE_PROGRAM_ID     (default defaultProgramID)
 	StateDir      string // MEL_RELEASE_STATE_DIR      (default ~/.mel-release or /tmp fallback)
-	PublisherKey  string // MEL_RELEASE_PUBLISHER_KEY  (env:NAME or path; required by approve)
+	PublisherKey  string // MEL_RELEASE_PUBLISHER_KEY  (env:NAME or path; required by publish and approve)
 	OpTimeoutSecs int    // MEL_RELEASE_OP_TIMEOUT_SECS (default 480)
 	// AllowGlobalReleaseRevoke is deliberately OFF by default. ReleaseEntry is
 	// keyed by {master, appHash}, not by a store/install target, so automatically
@@ -76,6 +77,7 @@ func loadConfig() (Config, error) {
 		"MEL_RELEASE_SIGNER_PROVIDER": c.SignerProvider,
 		"MEL_RELEASE_STORE_URL":       c.StoreURL,
 		"MEL_RELEASE_STORE_PUBKEY":    c.StorePubkey,
+		"MEL_RELEASE_PUBLISHER_KEY":   c.PublisherKey,
 	} {
 		if strings.TrimSpace(val) == "" {
 			missing = append(missing, name)

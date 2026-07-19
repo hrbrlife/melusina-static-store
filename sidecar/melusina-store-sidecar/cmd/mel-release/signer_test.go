@@ -104,3 +104,18 @@ func TestProviderUsesPearlToolsCanonicalSquadsProgramFlag(t *testing.T) {
 		t.Fatalf("provider %s still contains unsupported uppercase --Squads-program-id", path)
 	}
 }
+
+func TestRegisterHelperExecutesOnlyApprovedSquadsProposal(t *testing.T) {
+	path := filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "if (before === \"Active\")") || !strings.Contains(text, "status) !== \"Approved\"") {
+		t.Fatalf("register helper %s does not implement Active -> Approved -> execute", path)
+	}
+	if strings.Contains(text, "status) !== \"Active\") throw new Error(`proposal is not executable") {
+		t.Fatalf("register helper %s still rejects the approved state Squads requires for execution", path)
+	}
+}

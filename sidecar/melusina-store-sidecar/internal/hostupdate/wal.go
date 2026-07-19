@@ -567,6 +567,24 @@ func unmarshalWAL(raw []byte, e *WALEntry) error {
 	return e.validate()
 }
 
+// ParseTerminalReceipt strictly decodes one immutable terminal receipt. Receipt
+// readers must not treat an arbitrary WAL-shaped JSON object as proof: it has to
+// be a known terminal state and carry the same deadline/trigger/runtime bindings
+// that finalize required when it was written.
+func ParseTerminalReceipt(raw []byte) (WALEntry, error) {
+	var e WALEntry
+	if err := unmarshalWAL(raw, &e); err != nil {
+		return WALEntry{}, fmt.Errorf("decode terminal receipt: %w", err)
+	}
+	if !e.State.terminal() {
+		return WALEntry{}, fmt.Errorf("receipt state %q is not terminal", e.State)
+	}
+	if err := e.validateTerminalReceiptBindings(); err != nil {
+		return WALEntry{}, fmt.Errorf("validate terminal receipt: %w", err)
+	}
+	return e, nil
+}
+
 // legalTransition encodes the WAL's forward-only apply graph: a state may only
 // advance to its immediate successor or fail to rolled-back. No skip (staged ->
 // applied) and no regress (applying -> staged) are permitted; terminal states

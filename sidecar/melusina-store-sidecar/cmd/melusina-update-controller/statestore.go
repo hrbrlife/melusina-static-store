@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/hostupdate"
@@ -86,7 +88,129 @@ func (s *fileControllerStateStore) Load(_ context.Context) (hostupdate.Controlle
 	if p.Schema != controllerStateSchema {
 		return hostupdate.ControllerState{}, fmt.Errorf("controller state schema mismatch: %q", p.Schema)
 	}
+	if err := s.recoverTerminalRollback(&p.State); err != nil {
+		return hostupdate.ControllerState{}, err
+	}
 	return p.State, nil
+}
+
+// recoverTerminalRollback is a one-way compatibility bridge for controllers
+// which wrote a durable rolled-back receipt before ControllerState gained
+// LastTerminal. Without it, a recovery generation properly chained from the
+// failed generation is rejected against the older LastCommitted cursor forever.
+//
+// It only trusts an append-only receipt when it binds exactly to the persisted
+// LastSeen generation and raw signed-generation digest. New controllers persist
+// LastTerminal at rollback time; this reader exists solely so an older durable
+// state can enter the corrected state machine without an unsafe hand edit.
+func (s *fileControllerStateStore) recoverTerminalRollback(state *hostupdate.ControllerState) error {
+	if state == nil || state.LastSeen == nil || state.LastSeen.GenerationID == 0 || state.LastSeen.RawSHA256 == "" {
+		return nil
+	}
+	if state.LastTerminal != nil && state.LastTerminal.GenerationID >= state.LastSeen.GenerationID {
+		return nil
+	}
+	if state.LastCommitted != nil && state.LastSeen.GenerationID <= state.LastCommitted.GenerationID {
+		return nil
+	}
+
+	receiptDir := filepath.Join(s.dir, "receipts")
+	dir, err := os.OpenFile(receiptDir, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("open rollback receipt directory: %w", err)
+	}
+	defer dir.Close()
+	if err := secureReceiptDir(dir, s.expectedUID); err != nil {
+		return err
+	}
+
+	entries, err := dir.ReadDir(-1)
+	if err != nil {
+		return fmt.Errorf("read rollback receipt directory: %w", err)
+	}
+	suffix := "-gen" + strconv.FormatUint(state.LastSeen.GenerationID, 10) + "-rolled-back.json"
+	matched := false
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
+			continue
+		}
+		receipt, err := s.readOwnedReceipt(filepath.Join(receiptDir, entry.Name()))
+		if err != nil {
+			return err
+		}
+		if receipt.State != hostupdate.StateRolledBack || receipt.GenerationID != state.LastSeen.GenerationID ||
+			!strings.EqualFold(receipt.RawGenerationSHA256, state.LastSeen.RawSHA256) {
+			return fmt.Errorf("rollback receipt %q does not bind to persisted lastSeen generation", entry.Name())
+		}
+		expectedName := receipt.ComponentID + suffix
+		if entry.Name() != expectedName {
+			return fmt.Errorf("rollback receipt filename %q does not bind component %q", entry.Name(), receipt.ComponentID)
+		}
+		matched = true
+	}
+	if matched {
+		state.LastTerminal = &hostupdate.GenerationCursor{
+			GenerationID: state.LastSeen.GenerationID,
+			RawSHA256:    state.LastSeen.RawSHA256,
+		}
+		state.Pending = nil
+	}
+	return nil
+}
+
+func secureReceiptDir(dir *os.File, expectedUID uint32) error {
+	info, err := dir.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return errors.New("rollback receipt path is not a directory")
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("rollback receipt directory mode %04o is too permissive", info.Mode().Perm())
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Uid != expectedUID {
+		return errors.New("rollback receipt directory owner mismatch")
+	}
+	return nil
+}
+
+func (s *fileControllerStateStore) readOwnedReceipt(path string) (hostupdate.WALEntry, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return hostupdate.WALEntry{}, fmt.Errorf("open rollback receipt: %w", err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return hostupdate.WALEntry{}, err
+	}
+	if !info.Mode().IsRegular() {
+		return hostupdate.WALEntry{}, errors.New("rollback receipt is not a regular file")
+	}
+	if info.Mode().Perm()&0o177 != 0 {
+		return hostupdate.WALEntry{}, fmt.Errorf("rollback receipt mode %04o is too permissive", info.Mode().Perm())
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Uid != s.expectedUID {
+		return hostupdate.WALEntry{}, errors.New("rollback receipt owner mismatch")
+	}
+	raw, err := io.ReadAll(io.LimitReader(f, maxControllerStateBytes+1))
+	if err != nil {
+		return hostupdate.WALEntry{}, err
+	}
+	if int64(len(raw)) > maxControllerStateBytes {
+		return hostupdate.WALEntry{}, errors.New("rollback receipt exceeds bounded read limit")
+	}
+	receipt, err := hostupdate.ParseTerminalReceipt(raw)
+	if err != nil {
+		return hostupdate.WALEntry{}, err
+	}
+	return receipt, nil
 }
 
 func (s *fileControllerStateStore) Store(_ context.Context, state hostupdate.ControllerState) error {

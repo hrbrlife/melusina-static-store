@@ -33,9 +33,6 @@ const (
 	prepareStoreUpdateCommand = "prepare-store-update"
 	chainReceiptSchema        = "melusina-installer-release-chain-verification-v1"
 	applyReceiptSchema        = "melusina-store-update-apply-v1"
-	fromVersion               = "1.0.5"
-	toVersion                 = "1.0.6"
-	applyReceiptName          = "store-1.0.6.json"
 	writerLockName            = "writer.lock"
 	canonicalLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	xzExecutable              = "/usr/bin/xz"
@@ -48,6 +45,8 @@ const (
 )
 
 type options struct {
+	fromVersion          string
+	toVersion            string
 	archive              string
 	archiveSHA256        string
 	chainReceipt         string
@@ -147,16 +146,18 @@ func parseOptions(args []string) (options, error) {
 	}
 	var opts options
 	fs := flag.NewFlagSet("apply-store-update "+prepareStoreUpdateCommand, flag.ContinueOnError)
-	fs.StringVar(&opts.archive, "archive", "", "pulled store 1.0.6 archive")
+	fs.StringVar(&opts.fromVersion, "from-version", "", "currently installed governed store version")
+	fs.StringVar(&opts.toVersion, "to-version", "", "governed target store version")
+	fs.StringVar(&opts.archive, "archive", "", "pulled governed store archive")
 	fs.StringVar(&opts.archiveSHA256, "archive-sha256", "", "verified archive sha256")
 	fs.StringVar(&opts.chainReceipt, "chain-receipt", "", "bounded InstallerReleaseEntry verification receipt")
 	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
 	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
-	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed 1.0.5 store ELF")
-	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed 1.0.5 ELF sha256")
-	fs.StringVar(&opts.newELF, "new-elf", "", "pulled 1.0.6 store ELF")
-	fs.StringVar(&opts.newELFMember, "new-elf-member", "", "exact clean tar member containing the 1.0.6 store ELF")
-	fs.StringVar(&opts.newELFSHA256, "new-elf-sha256", "", "verified 1.0.6 ELF sha256")
+	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed governed store ELF")
+	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed governed store ELF sha256")
+	fs.StringVar(&opts.newELF, "new-elf", "", "pulled governed store ELF")
+	fs.StringVar(&opts.newELFMember, "new-elf-member", "", "exact clean tar member containing the governed store ELF")
+	fs.StringVar(&opts.newELFSHA256, "new-elf-sha256", "", "verified governed store ELF sha256")
 	fs.StringVar(&opts.migrationStateDir, "migration-state-dir", "", "persistent migration-state directory holding the writer lock")
 	fs.StringVar(&opts.updateReceiptDir, "update-receipt-dir", "", "persistent update-receipt directory")
 	if err := fs.Parse(args[1:]); err != nil {
@@ -166,6 +167,7 @@ func parseOptions(args []string) (options, error) {
 		return options{}, fmt.Errorf("unexpected positional args: %v", fs.Args())
 	}
 	for name, value := range map[string]string{
+		"--from-version": opts.fromVersion, "--to-version": opts.toVersion,
 		"--archive": opts.archive, "--archive-sha256": opts.archiveSHA256,
 		"--chain-receipt": opts.chainReceipt, "--rpc-url": opts.rpcURL,
 		"--master-nft-mint": opts.masterNFTMint, "--installed-elf": opts.installedELF,
@@ -177,6 +179,15 @@ func parseOptions(args []string) (options, error) {
 		if strings.TrimSpace(value) == "" {
 			return options{}, fmt.Errorf("%s is required", name)
 		}
+	}
+	if err := validateReleaseVersion(opts.fromVersion); err != nil {
+		return options{}, fmt.Errorf("--from-version: %w", err)
+	}
+	if err := validateReleaseVersion(opts.toVersion); err != nil {
+		return options{}, fmt.Errorf("--to-version: %w", err)
+	}
+	if opts.fromVersion == opts.toVersion {
+		return options{}, errors.New("--from-version and --to-version must differ")
 	}
 	var err error
 	if opts.archiveSHA256, err = canonicalSHA256(opts.archiveSHA256); err != nil {
@@ -261,7 +272,7 @@ func prepareStoreUpdate(opts options, policy securityPolicy) (result, error) {
 		return result{}, fmt.Errorf("update-receipt directory: %w", err)
 	}
 
-	receiptPath := filepath.Join(opts.updateReceiptDir, applyReceiptName)
+	receiptPath := filepath.Join(opts.updateReceiptDir, applyReceiptName(opts.toVersion))
 	lockPath := filepath.Join(opts.migrationStateDir, writerLockName)
 	if err := createOrValidateWriterLock(lockPath, policy.expectedUID, policy.expectedGID); err != nil {
 		return result{}, fmt.Errorf("writer lock: %w", err)
@@ -325,7 +336,7 @@ func preparedResult(receipt applyReceipt) result {
 
 func desiredApplyReceipt(state string, opts options, chainHash string, chain chainVerificationReceipt, ledgerID string) applyReceipt {
 	return applyReceipt{
-		Schema: applyReceiptSchema, State: state, FromVersion: fromVersion, ToVersion: toVersion,
+		Schema: applyReceiptSchema, State: state, FromVersion: opts.fromVersion, ToVersion: opts.toVersion,
 		ArchiveSHA256: opts.archiveSHA256, ChainReceiptSHA256: chainHash,
 		InstallerReleasePDA: chain.InstallerReleasePDA, ChainVerifiedSlot: chain.VerifiedSlot,
 		ExpectedInstalledELFSHA256: opts.expectedOldELFSHA256, NewELFSHA256: opts.newELFSHA256,
@@ -397,7 +408,7 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 }
 
 func validateApplyReceipt(receipt applyReceipt, opts options, chainHash string, chain chainVerificationReceipt) error {
-	if receipt.Schema != applyReceiptSchema || receipt.FromVersion != fromVersion || receipt.ToVersion != toVersion {
+	if receipt.Schema != applyReceiptSchema || receipt.FromVersion != opts.fromVersion || receipt.ToVersion != opts.toVersion {
 		return errors.New("schema or version transition differs")
 	}
 	if receipt.ArchiveSHA256 != opts.archiveSHA256 || receipt.ChainReceiptSHA256 != chainHash ||
@@ -407,6 +418,31 @@ func validateApplyReceipt(receipt applyReceipt, opts options, chainHash string, 
 	}
 	if !isCanonicalHex(receipt.LedgerID, 32) {
 		return errors.New("ledgerId is invalid")
+	}
+	return nil
+}
+
+func applyReceiptName(toVersion string) string {
+	return "store-" + toVersion + ".json"
+}
+
+// validateReleaseVersion deliberately accepts only canonical three-part numeric
+// versions. The value becomes part of a receipt filename, so allowing a generic
+// version string here would turn an otherwise-governed update into a path input.
+func validateReleaseVersion(value string) error {
+	parts := strings.Split(value, ".")
+	if len(parts) != 3 {
+		return errors.New("must be canonical MAJOR.MINOR.PATCH")
+	}
+	for _, part := range parts {
+		if part == "" || (len(part) > 1 && part[0] == '0') {
+			return errors.New("must be canonical MAJOR.MINOR.PATCH")
+		}
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return errors.New("must be canonical MAJOR.MINOR.PATCH")
+			}
+		}
 	}
 	return nil
 }

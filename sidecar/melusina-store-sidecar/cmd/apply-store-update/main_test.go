@@ -65,19 +65,19 @@ func TestPrepareStoreUpdateCreatesDurableAuthorizationAndIsIdempotent(t *testing
 	assertMode(t, f.migrations, 0700)
 	assertMode(t, f.receipts, 0700)
 	assertMode(t, filepath.Join(f.migrations, writerLockName), 0600)
-	assertMode(t, filepath.Join(f.receipts, applyReceiptName), 0600)
+	assertMode(t, filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion)), 0600)
 
 	var receipt applyReceipt
-	readTestJSON(t, filepath.Join(f.receipts, applyReceiptName), &receipt)
+	readTestJSON(t, filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion)), &receipt)
 	if receipt.State != "seeded" || receipt.LedgerID != got.LedgerID ||
-		receipt.FromVersion != fromVersion || receipt.ToVersion != toVersion {
+		receipt.FromVersion != f.opts.fromVersion || receipt.ToVersion != f.opts.toVersion {
 		t.Fatalf("unexpected apply receipt: %+v", receipt)
 	}
-	if receipt.FromVersion != "1.0.5" || receipt.ToVersion != "1.0.6" {
-		t.Fatalf("apply receipt does not stamp the governed 1.0.5->1.0.6 transition: %+v", receipt)
+	if receipt.FromVersion != "1.0.6" || receipt.ToVersion != "1.0.7" {
+		t.Fatalf("apply receipt does not stamp the governed 1.0.6->1.0.7 transition: %+v", receipt)
 	}
 
-	// The 1.0.5->1.0.6 hop is a pure binary swap: it carries no catalog
+	// The 1.0.6->1.0.7 hop is a pure binary swap: it carries no catalog
 	// migration. The store reads the pre-existing committed
 	// migrations/catalog-v104.json record at boot, so this helper must never
 	// create, touch, or supersede anything in the migration-state directory
@@ -113,7 +113,7 @@ func TestPrepareStoreUpdateLocksBeforeCreatingPersistentState(t *testing.T) {
 	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "injected crash") {
 		t.Fatalf("expected injected failure, got %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("apply receipt created before writer ownership: %v", err)
 	}
 	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
@@ -144,7 +144,7 @@ func TestPrepareStoreUpdateRefusesHeldWriterLockWithoutStateMutation(t *testing.
 	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "writer lock ownership") {
 		t.Fatalf("helper entered while writer lock held: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("persistent state changed while lock held: %v", err)
 	}
 	assertMigrationDirHoldsOnlyWriterLock(t, f.migrations)
@@ -156,7 +156,7 @@ func TestPrepareStoreUpdateRejectsWriterLockGIDMismatch(t *testing.T) {
 	if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), "uid:gid") {
 		t.Fatalf("helper accepted writer.lock GID mismatch: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("receipt created despite writer.lock GID mismatch: %v", err)
 	}
 }
@@ -169,7 +169,7 @@ func TestSeedingReceiptResumesOntoTheSameIdentity(t *testing.T) {
 	if _, err := prepareStoreUpdate(f.opts, f.policy); err != nil {
 		t.Fatal(err)
 	}
-	receiptPath := filepath.Join(f.receipts, applyReceiptName)
+	receiptPath := filepath.Join(f.receipts, applyReceiptName(f.opts.toVersion))
 	var receipt applyReceipt
 	readTestJSON(t, receiptPath, &receipt)
 	receipt.State = "seeding"
@@ -229,8 +229,8 @@ func TestArchiveELFBindingRefusesMissingDuplicateAndTraversal(t *testing.T) {
 		want    string
 	}{
 		{"missing", []tarEntry{{"bin/other", "elf"}}, "not found"},
-		{"duplicate", []tarEntry{{"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}, {"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}}, "duplicate member"},
-		{"traversal", []tarEntry{{"../escape", "bad"}, {"bin/melusina-store-sidecar", "deterministic 1.0.6 binary"}}, "unsafe member"},
+		{"duplicate", []tarEntry{{"bin/melusina-store-sidecar", "deterministic 1.0.7 binary"}, {"bin/melusina-store-sidecar", "deterministic 1.0.7 binary"}}, "duplicate member"},
+		{"traversal", []tarEntry{{"../escape", "bad"}, {"bin/melusina-store-sidecar", "deterministic 1.0.7 binary"}}, "unsafe member"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -256,6 +256,29 @@ func TestInputSymlinkAndUnknownForceFlagRefuse(t *testing.T) {
 	args := append(append([]string{}, f.args...), "--force")
 	if _, err := parseOptions(args); err == nil {
 		t.Fatal("unsupported --force flag was accepted")
+	}
+}
+
+func TestVersionContractRefusesUnsafeOrDegenerateTransitions(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		flag  string
+		value string
+		want  string
+	}{
+		{"same version", "--to-version", "1.0.6", "must differ"},
+		{"path separator", "--to-version", "1.0.7/escape", "canonical MAJOR.MINOR.PATCH"},
+		{"prerelease", "--to-version", "1.0.7-rc1", "canonical MAJOR.MINOR.PATCH"},
+		{"leading zero", "--from-version", "01.0.6", "canonical MAJOR.MINOR.PATCH"},
+		{"too few parts", "--from-version", "1.0", "canonical MAJOR.MINOR.PATCH"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			args := append(append([]string{}, f.args...), tc.flag, tc.value)
+			if _, err := parseOptions(args); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("invalid version transition accepted: %v", err)
+			}
+		})
 	}
 }
 
@@ -296,18 +319,18 @@ func TestPersistentModeMismatchRefuses(t *testing.T) {
 func newTestFixture(t *testing.T) testFixture {
 	t.Helper()
 	root := t.TempDir()
-	archive := filepath.Join(root, "store-1.0.6.tar.xz")
-	oldELF := filepath.Join(root, "installed-1.0.5")
+	archive := filepath.Join(root, "store-1.0.7.tar.xz")
+	oldELF := filepath.Join(root, "installed-1.0.6")
 	newELF := filepath.Join(root, "melusina-store-sidecar")
 	for path, contents := range map[string]string{
-		oldELF: "installed 1.0.5 binary", newELF: "deterministic 1.0.6 binary",
+		oldELF: "installed 1.0.6 binary", newELF: "deterministic 1.0.7 binary",
 	} {
 		if err := os.WriteFile(path, []byte(contents), 0755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	member := "bin/melusina-store-sidecar"
-	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.6 binary"}})
+	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.7 binary"}})
 	archiveHash := fileSHA256(t, archive)
 	archiveHashBytes := mustHash32(t, archiveHash)
 	masterMint, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
@@ -335,6 +358,7 @@ func newTestFixture(t *testing.T) testFixture {
 	migrations := filepath.Join(persist, "migrations")
 	receipts := filepath.Join(persist, "update-receipts")
 	opts := options{
+		fromVersion: "1.0.6", toVersion: "1.0.7",
 		archive: archive, archiveSHA256: archiveHash, chainReceipt: chainPath,
 		rpcURL: "https://rpc.example.invalid", masterNFTMint: masterMint.Base58(),
 		installedELF: oldELF, expectedOldELFSHA256: fileSHA256(t, oldELF),
@@ -343,6 +367,7 @@ func newTestFixture(t *testing.T) testFixture {
 	}
 	args := []string{
 		prepareStoreUpdateCommand,
+		"--from-version", opts.fromVersion, "--to-version", opts.toVersion,
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
 		"--rpc-url", opts.rpcURL, "--master-nft-mint", opts.masterNFTMint,
@@ -429,7 +454,7 @@ func readTestJSON(t *testing.T, path string, dst any) {
 	}
 }
 
-// assertMigrationDirHoldsOnlyWriterLock pins the 1.0.5->1.0.6 invariant that
+// assertMigrationDirHoldsOnlyWriterLock pins the pure-binary-swap invariant that
 // this helper emits no migration state at all. The store's own boot path still
 // reads the pre-existing committed migrations/catalog-v104.json record, so any
 // file this helper writes there beyond the writer lock it owns would be a

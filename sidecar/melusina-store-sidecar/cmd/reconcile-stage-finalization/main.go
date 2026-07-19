@@ -28,15 +28,23 @@ type release struct {
 	Version            string `json:"version"`
 }
 
+type stageRecord struct {
+	StageID       string `json:"stageId"`
+	AppHash       string `json:"appHash"`
+	ReleaseHash   string `json:"releaseHash"`
+	ReleaseSHA256 string `json:"releaseSha256"`
+	ReleaseSize   int64  `json:"releaseSize"`
+}
+
 func sameImmutable(a, b release) error {
 	if a.Schema != b.Schema || a.AppHash != b.AppHash || a.ReleaseHash != b.ReleaseHash || a.Version != b.Version || a.MasterNftMint != b.MasterNftMint || a.ReleaseNonce != b.ReleaseNonce {
 		return errors.New("immutable release identity differs")
 	}
-	if a.LicenseSquadsVault != "" {
-		return errors.New("staged licenseSquadsVault is not blank; refusing overwrite")
-	}
 	if b.LicenseSquadsVault == "" {
 		return errors.New("finalized licenseSquadsVault is blank")
+	}
+	if a.LicenseSquadsVault != "" && a.LicenseSquadsVault != b.LicenseSquadsVault {
+		return errors.New("staged licenseSquadsVault differs; refusing overwrite")
 	}
 	return nil
 }
@@ -85,6 +93,40 @@ func main() {
 	if err := os.Rename(tmp.Name(), *stage); err != nil {
 		panic(err)
 	}
+	stageJSON := filepath.Join(filepath.Dir(*stage), "stage.json")
+	stageBytes, err := os.ReadFile(stageJSON)
+	if err != nil {
+		panic(err)
+	}
+	var record stageRecord
+	if err := json.Unmarshal(stageBytes, &record); err != nil {
+		panic(err)
+	}
+	if record.StageID == "" || record.AppHash != s.AppHash || record.ReleaseHash != s.ReleaseHash {
+		panic("stage ledger identity does not match release")
+	}
 	before, after := sha256.Sum256(a), sha256.Sum256(out)
+	record.ReleaseSHA256, record.ReleaseSize = hex.EncodeToString(after[:]), int64(len(out))
+	updatedRecord, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	rtmp, err := os.CreateTemp(filepath.Dir(stageJSON), ".stage.json.reconcile-*")
+	if err != nil {
+		panic(err)
+	}
+	defer os.Remove(rtmp.Name())
+	if _, err := rtmp.Write(updatedRecord); err != nil {
+		panic(err)
+	}
+	if err := rtmp.Chmod(0o600); err != nil {
+		panic(err)
+	}
+	if err := rtmp.Close(); err != nil {
+		panic(err)
+	}
+	if err := os.Rename(rtmp.Name(), stageJSON); err != nil {
+		panic(err)
+	}
 	fmt.Printf("RECONCILED_STAGE_FINALIZATION before=%s after=%s vault=%s\n", hex.EncodeToString(before[:]), hex.EncodeToString(after[:]), s.LicenseSquadsVault)
 }

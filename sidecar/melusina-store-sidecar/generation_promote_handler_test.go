@@ -182,6 +182,43 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("valid app component refused: %v", err)
 	}
+	// A generation-aware catalog serves only its immutable current snapshot.
+	// Make the legacy flat pointer disappear after bootstrapping that snapshot;
+	// the verification must still succeed, or a freshly published app can never
+	// be promoted even though consumers can already read its signed pointer.
+	if err := os.MkdirAll(filepath.Join(dist, "attest"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	generations := AppCatalogGenerationStore{Root: t.TempDir()}
+	// Bootstrap seals immutable generations mode 0555/0444. Restore test-owned
+	// permissions before testing.T cleans its temporary directory; production
+	// never unseals a committed generation.
+	defer func() {
+		_ = filepath.Walk(generations.Root, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info == nil {
+				return nil
+			}
+			if info.IsDir() {
+				return os.Chmod(path, 0o755)
+			}
+			return os.Chmod(path, 0o644)
+		})
+	}()
+	if _, err := generations.BootstrapFromFlat(dist, nil); err != nil {
+		t.Fatalf("bootstrap immutable app catalog: %v", err)
+	}
+	svc.catalogGenerations = generations
+	pointerPath := filepath.Join(dist, "apps", "pointers", appID+".json")
+	if err := os.Remove(pointerPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
+		t.Fatalf("immutable current catalog was not used for app verification: %v", err)
+	}
+	if err := os.WriteFile(pointerPath, pointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc.catalogGenerations = AppCatalogGenerationStore{}
 	// The publisher must bind the descriptors it reads, not merely Lstat a
 	// public-tree path and then follow a later attacker-installed symlink.
 	outside := t.TempDir()
@@ -205,7 +242,6 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := os.WriteFile(packagePath, f.spk, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	pointerPath := filepath.Join(dist, "apps", "pointers", appID+".json")
 	outsidePointer := filepath.Join(outside, "pointer.json")
 	if err := os.WriteFile(outsidePointer, pointerBody, 0o644); err != nil {
 		t.Fatal(err)

@@ -312,7 +312,17 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: unsafe appId", c.ComponentID)
 	}
 
-	pointerPath := filepath.Join(s.cfg.DistDir, "apps", "pointers", c.ComponentID+".json")
+	// App publishing atomically switches the immutable catalog/current
+	// generation. The HTTP reader resolves that generation once for every
+	// request, so generation promotion must verify the same served snapshot
+	// rather than the legacy flat staging directory. Otherwise a valid signed
+	// pointer can be visible to consumers while this gate incorrectly reports it
+	// missing from the old flat tree.
+	catalogRoot, err := s.servedAppCatalogRoot()
+	if err != nil {
+		return fmt.Errorf("component %s: resolve served app catalog: %w", c.ComponentID, err)
+	}
+	pointerPath := filepath.Join(catalogRoot, "apps", "pointers", c.ComponentID+".json")
 	pointerBody, err := readDistRegularNoFollow(pointerPath, maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read signed app catalog pointer: %w", c.ComponentID, err)
@@ -350,7 +360,7 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: signed app catalog pointer stageId mismatch", c.ComponentID)
 	}
 
-	indexBody, err := readDistRegularNoFollow(filepath.Join(s.cfg.DistDir, "apps", "index.json"), maxAppCatalogJSONBytes)
+	indexBody, err := readDistRegularNoFollow(filepath.Join(catalogRoot, "apps", "index.json"), maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read app catalog index: %w", c.ComponentID, err)
 	}
@@ -378,13 +388,13 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 	if !found {
 		return fmt.Errorf("component %s: app catalog has no selected package", c.ComponentID)
 	}
-	metadataPath := filepath.Join(s.cfg.DistDir, "signatures", c.ComponentID, "metadata.json")
+	metadataPath := filepath.Join(catalogRoot, "signatures", c.ComponentID, "metadata.json")
 	metadata, err := readDistRegularNoFollow(metadataPath, maxAppCatalogJSONBytes)
 	if err != nil {
 		return fmt.Errorf("component %s: read served app metadata: %w", c.ComponentID, err)
 	}
 
-	packagePath := filepath.Join(s.cfg.DistDir, "packages", packageID)
+	packagePath := filepath.Join(catalogRoot, "packages", packageID)
 	f, size, err := openDistRegularNoFollow(packagePath)
 	if err != nil {
 		return fmt.Errorf("component %s: open served app package: %w", c.ComponentID, err)
@@ -415,6 +425,20 @@ func (s *publishService) verifyAppComponentServedBytes(c componentrelease.Compon
 		return fmt.Errorf("component %s: served {app.spk,metadata.json} contentSha256 %s != component contentSha256 %s", c.ComponentID, gotContentHash, c.ContentSHA256)
 	}
 	return nil
+}
+
+// servedAppCatalogRoot returns the exact catalog root exposed by the app HTTP
+// surface. Older stores serve directly from DistDir; generation-aware stores
+// serve only from their selected immutable catalog generation.
+func (s *publishService) servedAppCatalogRoot() (string, error) {
+	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
+		return s.cfg.DistDir, nil
+	}
+	current, err := s.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		return "", err
+	}
+	return current.Root, nil
 }
 
 // readDistRegularNoFollow reads a bounded, final regular file from the serving

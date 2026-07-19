@@ -1,7 +1,10 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -117,5 +120,33 @@ func TestRegisterHelperExecutesOnlyApprovedSquadsProposal(t *testing.T) {
 	}
 	if strings.Contains(text, "status) !== \"Active\") throw new Error(`proposal is not executable") {
 		t.Fatalf("register helper %s still rejects the approved state Squads requires for execution", path)
+	}
+}
+
+func TestProviderReadsAttestedCatalogAppHash(t *testing.T) {
+	const appID = "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"
+	want := strings.Repeat("a", 64)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/apps/index.json" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"apps":[{"appId":"` + appID + `","attest":{"appHash":"` + want + `"}}]}`))
+	}))
+	defer server.Close()
+
+	provider := filepath.Join("..", "..", "scripts", "mel-release-provider.sh")
+	cmd := exec.Command("bash", provider, "served-app-hash")
+	cmd.Env = append(os.Environ(),
+		"MEL_RELEASE_STATE_DIR="+t.TempDir(),
+		"MEL_APP_ID="+appID,
+		"MEL_RELEASE_STORE_URL="+server.URL,
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("provider served-app-hash: %v: %s", err, out)
+	}
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Fatalf("attested catalog app hash = %q, want %q", got, want)
 	}
 }

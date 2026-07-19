@@ -177,7 +177,15 @@ with urllib.request.urlopen(url, timeout=20) as r: doc = json.load(r)
 items = doc.get("apps", doc if isinstance(doc, list) else [])
 hits = [x for x in items if isinstance(x, dict) and x.get("appId") == app]
 if len(hits) > 1: raise SystemExit("ambiguous catalog appId")
-if hits: print(hits[0].get("appHash", ""))
+if hits:
+    item = hits[0]
+    # The signed store catalog binds the release authority under attest; older
+    # fixtures exposed appHash at the top level. Accept either representation,
+    # but never infer a hash from another app or a package filename.
+    value = item.get("appHash", "")
+    if not value and isinstance(item.get("attest"), dict):
+        value = item["attest"].get("appHash", "")
+    print(value)
 PY
 }
 

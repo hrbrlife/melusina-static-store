@@ -117,7 +117,51 @@ def test_propose_uses_only_supported_flags():
             assert unsupported not in proposal, proposal
 
 
+def test_submit_binds_the_immutable_catalog_slot():
+    old = with_env({
+        "MEL_RELEASE_STORE_URL": "https://store.example.test",
+        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+    })
+    try:
+        args = provider.submit_args({
+            "spkPath": "/tmp/app.spk",
+            "metadataPath": "/tmp/metadata.json",
+            "releasePath": "/tmp/RELEASE.json",
+            "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
+        }, Path("/tmp/receipt.json"), stage_only=True)
+    finally:
+        restore_env(old)
+    assert args[args.index("--developer") + 1] == "hrbrlife", args
+    assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
+    assert args[args.index("--slug") + 1] == "popaye", args
+    assert "--stage" in args, args
+
+
+def test_submit_refuses_missing_catalog_slot():
+    old = with_env({
+        "MEL_RELEASE_STORE_URL": "https://store.example.test",
+        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+    })
+    try:
+        try:
+            provider.submit_args({"spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json", "releasePath": "/tmp/RELEASE.json"}, Path("/tmp/receipt.json"), stage_only=True)
+        except provider.ProviderError as exc:
+            assert "catalogSlot" in str(exc), exc
+        else:
+            raise AssertionError("missing catalogSlot was accepted")
+    finally:
+        restore_env(old)
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
+    test_submit_binds_the_immutable_catalog_slot()
+    test_submit_refuses_missing_catalog_slot()
     print("mel-release provider CLI-contract tests passed")

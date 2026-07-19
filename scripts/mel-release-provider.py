@@ -123,6 +123,14 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
                     "publish_slug": str(spec.get("publish_slug", "")),
+                    # The immutable appId is the authority, but a first
+                    # publish into a clean store must also name the one
+                    # catalog slot where that authority will live. These are
+                    # intentionally NOT inferred from source_path, the
+                    # Makefile publish slug, or the catalog display name.
+                    "catalog_developer": str(spec.get("catalog_developer", "")),
+                    "catalog_repo": str(spec.get("catalog_repo", "")),
+                    "catalog_slug": str(spec.get("catalog_slug", "")),
                 }
     raise ProviderError(f"immutable appId {app_id} is not declared in release-family.yaml")
 
@@ -137,6 +145,24 @@ def source_path(app_id: str) -> Path:
     if not path.is_dir() or not (path / "metadata.json").is_file():
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
     return path
+
+
+def catalog_slot(app_id: str) -> dict[str, str]:
+    spec = app_spec(app_id)
+    slot = {
+        "developer": spec["catalog_developer"].strip(),
+        "repo": spec["catalog_repo"].strip(),
+        "slug": spec["catalog_slug"].strip(),
+    }
+    if not all(slot.values()):
+        raise ProviderError(
+            f"release-family.yaml appId {app_id} must declare catalog_developer, "
+            "catalog_repo, and catalog_slug for a first publish"
+        )
+    for field, value in slot.items():
+        if "/" in value or "\\" in value or value in {".", ".."}:
+            raise ProviderError(f"unsafe catalog {field} for {app_id}: {value!r}")
+    return slot
 
 
 def catalog_package(app_id: str) -> Path:
@@ -186,6 +212,7 @@ def current_pointer(app_id: str) -> dict[str, Any] | None:
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
     source = source_path(app_id)
+    slot = catalog_slot(app_id)
     work = state_root(app_id) / "candidate"
     if work.exists():
         shutil.rmtree(work)
@@ -202,8 +229,15 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
 
+    declared_catalog = ROOT / "packages" / slot["developer"] / slot["repo"] / slot["slug"]
+    catalog_source = catalog_package(app_id)
+    if catalog_source.resolve() != declared_catalog.resolve():
+        raise ProviderError(
+            f"catalog slot drift for {app_id}: manifest names {declared_catalog}, "
+            f"but the immutable appId currently resolves to {catalog_source}"
+        )
     catalog = work / "catalog"
-    shutil.copytree(catalog_package(app_id), catalog, symlinks=False)
+    shutil.copytree(catalog_source, catalog, symlinks=False)
     run(
         [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
         extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
@@ -249,6 +283,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "releasePath": str(release),
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
+        "catalogSlot": slot,
     }
     write_json(context_path(app_id), context)
     write_json(receipt_out, {
@@ -286,12 +321,16 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
     store_license = env("MEL_RELEASE_STORE_LICENSE_MINT", required=True)
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
     domain = env("MEL_RELEASE_STORE_DOMAIN", default=store_url.split("//", 1)[-1].split("/", 1)[0])
+    slot = context.get("catalogSlot")
+    if not isinstance(slot, dict) or not all(isinstance(slot.get(k), str) and slot[k].strip() for k in ("developer", "repo", "slug")):
+        raise ProviderError("provider context lacks immutable catalogSlot")
     args = [
         str(ensure_bin("submit", "./cmd/submit")), "--store", store_url,
         "--spk", str(context["spkPath"]), "--metadata", str(context["metadataPath"]),
         "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
         "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
         "--domain", domain, "--rpc-url", rpc, "--timeout", "480s", "--receipt-out", str(receipt_out),
+        "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
     ]
     if stage_only:
         args.append("--stage")

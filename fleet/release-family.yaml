@@ -24,7 +24,10 @@ families:
         role: issuer-operations
       popaye:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
-        source_path: /home/user/Desktop/worktrees/governed-popaye-0167
+        # This checkout is deliberately sibling to the canonical Fineract
+        # sidecar, so Popaye's declared local Go-module dependency resolves
+        # exactly as it does in the production source topology.
+        source_path: /home/user/Desktop/governed-popaye-0168
         publish_slug: popaye
         catalog_name: popaye
         role: account-opening-and-client-money-ui

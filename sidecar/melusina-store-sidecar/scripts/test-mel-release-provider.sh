@@ -81,4 +81,8 @@ PY
 # The outer precompile is the critical real-chain invariant. Keep this simple
 # assertion here so a refactor cannot silently fall back to generic execute.
 grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/scripts/mel-release-squads-register.mjs"
+# ReleaseEntry authority and the master NFT are separate mints.  Passing the
+# master in the license slot creates a proposal that can never truthfully bind
+# the app release. Keep this exact provider contract under test.
+grep -Fq -- '--license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT"' "$PROVIDER"
 echo "mel-release-provider contract: PASS"

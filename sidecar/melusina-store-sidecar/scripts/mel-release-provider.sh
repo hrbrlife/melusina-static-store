@@ -191,7 +191,7 @@ PY
 
 need_ceremony_env() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE
-  need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
+  need MEL_RELEASE_LICENSE_MINT; need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
   need MEL_RELEASE_SQUADS_THRESHOLD; need MEL_RELEASE_SQUADS_MEMBER_COUNT; need MEL_RELEASE_SQUADS_PROGRAM_ID
   need_file MEL_RELEASE_AUTHOR_KEYPAIR; need_file MEL_RELEASE_MEMBER_KEYPAIR_1; need MEL_RELEASE_RPC_URL
   need_executable MEL_RELEASE_PEARL_TOOL
@@ -228,7 +228,7 @@ with open(out,"w",encoding="utf-8") as f: json.dump(doc,f,sort_keys=True);f.writ
 os.chmod(out,0o600)
 PY
   "$MEL_RELEASE_PEARL_TOOL" propose-release --dry-run --app-dir "$state/material" --release-json "$material_release" \
-    --license-mint "$MEL_RELEASE_MASTER_NFT_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT" \
+    --license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT" \
     --version "$MEL_NEW_VERSION" --app-id "$MEL_APP_ID" --state-out "$ceremony" \
     --program-id "$MEL_PROGRAM_ID" --Squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
     --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" \

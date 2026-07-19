@@ -56,3 +56,21 @@ func TestExecProviderRejectsPartialCatalogSlotBeforeInvocation(t *testing.T) {
 		t.Fatalf("Stage partial slot error = %v, want catalog-slot refusal", err)
 	}
 }
+
+// propose-release is an external command with case-sensitive flags. Keep the
+// provider spelling pinned so the governed publish path cannot get as far as a
+// private stage and then fail before producing its proposal.
+func TestProviderUsesPearlToolsCanonicalSquadsProgramFlag(t *testing.T) {
+	path := filepath.Join("..", "..", "scripts", "mel-release-provider.sh")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "--squads-program-id \"$MEL_RELEASE_SQUADS_PROGRAM_ID\"") {
+		t.Fatalf("provider %s does not use pearl-tool's canonical --squads-program-id flag", path)
+	}
+	if strings.Contains(text, "--Squads-program-id") {
+		t.Fatalf("provider %s still contains unsupported uppercase --Squads-program-id", path)
+	}
+}

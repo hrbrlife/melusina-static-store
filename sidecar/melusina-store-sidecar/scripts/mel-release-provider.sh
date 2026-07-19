@@ -233,6 +233,8 @@ need_ceremony_env() {
   done
   (( available >= MEL_RELEASE_SQUADS_THRESHOLD )) || die "only $available member keypairs configured for threshold $MEL_RELEASE_SQUADS_THRESHOLD"
   need_dir MEL_RELEASE_NODE_MODULES
+  [[ -f "$MEL_RELEASE_NODE_MODULES/@solana/web3.js/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @solana/web3.js"
+  [[ -f "$MEL_RELEASE_NODE_MODULES/@sqds/multisig/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @sqds/multisig"
   [[ -f "$NODE_HELPER" && ! -L "$NODE_HELPER" ]] || die "provider node helper missing"
 }
 

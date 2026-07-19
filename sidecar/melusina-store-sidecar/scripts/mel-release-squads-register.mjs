@@ -15,6 +15,11 @@ function need(name) {
   return value;
 }
 const nodeModules = need("MEL_RELEASE_NODE_MODULES");
+for (const requiredPackage of ["@solana/web3.js/package.json", "@sqds/multisig/package.json"]) {
+  if (!fs.existsSync(path.join(nodeModules, requiredPackage))) {
+    throw new Error(`MEL_RELEASE_NODE_MODULES must contain ${requiredPackage}; got ${nodeModules}`);
+  }
+}
 const requireFromConfiguredModules = createRequire(path.join(nodeModules, "mel-release-provider.cjs"));
 const { Connection, Keypair, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction } = requireFromConfiguredModules("@solana/web3.js");
 const multisig = requireFromConfiguredModules("@sqds/multisig");

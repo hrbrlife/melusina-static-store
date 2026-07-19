@@ -441,6 +441,19 @@ func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 		t.Fatalf("unexpected readiness: %#v", readiness)
 	}
 
+	// Readiness must refuse a store whose deployer omitted the public origin.
+	// Such a store could accept an approval ceremony but could never serve the
+	// signed DesiredGeneration because its bundle URLs have no trusted origin.
+	rec = httptest.NewRecorder()
+	(&publishService{
+		cfg:      Config{StoreID: "melusina-os-root-store"},
+		operator: op,
+		cr:       &mockChainReader{},
+	}).handleGeneratePromote(rec, httptest.NewRequest(http.MethodGet, "/publish/generation", nil))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "public_base_url") {
+		t.Fatalf("missing public origin readiness want 503/public_base_url got %d: %s", rec.Code, rec.Body.String())
+	}
+
 	// 503 when the chain reader / operator is unwired.
 	rec = httptest.NewRecorder()
 	(&publishService{cfg: Config{}}).handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", strings.NewReader("{}")))

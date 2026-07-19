@@ -57,6 +57,15 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 			http.Error(w, "generation promote gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
 			return
 		}
+		// The approve-side promotion immediately persists a DesiredGeneration
+		// whose bundle origin is signed.  Advertising readiness without this
+		// deployer-provided public origin lets a publisher create an on-chain
+		// proposal that the store cannot make consumable.  Refuse before any
+		// irreversible ReleaseEntry ceremony instead.
+		if strings.TrimRight(strings.TrimSpace(s.cfg.PublicBaseURL), "/") == "" {
+			http.Error(w, "generation promote gate not initialized (no public_base_url to pin the bundle origin)", http.StatusServiceUnavailable)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"schema": "melusina-generation-promote-readiness-v1",

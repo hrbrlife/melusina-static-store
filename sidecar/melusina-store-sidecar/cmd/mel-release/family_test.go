@@ -117,7 +117,7 @@ func TestSelectUnknownFails(t *testing.T) {
 	}
 }
 
-// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 8 apps)
+// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 9 apps)
 // so the fail-closed parser is exercised against every legitimate shape it must
 // still accept: family-level squads: bodies, quoted values with spaces, unknown
 // per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
@@ -131,16 +131,16 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFamily(real): %v", err)
 	}
-	if len(fam.Apps) != 8 {
+	if len(fam.Apps) != 9 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 8 apps, got %d: %v", len(fam.Apps), names)
+		 t.Fatalf("want 9 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
 		"popaye", "ccash-domain-template", "ccashconfig", "cyberteller",
-		"cyberteller-config", "dueprocess", "namedcoin", "namedcoin-admin",
+		"cyberteller-config", "dueprocess", "namedcoin", "namedcoin-admin", "fineract-setup",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)

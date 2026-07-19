@@ -220,7 +220,7 @@ func ensureProposed(c Config, prov SignerProvider, rec *walReceipt) error {
 	}
 	relJSONPath := c.receiptPath(rec.AppID, "release.json")
 	proposePath := c.receiptPath(rec.AppID, "propose.json")
-	if err := prov.ProposeRegister(rec.AppID, rec.NewAppHash, rec.Version, rec.ReleaseNonce, c.SquadsMultisig, c.SquadsVault, relJSONPath, proposePath); err != nil {
+	if err := prov.ProposeRegister(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, c.SquadsMultisig, c.SquadsVault, relJSONPath, proposePath); err != nil {
 		return err
 	}
 	rel, relRef, err := readFinalReleaseJSON(relJSONPath, rec.NewAppHash, rec.Version, rec.ReleaseNonce)

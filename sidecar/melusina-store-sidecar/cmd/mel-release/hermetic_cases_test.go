@@ -528,7 +528,7 @@ func (s *revokeGuardStubProvider) ServedAppHash(string) (string, error) { return
 func (s *revokeGuardStubProvider) Stage(App, string, string, string, string, string) error {
 	return nil
 }
-func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string) error {
+func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string, string) error {
 	return nil
 }
 func (s *revokeGuardStubProvider) ApproveRegister(string, string, string, string) error { return nil }

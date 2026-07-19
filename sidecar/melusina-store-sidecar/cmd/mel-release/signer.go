@@ -69,7 +69,7 @@ type SignerProvider interface {
 	// and writes RELEASE.json (releaseJSONOut) + a proposal receipt (proposeOut,
 	// schema melusina-register-proposal-receipt-v1) naming the transaction PDA.
 	// Nothing becomes Active.
-	ProposeRegister(appID, appHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error
+	ProposeRegister(appID, appHash, releaseHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error
 
 	// ApproveRegister executes the authorized Squads approval of transactionPda,
 	// landing register_release_entry -> ReleaseEntry Active, and writes a register
@@ -204,10 +204,11 @@ func (e *execProvider) Stage(app App, appHash, releaseHash, version, releaseNonc
 	return err
 }
 
-func (e *execProvider) ProposeRegister(appID, appHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error {
+func (e *execProvider) ProposeRegister(appID, appHash, releaseHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error {
 	_, err := e.run("propose-register", map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_NEW_VERSION": version,
-		"MEL_RELEASE_NONCE": nonce, "MEL_SQUADS_MULTISIG": multisig, "MEL_SQUADS_VAULT": vault,
+		"MEL_RELEASE_HASH": releaseHash, "MEL_RELEASE_NONCE": nonce,
+		"MEL_SQUADS_MULTISIG": multisig, "MEL_SQUADS_VAULT": vault,
 		"MEL_RELEASE_JSON_OUT": releaseJSONOut, "MEL_PROPOSE_RECEIPT_OUT": proposeOut,
 	})
 	return err

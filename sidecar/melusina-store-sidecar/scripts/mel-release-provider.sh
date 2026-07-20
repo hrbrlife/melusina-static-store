@@ -173,6 +173,136 @@ active_releases() {
   run_go_cmd "$ACTIVE_CMD" -rpc-url "$MEL_RELEASE_RPC_URL" -app-id "$MEL_APP_ID" -program-id "$MEL_PROGRAM_ID"
 }
 
+release_status() {
+  # Decode only the stable ReleaseEntry fields needed by the release WAL.  This
+  # is deliberately an exact-PDA read: cleanup must never infer a target from
+  # a version string or from a mutable catalog pointer.
+  need MEL_PDA; need MEL_RELEASE_RPC_URL; need MEL_PROGRAM_ID
+  python3 - "$MEL_RELEASE_RPC_URL" "$MEL_PROGRAM_ID" "$MEL_PDA" <<'PY'
+import base64, json, sys, urllib.request
+
+rpc, program, pda = sys.argv[1:]
+body = json.dumps({"jsonrpc":"2.0","id":1,"method":"getAccountInfo",
+                   "params":[pda,{"encoding":"base64","commitment":"confirmed"}]}).encode()
+req = urllib.request.Request(rpc, data=body, headers={"content-type":"application/json"})
+with urllib.request.urlopen(req, timeout=30) as response:
+    doc = json.load(response)
+if doc.get("error"):
+    raise SystemExit("ReleaseEntry RPC error: " + str(doc["error"]))
+value = ((doc.get("result") or {}).get("value"))
+if not isinstance(value, dict):
+    raise SystemExit("ReleaseEntry is not present")
+if value.get("owner") != program:
+    raise SystemExit("ReleaseEntry owner does not match MEL_PROGRAM_ID")
+try:
+    raw = base64.b64decode(value["data"][0], validate=True)
+except Exception as exc:
+    raise SystemExit("ReleaseEntry base64 decode failed: " + str(exc))
+# Anchor discriminator + master/appHash/appId/releaseHash + Borsh String(version)
+offset = 8 + 32 + 32 + 32 + 32
+if len(raw) < offset + 4:
+    raise SystemExit("ReleaseEntry is truncated before version")
+n = int.from_bytes(raw[offset:offset + 4], "little")
+offset += 4
+if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
+    raise SystemExit("ReleaseEntry has an invalid version/status layout")
+try:
+    version = raw[offset:offset+n].decode("utf-8")
+except UnicodeDecodeError as exc:
+    raise SystemExit("ReleaseEntry version is not UTF-8: " + str(exc))
+offset += n + 32 + 32 + 64 + 32 + 32 + 8
+status = raw[offset]
+# AttestationStatus is Anchor/Borsh ordinal: Active=0, Revoked=1,
+# Superseded=2.  Do not mistake an active ReleaseEntry for an invalid record.
+if status not in (0, 1, 2):
+    raise SystemExit("ReleaseEntry has unknown status " + str(status))
+print(json.dumps({"pda":pda,"appHash":raw[8+32:8+64].hex(),"version":version,
+                  "status":("Active", "Revoked", "Superseded")[status]}, separators=(",", ":")))
+PY
+}
+
+revoke() {
+  # This is intentionally a separate governed ceremony per exact stale PDA.
+  # It runs only after mel-release has proved the new release is both Active
+  # and served; no catalog or release identity is inferred here.
+  need MEL_PDA; need MEL_REVOKE_RECEIPT_OUT; need MEL_PROGRAM_ID
+  need_ceremony_env
+  local before state ceremony master_ata executor ix result sig i
+  local -a member_args=()
+  before="$(release_status)"
+  if [[ "$(python3 - "$before" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["status"])
+PY
+)" = "Revoked" ]]; then
+    python3 - "$MEL_REVOKE_RECEIPT_OUT" "$MEL_PDA" <<'PY'
+import json, os, sys
+out, pda = sys.argv[1:]
+tmp = out + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump({"schema":"melusina-revoke-release-receipt-v1","releaseEntryPda":pda,
+               "status":"Revoked","alreadyRevoked":True}, f, sort_keys=True); f.write("\n")
+os.chmod(tmp, 0o600); os.replace(tmp, out)
+PY
+    return
+  fi
+  state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"
+  [[ -f "$ceremony" && ! -L "$ceremony" ]] || die "no persisted release ceremony state for master NFT custody"
+  master_ata="$(json_get "$ceremony" masterNftAta)"
+  [[ "$master_ata" =~ ^[1-9A-HJ-NP-Za-km-z]{32,44}$ ]] || die "ceremony masterNftAta is malformed"
+  executor="${MEL_RELEASE_SQUADS_EXECUTOR:-/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js}"
+  [[ -f "$executor" && ! -L "$executor" ]] || die "MEL_RELEASE_SQUADS_EXECUTOR must be a regular file"
+  ix="$state/revoke-$(printf '%s' "$MEL_PDA" | sha256sum | awk '{print substr($1,1,16)}').ix.json"
+  python3 - "$ix" "$MEL_PROGRAM_ID" "$MEL_PDA" "$MEL_RELEASE_SQUADS_VAULT" "$MEL_RELEASE_MASTER_NFT_MINT" "$master_ata" <<'PY'
+import base64, hashlib, json, os, sys
+out, program, release, vault, master, ata = sys.argv[1:]
+doc = {
+  "programId": program,
+  "accounts": [
+    {"pubkey": release, "isSigner": False, "isWritable": True},
+    {"pubkey": vault, "isSigner": True, "isWritable": True},
+    {"pubkey": master, "isSigner": False, "isWritable": False},
+    {"pubkey": ata, "isSigner": False, "isWritable": False},
+    {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
+  ],
+  "data": base64.b64encode(hashlib.sha256(b"global:revoke_release_entry").digest()[:8]).decode(),
+}
+tmp = out + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f: json.dump(doc, f, sort_keys=True); f.write("\n")
+os.chmod(tmp, 0o600); os.replace(tmp, out)
+PY
+  for ((i=1; i<=MEL_RELEASE_SQUADS_THRESHOLD; ++i)); do
+    member="$(printenv "MEL_RELEASE_MEMBER_KEYPAIR_$i" 2>/dev/null || true)"
+    [[ -n "$member" && -f "$member" && ! -L "$member" ]] || die "missing regular MEL_RELEASE_MEMBER_KEYPAIR_$i for revoke quorum"
+    member_args+=(--member "$member")
+  done
+  result="$(SQUADS_MULTISIG="$MEL_RELEASE_SQUADS_MULTISIG" SQUADS_VAULT="$MEL_RELEASE_SQUADS_VAULT" \
+    SQUADS_PROGRAM_ID="$MEL_RELEASE_SQUADS_PROGRAM_ID" MELUSINA_RPC_PRIMARY="$MEL_RELEASE_RPC_URL" \
+    node "$executor" "$ix" --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" "${member_args[@]}")"
+  sig="$(python3 - "$result" <<'PY'
+import json, sys
+for line in reversed(sys.argv[1].splitlines()):
+    try:
+        doc=json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if doc.get("status") == "executed" and isinstance(doc.get("signature"), str) and doc["signature"]:
+        print(doc["signature"]); break
+else:
+    raise SystemExit("Squads revoke did not return an executed signature")
+PY
+)"
+  python3 - "$MEL_REVOKE_RECEIPT_OUT" "$MEL_PDA" "$sig" <<'PY'
+import json, os, sys
+out, pda, sig = sys.argv[1:]
+tmp = out + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump({"schema":"melusina-revoke-release-receipt-v1","releaseEntryPda":pda,
+               "status":"Revoked","transactionSignature":sig}, f, sort_keys=True); f.write("\n")
+os.chmod(tmp, 0o600); os.replace(tmp, out)
+PY
+}
+
 served_app_hash() {
   need MEL_APP_ID; need MEL_RELEASE_STORE_URL
   python3 - "$MEL_RELEASE_STORE_URL" "$MEL_APP_ID" <<'PY'
@@ -317,16 +447,6 @@ promote() {
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
     --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
     "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
-}
-
-release_status() {
-  # Normal target-scoped approval never globally revokes historic ReleaseEntry
-  # records.  Refuse rather than manufacture a status from an active-only query.
-  die "release-status is unavailable because target-scoped approval never invokes global release revocation"
-}
-
-revoke() {
-  die "global release revocation is deliberately unavailable: target DesiredGeneration supersedes without mutating shared ReleaseEntry history"
 }
 
 case "$OP" in

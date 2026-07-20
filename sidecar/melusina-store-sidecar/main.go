@@ -117,7 +117,18 @@ func main() {
 	// Read-only mode deliberately does not inspect or create write state.
 	catalogState, err := bootstrapCatalogRuntime(cfg, operator)
 	if err != nil {
-		log.Fatalf("catalog bootstrap: %v", err)
+		if !cfg.LegacyStaticCatalogFallback {
+			log.Fatalf("catalog bootstrap: %v", err)
+		}
+		// A recovery flag must not make an invalid immutable generation appear
+		// valid.  Keep serving the existing flat read surface (which remains
+		// protected by the on-chain serve gate), but leave catalogState empty so
+		// every app write path fails closed for lack of its durable nonce ledger.
+		// This preserves operator-signed generation and installer operations
+		// needed to recover an old shell without accepting an app publication on
+		// top of mismatched historical state.
+		log.Printf("catalog bootstrap rejected historical state; explicit legacy static recovery enabled; app publishes remain disabled: %v", err)
+		catalogState = catalogRuntime{}
 	}
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when

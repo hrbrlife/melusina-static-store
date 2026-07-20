@@ -88,6 +88,14 @@ type Config struct {
 	// lifetime of every write-capable process. Startup never creates this root or
 	// the lock. Required for a write-capable store.
 	CatalogMigrationStateDir string `json:"catalog_migration_state_dir,omitempty"`
+	// LegacyStaticCatalogFallback is an explicit recovery posture for a store
+	// whose historical immutable catalog generations no longer validate against
+	// their durable staged intent.  It leaves the public flat catalog and its
+	// serve-time chain gate available, but disables app-catalog mutation because
+	// no durable nonce ledger/generation runtime is installed.  It is never an
+	// integrity bypass: normal governed catalog bootstrap remains mandatory
+	// unless an operator deliberately sets this flag during a recovery.
+	LegacyStaticCatalogFallback bool `json:"legacy_static_catalog_fallback,omitempty"`
 	// CatalogRepoRoot is the static_store working tree from which the in-process
 	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
 	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —

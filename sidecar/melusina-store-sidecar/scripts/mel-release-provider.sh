@@ -227,7 +227,7 @@ revoke() {
   # and served; no catalog or release identity is inferred here.
   need MEL_PDA; need MEL_REVOKE_RECEIPT_OUT; need MEL_PROGRAM_ID
   need_ceremony_env
-  local before state ceremony master_ata executor ix result sig i
+  local before master_ata executor ix result sig i
   local -a member_args=()
   before="$(release_status)"
   if [[ "$(python3 - "$before" <<'PY'
@@ -246,13 +246,13 @@ os.chmod(tmp, 0o600); os.replace(tmp, out)
 PY
     return
   fi
-  state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"
-  [[ -f "$ceremony" && ! -L "$ceremony" ]] || die "no persisted release ceremony state for master NFT custody"
-  master_ata="$(json_get "$ceremony" masterNftAta)"
+  command -v spl-token >/dev/null 2>&1 || die "spl-token is required to derive master NFT custody ATA"
+  master_ata="$(spl-token address --owner "$MEL_RELEASE_SQUADS_VAULT" --token "$MEL_RELEASE_MASTER_NFT_MINT" --verbose | awk -F': ' '/^Associated token address:/{print $2}')"
   [[ "$master_ata" =~ ^[1-9A-HJ-NP-Za-km-z]{32,44}$ ]] || die "ceremony masterNftAta is malformed"
   executor="${MEL_RELEASE_SQUADS_EXECUTOR:-/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js}"
   [[ -f "$executor" && ! -L "$executor" ]] || die "MEL_RELEASE_SQUADS_EXECUTOR must be a regular file"
-  ix="$state/revoke-$(printf '%s' "$MEL_PDA" | sha256sum | awk '{print substr($1,1,16)}').ix.json"
+  ix="$(mktemp "${TMPDIR:-/tmp}/mel-release-revoke.XXXXXXXX.ix.json")"
+  chmod 600 "$ix"
   python3 - "$ix" "$MEL_PROGRAM_ID" "$MEL_PDA" "$MEL_RELEASE_SQUADS_VAULT" "$MEL_RELEASE_MASTER_NFT_MINT" "$master_ata" <<'PY'
 import base64, hashlib, json, os, sys
 out, program, release, vault, master, ata = sys.argv[1:]

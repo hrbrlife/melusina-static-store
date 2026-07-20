@@ -15,6 +15,17 @@ die() { printf 'mel-release-family-provider: %s\n' "$*" >&2; exit 2; }
 [[ $# -eq 1 ]] || die 'usage: mel-release-family-provider.sh <operation>'
 [[ -x "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular executable: $PROVIDER"
 
+# Exact-PDA status/revocation has no source-tree input.  Requiring MEL_APP_ID
+# here would make the cleanup half of a completed candidate impossible: the Go
+# signer interface intentionally supplies only the stale ReleaseEntry PDA.
+# These operations remain governed by the provider's RPC owner/PDA checks and
+# the caller's already-validated Squads authority.
+case "$1" in
+  release-status|revoke)
+    exec "$PROVIDER" "$1"
+    ;;
+esac
+
 : "${MEL_RELEASE_CONFIG:?MEL_RELEASE_CONFIG is required}"
 : "${MEL_APP_ID:?MEL_APP_ID is required}"
 [[ "$MEL_RELEASE_CONFIG" = /* && "$MEL_RELEASE_CONFIG" != *'/../'* ]] || die 'MEL_RELEASE_CONFIG must be an absolute clean path'

@@ -28,8 +28,8 @@ import yaml
 config, app_id = sys.argv[1:]
 with open(config, encoding='utf-8') as fh:
     doc = yaml.safe_load(fh)
-if not isinstance(doc, dict) or doc.get('schema') != 'melusina-release-family-v1':
-    raise SystemExit('release family schema is not melusina-release-family-v1')
+if not isinstance(doc, dict) or doc.get('schema') != 'melusina-release-family/v1':
+    raise SystemExit('release family schema is not melusina-release-family/v1')
 matches = []
 for family in (doc.get('families') or {}).values():
     for spec in (family.get('apps') or {}).values() if isinstance(family, dict) else ():

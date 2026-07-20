@@ -181,6 +181,10 @@ func TestTargetScopedApprovalRetainsGlobalReleaseHistory(t *testing.T) {
 	v1 := h.fx.Versions["1.0.1"]
 
 	mustNoErr(t, "publish", h.publish("1.0.1"))
+	// The retirement policy is bound when publish writes stalePDAs. A later
+	// environment/config change must not retrofit global retirement into this
+	// target-scoped candidate during approve.
+	h.cfg.AllowGlobalReleaseRevoke = true
 	mustNoErr(t, "approve", h.approve())
 	mustState(h, stateDone)
 

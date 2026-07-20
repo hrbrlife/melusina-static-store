@@ -210,7 +210,12 @@ func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) err
 // that another store may still serve. Normal approval therefore retains history
 // and relies on the target's signed pointer/generation to select its release.
 func ensureOldRevoked(c Config, prov SignerProvider, walPath string, rec *walReceipt) error {
-	if !c.AllowGlobalReleaseRevoke {
+	// The publish half records the exact global-retirement set in the WAL. Do
+	// not re-read the process environment here: an operator changing
+	// MEL_RELEASE_ALLOW_GLOBAL_REVOKE between the two commands must not turn an
+	// already-proposed target-scoped candidate into a global supersede (or make
+	// its terminal verification demand a revocation that was never proposed).
+	if len(rec.StalePDAs) == 0 {
 		return nil
 	}
 	ok, err := servedReleaseIsActive(prov, rec.AppID, rec.NewAppHash)
@@ -278,7 +283,7 @@ func ensureFinalVerified(c Config, prov SignerProvider, rec *walReceipt) error {
 	if !found {
 		return fmt.Errorf("terminal Active set does not contain the target release %s: %+v", rec.NewReleasePDA, active)
 	}
-	if c.AllowGlobalReleaseRevoke && (len(active) != 1 || active[0].PDA != rec.NewReleasePDA || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.Version) {
+	if len(rec.StalePDAs) != 0 && (len(active) != 1 || active[0].PDA != rec.NewReleasePDA || active[0].AppHash != rec.NewAppHash || active[0].Version != rec.Version) {
 		return fmt.Errorf("global-retirement terminal Active set is not exactly the new release: %+v", active)
 	}
 	served, err := prov.ServedAppHash(rec.AppID)
@@ -342,7 +347,7 @@ type terminalReceipt struct {
 
 func writeTerminal(c Config, rec walReceipt, path string) error {
 	scope := "target-pointer"
-	if c.AllowGlobalReleaseRevoke {
+	if len(rec.StalePDAs) != 0 {
 		scope = "global-supersede"
 	}
 	t := terminalReceipt{
@@ -364,7 +369,7 @@ func writeTerminal(c Config, rec walReceipt, path string) error {
 			break
 		}
 	}
-	if t.CompletedAtUnix <= 0 || !active || t.ServedAppHash != t.AppHash || (c.AllowGlobalReleaseRevoke && len(t.ActiveAfter) != 1) {
+	if t.CompletedAtUnix <= 0 || !active || t.ServedAppHash != t.AppHash || (len(t.StalePDAs) != 0 && len(t.ActiveAfter) != 1) {
 		return fmt.Errorf("refusing to emit an incomplete terminal receipt")
 	}
 	raw, err := json.MarshalIndent(t, "", "  ")

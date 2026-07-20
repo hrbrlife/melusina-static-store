@@ -226,7 +226,12 @@ revoke() {
   # It runs only after mel-release has proved the new release is both Active
   # and served; no catalog or release identity is inferred here.
   need MEL_PDA; need MEL_REVOKE_RECEIPT_OUT; need MEL_PROGRAM_ID
-  need_ceremony_env
+  # A stale-PDA revoke is intentionally app-selector-free.  It needs the
+  # master-holder vault and quorum, but not the source tree, appId, or author
+  # signing key used to create the new ReleaseEntry proposal.
+  need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
+  need MEL_RELEASE_SQUADS_THRESHOLD; need MEL_RELEASE_SQUADS_PROGRAM_ID; need MEL_RELEASE_RPC_URL
+  [[ "$MEL_RELEASE_SQUADS_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_THRESHOLD must be positive integer"
   local before master_ata executor ix result sig i
   local -a member_args=()
   before="$(release_status)"

@@ -121,6 +121,18 @@ func (a *binaryReplaceAdapter) Stage(ctx context.Context, desired ComponentRelea
 		return Staged{}, fmt.Errorf("binary-replace stage %s: %w", desired.ComponentID, err)
 	}
 	dst := filepath.Join(workDir, desired.ComponentID+"."+stageKey+".staged")
+	// Self-heal a retained staged temp left by a prior FAILED apply of THIS SAME
+	// generation (rollback / interrupt / crash): the stageKey binds the name to the
+	// artifact sha, so a DIFFERENT generation already never collides — but a
+	// same-generation RE-apply after a rollback (fault-cases H4 unhealthy->rollback
+	// and H6 interrupted->restore, and any Apply that copies-not-moves the temp)
+	// would otherwise dead-lock forever on its own O_EXCL staged file. The
+	// controller solely owns workDir (root-owned 0755), so removing its OWN prior
+	// temp is safe. Removing a symlink deletes the link, never its target; and the
+	// O_EXCL|O_NOFOLLOW create below is still the authoritative guard — it refuses a
+	// symlink (O_NOFOLLOW) and any concurrent race-plant (O_EXCL) between here and
+	// the create, so this does NOT weaken the anti-symlink / anti-planted-file guard.
+	_ = os.Remove(dst)
 	// O_EXCL|O_NOFOLLOW: refuse a preexisting or symlinked staged path rather than
 	// follow it and overwrite an attacker-chosen target.
 	f, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o755)

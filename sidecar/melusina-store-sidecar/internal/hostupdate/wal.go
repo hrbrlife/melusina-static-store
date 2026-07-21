@@ -332,7 +332,10 @@ func (w *WALStore) Open(entry WALEntry) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("component %s already has an in-flight apply (WAL locked)", entry.ComponentID)
+			// Wrap the retryable sentinel so ApplyGeneration classifies this as a
+			// pre-mutation refusal (retryable), NOT a terminal rollback that would
+			// poison LastTerminal. Nothing has been staged or mutated at this point.
+			return fmt.Errorf("component %s already has an in-flight apply (WAL locked): %w", entry.ComponentID, errInFlightLocked)
 		}
 		return fmt.Errorf("open wal %s: %w", path, err)
 	}

@@ -34,6 +34,15 @@ var errPolicyCancelled = errors.New("cancelled: auto-apply turned off before mut
 // EARLIER applied components.
 var errChainRefusedAtMutation = errors.New("refused: on-chain authority no longer attests this component at mutation time")
 
+// errInFlightLocked is returned (wrapped) by WAL.Open when the per-component WAL
+// lock is already held by another in-flight apply. NOTHING was staged or mutated
+// by THIS attempt — it is transient contention (e.g. an overlapping tick or a
+// crashed prior process that has not yet been recovered), so the generation must
+// stay retryable and must NOT be classified as a terminal rollback. Classifying it
+// as ApplyStatusRolledBack would flip generationRolledBack() -> recordTerminalCursor()
+// and permanently poison LastTerminal, skipping the generation forever.
+var errInFlightLocked = errors.New("refused: component already has an in-flight apply (WAL locked)")
+
 // ApplyOutcome records what happened to one component.
 type ApplyOutcome struct {
 	ComponentID string
@@ -129,6 +138,13 @@ func ApplyGeneration(ctx context.Context, gen componentrelease.DesiredGeneration
 				outcomes[p.c.ComponentID].Status = ApplyStatusCancelled
 			case errors.Is(err, errChainRefusedAtMutation):
 				// Staged only, no mutation — the chain disavowed this hash mid-generation.
+				outcomes[p.c.ComponentID].Status = ApplyStatusRefused
+				outcomes[p.c.ComponentID].Err = err
+			case errors.Is(err, errInFlightLocked):
+				// Pre-mutation lock contention — WAL.Open refused because another
+				// in-flight apply holds the per-component lock. Nothing was staged or
+				// mutated; keep it retryable (Refused, NOT RolledBack) so it does not
+				// poison LastTerminal / advance the continuity floor.
 				outcomes[p.c.ComponentID].Status = ApplyStatusRefused
 				outcomes[p.c.ComponentID].Err = err
 			default:

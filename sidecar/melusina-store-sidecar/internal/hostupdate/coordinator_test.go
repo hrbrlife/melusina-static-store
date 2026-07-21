@@ -2,6 +2,7 @@ package hostupdate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -517,6 +518,45 @@ func TestApplyGenerationLaterFailureRollsBackWholeGeneration(t *testing.T) {
 	// Both WALs finalized rolled-back (locks released).
 	if _, ok, _ := deps.WAL.Load("store-sidecar"); ok {
 		t.Fatal("sidecar WAL not finalized after generation rollback")
+	}
+}
+
+func TestApplyGenerationInFlightLockIsRetryableNotRolledBack(t *testing.T) {
+	// Regression (.48 rrs-store pilot, chat 22155): a pre-mutation WAL-lock
+	// contention — another in-flight apply (or an unrecovered crashed prior process)
+	// already holds the per-component lock — must NOT be recorded as a terminal
+	// rollback. Otherwise generationRolledBack() -> recordTerminalCursor() poisons
+	// LastTerminal and the generation is skipped forever, even though NOTHING was
+	// staged or mutated by this attempt. It must stay retryable.
+	deps, _, gen := coordSetup(t, "fake-coord-lock", nil)
+	// Pre-hold the per-component WAL lock for the FIRST-applied component (the
+	// dependency sidecar): ApplyGeneration's WAL.Open will hit O_EXCL ErrExist.
+	if err := deps.WAL.Open(withTestReceiptBindings(WALEntry{
+		ComponentID: "store-sidecar", GenerationID: 1, ApplyKind: componentrelease.ApplyBinaryReplace,
+		ToHash: strings.Repeat("9", 64), ToVersion: "prior", DeepStableSeconds: 120, OpenedAtUnix: 500,
+	})); err != nil {
+		t.Fatalf("pre-hold lock: %v", err)
+	}
+	outcomes, err := ApplyGeneration(context.Background(), gen, deps)
+	if err == nil {
+		t.Fatal("expected apply to abort on the held lock")
+	}
+	byID := map[string]ApplyOutcome{}
+	for _, o := range outcomes {
+		byID[o.ComponentID] = o
+	}
+	// The locked component is REFUSED (no mutation), never rolled-back.
+	if got := byID["store-sidecar"].Status; got != ApplyStatusRefused {
+		t.Fatalf("locked component: want %s, got %s (%v)", ApplyStatusRefused, got, byID["store-sidecar"].Err)
+	}
+	if !errors.Is(byID["store-sidecar"].Err, errInFlightLocked) {
+		t.Fatalf("locked component error not errInFlightLocked: %v", byID["store-sidecar"].Err)
+	}
+	// THE FIX: the generation is NOT counted as rolled-back, so the poll loop
+	// (poller.go: if generationRolledBack -> recordTerminalCursor) does NOT poison
+	// LastTerminal. The generation stays retryable once the lock frees.
+	if generationRolledBack(outcomes) {
+		t.Fatal("in-flight lock contention wrongly counted as a terminal rollback (would poison LastTerminal)")
 	}
 }
 

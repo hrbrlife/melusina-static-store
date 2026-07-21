@@ -559,24 +559,21 @@ func (s *publishService) verifyComponentServedBytes(c componentrelease.Component
 		return fmt.Errorf("component %s: unsafe served path %q", c.ComponentID, rel)
 	}
 	p := filepath.Join(s.cfg.DistDir, filepath.FromSlash(clean))
-	f, err := os.Open(p)
+	f, size, err := openDistRegularNoFollow(p)
 	if err != nil {
 		return fmt.Errorf("component %s: served artifact not found (%s): %w", c.ComponentID, rel, err)
 	}
 	defer f.Close()
-	st, err := f.Stat()
-	if err != nil {
-		return fmt.Errorf("component %s: stat served artifact: %w", c.ComponentID, err)
-	}
-	if !st.Mode().IsRegular() {
-		return fmt.Errorf("component %s: served artifact is not a regular file", c.ComponentID)
-	}
-	if st.Size() != c.SizeBytes {
-		return fmt.Errorf("component %s: served artifact size %d != component size %d", c.ComponentID, st.Size(), c.SizeBytes)
+	if size != c.SizeBytes {
+		return fmt.Errorf("component %s: served artifact size %d != component size %d", c.ComponentID, size, c.SizeBytes)
 	}
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	n, err := io.Copy(h, f)
+	if err != nil {
 		return fmt.Errorf("component %s: hash served artifact: %w", c.ComponentID, err)
+	}
+	if n != c.SizeBytes {
+		return fmt.Errorf("component %s: served artifact size changed during hash: got %d want %d", c.ComponentID, n, c.SizeBytes)
 	}
 	got := hex.EncodeToString(h.Sum(nil))
 	if got != strings.ToLower(strings.TrimSpace(c.SHA256)) {

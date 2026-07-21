@@ -22,6 +22,12 @@
 //	    Re-read every accepted terminal receipt and write the exact immutable
 //	    clean-install package manifest. It refuses partial/unserved releases.
 //
+//	mel-release repair-catalog --app <appId|slug|name>
+//	    Re-project ONLY an already terminally accepted candidate through the
+//	    store's normal staged-promotion path. It re-verifies terminal, candidate,
+//	    stage, and the live Active ReleaseEntry first; it never signs, registers,
+//	    revokes, or mutates chain state.
+//
 // Config is env-only (MEL_RELEASE_*). mel-release holds no chain key: every
 // governed act is delegated to MEL_RELEASE_SIGNER_PROVIDER (see signer.go) and
 // the store alone operator-signs the served generation.
@@ -99,13 +105,26 @@ func run(args []string) error {
 		fmt.Printf("MANIFEST_OK path=%s\n", *out)
 		return nil
 
+	case "repair-catalog":
+		fs := flag.NewFlagSet("repair-catalog", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runRepairCatalog(cfg, fam, *app)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("REPAIR_CATALOG_OK receipt=%s\n", path)
+		return nil
+
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest)", sub)
+		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release <publish|approve> --app <appId|slug|name> [--version <v>] | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog --app <appId|slug|name> | manifest --out <absolute-path>")
 }

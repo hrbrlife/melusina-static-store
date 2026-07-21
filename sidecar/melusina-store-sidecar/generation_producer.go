@@ -180,6 +180,19 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 		http.Error(w, "check=origin_pin: generation bundleOrigin does not match this store's public_base_url", http.StatusServiceUnavailable)
 		return
 	}
+	// The generation signature says what this store intends to serve; it is not
+	// a licence to advertise a component whose public projection has disappeared
+	// (for example after a bad catalog copy) or no longer matches its signed
+	// hash/size. Hold the same single-writer mutex that app/installer publication
+	// uses while checking the exact public surface and writing the response. That
+	// makes the verdict about one stable projection, rather than a mixture of a
+	// pre-switch pointer and a post-switch package.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.verifyDesiredGenerationServeSurface(doc); err != nil {
+		http.Error(w, "check=serve_surface: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method == http.MethodHead {
 		w.WriteHeader(http.StatusOK)
@@ -187,4 +200,37 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(raw)
+}
+
+// verifyDesiredGenerationServeSurface proves that every component named by an
+// otherwise-valid signed DesiredGeneration is still present in THIS store's
+// public projection and still matches the document's immutable byte bindings.
+//
+// This is intentionally narrower than verifyComponentReleaseOnChain: promotion
+// already performs the live authority re-verification, and the public GET path
+// must additionally catch projection drift even when the chain remains healthy.
+// Apps have a three-part public contract (package, signed pointer, and index);
+// every other component has a release bundle contract. Any missing or mismatched
+// member makes /update/generation.json unavailable rather than handing a client
+// a signed-but-uninstallable desired state.
+func (s *publishService) verifyDesiredGenerationServeSurface(doc componentrelease.DesiredGeneration) error {
+	for _, component := range doc.Components {
+		var err error
+		switch component.ComponentClass {
+		case componentrelease.ClassApp:
+			if component.Chain.Kind != componentrelease.AuthorityReleaseV2 {
+				return fmt.Errorf("component %s: app class does not carry release_v2 authority", component.ComponentID)
+			}
+			err = s.verifyAppComponentServedBytes(component)
+		default:
+			if component.Chain.Kind == componentrelease.AuthorityReleaseV2 {
+				return fmt.Errorf("component %s: release_v2 authority is only valid for app class", component.ComponentID)
+			}
+			err = s.verifyComponentServedBytes(component)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

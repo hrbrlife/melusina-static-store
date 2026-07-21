@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
@@ -44,7 +47,10 @@ const testLicenseMint = "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN"
 
 func TestDesiredGenerationProducerServes(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
-	signed, err := componentrelease.Sign(op, sampleShellGeneration())
+	dist := t.TempDir()
+	doc, artifact := servableShellGeneration(t)
+	writeReleaseArtifact(t, dist, "shell", doc.Components[0].ArtifactName, artifact)
+	signed, err := componentrelease.Sign(op, doc)
 	if err != nil {
 		t.Fatalf("Sign: %v", err)
 	}
@@ -52,7 +58,6 @@ func TestDesiredGenerationProducerServes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dist := t.TempDir()
 	if err := persistDesiredGeneration(dist, raw); err != nil {
 		t.Fatalf("persist: %v", err)
 	}
@@ -77,6 +82,60 @@ func TestDesiredGenerationProducerServes(t *testing.T) {
 	if back.GenerationID != 63 {
 		t.Fatalf("served wrong generation: %d", back.GenerationID)
 	}
+}
+
+func TestDesiredGenerationProducerFailsClosedForMissingOrMismatchedPublicBundle(t *testing.T) {
+	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
+	dist := t.TempDir()
+	doc, artifact := servableShellGeneration(t)
+	signed, err := componentrelease.Sign(op, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistDesiredGeneration(dist, raw); err != nil {
+		t.Fatal(err)
+	}
+	svc := &publishService{cfg: Config{StoreID: doc.StoreID, DistDir: dist, PublicBaseURL: doc.BundleOrigin}, operator: op}
+
+	// A valid signature cannot make an absent public bundle installable.
+	rec := httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "check=serve_surface") {
+		t.Fatalf("missing bundle status=%d body=%s, want fail-closed serve surface", rec.Code, rec.Body.String())
+	}
+
+	// A present but wrong-sized/wrong-hash artifact is equally refused.
+	writeReleaseArtifact(t, dist, "shell", doc.Components[0].ArtifactName, []byte("wrong public bundle"))
+	rec = httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "check=serve_surface") {
+		t.Fatalf("mismatched bundle status=%d body=%s, want fail-closed serve surface", rec.Code, rec.Body.String())
+	}
+
+	writeReleaseArtifact(t, dist, "shell", doc.Components[0].ArtifactName, artifact)
+	rec = httptest.NewRecorder()
+	svc.handleDesiredGeneration(rec, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restored matching bundle status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func servableShellGeneration(t *testing.T) (componentrelease.DesiredGeneration, []byte) {
+	t.Helper()
+	artifact := []byte("desired-generation-public-bundle")
+	sum := sha256.Sum256(artifact)
+	artifactName := "sandstorm-" + hex.EncodeToString(sum[:]) + ".tar.xz"
+	doc := sampleShellGeneration()
+	component := &doc.Components[0]
+	component.ArtifactName = artifactName
+	component.SHA256 = hex.EncodeToString(sum[:])
+	component.SizeBytes = int64(len(artifact))
+	component.BundleURL = doc.BundleOrigin + "/releases/shell/" + artifactName
+	return doc, artifact
 }
 
 func TestDesiredGenerationProducerFailClosedWhenAbsent(t *testing.T) {

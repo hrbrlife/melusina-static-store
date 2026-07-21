@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -33,6 +35,23 @@ func promoteReq(expected uint64, comps ...componentrelease.ComponentRelease) Gen
 	}
 }
 
+// promotableShellComp makes a real public artifact for tests that assert the
+// full promote -> persisted generation -> GET path. A signed generation with a
+// synthetic hash is deliberately no longer enough for that path: the producer
+// must fail closed unless its named public bytes are present and exact.
+func promotableShellComp(t *testing.T, svc *publishService, tag, version string) componentrelease.ComponentRelease {
+	t.Helper()
+	body := []byte("generation-promote-public-bundle:" + tag)
+	sum := sha256.Sum256(body)
+	sha := hex.EncodeToString(sum[:])
+	component := shellComp("sandstorm-shell", sha, version)
+	component.SizeBytes = int64(len(body))
+	component.ArtifactName = "sandstorm-shell-" + sha[:8] + ".tar.xz"
+	component.BundleURL = svc.cfg.PublicBaseURL + "/releases/shell/" + component.ArtifactName
+	writeReleaseArtifact(t, svc.cfg.DistDir, "shell", component.ArtifactName, body)
+	return component
+}
+
 // servedGeneration drives the producer over the same service and returns the
 // decoded served generation + HTTP status — proving promote -> serve agreement.
 func servedGeneration(t *testing.T, svc *publishService) (componentrelease.DesiredGeneration, int) {
@@ -50,7 +69,7 @@ func servedGeneration(t *testing.T, svc *publishService) (componentrelease.Desir
 
 func TestPromoteGenerationGenesisThenServe(t *testing.T) {
 	svc := promoteTestService(t)
-	req := promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1"))
+	req := promoteReq(0, promotableShellComp(t, svc, "build-1", "build-1"))
 	raw, err := svc.promoteGeneration(req, time.Unix(1784281821, 0))
 	if err != nil {
 		t.Fatalf("promote genesis: %v", err)
@@ -75,11 +94,12 @@ func TestPromoteGenerationGenesisThenServe(t *testing.T) {
 func TestPromoteGenerationAdvancesWithCAS(t *testing.T) {
 	svc := promoteTestService(t)
 	// Genesis -> gen 1.
-	if _, err := svc.promoteGeneration(promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")), time.Unix(1784281821, 0)); err != nil {
+	gen1 := promotableShellComp(t, svc, "build-1", "build-1")
+	if _, err := svc.promoteGeneration(promoteReq(0, gen1), time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote gen1: %v", err)
 	}
 	// Advance -> gen 2 (expected current = 1).
-	if _, err := svc.promoteGeneration(promoteReq(1, shellComp("sandstorm-shell", strings.Repeat("b", 64), "build-2")), time.Unix(1784281900, 0)); err != nil {
+	if _, err := svc.promoteGeneration(promoteReq(1, promotableShellComp(t, svc, "build-2", "build-2")), time.Unix(1784281900, 0)); err != nil {
 		t.Fatalf("promote gen2: %v", err)
 	}
 	doc, code := servedGeneration(t, svc)
@@ -87,27 +107,28 @@ func TestPromoteGenerationAdvancesWithCAS(t *testing.T) {
 		t.Fatalf("after advance: code=%d id=%d prev=%d", code, doc.GenerationID, doc.PreviousGeneration)
 	}
 	// The changed shell's rollback floor is the gen-1 artifact.
-	if doc.Components[0].PreviousSHA256 != strings.Repeat("a", 64) {
+	if doc.Components[0].PreviousSHA256 != gen1.SHA256 {
 		t.Fatalf("rollback floor not the prior artifact: %s", doc.Components[0].PreviousSHA256)
 	}
 }
 
 func TestPromoteGenerationPreservesSignedTargetRollbackFloor(t *testing.T) {
 	svc := promoteTestService(t)
+	gen1 := promotableShellComp(t, svc, "build-1", "build-1")
 	if _, err := svc.promoteGeneration(promoteReq(0,
-		shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")), time.Unix(1784281821, 0)); err != nil {
+		gen1), time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote gen1: %v", err)
 	}
 	if _, err := svc.promoteGeneration(promoteReq(1,
-		shellComp("sandstorm-shell", strings.Repeat("b", 64), "build-2")), time.Unix(1784281900, 0)); err != nil {
+		promotableShellComp(t, svc, "build-2", "build-2")), time.Unix(1784281900, 0)); err != nil {
 		t.Fatalf("promote gen2: %v", err)
 	}
 
 	// Gen2 was advertised but never committed by this target. The next signed
 	// request must retain the target's actual build-1 floor, rather than silently
 	// replacing it with the merely advertised build-2 artifact.
-	retry := shellComp("sandstorm-shell", strings.Repeat("c", 64), "build-3")
-	retry.PreviousSHA256 = strings.Repeat("a", 64)
+	retry := promotableShellComp(t, svc, "build-3", "build-3")
+	retry.PreviousSHA256 = gen1.SHA256
 	retry.PreviousVersion = "build-1"
 	if _, err := svc.promoteGeneration(promoteReq(2, retry), time.Unix(1784282000, 0)); err != nil {
 		t.Fatalf("promote retry: %v", err)
@@ -116,7 +137,7 @@ func TestPromoteGenerationPreservesSignedTargetRollbackFloor(t *testing.T) {
 	if code != http.StatusOK || doc.GenerationID != 3 {
 		t.Fatalf("after retry: code=%d id=%d", code, doc.GenerationID)
 	}
-	if got := doc.Components[0].PreviousSHA256; got != strings.Repeat("a", 64) {
+	if got := doc.Components[0].PreviousSHA256; got != gen1.SHA256 {
 		t.Fatalf("target rollback floor was overwritten: got %s", got)
 	}
 	if got := doc.Components[0].PreviousVersion; got != "build-1" {
@@ -127,10 +148,10 @@ func TestPromoteGenerationPreservesSignedTargetRollbackFloor(t *testing.T) {
 func TestPromoteGenerationRejectsPartialTargetRollbackFloor(t *testing.T) {
 	svc := promoteTestService(t)
 	if _, err := svc.promoteGeneration(promoteReq(0,
-		shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")), time.Unix(1784281821, 0)); err != nil {
+		promotableShellComp(t, svc, "build-1", "build-1")), time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote gen1: %v", err)
 	}
-	bad := shellComp("sandstorm-shell", strings.Repeat("b", 64), "build-2")
+	bad := promotableShellComp(t, svc, "build-2", "build-2")
 	bad.PreviousSHA256 = strings.Repeat("a", 64)
 	if _, err := svc.promoteGeneration(promoteReq(1, bad), time.Unix(1784281900, 0)); err == nil {
 		t.Fatal("promote accepted a partial target rollback floor")
@@ -139,23 +160,24 @@ func TestPromoteGenerationRejectsPartialTargetRollbackFloor(t *testing.T) {
 
 func TestPromoteGenerationRejectsStaleCAS(t *testing.T) {
 	svc := promoteTestService(t)
-	if _, err := svc.promoteGeneration(promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")), time.Unix(1784281821, 0)); err != nil {
+	gen1 := promotableShellComp(t, svc, "build-1", "build-1")
+	if _, err := svc.promoteGeneration(promoteReq(0, gen1), time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote gen1: %v", err)
 	}
 	// A second publisher still believes current is 0 (stale) -> must be refused,
 	// and the current generation must be left untouched.
-	if _, err := svc.promoteGeneration(promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("c", 64), "build-x")), time.Unix(1784281950, 0)); err == nil {
+	if _, err := svc.promoteGeneration(promoteReq(0, promotableShellComp(t, svc, "build-x", "build-x")), time.Unix(1784281950, 0)); err == nil {
 		t.Fatal("promote accepted a stale expected-current generation")
 	}
 	doc, _ := servedGeneration(t, svc)
-	if doc.GenerationID != 1 || doc.Components[0].SHA256 != strings.Repeat("a", 64) {
+	if doc.GenerationID != 1 || doc.Components[0].SHA256 != gen1.SHA256 {
 		t.Fatalf("stale promote mutated the current generation: id=%d sha=%s", doc.GenerationID, doc.Components[0].SHA256)
 	}
 }
 
 func TestPromoteGenerationRejectsBadSchema(t *testing.T) {
 	svc := promoteTestService(t)
-	req := promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1"))
+	req := promoteReq(0, promotableShellComp(t, svc, "build-1", "build-1"))
 	req.Schema = "wrong"
 	if _, err := svc.promoteGeneration(req, time.Unix(1784281821, 0)); err == nil {
 		t.Fatal("promote accepted a wrong request schema")
@@ -165,12 +187,13 @@ func TestPromoteGenerationRejectsBadSchema(t *testing.T) {
 func TestPromoteGenerationMintsVersionWhenAbsent(t *testing.T) {
 	svc := promoteTestService(t)
 	// No version supplied -> composer mints one bound to the artifact hash.
-	req := promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), ""))
+	component := promotableShellComp(t, svc, "build-1", "")
+	req := promoteReq(0, component)
 	if _, err := svc.promoteGeneration(req, time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote: %v", err)
 	}
 	doc, _ := servedGeneration(t, svc)
-	if doc.Components[0].Version != mintComponentVersion(1, strings.Repeat("a", 64)) {
+	if doc.Components[0].Version != mintComponentVersion(1, component.SHA256) {
 		t.Fatalf("version not minted: %q", doc.Components[0].Version)
 	}
 }

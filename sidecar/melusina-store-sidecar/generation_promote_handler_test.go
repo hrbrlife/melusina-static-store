@@ -182,6 +182,43 @@ func TestVerifyAppComponentOnChain(t *testing.T) {
 	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("valid app component refused: %v", err)
 	}
+	// The desired-generation serve surface requires the whole app projection,
+	// not merely a signed document: package + pointer + index must all remain
+	// present and byte-bound while the generation is advertised.
+	doc := componentrelease.DesiredGeneration{Components: []componentrelease.ComponentRelease{c}}
+	if err := svc.verifyDesiredGenerationServeSurface(doc); err != nil {
+		t.Fatalf("valid app projection refused by desired-generation serve surface: %v", err)
+	}
+	if err := os.Remove(filepath.Join(dist, "apps", "pointers", appID+".json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
+		t.Fatal("desired generation accepted an app with no signed pointer")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dist, "apps", "index.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
+		t.Fatal("desired generation accepted an app with no catalog index")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dist, "packages", packageID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
+		t.Fatal("desired generation accepted an app with no public package")
+	}
+	if err := os.WriteFile(filepath.Join(dist, "packages", packageID), f.spk, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.verifyDesiredGenerationServeSurface(doc); err != nil {
+		t.Fatalf("restored app projection refused by desired-generation serve surface: %v", err)
+	}
 	// A generation-aware catalog serves only its immutable current snapshot.
 	// Make the legacy flat pointer disappear after bootstrapping that snapshot;
 	// the verification must still succeed, or a freshly published app can never

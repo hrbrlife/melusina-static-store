@@ -179,7 +179,12 @@ func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) er
 	if staged.MasterNftMint != finalized.MasterNftMint {
 		return errors.New("masterNftMint changed")
 	}
-	if staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
+	// A private candidate may be staged BEFORE the licenseSquadsVault is known
+	// (it is filled in by the Squads ceremony that finalizes the release). An
+	// EMPTY staged value is therefore provisional and matches any finalized
+	// vault the ceremony assigns. A NON-empty staged value is a committed
+	// release-identity assertion and must still equal the finalized vault.
+	if staged.LicenseSquadsVault != "" && staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
 		return errors.New("licenseSquadsVault changed")
 	}
 	if staged.ReleaseNonce != finalized.ReleaseNonce {

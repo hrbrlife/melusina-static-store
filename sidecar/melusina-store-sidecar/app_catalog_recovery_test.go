@@ -542,3 +542,34 @@ func setGenerationTime(t *testing.T, path string, when time.Time) {
 		t.Fatal(err)
 	}
 }
+
+// TestValidateFinalizedReleaseAgainstStageEmptyVaultProvisional pins the
+// empty-staged licenseSquadsVault relaxation: a private candidate may be staged
+// before the Squads ceremony assigns the licenseSquadsVault, so an EMPTY staged
+// value is provisional and must accept whatever the ceremony finalizes. A
+// NON-empty staged value remains a committed assertion that must match, and
+// every OTHER release-identity field must still be byte-equal.
+func TestValidateFinalizedReleaseAgainstStageEmptyVaultProvisional(t *testing.T) {
+	base := func(vault string) []byte {
+		return []byte(`{"$schema":"melusina-release-v1","appHash":"aa","releaseHash":"bb","version":"0.3.171","masterNftMint":"MNFT","licenseSquadsVault":"` + vault + `","releaseNonce":"nn"}`)
+	}
+	finalized := base("3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3")
+
+	// empty staged vault -> provisional -> accepts the finalized vault.
+	if err := validateFinalizedReleaseAgainstStage(base(""), finalized); err != nil {
+		t.Fatalf("empty staged vault must be provisional and pass, got: %v", err)
+	}
+	// matching non-empty staged vault -> pass.
+	if err := validateFinalizedReleaseAgainstStage(finalized, finalized); err != nil {
+		t.Fatalf("matching vault must pass, got: %v", err)
+	}
+	// non-empty MISMATCHED staged vault -> still fails (relaxation is empty-only).
+	if err := validateFinalizedReleaseAgainstStage(base("SomeOtherVaultXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"), finalized); err == nil {
+		t.Fatal("non-empty mismatched vault must still fail")
+	}
+	// a different identity field still fails even with an empty vault.
+	otherFieldDrift := []byte(`{"$schema":"melusina-release-v1","appHash":"DIFFERENT","releaseHash":"bb","version":"0.3.171","masterNftMint":"MNFT","licenseSquadsVault":"","releaseNonce":"nn"}`)
+	if err := validateFinalizedReleaseAgainstStage(otherFieldDrift, finalized); err == nil {
+		t.Fatal("appHash drift must still fail even with an empty vault")
+	}
+}

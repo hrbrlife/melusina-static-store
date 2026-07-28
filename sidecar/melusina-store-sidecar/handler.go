@@ -20,9 +20,14 @@ import (
 )
 
 // maxPublishBody bounds the total /publish request body (envelope + RELEASE.json
-// + SPK). SPKs in the gh-pages catalog are kept under 100 MiB (build-store.sh);
-// allow some envelope/release overhead on top.
-const maxPublishBody = 110 << 20 // 110 MiB
+// + SPK). The 100 MiB figure it used to track is GitHub's push limit, which
+// constrains the gh-pages MIRROR of the catalog — it was never a property of a
+// self-hosted store, and it is not a trust boundary (the on-chain ReleaseEntry
+// is). At 110 MiB the cap also bit far earlier than it looked: the default wire
+// form base64-encodes the SPK, so it rejected packages above ~82 MB, and the
+// store aborted mid-upload — the client saw only an opaque nginx 502 with no
+// check= line. Bound the body generously; the real gate stays on-chain.
+const maxPublishBody = 512 << 20 // 512 MiB
 
 // publishService holds the single-writer state for POST /publish: the on-chain
 // reader (the trust gate), the operator's signing identity (receipt signer +

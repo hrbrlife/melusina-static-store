@@ -835,10 +835,19 @@ while IFS= read -r f; do
   fi
 done < <(find "$PACKAGES_OUT" -type f 2>/dev/null)
 if [[ ${#oversized[@]} -gt 0 ]]; then
-  fail "$PACKAGES_OUT contains files over GitHub's ${GH_HARD_LIMIT_BYTES}-byte push limit:"
+  # This limit is GitHub's PUSH limit — it constrains the gh-pages mirror, not
+  # the catalog itself, and it is not a trust boundary. A materialized tree (no
+  # .git) is the store sidecar assembling its own served catalog in-container;
+  # it can never push to GitHub, so enforcing the limit there just aborted the
+  # WHOLE assemble — taking every other app's publish down with one big package.
+  if [[ -e .git ]]; then
+    fail "$PACKAGES_OUT contains files over GitHub's ${GH_HARD_LIMIT_BYTES}-byte push limit:"
+    for o in "${oversized[@]}"; do echo "    $o" >&2; done
+    echo "  Lower MAX_SPK_SIZE or shrink the source app.spk." >&2
+    exit 1
+  fi
+  warn "${#oversized[@]} package file(s) exceed GitHub's ${GH_HARD_LIMIT_BYTES}-byte push limit; serving them anyway (materialized tree — this catalog is served directly, never pushed to gh-pages):"
   for o in "${oversized[@]}"; do echo "    $o" >&2; done
-  echo "  Lower MAX_SPK_SIZE or shrink the source app.spk." >&2
-  exit 1
 fi
 
 # --- Step 5: Write apps/index.json -------------------------------------------

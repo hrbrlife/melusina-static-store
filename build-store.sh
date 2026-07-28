@@ -395,13 +395,25 @@ for f in ['name']:
     ((errors++)) || true
   fi
 
-  # Check icon exists
+  # Check icon exists. An icon is PRESENTATION metadata, never a trust artifact
+  # — the trust gate is the on-chain ReleaseEntry plus the sidecar's Go
+  # VerifyPublish. The publish envelope carries exactly {app.spk, metadata.json,
+  # RELEASE.json} (sidecar persist.go), so an app published through the store's
+  # OWN gated path never arrives with an icon file. Hard-failing here meant a
+  # fully chain-verified app was dropped from the catalog over a missing PNG,
+  # which blocked the store's own publish path end to end. Synthesize a
+  # deterministic placeholder instead and keep every trust check fail-closed.
   local has_icon=false
   [[ -f "$app_dir/icon.svg" ]] && has_icon=true
   [[ -f "$app_dir/icon.png" ]] && has_icon=true
   if ! $has_icon; then
-    fail "$app_dir: no icon.svg or icon.png found"
-    ((errors++)) || true
+    if python3 "$SCRIPT_DIR/scripts/make-placeholder-icon.py" "$meta_file" "$app_dir/icon.svg" 2>/dev/null; then
+      warn "$app_dir: no icon supplied — generated a deterministic placeholder icon.svg"
+      has_icon=true
+    else
+      fail "$app_dir: no icon.svg or icon.png found (and placeholder generation failed)"
+      ((errors++)) || true
+    fi
   fi
 
   # Check SPK exists — HARD fail (no metadata-only entries in ship catalog)
@@ -1019,9 +1031,18 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   # dev/stable/latest.json/manifest.json/install.sh/sandstorm-N.tar.xz.update-sig.
   # SKIP=1 means "don't change the bundle channel" — without this fetch it
   # would mean "delete the bundle channel", which is the bug this guards.
-  LIVE_BASE="https://hrbrlife.github.io/melusina-static-store/update"
+  # The LOCAL live catalog is the authority when this assembler runs server-side
+  # (the store sidecar invokes it in-container against its own dist-publish/).
+  # Fetching the gh-pages mirror unconditionally would overwrite the operator's
+  # own signed update/ payload — including generation.json and install.sh — with
+  # whatever that unrelated origin happens to serve. Copy locally when the live
+  # file exists; only reach for the remote mirror when it does not.
+  LIVE_BASE="${MELUSINA_STORE_UPDATE_LIVE_BASE:-https://hrbrlife.github.io/melusina-static-store/update}"
   for f in dev stable latest.json manifest.json install.sh; do
-    if curl -fsS --max-time 12 -o "$UPDATE_OUT/$f" "$LIVE_BASE/$f"; then
+    if [[ -f "$FINAL_DIR/update/$f" ]]; then
+      cp "$FINAL_DIR/update/$f" "$UPDATE_OUT/$f"
+      ok "Preserved live update/$f (local)"
+    elif curl -fsS --max-time 12 -o "$UPDATE_OUT/$f" "$LIVE_BASE/$f"; then
       ok "Preserved live update/$f"
     else
       warn "Could not fetch live update/$f — publish branch would lose it on apply"
@@ -1031,7 +1052,10 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   LIVE_BUILD_FOR_SIG="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("build",""))' "$UPDATE_OUT/manifest.json" 2>/dev/null || true)"
   if [[ -n "$LIVE_BUILD_FOR_SIG" ]]; then
     sig_name="sandstorm-${LIVE_BUILD_FOR_SIG}.tar.xz.update-sig"
-    if curl -fsS --max-time 12 -o "$UPDATE_OUT/$sig_name" "$LIVE_BASE/$sig_name"; then
+    if [[ -f "$FINAL_DIR/update/$sig_name" ]]; then
+      cp "$FINAL_DIR/update/$sig_name" "$UPDATE_OUT/$sig_name"
+      ok "Preserved live update/$sig_name (local)"
+    elif curl -fsS --max-time 12 -o "$UPDATE_OUT/$sig_name" "$LIVE_BASE/$sig_name"; then
       ok "Preserved live update/$sig_name"
     else
       warn "Could not fetch live update/$sig_name — apply will leave publish-branch sig absent"

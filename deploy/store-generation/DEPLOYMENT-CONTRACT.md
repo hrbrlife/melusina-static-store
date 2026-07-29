@@ -74,14 +74,20 @@ The generation endpoint intentionally returns `503` until an authorized
 `POST /publish/generation` has atomically persisted the first signed
 generation. A green health check alone is therefore not a release-rail proof.
 
-## Rollback
+## Failure and governed rollback
 
 Before changing `current`, the deployer records the prior symlink target,
-config hash, catalog generation, and unit hash in its transaction WAL. If any
-start or acceptance check fails, it stops the candidate, restores that complete
-coherent tuple, starts the prior unit once, and re-runs the same checks. A
-first-ever install has no prior tuple: failure leaves the unit disabled and the
-candidate release retained for diagnosis, never reported as installed.
+config hash, catalog generation, and unit hash in its transaction WAL. It must
+wait for the candidate listener before running the complete acceptance suite.
+
+A publish-provisioned store's `SidecarIdentityEntry` pins the exact ELF hash.
+Once the governed identity update for a candidate has landed, simply pointing
+`current` back at the previous ELF is **not** a valid rollback: the previous
+binary must fail its boot-identity check. If candidate acceptance fails after
+that pin advances, leave the candidate selected, retain the WAL and diagnostics,
+and perform a new governed identity update for the rollback binary before
+starting it. A first-ever install likewise leaves the candidate retained and
+never reports it installed.
 
 No manual `cp`, ad-hoc `systemctl restart`, or direct generation-file edit is a
-valid deployment or rollback.
+valid deployment or governed rollback.

@@ -547,6 +547,53 @@ type appCatalogPointerPlan struct {
 	rolloutAppIDs []string
 }
 
+// RehydrateAppCatalogPayloadsFromRollouts refreshes the mutable payload copies
+// in a candidate generation from the immutable, hash-verified private stages
+// selected by a frozen pointer plan.  Early catalog migrations imported a few
+// legacy package/metadata pairs whose public bytes no longer matched the
+// already-signed stage.  Carrying those bytes forward made every unrelated
+// publish fail validation.  The stage is the authoritative release object;
+// this function changes no rollout, pointer, index, or chain state.
+func RehydrateAppCatalogPayloadsFromRollouts(cfg Config, candidateRoot string, plan appCatalogPointerPlan) error {
+	if strings.TrimSpace(candidateRoot) == "" {
+		return errors.New("empty candidate catalog root")
+	}
+	for _, appID := range plan.rolloutAppIDs {
+		pointer, ok := plan.pointers[appID]
+		if !ok {
+			return fmt.Errorf("missing frozen pointer for rollout %s", appID)
+		}
+		manifest, spk, metadata, release, err := loadStagedApp(cfg.PrivateStageDir, pointer.StageID)
+		if err != nil {
+			return fmt.Errorf("load selected staged payload for %s: %w", appID, err)
+		}
+		if manifest.AppID != appID || manifest.AppHash != pointer.AppHash ||
+			manifest.ReleaseHash != pointer.ReleaseHash || manifest.Version != pointer.Version ||
+			metadataPackageID(metadata) != pointer.PackageID {
+			return fmt.Errorf("selected staged payload does not match frozen pointer for %s", appID)
+		}
+		for _, dir := range []string{
+			filepath.Join(candidateRoot, "packages"),
+			filepath.Join(candidateRoot, "signatures", appID),
+			filepath.Join(candidateRoot, "attest", appID),
+		} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return fmt.Errorf("create selected payload directory: %w", err)
+			}
+		}
+		if err := atomicWriteInto(filepath.Join(candidateRoot, "packages"), pointer.PackageID, spk); err != nil {
+			return fmt.Errorf("write selected package for %s: %w", appID, err)
+		}
+		if err := atomicWriteInto(filepath.Join(candidateRoot, "signatures", appID), "metadata.json", metadata); err != nil {
+			return fmt.Errorf("write selected metadata for %s: %w", appID, err)
+		}
+		if err := atomicWriteInto(filepath.Join(candidateRoot, "attest", appID), "RELEASE.json", release); err != nil {
+			return fmt.Errorf("write selected release for %s: %w", appID, err)
+		}
+	}
+	return nil
+}
+
 // buildSignedAppCatalogPointerPlan freezes every rollout/stage semantic input
 // before nonce claim. Postclaim materialization consumes only this plan.
 func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, projection catalogProjection, projectedSPK, projectedMetadata, projectedRelease []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {

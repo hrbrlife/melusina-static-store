@@ -596,6 +596,13 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
+		// A generation is selected by immutable private stages, not by any
+		// legacy public payload copy inherited while cloning the prior tree.
+		// Rehydrate every frozen selection before assembling this request so a
+		// historical package/metadata drift cannot poison unrelated publishes.
+		if err := RehydrateAppCatalogPayloadsFromRollouts(s.cfg, candidateRoot, pointerPlan); err != nil {
+			return fmt.Errorf("rehydrate selected catalog payloads: %w", err)
+		}
 		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
 		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection); err != nil {
 			return fmt.Errorf("assemble: %w", err)

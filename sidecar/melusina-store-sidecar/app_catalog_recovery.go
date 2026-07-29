@@ -73,6 +73,23 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 			return current, nil
 		} else {
 			currentErr = fmt.Errorf("validate current app catalog generation: %w", err)
+			// Legacy imports can have an otherwise valid signed pointer set whose
+			// materialized package/metadata bytes predate the durable private
+			// stage.  Do not weaken validation or serve those bytes.  Instead make
+			// a new immutable generation by copying the signed pointer/index plan
+			// and rehydrating every payload from its hash-verified selected stage.
+			// This is the recovery counterpart to the promotion-time repair; it is
+			// needed before a freshly upgraded server can validate the old current
+			// generation at startup.
+			if repaired, repairErr := s.rehydrateRecoveryCurrent(current, rollouts, operatorKey, servingDomainHash, stagedRoot, validate); repairErr == nil {
+				if err := s.SwitchCurrent(repaired); err != nil {
+					return AppCatalogSnapshot{}, fmt.Errorf("select rehydrated app catalog generation: %w", err)
+				}
+				if err := s.cleanupRecoveryOrphans(); err != nil {
+					return AppCatalogSnapshot{}, fmt.Errorf("clean app catalog recovery orphans: %w", err)
+				}
+				return repaired, nil
+			}
 		}
 	}
 
@@ -101,6 +118,41 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		currentErr = errors.New("current app catalog generation is unavailable")
 	}
 	return AppCatalogSnapshot{}, fmt.Errorf("no fully verified app catalog generation (current: %v; rejected: %s)", currentErr, strings.Join(rejected, ","))
+}
+
+// rehydrateRecoveryCurrent creates a new candidate only after the frozen public
+// pointer set has been authenticated against durable rollout state.  It never
+// edits an existing generation and validates the completed candidate with the
+// caller's full sealed-tree, pointer, and exact-stage-byte verifier.
+func (s AppCatalogGenerationStore) rehydrateRecoveryCurrent(current AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
+	if current.ID == "" || current.Root == "" || strings.TrimSpace(stagedRoot) == "" {
+		return AppCatalogSnapshot{}, errors.New("no recoverable current catalog generation or private stage root")
+	}
+	appIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		appIDs = append(appIDs, appID)
+	}
+	sort.Strings(appIDs)
+	plan := appCatalogPointerPlan{pointers: make(map[string]AppCatalogPointer, len(appIDs)), rolloutAppIDs: appIDs}
+	if err := ValidateAppCatalogSnapshot(current, appIDs, func(pointer AppCatalogPointer) error {
+		if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
+			return err
+		}
+		rollout, ok := rollouts[pointer.AppID]
+		if !ok || pointer.StageID != rollout.CurrentStageID || pointer.AppHash != rollout.CurrentAppHash || pointer.Version != rollout.CurrentVersion || pointer.ServingDomainHash != servingDomainHash {
+			return errors.New("catalog pointer does not match durable rollout selection")
+		}
+		plan.pointers[pointer.AppID] = pointer
+		return nil
+	}); err != nil {
+		return AppCatalogSnapshot{}, fmt.Errorf("authenticate frozen recovery pointers: %w", err)
+	}
+	if len(plan.pointers) != len(appIDs) {
+		return AppCatalogSnapshot{}, errors.New("recovery pointer set is incomplete")
+	}
+	return s.BuildCommittedFrom(current.Root, func(candidateRoot string) error {
+		return RehydrateAppCatalogPayloadsFromRollouts(Config{PrivateStageDir: stagedRoot}, candidateRoot, plan)
+	}, validate)
 }
 
 func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) error {

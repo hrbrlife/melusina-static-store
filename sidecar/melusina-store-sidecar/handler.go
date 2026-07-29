@@ -17,6 +17,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -578,6 +579,20 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	// A promoted app is not consumer-ready until the signed desired generation
+	// selects it. Prepare that replacement from the frozen pointer BEFORE the
+	// irreversible nonce claim; we persist it only after the catalog selector
+	// switches, while the same writer lock remains held. Readers therefore see
+	// either the previous coherent app+generation pair or the new pair, never a
+	// catalog that invalidates the generation it is serving.
+	var generationRaw []byte
+	if strings.TrimSpace(s.cfg.PublicBaseURL) != "" {
+		generationRaw, err = s.planAppGenerationAdvance(catalogPointerForPlan(pointerPlan, staged.AppID), preflight.spk, preflight.release, promotedAt)
+		if err != nil {
+			http.Error(w, "check=generation_plan: "+err.Error(), http.StatusConflict)
+			return
+		}
+	}
 
 	// No semantic or trust read may occur after this exact instant. The durable
 	// claim is the last gate and precedes retained rollout state, source persist,
@@ -641,6 +656,15 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("publish: reconciled post-switch uncertainty for generation %s: %v", committedGeneration.ID, err)
 	}
+	if len(generationRaw) != 0 {
+		if err := persistDesiredGeneration(s.cfg.DistDir, generationRaw); err != nil {
+			// The catalog switch is durable, so do not pretend a failed generation
+			// write was a successful publish. The reader stays behind s.mu until this
+			// function returns and will fail closed if the durable pair is incomplete.
+			http.Error(w, "check=generation_persist: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	if err := s.appMutationStep("after-current-switch"); err != nil {
 		http.Error(w, "check=fault_after_current_switch: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -690,6 +714,52 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	if retentionErr != nil {
 		log.Printf("publish: post-success app retention refused: %v", retentionErr)
 	}
+}
+
+// catalogPointerForPlan keeps the pre-claim generation planner from reaching
+// into a mutable map at call sites. A missing required pointer is always a
+// programming/assembly error and is rejected before the nonce is consumed.
+func catalogPointerForPlan(plan appCatalogPointerPlan, appID string) AppCatalogPointer {
+	return plan.pointers[appID]
+}
+
+// planAppGenerationAdvance derives the sole app component update from the
+// already chain-verified publish inputs and the operator-signed catalog pointer.
+// It is deliberately not a second HTTP publish: the app route owns the writer
+// lock and must commit both selectors as one consumer-visible transaction.
+func (s *publishService) planAppGenerationAdvance(pointer AppCatalogPointer, spk []byte, release ReleaseJSON, now time.Time) ([]byte, error) {
+	if pointer.AppID == "" || pointer.PackageID == "" || pointer.AppHash == "" || pointer.ReleaseHash == "" || pointer.StageID == "" {
+		return nil, errors.New("missing frozen app catalog pointer")
+	}
+	current, err := s.loadCurrentGenerationOrNil()
+	if err != nil {
+		return nil, err
+	}
+	expected, channel := uint64(0), "dev"
+	if current != nil {
+		expected, channel = current.GenerationID, current.Channel
+	}
+	if channel == "" {
+		channel = "dev"
+	}
+	artifactHash := sha256.Sum256(spk)
+	update := componentrelease.ComponentRelease{
+		ComponentID: pointer.AppID, ComponentClass: componentrelease.ClassApp,
+		Version: pointer.Version, ArtifactName: pointer.PackageID,
+		SHA256: hex.EncodeToString(artifactHash[:]), ContentSHA256: pointer.AppHash,
+		SizeBytes: int64(len(spk)), BundleURL: strings.TrimRight(s.cfg.PublicBaseURL, "/") + "/packages/" + pointer.PackageID,
+		Chain:       componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: s.cfg.ProgramID, MasterNftMint: release.MasterNftMint, ReleasePDA: release.ReleaseEntryPda},
+		ReleaseHash: pointer.ReleaseHash, StageID: pointer.StageID,
+	}
+	next, err := planGenerationPromote(current, GenerationPromoteRequest{Schema: generationPromoteSchema, Channel: channel, ExpectedCurrentGeneration: expected, Components: []componentrelease.ComponentRelease{update}}, GenerationPolicy{StoreID: s.cfg.StoreID, BundleOrigin: strings.TrimRight(s.cfg.PublicBaseURL, "/"), Channel: channel}, now.UTC().Unix())
+	if err != nil {
+		return nil, err
+	}
+	signed, err := componentrelease.Sign(s.operator, next)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(signed)
 }
 
 // handlePublishInstaller is the whole-file artifact publish path for

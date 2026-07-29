@@ -156,6 +156,11 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 		http.Error(w, "generation gate not initialized (no operator identity to attest)", http.StatusServiceUnavailable)
 		return
 	}
+	// App publication and its paired generation advance share this mutex. Take
+	// it before loading the document, not merely before checking the surface, so
+	// a reader cannot retain the old generation while an app selector changes.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	doc, raw, err := loadCurrentGeneration(s.cfg.DistDir)
 	if err != nil {
 		http.Error(w, "check=load_generation: "+err.Error(), http.StatusServiceUnavailable)
@@ -187,8 +192,6 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 	// uses while checking the exact public surface and writing the response. That
 	// makes the verdict about one stable projection, rather than a mixture of a
 	// pre-switch pointer and a post-switch package.
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := s.verifyDesiredGenerationServeSurface(doc); err != nil {
 		http.Error(w, "check=serve_surface: "+err.Error(), http.StatusServiceUnavailable)
 		return

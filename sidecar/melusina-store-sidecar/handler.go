@@ -703,6 +703,13 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
+	// The promotion is consumer-visible and durable now. Send its signed
+	// receipt before best-effort retention: retaining older staged trees can
+	// take longer than a proxy response timeout for a large catalog, which must
+	// not make an accepted publish look like a failed request.
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 	// The promotion, nonce consumption and success receipt are already committed.
 	// Retention runs under the same app writer mutex and the cross-request storage
 	// barrier, but a refusal is logged for fail-closed startup repair rather than

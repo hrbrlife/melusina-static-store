@@ -148,6 +148,29 @@ func TestComposeUpdateCarryForwardAndRollbackFloor(t *testing.T) {
 	}
 }
 
+func TestComposeAppUpdateUsesPriorContentHashForRollbackFloor(t *testing.T) {
+	oldArtifact := strings.Repeat("a", 64)
+	oldContent := strings.Repeat("b", 64)
+	newArtifact := strings.Repeat("c", 64)
+	newContent := strings.Repeat("d", 64)
+	current := componentrelease.DesiredGeneration{GenerationID: 9, Components: []componentrelease.ComponentRelease{{
+		ComponentID: "paint-bureau", ComponentClass: componentrelease.ClassApp,
+		Version: "2.0.20", SHA256: oldArtifact, ContentSHA256: oldContent,
+	}}}
+	update := componentrelease.ComponentRelease{
+		ComponentID: "paint-bureau", ComponentClass: componentrelease.ClassApp,
+		Version: "2.0.21", SHA256: newArtifact, ContentSHA256: newContent,
+	}
+	next, err := composeNextGeneration(&current, composePolicy(), 1784281900, []componentrelease.ComponentRelease{update})
+	if err != nil {
+		t.Fatalf("compose app update: %v", err)
+	}
+	got := next.Components[0]
+	if got.PreviousSHA256 != oldContent || got.PreviousVersion != "2.0.20" {
+		t.Fatalf("app rollback floor must use prior content hash: got sha=%s version=%s", got.PreviousSHA256, got.PreviousVersion)
+	}
+}
+
 func TestComposeRejectsEmptyUpdateSet(t *testing.T) {
 	if _, err := composeNextGeneration(nil, composePolicy(), 1, nil); err == nil {
 		t.Fatal("compose accepted an empty update set")

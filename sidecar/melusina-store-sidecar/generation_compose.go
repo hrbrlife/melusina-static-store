@@ -119,7 +119,16 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 					return componentrelease.DesiredGeneration{}, fmt.Errorf("component update %q has a partial rollback floor", id)
 				}
 			} else if cur, ok := curByID[id]; ok {
-				c.PreviousSHA256 = cur.SHA256
+				// Apps are bound on-chain and installed by their canonical
+				// {app.spk, metadata.json} tree hash, not by sha256(app.spk).
+				// The target's anti-rollback floor therefore has to name the
+				// prior content identity for app components.  Whole-file
+				// components continue to use their artifact hash.
+				if cur.ComponentClass == componentrelease.ClassApp {
+					c.PreviousSHA256 = cur.ContentSHA256
+				} else {
+					c.PreviousSHA256 = cur.SHA256
+				}
 				c.PreviousVersion = cur.Version
 			} else {
 				// A brand-new component has no older artifact; its rollback floor

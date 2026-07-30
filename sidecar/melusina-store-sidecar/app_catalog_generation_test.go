@@ -52,6 +52,46 @@ func TestAppCatalogGenerationBootstrapCopiesAndSwitchesLast(t *testing.T) {
 	}
 }
 
+func TestBuildCommittedFromSharesImmutableMembersButAtomicReplacementIsIsolated(t *testing.T) {
+	root := t.TempDir()
+	flat := filepath.Join(root, "dist")
+	generations := filepath.Join(root, "app-generations")
+	cleanupImmutableCatalog(t, generations)
+	const packageID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	writeGenerationFixture(t, flat, "app-one", packageID, "old")
+	store := AppCatalogGenerationStore{Root: generations}
+	old, err := store.BootstrapFromFlat(flat, validateCatalogSnapshotStructure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := store.BuildCommittedFrom(old.Root, func(candidate string) error {
+		return atomicWriteInto(filepath.Join(candidate, "packages"), packageID, []byte("new"))
+	}, func(AppCatalogSnapshot) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An untouched member is shared, avoiding a catalog-sized copy per
+	// promotion. A replacement is a rename in the candidate, so it cannot
+	// mutate the selected source generation through the hard link.
+	oldIndex, err := os.Stat(filepath.Join(old.Root, "apps", "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	newIndex, err := os.Stat(filepath.Join(prepared.Root, "apps", "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(oldIndex, newIndex) {
+		t.Fatal("committed generation byte-copied an unchanged immutable member")
+	}
+	if got := readFile(t, filepath.Join(old.Root, "packages", packageID)); got != "old" {
+		t.Fatalf("atomic candidate replacement mutated source package: %q", got)
+	}
+	if got := readFile(t, filepath.Join(prepared.Root, "packages", packageID)); got != "new" {
+		t.Fatalf("candidate package = %q, want new", got)
+	}
+}
+
 func TestSnapshotBoundedReadsRejectOversizeAndSymlink(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "packages"), 0o755); err != nil {

@@ -193,7 +193,7 @@ func (s AppCatalogGenerationStore) BootstrapFromFlat(flatDist string, validate f
 	// validate/seal; a no-op for already-safe or opaque indexes.
 	return s.buildFromWith(flatDist, func(candidateRoot string) error {
 		return sanitizeCatalogIndexFile(candidateRoot)
-	}, validate, true)
+	}, validate, true, false)
 }
 
 // BuildAndSwitch clones the active immutable app catalog by byte-copy, lets
@@ -207,7 +207,11 @@ func (s AppCatalogGenerationStore) BuildAndSwitch(build func(candidateRoot strin
 	if err != nil {
 		return AppCatalogSnapshot{}, err
 	}
-	return s.buildFromWith(active.Root, build, validate, true)
+	// BuildAndSwitch is the public generic builder; callers may edit existing
+	// members in place, so it retains byte-copy semantics. Promotion uses the
+	// committed-generation path below, whose assembler replaces changed files
+	// atomically and can safely share immutable members.
+	return s.buildFromWith(active.Root, build, validate, true, false)
 }
 
 // BuildCommittedFrom creates and validates an immutable direct-child
@@ -215,10 +219,10 @@ func (s AppCatalogGenerationStore) BuildAndSwitch(build func(candidateRoot strin
 // state after this returns and then SwitchCurrent last. This ordering leaves a
 // recoverable matching generation if the process exits between those steps.
 func (s AppCatalogGenerationStore) BuildCommittedFrom(source string, build func(candidateRoot string) error, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
-	return s.buildFromWith(source, build, validate, false)
+	return s.buildFromWith(source, build, validate, false, true)
 }
 
-func (s AppCatalogGenerationStore) buildFromWith(source string, build func(string) error, validate func(AppCatalogSnapshot) error, selectCurrent bool) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) buildFromWith(source string, build func(string) error, validate func(AppCatalogSnapshot) error, selectCurrent, linkImmutableSource bool) (AppCatalogSnapshot, error) {
 	if err := s.validateRoot(); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
@@ -255,7 +259,7 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 		if err := s.fail("before-copy-" + namespace); err != nil {
 			return AppCatalogSnapshot{}, err
 		}
-		if err := copyCatalogTreeBounded(filepath.Join(source, namespace), filepath.Join(tmpRoot, namespace), &copiedMembers, 0); err != nil {
+		if err := copyCatalogTreeBounded(filepath.Join(source, namespace), filepath.Join(tmpRoot, namespace), &copiedMembers, 0, linkImmutableSource); err != nil {
 			return AppCatalogSnapshot{}, fmt.Errorf("copy app catalog %s: %w", namespace, err)
 		}
 	}
@@ -847,7 +851,7 @@ func appCatalogPathParts(relativePath string) ([]string, error) {
 	return parts, nil
 }
 
-func copyCatalogTreeBounded(source, destination string, count *int, depth int) error {
+func copyCatalogTreeBounded(source, destination string, count *int, depth int, linkImmutableSource bool) error {
 	if depth > maxRetentionTreeDepth {
 		return fmt.Errorf("catalog source exceeds depth %d", maxRetentionTreeDepth)
 	}
@@ -880,11 +884,11 @@ func copyCatalogTreeBounded(source, destination string, count *int, depth int) e
 		case entryInfo.Mode()&os.ModeSymlink != 0:
 			return fmt.Errorf("catalog source contains symlink %s", sourcePath)
 		case entryInfo.IsDir():
-			if err := copyCatalogTreeBounded(sourcePath, destinationPath, count, depth+1); err != nil {
+			if err := copyCatalogTreeBounded(sourcePath, destinationPath, count, depth+1, linkImmutableSource); err != nil {
 				return err
 			}
 		case entryInfo.Mode().IsRegular():
-			if err := copyCatalogFile(sourcePath, destinationPath); err != nil {
+			if err := copyCatalogFile(sourcePath, destinationPath, linkImmutableSource); err != nil {
 				return err
 			}
 		default:
@@ -894,7 +898,7 @@ func copyCatalogTreeBounded(source, destination string, count *int, depth int) e
 	return nil
 }
 
-func copyCatalogFile(source, destination string) error {
+func copyCatalogFile(source, destination string, linkImmutableSource bool) error {
 	fd, err := syscall.Open(source, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return err
@@ -905,6 +909,29 @@ func copyCatalogFile(source, destination string) error {
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > maxAppPublishBody {
 		return fmt.Errorf("catalog source file type/size is invalid: %s", source)
 	}
+	// Generations are immutable: source has already been sealed read-only and
+	// candidate writes use same-directory temp+rename, which replaces a link
+	// instead of mutating its inode.  Link unchanged members rather than
+	// copying every SPK on every single-app promotion.  This keeps the writer
+	// lock short and avoids turning a normal catalog update into minutes of
+	// store unavailability proportional to the whole catalog size.
+	if linkImmutableSource {
+		if err := os.Link(source, destination); err == nil {
+			linked, statErr := os.Stat(destination)
+			if statErr != nil || !linked.Mode().IsRegular() || linked.Size() != info.Size() || !os.SameFile(info, linked) {
+				_ = os.Remove(destination)
+				if statErr != nil {
+					return fmt.Errorf("verify catalog hard link: %w", statErr)
+				}
+				return errors.New("catalog hard link did not preserve validated source inode")
+			}
+			return nil
+		}
+	}
+	// A filesystem may refuse links despite the common-filesystem invariant
+	// (for example a restrictive mount policy). The bounded byte-copy remains
+	// the compatibility fallback; link support must improve latency, never make
+	// a valid promotion unavailable.
 	out, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err

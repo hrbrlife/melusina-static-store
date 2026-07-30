@@ -41,7 +41,10 @@ git -C "$ROOT" for-each-ref --format='%(refname)' --contains "$HEAD" refs/remote
   echo "source HEAD is not reachable from a refreshed remote ref: $HEAD" >&2; exit 2; }
 
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
-WORK_BASE="$(dirname "$ROOT")"
+WORK_BASE="${MELUSINA_RELEASE_WORK_BASE:-$(dirname "$ROOT")}"
+WORK_BASE="$(realpath -e -- "$WORK_BASE")"
+[[ -d "$WORK_BASE" && ! -L "$WORK_BASE" ]] || {
+  echo "release work base must be a real directory" >&2; exit 2; }
 TMP="$(mktemp -d "$WORK_BASE/.store-generation-release.XXXXXX")"
 W1="$TMP/build-1"
 W2="$TMP/build-2"

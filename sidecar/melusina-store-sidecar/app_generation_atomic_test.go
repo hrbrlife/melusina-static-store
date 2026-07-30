@@ -24,6 +24,7 @@ func TestPlanAppGenerationAdvanceCarriesCurrentComponentsAndReplacesApp(t *testi
 		AppID: "app-one", PackageID: "0123456789abcdef0123456789abcdef",
 		Version: "1.2.3", AppHash: strings.Repeat("a", 64),
 		ReleaseHash: strings.Repeat("b", 64), StageID: strings.Repeat("c", 64),
+		PreviousAppHash: strings.Repeat("d", 64), PreviousVersion: "1.2.2",
 	}
 	raw, err := svc.planAppGenerationAdvance(pointer, spk, ReleaseJSON{
 		MasterNftMint: testMaster, ReleaseEntryPda: testMaster,
@@ -46,6 +47,9 @@ func TestPlanAppGenerationAdvanceCarriesCurrentComponentsAndReplacesApp(t *testi
 	}
 	if got == nil || got.Version != pointer.Version || got.SHA256 != hex.EncodeToString(hash[:]) || got.ContentSHA256 != pointer.AppHash || got.ArtifactName != pointer.PackageID {
 		t.Fatalf("app update does not bind the frozen pointer and served bytes: %+v", got)
+	}
+	if got.PreviousSHA256 != pointer.PreviousAppHash || got.PreviousVersion != pointer.PreviousVersion {
+		t.Fatalf("app update does not carry the signed rollout floor: %+v", got)
 	}
 	pub, _ := operatorSignPublicKey(svc.operator)
 	if err := componentrelease.Verify(pub, svc.cfg.StoreID, next); err != nil {

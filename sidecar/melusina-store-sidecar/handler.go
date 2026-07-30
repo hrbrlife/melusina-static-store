@@ -751,6 +751,20 @@ func (s *publishService) planAppGenerationAdvance(pointer AppCatalogPointer, spk
 		Chain:       componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: s.cfg.ProgramID, MasterNftMint: release.MasterNftMint, ReleasePDA: release.ReleaseEntryPda},
 		ReleaseHash: pointer.ReleaseHash, StageID: pointer.StageID,
 	}
+	// The signed rollout pointer is the authoritative rollback relation for
+	// this app publish. A store bootstrapped after an app was already installed
+	// may not yet have that app in its previous desired generation; falling back
+	// to the generic "new component" rule would then set previousSha256 to the
+	// new app hash. Consumers that hold the real prior release correctly reject
+	// that as a rollback. Carry the pointer's prior app-tree hash and version
+	// whenever present so every promoted app update names what it supersedes.
+	if pointer.PreviousAppHash != "" || pointer.PreviousVersion != "" {
+		if pointer.PreviousAppHash == "" || pointer.PreviousVersion == "" {
+			return nil, errors.New("app catalog pointer has a partial previous-release floor")
+		}
+		update.PreviousSHA256 = pointer.PreviousAppHash
+		update.PreviousVersion = pointer.PreviousVersion
+	}
 	next, err := planGenerationPromote(current, GenerationPromoteRequest{Schema: generationPromoteSchema, Channel: channel, ExpectedCurrentGeneration: expected, Components: []componentrelease.ComponentRelease{update}}, GenerationPolicy{StoreID: s.cfg.StoreID, BundleOrigin: strings.TrimRight(s.cfg.PublicBaseURL, "/"), Channel: channel}, now.UTC().Unix())
 	if err != nil {
 		return nil, err

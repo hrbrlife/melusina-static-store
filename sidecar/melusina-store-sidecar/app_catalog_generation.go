@@ -28,7 +28,7 @@ const (
 	maxAppCatalogJSONBytes     = 1 << 20
 )
 
-var appCatalogNamespaces = [...]string{"apps", "packages", "signatures", "attest"}
+var appCatalogNamespaces = [...]string{"apps", "packages", "signatures", "attest", "images"}
 
 // AppCatalogSnapshot is a request-scoped view of the app catalog. Root is the
 // resolved immutable generation directory, not the mutable current symlink.
@@ -259,7 +259,18 @@ func (s AppCatalogGenerationStore) buildFromWith(source string, build func(strin
 		if err := s.fail("before-copy-" + namespace); err != nil {
 			return AppCatalogSnapshot{}, err
 		}
-		if err := copyCatalogTreeBounded(filepath.Join(source, namespace), filepath.Join(tmpRoot, namespace), &copiedMembers, 0, linkImmutableSource); err != nil {
+		sourceNamespace := filepath.Join(source, namespace)
+		if _, err := os.Lstat(sourceNamespace); errors.Is(err, os.ErrNotExist) {
+			// The candidate always carries the complete namespace set that
+			// validateCatalogTree requires, even when the source is a generation
+			// composed before a namespace existed or a flat tree that never had
+			// one. Creating it empty is the composer owning its own invariant.
+			if err := os.Mkdir(filepath.Join(tmpRoot, namespace), 0o755); err != nil {
+				return AppCatalogSnapshot{}, fmt.Errorf("create app catalog %s: %w", namespace, err)
+			}
+			continue
+		}
+		if err := copyCatalogTreeBounded(sourceNamespace, filepath.Join(tmpRoot, namespace), &copiedMembers, 0, linkImmutableSource); err != nil {
 			return AppCatalogSnapshot{}, fmt.Errorf("copy app catalog %s: %w", namespace, err)
 		}
 	}
@@ -968,6 +979,14 @@ func validateCatalogTree(root string) error {
 	for _, namespace := range appCatalogNamespaces {
 		path := filepath.Join(root, namespace)
 		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) && !requiredCatalogNamespace(namespace) {
+			// Every generation on disk predates the images namespace. Demanding it
+			// here would make this binary refuse to resolve the catalog it is
+			// deployed onto. Absence is allowed only for namespaces added after the
+			// generation format shipped; the original four must still be present,
+			// and anything that IS present is held to the rule below.
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("lstat app catalog namespace %s: %w", namespace, err)
 		}
@@ -976,6 +995,18 @@ func validateCatalogTree(root string) error {
 		}
 	}
 	return walkCatalogTree(root, nil)
+}
+
+// requiredCatalogNamespace reports whether every generation must already carry
+// this namespace. The original four are structural; images arrived later, so a
+// generation composed before it is complete without one.
+func requiredCatalogNamespace(namespace string) bool {
+	switch namespace {
+	case "apps", "packages", "signatures", "attest":
+		return true
+	default:
+		return false
+	}
 }
 
 func validateSealedCatalogTree(root string, expectedUID, expectedGID uint32) error {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -57,6 +58,11 @@ type publishRequest struct {
 	// SPK they form the canonical tree the on-chain AppHash binds; the gate
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
+	// RuntimeContractB64 is the raw RUNTIME-CONTRACT.json bytes, base64-std.
+	// RELEASE.json binds sha256(this exact byte sequence), and the contract in
+	// turn binds sha256(SPK).  This makes a runtime declaration a release
+	// artifact rather than a mutable catalog annotation.
+	RuntimeContractB64 string `json:"runtime_contract_b64"`
 	// Developer/Repo/Slug OPTIONALLY name the catalog slot
 	// (packages/<developer>/<repo>/<slug>) for the FIRST publish of a new app.
 	// A re-publish resolves its existing slot by the appId in metadata.json and
@@ -177,7 +183,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sig, releaseBytes, spk, metadata, hint, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
 	if err != nil {
 		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
 		return
@@ -249,6 +255,24 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Runtime-contract gate.  The on-chain ReleaseEntry remains the authority
+	// for what bytes may be served; this additional release-bound declaration
+	// makes a future app publish state exactly how its real UI + sidecar behavior
+	// must be proven after installation.  It is intentionally AFTER the chain
+	// gate so an invalid or revoked artifact still reports its load-bearing
+	// on-chain refusal, never a distracting metadata error.
+	if _, err := runtimecontract.Validate(runtimeContract, runtimecontract.Binding{
+		SPK:                   spk,
+		Metadata:              metadata,
+		AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+		Version:               rel.Version,
+		ReleaseContractSHA256: rel.RuntimeContractSHA256,
+		ReleaseContractSchema: rel.RuntimeContractSchema,
+	}); err != nil {
+		http.Error(w, "check=runtime_contract: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// (b-time) STORE HYGIENE — monotonic release time. The claimed signedAtUnix must
 	// strictly advance past the version this app's slot currently serves (located by
 	// the Sandstorm appId from metadata.json — the served-slot key, stable across a
@@ -271,7 +295,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
 		return
 	}
-	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata); err != nil {
+	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata, runtimeContract); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -517,85 +541,100 @@ func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bo
 	return s.publisherAccepted(publisher)
 }
 
-// parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw
-// SPK bytes, the metadata.json bytes, and the optional catalog-slot hint from
-// either a multipart/form-data request (file fields: envelope, release, spk,
-// metadata; value fields: developer, repo, slug) or a JSON request
-// (publishRequest). metadata is REQUIRED (the on-chain AppHash binds
-// {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
-// and is malformed.
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, hint slotHint, err error) {
+// parsePublishBody extracts the signed envelope, RELEASE.json, raw SPK,
+// metadata.json, and RUNTIME-CONTRACT.json plus the optional catalog-slot hint.
+// The contract travels as its own raw artifact because RELEASE.json binds its
+// SHA-256 and the contract binds sha256(SPK).  It is REQUIRED for every new
+// /publish; historical catalog cards are grandfathered only on the READ path,
+// where they are surfaced as explicitly uncertified.
+//
+// Multipart file fields: envelope, release, spk, metadata, runtime_contract.
+// JSON fields use their corresponding *_b64 names.  metadata remains required
+// because the on-chain AppHash binds {app.spk, metadata.json}.
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, err error) {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
 		}
 		metadata, perr = readFormFile(r, "metadata")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
 		}
 		if len(metadata) == 0 {
-			return sig, nil, nil, nil, hint, errors.New("metadata is empty")
+			return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+		}
+		runtimeContract, perr = readFormFile(r, "runtime_contract")
+		// Keep an omitted contract as an empty artifact for the release-bound
+		// gate below.  That preserves the useful authorization/on-chain error
+		// precedence for otherwise invalid submissions and gives both wire
+		// formats the same check=runtime_contract refusal once they are valid.
+		if perr != nil && !errors.Is(perr, http.ErrMissingFile) {
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract part: %w", perr)
 		}
 		hint = slotHint{
 			Developer: strings.TrimSpace(r.FormValue("developer")),
 			Repo:      strings.TrimSpace(r.FormValue("repo")),
 			Slug:      strings.TrimSpace(r.FormValue("slug")),
 		}
-		return sig, release, spk, metadata, hint, nil
+		return sig, release, spk, metadata, runtimeContract, hint, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, nil, hint, errors.New("spk is empty")
+		return sig, nil, nil, nil, nil, hint, errors.New("spk is empty")
 	}
 	metadata, perr = stdB64(req.MetadataB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
 	}
 	if len(metadata) == 0 {
-		return sig, nil, nil, nil, hint, errors.New("metadata is empty")
+		return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+	}
+	runtimeContract, perr = stdB64(req.RuntimeContractB64)
+	if perr != nil {
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract_b64: %w", perr)
 	}
 	hint = slotHint{
 		Developer: strings.TrimSpace(req.Developer),
 		Repo:      strings.TrimSpace(req.Repo),
 		Slug:      strings.TrimSpace(req.Slug),
 	}
-	return sig, release, spk, metadata, hint, nil
+	return sig, release, spk, metadata, runtimeContract, hint, nil
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {

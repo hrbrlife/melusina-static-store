@@ -39,6 +39,21 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   `SKIP_STEPS`/`SCAN_NOOP` bypass exists on this path.**
 - **Ops:** `GET /healthz`
 
+### Runtime-contract gate
+
+Every new `POST /publish` also requires a raw `RUNTIME-CONTRACT.json` artifact.
+`RELEASE.json.runtimeContractSha256` binds those exact JSON bytes through the
+publisher-signed envelope, and the contract binds `sha256(app.spk)`. The contract
+declares the visible launch steps, exact sidecar endpoint tuple, TLS and
+HTTP-out capability requirements, controlled functional probe, fixtures, and
+cleanup. It is a test plan—not a claim that testing happened.
+
+The assembler publishes it under `/attest/<appId>/RUNTIME-CONTRACT.json` and
+marks catalog cards either `declared` (bound plan; actual UI proof still pending)
+or `uncertified` (a genuine legacy pre-contract release). A release that claims
+a contract but loses or alters it is excluded by the serve-time gate. See
+[`../../docs/RUNTIME_CONTRACT_V1.md`](../../docs/RUNTIME_CONTRACT_V1.md).
+
 ## Status
 Phase-1 spine: READ surface + **gated `/publish`** (C2.3). The receive path now
 verifies the publisher's signed artifact envelope, recomputes the AppHash (the

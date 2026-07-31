@@ -15,16 +15,21 @@ import (
 // C3 coverage: /publish persists the gate-verified bytes itself, and every
 // slot-resolution refusal has a negative test (DEPLOY_DOCTRINE WS1c).
 
-func jsonPublishBodyWithSlot(t *testing.T, sig envelope.Signed, release, spk, metadata []byte, dev, repo, slug string) *bytes.Buffer {
+func jsonPublishBodyWithSlot(t *testing.T, sig envelope.Signed, release, spk, metadata []byte, dev, repo, slug string, runtimeOverride ...[]byte) *bytes.Buffer {
 	t.Helper()
+	runtimeContract := runtimeContractForTest(t, spk, metadata, mustReleaseJSON(t, release))
+	if len(runtimeOverride) != 0 {
+		runtimeContract = runtimeOverride[0]
+	}
 	req := publishRequest{
-		Envelope:    sig,
-		ReleaseB64:  b64(release),
-		SPKB64:      b64(spk),
-		MetadataB64: b64(metadata),
-		Developer:   dev,
-		Repo:        repo,
-		Slug:        slug,
+		Envelope:           sig,
+		ReleaseB64:         b64(release),
+		SPKB64:             b64(spk),
+		MetadataB64:        b64(metadata),
+		RuntimeContractB64: b64(runtimeContract),
+		Developer:          dev,
+		Repo:               repo,
+		Slug:               slug,
 	}
 	b, err := json.Marshal(req)
 	if err != nil {
@@ -47,7 +52,12 @@ func seedSlot(t *testing.T, catalogRoot, dev, repo, slug string, metadata []byte
 
 func assertSlotBytes(t *testing.T, dir string, spk, release, metadata []byte) {
 	t.Helper()
-	for name, want := range map[string][]byte{"app.spk": spk, "RELEASE.json": release, "metadata.json": metadata} {
+	for name, want := range map[string][]byte{
+		"app.spk":               spk,
+		"RELEASE.json":          release,
+		"metadata.json":         metadata,
+		"RUNTIME-CONTRACT.json": runtimeContractForTest(t, spk, metadata, mustReleaseJSON(t, release)),
+	} {
 		got, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			t.Fatalf("read persisted %s: %v", name, err)

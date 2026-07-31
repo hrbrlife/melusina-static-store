@@ -31,7 +31,10 @@ exact RUNTIME-CONTRACT.json     ──> RELEASE.json.runtimeContractSha256
 exact app.spk                   ──> contract.app.spkSha256
 ```
 
-`RELEASE.json` must include both fields before it is signed and registered:
+The current Pearl finalizer writes only the on-chain manifest fields. After it
+has finalized and verified the registered release, attach both fields below and
+validate the four artifacts. This must happen before the submit client signs
+and uploads the exact publisher envelope:
 
 ```json
 {

@@ -15,7 +15,7 @@ package main
 type ReleaseJSON struct {
 	Schema             string       `json:"$schema"`
 	AppHash            string       `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))
-	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256 hex; binds the full release manifest
+	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256(appHash + version + nonce); the envelope body hash binds the full JSON
 	Version            string       `json:"version"`
 	SignedAtUnix       int64        `json:"signedAtUnix"`
 	MasterNftMint      string       `json:"masterNftMint"`      // base58; ReleaseEntry PDA seed

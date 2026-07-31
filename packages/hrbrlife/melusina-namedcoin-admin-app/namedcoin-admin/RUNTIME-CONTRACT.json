@@ -1,0 +1,45 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
+    "version": "0.1.36",
+    "spkSha256": "c3b9b0d3294f5004001ef7f19999c5fafe8f45deda874555ffbffcd347f71837",
+    "appHash": "736af129da4512aa579c35672eb786f02a01995c111800013aef932faef536e0"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Launch a new NamedCoin Admin console through its normal app action.",
+        "expectedResult": "The normal access screen renders without a 403, reset, blank page, or process failure."
+      },
+      {
+        "action": "Complete the grain's normal local access setup and open the admin dashboard.",
+        "expectedResult": "The operator dashboard renders through the visible interface."
+      },
+      {
+        "action": "Open Issuer configuration and inspect the fresh-grain state.",
+        "expectedResult": "The page reports that issuance is disabled, names the missing required public identifiers, and shows the optional endpoint fields and pinned program id."
+      },
+      {
+        "action": "Submit the issuer form with the required identifiers blank.",
+        "expectedResult": "The page returns visible field-level validation and remains usable without contacting a sidecar or submitting an on-chain transaction."
+      }
+    ],
+    "expectedResult": "NamedCoin Admin launches and its local issuer-configuration interface behaves fail-closed without requiring a sidecar for this probe."
+  },
+  "fixtures": [
+    {
+      "name": "Fresh NamedCoin Admin grain",
+      "purpose": "Prove the packaged console and local issuer-configuration validation on empty state.",
+      "setup": "Install version 0.1.36, create a new owner grain, and do not preconfigure issuer identifiers or endpoint overrides."
+    }
+  ],
+  "cleanup": {
+    "steps": [
+      "Delete the temporary acceptance-test grain after the visible launch probe completes."
+    ]
+  }
+}

@@ -406,12 +406,19 @@ echo
 step 4 "sealed-v3 submit to store sidecar"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
 
-# Locate the RELEASE.json produced by Step 3 (ceremony catalog dir first, then
-# the app dir). The submit client asserts apphash(SPK,metadata.json)==RELEASE.appHash
-# locally — the on-chain appHash is the tree-hash over {app.spk, metadata.json}, so
-# the metadata.json is REQUIRED alongside the SPK + RELEASE.json.
+# Locate the RELEASE.json produced by Step 3 and the release-bound runtime
+# contract (ceremony catalog dir first, then the app dir). The Pearl finalizer
+# intentionally knows only the on-chain manifest fields, so it strips the two
+# runtime-contract fields. We restore them after finalization and before the
+# submit client signs the exact publisher envelope.
+#
+# The submit client asserts apphash(SPK,metadata.json)==RELEASE.appHash locally —
+# the on-chain appHash is the tree-hash over {app.spk, metadata.json}, so the
+# metadata.json is REQUIRED alongside the SPK + RELEASE.json. The runtime
+# contract stays outside that appHash pair and separately names the exact SPK.
 SUBMIT_RELEASE=""
 SUBMIT_METADATA=""
+SUBMIT_RUNTIME_CONTRACT=""
 if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/RELEASE.json" ]]; then
   SUBMIT_RELEASE="$CAT_PATH/RELEASE.json"
 elif [[ -f "$APP_DIR/RELEASE.json" ]]; then
@@ -421,6 +428,11 @@ if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/metadata.json" ]]; then
   SUBMIT_METADATA="$CAT_PATH/metadata.json"
 elif [[ -f "$APP_DIR/metadata.json" ]]; then
   SUBMIT_METADATA="$APP_DIR/metadata.json"
+fi
+if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/RUNTIME-CONTRACT.json" ]]; then
+  SUBMIT_RUNTIME_CONTRACT="$CAT_PATH/RUNTIME-CONTRACT.json"
+elif [[ -f "$APP_DIR/RUNTIME-CONTRACT.json" ]]; then
+  SUBMIT_RUNTIME_CONTRACT="$APP_DIR/RUNTIME-CONTRACT.json"
 fi
 
 if skip_step push || skip_step submit; then
@@ -434,6 +446,8 @@ elif [[ -z "$SUBMIT_RELEASE" || ! -f "$SUBMIT_RELEASE" ]]; then
   fail "  submit: no RELEASE.json found (looked in \$CAT_PATH and $APP_DIR) — run the ceremony (Step 3) first"
 elif [[ -z "$SUBMIT_METADATA" || ! -f "$SUBMIT_METADATA" ]]; then
   fail "  submit: no metadata.json found (looked in \$CAT_PATH and $APP_DIR) — it is bound into the on-chain appHash"
+elif [[ -z "$SUBMIT_RUNTIME_CONTRACT" || ! -f "$SUBMIT_RUNTIME_CONTRACT" ]]; then
+  fail "  submit: no RUNTIME-CONTRACT.json found (looked in \$CAT_PATH and $APP_DIR) — every new Bazaar publish requires one"
 elif [[ -z "$SPK_FOR_REL" || ! -f "$SPK_FOR_REL" ]]; then
   fail "  submit: no SPK found — run make pack (Step 2) first"
 else
@@ -446,12 +460,52 @@ else
   : "${MELUSINA_STORE_PUBKEY:?MELUSINA_STORE_PUBKEY required (sidecar operator identity.Public JSON)}"
   : "${MELUSINA_STORE_LICENSE_MINT:?MELUSINA_STORE_LICENSE_MINT required (store operator license_nft_mint, base58)}"
   : "${MELUSINA_STORE_RPC_URL:?MELUSINA_STORE_RPC_URL required (Solana JSON-RPC for receipt verification)}"
+
+  # Bind the exact contract after Pearl finalization. This mutation is atomic
+  # and happens before the submit client signs the publisher envelope. The
+  # author/Squads releaseHash remains sha256(appHash + version + nonce); the
+  # envelope body hash binds this augmented RELEASE.json byte-for-byte.
+  if $DRY_RUN; then
+    info "  DRY RUN — would bind $SUBMIT_RUNTIME_CONTRACT into $SUBMIT_RELEASE"
+  else
+    python3 - "$SUBMIT_RELEASE" "$SUBMIT_RUNTIME_CONTRACT" <<'PY'
+import hashlib, json, os, sys, tempfile
+
+release_path, contract_path = sys.argv[1:3]
+with open(contract_path, "rb") as fh:
+    contract_hash = hashlib.sha256(fh.read()).hexdigest()
+with open(release_path, "r", encoding="utf-8") as fh:
+    release = json.load(fh)
+release["runtimeContractSchema"] = "melusina-app-runtime-contract-v1"
+release["runtimeContractSha256"] = contract_hash
+directory = os.path.dirname(os.path.abspath(release_path))
+fd, temporary = tempfile.mkstemp(prefix=".RELEASE.json.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(release, fh, indent=2)
+        fh.write("\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(temporary, release_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+    python3 "$STATIC_STORE_ROOT/scripts/validate-runtime-contract.py" \
+      --contract "$SUBMIT_RUNTIME_CONTRACT" \
+      --spk "$SPK_FOR_REL" \
+      --metadata "$SUBMIT_METADATA" \
+      --release "$SUBMIT_RELEASE" \
+      || fail "  runtime contract does not match the finalized release artifacts"
+  fi
+
   info "  POST $MELUSINA_STORE_URL/publish (single writer; NO force-push)"
   SUBMIT_ARGS=(
     --store "$MELUSINA_STORE_URL"
     --spk "$SPK_FOR_REL"
     --metadata "$SUBMIT_METADATA"
     --release "$SUBMIT_RELEASE"
+    --runtime-contract "$SUBMIT_RUNTIME_CONTRACT"
     --publisher-key "$MELUSINA_PUBLISHER_KEY"
     --store-pubkey "$MELUSINA_STORE_PUBKEY"
     --license-mint "$MELUSINA_STORE_LICENSE_MINT"

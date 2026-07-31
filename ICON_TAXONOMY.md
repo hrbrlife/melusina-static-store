@@ -34,6 +34,7 @@ Every Melusina app icon uses one of eight category tiles. The **background hex**
 | DueProcess | Identity | `#A6C8F5` | `#355FA5` |
 | Fineract Setup | Finance | `#BDEBCD` | `#35A56A` |
 | GoldKey | Crypto | `#F5D47A` | `#B88616` |
+| GoldKey DEV | Crypto | `#F5D47A` | `#B88616` |
 | InstaCo.app | Identity | `#A6C8F5` | `#355FA5` |
 | Melusina OpenClaw | AI | `#D4A6F5` | `#6E35A5` |
 | MerMail | Communications | `#F5A6C8` | `#A5355F` |

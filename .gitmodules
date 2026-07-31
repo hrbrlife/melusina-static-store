@@ -91,3 +91,7 @@
 	path = packages/hrbrlife/GoldKey
 	url = https://github.com/hrbrlife/GoldKey.git
 	branch = publish
+[submodule "packages/hrbrlife/GoldKey-dev"]
+	path = packages/hrbrlife/GoldKey-dev
+	url = https://github.com/hrbrlife/GoldKey.git
+	branch = publish

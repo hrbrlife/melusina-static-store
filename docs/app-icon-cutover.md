@@ -18,10 +18,12 @@ shipped separately:
    icon from its published `.spk` and commits them as `public/icons/app/<appId>.<ext>`
    plus `src/app-icons.json`. `AppIcon` resolves that map. Works for all 34 apps
    today, but a newly published app has no icon until the script is re-run.
-2. **Built, not deployed** (`37618da`, release `1.0.13`) — `projectCatalogIndex`
+2. **Deployed 2026-07-31** (`37618da`, release `1.0.13`) — `projectCatalogIndex`
    extracts the same icon through the same `internal/spkicon` library at publish
    time, records `imageId`, and writes `images/<imageId>` into the generation.
-   Self-maintaining, and it backfills rows published before the change.
+   Self-maintaining, and it backfills rows published before the change. The
+   binary is live; the generation gains `images/` when it next composes one,
+   which happens on the next app publish.
 
 Both read the same authoritative bytes through one extractor. Path 1 is a
 build-time snapshot of what path 2 does continuously.
@@ -38,36 +40,58 @@ ce66ea2c6ea2ac8c47a8e5906ee9a1505fb98ee90df0383de69b59877a64ebf0  boot-identity-
 
 Artifact kept at `/home/user/Desktop/store-generation-1.0.13`.
 
-## Deploy, in order
+## How 1.0.13 was deployed (2026-07-31)
 
-Per `runbooks/HOW_TO_UPDATE_SHELL_AND_SIDECARS.md` §3. The boot gate compares the
-on-disk ELF sha against the on-chain Active `SidecarIdentityEntry.binary_hash`,
-and it runs **once at boot** — so the running 1.0.12 process is safe until it
-restarts. The brick moment is a restart while those differ.
+Per `runbooks/HOW_TO_UPDATE_SHELL_AND_SIDECARS.md` §3, with one correction the
+runbook does not make: it prescribes **three** re-pins, but the store needs
+**two**.
 
-1. Publish `1.0.13` as an `InstallerReleaseEntry` (`cmd/submit-installer`). The
-   sanctioned apply helper requires that receipt; it will not take a hand-staged
-   ELF.
-2. Three ordered Squads v4 re-pins of `572143da…`, all before any restart:
-   **Global** (`update_global_sidecar_binary_hash`, 3-of-4 Core-App-Team,
-   multisig `4sPNmdcS` / vault `3jfN9rcS`) → **Local**
-   (`update_local_sidecar_binary_hash`, OWNER 2-of-2, needs an active Foundation
-   approval for the new sha) → **Identity** (`update_sidecar_identity`, same
-   OWNER multisig, must follow Local).
-3. Verify all three PDAs hold the new sha and the old sha is gone.
-4. Arm the reverse ceremony **before** restarting. Rolling back the ELF alone
-   does not work: once the chain names `572143da…`, the old binary fails the same
-   boot gate. Rollback is another three-write ceremony, so stage it first.
-5. Apply via `cmd/apply-store-update prepare-store-update` — never `cp` +
-   `systemctl`; that side-load bricked the box on 2026-07-13.
-6. Restart. The journal must show identity bound and `/publish enabled`, with no
-   "legacy static recovery / publishes disabled" line.
-7. Regenerate the DesiredGeneration (§4). A redeploy can leave
-   `/update/generation.json` stale while the index looks complete, and every
-   absent app then fails install with `generation-app-component-missing` [403].
+The store's boot gate is `SidecarIdentityEntry.binary_hash` only —
+`boot_identity.go` never calls `binhash.AttestSelfHashWith`, and mentions
+`GlobalSidecarApproval` solely to say the identity check is its analogue. The
+Local PDA (`9NjQULhN…`) exists with its `binary_hash` unset, and an unset-but-
+present Local pin passes, so `update_local_sidecar_binary_hash` was not needed.
+The executed 1.0.11 ceremony did the same two writes.
 
-Deploying alone changes nothing users can see — icons already render. The gain is
-that publishes stop depending on a script anyone can forget.
+Order actually run — reverse instructions for **both** writes were emitted first,
+so rollback was armed before any chain write:
+
+1. **Global** `update_global_sidecar_binary_hash` → Core-App-Team multisig
+   `4sPNmdcS` / vault `3jfN9rcS`, 3 approvals, tx index 1436
+   (`2XTrtirm5Su6RrPupQRVTEs6…`).
+2. **Identity** `update_sidecar_identity` → OWNER multisig `DeHGGjbK` / vault
+   `FQFAyzgr`, 2 approvals, tx index 364 (`PMFfqmioLYTBrAT1zN6b3qU7…`).
+3. Verified both PDAs hold `572143da…` and `6319d2f1…` is gone.
+4. Installed per the DEPLOYMENT-CONTRACT: archive sha verified, extracted to
+   `/opt/melusina-store/releases/1.0.13-2de8c53f…`, extracted ELF sha checked
+   against the on-chain pin, bundled unit confirmed byte-identical to the running
+   one, `current` repointed atomically, then restart.
+
+Instructions, execute logs, and both reverse instructions are in
+`Melusina/deployer/state/tenants/melusina-os.org/release-inputs-1.0.13-app-icons/`.
+
+Two things worth knowing for next time:
+
+- `melusina-solana.py` reports `Squads vault … holds no token account for master
+  NFT` when its RPC call merely *fails* — the lookup swallows the exception and
+  returns None. The vault did hold the NFT; the default public devnet endpoint
+  was the problem. Export `SOLANA_RPC_URL` at the Helius endpoint before emitting.
+- `squads-vault-exec.js` resolves relative `--member` paths against
+  `TEST_WALLETS_DIR`. Pass absolute paths.
+
+Result: `1.0.13 starting`, `boot identity: operator 4J2hbufi… bound to on-chain
+SidecarIdentityEntry (Active) — /publish enabled`, no "legacy static recovery"
+line, catalog intact at 34 apps, DesiredGeneration still id 43 with all 34
+components (checked, not assumed — §4 says a redeploy can silently strand it).
+
+The service restarted once during boot on a pre-existing `SPK bytes differ from
+exact staged candidate` recovery error. That is **not** from this change: the same
+error first appears in the journal on 2026-07-29 under 1.0.12 and has fired five
+times in seven days. It self-resolves on the automatic restart, as it did here.
+
+`validateCatalogTree` tolerating an absent `images/` is what let this binary
+resolve the live pre-images generation at all — without it the store would not
+have started.
 
 ## Then cut over
 

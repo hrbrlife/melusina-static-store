@@ -77,7 +77,10 @@ DRY_RUN=false
 REVOKE_STALE=false
 STORE_URL="${MELUSINA_STORE_URL:-https://bazaar.melusina-os.org}"
 STORE_DOMAIN="${MELUSINA_STORE_DOMAIN:-bazaar.melusina-os.org}"
-STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN}"
+# Bazaar's active v2 boot identity is registered under this operator license.
+# Keep this in lockstep with cmd/keygen store-pubkey so the default self-publish
+# envelope and receipt verifier target the same on-chain operator.
+STORE_LICENSE_MINT="${MELUSINA_STORE_LICENSE_MINT:-9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J}"
 # The core-app-team Squads vault's master-NFT ATA — constant across every app
 # (all apps share master mint B7Bby… + vault 3jfN9rc…, so the ATA is fixed).
 # revoke_release_entry's authority-owns-master constraint keys on it.

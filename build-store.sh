@@ -41,6 +41,8 @@ RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
 BASE_URL="https://hrbrlife.github.io/melusina-static-store"
+RUNTIME_CONTRACT_VALIDATOR="$SCRIPT_DIR/scripts/validate-runtime-contract.py"
+RUNTIME_CONTRACT_SCHEMA="$SCRIPT_DIR/schemas/melusina-app-runtime-contract-v1.schema.json"
 
 # --- Attestation integrity gates (kill-list K03/K13/K14/K16) -----------------
 # Fail-closed by default: the store refuses to publish forged/offline-stub
@@ -350,6 +352,68 @@ print('' if ok else 'metadata.version=%s marketingVersion=%s RELEASE.version=%s'
   return $errors
 }
 
+# A runtime contract is mandatory for every NEW /publish (the Go sidecar
+# rejects one without it). Historical package slots predate that gate, so the
+# assembler does not erase them or pretend they passed: a missing contract is
+# carried into apps/index.json as runtimeContract.status="uncertified". A
+# present contract, however, is never best-effort — it must bind its exact SPK
+# and the RELEASE.json envelope claim or the app is excluded from this build.
+validate_runtime_contract() {
+  local meta_file="$1"
+  local app_dir="$2"
+  local contract_file="$app_dir/RUNTIME-CONTRACT.json"
+  local rel_file="$app_dir/RELEASE.json"
+  local claim_state
+
+  claim_state="$(python3 - "$rel_file" <<'PY' 2>/dev/null
+import json, sys
+try:
+    rel = json.load(open(sys.argv[1]))
+except Exception:
+    print('invalid')
+    raise SystemExit(0)
+h = str(rel.get('runtimeContractSha256', '') or '').strip()
+s = str(rel.get('runtimeContractSchema', '') or '').strip()
+if not h and not s:
+    print('absent')
+elif h and s:
+    print('bound')
+else:
+    print('partial')
+PY
+)"
+
+  case "$claim_state" in
+    absent)
+      if [[ -f "$contract_file" ]]; then
+        fail "$app_dir: RUNTIME-CONTRACT.json is present but RELEASE.json does not bind it (runtimeContractSha256 + runtimeContractSchema required)"
+        return 1
+      fi
+      # Real legacy entry: allowed through only as explicitly uncertified.
+      return 0
+      ;;
+    bound)
+      if [[ ! -f "$contract_file" ]]; then
+        fail "$app_dir: RELEASE.json binds a runtime contract but RUNTIME-CONTRACT.json is missing"
+        return 1
+      fi
+      if [[ ! -f "$RUNTIME_CONTRACT_VALIDATOR" ]]; then
+        fail "$app_dir: runtime-contract validator missing at $RUNTIME_CONTRACT_VALIDATOR"
+        return 1
+      fi
+      if ! python3 "$RUNTIME_CONTRACT_VALIDATOR" --contract "$contract_file" --spk "$app_dir/app.spk" --metadata "$meta_file" --release "$rel_file"; then
+        fail "$app_dir: invalid release-bound runtime contract"
+        return 1
+      fi
+      return 0
+      ;;
+    *)
+      fail "$app_dir: RELEASE.json has a partial or invalid runtime-contract claim"
+      return 1
+      ;;
+  esac
+}
+
 validate_metadata() {
   local meta_file="$1"
   local app_dir="$2"
@@ -423,6 +487,10 @@ for f in ['name']:
   fi
 
   if ! validate_release_attestation "$meta_file" "$app_dir"; then
+    ((errors++)) || true
+  fi
+
+  if ! validate_runtime_contract "$meta_file" "$app_dir"; then
     ((errors++)) || true
   fi
 
@@ -581,6 +649,37 @@ m['attest'] = {
     'quorumPolicy': release.get('quorumPolicy', {}),
 }
 
+# Runtime contract status is deliberately three-valued:
+#   * declared: this exact release carries a schema-valid contract bound by
+#     RELEASE.json -> raw contract SHA -> app.spk SHA. It is still NOT a real
+#     launch/function pass; the post-install visible UI run supplies that.
+#   * uncertified: a historical release predates the contract gate.
+# No legacy card is silently shown as contracted/verified just because it has
+# old capabilities metadata.
+contract_path = os.path.join(os.path.dirname(meta_file), 'RUNTIME-CONTRACT.json')
+if os.path.isfile(contract_path):
+    with open(contract_path, 'rb') as f:
+        contract_raw = f.read()
+    contract = json.loads(contract_raw)
+    sidecars = []
+    for s in contract.get('sidecars', []):
+        if isinstance(s, dict):
+            sidecars.append({k: s.get(k) for k in ('id', 'host', 'port', 'transport')})
+    m['runtimeContract'] = {
+        'status': 'declared',
+        'schema': contract.get('schema', ''),
+        'sha256': __import__('hashlib').sha256(contract_raw).hexdigest(),
+        'spkSha256': (contract.get('app') or {}).get('spkSha256', ''),
+        'appHash': (contract.get('app') or {}).get('appHash', ''),
+        'path': 'attest/%s/RUNTIME-CONTRACT.json' % m.get('appId', ''),
+        'sidecars': sidecars,
+    }
+else:
+    m['runtimeContract'] = {
+        'status': 'uncertified',
+        'reason': 'This legacy release predates the release-bound runtime-contract gate.',
+    }
+
 # Capabilities — per-app structured profile (8 axes per pearl). Optional
 # during the rollout; once every app ships a capabilities.json the catalog
 # UI populates the Grapple & Sidecars / Encryption / Roles / Blockchains /
@@ -717,7 +816,7 @@ _stage_cleanup() {
 trap _stage_cleanup EXIT
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures" "$OUTPUT_DIR/schemas"
 
 # Copy Vite build output
 if [[ -d "dist" ]]; then
@@ -739,6 +838,15 @@ fi
 # Copy verifier
 if [[ -f "$VERIFIER_SRC/index.html" ]]; then
   cp "$VERIFIER_SRC/index.html" "$OUTPUT_DIR/verifier/index.html"
+fi
+
+# Publish the exact schema that the sidecar and assembler enforce. This keeps
+# a contract's $schema URL resolvable from the same Bazaar release surface.
+if [[ -f "$RUNTIME_CONTRACT_SCHEMA" ]]; then
+  cp "$RUNTIME_CONTRACT_SCHEMA" "$OUTPUT_DIR/schemas/"
+else
+  fail "Runtime-contract schema missing at $RUNTIME_CONTRACT_SCHEMA"
+  exit 1
 fi
 
 # .nojekyll
@@ -817,6 +925,9 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       cp "$meta_file" "$OUTPUT_DIR/signatures/$app_id_sig/metadata.json"
       mkdir -p "$ATTEST_OUT/$app_id_sig"
       cp "$app_dir/RELEASE.json" "$ATTEST_OUT/$app_id_sig/RELEASE.json"
+      if [[ -f "$app_dir/RUNTIME-CONTRACT.json" ]]; then
+        cp "$app_dir/RUNTIME-CONTRACT.json" "$ATTEST_OUT/$app_id_sig/RUNTIME-CONTRACT.json"
+      fi
     done
   done
 done
@@ -958,6 +1069,69 @@ if mismatches:
         print(f'    ... +{len(mismatches)-20} more', file=sys.stderr)
     sys.exit(1)
 print(f'  OK: attest subset matches /attest tree across {checked} apps ({len(duplicate_ids)} duplicate-appIds warned)')
+PY
+
+# --- Step 5b.1: Runtime-contract status assertion --------------------------
+# A declared contract must remain byte-bound after the aggregate/copy step.
+# A legacy app may remain visible, but only under an explicit uncertified status;
+# no missing file or malformed partial claim may be silently represented as a
+# functional acceptance pass.
+info "Asserting runtime-contract status matches the attest tree..."
+python3 - "$APPS_OUT/index.json" "$ATTEST_OUT" <<'PY'
+import hashlib, json, os, sys
+
+index_path, attest_root = sys.argv[1], sys.argv[2]
+index = json.load(open(index_path))
+errors = []
+declared = 0
+uncertified = 0
+for app in index.get('apps', []):
+    app_id = app.get('appId', '')
+    rc = app.get('runtimeContract')
+    if not isinstance(rc, dict):
+        errors.append(f'{app_id or app.get("name", "?")}: runtimeContract status absent')
+        continue
+    status = rc.get('status')
+    contract_path = os.path.join(attest_root, app_id, 'RUNTIME-CONTRACT.json')
+    release_path = os.path.join(attest_root, app_id, 'RELEASE.json')
+    try:
+        release = json.load(open(release_path))
+    except Exception as exc:
+        errors.append(f'{app_id}: cannot read RELEASE.json for runtime-contract assertion: {exc}')
+        continue
+    claimed_hash = str(release.get('runtimeContractSha256', '') or '')
+    claimed_schema = str(release.get('runtimeContractSchema', '') or '')
+    if status == 'declared':
+        declared += 1
+        if not os.path.isfile(contract_path):
+            errors.append(f'{app_id}: index says declared but RUNTIME-CONTRACT.json is missing')
+            continue
+        raw = open(contract_path, 'rb').read()
+        actual_hash = hashlib.sha256(raw).hexdigest()
+        if rc.get('sha256') != actual_hash or claimed_hash != actual_hash:
+            errors.append(f'{app_id}: declared contract SHA drift (index/release/file differ)')
+        try:
+            contract = json.loads(raw)
+        except Exception as exc:
+            errors.append(f'{app_id}: declared contract is invalid JSON after copy: {exc}')
+            continue
+        if rc.get('schema') != contract.get('schema') or claimed_schema != contract.get('schema'):
+            errors.append(f'{app_id}: declared contract schema drift (index/release/file differ)')
+    elif status == 'uncertified':
+        uncertified += 1
+        if os.path.isfile(contract_path) or claimed_hash or claimed_schema:
+            errors.append(f'{app_id}: legacy uncertified status conflicts with a copied or claimed runtime contract')
+    else:
+        errors.append(f'{app_id}: invalid runtimeContract.status {status!r}')
+
+if errors:
+    print(f'  FAIL: {len(errors)} runtime-contract catalog drift entries:', file=sys.stderr)
+    for error in errors[:20]:
+        print('    ' + error, file=sys.stderr)
+    if len(errors) > 20:
+        print(f'    ... +{len(errors)-20} more', file=sys.stderr)
+    sys.exit(1)
+print(f'  OK: {declared} declared contracts; {uncertified} explicit legacy uncertified entries')
 PY
 
 # --- Step 5c: metadata.packageId vs sha256(app.spk)[:32] assertion -----------

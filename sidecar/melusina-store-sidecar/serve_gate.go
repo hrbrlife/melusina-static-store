@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 // ── SERVE-TIME on-chain gate (B1-01; canon §5b) ───────────────────────────────
@@ -72,8 +73,9 @@ type serveGate struct {
 // SPK: its on-chain-anchored RELEASE.json claim and the EXACT metadata.json bytes
 // the on-chain AppHash binds (both are part of the catalog the operator serves).
 type servedApp struct {
-	rel      ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
-	metadata []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	rel                   ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
+	metadata              []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	runtimeContractStatus string      // declared (bound) or uncertified (legacy release)
 }
 
 // errServeNoChainReader marks the fail-closed "no chain configured" condition,
@@ -187,6 +189,10 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
 	w.Header().Set("X-Store-AppHash", appHash)
+	// This header never turns a declared contract into a pass: it only says the
+	// immutable release carries a contract. A separate visible-UI acceptance run
+	// must record the real functional result before the app can be certified.
+	w.Header().Set("X-Melusina-Runtime-Contract", app.runtimeContractStatus)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, base, st.ModTime(), f)
 }
@@ -391,7 +397,27 @@ func (g *serveGate) rebuildAppIndex() {
 				if err != nil {
 					continue
 				}
-				idx[pkgID] = servedApp{rel: rel, metadata: meta}
+				binding := runtimecontract.Binding{
+					Metadata:              meta,
+					AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+					Version:               rel.Version,
+					ReleaseContractSHA256: rel.RuntimeContractSHA256,
+					ReleaseContractSchema: rel.RuntimeContractSchema,
+				}
+				status := "uncertified" // pre-gate release; visible in the catalog too.
+				if runtimecontract.RequiresContract(binding) {
+					raw, err := os.ReadFile(filepath.Join(g.distDir, "attest", appID, "RUNTIME-CONTRACT.json"))
+					if err != nil {
+						// A release that claims a contract must carry the exact bound
+						// artifact. Do not degrade a malformed new release to legacy.
+						continue
+					}
+					if _, err := runtimecontract.ValidateClaim(raw, binding); err != nil {
+						continue
+					}
+					status = "declared"
+				}
+				idx[pkgID] = servedApp{rel: rel, metadata: meta, runtimeContractStatus: status}
 			}
 		}
 	}

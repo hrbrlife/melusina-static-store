@@ -94,6 +94,26 @@ const installUrl = (host, app) => {
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 
+// A runtime contract is a release-bound *test plan*, not evidence that the
+// test has run. Keep that distinction visible: older cards are explicitly
+// uncertified, while newer cards still need their post-install visible UI and
+// sidecar probes recorded before anyone may call them launch-ready.
+const runtimeContractInfo = (app) => {
+  const rc = app?.runtimeContract;
+  if (rc?.status === "declared") {
+    return {
+      label: "runtime proof pending",
+      detail: "This release declares its visible launch and sidecar checks; the real post-install proof is still required.",
+      color: T.yellow,
+    };
+  }
+  return {
+    label: "runtime uncertified",
+    detail: rc?.reason || "This legacy release predates the release-bound runtime-contract gate.",
+    color: T.magenta,
+  };
+};
+
 /* ─── pbay.app jurisdiction servers ──────────────────────────────────────────────── */
 
 const PBAY_SERVERS = [
@@ -1101,6 +1121,7 @@ function AppCard({ app, onSelect, onInstall }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
   const updatedAgo = timeAgo(app.updatedAt || app.createdAt);
+  const runtime = runtimeContractInfo(app);
 
   return (
     <div role="button" tabIndex={0}
@@ -1178,6 +1199,7 @@ function AppCard({ app, onSelect, onInstall }) {
         }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
             {(app.categories || []).slice(0, 2).map((c) => <Badge key={c}>{c}</Badge>)}
+            <span title={runtime.detail}><Badge neon={runtime.color}>{runtime.label}</Badge></span>
             {getConnectivityBadges(app.appId).map((b, i) => (
               <Badge key={`conn-${i}`} neon={b.color === 'yellow' ? T.yellow : T.magenta}>{b.icon} {b.short}</Badge>
             ))}

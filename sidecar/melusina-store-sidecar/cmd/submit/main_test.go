@@ -981,6 +981,7 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 	required := []string{
 		"--store", "https://store.example", "--spk", "app.spk",
 		"--metadata", "metadata.json", "--release", "RELEASE.json",
+		"--runtime-contract", "RUNTIME-CONTRACT.json",
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
 	}

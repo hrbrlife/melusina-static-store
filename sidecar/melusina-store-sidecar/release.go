@@ -24,6 +24,17 @@ type ReleaseJSON struct {
 	AuthorSig          string       `json:"authorSig"`          // base58 ed25519 sig (chain-verified at register)
 	QuorumPolicy       QuorumPolicy `json:"quorumPolicy"`
 	ReleaseNonce       string       `json:"releaseNonce"`
+	// RuntimeContractSHA256 binds the raw RUNTIME-CONTRACT.json bytes to this
+	// RELEASE.json.  RELEASE.json is the publisher-envelope Body, so future
+	// publishes cryptographically bind an app's visible runtime test contract to
+	// the same publisher request that carries the on-chain-attested SPK.
+	//
+	// Both fields are deliberately optional at the struct level: historical
+	// RELEASE.json files predate the runtime-contract gate and remain visible as
+	// explicitly *uncertified* catalog entries.  A new POST /publish requires
+	// both fields and the matching contract; a half-populated pair fails closed.
+	RuntimeContractSHA256 string `json:"runtimeContractSha256,omitempty"`
+	RuntimeContractSchema string `json:"runtimeContractSchema,omitempty"`
 }
 
 // QuorumPolicy records the multisig that co-signed the release at origination.

@@ -103,9 +103,12 @@ func resolveAppSlot(catalogRoot, appID string, hint slotHint) (string, error) {
 }
 
 // persistPublishedApp writes the gate-verified {app.spk, RELEASE.json,
-// metadata.json} into the slot, each file atomically (temp+rename, the same
-// pattern as the installer artifact path).
-func persistPublishedApp(slotDir string, spk, release, metadata []byte) error {
+// metadata.json, RUNTIME-CONTRACT.json} into the slot, each file atomically
+// (temp+rename, the same pattern as the installer artifact path).  The runtime
+// contract has already passed its RELEASE.json + SPK binding check; persisting
+// it beside the exact app bytes lets the assembler expose the same immutable
+// declaration under /attest/<appId>/ for later UI acceptance.
+func persistPublishedApp(slotDir string, spk, release, metadata, runtimeContract []byte) error {
 	if err := os.MkdirAll(slotDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", slotDir, err)
 	}
@@ -116,6 +119,7 @@ func persistPublishedApp(slotDir string, spk, release, metadata []byte) error {
 		{"app.spk", spk},
 		{"RELEASE.json", release},
 		{"metadata.json", metadata},
+		{"RUNTIME-CONTRACT.json", runtimeContract},
 	} {
 		if err := atomicWriteInto(slotDir, f.name, f.data); err != nil {
 			return err

@@ -60,6 +60,9 @@ func writeServeFixture(t *testing.T, distDir string, f publishFixture) string {
 	if err := os.WriteFile(filepath.Join(attDir, "RELEASE.json"), relBytes, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(attDir, "RUNTIME-CONTRACT.json"), f.runtimeContract, 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	sigDir := filepath.Join(distDir, "signatures", appID)
 	if err := os.MkdirAll(sigDir, 0o755); err != nil {
@@ -133,6 +136,51 @@ func TestServeGate_Active(t *testing.T) {
 	}
 	if got := w.Header().Get("X-Store-AppHash"); got != strings.ToLower(f.rel.AppHash) {
 		t.Fatalf("X-Store-AppHash=%q, want recomputed tree-hash %q", got, f.rel.AppHash)
+	}
+	if got := w.Header().Get("X-Melusina-Runtime-Contract"); got != "declared" {
+		t.Fatalf("runtime-contract header=%q, want declared", got)
+	}
+}
+
+func TestServeGate_LegacyReleaseIsExplicitlyUncertified(t *testing.T) {
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+	appID := "app-" + base[:8]
+
+	// Simulate a genuine pre-runtime-contract release. It stays installable (its
+	// active ReleaseEntry is still the byte authority), but it must never be
+	// silently represented as contracted or certified.
+	f.rel.RuntimeContractSHA256 = ""
+	f.rel.RuntimeContractSchema = ""
+	relBytes, err := json.Marshal(f.rel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "attest", appID, "RELEASE.json"), relBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	g.releaseRefresh = 0
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusOK {
+		t.Fatalf("legacy release should retain the normal on-chain serve gate: %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("X-Melusina-Runtime-Contract"); got != "uncertified" {
+		t.Fatalf("legacy runtime-contract header=%q, want uncertified", got)
+	}
+}
+
+func TestServeGate_ClaimedRuntimeContractCannotBeMissingOrTampered(t *testing.T) {
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+	appID := "app-" + base[:8]
+	contractPath := filepath.Join(cfg.DistDir, "attest", appID, "RUNTIME-CONTRACT.json")
+	if err := os.WriteFile(contractPath, []byte(`{"schema":"tampered"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	g.releaseRefresh = 0
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "check=release_provenance") {
+		t.Fatalf("claimed/tampered contract must remove the served app from the resolve index, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -277,7 +325,7 @@ func TestServeGate_TamperedMetadataRefused(t *testing.T) {
 
 	appID := "app-" + base[:8]
 	metaPath := filepath.Join(cfg.DistDir, "signatures", appID, "metadata.json")
-	if err := os.WriteFile(metaPath, []byte(`{"appTitle":"TAMPERED"}`), 0o644); err != nil {
+	if err := os.WriteFile(metaPath, []byte(`{"appTitle":"TAMPERED","appId":"testapp0000000000000000000000000000000000000000000000"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// Force an index rebuild so the tampered metadata is picked up.

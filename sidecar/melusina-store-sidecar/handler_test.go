@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -103,20 +104,36 @@ func acceptPublisherOf(svc *publishService, sig envelope.Signed) {
 	svc.cfg.Policy.AcceptPublishers = []string{sig.Payload.Source.SignPubkeyB58}
 }
 
-// jsonPublishBody assembles the JSON wire form for POST /publish.
-func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk, metadata []byte) *bytes.Buffer {
+// jsonPublishBody assembles the JSON wire form for POST /publish.  The normal
+// fixture path supplies a valid release-bound runtime contract; a caller may
+// pass one explicit value (including nil) to test the runtime-contract gate.
+func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk, metadata []byte, runtimeOverride ...[]byte) *bytes.Buffer {
 	t.Helper()
+	runtimeContract := runtimeContractForTest(t, spk, metadata, mustReleaseJSON(t, release))
+	if len(runtimeOverride) != 0 {
+		runtimeContract = runtimeOverride[0]
+	}
 	req := publishRequest{
-		Envelope:    sig,
-		ReleaseB64:  b64(release),
-		SPKB64:      b64(spk),
-		MetadataB64: b64(metadata),
+		Envelope:           sig,
+		ReleaseB64:         b64(release),
+		SPKB64:             b64(spk),
+		MetadataB64:        b64(metadata),
+		RuntimeContractB64: b64(runtimeContract),
 	}
 	b, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return bytes.NewBuffer(b)
+}
+
+func mustReleaseJSON(t *testing.T, raw []byte) ReleaseJSON {
+	t.Helper()
+	var rel ReleaseJSON
+	if err := json.Unmarshal(raw, &rel); err != nil {
+		t.Fatalf("parse release fixture: %v", err)
+	}
+	return rel
 }
 
 func b64(b []byte) string {
@@ -201,6 +218,62 @@ func TestHandlePublish_Accept(t *testing.T) {
 	}
 	if rc.OperatorSignature == "" {
 		t.Error("receipt missing operator signature")
+	}
+}
+
+func TestHandlePublish_RequiresReleaseBoundRuntimeContract(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	svc := newTestService(t, cfg, m, op)
+
+	release := mustJSON(t, f.rel)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	sig := signPublish(t, pub, op.Public(), f.spk, release)
+	acceptPublisherOf(svc, sig)
+
+	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata, nil))
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "runtime contract is empty") {
+		t.Fatalf("missing runtime contract must be rejected before persistence, got %d: %s", w.Code, w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(cfg.CatalogRepoRoot, "packages", "hrbrlife", "test-repo", "test-app", "RUNTIME-CONTRACT.json")); !os.IsNotExist(err) {
+		t.Fatalf("missing-contract publish must not persist a contract artifact: %v", err)
+	}
+}
+
+func TestParsePublishBody_MultipartMissingRuntimeContractDefersToGate(t *testing.T) {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	for name, data := range map[string][]byte{
+		"envelope": []byte(`{}`),
+		"release":  []byte(`{}`),
+		"spk":      []byte("test spk"),
+		"metadata": []byte(`{"appId":"abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwxyz23"}`),
+	} {
+		part, err := mw.CreateFormFile(name, name+".json")
+		if err != nil {
+			t.Fatalf("create %s part: %v", name, err)
+		}
+		if _, err := part.Write(data); err != nil {
+			t.Fatalf("write %s part: %v", name, err)
+		}
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodPost, "/publish", &body)
+	r.Header.Set("Content-Type", mw.FormDataContentType())
+	_, _, _, _, runtimeContract, _, err := parsePublishBody(r)
+	if err != nil {
+		t.Fatalf("missing multipart contract should reach the runtime-contract gate, got parse error: %v", err)
+	}
+	if len(runtimeContract) != 0 {
+		t.Fatalf("missing multipart contract yielded %d bytes", len(runtimeContract))
 	}
 }
 

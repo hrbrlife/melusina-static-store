@@ -70,14 +70,18 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return doPublisher(fs.Arg(0), *licenseMint, *domain, *programID, *chainID, *pearlIDHash, *label, stdout)
 	case "store-pubkey":
 		fs := flag.NewFlagSet("store-pubkey", flag.ContinueOnError)
-		signPubkeyB58 := fs.String("sign-pubkey-b58", "HgE1Xm4MHuRC5qcDJ8KMP5PwyWXzi8cqi5NW6XQ4FJVz", "store operator signing_pubkey_b58 (from the on-chain SidecarIdentityEntry / register-sidecar ceremony record)")
-		boxPubkeyB58 := fs.String("box-pubkey-b58", "EakrLPifYEKko6p8DtMPqFpbfiM8wMtvraJSpqm2Ehry", "store operator encryption_pubkey_b58")
-		licenseMint := fs.String("license-mint", "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN", "store operator license_nft_mint")
+		// The production Bazaar operator is the v2 boot identity under the
+		// melusina-os.org license. Keep these defaults aligned with the active
+		// on-chain SidecarIdentityEntry so a normal publish cannot seal to the
+		// retired dev.paype.cc identity.
+		signPubkeyB58 := fs.String("sign-pubkey-b58", "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV", "store operator signing_pubkey_b58 (from the active on-chain SidecarIdentityEntry)")
+		boxPubkeyB58 := fs.String("box-pubkey-b58", "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5", "store operator encryption_pubkey_b58")
+		licenseMint := fs.String("license-mint", "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J", "store operator license_nft_mint")
 		domain := fs.String("domain", "bazaar.melusina-os.org", "store serving domain")
 		programID := fs.String("program-id", "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "license-registry program id")
 		chainID := fs.String("chain-id", "solana:devnet", "chain id")
-		pda := fs.String("pda", "GPAHfx1kuVNRhHy3jycaaTH9Ed2EHrKCC5LfGtoCSBzA", "SidecarIdentityEntry PDA base58")
-		sidecarID := fs.String("sidecar-id", "melusina-os-root-store", "store sidecar_id")
+		pda := fs.String("pda", "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6", "active SidecarIdentityEntry PDA base58")
+		sidecarID := fs.String("sidecar-id", "melusina-os-root-store-v2", "active store sidecar_id")
 		keyVersion := fs.Uint("key-version", 1, "SidecarIdentityEntry key_version")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err

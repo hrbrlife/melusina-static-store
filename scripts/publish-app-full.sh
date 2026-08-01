@@ -461,6 +461,73 @@ else
   : "${MELUSINA_STORE_LICENSE_MINT:?MELUSINA_STORE_LICENSE_MINT required (store operator license_nft_mint, base58)}"
   : "${MELUSINA_STORE_RPC_URL:?MELUSINA_STORE_RPC_URL required (Solana JSON-RPC for receipt verification)}"
 
+  # Resolve the contract's OWN release binding first. A contract is authored
+  # before the package exists, so app.spkSha256 / app.appHash / app.version
+  # cannot be known at authoring time and are written as the literal
+  # "PENDING_BUILD". Fill them here, from the artifacts that now exist: the
+  # built SPK and the Pearl-finalized RELEASE.json. Doing it in the publish
+  # path (rather than by hand) is what keeps a digest from ever being typed by
+  # a human — validate-runtime-contract.py below re-derives all three
+  # independently and fails the publish if any disagrees.
+  #
+  # Order matters: this MUST run before the sha256(contract) binding below,
+  # because that hash covers these bytes.
+  if $DRY_RUN; then
+    info "  DRY RUN — would resolve PENDING_BUILD in $SUBMIT_RUNTIME_CONTRACT"
+  else
+    python3 - "$SUBMIT_RUNTIME_CONTRACT" "$SUBMIT_RELEASE" "$SPK_FOR_REL" <<'PY'
+import hashlib, json, os, sys, tempfile
+
+contract_path, release_path, spk_path = sys.argv[1:4]
+
+with open(release_path, "r", encoding="utf-8") as fh:
+    release = json.load(fh)
+digest = hashlib.sha256()
+with open(spk_path, "rb") as fh:
+    for chunk in iter(lambda: fh.read(1 << 20), b""):
+        digest.update(chunk)
+spk_sha256 = digest.hexdigest()
+
+with open(contract_path, "r", encoding="utf-8") as fh:
+    contract = json.load(fh)
+app = contract["app"]
+
+resolved = {
+    "spkSha256": spk_sha256,
+    "appHash": release["appHash"],
+    "version": release["version"],
+}
+for field, value in resolved.items():
+    current = app.get(field)
+    # Only PENDING_BUILD is rewritten. An already-concrete value that
+    # disagrees is a real mismatch (wrong SPK, wrong release, stale
+    # contract) and must stop the publish rather than be silently
+    # overwritten into agreement.
+    if current == "PENDING_BUILD":
+        app[field] = value
+    elif current != value:
+        sys.exit(
+            f"RUNTIME-CONTRACT.json app.{field}={current!r} does not match the "
+            f"release artifacts ({value!r}). Refusing to overwrite a concrete "
+            f"value — rebuild or re-author the contract."
+        )
+
+directory = os.path.dirname(os.path.abspath(contract_path))
+fd, temporary = tempfile.mkstemp(prefix=".RUNTIME-CONTRACT.json.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(contract, fh, indent=2)
+        fh.write("\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(temporary, contract_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+print(f"  [runtime-contract] resolved spkSha256={spk_sha256[:16]}… appHash={release['appHash'][:16]}… version={release['version']}")
+PY
+  fi
+
   # Bind the exact contract after Pearl finalization. This mutation is atomic
   # and happens before the submit client signs the publisher envelope. The
   # author/Squads releaseHash remains sha256(appHash + version + nonce); the

@@ -429,10 +429,40 @@ if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/metadata.json" ]]; then
 elif [[ -f "$APP_DIR/metadata.json" ]]; then
   SUBMIT_METADATA="$APP_DIR/metadata.json"
 fi
+# The runtime contract is AUTHORED in the app repo — with the literal
+# "PENDING_BUILD" for the three fields that cannot exist before the package does
+# — and RESOLVED against the built artifacts below. Resolution REWRITES the
+# file, so it must never happen on the authored repo copy: that is what left one
+# release's concrete digests behind and aborted the next publish of the same app
+# on the mismatch guard. stage-into-catalog.sh carries the authored contract into
+# the catalog package dir; the catalog copy is a derived staging artifact, it is
+# the copy that gets concrete digests, and it is the copy self-publish.sh reads.
+APP_RUNTIME_CONTRACT="$APP_DIR/RUNTIME-CONTRACT.json"
+RUNTIME_CONTRACT_WORKDIR=""
 if [[ -n "${CAT_PATH:-}" && -f "$CAT_PATH/RUNTIME-CONTRACT.json" ]]; then
   SUBMIT_RUNTIME_CONTRACT="$CAT_PATH/RUNTIME-CONTRACT.json"
-elif [[ -f "$APP_DIR/RUNTIME-CONTRACT.json" ]]; then
-  SUBMIT_RUNTIME_CONTRACT="$APP_DIR/RUNTIME-CONTRACT.json"
+elif [[ -f "$APP_RUNTIME_CONTRACT" ]]; then
+  if $DRY_RUN; then
+    # A dry run resolves nothing and writes nothing; name the authored copy so
+    # the presence checks below report what a real run would carry.
+    SUBMIT_RUNTIME_CONTRACT="$APP_RUNTIME_CONTRACT"
+  elif [[ -n "${CAT_PATH:-}" && -d "$CAT_PATH" ]]; then
+    # Catalog dir exists but staging did not carry the contract (hand-assembled
+    # slot, or a package staged before stage-into-catalog.sh carried it).
+    info "  carrying authored RUNTIME-CONTRACT.json into the catalog pkg dir"
+    cp -f "$APP_RUNTIME_CONTRACT" "$CAT_PATH/RUNTIME-CONTRACT.json" \
+      || fail "  could not carry $APP_RUNTIME_CONTRACT into $CAT_PATH"
+    SUBMIT_RUNTIME_CONTRACT="$CAT_PATH/RUNTIME-CONTRACT.json"
+  else
+    # No catalog dir in this run (--skip ceremony). Resolve a run-scoped copy so
+    # the authored source keeps its PENDING_BUILD placeholders either way.
+    RUNTIME_CONTRACT_WORKDIR="$(mktemp -d)"
+    trap 'rm -rf "${RUNTIME_CONTRACT_WORKDIR:-}"' EXIT
+    cp -f "$APP_RUNTIME_CONTRACT" "$RUNTIME_CONTRACT_WORKDIR/RUNTIME-CONTRACT.json" \
+      || fail "  could not copy $APP_RUNTIME_CONTRACT for resolution"
+    SUBMIT_RUNTIME_CONTRACT="$RUNTIME_CONTRACT_WORKDIR/RUNTIME-CONTRACT.json"
+    info "  no catalog pkg dir in this run — resolving a copy at $SUBMIT_RUNTIME_CONTRACT"
+  fi
 fi
 
 if skip_step push || skip_step submit; then
@@ -464,68 +494,30 @@ else
   # Resolve the contract's OWN release binding first. A contract is authored
   # before the package exists, so app.spkSha256 / app.appHash / app.version
   # cannot be known at authoring time and are written as the literal
-  # "PENDING_BUILD". Fill them here, from the artifacts that now exist: the
-  # built SPK and the Pearl-finalized RELEASE.json. Doing it in the publish
-  # path (rather than by hand) is what keeps a digest from ever being typed by
-  # a human — validate-runtime-contract.py below re-derives all three
-  # independently and fails the publish if any disagrees.
+  # "PENDING_BUILD". resolve-runtime-contract.py fills them from the ARTIFACTS:
+  # sha256(SPK) and the canonical tree-hash over {app.spk, metadata.json}. The
+  # appHash is DERIVED, not copied out of RELEASE.json, and the derived value
+  # must then match RELEASE.json.appHash — so a release manifest that has
+  # drifted from its own bytes (diagram-bureau) aborts the publish here instead
+  # of being laundered into the contract and re-checked against itself.
+  #
+  # It rewrites the CATALOG copy only; the authored repo copy stays PENDING_BUILD
+  # so the next release of this app resolves cleanly.
   #
   # Order matters: this MUST run before the sha256(contract) binding below,
   # because that hash covers these bytes.
   if $DRY_RUN; then
     info "  DRY RUN — would resolve PENDING_BUILD in $SUBMIT_RUNTIME_CONTRACT"
   else
-    python3 - "$SUBMIT_RUNTIME_CONTRACT" "$SUBMIT_RELEASE" "$SPK_FOR_REL" <<'PY'
-import hashlib, json, os, sys, tempfile
-
-contract_path, release_path, spk_path = sys.argv[1:4]
-
-with open(release_path, "r", encoding="utf-8") as fh:
-    release = json.load(fh)
-digest = hashlib.sha256()
-with open(spk_path, "rb") as fh:
-    for chunk in iter(lambda: fh.read(1 << 20), b""):
-        digest.update(chunk)
-spk_sha256 = digest.hexdigest()
-
-with open(contract_path, "r", encoding="utf-8") as fh:
-    contract = json.load(fh)
-app = contract["app"]
-
-resolved = {
-    "spkSha256": spk_sha256,
-    "appHash": release["appHash"],
-    "version": release["version"],
-}
-for field, value in resolved.items():
-    current = app.get(field)
-    # Only PENDING_BUILD is rewritten. An already-concrete value that
-    # disagrees is a real mismatch (wrong SPK, wrong release, stale
-    # contract) and must stop the publish rather than be silently
-    # overwritten into agreement.
-    if current == "PENDING_BUILD":
-        app[field] = value
-    elif current != value:
-        sys.exit(
-            f"RUNTIME-CONTRACT.json app.{field}={current!r} does not match the "
-            f"release artifacts ({value!r}). Refusing to overwrite a concrete "
-            f"value — rebuild or re-author the contract."
-        )
-
-directory = os.path.dirname(os.path.abspath(contract_path))
-fd, temporary = tempfile.mkstemp(prefix=".RUNTIME-CONTRACT.json.", dir=directory, text=True)
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump(contract, fh, indent=2)
-        fh.write("\n")
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(temporary, contract_path)
-finally:
-    if os.path.exists(temporary):
-        os.unlink(temporary)
-print(f"  [runtime-contract] resolved spkSha256={spk_sha256[:16]}… appHash={release['appHash'][:16]}… version={release['version']}")
-PY
+    if [[ -f "$APP_RUNTIME_CONTRACT" && "$SUBMIT_RUNTIME_CONTRACT" -ef "$APP_RUNTIME_CONTRACT" ]]; then
+      fail "  refusing to resolve the AUTHORED contract at $APP_RUNTIME_CONTRACT — resolution writes concrete digests and belongs on the catalog copy"
+    fi
+    python3 "$STATIC_STORE_ROOT/scripts/resolve-runtime-contract.py" \
+      --contract "$SUBMIT_RUNTIME_CONTRACT" \
+      --spk "$SPK_FOR_REL" \
+      --metadata "$SUBMIT_METADATA" \
+      --release "$SUBMIT_RELEASE" \
+      || fail "  runtime contract could not be resolved against the built artifacts"
   fi
 
   # Bind the exact contract after Pearl finalization. This mutation is atomic

@@ -6,6 +6,13 @@ It intentionally accepts no "best effort" or legacy mode: callers decide how a
 missing contract is represented.  If a contract exists, this tool proves that
 the exact raw JSON is named by RELEASE.json and names the exact SPK bytes.
 
+Two of the contract's three release fields could otherwise be validated against
+a copy of themselves, so this tool re-derives the artifact-backed values:
+sha256(app.spk) for spkSha256, and the canonical tree-hash over
+{app.spk, metadata.json} for appHash (melusina_apphash, pinned to the store
+sidecar's internal/apphash).  RELEASE.json.appHash must equal that derived hash
+too — a release manifest that has drifted from its own artifacts fails here.
+
 Usage:
   validate-runtime-contract.py --contract RUNTIME-CONTRACT.json \
     --spk app.spk --metadata metadata.json --release RELEASE.json
@@ -20,6 +27,12 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+# Import the sibling helper without leaving a __pycache__ behind in a checkout
+# that does not ignore one.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from melusina_apphash import canonical as canonical_app_hash  # noqa: E402
 
 
 SCHEMA = "melusina-app-runtime-contract-v1"
@@ -122,9 +135,40 @@ def validate(contract_raw: bytes, spk: Path, metadata: Path, release: Path) -> d
     version = text(app["version"], "runtime contract.app.version", 1)
     if version != text(rel.get("version"), "RELEASE.json.version", 1):
         raise ContractError("runtime contract.app.version does not match RELEASE.json.version")
+    # metadata.json is INSIDE the appHash tree proven below, so when it states a
+    # version it is an independent witness rather than a second copy of
+    # RELEASE.json's claim. A metadata that omits the field is left to the
+    # release/contract pair above; a metadata that states a different one is a
+    # real disagreement about which release this is.
+    metadata_version = meta.get("version")
+    if isinstance(metadata_version, str) and metadata_version.strip():
+        if version != metadata_version:
+            raise ContractError(
+                f"runtime contract.app.version={version} does not match "
+                f"metadata.json.version={metadata_version}"
+            )
     app_hash = hex64(app["appHash"], "runtime contract.app.appHash")
-    if app_hash != hex64(rel.get("appHash"), "RELEASE.json.appHash"):
+    release_app_hash = hex64(rel.get("appHash"), "RELEASE.json.appHash")
+    if app_hash != release_app_hash:
         raise ContractError("runtime contract.app.appHash does not match RELEASE.json.appHash")
+    # Both of the values compared above can be copies of one another, so neither
+    # proves anything about the artifacts. Re-derive the on-chain AppHash from
+    # the exact bytes — the canonical tree-hash over {app.spk, metadata.json} —
+    # and require BOTH claims to equal it. A RELEASE.json whose appHash has
+    # drifted from its own artifacts (the diagram-bureau failure that blocked
+    # every activation store-wide) fails here instead of reaching the store.
+    derived_app_hash = canonical_app_hash(spk, metadata)
+    if release_app_hash != derived_app_hash:
+        raise ContractError(
+            f"RELEASE.json.appHash={release_app_hash} != "
+            f"apphash({spk.name}, {metadata.name})={derived_app_hash}: the release manifest "
+            "does not describe the artifacts it names"
+        )
+    if app_hash != derived_app_hash:
+        raise ContractError(
+            f"runtime contract.app.appHash={app_hash} != "
+            f"apphash({spk.name}, {metadata.name})={derived_app_hash}"
+        )
     spk_hash = hex64(app["spkSha256"], "runtime contract.app.spkSha256")
     actual_spk_hash = sha256_file(spk)
     if spk_hash != actual_spk_hash:

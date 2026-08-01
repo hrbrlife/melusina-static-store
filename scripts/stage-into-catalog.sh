@@ -18,6 +18,9 @@
 # Optional env:
 #   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
 #                         Defaults to metadata.json beside the source SPK.
+#   SOURCE_RUNTIME_CONTRACT_PATH
+#                         Authored RUNTIME-CONTRACT.json for a single staged app.
+#                         Defaults to RUNTIME-CONTRACT.json beside the source SPK.
 #   PRESERVE_EXISTING_RELEASE=1
 #                         Preserve the catalog RELEASE.json byte-for-byte and
 #                         require its appHash to bind the newly staged bytes.
@@ -64,7 +67,8 @@ if (( $# < 2 || $# % 2 != 0 )); then
 fi
 
 # PACKAGE-ATOMIC STAGING (CODEX-G + CODEX-SDL F1).
-# A catalog package is the {app.spk, metadata.json, RELEASE.json} TRIPLE (plus
+# A catalog package is the {app.spk, metadata.json, RELEASE.json} TRIPLE — plus
+# the release-bound RUNTIME-CONTRACT.json when the app authors one (plus
 # icon/screenshots). They must update as ONE unit — a reader / serve-gate must
 # never see a new app.spk against a stale metadata/RELEASE, or vice-versa.
 # Three separate per-file renames cannot guarantee that (a kill between them
@@ -104,6 +108,7 @@ while (( $# >= 2 )); do
   fi
   CAT_META="$PKG/metadata.json"
   SOURCE_META="${SOURCE_METADATA_PATH:-$(dirname "$SPK")/metadata.json}"
+  SOURCE_CONTRACT="${SOURCE_RUNTIME_CONTRACT_PATH:-$(dirname "$SPK")/RUNTIME-CONTRACT.json}"
   if [[ ! -f "$CAT_META" ]]; then
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
   fi
@@ -112,6 +117,9 @@ while (( $# >= 2 )); do
   fi
   if [[ -n "${SOURCE_METADATA_PATH:-}" && ! -f "$SOURCE_META" ]]; then
     fail "  explicit source metadata missing: $SOURCE_META"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -n "${SOURCE_RUNTIME_CONTRACT_PATH:-}" && ! -f "$SOURCE_CONTRACT" ]]; then
+    fail "  explicit source runtime contract missing: $SOURCE_CONTRACT"; FAILS=$((FAILS+1)); continue
   fi
 
   SHADOWS+=("$PKG")
@@ -277,6 +285,51 @@ PY
   if [[ ! -s "$SHADOW/RELEASE.json" ]]; then
     fail "  RELEASE.json is absent or empty after staging $(basename "$PKG") (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+
+  # 3b) Carry the AUTHORED runtime contract from the source repo into the
+  #     catalog package. RUNTIME-CONTRACT.json is authored before the package
+  #     exists, so its spkSha256/appHash/version are the literal
+  #     "PENDING_BUILD"; the CATALOG copy is the derived one that
+  #     publish-app-full.sh resolves to concrete digests and that
+  #     self-publish.sh submits. Re-seeding it from the authored source on every
+  #     new-release staging is what keeps the resolver idempotent across
+  #     releases: without it the previous release's concrete digests survive
+  #     into the next publish and abort it on the mismatch guard.
+  #     (rm first: the shadow is a hardlink clone, so writing in place would
+  #     corrupt the live file.)
+  if [[ "$PRESERVE_EXISTING_RELEASE" == "1" ]]; then
+    # Exact-current promotion: RELEASE.json is frozen and already binds
+    # sha256(RUNTIME-CONTRACT.json), so the contract is frozen with it. Prove
+    # the binding still holds rather than restaging a contract the governed
+    # release does not name.
+    if ! python3 - "$SHADOW/RELEASE.json" "$SHADOW/RUNTIME-CONTRACT.json" <<'PY'
+import hashlib, json, os, sys
+release_path, contract_path = sys.argv[1:3]
+rel = json.load(open(release_path, encoding="utf-8"))
+bound = (rel.get("runtimeContractSha256") or "").strip()
+schema = (rel.get("runtimeContractSchema") or "").strip()
+if not bound and not schema:
+    raise SystemExit(0)
+if not bound or not schema:
+    raise SystemExit("RELEASE.json binds a runtime contract only half-way")
+if not os.path.isfile(contract_path):
+    raise SystemExit("RELEASE.json binds a runtime contract but the catalog copy is missing")
+with open(contract_path, "rb") as fh:
+    got = hashlib.sha256(fh.read()).hexdigest()
+if got != bound:
+    raise SystemExit(f"sha256(RUNTIME-CONTRACT.json)={got} != RELEASE.json.runtimeContractSha256={bound}")
+PY
+    then
+      fail "  preserved RELEASE.json does not bind the catalog RUNTIME-CONTRACT.json (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  elif [[ -f "$SOURCE_CONTRACT" ]]; then
+    rm -f "$SHADOW/RUNTIME-CONTRACT.json"
+    if ! cp -f "$SOURCE_CONTRACT" "$SHADOW/RUNTIME-CONTRACT.json"; then
+      fail "  could not stage authored RUNTIME-CONTRACT.json from $SOURCE_CONTRACT (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
   fi
 
   # 4) COMMIT POINT — the whole package is built & verified in the shadow.

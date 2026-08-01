@@ -153,6 +153,42 @@ host/port with the enabled target sidecar inventory, DNS/hosts mapping,
 certificate chain, HTTP-out permission, and server-side blacklist policy. The
 contract tells it what to prove; it never grants a network exception by itself.
 
+## Authoring vs resolving
+
+Three of the contract's fields describe a package that does not exist yet when
+the contract is authored. Author them as the literal `PENDING_BUILD`:
+
+```json
+  "app": {
+    "appId": "<known>",
+    "version": "<known: kept in lockstep by scripts/version-bump.sh>",
+    "spkSha256": "PENDING_BUILD",
+    "appHash": "PENDING_BUILD"
+  }
+```
+
+The publish path resolves them from the artifacts, so no digest is ever typed by
+a human:
+
+```text
+app repo RUNTIME-CONTRACT.json      (authored; stays PENDING_BUILD forever)
+  └─ stage-into-catalog.sh ──> catalog RUNTIME-CONTRACT.json   (derived copy)
+       └─ resolve-runtime-contract.py
+            spkSha256 = sha256(app.spk)
+            appHash   = apphash{app.spk, metadata.json}   ← derived, then
+                                                            required to equal
+                                                            RELEASE.json.appHash
+            version   = RELEASE.json.version              ← cross-checked against
+                                                            metadata.json.version
+```
+
+Only the catalog copy ever carries concrete digests; it is re-seeded from the
+authored copy on every new-release staging, so consecutive releases resolve
+without a hand-reset. A concrete value that disagrees with the artifacts is
+never overwritten — it stops the publish. `scripts/version-bump.sh` moves
+`app.version` with `metadata.json`/pkgdef and returns the two digests to
+`PENDING_BUILD`.
+
 ## Publishing
 
 Validate locally before a ceremony or upload:

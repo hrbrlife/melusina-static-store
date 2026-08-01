@@ -237,9 +237,13 @@ else
     [[ -f "$meta_file" ]] || continue
     pkgid_checked=$((pkgid_checked + 1))
 
-    # Cache lookup by path + mtime — invalidates when SPK is repacked
+    # Cache lookup by path + mtime — invalidates when SPK is repacked.
+    # `|| true`: a cache MISS is the normal cold-start case (.build-tmp/ is
+    # gitignored, so every fresh clone starts cold), but grep exits 1 on no
+    # match and this file runs under `set -euo pipefail` — the miss aborted the
+    # whole doctor at check 4, so checks 4b-7 never ran on a fresh tree.
     cache_key="${spk_file}:${spk_mtime}"
-    full_sha="$(grep -F "$cache_key" "$HASH_CACHE" 2>/dev/null | head -1 | cut -d' ' -f2)"
+    full_sha="$(grep -F "$cache_key" "$HASH_CACHE" 2>/dev/null | head -1 | cut -d' ' -f2 || true)"
     if [[ -z "$full_sha" ]]; then
       full_sha="$(sha256sum "$spk_file" 2>/dev/null | cut -d' ' -f1)"
       [[ -n "$full_sha" ]] && echo "$cache_key $full_sha" >> "$HASH_CACHE"
@@ -265,6 +269,28 @@ else
   else
     warn "$pkgid_warns packageId warnings across $pkgid_checked apps (fix in spkmodule publish-to-branch helper)"
   fi
+fi
+echo
+# ---- 4b. metadata version fields ↔ the SPK's own manifest (K18) -----------------
+# Check 4 proves metadata names the right BYTES. This one looks INSIDE them.
+# Nothing else in the catalog does: the store advertised clientspace 0.1.3 /
+# versionNumber 8 over an SPK whose manifest says 0.1.0 / appVersion 1, and no
+# gate noticed, because every other version check compares two hand-authored
+# files to each other. See scripts/check-spk-version-truth.py.
+echo "=== 4b. version truth (metadata.json vs the SPK's embedded manifest) ==="
+if [[ "${MELUSINA_SKIP_SLOW_CHECKS:-}" == "1" ]]; then
+  warn "Skipping SPK version-truth check (MELUSINA_SKIP_SLOW_CHECKS=1)"
+else
+  set +e
+  VERSION_TRUTH_OUT="$(python3 "$SCRIPT_DIR/check-spk-version-truth.py" --catalog "$SRC_PKG_DIR/hrbrlife" 2>&1)"
+  VERSION_TRUTH_RC=$?
+  set -e
+  echo "$VERSION_TRUTH_OUT"
+  case "$VERSION_TRUTH_RC" in
+    0) ok "every catalog package matches the version inside its own app.spk" ;;
+    1) fail "catalog packages advertise versions their own bytes do not contain (K18)" ;;
+    *) fail "SPK version-truth check could not complete (exit $VERSION_TRUTH_RC) — treated as a refusal" ;;
+  esac
 fi
 echo
 # ---- 5. Source package completeness --------------------------------------------

@@ -352,6 +352,49 @@ print('' if ok else 'metadata.version=%s marketingVersion=%s RELEASE.version=%s'
   return $errors
 }
 
+# K18: a package must not advertise a version its own bytes do not contain.
+#
+# Every other gate here compares one ASSERTION to another. K13 proves
+# metadata.packageId names the right BYTES; it never looks inside them. K14
+# compares RELEASE.version to metadata.version/marketingVersion — two
+# hand-authored files checked against each other, so it cannot fail when both
+# are wrong, and because it accepts a match on EITHER field it also tolerates a
+# metadata.json that contradicts itself. Nothing opened the SPK.
+#
+# The catalog drifted exactly there: clientspace advertised 0.1.3 / vN 8 over
+# bytes that identify as 0.1.0 / appVersion 1, BotMother 1.1.3 / 19 over
+# 1.1.2 / 13, Paint Bureau vN 19 over appVersion 20. The shell's update path
+# (shell/imports/sandstorm-db/db.js:3066) compares the index versionNumber
+# against pack.manifest.appVersion — the SPK — so an index number the bytes can
+# never reach is a permanent phantom "update available", and upgradeGrains
+# (db.js:3106-3124) then WRITES that unreachable number onto grain records.
+#
+# The signed SPK manifest is the only authority. Drift excludes the app from the
+# served index (same fail-closed semantics as the attestation gates above): a
+# lying catalog entry must never be published, but one broken app must not wall
+# every other app's publish.
+validate_spk_version_truth() {
+  local meta_file="$1"
+  local app_dir="$2"
+  local output
+
+  if [[ ! -f "$app_dir/app.spk" ]]; then
+    # The missing-SPK case is already a hard failure in validate_metadata.
+    return 0
+  fi
+
+  if output="$(python3 "$SCRIPT_DIR/scripts/check-spk-version-truth.py" "$app_dir" 2>&1)"; then
+    return 0
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    fail "$app_dir: ${line#*: }"
+  done <<< "$(printf '%s\n' "$output" | grep -E '^(\[FAIL\]|         )' | sed 's/^ *//')"
+  fail "$app_dir: metadata advertises a version its own app.spk does not contain (K18)"
+  return 1
+}
+
 # A runtime contract is mandatory for every NEW /publish (the Go sidecar
 # rejects one without it). Historical package slots predate that gate, so the
 # assembler does not erase them or pretend they passed: a missing contract is
@@ -483,6 +526,10 @@ for f in ['name']:
   # Check SPK exists — HARD fail (no metadata-only entries in ship catalog)
   if [[ ! -f "$app_dir/app.spk" ]]; then
     fail "$app_dir: no app.spk found"
+    ((errors++)) || true
+  fi
+
+  if ! validate_spk_version_truth "$meta_file" "$app_dir"; then
     ((errors++)) || true
   fi
 

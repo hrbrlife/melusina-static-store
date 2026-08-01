@@ -95,6 +95,13 @@ per-install material):
   registration. By default the TLS fingerprint is read from `tls.cert_path`;
   set `boot_identity.tls_cert_path` when the on-chain binding should pin a
   public edge certificate while the sidecar listens with container-local TLS.
+- `boot_identity.operator_key_version` and `operator_domain` are optional
+  stable-key coordinates for rotations. Leave them unset on a first install.
+  When renewing the bound certificate or replacing the binary, advance
+  `key_version` to a fresh `SidecarIdentityEntry` while keeping the operator
+  coordinates fixed. This preserves the public key already pinned by the
+  immutable `StoreOperatorAuthorization`; the new entry still fail-closes on
+  the current binary, domain, and TLS certificate.
 
 The helper command below generates or reuses the three shard files and prints
 the public `register_sidecar_identity` inputs without broadcasting any
@@ -110,6 +117,15 @@ go run ./cmd/boot-identity-prep \
   -program-id <license-registry-program-id> \
   -binary ./melusina-store-sidecar \
   -tls-cert /etc/melusina/store/boot-identity-tls-cert.pem
+```
+
+For a binding-only rotation that preserves an operator originally derived at
+version 1 for `bazaar.melusina-os.org`, add:
+
+```sh
+  -key-version 2 \
+  -operator-key-version 1 \
+  -operator-domain bazaar.melusina-os.org
 ```
 
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3

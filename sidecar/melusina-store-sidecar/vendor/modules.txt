@@ -1,0 +1,66 @@
+# capnproto.org/go/capnp/v3 v3.0.0-alpha.5
+## explicit; go 1.18
+capnproto.org/go/capnp/v3
+capnproto.org/go/capnp/v3/encoding/text
+capnproto.org/go/capnp/v3/exc
+capnproto.org/go/capnp/v3/flowcontrol
+capnproto.org/go/capnp/v3/internal/chanmutex
+capnproto.org/go/capnp/v3/internal/mpsc
+capnproto.org/go/capnp/v3/internal/nodemap
+capnproto.org/go/capnp/v3/internal/schema
+capnproto.org/go/capnp/v3/internal/strquote
+capnproto.org/go/capnp/v3/internal/syncutil
+capnproto.org/go/capnp/v3/packed
+capnproto.org/go/capnp/v3/schemas
+capnproto.org/go/capnp/v3/server
+capnproto.org/go/capnp/v3/std/capnp/persistent
+capnproto.org/go/capnp/v3/std/capnp/stream
+# filippo.io/edwards25519 v1.2.0
+## explicit; go 1.24.0
+filippo.io/edwards25519
+filippo.io/edwards25519/field
+# github.com/hrbrlife/melusina-attest v0.0.0-00010101000000-000000000000 => ../../../Melusina/shared/melusina-attest
+## explicit; go 1.24.0
+github.com/hrbrlife/melusina-attest/canonical
+github.com/hrbrlife/melusina-attest/derive
+github.com/hrbrlife/melusina-attest/envelope
+github.com/hrbrlife/melusina-attest/graincert
+github.com/hrbrlife/melusina-attest/identity
+github.com/hrbrlife/melusina-attest/pda
+github.com/hrbrlife/melusina-attest/sidecarresult
+# github.com/hrbrlife/melusina-identity-gate v0.0.0-00010101000000-000000000000 => ../../../Melusina/shared/melusina-identity-gate
+## explicit; go 1.22
+github.com/hrbrlife/melusina-identity-gate/bundle
+github.com/hrbrlife/melusina-identity-gate/envelope
+github.com/hrbrlife/melusina-identity-gate/verify
+# github.com/melusina-os/melusina-solana-primitives v0.0.0 => ../../../Melusina/shared/melusina-solana-primitives
+## explicit; go 1.24.0
+github.com/melusina-os/melusina-solana-primitives
+# github.com/ulikunitz/xz v0.5.10
+## explicit; go 1.12
+github.com/ulikunitz/xz
+github.com/ulikunitz/xz/internal/hash
+github.com/ulikunitz/xz/internal/xlog
+github.com/ulikunitz/xz/lzma
+# golang.org/x/crypto v0.28.0
+## explicit; go 1.20
+golang.org/x/crypto/hkdf
+# golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+## explicit
+golang.org/x/sync/semaphore
+# zenhack.net/go/sandstorm v0.0.0-20230111030500-e2e80d8a33c2 => ../../../Melusina/sidecar/go-sandstorm
+## explicit; go 1.18
+zenhack.net/go/sandstorm/capnp/activity
+zenhack.net/go/sandstorm/capnp/apisession
+zenhack.net/go/sandstorm/capnp/grain
+zenhack.net/go/sandstorm/capnp/identity
+zenhack.net/go/sandstorm/capnp/ip
+zenhack.net/go/sandstorm/capnp/powerbox
+zenhack.net/go/sandstorm/capnp/spk
+zenhack.net/go/sandstorm/capnp/supervisor
+zenhack.net/go/sandstorm/capnp/util
+zenhack.net/go/sandstorm/capnp/websession
+# github.com/hrbrlife/melusina-attest => ../../../Melusina/shared/melusina-attest
+# github.com/hrbrlife/melusina-identity-gate => ../../../Melusina/shared/melusina-identity-gate
+# github.com/melusina-os/melusina-solana-primitives => ../../../Melusina/shared/melusina-solana-primitives
+# zenhack.net/go/sandstorm => ../../../Melusina/sidecar/go-sandstorm

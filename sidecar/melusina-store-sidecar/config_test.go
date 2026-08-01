@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -34,6 +36,9 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	}
 	if cfg.DistDir != "dist-publish" {
 		t.Errorf("DistDir default = %q", cfg.DistDir)
+	}
+	if cfg.PrivateStageDir != filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage") {
+		t.Errorf("PrivateStageDir default = %q", cfg.PrivateStageDir)
 	}
 }
 
@@ -72,5 +77,105 @@ func TestLoadConfig_OverridesApplied(t *testing.T) {
 func TestLoadConfig_RejectsInvalidProgramID(t *testing.T) {
 	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org","program_id":"not a pubkey"}`)); err == nil {
 		t.Fatal("expected error for invalid program_id")
+	}
+}
+
+func TestLoadConfig_RejectsPublicPrivateStage(t *testing.T) {
+	root := t.TempDir()
+	dist := filepath.Join(root, "public")
+	stage := filepath.Join(dist, "private-candidates")
+	content := fmt.Sprintf(`{"license_nft_mint":"LIC","domain":"store.example.org","dist_dir":%q,"private_stage_dir":%q}`, dist, stage)
+	if _, err := LoadConfig(writeTmpConfig(t, content)); err == nil {
+		t.Fatal("expected private_stage_dir nested under dist_dir to fail")
+	}
+}
+
+func TestLoadConfig_WriteModeRequiresExplicitPersistentRoots(t *testing.T) {
+	root := t.TempDir()
+	base := map[string]string{
+		"private_stage_dir":           filepath.Join(root, "stage"),
+		"catalog_generation_root":     filepath.Join(root, "generations"),
+		"catalog_migration_state_dir": filepath.Join(root, "migrations"),
+	}
+	for _, missing := range []string{"private_stage_dir", "catalog_generation_root", "catalog_migration_state_dir"} {
+		t.Run(missing, func(t *testing.T) {
+			fields := ""
+			for name, value := range base {
+				if name != missing {
+					fields += fmt.Sprintf(",%q:%q", name, value)
+				}
+			}
+			content := fmt.Sprintf(`{"license_nft_mint":"LIC","domain":"store.example.org","boot_identity":{"shards_dir":%q}%s}`, filepath.Join(root, "shards"), fields)
+			_, err := LoadConfig(writeTmpConfig(t, content))
+			if err == nil || !strings.Contains(err.Error(), missing+" is required") {
+				t.Fatalf("error = %v, want required %s", err, missing)
+			}
+		})
+	}
+}
+
+func TestLoadConfig_WriteModeAcceptsExplicitDisjointRoots(t *testing.T) {
+	root := t.TempDir()
+	content := fmt.Sprintf(`{
+		"license_nft_mint":"LIC",
+		"domain":"store.example.org",
+		"dist_dir":%q,
+		"private_stage_dir":%q,
+		"catalog_generation_root":%q,
+		"catalog_migration_state_dir":%q,
+		"boot_identity":{"shards_dir":%q}
+	}`, filepath.Join(root, "dist"), filepath.Join(root, "stage"), filepath.Join(root, "generations"), filepath.Join(root, "migrations"), filepath.Join(root, "shards"))
+	cfg, err := LoadConfig(writeTmpConfig(t, content))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.CatalogGenerationRoot != filepath.Join(root, "generations") || cfg.CatalogMigrationStateDir != filepath.Join(root, "migrations") {
+		t.Fatalf("explicit catalog roots not preserved: %+v", cfg)
+	}
+}
+
+func TestLoadConfig_RejectsLexicallyOverlappingCatalogRoots(t *testing.T) {
+	root := t.TempDir()
+	tests := []struct {
+		name       string
+		stage      string
+		generation string
+		migration  string
+	}{
+		{
+			name:       "generation under dist",
+			stage:      filepath.Join(root, "stage"),
+			generation: filepath.Join(root, "dist", "generations"),
+			migration:  filepath.Join(root, "migrations"),
+		},
+		{
+			name:       "stage contains migration",
+			stage:      filepath.Join(root, "private"),
+			generation: filepath.Join(root, "generations"),
+			migration:  filepath.Join(root, "private", "migrations"),
+		},
+		{
+			name:       "generation equals migration",
+			stage:      filepath.Join(root, "stage"),
+			generation: filepath.Join(root, "state"),
+			migration:  filepath.Join(root, "state"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := fmt.Sprintf(`{
+				"license_nft_mint":"LIC",
+				"domain":"store.example.org",
+				"dist_dir":%q,
+				"private_stage_dir":%q,
+				"catalog_generation_root":%q,
+				"catalog_migration_state_dir":%q,
+				"boot_identity":{"shards_dir":%q}
+			}`, filepath.Join(root, "dist"), tt.stage, tt.generation, tt.migration, filepath.Join(root, "shards"))
+			_, err := LoadConfig(writeTmpConfig(t, content))
+			if err == nil || !strings.Contains(err.Error(), "must be lexically disjoint") {
+				t.Fatalf("error = %v, want lexical-disjoint refusal", err)
+			}
+		})
 	}
 }

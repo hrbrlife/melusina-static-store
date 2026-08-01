@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">GoldKey</title><desc id="desc">A gold key inside a shield</desc>
+  <rect width="512" height="512" rx="104" fill="#F5D47A"/>
+  <path d="M256 70c70 49 132 58 166 61v113c0 104-67 168-166 205C157 412 90 348 90 244V131c34-3 96-12 166-61Z" fill="#B88616"/>
+  <path d="M256 113c55 39 104 49 128 52v79c0 78-48 127-128 160-80-33-128-82-128-160v-79c24-3 73-13 128-52Z" fill="#FFF8DF"/>
+  <circle cx="242" cy="245" r="47" fill="#B88616"/>
+  <circle cx="242" cy="245" r="18" fill="#FFF8DF"/>
+  <path d="M274 277h91v31h-24v25h-31v-25h-36v-31Z" fill="#B88616"/>
+</svg>

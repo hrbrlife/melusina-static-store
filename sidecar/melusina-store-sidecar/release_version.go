@@ -55,9 +55,12 @@ func verifyReleaseVersionForward(ctx context.Context, cr chainReader, submitted 
 			return fmt.Errorf("check=release_version: %w: submitted on-chain version %q is not greater than active %q (%s)",
 				errVersionConflict, submitted.Version, current.Version, current.PDA)
 		}
-		return fmt.Errorf("check=release_supersede: %w: active release %s for same app_id remains %s",
-			errSupersedeRequired, current.PDA, current.Status)
 	}
+	// A strictly older Active release is intentional during the bounded rollout
+	// window. Existing grains still need its Active ReleaseEntry to cold-open
+	// under authz while the new package is canaried and rolled out. The old entry
+	// is revoked only after rollout acceptance; the signed catalog selects the
+	// current package for new installs in the meantime.
 	return nil
 }
 

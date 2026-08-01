@@ -258,11 +258,13 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	}
 
 	// The envelope must verify exactly as the C2.3 handler verifies it: Kind,
-	// Destination, RequestHash == sha256(spk).
+	// signer, Destination, RequestHash == sha256(spk). The handler pins
+	// ExpectedSignerPubkeyB58 from store policy (resolveAcceptedPublisherKey);
+	// here that's simply the publisher's own key.
 	opPub := op.Public()
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
 		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
 		ExpectedDestination:     &opPub,
 		ExpectedRequestHash:     hex.EncodeToString(wantSPK[:]),
 		NonceCache:              envelope.NewMemoryNonceCache(),
@@ -282,14 +284,15 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
-	// An envelope addressed to op must NOT verify against a different destination.
-	// Options are COMPLETE except for the destination under test. With a loose
-	// options struct this would now reject as "verify options incomplete" — i.e.
-	// pass while never reaching the destination check at all.
+	// An envelope addressed to op must NOT verify against a different
+	// destination. ExpectedSignerPubkeyB58 + NonceCache are set to the
+	// otherwise-correct values so the ONLY thing under test is the
+	// destination mismatch — an incomplete VerifyOptions would fail for the
+	// wrong reason and this test would stop testing what it claims to.
 	otherPub := other.Public()
 	err = envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
 		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
 		ExpectedDestination:     &otherPub,
 		NonceCache:              envelope.NewMemoryNonceCache(),
 	})
@@ -916,8 +919,8 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 		// across the JSON + multipart POSTs, which a shared cache would reject as
 		// a replay. The replay path is covered by the handler's own tests.
 		if err := envelope.Verify(sigIn, envelope.VerifyOptions{
-			ExpectedSignerPubkeyB58: sigIn.Payload.Source.SignPubkeyB58,
 			ExpectedKind:            envelope.KindPublishRequest,
+			ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
 			ExpectedDestination:     &opPub,
 			ExpectedRequestHash:     hex.EncodeToString(spkSum[:]),
 			NonceCache:              envelope.NewMemoryNonceCache(),

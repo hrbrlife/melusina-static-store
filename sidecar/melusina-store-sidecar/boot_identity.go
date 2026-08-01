@@ -91,7 +91,11 @@ func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*i
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: load shards: %w", err)
 	}
-	operator, err := derive.DeriveSidecar(sidecarIdentityRef(cfg, sidecarID, keyVersion, sidecarPDA.Base58()), shards)
+	operatorRef, err := operatorIdentityRef(cfg, licenseMint, sidecarID, keyVersion)
+	if err != nil {
+		return nil, fmt.Errorf("boot_identity: derive operator identity Ref: %w", err)
+	}
+	operator, err := derive.DeriveSidecar(operatorRef, shards)
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: derive operator: %w", err)
 	}
@@ -123,6 +127,27 @@ func sidecarIdentityRef(cfg Config, sidecarID string, keyVersion uint32, sidecar
 		SidecarID:   sidecarID,
 		KeyVersion:  keyVersion,
 	}
+}
+
+// operatorIdentityRef resolves the stable key-derivation Ref independently of
+// the rotatable SidecarIdentityEntry selected by BootIdentity.KeyVersion.
+// With no overrides it is byte-for-byte the legacy Ref.
+func operatorIdentityRef(cfg Config, licenseMint primitives.Pubkey, sidecarID string, bindingVersion uint32) (identity.Ref, error) {
+	operatorVersion := cfg.BootIdentity.OperatorKeyVersion
+	if operatorVersion == 0 {
+		operatorVersion = bindingVersion
+	}
+	operatorDomain := strings.TrimSpace(cfg.BootIdentity.OperatorDomain)
+	if operatorDomain == "" {
+		operatorDomain = cfg.Domain
+	}
+	operatorPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, operatorVersion, programID)
+	if err != nil {
+		return identity.Ref{}, err
+	}
+	operatorCfg := cfg
+	operatorCfg.Domain = operatorDomain
+	return sidecarIdentityRef(operatorCfg, sidecarID, operatorVersion, operatorPDA.Base58()), nil
 }
 
 // bootIdentityFacts are the locally-derived/observed values the on-chain

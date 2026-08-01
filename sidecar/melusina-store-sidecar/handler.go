@@ -13,22 +13,34 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// maxPublishBody bounds the total /publish request body (envelope + RELEASE.json
-// + SPK). The 100 MiB figure it used to track is GitHub's push limit, which
+// The 100 MiB figure these limits used to track is GitHub's push limit, which
 // constrains the gh-pages MIRROR of the catalog — it was never a property of a
 // self-hosted store, and it is not a trust boundary (the on-chain ReleaseEntry
-// is). At 110 MiB the cap also bit far earlier than it looked: the default wire
-// form base64-encodes the SPK, so it rejected packages above ~82 MB, and the
-// store aborted mid-upload — the client saw only an opaque nginx 502 with no
-// check= line. Bound the body generously; the real gate stays on-chain.
-const maxPublishBody = 512 << 20 // 512 MiB
+// is). At 110 MiB the old single cap also bit far earlier than it looked: the
+// default wire form base64-encodes the SPK, so it rejected packages above
+// ~82 MB, and the store aborted mid-upload — the client saw only an opaque
+// nginx 502 with no check= line. Bound each route generously and separately;
+// the real gate stays on-chain.
+const (
+	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK).
+	// Catalog SPKs stay under 100 MiB; keep this narrow because app publication
+	// has no reason to accept shell-sized payloads.
+	maxAppPublishBody int64 = 256 << 20 // 256 MiB
+
+	// maxInstallerPublishBody bounds /publish/installer. Shell bundles are
+	// currently about 280 MiB, so the app limit cannot also be the installer
+	// limit. Keep a finite ceiling while leaving room for signed release growth.
+	maxInstallerPublishBody int64 = 512 << 20 // 512 MiB
+)
 
 // publishService holds the single-writer state for POST /publish: the on-chain
 // reader (the trust gate), the operator's signing identity (receipt signer +
@@ -36,19 +48,152 @@ const maxPublishBody = 512 << 20 // 512 MiB
 // cache. The mutex enforces the SINGLE WRITER invariant — one in-flight publish
 // at a time.
 type publishService struct {
-	cfg       Config
-	cr        chainReader
-	operator  *identity.Private
-	assembler *CatalogAssembler
-	nonces    envelope.NonceCache
+	cfg                Config
+	cr                 chainReader
+	operator           *identity.Private
+	assembler          *CatalogAssembler
+	nonces             envelope.NonceCache // installer route only; app routes use appNonces
+	appNonces          *publishNonceLedger
+	catalogGenerations AppCatalogGenerationStore
+	catalogExpectedUID uint32
+	catalogExpectedGID uint32
+	now                func() time.Time
+	afterAppMutation   func(string) error // test-only crash seam; production nil
 
 	mu sync.Mutex // SINGLE WRITER: serializes the verify→assemble→receipt path
+}
+
+func (s *publishService) appMutationStep(step string) error {
+	if s.afterAppMutation == nil {
+		return nil
+	}
+	return s.afterAppMutation(step)
+}
+
+const maxAppEnvelopeTTL = 30 * time.Minute
+
+type appPublishPreflight struct {
+	sig             envelope.Signed
+	releaseBytes    []byte
+	spk             []byte
+	metadata        []byte
+	runtimeContract []byte
+	hint            slotHint
+	release         ReleaseJSON
+}
+
+func (s *publishService) currentTime() time.Time {
+	if s.now != nil {
+		return s.now().UTC()
+	}
+	return time.Now().UTC()
+}
+
+// preflightAppPublish verifies the complete signed, purpose-bound request but
+// deliberately does not claim its nonce. Semantic and chain reads remain for
+// the route-specific critical section, so a refusal cannot allocate replay
+// state and no plan made outside the lock can later commit.
+func (s *publishService) preflightAppPublish(r *http.Request, route string) (appPublishPreflight, error) {
+	var out appPublishPreflight
+	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
+	if err != nil {
+		return out, fmt.Errorf("check=request: %w", err)
+	}
+	now := s.currentTime()
+	if s.appNonces == nil {
+		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
+	}
+	if err := s.appNonces.CheckClock(now); err != nil {
+		return out, fmt.Errorf("check=nonce_clock: %w", err)
+	}
+	operator := s.operator.Public()
+	spkHashHex := hex.EncodeToString(sha256Sum(spk))
+	// requireEnvelopePresent separates "the client sent no envelope" (401
+	// check=envelope) from "this publisher is not allowlisted" (403
+	// check=accept_publishers) BEFORE either check runs — an empty/malformed
+	// envelope has no Source key to resolve a policy entry against, and
+	// misreporting it as an allowlist problem sends an operator to edit the
+	// wrong file.
+	if err := requireEnvelopePresent(sig); err != nil {
+		return out, fmt.Errorf("check=envelope: %w", err)
+	}
+	// Policy first, authority second (ported from d81b7d9a resolveAcceptedPublisherKey):
+	// resolve the signing key THIS STORE'S POLICY authorizes for the claimed
+	// publisher BEFORE the signature check, so an unlisted publisher gets its
+	// own diagnostic and never reaches envelope.Verify. The resolved key —
+	// never the blob's own claimed key — is what the signature is verified
+	// against below.
+	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
+	if !ok {
+		return out, errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+	}
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		Now:                     now,
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: signerKey,
+		ExpectedDestination:     &operator,
+		ExpectedRequestHash:     spkHashHex,
+		// v2's envelope.Verify claims a nonce as an integral, mandatory part of
+		// verification on the transport profile (a nil cache is a rejection, not
+		// a skip — R-22a). The store's REAL, durable, crash-safe replay ledger
+		// for app publishes is s.appNonces, claimed by claimAppEnvelope only
+		// after every other check (including the route-specific chain reads)
+		// passes, so a refusal never allocates replay state. A fresh cache here
+		// satisfies envelope.Verify's structural requirement for THIS call only
+		// and carries no state across preflight attempts, so it can never be
+		// the reason a legitimate retry of the same envelope is refused.
+		NonceCache: envelope.NewMemoryNonceCache(),
+	}); err != nil {
+		return out, fmt.Errorf("check=envelope: %w", err)
+	}
+	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != route {
+		return out, fmt.Errorf("check=envelope_purpose: signed purpose must be POST+%s", route)
+	}
+	if err := verifyTightAppEnvelopeWindow(sig.Payload, now); err != nil {
+		return out, err
+	}
+	bodyHashHex := hex.EncodeToString(sha256Sum(releaseBytes))
+	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
+		return out, fmt.Errorf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex)
+	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
+		return out, fmt.Errorf("check=release_json: %w", err)
+	}
+	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}, nil
+}
+
+func verifyTightAppEnvelopeWindow(payload envelope.Payload, now time.Time) error {
+	if payload.ExpiresAtMs < now.UTC().UnixMilli() {
+		return errors.New("check=envelope_expiry: app publish envelope expired")
+	}
+	lifetime := payload.ExpiresAtMs - payload.TimestampMs
+	if lifetime <= 0 || lifetime > maxAppEnvelopeTTL.Milliseconds() {
+		return fmt.Errorf("check=envelope_ttl: signed lifetime must be positive and at most %s", maxAppEnvelopeTTL)
+	}
+	return nil
+}
+
+func (s *publishService) claimAppEnvelope(sig envelope.Signed, claimNow time.Time) error {
+	if s.appNonces == nil {
+		return errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
+	}
+	if err := verifyTightAppEnvelopeWindow(sig.Payload, claimNow); err != nil {
+		return err
+	}
+	scope := sig.Payload.Source.DigestHex() + "|" + sig.Payload.Destination.DigestHex()
+	if err := s.appNonces.Claim(scope, sig.Payload.Nonce, sig.PayloadHash, sig.Payload.ExpiresAtMs, claimNow); err != nil {
+		return fmt.Errorf("check=nonce_claim: %w", err)
+	}
+	return nil
 }
 
 // publishRequest is the JSON wire form accepted when the client does not use
 // multipart/form-data. Each field is base64-std unless noted.
 type publishRequest struct {
-	// Envelope is the publisher's signed artifact envelope (JSON object).
+	// Envelope is the publisher's signed publish-request envelope (JSON
+	// object; envelope.KindPublishRequest — NOT envelope.KindArtifact, which
+	// v2 reclaimed for durable evidence records).
 	Envelope envelope.Signed `json:"envelope"`
 	// ReleaseB64 is the RELEASE.json body (the envelope Body), base64-std.
 	ReleaseB64 string `json:"release_b64"`
@@ -77,8 +222,9 @@ type publishRequest struct {
 // Python/rootfs tarball, bootstrap tarball); class+name select the served
 // /releases/<class>/<name> path.
 type installerPublishRequest struct {
-	// Envelope is the publisher's signed artifact envelope (JSON object). It
-	// binds RequestHash to sha256(artifact), matching /publish's author gate.
+	// Envelope is the publisher's signed publish-request envelope (JSON
+	// object; envelope.KindPublishRequest). It binds RequestHash to
+	// sha256(artifact), matching /publish's author gate.
 	Envelope    envelope.Signed `json:"envelope"`
 	Class       string          `json:"class"`
 	Name        string          `json:"name"`
@@ -108,14 +254,22 @@ type installerPublishRequest struct {
 // When non-nil, its verified snapshot is served under /root/ (X-Store-Origin:
 // root). The root operator passes nil (it originates, never mirrors).
 func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror) http.Handler {
+	return newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogRuntime{})
+}
+
+func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
 	mux := http.NewServeMux()
 
 	svc := &publishService{
-		cfg:       cfg,
-		cr:        cr,
-		operator:  operator,
-		assembler: NewCatalogAssembler(cfg.CatalogRepoRoot),
-		nonces:    envelope.NewMemoryNonceCache(),
+		cfg:                cfg,
+		cr:                 cr,
+		operator:           operator,
+		assembler:          NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
+		nonces:             envelope.NewMemoryNonceCache(),
+		appNonces:          runtime.appNonces,
+		catalogGenerations: runtime.catalogGenerations,
+		catalogExpectedUID: runtime.expectedUID,
+		catalogExpectedGID: runtime.expectedGID,
 	}
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -127,17 +281,36 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 			"surface": "read + gated /publish (on-chain verified, single writer)",
 		})
 	})
+	// Runtime identity is intentionally a separate exact route, ahead of the
+	// static read surface.  The external update controller only accepts a
+	// post-restart release after this handler names the tuple supplied by the
+	// install-local systemd EnvironmentFile and the controller independently
+	// binds its PID to systemd+/proc.  A store without that local marker returns
+	// 503 instead of fabricating a version from its binary or catalog.
+	mux.HandleFunc("/release-info", handleRuntimeReleaseInfo)
 
 	mux.HandleFunc("/publish", svc.handlePublish)
+	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
+	// POST /publish/generation: envelope-authorized promote of the next signed
+	// desired generation (canonical publisher's promote step). Re-verifies the
+	// store operator + each component on-chain + served bytes under the
+	// single-writer lock, then composes + CAS-promotes + operator-signs it.
+	mux.HandleFunc("/publish/generation", svc.handleGeneratePromote)
+	// Temporary bootstrap for hosts that still consume the pre-generation shell
+	// manifest.  It derives that compatibility document from the already-signed,
+	// chain-verified current DesiredGeneration; it never accepts artifact facts.
+	mux.HandleFunc("/publish/legacy-manifest-bootstrap", svc.handleLegacyManifestBootstrap)
 
 	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
-	// manifest the install-side melusina-update-checker.py fetches + verifies
-	// before applying an update. Registered as an EXACT route so it beats the
-	// catch-all FileServer (a dynamically re-signed manifest, not a static file);
-	// the handler write-throughs the same bytes to <DistDir>/update/manifest.json.
-	// Fail-closed 503 when the operator identity is unwired (no signer).
-	mux.HandleFunc("/update/manifest.json", svc.handleUpdateManifest)
+	// ── DESIRED-GENERATION producer (GET /update/generation.json) ──────────────
+	// The operator-signed typed desired-generation document the external host
+	// update controller fetches + verifies before applying. Registered as an EXACT
+	// route so it beats the catch-all FileServer. Serves the exact persisted signed
+	// bytes; fail-closed 503 until a generation is published and verifies under the
+	// store operator key + storeId. Greenfield replacement for the deleted
+	// shell-only /update/manifest.json — no compatibility branch.
+	mux.HandleFunc("/update/generation.json", svc.handleDesiredGeneration)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -152,8 +325,14 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 	// under /packages/ pass the SERVE-TIME on-chain gate (canon §5b, B1-01): the
 	// served bytes must content-match an Active on-chain ReleaseEntry or the GET
 	// is refused (403). Fail-closed: with no chain reader, SPK serves 503.
-	gate := newServeGate(cfg, cr, http.FileServer(http.Dir(cfg.DistDir)))
-	mux.Handle("/", gate)
+	flatStatic := http.FileServer(http.Dir(cfg.DistDir))
+	static := requestScopedStatic{flat: flatStatic}
+	gate := newServeGate(cfg, cr, static, svc.operator)
+	var readSurface http.Handler = gate
+	if runtime.appNonces != nil && runtime.catalogGenerations.Root != "" {
+		readSurface = newGenerationHTTP(runtime.catalogGenerations, gate)
+	}
+	mux.Handle("/", readSurface)
 
 	if cr == nil {
 		log.Printf("read surface: %q — WARNING: no chain reader; /packages/* SPK serves fail CLOSED (503) until rpc_url is set", cfg.DistDir)
@@ -161,6 +340,98 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
 	}
 	return mux
+}
+
+// handleStagePublish durably stores a candidate in the private content-addressed
+// stage before its ReleaseEntry exists. It verifies the signed publisher
+// envelope, exact app hash, store operator authority, path policy, and
+// blacklists, but deliberately does not assemble or expose the candidate.
+func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "publish stage gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
+		return
+	}
+
+	preflight, err := s.preflightAppPublish(r, "/publish/stage")
+	if err != nil {
+		http.Error(w, err.Error(), appPreflightErrorStatus(err))
+		return
+	}
+
+	// All route-applicable local and chain reads, the final expiry check, the
+	// durable claim and the first mutation are one single-writer transaction.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lockedNow := s.currentTime()
+	if err := verifyTightAppEnvelopeWindow(preflight.sig.Payload, lockedNow); err != nil {
+		http.Error(w, err.Error(), appPreflightErrorStatus(err))
+		return
+	}
+	if s.appNonces == nil {
+		http.Error(w, "check=nonce_ledger: durable app nonce ledger is not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	operatorPub, err := signPubkey32(s.operator.Public())
+	if err != nil {
+		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, licenseMint, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(preflight.release.MasterNftMint))
+	if err != nil {
+		http.Error(w, "check=release_entry: bad release.masterNftMint: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, masterMint, "app"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if err := verifyNotBlacklisted(r.Context(), s.cr, licenseMint, "license"); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if _, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(preflight.metadata), preflight.hint); err != nil {
+		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
+		return
+	}
+	manifest, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	stagePlan, err := planStagePersistence(s.cfg.PrivateStageDir, manifest)
+	if err != nil {
+		http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	claimNow := s.currentTime()
+	if err := s.claimAppEnvelope(preflight.sig, claimNow); err != nil {
+		http.Error(w, err.Error(), appClaimErrorStatus(err))
+		return
+	}
+	if err := persistStagedAppPlanned(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, stagePlan); err != nil {
+		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt, err := signStageReceipt(s.operator, stagePlan.persistedManifest, primitives.StoreDomainHash(s.cfg.Domain))
+	if err != nil {
+		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(receipt)
 }
 
 // handlePublish is the gated write path. It fails closed and names the failing
@@ -183,56 +454,9 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
+	preflight, err := s.preflightAppPublish(r, "/publish")
 	if err != nil {
-		http.Error(w, "check=request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Verify the publisher's envelope: it must be a KindPublishRequest addressed
-	// to THIS sidecar, signed by a key THIS STORE'S POLICY authorizes, its
-	// RequestHash must equal sha256(SPK) (binding the envelope to the exact
-	// bytes), its BodyHash must equal sha256(RELEASE.json), and the nonce must
-	// be fresh (replay protection).
-	//
-	// KindPublishRequest, not KindArtifact: the name was RECLAIMED (§4.3) for
-	// durable evidence records. This message is transport — a 2-minute TTL and a
-	// nonce — and the two must not share a word.
-	operatorPub := s.operator.Public()
-
-	if err := requireEnvelopePresent(sig); err != nil {
-		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	// Store policy FIRST, so an unlisted publisher gets its own diagnostic
-	// rather than a generic envelope failure. This check needs only the claimed
-	// source identity — it used to be stuck below the envelope verify because it
-	// also consumed the parsed RELEASE.json's self-asserted PDA (D-10). Deleting
-	// that self-asserted input is what lets the policy check move to where it
-	// belongs. Empty list fails closed.
-	if !s.publisherAccepted(sig.Payload.Source) {
-		http.Error(w, "check=accept_publishers: release publisher not in store policy accept_publishers", http.StatusForbidden)
-		return
-	}
-
-	spkHashHex := hex.EncodeToString(sha256Sum(spk))
-	if err := s.verifyPublishEnvelope(sig, operatorPub, spkHashHex); err != nil {
-		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	// The envelope binds the body hash; require the RELEASE.json we received
-	// matches it (the body travels plaintext alongside the SIGN-only envelope).
-	bodyHashHex := hex.EncodeToString(sha256Sum(releaseBytes))
-	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
-		http.Error(w, fmt.Sprintf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex), http.StatusBadRequest)
-		return
-	}
-
-	var rel ReleaseJSON
-	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
-		http.Error(w, "check=release_json: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), appPreflightErrorStatus(err))
 		return
 	}
 
@@ -240,6 +464,16 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// receipt sequence at a time.
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	lockedNow := s.currentTime()
+	if err := verifyTightAppEnvelopeWindow(preflight.sig.Payload, lockedNow); err != nil {
+		http.Error(w, err.Error(), appPreflightErrorStatus(err))
+		return
+	}
+	if s.appNonces == nil {
+		http.Error(w, "check=nonce_ledger: durable app nonce ledger is not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	operatorPub := s.operator.Public()
 
 	// THE TRUST GATE: re-verify on-chain. No env bypass is reachable here. The
 	// FoundationApp tier ceiling (B1-05/B2-05) is resolved INSIDE VerifyPublish
@@ -250,10 +484,24 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := VerifyPublish(r.Context(), s.cr, s.cfg, spk, metadata, rel, operatorSignPub); err != nil {
+	if err := VerifyPublish(r.Context(), s.cr, s.cfg, preflight.spk, preflight.metadata, preflight.release, operatorSignPub); err != nil {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
+	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
+		http.Error(w, "check=catalog_generation: generation store is not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	// Resolve the mutable selector before every route-local catalog decision.
+	// The resulting root is immutable and supplies timestamp, rollout/current,
+	// previous-release capture and the post-claim candidate copy.
+	activeGeneration, err := s.catalogGenerations.ResolveCurrent()
+	if err != nil {
+		http.Error(w, "check=catalog_generation: resolve current: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	activeCfg := s.cfg
+	activeCfg.DistDir = activeGeneration.Root
 
 	// Runtime-contract gate.  The on-chain ReleaseEntry remains the authority
 	// for what bytes may be served; this additional release-bound declaration
@@ -261,13 +509,13 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// must be proven after installation.  It is intentionally AFTER the chain
 	// gate so an invalid or revoked artifact still reports its load-bearing
 	// on-chain refusal, never a distracting metadata error.
-	if _, err := runtimecontract.Validate(runtimeContract, runtimecontract.Binding{
-		SPK:                   spk,
-		Metadata:              metadata,
-		AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
-		Version:               rel.Version,
-		ReleaseContractSHA256: rel.RuntimeContractSHA256,
-		ReleaseContractSchema: rel.RuntimeContractSchema,
+	if _, err := runtimecontract.Validate(preflight.runtimeContract, runtimecontract.Binding{
+		SPK:                   preflight.spk,
+		Metadata:              preflight.metadata,
+		AppHash:               strings.ToLower(strings.TrimSpace(preflight.release.AppHash)),
+		Version:               preflight.release.Version,
+		ReleaseContractSHA256: preflight.release.RuntimeContractSHA256,
+		ReleaseContractSchema: preflight.release.RuntimeContractSchema,
 	}); err != nil {
 		http.Error(w, "check=runtime_contract: "+err.Error(), http.StatusBadRequest)
 		return
@@ -279,39 +527,195 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// master-NFT re-anchor), so a re-publish can never surface an older "updated" time
 	// than the version it replaces. READ-ONLY over the served tree; a first publish
 	// for the slot passes.
-	if err := verifyReleaseTimestampForward(s.cfg.DistDir, metadataAppID(metadata), rel); err != nil {
+	if err := verifyReleaseTimestampForward(activeGeneration, metadataAppID(preflight.metadata), preflight.release); err != nil {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
-
-	// Gate passed → persist the verified bytes into the catalog slot (C3: the
-	// store itself writes what it verified; the served tree's inputs come from
-	// this gate and nowhere else), then invoke the catalog assembler
-	// (convenience, not authority). A failed assembly is a 500
-	// (verified-and-persisted-but-not-assembled; the next successful publish or
-	// assembler run picks the slot up — the receipt is only issued on success).
-	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(metadata), hint)
+	slotDir, err := resolveAppSlot(s.cfg.CatalogRepoRoot, metadataAppID(preflight.metadata), preflight.hint)
 	if err != nil {
 		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
 		return
 	}
-	if err := persistPublishedApp(slotDir, spk, releaseBytes, metadata, runtimeContract); err != nil {
-		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if out, err := s.assembler.Assemble(r.Context()); err != nil {
-		log.Printf("publish: catalog assemble failed: %v\n%s", err, out)
-		http.Error(w, "check=assemble: catalog assembler failed: "+err.Error(), http.StatusInternalServerError)
+	sourcePlan, err := planPublishedAppPersistence(s.cfg.CatalogRepoRoot, slotDir)
+	if err != nil {
+		http.Error(w, "check=persist_plan: "+err.Error(), http.StatusConflict)
 		return
 	}
 
+	// Promotion is permitted only for the exact candidate durably staged before
+	// the chain mutation. Recompute its content address from the submitted bytes,
+	// load the private copy, and promote those persisted bytes rather than the
+	// request body. A direct register→POST flow now fails closed.
+	wantStage, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	if err != nil {
+		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	staged, stagedSPK, stagedMetadata, _, err := loadStagedApp(s.cfg.PrivateStageDir, wantStage.StageID)
+	if err != nil {
+		http.Error(w, "check=stage: candidate was not durably staged before activation: "+err.Error(), http.StatusConflict)
+		return
+	}
+	if !sameStagedReleaseIntent(staged, wantStage) {
+		http.Error(w, "check=stage: persisted candidate does not match promotion request", http.StatusConflict)
+		return
+	}
+	spk, metadata := stagedSPK, stagedMetadata
+	promotedAt := lockedNow
+	rollout, err := prepareAppRollout(activeCfg, staged, promotedAt)
+	if err != nil {
+		http.Error(w, "check=rollout_prepare: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	operatorKey, err := s.operator.Public().SignPublicKey()
+	if err != nil {
+		http.Error(w, "check=catalog_pointer: operator key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rollout.capturedPrevious != nil {
+		capturedPlan, err := planStagePersistence(s.cfg.PrivateStageDir, rollout.capturedPrevious.manifest)
+		if err != nil {
+			http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
+			return
+		}
+		rollout.capturedPreviousPersistence = capturedPlan
+	}
+	// Promotion needs one committed generation plus one transient .current-*
+	// selector, and rollout commit needs one temporary state member.
+	if err := ensureDirectoryEntryCapacity(s.catalogGenerations.Root, 2); err != nil {
+		http.Error(w, "check=generation_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	if err := ensureDirectoryEntryCapacity(rolloutStateDir(s.cfg), 1); err != nil {
+		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	projection, err := projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, errCatalogIndexCapacity) {
+			status = http.StatusInsufficientStorage
+		}
+		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
+		return
+	}
+	if err := validateCatalogAssemblyTargets(activeGeneration, projection); err != nil {
+		http.Error(w, "check=catalog_assembly_plan: "+err.Error(), http.StatusConflict)
+		return
+	}
+	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, activeGeneration, projection, spk, metadata, preflight.releaseBytes, s.operator, &rollout, staged.AppID, promotedAt)
+	if err != nil {
+		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs)); err != nil {
+		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
+		return
+	}
+	// A promoted app is not consumer-ready until the signed desired generation
+	// selects it. Prepare that replacement from the frozen pointer BEFORE the
+	// irreversible nonce claim; we persist it only after the catalog selector
+	// switches, while the same writer lock remains held. Readers therefore see
+	// either the previous coherent app+generation pair or the new pair, never a
+	// catalog that invalidates the generation it is serving.
+	var generationRaw []byte
+	if strings.TrimSpace(s.cfg.PublicBaseURL) != "" {
+		generationRaw, err = s.planAppGenerationAdvance(catalogPointerForPlan(pointerPlan, staged.AppID), preflight.spk, preflight.release, promotedAt)
+		if err != nil {
+			http.Error(w, "check=generation_plan: "+err.Error(), http.StatusConflict)
+			return
+		}
+	}
+
+	// No semantic or trust read may occur after this exact instant. The durable
+	// claim is the last gate and precedes retained rollout state, source persist,
+	// candidate generation assembly and the atomic current switch.
+	claimNow := s.currentTime()
+	if err := s.claimAppEnvelope(preflight.sig, claimNow); err != nil {
+		http.Error(w, err.Error(), appClaimErrorStatus(err))
+		return
+	}
+	if err := persistPublishedAppPlanned(sourcePlan, preflight.spk, preflight.releaseBytes, preflight.metadata, preflight.runtimeContract); err != nil {
+		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.appMutationStep("after-source-persist"); err != nil {
+		http.Error(w, "check=fault_after_source_persist: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
+		// A generation is selected by immutable private stages, not by any
+		// legacy public payload copy inherited while cloning the prior tree.
+		// Rehydrate every frozen selection before assembling this request so a
+		// historical package/metadata drift cannot poison unrelated publishes.
+		if err := RehydrateAppCatalogPayloadsFromRollouts(s.cfg, candidateRoot, pointerPlan); err != nil {
+			return fmt.Errorf("rehydrate selected catalog payloads: %w", err)
+		}
+		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
+		// The contract is pinned transitively by the staged candidate: RELEASE.json
+		// carries runtimeContractSha256, the stage manifest binds those exact
+		// release bytes, and the preflight gate already refused any contract whose
+		// sha256 did not equal that binding. So these bytes are the ones the
+		// staged release names, not an unverified request-body substitute.
+		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection, preflight.runtimeContract); err != nil {
+			return fmt.Errorf("assemble: %w", err)
+		}
+		return WriteSignedAppCatalogPointersForGeneration(candidateRoot, pointerPlan)
+	}, func(snapshot AppCatalogSnapshot) error {
+		return ValidateAppCatalogSnapshot(snapshot, pointerPlan.rolloutAppIDs, func(pointer AppCatalogPointer) error {
+			return verifyAppCatalogPointer(operatorKey, pointer)
+		})
+	})
+	if err != nil {
+		log.Printf("publish: catalog generation failed: %v", err)
+		http.Error(w, "check=catalog_generation: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.appMutationStep("after-generation-commit"); err != nil {
+		http.Error(w, "check=fault_after_generation_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := commitAppRollout(s.cfg, rollout); err != nil {
+		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.appMutationStep("after-rollout-commit"); err != nil {
+		http.Error(w, "check=fault_after_rollout_commit: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.catalogGenerations.SwitchCurrent(committedGeneration); err != nil {
+		// Rename may have committed current before a post-rename hook/fsync
+		// reported uncertainty. Re-resolve the selector and fsync its parent;
+		// continue only when the exact prepared generation is selected durably.
+		selected, resolveErr := s.catalogGenerations.ResolveCurrent()
+		if resolveErr != nil || selected.ID != committedGeneration.ID || syncDir(s.catalogGenerations.Root) != nil {
+			http.Error(w, "check=catalog_switch: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("publish: reconciled post-switch uncertainty for generation %s: %v", committedGeneration.ID, err)
+	}
+	if len(generationRaw) != 0 {
+		if err := persistDesiredGeneration(s.cfg.DistDir, generationRaw); err != nil {
+			// The catalog switch is durable, so do not pretend a failed generation
+			// write was a successful publish. The reader stays behind s.mu until this
+			// function returns and will fail closed if the durable pair is incomplete.
+			http.Error(w, "check=generation_persist: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := s.appMutationStep("after-current-switch"); err != nil {
+		http.Error(w, "check=fault_after_current_switch: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	catalogPointer := pointerPlan.pointers[staged.AppID]
+
 	// Compute the receipt tuple from the now-verified facts.
-	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.AppHash)))
+	appHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(preflight.release.AppHash)))
 	if err != nil {
 		http.Error(w, "check=receipt: appHash: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	releaseHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.ReleaseHash)))
+	releaseHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(preflight.release.ReleaseHash)))
 	if err != nil {
 		http.Error(w, "check=receipt: releaseHash: "+err.Error(), http.StatusBadRequest)
 		return
@@ -319,10 +723,102 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	servingDomainHash := primitives.StoreDomainHash(s.cfg.Domain)
 
 	receipt := SignReceipt(s.operator, appHash, releaseHash, servingDomainHash)
+	stageReceipt, err := signStageReceipt(s.operator, staged, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: stage: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rolloutReceipt, err := signAppRolloutReceipt(s.operator, rollout, servingDomainHash)
+	if err != nil {
+		http.Error(w, "check=receipt: rollout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	receipt.Stage = &stageReceipt
+	receipt.Rollout = &rolloutReceipt
+	receipt.Catalog = &catalogPointer
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
+	// The promotion is consumer-visible and durable now. Send its signed
+	// receipt before best-effort retention: retaining older staged trees can
+	// take longer than a proxy response timeout for a large catalog, which must
+	// not make an accepted publish look like a failed request.
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+	// The promotion, nonce consumption and success receipt are already committed.
+	// Retention runs under the same app writer mutex and the cross-request storage
+	// barrier, but a refusal is logged for fail-closed startup repair rather than
+	// being misreported to the caller as a failed promotion.
+	retainedRollouts, retentionErr := exactRolloutStatesAt(s.cfg, promotedAt)
+	if retentionErr == nil {
+		retentionErr = runAppRetentionGC(s.cfg, s.catalogGenerations, retainedRollouts, committedGeneration.ID, activeGeneration.ID, promotedAt, s.catalogExpectedUID, s.catalogExpectedGID)
+	}
+	if retentionErr != nil {
+		log.Printf("publish: post-success app retention refused: %v", retentionErr)
+	}
+}
+
+// catalogPointerForPlan keeps the pre-claim generation planner from reaching
+// into a mutable map at call sites. A missing required pointer is always a
+// programming/assembly error and is rejected before the nonce is consumed.
+func catalogPointerForPlan(plan appCatalogPointerPlan, appID string) AppCatalogPointer {
+	return plan.pointers[appID]
+}
+
+// planAppGenerationAdvance derives the sole app component update from the
+// already chain-verified publish inputs and the operator-signed catalog pointer.
+// It is deliberately not a second HTTP publish: the app route owns the writer
+// lock and must commit both selectors as one consumer-visible transaction.
+func (s *publishService) planAppGenerationAdvance(pointer AppCatalogPointer, spk []byte, release ReleaseJSON, now time.Time) ([]byte, error) {
+	if pointer.AppID == "" || pointer.PackageID == "" || pointer.AppHash == "" || pointer.ReleaseHash == "" || pointer.StageID == "" {
+		return nil, errors.New("missing frozen app catalog pointer")
+	}
+	current, err := s.loadCurrentGenerationOrNil()
+	if err != nil {
+		return nil, err
+	}
+	expected, channel := uint64(0), "dev"
+	if current != nil {
+		expected, channel = current.GenerationID, current.Channel
+	}
+	if channel == "" {
+		channel = "dev"
+	}
+	artifactHash := sha256.Sum256(spk)
+	update := componentrelease.ComponentRelease{
+		ComponentID: pointer.AppID, ComponentClass: componentrelease.ClassApp,
+		Version: pointer.Version, ArtifactName: pointer.PackageID,
+		SHA256: hex.EncodeToString(artifactHash[:]), ContentSHA256: pointer.AppHash,
+		SizeBytes: int64(len(spk)), BundleURL: strings.TrimRight(s.cfg.PublicBaseURL, "/") + "/packages/" + pointer.PackageID,
+		Chain:       componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: s.cfg.ProgramID, MasterNftMint: release.MasterNftMint, ReleasePDA: release.ReleaseEntryPda},
+		ReleaseHash: pointer.ReleaseHash, StageID: pointer.StageID,
+	}
+	// The signed rollout pointer is the authoritative rollback relation for
+	// this app publish. A store bootstrapped after an app was already installed
+	// may not yet have that app in its previous desired generation; falling back
+	// to the generic "new component" rule would then set previousSha256 to the
+	// new app hash. Consumers that hold the real prior release correctly reject
+	// that as a rollback. Carry the pointer's prior app-tree hash and version
+	// whenever present so every promoted app update names what it supersedes.
+	if pointer.PreviousAppHash != "" || pointer.PreviousVersion != "" {
+		if pointer.PreviousAppHash == "" || pointer.PreviousVersion == "" {
+			return nil, errors.New("app catalog pointer has a partial previous-release floor")
+		}
+		update.PreviousSHA256 = pointer.PreviousAppHash
+		update.PreviousVersion = pointer.PreviousVersion
+	}
+	next, err := planGenerationPromote(current, GenerationPromoteRequest{Schema: generationPromoteSchema, Channel: channel, ExpectedCurrentGeneration: expected, Components: []componentrelease.ComponentRelease{update}}, GenerationPolicy{StoreID: s.cfg.StoreID, BundleOrigin: strings.TrimRight(s.cfg.PublicBaseURL, "/"), Channel: channel}, now.UTC().Unix())
+	if err != nil {
+		return nil, err
+	}
+	signed, err := componentrelease.Sign(s.operator, next)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(signed)
 }
 
 // handlePublishInstaller is the whole-file artifact publish path for
@@ -350,17 +846,25 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 	artifactHash := sha256.Sum256(artifact)
 	operatorIdentity := s.operator.Public()
 	artifactHashHex := hex.EncodeToString(artifactHash[:])
+	// Same three-step order as the app route (requireEnvelopePresent ->
+	// resolveAcceptedPublisherKey -> envelope.Verify), so the two routes cannot
+	// report the same condition with different codes.
 	if err := requireEnvelopePresent(sig); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
-	// Policy first, then authority — the same order as the app route, so the two
-	// routes cannot report the same condition with different codes.
-	if !s.publisherIdentityAccepted(sig.Payload.Source) {
+	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
+	if !ok {
 		http.Error(w, "check=accept_publishers: installer publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
 	}
-	if err := s.verifyPublishEnvelope(sig, operatorIdentity, artifactHashHex); err != nil {
+	if err := envelope.Verify(sig, envelope.VerifyOptions{
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: signerKey,
+		ExpectedDestination:     &operatorIdentity,
+		ExpectedRequestHash:     artifactHashHex,
+		NonceCache:              s.nonces,
+	}); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -415,6 +919,33 @@ func rejectReceiveBypass(w http.ResponseWriter) bool {
 	return false
 }
 
+func appPreflightErrorStatus(err error) int {
+	message := err.Error()
+	switch {
+	case strings.HasPrefix(message, "check=request:"),
+		strings.HasPrefix(message, "check=body_hash:"),
+		strings.HasPrefix(message, "check=release_json:"):
+		return http.StatusBadRequest
+	case strings.HasPrefix(message, "check=accept_publishers:"):
+		return http.StatusForbidden
+	case strings.HasPrefix(message, "check=nonce_ledger:"), strings.HasPrefix(message, "check=nonce_clock:"):
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusUnauthorized
+	}
+}
+
+func appClaimErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, errPublishNonceCapacity), errors.Is(err, errPublishNonceClockRollback):
+		return http.StatusServiceUnavailable
+	case strings.Contains(err.Error(), "not initialized"):
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusUnauthorized
+	}
+}
+
 func publishErrorStatus(err error) int {
 	if errors.Is(err, errVersionConflict) || errors.Is(err, errSupersedeRequired) || errors.Is(err, errReleaseTimestampNotMonotonic) {
 		return http.StatusConflict
@@ -422,42 +953,29 @@ func publishErrorStatus(err error) int {
 	return http.StatusForbidden
 }
 
-// publisherAccepted enforces store policy.accept_publishers as POLICY.
-//
-// It is NOT the signer authority — that is resolveAcceptedPublisherKey below,
-// and the envelope's signature is verified against the key THAT returns
-// (PROVENANCE_CONTRACTS.md §7.6(4)). Keeping this check as well is deliberate:
-// it fails closed on an empty list (:390-392), which is the only reason the
-// live gate was safe before the signer authority existed (§0.2 finding 3). It
-// is the right instinct at the wrong altitude; it keeps its altitude.
-//
-// D-10: the `rel.ReleaseEntryPda` match is GONE. It compared a SELF-ASSERTED
-// RELEASE.json field against the allowlist — a value the publisher types, used
-// inside an authority decision. It was not exploitable on its own (VerifyPublish
-// independently re-resolves chain from rel), but a self-asserted value has no
-// business in this decision, and it is precisely the shape that lets an
-// allowlist entry authorize a signature nobody checked.
-func (s *publishService) publisherAccepted(publisher identity.Public) bool {
-	_, ok := s.resolveAcceptedPublisherKey(publisher)
-	return ok
-}
-
 // resolveAcceptedPublisherKey returns the signing key THIS STORE'S POLICY
-// authorizes for the claimed publisher, and is the sole signer authority for a
-// publish (§7.6(4)).
+// authorizes for the claimed publisher, and is the SOLE signer authority for a
+// publish (ported from d81b7d9a; PROVENANCE_CONTRACTS.md §7.6(4)).
 //
 // THE DIRECTION IS THE SECURITY PROPERTY. `claimed` is the key the envelope
-// carries, and it is used ONLY as a lookup hint into our own allowlist; the key
-// returned — and therefore the key the signature is verified against — is OUR
-// policy's copy. A claimed key that is not in the allowlist resolves to nothing
-// and the publish is refused. So the blob can select WHICH allowlisted publisher
-// it claims to be, and can never introduce a key.
+// carries, and it is used ONLY as a lookup hint into our own allowlist; the
+// key returned — and therefore the key the signature is verified against — is
+// OUR policy's copy. A claimed key that is not in the allowlist resolves to
+// nothing and the publish is refused, so the blob can select WHICH allowlisted
+// publisher it claims to be, and can never introduce a key.
 //
-// This is the discipline jointicket.Verify has always had (a mandatory
-// expectedSignerPubkey, verified against the caller's key rather than
-// s.SignerPubkeyBase58) and that envelope.Verify lacked until the v2 cutover:
-// it verified against the pubkey carried inside the payload being verified,
-// which any key satisfies for its own blob.
+// v1's envelope.Verify accidentally made the blob its own authority (it
+// verified against the pubkey inside the payload being verified, which any
+// key satisfies for its own blob). v2 requires the caller to pin
+// ExpectedSignerPubkeyB58 explicitly, and this is the ONE place that pin comes
+// from. An empty AcceptPublishers list matches nothing (the loop below simply
+// never runs), so the fail-closed-on-empty-list behaviour of the function this
+// replaces is preserved structurally, not by a separate guard.
+//
+// Only a base58 SIGNING PUBKEY authorizes a publish now (D-10): a
+// self-asserted ReleaseEntry PDA in the allowlist can never resolve to a key,
+// because a PDA is not decodable as an ed25519 public key, so it can never
+// gate a signature check.
 func (s *publishService) resolveAcceptedPublisherKey(claimed identity.Public) (string, bool) {
 	want := strings.TrimSpace(claimed.SignPubkeyB58)
 	if want == "" {
@@ -479,9 +997,9 @@ func (s *publishService) resolveAcceptedPublisherKey(claimed identity.Public) (s
 //
 // Both are refusals, and the gate is equally closed either way — but an
 // operator who reads "not in store policy accept_publishers" will go and edit
-// their allowlist, when the real fault is a client that posted nothing. The
-// policy check runs before the signature check (so an unlisted publisher gets
-// its own diagnostic), which is exactly what makes this distinction necessary.
+// their allowlist, when the real fault is a client that posted nothing. This
+// runs before the policy check (so an unlisted publisher gets its own
+// diagnostic), which is exactly what makes the distinction necessary.
 func requireEnvelopePresent(sig envelope.Signed) error {
 	if strings.TrimSpace(sig.SignatureB58) == "" {
 		return errors.New("missing envelope signature")
@@ -492,67 +1010,22 @@ func requireEnvelopePresent(sig envelope.Signed) error {
 	return nil
 }
 
-// verifyPublishEnvelope is the ONE place a publish envelope is authenticated.
+// parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw
+// SPK bytes, the metadata.json bytes, the RUNTIME-CONTRACT.json bytes, and the
+// optional catalog-slot hint from either a multipart/form-data request (file
+// fields: envelope, release, spk, metadata, runtime_contract; value fields:
+// developer, repo, slug) or a JSON request (publishRequest, *_b64 names).
+// metadata is REQUIRED (the on-chain AppHash binds {app.spk, metadata.json}); a
+// publish without it cannot recompute the AppHash and is malformed.
 //
-// Both publish routes call it so the two cannot drift apart — they already had
-// two hand-copied envelope.Verify blocks, and D-9's kill-list missed a third
-// signing site in cmd/submit-installer, which is what copy-paste at a security
-// boundary costs.
-func (s *publishService) verifyPublishEnvelope(sig envelope.Signed, operatorPub identity.Public, requestHashHex string) error {
-	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
-	if !ok {
-		// Deliberately does not echo the claimed key as though it were an
-		// identity: it is an unauthenticated string at this point.
-		return fmt.Errorf("publisher is not in store policy accept_publishers (the allowlist must contain the publisher's base58 SIGNING PUBKEY; a ReleaseEntry PDA no longer authorizes a publish — see D-10)")
-	}
-	// NOTE what is deliberately NOT pinned here: ExpectedLicenseMint and
-	// ExpectedDomain. Payload.Domain / Payload.LicenseMint are the PUBLISHER's
-	// own values, and this store authenticates EXTERNAL app publishers, each
-	// under their own license and domain. accept_publishers holds keys, not
-	// licenses — the store has no pinned value to compare against.
-	//
-	// The only way to populate them here would be
-	// `ExpectedLicenseMint: sig.Payload.Source.Ref.LicenseMint` — comparing the
-	// blob against itself. That check can never fail while LOOKING like a
-	// control, which is worse than no check at all and is the exact class of
-	// defect this migration exists to delete. (A first draft of this function
-	// did precisely that and pinned ExpectedDomain to the OPERATOR's domain;
-	// the publish tests caught it as "domain mismatch" on every valid publish.)
-	//
-	// The authority that decides a publish is the signing key, and it is pinned.
-	return envelope.Verify(sig, envelope.VerifyOptions{
-		ExpectedSignerPubkeyB58: signerKey,
-		ExpectedKind:            envelope.KindPublishRequest,
-		ExpectedDestination:     &operatorPub,
-		ExpectedRequestHash:     requestHashHex,
-		NonceCache:              s.nonces,
-	})
-}
-
-// publisherIdentityAccepted is the installer route's policy check. It is the
-// SAME rule as publisherAccepted — one allowlist, one meaning.
-//
-// These were two near-identical loops with subtly different rules (the app route
-// also matched a self-asserted PDA; both also matched an identity digest that no
-// documented config ever contains and that cannot yield a signing key). Two
-// spellings of one policy is how the two drift, and the drift is invisible until
-// one of them is the only thing standing between a publisher and the catalog.
-func (s *publishService) publisherIdentityAccepted(publisher identity.Public) bool {
-	return s.publisherAccepted(publisher)
-}
-
-// parsePublishBody extracts the signed envelope, RELEASE.json, raw SPK,
-// metadata.json, and RUNTIME-CONTRACT.json plus the optional catalog-slot hint.
-// The contract travels as its own raw artifact because RELEASE.json binds its
-// SHA-256 and the contract binds sha256(SPK).  It is REQUIRED for every new
-// /publish; historical catalog cards are grandfathered only on the READ path,
-// where they are surfaced as explicitly uncertified.
-//
-// Multipart file fields: envelope, release, spk, metadata, runtime_contract.
-// JSON fields use their corresponding *_b64 names.  metadata remains required
-// because the on-chain AppHash binds {app.spk, metadata.json}.
+// The runtime contract travels as its own raw artifact because RELEASE.json
+// binds its SHA-256 and the contract binds sha256(SPK). It is REQUIRED for every
+// new /publish; historical catalog cards are grandfathered only on the READ
+// path, where they are surfaced as explicitly uncertified.
 func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, err error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
+		return sig, nil, nil, nil, nil, hint, err
+	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
@@ -638,7 +1111,9 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxPublishBody)
+	if err := limitPublishBody(r, maxInstallerPublishBody); err != nil {
+		return sig, "", "", nil, err
+	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
@@ -686,6 +1161,14 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		return sig, "", "", nil, errors.New("artifact is empty")
 	}
 	return sig, class, name, artifact, nil
+}
+
+func limitPublishBody(r *http.Request, limit int64) error {
+	if r.ContentLength > limit {
+		return fmt.Errorf("request body is %d bytes; limit is %d", r.ContentLength, limit)
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, limit)
+	return nil
 }
 
 func writePublishedReleaseArtifact(distDir, class, name string, artifact []byte) error {

@@ -1,0 +1,34 @@
+{
+  "license_nft_mint": "REPLACE_WITH_TARGET_LICENSE_MINT",
+  "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+  "domain": "REPLACE_WITH_STORE_IDENTITY_DOMAIN",
+  "store_id": "REPLACE_WITH_PINNED_STORE_ID",
+  "root_store_url": "",
+  "public_base_url": "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST",
+  "release_master_nft_mint": "REPLACE_WITH_RELEASE_MASTER_NFT_MINT",
+  "policy": {
+    "allowed_tiers": ["regular"],
+    "require_scan_report": true,
+    "accept_publishers": ["REPLACE_WITH_AUTHORIZED_PUBLISHER_SIGNING_PUBKEY"]
+  },
+  "rpc_url": "REPLACE_WITH_TARGET_SOLANA_RPC_URL",
+  "listen_addr": ":8443",
+  "dist_dir": "/var/lib/melusina-store/dist-publish",
+  "private_stage_dir": "/var/lib/melusina-store-private",
+  "catalog_generation_root": "/var/lib/melusina-store-catalog",
+  "catalog_migration_state_dir": "/var/lib/melusina-store-migrations",
+  "catalog_repo_root": "/var/lib/melusina-store/catalog-source",
+  "tls": {
+    "cert_path": "/etc/melusina/store/tls/cert.pem",
+    "key_path": "/etc/melusina/store/tls/key.pem"
+  },
+  "boot_identity": {
+    "shards_dir": "/etc/melusina/store/shards",
+    "sidecar_id": "REPLACE_WITH_STORE_SIDECAR_ID",
+    "chain_id": "solana:devnet",
+    "key_version": 1,
+    "operator_key_version": 1,
+    "operator_domain": "REPLACE_WITH_STABLE_OPERATOR_DOMAIN",
+    "tls_cert_path": "/etc/melusina/store/boot-identity-tls-cert.pem"
+  }
+}

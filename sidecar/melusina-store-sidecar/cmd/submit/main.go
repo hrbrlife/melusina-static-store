@@ -1,7 +1,8 @@
 // Command submit is the paired sealed-v3 publish client (FEDERATED-STORE-MVP
 // §C3). It REPLACES the gh-pages force-push: instead of writing the catalog
 // itself, it packs the publisher's CLAIMS (the canonical RELEASE.json) into a
-// signed artifact envelope and POSTs them — together with the SPK bytes — to a
+// signed publish-request envelope (envelope.KindPublishRequest) and POSTs
+// them — together with the SPK bytes — to a
 // store sidecar's gated POST /publish (the C2.3 receive contract). The sidecar
 // is the SINGLE WRITER; this client never touches git.
 //

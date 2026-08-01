@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -45,6 +46,10 @@ type Policy struct {
 	// An operator whose config lists a PDA will see check=accept_publishers
 	// refusals until it is replaced with the publisher's signing pubkey; that is
 	// a deliberate, named break, not a regression.
+	//
+	// Mechanically: this is the SOLE signer authority resolveAcceptedPublisherKey
+	// pins into envelope.Verify's ExpectedSignerPubkeyB58, and a PDA is not
+	// decodable as an ed25519 public key, so it can never resolve to a signer key.
 	AcceptPublishers []string `json:"accept_publishers"`
 }
 
@@ -56,16 +61,16 @@ type Config struct {
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
 	RootStoreURL    string `json:"root_store_url"`
 	// PublicBaseURL is THIS store's own public origin — the absolute
-	// https://bazaar.<domain> URL the install-side melusina-update-checker.py
-	// fetches /update/manifest.json from and downloads bundles from. The sidecar
-	// listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
+	// https://bazaar.<domain> URL the external host update controller fetches
+	// /update/generation.json from and downloads component bundles from. The
+	// sidecar listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
 	// behind the bazaar TLS edge, so it cannot derive its public origin from
 	// cfg.Domain or by sniffing the request Host (doctrine §2.10: network-facing
 	// endpoints are set explicitly in the deployer, sidecars never sniff their
-	// environment; signing an attacker-influenced Host into the manifest would
-	// also be a signing-oracle footgun). The signed update manifest's bundle_url
-	// is built from this base. Unset => GET /update/manifest.json fails closed
-	// (503): a bundle advertised on an internal/guessed host is unreachable.
+	// environment; signing an attacker-influenced Host into a bundleUrl would also
+	// be a signing-oracle footgun). Each component's bundleUrl in the signed
+	// desired generation is built from this base. Unset => publishing a generation
+	// whose bundles would be advertised on an internal/guessed host fails closed.
 	// Example: "https://bazaar.melusina-os.org".
 	PublicBaseURL string `json:"public_base_url"`
 	// ReleaseMasterNftMint is the Master NFT mint used to derive
@@ -77,6 +82,24 @@ type Config struct {
 	RPCURL               string `json:"rpc_url"`
 	ListenAddr           string `json:"listen_addr"`
 	DistDir              string `json:"dist_dir"`
+	// PrivateStageDir is the non-public, content-addressed candidate store used by
+	// the two-phase app release path. Candidate bytes land here before any chain
+	// mutation and are promoted only after the matching ReleaseEntry is Active.
+	// It MUST NOT be equal to, or nested below, DistDir because DistDir is served
+	// publicly. A write-capable store MUST set it explicitly. An operator-less,
+	// read-only store retains the legacy <catalog_repo_root>/.melusina-private-stage
+	// default because it cannot accept or promote candidates.
+	PrivateStageDir string `json:"private_stage_dir,omitempty"`
+	// CatalogGenerationRoot owns immutable app-catalog generations and the
+	// relative "current" symlink. It is never served directly and must be
+	// lexically disjoint from DistDir, PrivateStageDir, and
+	// CatalogMigrationStateDir. Required for a write-capable store.
+	CatalogGenerationRoot string `json:"catalog_generation_root,omitempty"`
+	// CatalogMigrationStateDir is the externally initialized migration-state
+	// directory. Its existing mode-0600 writer.lock is acquired for the complete
+	// lifetime of every write-capable process. Startup never creates this root or
+	// the lock. Required for a write-capable store.
+	CatalogMigrationStateDir string `json:"catalog_migration_state_dir,omitempty"`
 	// CatalogRepoRoot is the static_store working tree from which the in-process
 	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
 	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —
@@ -91,6 +114,12 @@ type Config struct {
 	// long — the documented revoke-visibility window. 0/unset => 60s default;
 	// negative => disable the cache (re-verify on every GET).
 	ServeVerifyTTLSeconds int `json:"serve_verify_ttl_seconds"`
+	// AppRollbackWindowSeconds is how long the immediately previous Active app
+	// release remains eligible for authenticated package serving after catalog
+	// promotion. 0/unset defaults to 24h; negative disables previous-release
+	// serving. Chain status is still authoritative: a revoked previous release is
+	// refused immediately (subject to ServeVerifyTTLSeconds).
+	AppRollbackWindowSeconds int `json:"app_rollback_window_seconds"`
 
 	// Mirror is the reseller-only ROOT-MIRROR worker config (FEDERATED-STORE-MVP
 	// §C2.6). A reseller sidecar serves the base Melusina installer + basic
@@ -138,6 +167,20 @@ type BootIdentityConfig struct {
 	ChainID string `json:"chain_id"`
 	// KeyVersion is the SidecarIdentityEntry key_version seed. 0 => 1.
 	KeyVersion uint32 `json:"key_version"`
+	// OperatorKeyVersion optionally keeps the long-lived signing/encryption
+	// identity anchored to an earlier SidecarIdentityEntry PDA while KeyVersion
+	// advances to bind a renewed TLS certificate or replacement binary. Zero
+	// preserves the legacy behavior: derive the operator from KeyVersion.
+	//
+	// This separation is required because StoreOperatorAuthorization pins the
+	// operator public key, while SidecarIdentityEntry also pins rotatable
+	// deployment facts. Rotating those facts must not silently rotate the store
+	// authority that already owns its release listings.
+	OperatorKeyVersion uint32 `json:"operator_key_version,omitempty"`
+	// OperatorDomain is the domain in the stable operator identity Ref. Empty
+	// preserves the legacy behavior: use cfg.Domain. This exists for stores that
+	// normalized their serving domain after the operator was authorized.
+	OperatorDomain string `json:"operator_domain,omitempty"`
 	// TLSCertPath optionally overrides tls.cert_path for the on-chain
 	// SidecarIdentityEntry tls_cert_fingerprint binding. This lets a root store
 	// bind its public edge certificate while still serving container-local TLS.
@@ -210,5 +253,66 @@ func LoadConfig(path string) (Config, error) {
 	if cfg.CatalogRepoRoot == "" {
 		cfg.CatalogRepoRoot = "."
 	}
+	writeCapable := strings.TrimSpace(cfg.BootIdentity.ShardsDir) != ""
+	if writeCapable && strings.TrimSpace(cfg.PrivateStageDir) == "" {
+		return cfg, fmt.Errorf("config: private_stage_dir is required when boot_identity.shards_dir is set")
+	}
+	if writeCapable && strings.TrimSpace(cfg.CatalogGenerationRoot) == "" {
+		return cfg, fmt.Errorf("config: catalog_generation_root is required when boot_identity.shards_dir is set")
+	}
+	if writeCapable && strings.TrimSpace(cfg.CatalogMigrationStateDir) == "" {
+		return cfg, fmt.Errorf("config: catalog_migration_state_dir is required when boot_identity.shards_dir is set")
+	}
+	if cfg.PrivateStageDir == "" {
+		cfg.PrivateStageDir = filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage")
+	}
+	if err := validateCatalogStorageRoots(cfg); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
+}
+
+// validateCatalogStorageRoots performs lexical containment checks only. The
+// write bootstrap performs filesystem/device checks after it owns writer.lock;
+// doing those here would inspect bootstrap state before process exclusion.
+func validateCatalogStorageRoots(cfg Config) error {
+	type namedRoot struct {
+		name string
+		path string
+	}
+	roots := []namedRoot{
+		{name: "dist_dir", path: cfg.DistDir},
+		{name: "private_stage_dir", path: cfg.PrivateStageDir},
+	}
+	if cfg.CatalogGenerationRoot != "" {
+		roots = append(roots, namedRoot{name: "catalog_generation_root", path: cfg.CatalogGenerationRoot})
+	}
+	if cfg.CatalogMigrationStateDir != "" {
+		roots = append(roots, namedRoot{name: "catalog_migration_state_dir", path: cfg.CatalogMigrationStateDir})
+	}
+
+	for i := range roots {
+		absolute, err := filepath.Abs(roots[i].path)
+		if err != nil {
+			return fmt.Errorf("config: resolve %s: %w", roots[i].name, err)
+		}
+		roots[i].path = filepath.Clean(absolute)
+	}
+	for i := 0; i < len(roots); i++ {
+		for j := i + 1; j < len(roots); j++ {
+			if pathsLexicallyOverlap(roots[i].path, roots[j].path) {
+				return fmt.Errorf("config: %s and %s must be lexically disjoint", roots[i].name, roots[j].name)
+			}
+		}
+	}
+	return nil
+}
+
+func pathsLexicallyOverlap(a, b string) bool {
+	return pathContains(a, b) || pathContains(b, a)
+}
+
+func pathContains(parent, child string) bool {
+	rel, err := filepath.Rel(parent, child)
+	return err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))))
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,7 +16,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
@@ -47,6 +50,7 @@ import (
 type serveGate struct {
 	cfg        Config
 	cr         chainReader
+	operator   *identity.Private
 	distDir    string
 	fileServer http.Handler
 
@@ -67,6 +71,9 @@ type serveGate struct {
 	releaseVerdict map[string]time.Time // sha256(lowerhex) -> last InstallerRelease Active time
 
 	rebuildMu sync.Mutex // serializes resolve-index rebuilds
+
+	// Test-only barrier after catalog lookup and before opening package bytes.
+	beforePackageOpen func()
 }
 
 // servedApp is the dist-resolved material the gate needs to verify one served
@@ -75,6 +82,8 @@ type serveGate struct {
 type servedApp struct {
 	rel                   ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
 	metadata              []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	spkPath               string      // current dist package or private retained candidate
+	validUntil            int64       // rollback release deadline; 0 for current catalog entries
 	runtimeContractStatus string      // declared (bound) or uncertified (legacy release)
 }
 
@@ -85,7 +94,7 @@ var errServeNoChainReader = errors.New("serve gate not initialized (no on-chain 
 // newServeGate builds the gate wrapping fileServer (the byte-identical static
 // surface). It reads the serve-verify TTL from config (0/unset => 60s; negative
 // => caching disabled).
-func newServeGate(cfg Config, cr chainReader, fileServer http.Handler) *serveGate {
+func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators ...*identity.Private) *serveGate {
 	ttl := 60 * time.Second
 	switch {
 	case cfg.ServeVerifyTTLSeconds < 0:
@@ -97,9 +106,14 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler) *serveGat
 	if refresh < 15*time.Second {
 		refresh = 15 * time.Second // floor so disk isn't rescanned too aggressively
 	}
+	var operator *identity.Private
+	if len(operators) > 0 {
+		operator = operators[0]
+	}
 	return &serveGate{
 		cfg:            cfg,
 		cr:             cr,
+		operator:       operator,
 		distDir:        cfg.DistDir,
 		fileServer:     fileServer,
 		verifyTTL:      ttl,
@@ -131,10 +145,66 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fp := filepath.Join(g.distDir, "packages", base)
-	f, err := os.Open(fp)
+	defaultPath := filepath.Join(g.distDir, "packages", base)
+	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
+
+	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
+	// reader to verify it (503, distinct from a 403 verification refusal).
+	if g.cr == nil {
+		http.Error(w, "store serve-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	// Resolve current catalog packages and rollback-window packages. A retained
+	// previous release lives outside the public dist tree and is reachable only
+	// through this authenticated resolver while its rollout deadline is live.
+	app, ok := g.lookupApp(base, snapshot, hasSnapshot)
+	if !ok {
+		missing := false
+		if hasSnapshot {
+			f, err := snapshot.Open(filepath.ToSlash(filepath.Join("packages", base)))
+			if err == nil {
+				_ = f.Close()
+			}
+			missing = errors.Is(err, os.ErrNotExist)
+		} else {
+			_, err := os.Stat(defaultPath)
+			missing = errors.Is(err, os.ErrNotExist)
+		}
+		if missing {
+			g.fileServer.ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
+		return
+	}
+	if app.validUntil > 0 && g.now().UTC().Unix() >= app.validUntil {
+		http.NotFound(w, r)
+		return
+	}
+	if g.beforePackageOpen != nil {
+		g.beforePackageOpen()
+	}
+	fp := app.spkPath
+	var f *os.File
+	var err error
+	if fp == "" && hasSnapshot {
+		f, err = snapshot.Open(filepath.ToSlash(filepath.Join("packages", base)))
+	} else {
+		if fp == "" {
+			fp = defaultPath
+		}
+		f, err = os.Open(fp)
+	}
 	if err != nil {
-		// Missing/unreadable SPK: let the FileServer render the canonical 404.
+		// A retained private candidate is never allowed to fall through to a
+		// similarly named public file. Missing private bytes fail closed.
+		if app.spkPath != "" {
+			http.NotFound(w, r)
+			return
+		}
+		// Missing/unreadable public SPK: let the request-scoped FileServer render
+		// the canonical 404 from this same immutable snapshot.
 		g.fileServer.ServeHTTP(w, r)
 		return
 	}
@@ -145,24 +215,12 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if st.IsDir() {
-		// A directory under /packages/ is not an SPK — preserve static behavior.
+		if app.spkPath != "" {
+			http.NotFound(w, r)
+			return
+		}
+		// A public directory under /packages/ is not an SPK — preserve static behavior.
 		g.fileServer.ServeHTTP(w, r)
-		return
-	}
-
-	// Fail-closed: an SPK under /packages/ is NEVER served without an on-chain
-	// reader to verify it (503, distinct from a 403 verification refusal).
-	if g.cr == nil {
-		http.Error(w, "store serve-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
-		return
-	}
-
-	// Resolve the on-chain-anchored catalog app for this packageId. A miss means
-	// these bytes are not an anchored catalog app (orphan / drifted under a fresh
-	// packageId) — fail closed.
-	app, ok := g.lookupApp(base)
-	if !ok {
-		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
 		return
 	}
 
@@ -234,7 +292,18 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	var fileHash [32]byte
 	copy(fileHash[:], hasher.Sum(nil))
 
-	hashHex, err := g.gateInstallerRelease(r.Context(), fileHash)
+	var hashHex string
+	if class == componentrelease.ClassSidecar {
+		// Sidecars do not ride InstallerReleaseEntry. They are downloadable only
+		// when the exact artifact is named by this store's current
+		// operator-signed DesiredGeneration AND its active SidecarIdentity
+		// cascade re-verifies against these bytes. Do not route sidecars through
+		// the installer gate: that makes a valid sidecar generation impossible to
+		// fetch while weakening neither authority model.
+		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, st.Size())
+	} else {
+		hashHex, err = g.gateInstallerRelease(r.Context(), fileHash)
+	}
 	if err != nil {
 		code := http.StatusForbidden
 		if errors.Is(err, errReleaseMasterMintRequired) {
@@ -251,9 +320,68 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
 	w.Header().Set("X-Store-Release-Class", class)
-	w.Header().Set("X-Store-InstallerHash", hashHex)
+	if class == componentrelease.ClassSidecar {
+		w.Header().Set("X-Store-SidecarHash", hashHex)
+	} else {
+		w.Header().Set("X-Store-InstallerHash", hashHex)
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, name, st.ModTime(), f)
+}
+
+// gateSignedSidecarGeneration verifies the only sidecar download authority:
+// the current operator-signed DesiredGeneration must name this exact URL, size
+// and hash, and the active SidecarIdentity + full authorization cascade must
+// pin the same bytes. This deliberately has no cache: revocation of any one
+// cascade fact must take effect on the next sidecar download.
+func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name string, fileHash [32]byte, size int64) (string, error) {
+	if g.operator == nil {
+		return "", errors.New("sidecar generation gate not initialized (no operator identity)")
+	}
+	pub, err := operatorSignPublicKey(g.operator)
+	if err != nil {
+		return "", fmt.Errorf("sidecar generation operator key: %w", err)
+	}
+	doc, _, err := loadCurrentGeneration(g.distDir)
+	if err != nil {
+		return "", fmt.Errorf("sidecar generation load: %w", err)
+	}
+	if err := componentrelease.Verify(pub, g.cfg.StoreID, doc); err != nil {
+		return "", fmt.Errorf("sidecar generation verify: %w", err)
+	}
+	if !sameOrigin(doc.BundleOrigin, g.cfg.PublicBaseURL) {
+		return "", errors.New("sidecar generation origin does not match this store's public_base_url")
+	}
+	wantURL := strings.TrimRight(doc.BundleOrigin, "/") + "/releases/" + class + "/" + name
+	wantHash := hex.EncodeToString(fileHash[:])
+	var matched *componentrelease.ComponentRelease
+	for i := range doc.Components {
+		c := &doc.Components[i]
+		if c.ComponentClass != componentrelease.ClassSidecar || c.ArtifactName != name || c.BundleURL != wantURL {
+			continue
+		}
+		if matched != nil {
+			return "", errors.New("sidecar generation names this artifact more than once")
+		}
+		matched = c
+	}
+	if matched == nil {
+		return "", errors.New("sidecar artifact is not named by the current signed generation")
+	}
+	if matched.SHA256 != wantHash {
+		return "", fmt.Errorf("sidecar generation sha256 %s != served sha256 %s", matched.SHA256, wantHash)
+	}
+	if matched.SizeBytes != size {
+		return "", fmt.Errorf("sidecar generation size %d != served size %d", matched.SizeBytes, size)
+	}
+	// Reuse the same live chain verifier used by promotion. It derives every PDA
+	// from the component facts and verifies SidecarIdentity plus the five-fact
+	// cascade; it never trusts a publisher-supplied address alone.
+	verifier := &publishService{cfg: g.cfg, cr: g.cr}
+	if err := verifier.verifySidecarComponentOnChain(ctx, *matched); err != nil {
+		return "", fmt.Errorf("sidecar chain gate: %w", err)
+	}
+	return wantHash, nil
 }
 
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
@@ -326,8 +454,14 @@ func (g *serveGate) recordReleaseVerdict(installerHash string) {
 // On a miss it rebuilds the resolve index from disk at most once per
 // releaseRefresh window (bounding disk scans under a flood of unknown packageIds)
 // and retries once, so a newly published app becomes resolvable within the window.
-func (g *serveGate) lookupApp(packageID string) (servedApp, bool) {
+func (g *serveGate) lookupApp(packageID string, snapshot AppCatalogSnapshot, hasSnapshot bool) (servedApp, bool) {
 	key := strings.ToLower(strings.TrimSpace(packageID))
+	if hasSnapshot {
+		// Immutable generations make a request-local rebuild cheap enough and avoid
+		// any cross-request cache race while current is switching.
+		app, ok := g.buildAppIndex(snapshot, true)[key]
+		return app, ok
+	}
 	g.mu.RLock()
 	app, ok := g.apps[key]
 	loadedAt := g.appsLoadedAt
@@ -375,8 +509,17 @@ func (g *serveGate) rebuildAppIndex() {
 		return
 	}
 
+	idx := g.buildAppIndex(AppCatalogSnapshot{}, false)
+	g.mu.Lock()
+	g.apps = idx
+	g.appsLoadedAt = g.now()
+	g.mu.Unlock()
+}
+
+func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool) map[string]servedApp {
 	idx := make(map[string]servedApp)
-	if b, err := os.ReadFile(filepath.Join(g.distDir, "apps", "index.json")); err == nil {
+	b, err := g.readCatalogFile(snapshot, hasSnapshot, "apps/index.json")
+	if err == nil {
 		var ci catalogIndex
 		if json.Unmarshal(b, &ci) == nil {
 			for _, e := range ci.Apps {
@@ -389,11 +532,15 @@ func (g *serveGate) rebuildAppIndex() {
 				if pkgID == "" || !isSafePathSegment(appID) {
 					continue
 				}
-				rel, ok := readReleaseClaim(filepath.Join(g.distDir, "attest", appID, "RELEASE.json"))
+				relBytes, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")))
+				if err != nil {
+					continue
+				}
+				rel, ok := parseReleaseClaim(relBytes)
 				if !ok {
 					continue
 				}
-				meta, err := os.ReadFile(filepath.Join(g.distDir, "signatures", appID, "metadata.json"))
+				meta, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")))
 				if err != nil {
 					continue
 				}
@@ -406,7 +553,7 @@ func (g *serveGate) rebuildAppIndex() {
 				}
 				status := "uncertified" // pre-gate release; visible in the catalog too.
 				if runtimecontract.RequiresContract(binding) {
-					raw, err := os.ReadFile(filepath.Join(g.distDir, "attest", appID, "RUNTIME-CONTRACT.json"))
+					raw, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json")))
 					if err != nil {
 						// A release that claims a contract must carry the exact bound
 						// artifact. Do not degrade a malformed new release to legacy.
@@ -417,14 +564,66 @@ func (g *serveGate) rebuildAppIndex() {
 					}
 					status = "declared"
 				}
-				idx[pkgID] = servedApp{rel: rel, metadata: meta, runtimeContractStatus: status}
+				spkPath := ""
+				if !hasSnapshot {
+					spkPath = filepath.Join(g.distDir, "packages", pkgID)
+				}
+				idx[pkgID] = servedApp{
+					rel:                   rel,
+					metadata:              meta,
+					spkPath:               spkPath,
+					runtimeContractStatus: status,
+				}
 			}
 		}
 	}
-	g.mu.Lock()
-	g.apps = idx
-	g.appsLoadedAt = g.now()
-	g.mu.Unlock()
+	// Add only the immediately previous release from each bounded rollout record.
+	// The current public index wins on packageId collision. loadStagedApp verifies
+	// the private bytes against their content-addressed manifest before they enter
+	// the resolver; gate() still requires the previous ReleaseEntry to be Active.
+	rolloutFiles, _ := filepath.Glob(filepath.Join(rolloutStateDir(g.cfg), "*.json"))
+	for _, stateFile := range rolloutFiles {
+		appID := strings.TrimSuffix(filepath.Base(stateFile), ".json")
+		state, err := loadAppRollout(g.cfg, appID)
+		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
+			continue
+		}
+		manifest, spk, meta, releaseBytes, err := loadStagedApp(g.cfg.PrivateStageDir, state.PreviousStageID)
+		if err != nil || manifest.AppID != appID {
+			continue
+		}
+		pkgID := strings.ToLower(metadataPackageID(meta))
+		if !isSafePathSegment(pkgID) {
+			continue
+		}
+		var rel ReleaseJSON
+		if json.Unmarshal(releaseBytes, &rel) != nil {
+			continue
+		}
+		if _, exists := idx[pkgID]; exists {
+			continue
+		}
+		_ = spk // loadStagedApp already verified the exact private SPK bytes.
+		idx[pkgID] = servedApp{
+			rel:        rel,
+			metadata:   meta,
+			spkPath:    filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
+			validUntil: state.PreviousValidUntil,
+		}
+	}
+	return idx
+}
+
+func (g *serveGate) readCatalogFile(snapshot AppCatalogSnapshot, hasSnapshot bool, relativePath string) ([]byte, error) {
+	if !hasSnapshot {
+		return os.ReadFile(filepath.Join(g.distDir, filepath.FromSlash(relativePath)))
+	}
+	f, err := snapshot.Open(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(f)
 }
 
 // isSafePathSegment reports whether s is a single clean path segment safe to
@@ -444,6 +643,10 @@ func readReleaseClaim(path string) (ReleaseJSON, bool) {
 	if err != nil {
 		return ReleaseJSON{}, false
 	}
+	return parseReleaseClaim(b)
+}
+
+func parseReleaseClaim(b []byte) (ReleaseJSON, bool) {
 	var rel ReleaseJSON
 	if json.Unmarshal(b, &rel) != nil {
 		return ReleaseJSON{}, false

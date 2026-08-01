@@ -28,16 +28,18 @@ const (
 )
 
 type options struct {
-	shardsDir   string
-	licenseMint string
-	domain      string
-	sidecarID   string
-	chainID     string
-	programID   string
-	keyVersion  uint
-	binaryPath  string
-	tlsCertPath string
-	caChainPath string
+	shardsDir          string
+	licenseMint        string
+	domain             string
+	sidecarID          string
+	chainID            string
+	programID          string
+	keyVersion         uint
+	operatorKeyVersion uint
+	operatorDomain     string
+	binaryPath         string
+	tlsCertPath        string
+	caChainPath        string
 }
 
 type shardReport struct {
@@ -50,6 +52,7 @@ type ceremonyReport struct {
 	Warning              string          `json:"warning"`
 	Shards               shardReport     `json:"shards"`
 	IdentityRef          identity.Ref    `json:"identity_ref"`
+	OperatorIdentityRef  identity.Ref    `json:"operator_identity_ref"`
 	SidecarIdentityPDA   string          `json:"sidecar_identity_pda"`
 	SidecarIdentityBump  uint8           `json:"sidecar_identity_bump"`
 	RegisterSidecarInput registerSidecar `json:"register_sidecar_identity"`
@@ -72,11 +75,13 @@ type registerSidecar struct {
 }
 
 type configSnippet struct {
-	ShardsDir   string `json:"shards_dir"`
-	SidecarID   string `json:"sidecar_id"`
-	ChainID     string `json:"chain_id"`
-	KeyVersion  uint32 `json:"key_version"`
-	TLSCertPath string `json:"tls_cert_path,omitempty"`
+	ShardsDir          string `json:"shards_dir"`
+	SidecarID          string `json:"sidecar_id"`
+	ChainID            string `json:"chain_id"`
+	KeyVersion         uint32 `json:"key_version"`
+	OperatorKeyVersion uint32 `json:"operator_key_version,omitempty"`
+	OperatorDomain     string `json:"operator_domain,omitempty"`
+	TLSCertPath        string `json:"tls_cert_path,omitempty"`
 }
 
 func main() {
@@ -110,6 +115,8 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.chainID, "chain-id", defaultChainID, "attest identity chain id")
 	fs.StringVar(&opts.programID, "program-id", defaultProgramID, "license registry program id")
 	fs.UintVar(&opts.keyVersion, "key-version", 1, "SidecarIdentityEntry key_version seed")
+	fs.UintVar(&opts.operatorKeyVersion, "operator-key-version", 0, "stable operator identity key_version; 0 uses -key-version")
+	fs.StringVar(&opts.operatorDomain, "operator-domain", "", "stable operator identity domain; empty uses -domain")
 	fs.StringVar(&opts.binaryPath, "binary", "", "exact sidecar binary whose sha256 becomes binary_hash")
 	fs.StringVar(&opts.tlsCertPath, "tls-cert", "", "PEM certificate/fullchain; first cert sha256(DER) becomes tls_cert_fingerprint")
 	fs.StringVar(&opts.caChainPath, "ca-chain", "", "optional PEM CA/intermediate bundle; if omitted, hashes tls-cert certs after the leaf")
@@ -143,6 +150,9 @@ func validateOptions(opts options) error {
 	}
 	if opts.keyVersion == 0 || opts.keyVersion > uint(^uint32(0)) {
 		return fmt.Errorf("-key-version must fit uint32 and be non-zero")
+	}
+	if opts.operatorKeyVersion > uint(^uint32(0)) {
+		return fmt.Errorf("-operator-key-version must fit uint32")
 	}
 	if err := primitives.ValidateSidecarID(opts.sidecarID); err != nil {
 		return fmt.Errorf("-sidecar-id: %w", err)
@@ -179,7 +189,29 @@ func prepare(opts options) (ceremonyReport, error) {
 		SidecarID:   strings.TrimSpace(opts.sidecarID),
 		KeyVersion:  keyVersion,
 	}
-	operator, err := derive.DeriveSidecar(ref, shards)
+	operatorVersion := uint32(opts.operatorKeyVersion)
+	if operatorVersion == 0 {
+		operatorVersion = keyVersion
+	}
+	operatorDomain := strings.TrimSpace(opts.operatorDomain)
+	if operatorDomain == "" {
+		operatorDomain = strings.TrimSpace(opts.domain)
+	}
+	operatorPDA, _, err := pda.SidecarIdentity(licenseMint, opts.sidecarID, operatorVersion, programID)
+	if err != nil {
+		return ceremonyReport{}, fmt.Errorf("derive operator identity PDA: %w", err)
+	}
+	operatorRef := identity.Ref{
+		Kind:        identity.KindSidecar,
+		ChainID:     strings.TrimSpace(opts.chainID),
+		ProgramID:   programID.Base58(),
+		LicenseMint: licenseMint.Base58(),
+		Domain:      operatorDomain,
+		PDA:         operatorPDA.Base58(),
+		SidecarID:   strings.TrimSpace(opts.sidecarID),
+		KeyVersion:  operatorVersion,
+	}
+	operator, err := derive.DeriveSidecar(operatorRef, shards)
 	if err != nil {
 		return ceremonyReport{}, fmt.Errorf("derive sidecar operator: %w", err)
 	}
@@ -215,6 +247,7 @@ func prepare(opts options) (ceremonyReport, error) {
 			},
 		},
 		IdentityRef:         ref,
+		OperatorIdentityRef: operatorRef,
 		SidecarIdentityPDA:  sidecarPDA.Base58(),
 		SidecarIdentityBump: bump,
 		RegisterSidecarInput: registerSidecar{
@@ -232,11 +265,13 @@ func prepare(opts options) (ceremonyReport, error) {
 			EncryptionPubkeyBase58: pub.BoxPubkeyB58,
 		},
 		ConfigBootIdentity: configSnippet{
-			ShardsDir:   opts.shardsDir,
-			SidecarID:   opts.sidecarID,
-			ChainID:     opts.chainID,
-			KeyVersion:  keyVersion,
-			TLSCertPath: opts.tlsCertPath,
+			ShardsDir:          opts.shardsDir,
+			SidecarID:          opts.sidecarID,
+			ChainID:            opts.chainID,
+			KeyVersion:         keyVersion,
+			OperatorKeyVersion: uint32(opts.operatorKeyVersion),
+			OperatorDomain:     strings.TrimSpace(opts.operatorDomain),
+			TLSCertPath:        opts.tlsCertPath,
 		},
 	}, nil
 }

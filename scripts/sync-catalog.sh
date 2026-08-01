@@ -8,9 +8,10 @@
 #   sync-catalog.sh                       # refresh all submodules + rebuild
 #   sync-catalog.sh --app teleport        # refresh only that submodule
 #   sync-catalog.sh --no-build            # only refresh, don't rebuild
-#   sync-catalog.sh --deploy              # also run plan + apply (force-push)
 #
-# Designed to be called as the last step of publish-app-full.sh, but is
+# Retained for exact 1.0.3 rollback/catalog maintenance only. The serialized
+# two-phase app driver never calls this script; app generations switch inside
+# the store sidecar after verified promotion.
 # also a useful standalone "sync the catalog with whatever publish
 # branches have moved upstream."
 #
@@ -22,13 +23,12 @@ cd "$ROOT"
 
 APP=""
 NO_BUILD=false
-DEPLOY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --app)      APP="$2"; shift 2 ;;
     --no-build) NO_BUILD=true; shift ;;
-    --deploy)   DEPLOY=true; shift ;;
+    --deploy)   echo "sync-catalog --deploy is retired; direct catalog deployment is forbidden" >&2; exit 2 ;;
     -h|--help)
       sed -n '/^# Usage:/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
@@ -81,17 +81,5 @@ fi
 step "rebuild dist-publish"
 bash build-store.sh --no-refresh
 echo
-
-# ---- 3. optionally deploy --------------------------------------------------
-if $DEPLOY; then
-  step "plan + apply (force-push gh-pages)"
-  if [[ "${MELUSINA_PUBLISH_AUTHORITATIVE:-}" != "1" ]]; then
-    warn "MELUSINA_PUBLISH_AUTHORITATIVE not set — refusing to deploy from a non-canonical builder"
-    warn "set MELUSINA_PUBLISH_AUTHORITATIVE=1 to override"
-    exit 1
-  fi
-  make plan
-  make apply
-fi
 
 ok "sync-catalog done"

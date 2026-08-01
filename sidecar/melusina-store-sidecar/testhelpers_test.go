@@ -32,6 +32,10 @@ type mockChainReader struct {
 	foundationApp   map[string]mockFoundationApp
 	sidecarIdentity map[string]mockSidecarIdentity
 
+	// rawAccounts backs fetchRawAccount (the cascade raw-read capability): base58
+	// address -> account data. Owner is always programID for seeded accounts.
+	rawAccounts map[string][]byte
+
 	// global error injection: if set, the named Fetch returns this error.
 	releaseErr    error
 	authzErr      error
@@ -92,6 +96,7 @@ func newMockChainReader() *mockChainReader {
 		installerEntry:  map[string]mockInstallerEntry{},
 		foundationApp:   map[string]mockFoundationApp{},
 		sidecarIdentity: map[string]mockSidecarIdentity{},
+		rawAccounts:     map[string][]byte{},
 	}
 }
 
@@ -337,6 +342,7 @@ func testConfig(t *testing.T) (Config, string) {
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",
+		DistDir:         t.TempDir(),
 	}, licenseMint
 }
 
@@ -348,9 +354,11 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	t.Helper()
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
+	spkSum := sha256.Sum256(spk)
+	packageID := hex.EncodeToString(spkSum[:])[:32]
 	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)
 	// locates the prior published version under (attest/<appId>/RELEASE.json).
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","appId":"testapp0000000000000000000000000000000000000000000000"}`)
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"testapp0000000000000000000000000000000000000000000000"}`)
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
@@ -431,6 +439,20 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 		blAppPDA:        blApp.Base58(),
 		blLicPDA:        blLic.Base58(),
 	}
+}
+
+// rebindRuntimeContract re-derives the fixture's runtime contract and its
+// RELEASE.json binding after a test mutates a bound field (Version / AppHash).
+// The contract commits to those values, so mutating the release without
+// rebinding leaves RELEASE.json pointing at the sha of a contract that no
+// longer exists and the publish fails check=runtime_contract for a reason the
+// test never intended to exercise.
+func rebindRuntimeContract(t *testing.T, f *publishFixture) {
+	t.Helper()
+	f.runtimeContract = runtimeContractForTest(t, f.spk, f.metadata, f.rel)
+	sum := sha256.Sum256(f.runtimeContract)
+	f.rel.RuntimeContractSHA256 = hex.EncodeToString(sum[:])
+	f.rel.RuntimeContractSchema = runtimecontract.Schema
 }
 
 // runtimeContractForTest produces the exact release-bound fixture contract

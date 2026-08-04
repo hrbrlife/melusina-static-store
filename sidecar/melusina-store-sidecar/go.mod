@@ -7,7 +7,7 @@ require (
 	github.com/hrbrlife/melusina-attest v0.0.0-00010101000000-000000000000
 	github.com/hrbrlife/melusina-identity-gate v0.0.0-00010101000000-000000000000
 	github.com/melusina-os/melusina-solana-primitives v0.0.0
-	github.com/ulikunitz/xz v0.5.10
+	github.com/ulikunitz/xz v0.5.15
 	golang.org/x/crypto v0.28.0
 	zenhack.net/go/sandstorm v0.0.0-20230111030500-e2e80d8a33c2
 )

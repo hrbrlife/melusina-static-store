@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -48,10 +49,11 @@ type appRolloutState struct {
 }
 
 type capturedAppRelease struct {
-	manifest stagedAppManifest
-	spk      []byte
-	metadata []byte
-	release  []byte
+	manifest        stagedAppManifest
+	spk             []byte
+	metadata        []byte
+	release         []byte
+	runtimeContract []byte
 }
 
 // AppRolloutReceipt is the operator-signed current/previous activation record
@@ -251,7 +253,7 @@ func commitAppRollout(cfg Config, state appRolloutState) error {
 		if state.PreviousStageID == "" || captured.manifest.StageID != state.PreviousStageID {
 			return errors.New("captured previous release does not match rollout state")
 		}
-		if err := persistStagedAppPlanned(cfg.PrivateStageDir, captured.manifest, captured.spk, captured.metadata, captured.release, state.capturedPreviousPersistence); err != nil {
+		if err := persistStagedAppPlanned(cfg.PrivateStageDir, captured.manifest, captured.spk, captured.metadata, captured.release, state.capturedPreviousPersistence, captured.runtimeContract); err != nil {
 			return fmt.Errorf("retain current release: %w", err)
 		}
 	}
@@ -343,15 +345,40 @@ func captureCurrentlyServedRelease(cfg Config, appID string, now time.Time) (cap
 	if err := json.Unmarshal(release, &rel); err != nil {
 		return zero, false, fmt.Errorf("decode current release: %w", err)
 	}
-	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, slotHint{}, now)
+	var runtimeContractBytes []byte
+	contractPath := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+	if contractBytes, contractErr := readSnapshotFileBounded(snapshot, contractPath, maxAppPublishBody); contractErr == nil {
+		if _, err := runtimecontract.Validate(contractBytes, runtimecontract.Binding{
+			SPK:                   spk,
+			Metadata:              metadata,
+			AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+			Version:               rel.Version,
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}); err != nil {
+			return zero, false, fmt.Errorf("validate current runtime contract: %w", err)
+		}
+		runtimeContractBytes = contractBytes
+	} else if errors.Is(contractErr, os.ErrNotExist) {
+		if runtimecontract.RequiresContract(runtimecontract.Binding{
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}) {
+			return zero, false, errors.New("current release claims a runtime contract but the exact served contract is absent")
+		}
+	} else {
+		return zero, false, fmt.Errorf("read current runtime contract: %w", contractErr)
+	}
+	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, slotHint{}, now, runtimeContractBytes)
 	if err != nil {
 		return zero, false, fmt.Errorf("capture current release: %w", err)
 	}
 	return capturedAppRelease{
-		manifest: manifest,
-		spk:      append([]byte(nil), spk...),
-		metadata: append([]byte(nil), metadata...),
-		release:  append([]byte(nil), release...),
+		manifest:        manifest,
+		spk:             append([]byte(nil), spk...),
+		metadata:        append([]byte(nil), metadata...),
+		release:         append([]byte(nil), release...),
+		runtimeContract: append([]byte(nil), runtimeContractBytes...),
 	}, true, nil
 }
 

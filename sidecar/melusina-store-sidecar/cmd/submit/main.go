@@ -47,6 +47,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -151,10 +152,12 @@ type AppCatalogPointer struct {
 // the sidecar re-checks every trust field on-chain, so this struct only reads
 // what the client itself uses.
 type ReleaseClaims struct {
-	AppHash       string `json:"appHash"`
-	ReleaseHash   string `json:"releaseHash"`
-	Version       string `json:"version"`
-	MasterNftMint string `json:"masterNftMint"`
+	AppHash               string `json:"appHash"`
+	ReleaseHash           string `json:"releaseHash"`
+	Version               string `json:"version"`
+	MasterNftMint         string `json:"masterNftMint"`
+	RuntimeContractSHA256 string `json:"runtimeContractSha256"`
+	RuntimeContractSchema string `json:"runtimeContractSchema"`
 }
 
 // submittedReceiptIntent is the exact local candidate identity a store receipt
@@ -183,13 +186,14 @@ type publisherKeyFile struct {
 // publishRequest is the JSON wire form the sidecar's /publish accepts when the
 // client does not use multipart. Mirrors handler.go publishRequest. base64-std.
 type publishRequest struct {
-	Envelope    envelope.Signed `json:"envelope"`
-	ReleaseB64  string          `json:"release_b64"`
-	SPKB64      string          `json:"spk_b64"`
-	MetadataB64 string          `json:"metadata_b64"`
-	Developer   string          `json:"developer,omitempty"`
-	Repo        string          `json:"repo,omitempty"`
-	Slug        string          `json:"slug,omitempty"`
+	Envelope           envelope.Signed `json:"envelope"`
+	ReleaseB64         string          `json:"release_b64"`
+	SPKB64             string          `json:"spk_b64"`
+	MetadataB64        string          `json:"metadata_b64"`
+	RuntimeContractB64 string          `json:"runtime_contract_b64"`
+	Developer          string          `json:"developer,omitempty"`
+	Repo               string          `json:"repo,omitempty"`
+	Slug               string          `json:"slug,omitempty"`
 }
 
 func main() {
@@ -200,24 +204,25 @@ func main() {
 }
 
 type options struct {
-	store             string
-	spkPath           string
-	metadataPath      string
-	releasePath       string
-	publisherKey      string // path; or env name via --publisher-key env:NAME
-	storePubkey       string // path to the sidecar operator identity.Public JSON
-	licenseMint       string // store operator's license_nft_mint (StoreOperatorAuthz seed)
-	domain            string // store serving domain (store_domain_hash seed)
-	rpcURL            string // Solana JSON-RPC for receipt verification
-	verifiedSlot      uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
-	useMultipart      bool
-	stageOnly         bool
-	developer         string
-	repo              string
-	slug              string
-	receiptOut        string
-	verifyReceiptPath string
-	timeout           time.Duration
+	store               string
+	spkPath             string
+	metadataPath        string
+	releasePath         string
+	runtimeContractPath string
+	publisherKey        string // path; or env name via --publisher-key env:NAME
+	storePubkey         string // path to the sidecar operator identity.Public JSON
+	licenseMint         string // store operator's license_nft_mint (StoreOperatorAuthz seed)
+	domain              string // store serving domain (store_domain_hash seed)
+	rpcURL              string // Solana JSON-RPC for receipt verification
+	verifiedSlot        uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	useMultipart        bool
+	stageOnly           bool
+	developer           string
+	repo                string
+	slug                string
+	receiptOut          string
+	verifyReceiptPath   string
+	timeout             time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -227,13 +232,14 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
+	fs.StringVar(&o.runtimeContractPath, "runtime-contract", "", "path to the release-bound RUNTIME-CONTRACT.json (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
 	fs.StringVar(&o.domain, "domain", "", "store serving domain (bare host); store_domain_hash seed for receipt verification (defaults to the host in --store)")
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
-	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
+	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk,metadata,runtime_contract} instead of the JSON wire form")
 	fs.BoolVar(&o.stageOnly, "stage", false, "privately stage the candidate before chain mutation; return a signed staging receipt")
 	fs.StringVar(&o.developer, "developer", "", "catalog developer path segment (required with --repo/--slug for a first publish)")
 	fs.StringVar(&o.repo, "repo", "", "catalog repository path segment (required with --developer/--slug for a first publish)")
@@ -248,7 +254,7 @@ func parseFlags(args []string) (options, error) {
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
 	if verifyMode {
-		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" ||
+		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.runtimeContractPath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
 			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" {
 			return o, errors.New("--verify-receipt cannot be combined with publish, stage, catalog, or receipt-output flags")
@@ -281,6 +287,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.releasePath == "" {
 		missing = append(missing, "--release")
+	}
+	if o.runtimeContractPath == "" {
+		missing = append(missing, "--runtime-contract")
 	}
 	if o.publisherKey == "" {
 		missing = append(missing, "--publisher-key")
@@ -342,6 +351,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("read release %s: %w", o.releasePath, err)
 	}
+	runtimeContractBytes, err := os.ReadFile(o.runtimeContractPath)
+	if err != nil {
+		return fmt.Errorf("read runtime contract %s: %w", o.runtimeContractPath, err)
+	}
 
 	// Local pre-check: the on-chain appHash is the TREE-HASH over {app.spk,
 	// metadata.json} (apphash.Canonical), NOT sha256(spk); it must equal
@@ -359,7 +372,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if appHashHex != wantAppHash {
 		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
-	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug)
+	if _, err := runtimecontract.Validate(runtimeContractBytes, runtimecontract.Binding{
+		SPK:                   spk,
+		Metadata:              metadata,
+		AppHash:               wantAppHash,
+		Version:               claims.Version,
+		ReleaseContractSHA256: claims.RuntimeContractSHA256,
+		ReleaseContractSchema: claims.RuntimeContractSchema,
+	}); err != nil {
+		return fmt.Errorf("check=runtime_contract: %w", err)
+	}
+	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug, runtimeContractBytes)
 	if err != nil {
 		return fmt.Errorf("check=receipt_submission: %w", err)
 	}
@@ -399,7 +422,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("envelope: %w", err)
 	}
 
-	resp, status, err := postPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata)
+	resp, status, err := postPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContractBytes)
 	if err != nil {
 		return fmt.Errorf("publish POST: %w", err)
 	}
@@ -432,7 +455,14 @@ func run(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
+func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string, runtimeContracts ...[]byte) (submittedReceiptIntent, error) {
+	if len(runtimeContracts) > 1 {
+		return submittedReceiptIntent{}, errors.New("at most one runtime contract may be supplied")
+	}
+	var runtimeContract []byte
+	if len(runtimeContracts) == 1 {
+		runtimeContract = runtimeContracts[0]
+	}
 	var metadataIdentity struct {
 		AppID string `json:"appId"`
 	}
@@ -464,13 +494,21 @@ func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, dev
 	metadataHash := sha256.Sum256(metadata)
 	versionHash := sha256.Sum256([]byte(version))
 	masterMintHash := sha256.Sum256([]byte(masterMint))
+	runtimeContractHash := sha256.Sum256(runtimeContract)
 	stageHasher := sha256.New()
-	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
+	stageSchema := "melusina-app-stage-v1"
+	if len(runtimeContract) != 0 {
+		stageSchema = "melusina-app-stage-v2"
+	}
+	_, _ = stageHasher.Write([]byte(stageSchema + "\x00"))
 	_, _ = stageHasher.Write(spkHash[:])
 	_, _ = stageHasher.Write(metadataHash[:])
 	_, _ = stageHasher.Write(releaseHash[:])
 	_, _ = stageHasher.Write(versionHash[:])
 	_, _ = stageHasher.Write(masterMintHash[:])
+	if len(runtimeContract) != 0 {
+		_, _ = stageHasher.Write(runtimeContractHash[:])
+	}
 	for _, part := range []string{developer, repo, slug} {
 		var size [4]byte
 		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
@@ -648,7 +686,14 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 // postPublish sends the publish to <store>/publish in either the JSON wire form
 // or multipart/form-data, returning the raw body + status code. metadata is the
 // app's metadata.json bytes, bound into the on-chain appHash the sidecar recomputes.
-func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
+func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte, runtimeContracts ...[]byte) ([]byte, int, error) {
+	if len(runtimeContracts) > 1 {
+		return nil, 0, errors.New("at most one runtime contract may be supplied")
+	}
+	var runtimeContract []byte
+	if len(runtimeContracts) == 1 {
+		runtimeContract = runtimeContracts[0]
+	}
 	if endpoint != appPromoteTarget && endpoint != appStageTarget {
 		return nil, 0, fmt.Errorf("app publish endpoint must be exactly %q or %q", appPromoteTarget, appStageTarget)
 	}
@@ -681,6 +726,9 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
 			return nil, 0, werr
 		}
+		if werr := writePart(mw, "runtime_contract", "RUNTIME-CONTRACT.json", runtimeContract); werr != nil {
+			return nil, 0, werr
+		}
 		for name, value := range map[string]string{
 			"developer": o.developer,
 			"repo":      o.repo,
@@ -702,13 +750,14 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 		req.Header.Set("Content-Type", mw.FormDataContentType())
 	} else {
 		body, merr := json.Marshal(publishRequest{
-			Envelope:    sig,
-			ReleaseB64:  stdB64(releaseBytes),
-			SPKB64:      stdB64(spk),
-			MetadataB64: stdB64(metadata),
-			Developer:   o.developer,
-			Repo:        o.repo,
-			Slug:        o.slug,
+			Envelope:           sig,
+			ReleaseB64:         stdB64(releaseBytes),
+			SPKB64:             stdB64(spk),
+			MetadataB64:        stdB64(metadata),
+			RuntimeContractB64: stdB64(runtimeContract),
+			Developer:          o.developer,
+			Repo:               o.repo,
+			Slug:               o.slug,
 		})
 		if merr != nil {
 			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)

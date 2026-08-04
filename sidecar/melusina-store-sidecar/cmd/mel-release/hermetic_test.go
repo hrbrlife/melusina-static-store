@@ -44,7 +44,7 @@ import (
 
 type Ref struct{ PDA, AppHash, Version string }
 type Version struct {
-	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, ArtifactSha string
+	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, RuntimePath, ArtifactSha string
 	ArtifactSize                                                   int64
 	PdaNew, PreviousSha256, PreviousVersion                        string
 }
@@ -184,6 +184,10 @@ func main() {
 			"spkPath":       v.SpkPath,
 			"metadataPath":  v.MetadataPath,
 		}
+		runtimeBody, err := os.ReadFile(v.RuntimePath)
+		if err != nil { die("read runtime contract: " + err.Error()) }
+		runtimeSum := sha256.Sum256(runtimeBody)
+		rec["runtimeContract"] = map[string]any{"path":v.RuntimePath,"sha256":hex.EncodeToString(runtimeSum[:]),"size":len(runtimeBody),"schema":"melusina-app-runtime-contract-v1"}
 		if v.PreviousSha256 != "" {
 			rec["previousSha256"] = v.PreviousSha256
 			rec["previousVersion"] = v.PreviousVersion
@@ -232,12 +236,16 @@ func main() {
 		sum := sha256.Sum256([]byte(appHash + ver + nonce))
 		releaseHash := hex.EncodeToString(sum[:])
 		v := fx.Versions[ver]
+		runtimeBody, err := os.ReadFile(v.RuntimePath)
+		if err != nil { die("read runtime contract: " + err.Error()) }
+		runtimeSum := sha256.Sum256(runtimeBody)
 		st.ReleaseHash[ver] = releaseHash
 		st.Inflight[app] = Inflight{Version: ver, AppHash: appHash, PdaNew: v.PdaNew, ReleaseHash: releaseHash}
 		dirty = true
 		writeJSON(env("MEL_RELEASE_JSON_OUT"), map[string]any{
 			"$schema": "melusina-release-v1", "appHash": appHash, "releaseHash": releaseHash,
 			"version": ver, "releaseNonce": nonce, "releaseEntryPda": v.PdaNew,
+			"runtimeContractSchema":"melusina-app-runtime-contract-v1", "runtimeContractSha256":hex.EncodeToString(runtimeSum[:]),
 		})
 		writeJSON(env("MEL_PROPOSE_RECEIPT_OUT"), map[string]any{
 			"schema": "melusina-register-proposal-receipt-v1", "releaseEntryPda": v.PdaNew,

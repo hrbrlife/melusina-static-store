@@ -72,7 +72,7 @@ func NewCatalogAssembler(_ string, distDir string) *CatalogAssembler {
 // AssemblePublishedApp writes immutable package/signature/attestation bytes,
 // then atomically updates apps/index.json last. Readers therefore see either
 // the old complete catalog or the new complete catalog, never a partial row.
-func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) error {
+func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte, runtimeContracts ...[]byte) error {
 	if strings.TrimSpace(a.DistDir) == "" {
 		return fmt.Errorf("catalog dist dir is empty")
 	}
@@ -80,10 +80,14 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	if err != nil {
 		return err
 	}
-	return a.assemblePublishedAppProjection(spk, release, metadata, projection)
+	return a.assemblePublishedAppProjection(spk, release, metadata, projection, runtimeContracts...)
 }
 
-func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection) error {
+func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	appID, packageID := projection.appID, projection.packageID
 
 	for _, dir := range []string{
@@ -113,18 +117,30 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 	if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RELEASE.json", release); err != nil {
 		return err
 	}
+	if len(runtimeContract) != 0 {
+		if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RUNTIME-CONTRACT.json", runtimeContract); err != nil {
+			return err
+		}
+	}
 	return atomicWriteInto(filepath.Join(a.DistDir, "apps"), "index.json", projection.indexBytes)
 }
 
 // validateCatalogAssemblyTargets proves that every path the postclaim
 // candidate assembler replaces is absent or already a regular no-follow file.
 // Parent type/symlink conflicts are surfaced by Snapshot.Open as well.
-func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection) error {
+func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	targets := []string{
 		filepath.ToSlash(filepath.Join("packages", projection.packageID)),
 		filepath.ToSlash(filepath.Join("signatures", projection.appID, "metadata.json")),
 		filepath.ToSlash(filepath.Join("attest", projection.appID, "RELEASE.json")),
 		"apps/index.json",
+	}
+	if len(runtimeContract) != 0 {
+		targets = append(targets, filepath.ToSlash(filepath.Join("attest", projection.appID, "RUNTIME-CONTRACT.json")))
 	}
 	for _, imageID := range sortedIconIDs(projection.icons) {
 		targets = append(targets, filepath.ToSlash(filepath.Join("images", imageID)))

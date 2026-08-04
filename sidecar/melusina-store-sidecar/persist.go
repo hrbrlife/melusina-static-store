@@ -112,8 +112,12 @@ type publishedAppPersistencePlan struct{ slotDir string }
 // planPublishedAppPersistence refuses every deterministic path/type conflict
 // before the signed envelope is claimed. The service writer lock keeps this
 // frozen plan exclusive from other publishes until it is consumed.
-func planPublishedAppPersistence(catalogRoot, slotDir string) (publishedAppPersistencePlan, error) {
+func planPublishedAppPersistence(catalogRoot, slotDir string, runtimeContracts ...[]byte) (publishedAppPersistencePlan, error) {
 	var zero publishedAppPersistencePlan
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return zero, err
+	}
 	root, err := filepath.Abs(catalogRoot)
 	if err != nil {
 		return zero, err
@@ -150,7 +154,11 @@ func planPublishedAppPersistence(catalogRoot, slotDir string) (publishedAppPersi
 		}
 	}
 	if info, statErr := os.Lstat(slot); statErr == nil && info.IsDir() {
-		for _, name := range []string{"app.spk", "RELEASE.json", "metadata.json"} {
+		targets := []string{"app.spk", "RELEASE.json", "metadata.json"}
+		if len(runtimeContract) != 0 {
+			targets = append(targets, "RUNTIME-CONTRACT.json")
+		}
+		for _, name := range targets {
 			targetInfo, targetErr := os.Lstat(filepath.Join(slot, name))
 			if errors.Is(targetErr, os.ErrNotExist) {
 				continue
@@ -168,7 +176,11 @@ func planPublishedAppPersistence(catalogRoot, slotDir string) (publishedAppPersi
 
 // persistPublishedAppPlanned consumes only the slot frozen by the preclaim
 // plan, then writes each verified file by same-directory atomic replacement.
-func persistPublishedAppPlanned(plan publishedAppPersistencePlan, spk, release, metadata []byte) error {
+func persistPublishedAppPlanned(plan publishedAppPersistencePlan, spk, release, metadata []byte, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	slotDir := plan.slotDir
 	if err := os.MkdirAll(slotDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", slotDir, err)
@@ -182,6 +194,11 @@ func persistPublishedAppPlanned(plan publishedAppPersistencePlan, spk, release, 
 		{"metadata.json", metadata},
 	} {
 		if err := atomicWriteInto(slotDir, f.name, f.data); err != nil {
+			return err
+		}
+	}
+	if len(runtimeContract) != 0 {
+		if err := atomicWriteInto(slotDir, "RUNTIME-CONTRACT.json", runtimeContract); err != nil {
 			return err
 		}
 	}

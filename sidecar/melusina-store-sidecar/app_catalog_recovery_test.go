@@ -44,6 +44,172 @@ func TestAppCatalogRecoveryInvalidCurrentSelectsNewestValidPrior(t *testing.T) {
 	}
 }
 
+func TestAppCatalogRecoveryValidV2SurvivesRestartWithExactRuntimeContract(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	id := appCatalogGenerationPrefix + strings.Repeat("d", 32)
+	writeRecoveryGenerationV2(t, root, id, []string{"app-one"}, "1.0.0", priv)
+	if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := recoverTestCurrent(root, recoveryRolloutsV2(t, "1.0.0", "app-one"), pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != id {
+		t.Fatalf("recovered %s, want exact current v2 generation %s", got.ID, id)
+	}
+	_, _, _, want, _ := recoveryReleaseBytesV2(t, "app-one", "1.0.0")
+	served, err := readSnapshotFileExact(got, "attest/app-one/RUNTIME-CONTRACT.json", int64(len(want)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(served, want) {
+		t.Fatal("restarted catalog did not preserve exact v2 runtime-contract bytes")
+	}
+}
+
+func TestAppCatalogRecoveryRejectsMissingOrTamperedV2RuntimeContract(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*testing.T, string)
+	}{
+		{
+			name: "missing",
+			mutate: func(t *testing.T, path string) {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "tampered",
+			mutate: func(t *testing.T, path string) {
+				body, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				body[len(body)-1] ^= 1
+				if err := os.WriteFile(path, body, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			_, priv, _ := ed25519.GenerateKey(rand.Reader)
+			id := appCatalogGenerationPrefix + strings.Repeat("8", 32)
+			writeRecoveryGenerationV2(t, root, id, []string{"app-one"}, "1.0.0", priv)
+			generation := filepath.Join(root, id)
+			attestDir := filepath.Join(generation, "attest", "app-one")
+			contractPath := filepath.Join(attestDir, "RUNTIME-CONTRACT.json")
+			if err := os.Chmod(attestDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(contractPath, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			tc.mutate(t, contractPath)
+			if err := syncAndSealCatalogTree(generation); err != nil {
+				t.Fatal(err)
+			}
+			snapshot := AppCatalogSnapshot{ID: id, Root: generation}
+			if err := validateSnapshotBytesAgainstStaged(snapshot, recoveryRolloutsV2(t, "1.0.0", "app-one"), filepath.Join(root, "stages")); err == nil || !strings.Contains(err.Error(), "runtime-contract") {
+				t.Fatalf("%s v2 runtime contract accepted: %v", tc.name, err)
+			}
+		})
+	}
+}
+
+func TestAppCatalogRecoveryCompletesV2RolloutCommittedBeforeCurrentSwitch(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	oldID := appCatalogGenerationPrefix + strings.Repeat("4", 32)
+	committedID := appCatalogGenerationPrefix + strings.Repeat("5", 32)
+	writeRecoveryGenerationV2(t, root, oldID, []string{"app-one"}, "1.0.0", priv)
+	writeRecoveryGenerationV2(t, root, committedID, []string{"app-one"}, "2.0.0", priv)
+	setGenerationTime(t, filepath.Join(root, oldID), time.Unix(10, 0))
+	setGenerationTime(t, filepath.Join(root, committedID), time.Unix(20, 0))
+	if err := os.Symlink(oldID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := recoverTestCurrent(root, recoveryRolloutsV2(t, "2.0.0", "app-one"), pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != committedID {
+		t.Fatalf("recovered %s, want committed v2 generation %s", got.ID, committedID)
+	}
+}
+
+func TestAppCatalogRecoveryRehydratesExactV2RuntimeContract(t *testing.T) {
+	root := t.TempDir()
+	registerRecoveryRootCleanup(t, root)
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	id := appCatalogGenerationPrefix + strings.Repeat("6", 32)
+	writeRecoveryGenerationV2(t, root, id, []string{"app-one"}, "1.0.0", priv)
+	if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	contractPath := filepath.Join(root, id, "attest", "app-one", "RUNTIME-CONTRACT.json")
+	if err := os.Chmod(contractPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body[len(body)-1] ^= 1
+	if err := os.WriteFile(contractPath, body, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAndSealCatalogTree(filepath.Join(root, id)); err != nil {
+		t.Fatal(err)
+	}
+
+	rollouts := recoveryRolloutsV2(t, "1.0.0", "app-one")
+	got, err := recoverTestCurrent(root, rollouts, pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID == id {
+		t.Fatal("recovery selected the tampered v2 generation without rehydrating it")
+	}
+	_, _, _, want, _ := recoveryReleaseBytesV2(t, "app-one", "1.0.0")
+	served, err := readSnapshotFileExact(got, "attest/app-one/RUNTIME-CONTRACT.json", int64(len(want)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(served, want) {
+		t.Fatal("rehydrated generation did not restore exact staged runtime-contract bytes")
+	}
+}
+
+func TestAppCatalogRecoveryRejectsUnboundRuntimeContractFromLegacyV1(t *testing.T) {
+	root := t.TempDir()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	id := appCatalogGenerationPrefix + strings.Repeat("7", 32)
+	writeRecoveryGeneration(t, root, id, []string{"app-one"}, priv)
+	if err := os.Symlink(id, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	attestDir := filepath.Join(root, id, "attest", "app-one")
+	if err := os.Chmod(attestDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(attestDir, "RUNTIME-CONTRACT.json"), []byte(`{"unbound":true}`))
+	if err := syncAndSealCatalogTree(filepath.Join(root, id)); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err == nil || !strings.Contains(err.Error(), "unbound runtime contract") {
+		t.Fatalf("recovery accepted a legacy generation with an unbound runtime contract: %v", err)
+	}
+}
+
 func TestAppCatalogRecoveryCompletesRolloutCommittedBeforeCurrentSwitch(t *testing.T) {
 	root := t.TempDir()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
@@ -289,6 +455,7 @@ func TestAppCatalogRecoveryAcceptsCeremonyFinalizedRelease(t *testing.T) {
 	release.SignedAtUnix = 1_700_000_123
 	release.ReleaseEntryPda = "chain-final-release-entry"
 	release.AuthorSig = "chain-final-author-signature"
+	release.LicenseSquadsVault = "chain-final-license-squads-vault"
 	release.QuorumPolicy = QuorumPolicy{Threshold: 3, MemberCount: 4, MultisigPda: "core-app-team"}
 	if err := os.Chmod(path, 0o644); err != nil {
 		t.Fatal(err)
@@ -321,6 +488,22 @@ func alternateTestGID(t *testing.T) int {
 	}
 	t.Skip("nested owner mismatch requires a secondary group")
 	return -1
+}
+
+func registerRecoveryRootCleanup(t *testing.T, root string) {
+	t.Helper()
+	t.Cleanup(func() {
+		_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err == nil && info != nil {
+				if info.IsDir() {
+					_ = os.Chmod(path, 0o755)
+				} else {
+					_ = os.Chmod(path, 0o644)
+				}
+			}
+			return nil
+		})
+	})
 }
 
 func TestAppCatalogRecoveryRequiresStageAndExactOwner(t *testing.T) {
@@ -360,6 +543,22 @@ func recoveryRollouts(appIDs ...string) map[string]appRolloutState {
 			CurrentStageID: recoveryManifest(appID, "1.0.0").StageID,
 			CurrentAppHash: appHash,
 			CurrentVersion: "1.0.0",
+		}
+	}
+	return rollouts
+}
+
+func recoveryRolloutsV2(t *testing.T, version string, appIDs ...string) map[string]appRolloutState {
+	t.Helper()
+	rollouts := make(map[string]appRolloutState, len(appIDs))
+	for _, appID := range appIDs {
+		_, _, _, _, appHash := recoveryReleaseBytesV2(t, appID, version)
+		rollouts[appID] = appRolloutState{
+			Schema:         appRolloutSchema,
+			AppID:          appID,
+			CurrentStageID: recoveryManifestV2(t, appID, version).StageID,
+			CurrentAppHash: appHash,
+			CurrentVersion: version,
 		}
 	}
 	return rollouts
@@ -427,6 +626,70 @@ func writeRecoveryGeneration(t *testing.T, root, id string, appIDs []string, pri
 	}
 }
 
+func writeRecoveryGenerationV2(t *testing.T, root, id string, appIDs []string, version string, private ed25519.PrivateKey) {
+	t.Helper()
+	generation := filepath.Join(root, id)
+	t.Cleanup(func() {
+		_ = filepath.Walk(generation, func(path string, info os.FileInfo, err error) error {
+			if err == nil && info != nil {
+				if info.IsDir() {
+					_ = os.Chmod(path, 0o755)
+				} else {
+					_ = os.Chmod(path, 0o644)
+				}
+			}
+			return nil
+		})
+	})
+	for _, namespace := range appCatalogNamespaces {
+		if err := os.MkdirAll(filepath.Join(generation, namespace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := catalogIndex{}
+	packageIDs := make(map[string]string, len(appIDs))
+	appHashes := make(map[string]string, len(appIDs))
+	for _, appID := range appIDs {
+		spk, metadata, release, contract, appHash := recoveryReleaseBytesV2(t, appID, version)
+		persistRecoveryStageV2(t, root, appID, version)
+		spkHash := sha256.Sum256(spk)
+		packageID := hex.EncodeToString(spkHash[:])[:32]
+		packageIDs[appID] = packageID
+		appHashes[appID] = appHash
+		index.Apps = append(index.Apps, catalogIndexApp{AppID: appID, PackageID: packageID})
+		writeFile(t, filepath.Join(generation, "packages", packageID), spk)
+		writeFile(t, filepath.Join(generation, "signatures", appID, "metadata.json"), metadata)
+		writeFile(t, filepath.Join(generation, "attest", appID, "RELEASE.json"), release)
+		writeFile(t, filepath.Join(generation, "attest", appID, "RUNTIME-CONTRACT.json"), contract)
+	}
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(generation, "apps", "index.json"), indexBytes)
+	digest := sha256.Sum256(indexBytes)
+	for _, appID := range appIDs {
+		manifest := recoveryManifestV2(t, appID, version)
+		pointer := AppCatalogPointer{
+			Schema: appCatalogPointerSchema, AppID: appID,
+			PackageID: packageIDs[appID], Version: version,
+			AppHash: appHashes[appID], ReleaseHash: strings.Repeat("b", 64),
+			StageID: manifest.StageID, CatalogSHA256: hex.EncodeToString(digest[:]),
+			ServingDomainHash: strings.Repeat("d", 64), PublishedAt: 1,
+		}
+		message, err := appCatalogPointerMessage(pointer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pointer.OperatorSignature = primitives.EncodeBase58(ed25519.Sign(private, message))
+		body, _ := json.Marshal(pointer)
+		writeFile(t, filepath.Join(generation, "apps", "pointers", appID+".json"), body)
+	}
+	if err := syncAndSealCatalogTree(generation); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func recoveryReleaseBytes(appID, version string) ([]byte, []byte, []byte, string) {
 	spk := []byte("recovery-spk:" + appID)
 	spkHash := sha256.Sum256(spk)
@@ -440,11 +703,36 @@ func recoveryReleaseBytes(appID, version string) ([]byte, []byte, []byte, string
 	return spk, metadata, release, appHash
 }
 
+func recoveryReleaseBytesV2(t *testing.T, appID, version string) ([]byte, []byte, []byte, []byte, string) {
+	t.Helper()
+	spk, metadata, releaseBytes, appHash := recoveryReleaseBytes(appID, version)
+	rel := mustReleaseJSON(releaseBytes)
+	contract := runtimeContractForTest(t, spk, metadata, rel)
+	digest := sha256.Sum256(contract)
+	rel.RuntimeContractSchema = "melusina-app-runtime-contract-v1"
+	rel.RuntimeContractSHA256 = hex.EncodeToString(digest[:])
+	release, err := json.Marshal(rel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return spk, metadata, release, contract, appHash
+}
+
 func recoveryManifest(appID, version string) stagedAppManifest {
 	spk, metadata, release, _ := recoveryReleaseBytes(appID, version)
 	manifest, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), slotHint{}, time.Unix(1, 0))
 	if err != nil {
 		panic(err)
+	}
+	return manifest
+}
+
+func recoveryManifestV2(t *testing.T, appID, version string) stagedAppManifest {
+	t.Helper()
+	spk, metadata, release, contract, _ := recoveryReleaseBytesV2(t, appID, version)
+	manifest, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), slotHint{}, time.Unix(1, 0), contract)
+	if err != nil {
+		t.Fatal(err)
 	}
 	return manifest
 }
@@ -460,6 +748,21 @@ func persistRecoveryStage(t *testing.T, root, appID, version string) {
 	}
 	spk, metadata, release, _ := recoveryReleaseBytes(appID, version)
 	if err := persistStagedApp(stageRoot, recoveryManifest(appID, version), spk, metadata, release); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func persistRecoveryStageV2(t *testing.T, root, appID, version string) {
+	t.Helper()
+	stageRoot := filepath.Join(root, "stages")
+	if err := os.MkdirAll(stageRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(stageRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	spk, metadata, release, contract, _ := recoveryReleaseBytesV2(t, appID, version)
+	if err := persistStagedApp(stageRoot, recoveryManifestV2(t, appID, version), spk, metadata, release, contract); err != nil {
 		t.Fatal(err)
 	}
 }

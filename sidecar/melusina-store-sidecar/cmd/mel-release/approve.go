@@ -22,6 +22,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -127,8 +128,22 @@ func revalidateCandidate(c Config, app App, rec *walReceipt) (candidateReceipt, 
 	if cand.AppID != rec.AppID || cand.Version != rec.Version || cand.Component.ContentSHA256 != rec.NewAppHash ||
 		cand.Component.SHA256 != rec.ArtifactSHA || cand.ReleaseNonce != rec.ReleaseNonce ||
 		cand.Component.ReleaseHash != rec.ReleaseHash || cand.Component.StageID != rec.StageID ||
-		cand.Component.Chain.ReleasePDA != rec.NewReleasePDA || cand.SquadsProposal.TransactionPDA != rec.TransactionPDA {
+		cand.Component.Chain.ReleasePDA != rec.NewReleasePDA || cand.SquadsProposal.TransactionPDA != rec.TransactionPDA ||
+		cand.RuntimeContract != rec.RuntimeContract {
 		return candidateReceipt{}, fmt.Errorf("candidate receipt does not bind the WAL for app %s", rec.AppID)
+	}
+	if err := verifyArtifactRef(rec.BuildReceipt); err != nil {
+		return candidateReceipt{}, fmt.Errorf("build receipt: %w", err)
+	}
+	build, _, err := readBuildReceipt(rec.BuildReceipt.Path, rec.AppID, rec.Version)
+	if err != nil {
+		return candidateReceipt{}, err
+	}
+	if build.RuntimeContract != rec.RuntimeContract {
+		return candidateReceipt{}, errors.New("build receipt runtime contract does not bind the WAL")
+	}
+	if err := verifyBuildRuntimeContract(build); err != nil {
+		return candidateReceipt{}, err
 	}
 	// Staged bytes still proven by the retained stage receipt.
 	if err := verifyArtifactRef(rec.StageReceiptRef); err != nil {
@@ -152,6 +167,9 @@ func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
 		if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
 			return err
 		}
+		if err := verifyFinalReleaseForWAL(rec); err != nil {
+			return err
+		}
 		return verifyRegisteredLive(prov, rec)
 	}
 	registerPath := c.receiptPath(rec.AppID, "register.json")
@@ -163,7 +181,24 @@ func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
 		return err
 	}
 	rec.RegisterReceipt = ref
+	if err := verifyFinalReleaseForWAL(rec); err != nil {
+		return err
+	}
 	return verifyRegisteredLive(prov, rec)
+}
+
+func verifyFinalReleaseForWAL(rec *walReceipt) error {
+	release, ref, err := readFinalReleaseJSON(rec.ReleaseJSON.Path, rec.NewAppHash, rec.Version, rec.ReleaseNonce, rec.RuntimeContract)
+	if err != nil {
+		return err
+	}
+	if release.ReleaseEntryPDA != rec.NewReleasePDA || release.ReleaseHash != rec.ReleaseHash {
+		return errors.New("final RELEASE.json does not bind the WAL release")
+	}
+	// Provider finalization legitimately changes the receipt bytes. Rebind the
+	// WAL to those exact finalized bytes before any promotion can occur.
+	rec.ReleaseJSON = ref
+	return nil
 }
 
 func verifyRegisteredLive(prov SignerProvider, rec *walReceipt) error {

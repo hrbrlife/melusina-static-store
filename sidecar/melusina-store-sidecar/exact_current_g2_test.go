@@ -77,7 +77,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
 	release := mustJSON(t, fixture.rel)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "exact-current", "app", fixture.metadata)
-	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(fixture.spk, release, fixture.metadata); err != nil {
+	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(fixture.spk, release, fixture.metadata, fixture.runtimeContract); err != nil {
 		t.Fatalf("seed legacy exact release: %v", err)
 	}
 

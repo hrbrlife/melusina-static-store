@@ -51,7 +51,7 @@ func TestIsolatedControllerCombinedReal(t *testing.T) {
 	live.BootIdentity.ShardsDir = env("ISO_SHARDS") // shards copied read-only to the workstation
 	operator := liveOperator(t, live)               // real kv1 operator, derived from LIVE shards
 	opSign := operator.Public().SignPubkeyB58
-	const wantOp = "HgE1Xm4MHuRC5qcDJ8KMP5PwyWXzi8cqi5NW6XQ4FJVz"
+	const wantOp = "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV"
 	if opSign != wantOp {
 		t.Fatalf("real operator sign pubkey %s != expected on-chain F616.signing_pubkey %s", opSign, wantOp)
 	}
@@ -61,6 +61,7 @@ func TestIsolatedControllerCombinedReal(t *testing.T) {
 	release := mustReadDR(t, filepath.Join(matDir, "RELEASE.json"))
 	metadata := mustReadDR(t, filepath.Join(matDir, "metadata.json"))
 	spk := mustReadDR(t, filepath.Join(matDir, "app.spk"))
+	runtimeContract := mustReadDR(t, filepath.Join(matDir, "RUNTIME-CONTRACT.json"))
 
 	// Isolated temp catalog state; LIVE license/domain/store-id/program/policy so
 	// the on-chain StoreOperatorAuthorization + operator identity resolve REAL.
@@ -76,7 +77,7 @@ func TestIsolatedControllerCombinedReal(t *testing.T) {
 	opts.nonce.Now = time.Now
 
 	seedSlot(t, cfg.CatalogRepoRoot, "welcome", "exact-current", "app", metadata)
-	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(spk, release, metadata); err != nil {
+	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(spk, release, metadata, runtimeContract); err != nil {
 		t.Fatalf("seed exact-current release into served generation: %v", err)
 	}
 	pubKey, err := operator.Public().SignPublicKey()
@@ -120,32 +121,34 @@ func TestIsolatedControllerCombinedReal(t *testing.T) {
 	isoWriteJSON(t, otherOpPath, otherOp.Public())
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	handoff := map[string]any{
-		"gate_url":                srv.URL,
-		"canary_emit":             env("ISO_CANARY_EMIT"),
-		"orig_user":               origUser,
-		"handoff_dir":             out,
-		"txid":                    "store-iso-combined-0001",
-		"real_chain":              true,
-		"rpc_url":                 live.RPCURL,
-		"operator_public_json":    env("ISO_OPERATOR_PUBLIC"),
-		"publisher_identity_json": env("ISO_OPERATOR_IDENTITY"),
+		"gate_url":                   srv.URL,
+		"canary_emit":                env("ISO_CANARY_EMIT"),
+		"orig_user":                  origUser,
+		"handoff_dir":                out,
+		"txid":                       "store-iso-combined-0001",
+		"real_chain":                 true,
+		"rpc_url":                    live.RPCURL,
+		"operator_public_json":       env("ISO_OPERATOR_PUBLIC"),
+		"publisher_identity_json":    env("ISO_OPERATOR_IDENTITY"),
 		"stranger_identity_json":     strangerPath,
 		"other_operator_public_json": otherOpPath,
-		"authorized_signer":       opSign,
-		"store_authority_b58":     opSign,
-		"store_domain_hash":       hex.EncodeToString(sliceOf(domainHash)),
-		"domain":                  cfg.Domain,
-		"private_stage_dir":       cfg.PrivateStageDir,
-		"dist_dir":                cfg.DistDir,
-		"catalog_generation_root": cfg.CatalogGenerationRoot,
-		"license_mint":            cfg.LicenseNFTMint,
-		"release_path":            filepath.Join(matDir, "RELEASE.json"),
-		"spk_path":                filepath.Join(matDir, "app.spk"),
-		"metadata_path":           filepath.Join(matDir, "metadata.json"),
-		"release_entry_pda":       "BwjuqWpbY7WRsFhxP2xRkdGY79CbPT2DF3aBfZSW425L",
-		"release_b64":             base64.StdEncoding.EncodeToString(release),
-		"spk_b64":                 base64.StdEncoding.EncodeToString(spk),
-		"metadata_b64":            base64.StdEncoding.EncodeToString(metadata),
+		"authorized_signer":          opSign,
+		"store_authority_b58":        opSign,
+		"store_domain_hash":          hex.EncodeToString(sliceOf(domainHash)),
+		"domain":                     cfg.Domain,
+		"private_stage_dir":          cfg.PrivateStageDir,
+		"dist_dir":                   cfg.DistDir,
+		"catalog_generation_root":    cfg.CatalogGenerationRoot,
+		"license_mint":               cfg.LicenseNFTMint,
+		"release_path":               filepath.Join(matDir, "RELEASE.json"),
+		"spk_path":                   filepath.Join(matDir, "app.spk"),
+		"metadata_path":              filepath.Join(matDir, "metadata.json"),
+		"runtime_contract_path":      filepath.Join(matDir, "RUNTIME-CONTRACT.json"),
+		"release_entry_pda":          "BwjuqWpbY7WRsFhxP2xRkdGY79CbPT2DF3aBfZSW425L",
+		"release_b64":                base64.StdEncoding.EncodeToString(release),
+		"spk_b64":                    base64.StdEncoding.EncodeToString(spk),
+		"metadata_b64":               base64.StdEncoding.EncodeToString(metadata),
+		"runtime_contract_b64":       base64.StdEncoding.EncodeToString(runtimeContract),
 	}
 	handoffPath := filepath.Join(out, "handoff-combined.json")
 	isoWriteJSON(t, handoffPath, handoff)

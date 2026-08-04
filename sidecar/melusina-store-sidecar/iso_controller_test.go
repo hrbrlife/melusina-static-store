@@ -115,7 +115,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	f := buildValidFixture(t, cfg, randPubkeyB58(t))
 	release := mustJSON(t, f.rel)
 	seedSlot(t, cfg.CatalogRepoRoot, "canary", "exact-current", "app", f.metadata)
-	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(f.spk, release, f.metadata); err != nil {
+	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedApp(f.spk, release, f.metadata, f.runtimeContract); err != nil {
 		t.Fatalf("seed exact-current release into served generation: %v", err)
 	}
 
@@ -142,7 +142,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	isoWriteJSON(t, opPubPath, op.Public())
 	pubIdentPath := filepath.Join(out, "publisher-identity.json")
 	isoWriteJSON(t, pubIdentPath, map[string]any{
-		"ref":          pubRef,
+		"ref":           pubRef,
 		"sign_seed_hex": hex.EncodeToString(signSeed[:]),
 		"box_seed_hex":  hex.EncodeToString(boxSeedPub[:]),
 	})
@@ -159,7 +159,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	otherOp, _ := isoIdentity(t, "other-operator", cfg.LicenseNFTMint, cfg.Domain, otherOpSign, otherOpBox)
 	strangerIdentPath := filepath.Join(out, "stranger-publisher-identity.json")
 	isoWriteJSON(t, strangerIdentPath, map[string]any{
-		"ref":          strangerRef,
+		"ref":           strangerRef,
 		"sign_seed_hex": hex.EncodeToString(strangerSign[:]),
 		"box_seed_hex":  hex.EncodeToString(strangerBox[:]),
 	})
@@ -169,6 +169,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	relPath := filepath.Join(out, "material-release.json")
 	spkPath := filepath.Join(out, "material-app.spk")
 	metaPath := filepath.Join(out, "material-metadata.json")
+	runtimeContractPath := filepath.Join(out, "material-runtime-contract.json")
 	if err := os.WriteFile(relPath, release, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -176,6 +177,9 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(metaPath, f.metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(runtimeContractPath, f.runtimeContract, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	origUser := os.Getenv("ISO_USER")
@@ -187,32 +191,34 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	}
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	handoff := map[string]any{
-		"gate_url":               srv.URL,
-		"canary_emit":            os.Getenv("ISO_CANARY_EMIT"),
-		"orig_user":              origUser,
-		"handoff_dir":            out,
-		"txid":                   "store-iso-preflight-0001",
-		"operator_public_json":   opPubPath,
-		"publisher_identity_json": pubIdentPath,
-		"stranger_identity_json": strangerIdentPath,
+		"gate_url":                   srv.URL,
+		"canary_emit":                os.Getenv("ISO_CANARY_EMIT"),
+		"orig_user":                  origUser,
+		"handoff_dir":                out,
+		"txid":                       "store-iso-preflight-0001",
+		"operator_public_json":       opPubPath,
+		"publisher_identity_json":    pubIdentPath,
+		"stranger_identity_json":     strangerIdentPath,
 		"other_operator_public_json": otherOpPubPath,
-		"authorized_signer":      op.Public().SignPubkeyB58,
-		"store_authority_b58":    op.Public().SignPubkeyB58,
-		"store_domain_hash":      hex.EncodeToString(sliceOf(domainHash)),
-		"domain":                 cfg.Domain,
-		"license_mint":           cfg.LicenseNFTMint,
-		"release_path":           relPath,
-		"spk_path":               spkPath,
-		"metadata_path":          metaPath,
-		"release_entry_pda":      f.rel.ReleaseEntryPda,
-		"app_id":                 f.rel.AppHash, // metadata appId is the served-slot key; app_hash binds the receipt
-		"private_stage_dir":      cfg.PrivateStageDir,
-		"dist_dir":               cfg.DistDir,
-		"catalog_generation_root": cfg.CatalogGenerationRoot,
-		"catalog_migration_dir":  cfg.CatalogMigrationStateDir,
-		"release_b64":            base64.StdEncoding.EncodeToString(release),
-		"spk_b64":                base64.StdEncoding.EncodeToString(f.spk),
-		"metadata_b64":           base64.StdEncoding.EncodeToString(f.metadata),
+		"authorized_signer":          op.Public().SignPubkeyB58,
+		"store_authority_b58":        op.Public().SignPubkeyB58,
+		"store_domain_hash":          hex.EncodeToString(sliceOf(domainHash)),
+		"domain":                     cfg.Domain,
+		"license_mint":               cfg.LicenseNFTMint,
+		"release_path":               relPath,
+		"spk_path":                   spkPath,
+		"metadata_path":              metaPath,
+		"runtime_contract_path":      runtimeContractPath,
+		"release_entry_pda":          f.rel.ReleaseEntryPda,
+		"app_id":                     f.rel.AppHash, // metadata appId is the served-slot key; app_hash binds the receipt
+		"private_stage_dir":          cfg.PrivateStageDir,
+		"dist_dir":                   cfg.DistDir,
+		"catalog_generation_root":    cfg.CatalogGenerationRoot,
+		"catalog_migration_dir":      cfg.CatalogMigrationStateDir,
+		"release_b64":                base64.StdEncoding.EncodeToString(release),
+		"spk_b64":                    base64.StdEncoding.EncodeToString(f.spk),
+		"metadata_b64":               base64.StdEncoding.EncodeToString(f.metadata),
+		"runtime_contract_b64":       base64.StdEncoding.EncodeToString(f.runtimeContract),
 	}
 	handoffPath := filepath.Join(out, "handoff.json")
 	isoWriteJSON(t, handoffPath, handoff)

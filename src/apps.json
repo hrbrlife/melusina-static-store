@@ -4,10 +4,10 @@
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
       "packageId": "7d837a34d56d416835ce7893c6d30820",
       "name": "AiLagoon",
-      "version": "0.7.17",
-      "versionNumber": 25,
-      "shortDescription": "AI model hub \u2014 aggregate Ollama, ChatGPT, OpenRouter; pin inference transcripts.",
-      "description": "# AiLagoon\n\nThe AI model hub pearl for Melusina. Register multiple LLM providers,\nmanage per-model connections, and expose AI capabilities to other\npearls via Grapple \u2014 all behind a single Sandstorm HTTP-out permission\nto the ai-lagoon sidecar.\n\n## Providers\n\n- **Ollama** \u2014 local or remote Ollama server, any model it can host\n- **ChatGPT** \u2014 OpenAI-compatible API (GPT-4o, 4.1, o1, o3, 4.5, 4.6)\n- **OpenRouter** \u2014 100+ models from Anthropic, Google, Meta, Mistral,\n  DeepSeek, and more through a single proxy\n\n## Grapple capabilities published by this pearl\n\nOther pearls can request AI from AiLagoon via Grapple:\n\n- `ai-text` \u2014 generic text / chat completion\n- `ai-vision` \u2014 image understanding and OCR\n- `ai-generic` \u2014 consumer picks a model in the Grapple UI at grant time\n- Direct per-model \u2014 scoped to one provider + model, useful when a\n  consumer wants a specific capability class (e.g. reasoning)\n\n## How HTTP-out works\n\nAll providers route through `https://ailagoon.sidecar.host`; the\nsidecar's path prefix (`/{provider}/{apiKey}/...`) demultiplexes per\nprovider. At pearl startup AiLagoon asks Sandstorm for a single\nHTTP-out permission to that host \u2014 the shell renders the\naddress-selector popup (not the pearl picker), and the operator grants\nor denies the host once. Connections persist across pearl restarts via\n`SandstormApi.save()` / `restore()`.\n\n## Playground\n\nA built-in chat playground lets you test any connected model without\nleaving the pearl \u2014 useful for validating credentials, checking\ncapabilities, or prototyping prompts before calling them from another\npearl via Grapple. Every assistant reply renders a **provenance card**\nunderneath the bubble: ISO-8601 UTC timestamp, request-ID (cross-\nreferenceable in `/audit`), provider+connection name, and a\nsealed/cleartext pill so compliance officers can attribute and time-\nstamp every output without leaving the chat.\n\n## Transcript anchoring \u2014 roadmap, not shipped\n\nAiLagoon does **not** currently anchor inference transcripts on-chain.\nEarlier catalog copy described \"Solana-pinned inference transcripts\"\nas a shipped feature; that was overclaim. As of v0.7.11 the only\non-chain artifact AiLagoon participates in is the **publish-side**\nReleaseEntry that signs this SPK manifest itself (program\n`7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb`, PDA in the catalog\n`attest` block). Per-conversation transcript pinning to the user's\nSquads-controlled wallet is on the v0.8 roadmap; until then,\ntranscripts live append-only in the pearl's encrypted SQLite store\nand surface in the audit log as metadata only (no prompt/response\ncontent retained, by design \u2014 see `pkg/audit/logger.go`).",
+      "version": "0.7.18",
+      "versionNumber": 26,
+      "shortDescription": "AI model hub \u2014 Ollama, ChatGPT, OpenRouter, with shareable Grapple capabilities",
+      "description": "AiLagoon is the AI model-hub pearl for Melusina. Register multiple LLM providers (Ollama, ChatGPT, OpenRouter), manage per-model connections, and expose AI capabilities \u2014 ai-text, ai-vision, ai-generic, and direct per-model access \u2014 to other pearls via Grapple. HTTP-out to external providers is routed through the ai-lagoon sidecar via a single Sandstorm HTTP-out permission, not per-grain capability hops. Built-in playground for testing models without leaving the pearl.",
       "categories": [
         "Productivity"
       ],
@@ -20,9 +20,7 @@
         "name": "alexeikarp",
         "githubUsername": "hrbrlife",
         "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
+        "picture": ""
       },
       "screenshots": [
         {
@@ -38,21 +36,24 @@
           "caption": "Built-in chat playground for testing models"
         }
       ],
-      "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.7.17",
-      "sha256": "7d837a34d56d416835ce7893c6d30820469bd46c92c281f2ea53f2d4018446aa",
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.7.18",
       "imageId": "1d4ee7c6ed3eea6f3bdae53db3ef2a5a.png",
-      "updatedAt": 1781724244000,
+      "updatedAt": 1783249637000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "cfc37fbaf51c1ddb51cfed3b6b5c306242a30947a9568f7ead3c175a96f8a7a9",
-        "releaseHash": "b54060eec3fc8ceb3dacdcac16d03f5ef9a10d141581e1a6dfe490d71366aa94",
-        "releaseNonce": "c4251d9ffdfc4ded8a959cf3f763ce55",
-        "releaseEntryPda": "EtuBKM3JHwUHL3k1V6Waf4bAxWYmdvG1RdxPiVnR4VEZ",
+        "appHash": "8d7d5d8262027de92e574b4157702a88c3370d7d74b002fe58fb029c2108d106",
+        "releaseHash": "e9c28009caf53a833eafaf8dcebf5845e42b9a1ddd4c4183226bd6b9a588973e",
+        "releaseNonce": "a3df72bfc06f79c142f457d8392673e4",
+        "releaseEntryPda": "GMqg6ieBrAErB4fPqtcRMsq1wnCa4PU387ybeJ8AN83h",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724244,
-        "authorSig": "6rGAa5SCIxw2FrAHxbXAThXf62bqMuXZdEXPocUXQ1FML5x5V7NM1DiACMCiZzOoOk7boeV4mPZrwvkCK+axCg==",
+        "signedAtUnix": 1783249637,
+        "authorSig": "dCQh+z9q4zJVdjDDYZuf9ryAnYemis/sPyk6/N1EO9PqBieqKkymw8UpFqczzUCCzNd1CeqH6qhL+FyrJqVkDw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -210,17 +211,17 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "1.1.3",
       "imageId": "d2c943e821cc0170e4143d0621fdf414.png",
-      "updatedAt": 1781724314000,
+      "updatedAt": 1781267903000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "e15ff3bf6e3f712e5a56aa97183d00b3718f7e7a5bde7debf1a16bdb064f8306",
-        "releaseHash": "24c434a5c12854ec85095918d028c392cfdf6208cb96d1980234225f7c244e5a",
-        "releaseNonce": "a61b7c0dc1c634a5fffe966b22ba97f0",
-        "releaseEntryPda": "ApN1ppaQY7qnr86uNPogdpDX2J8zKNAdznwouZv5nyP5",
+        "appHash": "d75510e80fc0632439d223516f491a703102a11e0c7bb20f93524edce6d4e812",
+        "releaseHash": "15017c18dd039519addbfe9eddf623f6b6eefa0705540b570d9d56485e2528d6",
+        "releaseNonce": "733c959552a7f33203565d2364b29d8e",
+        "releaseEntryPda": "CC5zEQ9PNcGiNJT5NbHe1hKgrQN9g4TYYNCchmCp6qHR",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724314,
-        "authorSig": "8yglsNjMXRmwDwOgqRbh37eYMJb/JRg6du0Md6FMe5ntOWCClSM2KUdRa7QVhbN5+qQTZXKO1HtnMFLwLBegDw==",
+        "signedAtUnix": 1781267903,
+        "authorSig": "IfxnT2aicWIJVjGvH1Ypww+tj043bZaTim2mmST0Gc0GS8fqorsmRDk1Zhwea+mjivC+7r38tqYBJlkqDRDbAQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -553,10 +554,10 @@
     },
     {
       "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
-      "packageId": "c8830e50b8cf3a9605f8ae804682b8e5",
+      "packageId": "69f1a5a6b29bd6157a709a6fb1ff6086",
       "name": "Cal Bureau",
-      "version": "0.19.0",
-      "versionNumber": 19,
+      "version": "0.1.2",
+      "versionNumber": 12,
       "shortDescription": "Calendar with personal/shared events, reminders, iCal/CalDAV interop \u2014 self-hosted, per-calendar isolation.",
       "description": "Bureau Cal is the calendar pearl of the Melusina Bureau office suite. Personal and shared calendars, event scheduling, recurring reminders, and iCal/CalDAV interop \u2014 entirely on your server, in your jurisdiction.\n\n## Why Cal\n\n- **Pinned event-state snapshots** \u2014 cryptographically anchor any calendar snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-calendar pearl** \u2014 share pearl-by-pearl, not org-wide; each calendar is a sealed container\n- **iCal/CalDAV import + export** \u2014 interop with Apple, Outlook, Google Calendar, or any CalDAV client\n\n## Features\n\n- **Shared calendars** with role-based permission (viewer / editor / admin)\n- **Reminders** via Melusina notifications, Telegram (via BotMother), or email (via Mermail)\n- **Time zones, recurring events, all-day, multi-day** \u2014 the fundamentals done right\n\n## Suite integration\n\nBureau Cal speaks Grapple to the rest of the Bureau suite \u2014 link a Doc to an event, surface a board's deadlines on the calendar, attach a sheet to a meeting agenda.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live calendar lands in v0.2.",
       "categories": [
@@ -578,20 +579,20 @@
         "website": "https://hrbr.life"
       },
       "screenshots": [],
-      "marketingVersion": "0.19.0",
-      "sha256": "c8830e50b8cf3a9605f8ae804682b8e517dc1c105f57e0012c5cbd34aaebbc0d",
+      "marketingVersion": "0.1.2",
+      "sha256": "69f1a5a6b29bd6157a709a6fb1ff6086553bf26bf85c6f83c991eb1b3bc9208d",
       "imageId": "53380c5a01317190b23b5af6a1452899.svg",
-      "updatedAt": 1781337536000,
+      "updatedAt": 1779094725000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0a4fae76db67f91ad6ad9722a15e38bf14abebebd17655d442b64752d517fde3",
-        "releaseHash": "5a2401e14cab372394bcead339389541ad12bbd05a5285262cc6bd903e0748b7",
-        "releaseNonce": "6c6a127ba01dad5bc494494c01846f07",
-        "releaseEntryPda": "14A98pTtMekEXYdxH5zCPAN3y5C4rsPe4jkN1crchTFE",
+        "appHash": "13dbedd1bde3e37baa2cae5817843be42ac089b88da8771c87409cb0f91aeff8",
+        "releaseHash": "a7e5856e73258256df3b9256f59551c8541684edf41c3bdd0b37f16362e32b93",
+        "releaseNonce": "f6a2b48c675316b2675c77ef24ca1f03",
+        "releaseEntryPda": "HNNK2krV58UrjRXkTkNAU8sYSc4xzXd6ydWcr3j4Jz47",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781337536,
-        "authorSig": "XIdCsQmloR40VvW2V4x7u2vN8OITk7yA44UJxuptl8kiJ4ccsIr0XLZHpqpq9Z2LdtSk9GkqjZWsIvOhSNaJDw==",
+        "signedAtUnix": 1779094725,
+        "authorSig": "V60j134u54Kw0wA2WAMgUQLWlNmZRLuiK0uTV6txq57tuKmA8sA0UbSedWRe+F9cTLZvvN7MIb3mzWEaxpcADw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -690,12 +691,158 @@
       }
     },
     {
+      "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
+      "packageId": "75181d409aeccd93fef7eacab6146851",
+      "name": "CanBoard",
+      "version": "0.1.0",
+      "versionNumber": 6,
+      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
+      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** \u2014 each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776836028848,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "sha256": "75181d409aeccd93fef7eacab61468515028ac4558e9c34e452ceea1bc06f332",
+      "marketingVersion": "0.1.0",
+      "imageId": "d1094f6e2253f02fda782364633d7705.svg",
+      "updatedAt": 1779094956000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "9d0fa5258d6aaabf1ab4a54cf0387bfaaf333a79b658c941d7b082aac5975050",
+        "releaseHash": "d1b0a809fb0e2c2aab504fbc6347b81ec74dce2009f2aff015eeff33a04ef1b6",
+        "releaseNonce": "e0b597edf818a2736ea100ce96ef009e",
+        "releaseEntryPda": "GKhF31XwAPzCjgCXVom89p6FCgFbHut7nHsYu5tZrxP3",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779094956,
+        "authorSig": "fGNeQU0smFKddyp+aslg2CSNX5s3t5pjoxsTWU8+T6+72jspq67DOB2VM7OSZvw1GuEi/yfdvvn0zINQn7O7BA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "canboard",
+        "appName": "CanBoard",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "canboard",
+            "pearlName": "Kanban Board",
+            "pearlType": "user-pearl",
+            "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from agentchat) without giving the source pearl read access to other cards.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "card-create",
+                  "interface": "CanBoard.CardCreate@1",
+                  "purpose": "Drop a card into a specific board's intake column from a peer pearl."
+                },
+                {
+                  "name": "board-read",
+                  "interface": "CanBoard.BoardRead@1",
+                  "purpose": "Read a specific board's state for embedding / dashboard use."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Boards + cards + comments",
+                "Attachments"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Board admin",
+                  "purpose": "Create / archive boards; manage members."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Edit cards",
+                  "purpose": "Standard kanban editing."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "Solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "CanBoard.CardCreate@1",
+                  "purpose": "Drop a card into a specific board's intake column from a peer pearl.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CanBoard.BoardRead@1",
+                  "purpose": "Read a specific board's state for embedding / dashboard use.",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      }
+    },
+    {
       "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-      "packageId": "394b241462b07967c90ccec897ec7d12",
-      "name": "cca.sh Config",
-      "version": "0.0.43",
-      "versionNumber": 51,
-      "shortDescription": "Admin pearl for cca.sh \u2014 controls procedure templates, hook allowlist, and per-install routing",
+      "packageId": "531c98438cee0e67b547c9d165e3caf7",
+      "name": "ccash Config",
+      "version": "0.0.48",
+      "versionNumber": 56,
+      "shortDescription": "Admin pearl for ccash \u2014 controls procedure templates, hook allowlist, and per-install routing",
       "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
       "categories": [
         "Productivity",
@@ -720,20 +867,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.0.43",
-      "sha256": "394b241462b07967c90ccec897ec7d12b6d0892869ba38ecfe45db2769573562",
+      "marketingVersion": "0.0.48",
+      "sha256": "531c98438cee0e67b547c9d165e3caf7d84217ab7659495998f19e5a1e057c6a",
       "imageId": "88e4675b94d9d1654b7979d0673a383a.png",
-      "updatedAt": 1782936467000,
+      "updatedAt": 1784264149000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "24d1e53ec65d1822ec1d59c5816aa4f3027a1cd3d16e54ee115e027eb5aafb05",
-        "releaseHash": "bf03f560dd238af1416c8af932ed8a20fe2e71f1f5957425b87e62790a11cd3e",
-        "releaseNonce": "1ea8cb6b6811b1f4f9cd09fa1be4da30",
-        "releaseEntryPda": "EpLniJnYxrmntreE7htwUVky7kzkCTreLqi2niKCMXuY",
+        "appHash": "19dc6691043c4f5d0d6d45378d87f3b6887b7fbe26eed1c45b6c5c62071397b9",
+        "releaseHash": "af42e984464f241e3398ae85413d301328438543ece9d8972ec1a57c328b68a5",
+        "releaseNonce": "db7b2c9487970f233da6fd3e8ad90dfd",
+        "releaseEntryPda": "2a7TrsZa3FM7GWak8JbEiaCQcMuKRDbs59gX6pXMRURE",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782936467,
-        "authorSig": "lWd6yKNWIypogGZJiwT7pvDxUZdNhiuAihmlAdeRYMQYJYrZImpDmAvXVysxZ8cqeqiz/fWv52fDAZQX9fRLBg==",
+        "signedAtUnix": 1784264149,
+        "authorSig": "AVAo6Wyucefz39WI7crn7BitMSCu/2/6skbEcmozwobMhH2xHvY8jf3dEOOKQ4zPN+KECo0K+kFgUNXv/002Aw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -864,11 +1011,11 @@
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-      "name": "cca.sh Domain Template",
-      "version": "0.5.51",
-      "versionNumber": 73,
-      "packageId": "14581d3da740bae6ecf8ce40884d4e05",
-      "shortDescription": "Domain configuration authority for cca.sh grains",
+      "name": "ccash Domain Template",
+      "version": "0.5.56",
+      "versionNumber": 78,
+      "packageId": "5068cf7322992550f811e51dc19020a8",
+      "shortDescription": "Domain configuration authority for ccash grains",
       "description": "The Domain Template grain is the single source of truth for all domain-specific configuration consumed by Station, Process, Account, and Clientspace grains in the cca.sh constellation.",
       "categories": [
         "Productivity",
@@ -889,20 +1036,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.5.51",
-      "sha256": "14581d3da740bae6ecf8ce40884d4e05e586b07e7f5d4bd1d34f8646210284df",
+      "marketingVersion": "0.5.56",
+      "sha256": "5068cf7322992550f811e51dc19020a8f3a745aa2ae09ca30dc5c5c780afce3d",
       "imageId": "171e254c68669c061150533245e42212.png",
-      "updatedAt": 1782964237000,
+      "updatedAt": 1784115189000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "0dfb9f28c4766903ca21d9e7087df3782ee90f6bca27bbd7a30974bf88b3e00c",
-        "releaseHash": "f7e226dbb0c2658003bd3874d123701849e98c72a64c06c46c221c78d99463a3",
-        "releaseNonce": "aade7fa7d08fc72d4912eda8dcaefac5",
-        "releaseEntryPda": "5szdfh7Ume468TawtCbwfsNrwhLVx5pXH89B875q8ycr",
+        "appHash": "c1ae2d9413301a890c760a7e5a3ff01aac82030de3ed408d831222939cad5e5a",
+        "releaseHash": "5f333cce531bfd162ca762b5c5e8e094e5d3a919683373d1ee6e6c7f60f8f653",
+        "releaseNonce": "35b21328730feab123ab804ed2ec3ab5",
+        "releaseEntryPda": "4EUPLu5vxSZr61mKMvZ91YLV831hMcZjLNgT8PPRVhwi",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782964237,
-        "authorSig": "reiLUNzsEJTbBTON7zGRbz7Q6NGaQK8WuxiZy44tJ4Hky++PQcifsq93sssUqSw/CtCrO7xhVl+ligvAp/q0Cg==",
+        "signedAtUnix": 1784115189,
+        "authorSig": "cs7P0xbNuwCBTHmgFBYxOVz5AOZ2ozyA1MQND17N6s0L4HVy/+FB7nTMGmS3HMgQQuy7ryUVtHw8Szlu4eRzCQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1034,17 +1181,17 @@
       "marketingVersion": "0.1.3",
       "sha256": "f501f3a72d2500b6277fa0b919a2fb38190080b1707eaf1b9ae8e9400d90b817",
       "imageId": "0bde48f210028b0491cfacfd30e16537.png",
-      "updatedAt": 1781724362000,
+      "updatedAt": 1779091445000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "ca259527142c4bb5210306fb2990d25160176be0b27ab0b278e00c9f8853f597",
-        "releaseHash": "d9d4cd3ff2c69c24545fa11260b4fced189b1148f0b6f6400e68cfb5cdadd58e",
-        "releaseNonce": "5babaaec661a19c40948c838f944c9d2",
-        "releaseEntryPda": "8nuvfDG13794Aq7hZH37j9acArPwnUr4oMNfEoJBUCQF",
+        "appHash": "ad56d960a5baf9ea74810cc52c453c9baf451971435c5dd6208bea0797db405a",
+        "releaseHash": "1ac16b37c67f1e9d3944402ab0e086d06ccd0a63a0ca6f9e3031a5f6601aca1f",
+        "releaseNonce": "0680776563111d1327c6c85857c05445",
+        "releaseEntryPda": "78ddUEyjnSoD6YToQWxuDfgj3383iJ25SyE2ucg8ur1H",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724362,
-        "authorSig": "okjKQGAB8k72Cpacw8WLZUx4rtcJr9siZTr7108ZW34pmUmRgSHQXjMpW/ziiaqiVGnxYNZ+kyxssaowhGQ/BA==",
+        "signedAtUnix": 1779091445,
+        "authorSig": "wHEmIVdMHwTU2SSu1j1uzjudi6SUovBWcBYxu2JwHT6Khv1ggvre7dc9Lfs2+YKXjUl83uB0dr4i0/aNUWkcAg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1194,11 +1341,172 @@
       }
     },
     {
+      "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
+      "packageId": "d884341d4fd51d8d3976590d44485c5e",
+      "name": "CrateLink",
+      "version": "0.1.1",
+      "versionNumber": 6,
+      "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
+      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "isOpenSource": false,
+      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
+      "upstreamAuthor": "Alexei Karpov",
+      "createdAt": 1776836094911,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "screenshots": [],
+      "marketingVersion": "0.1.1",
+      "sha256": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a",
+      "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
+      "updatedAt": 1779095061000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "56005e76de77ae3b43b4af501f92edcd44a22fb7d0b4ddd946dd13ab23711bf4",
+        "releaseHash": "7f9b0a87af38b0aea438344c5b6ca1f5058c1638833366bbdc83c86d71c441c3",
+        "releaseNonce": "09f3f1a83e31b28e0825526a2cd97de1",
+        "releaseEntryPda": "5w8QaBWQjnr35cdekNbUd1rLhdChwE4eKiQ8BCNrcRWb",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1779095061,
+        "authorSig": "xjv62Mzo7rZ0Il2DxgwQQv6GZ9yyaBlGAqNXBVKH83tAsDfGp29nrIN7TP/gilxB41mlmo+WF95EuaPjLN9pDg==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "cratelink",
+        "appName": "CrateLink",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "cratelink",
+            "pearlName": "CrateLink",
+            "pearlType": "user-pearl",
+            "purpose": "Per-user shipment tracker / supply-chain pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [
+                {
+                  "name": "custody-accept",
+                  "interface": "CrateLink.Accept@1",
+                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate."
+                },
+                {
+                  "name": "shipment-read",
+                  "interface": "CrateLink.Read@1",
+                  "purpose": "Read a shipment's history (only your participation slice)."
+                }
+              ],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+              "fields": [
+                "Shipment manifests",
+                "Custody handoff signatures",
+                "Per-party private notes"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Configure crate templates",
+                  "purpose": "Owner-only: define crate types + handoff rules."
+                }
+              ],
+              "organizationOnly": [],
+              "anyMember": [
+                {
+                  "name": "Create shipment",
+                  "purpose": "Start a new shipment + set initial custodian."
+                },
+                {
+                  "name": "Sign handoff",
+                  "purpose": "OTP-gated custody transfer."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [
+                {
+                  "bit": "pearlRegister",
+                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
+                },
+                {
+                  "bit": "audit",
+                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
+                }
+              ],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "Solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation; custody handoffs are off-chain ed25519 over canonical handoff payloads."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [
+                {
+                  "name": "CrateLink.Accept@1",
+                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate.",
+                  "roleGate": "anyMember"
+                },
+                {
+                  "name": "CrateLink.Read@1",
+                  "purpose": "Read a shipment's history (only your participation slice).",
+                  "roleGate": "anyMember"
+                }
+              ],
+              "http": []
+            }
+          }
+        ]
+      }
+    },
+    {
       "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-      "packageId": "f8c8101d5ed7d9c5d80ff623d6bac0d1",
+      "packageId": "da5fb49060e1d4ddd5fb737156ed7968",
       "name": "Creeper",
-      "version": "0.1.6",
-      "versionNumber": 8,
+      "version": "0.1.20",
+      "versionNumber": 22,
       "shortDescription": "OSINT consumer grain \u2014 search/scrape/handle/contact lookup for the Melusina PSP.",
       "description": "Creeper OSINT consumer grain for Melusina PSP. Offers CreeperService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the creeper-sidecar (LXC) for the actual web/handle/contact lookups.",
       "categories": [
@@ -1221,20 +1529,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.6",
-      "sha256": "f8c8101d5ed7d9c5d80ff623d6bac0d1d8d5866c4cd38dd6aa09ae653cfef502",
+      "marketingVersion": "0.1.20",
+      "sha256": "da5fb49060e1d4ddd5fb737156ed7968d755e19299e86c7d216ae297a50cad54",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1781265739000,
+      "updatedAt": 1784248200000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "c740492942e33d068646d2fc77ce485ca5d8b3caecaa2d1ddf1abb2afe270755",
-        "releaseHash": "2b746ca3d6ab6c6cf8bafbd93b495f3773512ead9aeb140ffed33e910b0721c6",
-        "releaseNonce": "7f0f9f9ee49fcd0de535e52413f61d5e",
-        "releaseEntryPda": "6XQcQTLdntKFtFXtPzViK7t7FciLHwKKP94eDvRBqbB1",
+        "appHash": "699334f7c4353ddf130602f06ae662836cfabadad20a3a2c95a03c0ffc1c48f4",
+        "releaseHash": "2b1519091850f164a2135e48f165ea4a493890ffba7d71ffa03c95416150f741",
+        "releaseNonce": "5ab278374469b674e2a5dccf200840a3",
+        "releaseEntryPda": "AhvpH9n9a9cJNVhrNDc63Ki83z8DFXagtYBKVCbZ4Sps",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781265739,
-        "authorSig": "I95EWT/DpexmiaLhAgWVyX9newTKdAGcB5H9jyYHjJVCQ9jvu9tBfmVaMPH0haGXoXvoEOpCvXNqPLqv6XN+DQ==",
+        "signedAtUnix": 1784248200,
+        "authorSig": "YaD6i6TDVWAd1Hp5xxoLszQJhuUxEXvxjgPSohNmiifuw7VTYAAX+29rbkTfRTdCEKBRmMDybGuTu6sXVOLOAA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1247,10 +1555,10 @@
     {
       "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
       "name": "cyberteller",
-      "version": "0.1.78",
-      "versionNumber": 155,
-      "packageId": "fd890b3797a878286c45257d5a8098df",
-      "sha256": "fd890b3797a878286c45257d5a8098dfffc3ec765b29e3e86cff6c657a4dd78b",
+      "version": "0.1.87",
+      "versionNumber": 164,
+      "packageId": "06c52ff1b344facfa9f45d399ff623a0",
+      "sha256": "06c52ff1b344facfa9f45d399ff623a00ae98a5b389c862937ac1fc292f7df63",
       "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
       "categories": [
         "Productivity"
@@ -1271,19 +1579,19 @@
       "description": "cyberteller is a multi-chain crypto payment processor for Melusina. Create invoices, generate unique payment addresses per chain, track payments in real-time, and settle crypto across Ethereum, Tron, Solana, and TON.\n\n## Why cyberteller\n\n- **Pinned invoice + settlement chains** \u2014 cryptographically anchor any invoice and its settlement chain to your Solana wallet; records are tamper-evident, citable across Pearls via Grapple, and compliance-ready\n- **Address non-reuse by HD-wallet derivation** \u2014 every invoice gets a fresh address derived via BIP-39/BIP-32 (secp256k1) and SLIP-0010 (ed25519); no address reuse; no payment correlation; privacy by design\n- **YAML-driven, restart-free configuration** \u2014 edit chains, tokens, expiry, and tolerance thresholds via the admin UI; changes take effect immediately; no deployment cycles\n\n## Features\n\n- **Multi-chain support** \u2014 Ethereum, Tron, Solana, TON\n- **Crypto & stablecoins** \u2014 ETH, TRX, SOL, TON native coins + USDT/USDC on every supported chain\n- **Invoice API** \u2014 create invoices via REST with amount, currency, description, and customer details\n- **Payment page** \u2014 customer-facing page with QR codes and copy-address buttons; auto-refreshes\n- **Payment status tracking** \u2014 paid / underpaid / overpaid / expired\n- **Webhook endpoint** \u2014 integrate blockchain monitoring services for real-time settlement notification\n- **Admin panel** \u2014 dashboard, invoice detail view, live YAML config editor\n- **SQLite storage** \u2014 zero external dependencies; fully offline-capable\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live payment processor lands in v0.2.",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.78",
+      "marketingVersion": "0.1.87",
       "imageId": "e53093c86cac61436fdef4105636455d.png",
-      "updatedAt": 1782978061000,
+      "updatedAt": 1783333353000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "6ddfd073b554a7a27bf71718ba658d9b50de610e799da77bfb1e89c33ca8b1b2",
-        "releaseHash": "0c0ce69a8d706e0378f0594ff93fbb68b42421146cf0ac3fa6f59a6a7af75bc0",
-        "releaseNonce": "e5f7a1617eaa5b941ffa2518596d7201",
-        "releaseEntryPda": "BDESdnJdDbmKUiYYqxUjb3tcNaW4Eqk5JAN4SvBNZ2FK",
+        "appHash": "08fe9d4ba3a9a8c53f3b5183d8ae9f9c689f2ecfffda9048ef61e02e979577e7",
+        "releaseHash": "d911b0b963c5e9d989c4ee43b811da188012a585c3875e00c7f53f4e9b5cff37",
+        "releaseNonce": "d76d7adc953e56226c9ccbe55e36ab5a",
+        "releaseEntryPda": "GPWQCJcRJ3ESd6qMDBXm78r1phq9WomBJNNtHDZVc8EQ",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782978061,
-        "authorSig": "Aaauseda7+wg8hdROz0w20lYBim33K+ZHkS3UEwfj+1GSKzYl2zgl+86im+b2EndiWZW/T1KfJshDvDb5DEzAg==",
+        "signedAtUnix": 1783333353,
+        "authorSig": "XkRTMQp5ytDr4bMOYgch3GM6IEx9dZo8sszEcqPYCgQAl6y8ZLmkl571y6rn6hg3Lb5ZVDzmuTkDMYZQShlXBw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1615,17 +1923,17 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.16",
       "imageId": "d5b3795ef26ed5769711e9a1fdda1182.png",
-      "updatedAt": 1781724502000,
+      "updatedAt": 1781285881000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "03b28b868e37dfc969c747972e70a74f7036f17ea1d0308c2655e45b8ec7f1e5",
-        "releaseHash": "3a584619d2f6e6bda667369a271ff9b94b9214a7851af314e1e3c92249d07343",
-        "releaseNonce": "f0e5ea41b49ade833c12e28f395d485b",
-        "releaseEntryPda": "EWatcLm6M9x5V9v9jJ591oX3y4cQMyWw4qLSeG31e6kg",
+        "appHash": "cb3394a06a06f6a292bd032d5cb1ff6c48e2c4dcb8293b96e5d42d72f17bebda",
+        "releaseHash": "793fa616ec14b2473e5062987a3a94977d33cf20b879d4586a705070dee9e4e5",
+        "releaseNonce": "c281d8661a9188ea71cf5917a4230dd9",
+        "releaseEntryPda": "HuJ7LKt8qyzgqFGXStrVTuAbGQDa3aJNPCVFc5aXNzed",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724502,
-        "authorSig": "VKSiCt0Kg9Boho8qVxPBB/lKkdeP26hiuYaeUP5/ikXkYk99etixuJC7epx5bJH0015qsF3ZQSn/F9zwT/hhCQ==",
+        "signedAtUnix": 1781285881,
+        "authorSig": "1HNrK3LD5QYYAJYt6gxsKNvw2meQYxRRaG5LgNO3tiGgCQ7kmGnDDK8UBN84X5NGi9a1+pGTpeQYcDMb2HVCBw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1758,17 +2066,17 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.17",
       "imageId": "b3dd99d8455e35229f1b359b2ec80a22.png",
-      "updatedAt": 1781724733000,
+      "updatedAt": 1781324626000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "067afcb535fd70107f2c636fd8accfd30221d13b126757bd3b0d6d263e9be8c9",
-        "releaseHash": "f9ce0be347bb3af8786c2025d49beaf56d50ad43207584670144666fd92c82bd",
-        "releaseNonce": "520a47c25ad49e3a9fe3090cd81ddd93",
-        "releaseEntryPda": "AzeWpHoEuijd7gPJwrhxHe2YxiXYeCa99karByUv1Cvu",
+        "appHash": "e625db98c77da029b8a42f9e8835117b2de2196e11eb297fdda1b804ee1bd971",
+        "releaseHash": "0d3db444324a875ae28b5aba691a2e11119cbd2fb26003ecbb88e7377a70917b",
+        "releaseNonce": "109d710d7a59b2ca63a58f7807968a43",
+        "releaseEntryPda": "929Sdcgj2SaSyPbyEXLrUbEWf9LhYtRwxbhDtFTS28RS",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724733,
-        "authorSig": "aXv5uZdGSXVfXaxng74eMydj+4vGUasNssUU9PL0us96TPJD1CEQ3iiC99fzedyF91H6bIAMWLpV3SulaJlIAQ==",
+        "signedAtUnix": 1781324626,
+        "authorSig": "tXqGSOvj6e0+StFPNYYUjnfyeiBtU01hGZN4CRoL4Nj8fnIP8pjCf2fM6olk3ZtrLrGdbfvDheVD5/nnkqcfAQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -1870,9 +2178,9 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "name": "DueProcess",
-      "version": "0.1.44",
-      "versionNumber": 48,
-      "packageId": "e5d9758487198248ca1e671151c5b934",
+      "version": "0.1.50",
+      "versionNumber": 54,
+      "packageId": "cd3a98b929d300a77adb9aaedd67a8ff",
       "shortDescription": "Compliance casework engine \u2014 KYC, sanctions, payment-block, SAR.",
       "categories": [
         "Productivity"
@@ -1891,22 +2199,22 @@
         "website": "https://hrbr.life"
       },
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "marketingVersion": "0.1.44",
-      "sha256": "e5d9758487198248ca1e671151c5b9340fc2f89a6740adab8f676b57145fc32f",
+      "marketingVersion": "0.1.50",
+      "sha256": "cd3a98b929d300a77adb9aaedd67a8ffb2c2fb1f1287a9eaf6b60b2663958bce",
       "description": "DueProcess is the Station pearl that drives compliance workflows for an MSB / PSP / VASP constellation: KYC intake, deposit screening, Travel Rule marshalling, four-eyes approvals, SAR / STR filing. The companion of ccash (operator console) and cyberteller (deposit monitor).",
       "screenshots": [],
       "imageId": "0f0d95a15780218afbef1eac5a98fc56.png",
-      "updatedAt": 1782791784000,
+      "updatedAt": 1783434411000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "3db8c92f039a7beb635b801e50f583a9471ed0e1b500f4483c612714b707a9d9",
-        "releaseHash": "7e054f13159e9876416e6bebb37f7644bb7d0e6232d3b5b4bfbde700ac4858e9",
-        "releaseNonce": "c5cae4c90f5a7d319dec55684879a59d",
-        "releaseEntryPda": "FHZzMkQJSdAP9Qf1g666WtwgLKSuQdqTqJFzdwqCATq3",
+        "appHash": "d10aeff51f0691cf7dc5795c9af5eb9309d4767dd8cb7f6e6b8ded79fd79d876",
+        "releaseHash": "7f5ac205782dc5ed3e5c0397de83916f63c8a21a86afa947d6ee3205cb9ec93b",
+        "releaseNonce": "b3096ab6725bc7bbf548c30541e19148",
+        "releaseEntryPda": "ATJFBt9414uS3S8n76DMgTJ5oihyf7UZhnBgv5sTGB6u",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782791784,
-        "authorSig": "rm8Be+xUUToWDRRX8c+uuClYwakePRxLfxMr3XQUc/15f8L0SIc9RG/POX3RpKYUUx8KT7x8yD3bdyOsmVJcAw==",
+        "signedAtUnix": 1783434411,
+        "authorSig": "h39RMnOU9o7v+NNtDo/nhrK3y2KhOhk2wN5xKRdGBrreu4iZcjr/iDZ6II4MGRMWeFVN8yNM5vp3OhT7/DDbDg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2059,6 +2367,154 @@
       }
     },
     {
+      "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
+      "name": "GoldKey",
+      "version": "0.3.0",
+      "versionNumber": 3,
+      "packageId": "8f9d18e7d3c0981dc26fcf664822f15f",
+      "sha256": "8f9d18e7d3c0981dc26fcf664822f15f94f0d3e5a439b7dce348dcbaad061c48",
+      "shortDescription": "Encrypted password vault with wallet/PIN-gated access and KeePass 1 interchange.",
+      "categories": [
+        "Productivity"
+      ],
+      "isOpenSource": false,
+      "webLink": "https://hrbr.life",
+      "codeLink": "https://github.com/hrbrlife/GoldKey",
+      "upstreamAuthor": "hrbr.life",
+      "createdAt": 1785456000000,
+      "author": {
+        "name": "alexeikarp",
+        "githubUsername": "hrbrlife",
+        "twitterUsername": "",
+        "picture": "",
+        "email": "ak@hrbr.life",
+        "website": "https://hrbr.life"
+      },
+      "description": "GoldKey is a private password vault for Melusina teams. It stores credentials, notes, and recovery attachments in encrypted per-vault storage; requires a wallet or shell PIN unlock; supports Viewer, Editor, and Owner sharing roles; and records non-secret audit metadata in a hash chain. GoldKey imports and exports the KeePass 1 KDB format and provides a mobile-first interface with deliberate secret reveal controls.",
+      "screenshots": [
+        {
+          "url": "screenshots/01-mobile-vault.png",
+          "caption": "Mobile vault overview"
+        },
+        {
+          "url": "screenshots/02-mobile-credential.png",
+          "caption": "Deliberate credential reveal and large copy controls"
+        },
+        {
+          "url": "screenshots/03-desktop-vault-menu.png",
+          "caption": "Desktop right-side vault menu"
+        }
+      ],
+      "license": "Melusina Public License v3.0 (source-available)",
+      "tier": "regular",
+      "domains": [
+        "*"
+      ],
+      "marketingVersion": "0.3.0",
+      "imageId": "f43725dbb3c4394706fed4efe1b2e3e7.svg",
+      "updatedAt": 1785484916000,
+      "attest": {
+        "schema": "melusina-release-v1",
+        "appHash": "2b468830b9eb98019d6c9faac60d2fd31fd6147fb61c2c87031b234b0dfe60f8",
+        "releaseHash": "9aba108fcc4e2ee8ab25a4daba3eb86db5df25de4bcc7ad0225d3611b27155ea",
+        "releaseNonce": "65a9db068a349b48ec678d16861114d6",
+        "releaseEntryPda": "8Qv5TMf4nbPzSpt74j8ZaxaeWnkmgirb6TCGk3MHdos5",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "signedAtUnix": 1785484916,
+        "authorSig": "3zk4WUUephxPE6iNdEDrNXPF0zof+O934cWiORt158yY5UYoEE3TXyUqUnXDsZo531FLx0WR8+3Lkq316bxzDA==",
+        "quorumPolicy": {
+          "threshold": 3,
+          "memberCount": 4,
+          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+        }
+      },
+      "capabilities": {
+        "schemaVersion": 2,
+        "appSlug": "goldkey",
+        "appName": "GoldKey",
+        "tier": "regular",
+        "pearls": [
+          {
+            "pearlId": "goldkey",
+            "pearlName": "Encrypted Password Vault",
+            "pearlType": "user-pearl",
+            "purpose": "A private, role-aware credential vault with encrypted storage, KeePass 1 interchange, and integrity-checked auditing.",
+            "sidecars": [],
+            "grapple": {
+              "offers": [],
+              "requests": []
+            },
+            "encryption": {
+              "supported": true,
+              "scheme": "AES-256-GCM encrypted SQLite through grain-crypto-journal keybox; wallet/PIN-gated Melusina E2E binding.",
+              "fields": [
+                "Credentials",
+                "Notes",
+                "Attachments",
+                "Audit history"
+              ]
+            },
+            "roles": {
+              "adminOnly": [
+                {
+                  "name": "Owner",
+                  "purpose": "Manage the E2E binding and verify audit-chain integrity."
+                }
+              ],
+              "organizationOnly": [
+                {
+                  "name": "Editor",
+                  "purpose": "Create, change, and delete folders, credentials, and attachments."
+                }
+              ],
+              "anyMember": [
+                {
+                  "name": "Viewer",
+                  "purpose": "Read credentials and download attachments shared with the grain."
+                }
+              ]
+            },
+            "authority": {
+              "requires": [],
+              "grants": []
+            },
+            "blockchains": [
+              {
+                "chain": "Solana",
+                "cluster": "devnet",
+                "programs": [
+                  {
+                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+                    "label": "license-registry",
+                    "calls": [
+                      "RegisterReleaseEntry"
+                    ]
+                  }
+                ],
+                "purpose": "Release attestation only; GoldKey does not place vault content on-chain."
+              }
+            ],
+            "staticPublishing": {
+              "enabled": false,
+              "via": "",
+              "purpose": ""
+            },
+            "httpOut": {
+              "enabled": false,
+              "via": "none",
+              "purpose": "",
+              "endpoints": []
+            },
+            "apis": {
+              "capnp": [],
+              "http": []
+            }
+          }
+        ]
+      }
+    },
+    {
       "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
       "name": "InstaDAO",
       "version": "1.0.8",
@@ -2107,10 +2563,10 @@
     {
       "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
       "name": "Melusina Dashboard",
-      "version": "0.1.0",
-      "versionNumber": 1,
-      "packageId": "4864e30a640f611221a257330aa7161f",
-      "sha256": "4864e30a640f611221a257330aa7161ff9b80a535cd9115d0d8da04db8af840b",
+      "version": "0.2.2",
+      "versionNumber": 6,
+      "packageId": "73037d1a8f98086dc9729edefecaf45b",
+      "sha256": "73037d1a8f98086dc9729edefecaf45beb4a9f0b592c359cc80a24359871932b",
       "shortDescription": "Operator aggregation dashboard \u2014 treasury positions, GL, compliance across ccash + NamedCoin domain profiles.",
       "categories": [
         "Productivity"
@@ -2130,20 +2586,20 @@
       "description": "",
       "screenshots": [],
       "license": "Proprietary - AiTX.pro Limited",
-      "marketingVersion": "0.1.0",
+      "marketingVersion": "0.2.2",
       "createdAt": 1781826324919,
       "imageId": "1dc5916596862f936d145647aca83bc4.png",
-      "updatedAt": 1781826519000,
+      "updatedAt": 1783119465000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "b3ad7d56cb0690d81f37835a57e9404dda246dc111780c094fa4a4431019b2f6",
-        "releaseHash": "fec81d6bb3489541cebf33ed92820e89de761875a8fd3d1b2ee21f8f606e885a",
-        "releaseNonce": "bd953a900c08b6a262c4944b9c53adb6",
-        "releaseEntryPda": "3gR4SeCVpLfVkjs5gTXELCrK4Eq69Amo2TvHPLR8pvM9",
+        "appHash": "c491bc391062fd7ec5e3b6d79addf63fdfde6b9d2c382fd46780fdee41875165",
+        "releaseHash": "8504944384de65686b93a907c9cafbe1a61f72ede41c0c50bb407e5414acbfb6",
+        "releaseNonce": "d325207436dd632661bdc4bb5c1d6185",
+        "releaseEntryPda": "FqtcuBUEe2C5uFgW7FY26xhKYGVBtUPKYGsTWv94i57z",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781826519,
-        "authorSig": "ToAki4nr4fZVkUUje0Aj2e8Qmib4qE+AaRhPwHKRoczH6TzTg6KUvHYcSFPw7Ekpn8ti/HvtI27WiXkqqWPgDQ==",
+        "signedAtUnix": 1783119465,
+        "authorSig": "iPcRSW9ii8oZfLIlM3lZnbCtutcXG+wB74av0y5C1oRGXW7wXE0MEQ3oqUOfUXOhygCyGqQWR5XsPV/xNCL/Dw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2155,9 +2611,9 @@
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
       "name": "MerMail",
-      "version": "0.4.8",
-      "versionNumber": 13,
-      "packageId": "b07c2179e8e5080572542bf822ffb69b",
+      "version": "0.4.9",
+      "versionNumber": 14,
+      "packageId": "81dc6e4ba7310d50a30245749308b984",
       "shortDescription": "Sovereign email client for Melusina with pearl-based mail server control",
       "categories": [
         "Productivity",
@@ -2181,20 +2637,20 @@
           "caption": "inbox"
         }
       ],
-      "marketingVersion": "0.4.8",
-      "sha256": "b07c2179e8e5080572542bf822ffb69b5f037b50b5cd1adbb374e25b11283476",
+      "marketingVersion": "0.4.9",
+      "sha256": "81dc6e4ba7310d50a30245749308b9845cf1f905527c3953305d3a7fd1cece87",
       "imageId": "6694c64448876e5fcfbb6abc09e97b1d.svg",
-      "updatedAt": 1781267790000,
+      "updatedAt": 1783344307000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "9384a1042c2715f7089176b8fd5354f3c64a73f2b2f6b6914c0ff58236cf8fd6",
-        "releaseHash": "a43afe2cf463cc1f1cf26ee14f4915e2963fad3f9a3f8b0866b64cb171dad37e",
-        "releaseNonce": "1cd135d93306107dd50e38a6f6ce46f8",
-        "releaseEntryPda": "ChYiQKr1dcmd63tW1iCWmsvinYAJgA4V5QGc556ox8S8",
+        "appHash": "63714187b9a9f26e0eb59a30826bfb4129ecf454448a4be18243b2350fe024ad",
+        "releaseHash": "98c0351c28fc535b9041c067e9adf4df0cfb4d858e2cb1864617b83dc5634340",
+        "releaseNonce": "aac05fe2a099a79a8af6b538a9be5420",
+        "releaseEntryPda": "DRSNb9QZ6yVV1jmmrZ7bq7Cu9o3crqoVBy1kjuHt4rYV",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781267790,
-        "authorSig": "7/B1Rm3ObZ1nXr/0SxzCKwo8WBEL8Dl4zo/eipxZ4XEQ0fqaj60nzPOxURQS2i+oPTwY0uiQEeNh0Kh/WQobAQ==",
+        "signedAtUnix": 1783344307,
+        "authorSig": "eGaTZChwmWLWvEWR+YAWjGwaDtla2OI7AdtXsBKO7fWDipGEgVsehcSahuOAaOb4KRyXNOlm2nhWevw+WeUGCA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2306,11 +2762,11 @@
     },
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-      "packageId": "6f4adab6eef87078259fc86cc84849fb",
+      "packageId": "cfd862b9b7885f0ae88d8bf549c192c0",
       "name": "MiniGit",
-      "version": "0.2.6",
-      "versionNumber": 12,
-      "marketingVersion": "0.2.6",
+      "version": "0.2.4",
+      "versionNumber": 10,
+      "marketingVersion": "0.2.4",
       "shortDescription": "Lightweight private Git hosting on Melusina \u2014 one repo per pearl, browse and push from your browser, AI-callable.",
       "description": "MiniGit provides lightweight, private Git hosting inside a Melusina pearl. Clone, push, browse commits, diffs, and manage branches \u2014 all from your browser, entirely on your server.\n\n## Why MiniGit\n\n- **Per-pearl isolation** \u2014 each pearl is one sealed repository; separate storage, separate permissions; no cross-pearl leakage; a vulnerability in one pearl cannot reach another\n- **Melusina-native access control** \u2014 clone, fetch and push are gated by the same share-link permissions (viewer / editor / admin) as the web UI; no separate accounts\n- **No third-party CDN/Git gateway** \u2014 all repositories hosted locally; no GitHub, GitLab, Bitbucket; no vendor lock-in; export anytime\n\n## Features\n\n- **One repo per pearl** \u2014 the pearl IS the repository; share the pearl to share the repo.\n- **Push and pull over HTTPS** \u2014 clone URL provided automatically\n- **Browse files, commits, and diffs** \u2014 in the web UI\n- **Share read-only or read/write access** \u2014 via standard Melusina sharing\n- **No external database** \u2014 go-git in-process; the bare repo on disk plus tiny JSON sidecars under the pearl's data dir; zero external services.\n- **Fully offline-capable** \u2014 no CDN or external calls\n- **Role-based access** \u2014 viewer, editor, admin\n\n## AI-callable Skills\n\nThe pearl exposes a Melusina `GrainContext` capability \u2014 its \"Skills\" \u2014 so a compatible AI agent can browse files, read commits, write commits, manage branches, and apply patches through a declarative operations table, called via `describe` / `invoke` over capnp. The operations a caller sees are filtered by the same share-link permission bitset as the human UI: view-only callers never see write operations.\n\n## Status\n\n**Stable (0.2.4)** \u2014 full Git hosting (clone / fetch / push over HTTPS), web browsing of trees, blobs, commits and diffs, a lightweight issue + pull-request tracker, and an AI-callable operations surface \u2014 all available now.\n",
       "categories": [
@@ -2389,19 +2845,18 @@
           "verbPhrase": "can clone and fetch only"
         }
       ],
-      "sha256": "6f4adab6eef87078259fc86cc84849fb10118f441e86dea2aed4aa05649487d9",
       "imageId": "5dfa9e50fd0f0f700e31eb74bb2653a4.svg",
-      "updatedAt": 1781302925000,
+      "updatedAt": 1781266151000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "bb475141263aef04ebea7295498ebea585a26edf9c4bc94510b496498c010ac2",
-        "releaseHash": "7fa7f817a7e09a58353737ec13d1158a2bbe9d9db6a47ada84af1ef096eb0c6d",
-        "releaseNonce": "33569681c0ea14e67f16a19705d58b3e",
-        "releaseEntryPda": "5UpRJEPoDE8DYqNXmXz8y8niNxEUVz86vq9yvJAXPaGp",
+        "appHash": "05570aa822e8cea59311e3d230875c3c206ab405eb2a41e30a91f445bb5d966a",
+        "releaseHash": "1b4b696c53a5291695c183af7dcbca7282ac3532a817a247af30bdc35d15821d",
+        "releaseNonce": "604be2f7ec77edea3d73b99e1808b9c7",
+        "releaseEntryPda": "Cd3MQ8ej38uRgb8gCH3jh7UEBWBMts5xtTo8UdjH3bfw",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781302925,
-        "authorSig": "rkB8YjUefWk2eg3ySaIC5mlp6pHZZuREpdILThTZMKeY/4g1X9map65k3yTArU11tVxnaArM0RQrHOD4dXv8Ag==",
+        "signedAtUnix": 1781266151,
+        "authorSig": "aLzqEvDpIicnqQwhYCoYNxdfYwwHNTyr8BSCRs4+rPOnSpWzcerRfjPImRz5ctM4s/wmQwSEenCBHWj4xNrkAQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2508,9 +2963,9 @@
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
       "name": "NamedCoin",
-      "version": "0.1.22",
-      "versionNumber": 24,
-      "packageId": "936368494ae0b12af829fb65663c2dc7",
+      "version": "0.1.9",
+      "versionNumber": 11,
+      "packageId": "f02466e8bf9cae66c022236a261cc639",
       "shortDescription": "KYC onboarding \u2014 pass once, get a time-boxed on-chain attestation",
       "categories": [
         "Productivity"
@@ -2522,7 +2977,7 @@
       "isOpenSource": false,
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-app",
+      "codeLink": "https://github.com/hrbrlife/melusina-NamedCoin-app",
       "upstreamAuthor": "hrbr.life",
       "createdAt": 1776300000000,
       "author": {
@@ -2531,20 +2986,20 @@
         "twitterUsername": "",
         "picture": ""
       },
-      "marketingVersion": "0.1.22",
-      "sha256": "936368494ae0b12af829fb65663c2dc79266292bbd5b0ea11b4ddb81c369e03a",
+      "marketingVersion": "0.1.9",
+      "sha256": "f02466e8bf9cae66c022236a261cc639c46479beb337f54222a34465dfc507f7",
       "imageId": "ee115fb325d99ed2e67fc89ab199d4eb.png",
-      "updatedAt": 1782499968000,
+      "updatedAt": 1780890814000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "442d98d18075c0f4f0ac1f055de31e5dcca3fcbfb026851a5ee9e6bbd4823484",
-        "releaseHash": "53d33b9f6559b590049e30010e9aeccc377381c95216a1d9a8b362efe7d0f256",
-        "releaseNonce": "efae89be5f67b7c2f8902b0664864934",
-        "releaseEntryPda": "Ff63yss8eEkzi7Lg1QN52eE7a1cG39pvuB2E7JFfJwQs",
+        "appHash": "0136747e8a1e573557b4b4620a6ea27de6e7eb3668e34c265c1e983a5cfe694a",
+        "releaseHash": "e522f25773ba6084bc3575aa0941ebad983c9f14339956717ed27b7860e9157c",
+        "releaseNonce": "6dde905f2372cf674ff88d7f8669a1e5",
+        "releaseEntryPda": "GkQyVCfPkn5LnqFSsw3gPJSJmtCeqseyCY6WVAdZf2Uv",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782499968,
-        "authorSig": "UGfDNFv5hbHhbMwJ8A5ztTRphSS6dT/LnE2SQQpphywUn1DZO8tZK0nBSBgxMn/POvOov9Bw19vtD59JKhzsDQ==",
+        "signedAtUnix": 1780890814,
+        "authorSig": "yCQ+yYQMGltpRr6//kzenSsA07jBA1W/cze3b4LiTHLQq41JsFnpSUxdqQqTb4QEjarZcJsuf4ED6NsdGA8+AQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2603,10 +3058,10 @@
     },
     {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-      "packageId": "362cefead23d3b042ddc55e35beee4cd",
+      "packageId": "4890568da41e3fd3a2fd41bc4ecc8002",
       "name": "OpenSanctions",
-      "version": "0.1.10",
-      "versionNumber": 12,
+      "version": "0.1.18",
+      "versionNumber": 20,
       "shortDescription": "Sanctions consumer grain \u2014 KYC/AML screening for the Melusina PSP.",
       "description": "OpenSanctions consumer grain for Melusina PSP. Offers SanctionsService outbound via Grapple; sibling grains claim it through Sandstorm's cap-routed transport. Backed by the OpenSanctions-sidecar (LXC) for the actual API calls.",
       "categories": [
@@ -2628,20 +3083,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.1.10",
-      "sha256": "362cefead23d3b042ddc55e35beee4cda3f502c8edffbde2e55ab76b57a89c10",
+      "marketingVersion": "0.1.18",
+      "sha256": "4890568da41e3fd3a2fd41bc4ecc800208385e1d75f49195f2861a994b8e098b",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1781267830000,
+      "updatedAt": 1784129650000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "4fb91807f69afb902bcdfba582c3922c8048112da6fa8a4612c2e317725e7cbf",
-        "releaseHash": "afc45bc002656bb168e6784f168196cee65de749546094a4d51891f330b055be",
-        "releaseNonce": "8203888dcf2ea7555ba4b80acad28e35",
-        "releaseEntryPda": "8YcqUHqax8TEMXucsbi71Q1GU3UjN1WopTUoApghREAD",
+        "appHash": "cd7d7842445b5b85d97a4fcdbb9382ceebdb6ec0d4bd53e2ffd61123bf6ad34b",
+        "releaseHash": "a13b71407a86317900c778f7c25f8d0a51256b6f9d7447706b6c1ca67873d010",
+        "releaseNonce": "bd2fea28190439038c45480906dfbb35",
+        "releaseEntryPda": "GVEoBewHsFcSQiRbLvG9YJ6hxYb9abnMvBdb6Frw7mPf",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781267830,
-        "authorSig": "dCkGuhTBIIZGhE4iHRiRCRVZpxbvp/seZAKOjz4zG/UuWaniOX4GivemhOC2ZniB81cvrcSgleQWEKgh9G/sCQ==",
+        "signedAtUnix": 1784129650,
+        "authorSig": "jTUZuAsBbMbkB4Nw3FuFi6WhYIM5iAfFZpdN68aruWvOt5IQUGY2NcB5qD2Bzyjj/sZ4pbHOAaiREYmhxVUTDQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2685,17 +3140,17 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.17",
       "imageId": "bb61d5ffeca839c85cf47e99a5356224.png",
-      "updatedAt": 1781724801000,
+      "updatedAt": 1781324861000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "19926d8b393ee518b3a1ade56b00f1e4be58b8c85be49db3b7035686c4f964b5",
-        "releaseHash": "92e0890073ac389a45e6202324bebc7b9fca4a905ac50e0a64225e9fd4ee94b8",
-        "releaseNonce": "bb7bbd7948451fa620ac5218b5133335",
-        "releaseEntryPda": "H2PhsfAtUpqFBzk9XHuEyxvcyDJUDZr5GsZMPYuWEks2",
+        "appHash": "d35663b1bab26566738bb8f6fc5c64ebc06832f86d32b9f18f938fda8db95505",
+        "releaseHash": "f2879af87f4351daf16881f3090dd179d1b09f7b888c95fa73ce8e32bb7e2bdf",
+        "releaseNonce": "436d7936051b631b97cdc437da88984c",
+        "releaseEntryPda": "8oNYGWqJL2RXCyt3kLMoopj6x3Cnj8JdXqfVVsetmKe1",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724801,
-        "authorSig": "0mm3ht8mXOU4hSnRkClaETpwx1Wdhk868PS9X2HP72Ng1nTwFk4WNGD+nMZxuVF+TKQ/71D2mi0pzN4Gaf56Ag==",
+        "signedAtUnix": 1781324861,
+        "authorSig": "MB5xfOQGS9U9DH7O4F2y/R9/8DximWQxEPchH5f9VAS1H4j4IT6RPBVbNIfsty1yDLqjgpQjRwOSf9ia+m8QDg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2792,10 +3247,10 @@
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-      "packageId": "861725ee01185b8b18fce7862883849b",
+      "packageId": "91a76407e18d279cc9bc7de26d48ebe4",
       "name": "popaye",
-      "version": "0.3.144",
-      "versionNumber": 136,
+      "version": "0.3.163",
+      "versionNumber": 155,
       "shortDescription": "MSB / PSP / VASP operator console \u2014 Solana-signed, encrypted, mobile-first.",
       "description": "popaye is a polished mobile-first operator console for an MSB / PSP / VASP back office \u2014 the whitelabel end-user app running under ccash wholesale. Manage wallets, contacts, and money movement with a client account that treats contacts as identity-only \u2014 no stored payment instruments \u2014 and routes every transaction through an approval gate that mints one-time settlement instructions. Every state change is signed with a Solana Ed25519 key and recorded in an encrypted SQLite audit log. KYC, sanctions screening, and AML workflows are handled by sibling grains. Native Cap'n Proto GrainContext (interfaceId 0x91283d5a5fde4380) is offered to sibling grains for universal orchestration. Built in Go + HTMX as a Sandstorm grain.",
       "categories": [
@@ -2818,20 +3273,20 @@
       "domains": [
         "*"
       ],
-      "marketingVersion": "0.3.144",
-      "sha256": "861725ee01185b8b18fce7862883849b8fe08a805e8b88e926820429457708d8",
+      "marketingVersion": "0.3.163",
+      "sha256": "91a76407e18d279cc9bc7de26d48ebe4d790b68f7ac29b60ed59ec3af3dea2b5",
       "imageId": "48e0b72be8a4be6fb0230996e940c431.svg",
-      "updatedAt": 1782965775000,
+      "updatedAt": 1784139964000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "2ccc8ecf4e99cde0598c5fbd48c1164cb9e9d9726ea9e21567c1c69d6a0f2aeb",
-        "releaseHash": "74714e8114b4e4a5cfe50830ee3ed279585a5cb6942d5425672c27b8e6480641",
-        "releaseNonce": "7cf85faf233918eef4ac96b4481e89bf",
-        "releaseEntryPda": "BioqraonmmuJmwgXatCJictgGuJZHuh9YvDHXmYP2ULJ",
+        "appHash": "9a4764ba64fdce0be77e3382db43646f0b962a342c438a7b55f8cc03ba9f63ae",
+        "releaseHash": "82149c113ee811a083a68c3e6e88c9b087d239e5c626c4c6ed188ae33b3cdae5",
+        "releaseNonce": "db0441dacb0a01a90706b04dbf509e58",
+        "releaseEntryPda": "FTNg2EqSQWzgXDyxhBJeLCPerQ6ZsH9PTP7bsS1K25r7",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782965775,
-        "authorSig": "Dw5X11q6kPKKJEBQ2qywoXYSryrphbUEKcqBnV9DV2QIQrsiL87DKv/b+GglwSeVd8iY8bD29+9YZoxIs0PaCw==",
+        "signedAtUnix": 1784139964,
+        "authorSig": "gYIRp+1rheBGMmISbZfPkB88HshHJTN4iJqaNZq/DvyiDW86/g791d/fMBLf378vGOmJWubHPCIedq88WsFwCQ==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -2874,17 +3329,17 @@
       "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
       "marketingVersion": "2.0.17",
       "imageId": "cb387758133f19974dfee9fdf4cd0884.png",
-      "updatedAt": 1781724839000,
+      "updatedAt": 1781324752000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "1d7d341d1bfa919b03c7cfb9cbbe1644a000eae8da19f07e1a346c3c55d3d135",
-        "releaseHash": "547b4f0c5bcc835f632207f265b36d29ddfd2ba3fa4804ded321626fc14186bb",
-        "releaseNonce": "e00170bca55d72f0f462b34baed17b67",
-        "releaseEntryPda": "9VMke4KtPhMD9LEzkLTDFvELJn3Y76DQaom2xBhkCYBu",
+        "appHash": "cdede3ed046c7e0e253fa197833940af9545dd5b40a729e0755e440932093396",
+        "releaseHash": "999274c5519e2a31041c45c882efec328d89ef01846e8103331c9d142d203985",
+        "releaseNonce": "7541fe391a93317c8df66091ad054d37",
+        "releaseEntryPda": "rxqo3yFsBn35XprcVHP3P4nHz3dyBGpfMytJywxDe82",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724839,
-        "authorSig": "3/bwpfhTJFg3VxIuiNXfif9gL07fnsB9Rb0Ku6utgbdqtKnFBPo8jVCsPqLrsnR16eRWqTGaWrM7uyMlNlPBDA==",
+        "signedAtUnix": 1781324752,
+        "authorSig": "B9f+vZgq/mor6rNhUZsjKhz7V/ZwBrf3Kh9YGLZOwU+25Of6orJhmMCR71G4LVyUvORKzFbDTa9K07t24uc1Cw==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3013,17 +3468,17 @@
       "marketingVersion": "0.1.5",
       "sha256": "ecbe596ba91cb0abb96292b8dd3f9c8450ddcc2480cb2bb742b4912acc5bd747",
       "imageId": "9226fef017ea9c232b39113a140478a5.svg",
-      "updatedAt": 1781725131000,
+      "updatedAt": 1779095148000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "a275722545c92586148b57d9f1c8c528d0b7c94e4f8e9545b27057d9c1175121",
-        "releaseHash": "eebc3ee37aeaf67ce43f6e8a32c21f036dec8bbbaab4715d301abdddd8b9abcb",
-        "releaseNonce": "3dc4e34f1de90d2e968a6b4725318602",
-        "releaseEntryPda": "JCKrdjuTo3T8C9Upp3gESBf54e1aV92bCrmeQ2xFhw2e",
+        "appHash": "f052b904897eb95e5a34afa46cd5e1eb0925783aaf8e535894aaaf26a686defc",
+        "releaseHash": "f6571bc14fbbb9a44fe763315fceb23ee6cbb7399a5a0ea7a2aa0da7cc0e3712",
+        "releaseNonce": "4724f8ab640e91e5f3a088f49113402f",
+        "releaseEntryPda": "H7g3awdAMYWELkXxffWAayQ2oHYNj2DkELno3N8Zz6oS",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781725131,
-        "authorSig": "E0sAMoIkIC5xhosIQQgJ0q5lFxmGRbxqTAnmvcwMRErRARJ5SVTnfvcYZuGo9gFNXkH5hQgzC7bBPSAx7EPRAA==",
+        "signedAtUnix": 1779095148,
+        "authorSig": "EXx9ZbTgbUihv+p79l2zn3svK/o4Altsp3I9znj7j2H2Wd7HX09XgZKXGCXSfCzY6SQy+V9c59RnB0GaLLUICA==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3324,10 +3779,10 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "name": "Welcome pearl",
-      "version": "0.1.16",
-      "versionNumber": 17,
-      "packageId": "8853278ab680218838c9e0a81dffae5a",
-      "sha256": "8853278ab680218838c9e0a81dffae5a0e8b8baa9426aad3be49f4c155cd8e5d",
+      "version": "0.1.23",
+      "versionNumber": 24,
+      "packageId": "ad0b45f51745178c2a915524764e5990",
+      "sha256": "ad0b45f51745178c2a915524764e5990b77daf30bbdc78c50a89baf49ba8b041",
       "shortDescription": "Multi-tenant visitor intake and account-opening front door for cca.sh.",
       "categories": [
         "Productivity"
@@ -3348,19 +3803,19 @@
       "description": "Welcome pearl is a multi-tenant visitor intake pearl for AITX Procedures.\n\nIt collects account-opening information, normalizes it for Process Station, and keeps any ccash/account pearl in a pending account-opening state until four-eyes review activates it.",
       "screenshots": [],
       "license": "Proprietary",
-      "marketingVersion": "0.1.16",
+      "marketingVersion": "0.1.23",
       "imageId": "18c14997b6375704c3d2e2a68f80bc09.svg",
-      "updatedAt": 1782852470000,
+      "updatedAt": 1784139588000,
       "attest": {
         "schema": "melusina-release-v1",
-        "appHash": "74624cf0431ad76b3b90b3419ecbc0dbdd5ed6c9a400537beec029dd2f942184",
-        "releaseHash": "8cce606e56e60f6ea567351ec3d35fbec5ccc0b14525dfb4fa195523a98a3c44",
-        "releaseNonce": "b051ab804540c98b6e35e54b866c54d0",
-        "releaseEntryPda": "7LdScnNd3MJTwYAJLte4qLgGoPVjLK8URzaLQk3SAcDp",
+        "appHash": "65529c68c1adb2dbff8eea6d083910c7c493fcc17ed15cac35ae1c1f6f79543d",
+        "releaseHash": "91375124ed0bc0c279a918b92b93db1bc653db80b4ac3b2868df5cefa12bb2e0",
+        "releaseNonce": "a784e878c0ab2dcf4d82bd251ce7f77f",
+        "releaseEntryPda": "BwjuqWpbY7WRsFhxP2xRkdGY79CbPT2DF3aBfZSW425L",
         "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
         "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1782852470,
-        "authorSig": "Oi4TmDCCkLPKaFr1cMz14MycQr+ZULslVjfn31+tUmaF/+6+F4Mu1AaIwk8eg2ws+ZlNRgF84f2ZPXgAbHxlDg==",
+        "signedAtUnix": 1784139588,
+        "authorSig": "Amd/zEfEejPvhxEXeLWEg5lecBFr0Xr+7XYsN4eK0FPIUOjQa8ePnywKIsVULJvgaqK2V3jIrYybcosL4xN0Bg==",
         "quorumPolicy": {
           "threshold": 3,
           "memberCount": 4,
@@ -3368,313 +3823,6 @@
         }
       },
       "capabilities": null
-    },
-    {
-      "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
-      "packageId": "75181d409aeccd93fef7eacab6146851",
-      "name": "CanBoard",
-      "version": "0.1.0",
-      "versionNumber": 6,
-      "shortDescription": "Kanban board with drag-and-drop, card markdown, attachments \u2014 self-hosted, no third-party SaaS.",
-      "description": "CanBoard is the kanban-board pearl of the Melusina Bureau office suite. Capture tasks, drag them between columns, attach context, and ship work without giving anyone else your data.\n\n## Why CanBoard\n\n- **Pinned board-state snapshots** \u2014 cryptographically anchor any board snapshot to your Solana wallet; the snapshot is tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **Per-board pearl** \u2014 each board is its own sealed container; share by pearl, not by org\n- **Wallet + Grapple capability grants** \u2014 scoped access control; grant read or write capability to specific Pearls; revoke anytime\n\n## Features\n\n- **Drag-and-drop** between columns; reorder; swimlanes\n- **Cards with markdown** \u2014 descriptions, checklists, attachments, comments\n- **Labels and filters** \u2014 colour-code by team, priority, status\n- **No third-party telemetry** \u2014 your tasks aren't training someone's model\n- **Export** \u2014 JSON, CSV, Markdown; take the board with you\n\n## Suite integration\n\nConnect CanBoard to other Pearls via Grapple \u2014 pipe BotMother updates as new cards, surface card deadlines on Bureau Cal, embed a sheet inside a card, link a contact to an owner.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live board lands in v0.2.",
-      "categories": [
-        "Productivity"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_canboard_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836028848,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "sha256": "75181d409aeccd93fef7eacab61468515028ac4558e9c34e452ceea1bc06f332",
-      "marketingVersion": "0.1.0",
-      "imageId": "d1094f6e2253f02fda782364633d7705.svg",
-      "updatedAt": 1781724875000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "2ee0dba23219715657e76e778774a2eb79c47c8ec20167ad498f57611a7c13a8",
-        "releaseHash": "520af7e13ea0e28f83d869c75ce56de1b09a124c63bc23f61d9538b5e62c2fe3",
-        "releaseNonce": "391892973bf32d0685706f755056183e",
-        "releaseEntryPda": "D78nymmb4wJmaXD1hLpzpXgabmXc6FGCKQsxQDdsTqha",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781724875,
-        "authorSig": "oxDATrGB9UV40j6Imm7hhe6fNpaA5v5Ltr3Tb0EpYk/K0nuvx+CZZjk7bdN5Q+1XOEHTjTRtfuihGG4UBTM+Dg==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "canboard",
-        "appName": "CanBoard",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "canboard",
-            "pearlName": "Kanban Board",
-            "pearlType": "user-pearl",
-            "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from agentchat) without giving the source pearl read access to other cards.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "card-create",
-                  "interface": "CanBoard.CardCreate@1",
-                  "purpose": "Drop a card into a specific board's intake column from a peer pearl."
-                },
-                {
-                  "name": "board-read",
-                  "interface": "CanBoard.BoardRead@1",
-                  "purpose": "Read a specific board's state for embedding / dashboard use."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Boards + cards + comments",
-                "Attachments"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Board admin",
-                  "purpose": "Create / archive boards; manage members."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Edit cards",
-                  "purpose": "Standard kanban editing."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation only."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "CanBoard.CardCreate@1",
-                  "purpose": "Drop a card into a specific board's intake column from a peer pearl.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "CanBoard.BoardRead@1",
-                  "purpose": "Read a specific board's state for embedding / dashboard use.",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
-    },
-    {
-      "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
-      "packageId": "d884341d4fd51d8d3976590d44485c5e",
-      "name": "CrateLink",
-      "version": "0.1.1",
-      "versionNumber": 6,
-      "shortDescription": "Large-file transfer with pinned manifest audit trails and end-to-end encryption.",
-      "description": "CrateLink is the large-file transfer pearl for Melusina. Drop a folder of files, get a one-time link, watch the recipient pick it up \u2014 full audit trail, encrypted in transit, never traversing third-party storage.\n\n## Why CrateLink\n\n- **Pinned file manifests for audit** \u2014 cryptographically anchor any crate manifest to your Solana wallet; manifests are tamper-evident, citable across Pearls via Grapple, and verifiable independent of the operator\n- **No third-party file storage** \u2014 files are encrypted, stored, and accessed entirely from your pearl; no CDN, no cloud bucket\n- **Right-to-export by default** \u2014 download your entire crate history as a signed bundle; leave anytime with full audit trail\n\n## Features\n\n- **No size limits** other than your server's disk\n- **One-time links** \u2014 automatic expiry on download or by date\n- **End-to-end encryption** \u2014 files are encrypted at the pearl boundary\n- **No corporate inbox** \u2014 recipient doesn't need a Melusina account or an account anywhere\n- **Optional password gate** \u2014 second factor before download\n- **Download tracking** \u2014 see exactly when and from where each file was retrieved\n\n## Suite integration\n\nCrateLink talks Grapple to the rest of Melusina \u2014 drop a Doc into a crate, snapshot a Sheet for export, ship a CanBoard column as a zip.\n\n## Status\n\n*Pre-release.* The pearl currently installs as a Coming Soon stub; the live crate UI lands in v0.2.",
-      "categories": [
-        "Productivity",
-        "Office"
-      ],
-      "isOpenSource": false,
-      "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
-      "webLink": "https://hrbr.life",
-      "codeLink": "https://github.com/hrbrlife/melusina_cratelink_app",
-      "upstreamAuthor": "Alexei Karpov",
-      "createdAt": 1776836094911,
-      "author": {
-        "name": "alexeikarp",
-        "githubUsername": "hrbrlife",
-        "twitterUsername": "",
-        "picture": "",
-        "email": "ak@hrbr.life",
-        "website": "https://hrbr.life"
-      },
-      "screenshots": [],
-      "marketingVersion": "0.1.1",
-      "sha256": "d884341d4fd51d8d3976590d44485c5e28a9db8ec7974d48f5e9d2a5818f448a",
-      "imageId": "4ddd45723bae38624f8c5930ec8b20c2.svg",
-      "updatedAt": 1781725012000,
-      "attest": {
-        "schema": "melusina-release-v1",
-        "appHash": "b8c12c3196249957e2c3ea2369a471517303e7d397d576b49b5a5a5406c2df0d",
-        "releaseHash": "99a6050880f5d93f43dfb51519bd648aab7e4acbb3a845adf016b4a58a8dd1ea",
-        "releaseNonce": "073dc3c1f19b58371e818daefce58a1c",
-        "releaseEntryPda": "3Hgn5bLXVt4w1bVKgvDXGg6jwVzu5uJf2CxCtCsnwTob",
-        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
-        "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-        "signedAtUnix": 1781725012,
-        "authorSig": "DpbyefsAJY0zrBUNOGhXeRkiIORAUCH2WH1DnGwBnnicuFXu0uOCUdao6xbgbz/jh0pYVElseBeTmWTLPwCECQ==",
-        "quorumPolicy": {
-          "threshold": 3,
-          "memberCount": 4,
-          "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-        }
-      },
-      "capabilities": {
-        "schemaVersion": 2,
-        "appSlug": "cratelink",
-        "appName": "CrateLink",
-        "tier": "regular",
-        "pearls": [
-          {
-            "pearlId": "cratelink",
-            "pearlName": "CrateLink",
-            "pearlType": "user-pearl",
-            "purpose": "Per-user shipment tracker / supply-chain pearl \u2014 define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
-            "sidecars": [],
-            "grapple": {
-              "offers": [
-                {
-                  "name": "custody-accept",
-                  "interface": "CrateLink.Accept@1",
-                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate."
-                },
-                {
-                  "name": "shipment-read",
-                  "interface": "CrateLink.Read@1",
-                  "purpose": "Read a shipment's history (only your participation slice)."
-                }
-              ],
-              "requests": []
-            },
-            "encryption": {
-              "supported": true,
-              "scheme": "AES-256-GCM via grain-crypto-journal envelope",
-              "fields": [
-                "Shipment manifests",
-                "Custody handoff signatures",
-                "Per-party private notes"
-              ]
-            },
-            "roles": {
-              "adminOnly": [
-                {
-                  "name": "Configure crate templates",
-                  "purpose": "Owner-only: define crate types + handoff rules."
-                }
-              ],
-              "organizationOnly": [],
-              "anyMember": [
-                {
-                  "name": "Create shipment",
-                  "purpose": "Start a new shipment + set initial custodian."
-                },
-                {
-                  "name": "Sign handoff",
-                  "purpose": "OTP-gated custody transfer."
-                }
-              ]
-            },
-            "authority": {
-              "requires": [
-                {
-                  "bit": "pearlRegister",
-                  "purpose": "TODO: review \u2014 needed to register child cratelink pearls under the parent license"
-                },
-                {
-                  "bit": "audit",
-                  "purpose": "TODO: review \u2014 needed for cross-org audit trails"
-                }
-              ],
-              "grants": []
-            },
-            "blockchains": [
-              {
-                "chain": "Solana",
-                "cluster": "devnet",
-                "programs": [
-                  {
-                    "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-                    "label": "license-registry",
-                    "calls": [
-                      "RegisterReleaseEntry"
-                    ]
-                  }
-                ],
-                "purpose": "Release attestation; custody handoffs are off-chain ed25519 over canonical handoff payloads."
-              }
-            ],
-            "staticPublishing": {
-              "enabled": false,
-              "via": "",
-              "purpose": ""
-            },
-            "httpOut": {
-              "enabled": false,
-              "via": "none",
-              "purpose": "",
-              "endpoints": []
-            },
-            "apis": {
-              "capnp": [
-                {
-                  "name": "CrateLink.Accept@1",
-                  "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate.",
-                  "roleGate": "anyMember"
-                },
-                {
-                  "name": "CrateLink.Read@1",
-                  "purpose": "Read a shipment's history (only your participation slice).",
-                  "roleGate": "anyMember"
-                }
-              ],
-              "http": []
-            }
-          }
-        ]
-      }
     }
   ]
 }

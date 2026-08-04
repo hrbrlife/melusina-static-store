@@ -1,17 +1,17 @@
 {
   "$schema": "melusina-release-v1",
-  "appHash": "c5ed2d20fd8448def2149814b16665efad53d295e63291d056d26ed5337f6639",
-  "releaseHash": "f22143da97d17b98dc03de9a5b1e5a56027212c7da9371de0c050de858eebbcb",
-  "version": "0.1.13",
-  "signedAtUnix": 1781970053,
+  "appHash": "2b5b0f964338116a99994e0370b8552165e9374b7d6481fb8af43faad7d49f20",
+  "releaseHash": "ae9d1efc2c2e0caa549ca0e5daab46fb6d3a0c87ff147745eee2b275f79538d1",
+  "version": "0.1.16",
+  "signedAtUnix": 1784233597,
   "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-  "releaseEntryPda": "Hkm4SaUWApstKCvfhJzc3XmnGJ7dw5RJjnbqnMFbwzn9",
-  "authorSig": "VfoYrQuNyJLLOxPOh6P9a1vGLYF4tKFDPHbHJEvCxUGdUb/e836EFPwjULdku7TNGv7kRc4PtiPMNfUrpM8XCg==",
+  "releaseEntryPda": "BnFTTbtTxbJAZtby6DhNj9CXswDAKKDZxdFXq5B8sbuH",
+  "authorSig": "Bo9Wn5w7roor6HuFV4OXzYvWR1vwT5kkp1/WWaZkztOk6I5mLv0uxQb+8pxjkV1dcZDFtwBjq5yf8Gt2ibBXBQ==",
   "quorumPolicy": {
     "threshold": 3,
     "memberCount": 4,
     "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
   },
-  "releaseNonce": "15cb5ef35cf52ea4cca99e0a96b496bf"
+  "releaseNonce": "1dcdb56010fe9d6b0b49141176152dc0"
 }

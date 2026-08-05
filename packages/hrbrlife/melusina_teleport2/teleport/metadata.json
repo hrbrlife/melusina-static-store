@@ -1,0 +1,37 @@
+{
+  "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+  "name": "Teleport",
+  "version": "1.3.1",
+  "marketingVersion": "1.3.1",
+  "versionNumber": 7,
+  "packageId": "7de0b49dc5f1af1272d71b4be518ead7",
+  "shortDescription": "Private collaboration rooms for chat, calls, bots, and workflows.",
+  "description": "Teleport is a private collaboration application for Sandstorm and Melusina. Create a Call Room for peer-to-peer audio/video, persistent real-time chat, files, screen sharing, room notifications, transcript export, and retention controls. The unified package also includes BotMother, Telegram, Chatroom, Instance, and Station grain types.\n\nCalls runs as a native Go MainView/UiView/WebSession pearl. It does not use a sidecar or sandstorm-http-bridge; chat, notifications, WebRTC signaling, Jinn participation, and the revocable Cap'n Proto ChatHook stay inside the pearl, while media flows peer-to-peer between participants. Clientspace-style integrations can restore the standard UiView and offer it natively.",
+  "categories": [
+    "Communications",
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://sails.to",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1785495223943,
+  "updatedAt": 1785501298859,
+  "author": {
+    "name": "Alexei Karpov",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://sails.to",
+    "pgpFingerprint": "1F8DFE2F032BF4071ADB2EDFAB715DDEA642AA70"
+  },
+  "license": "Melusina Public License v3.0 (MPL-MEL-3.0) — source-available; each published version converts to AGPL v3 five years after its own publish date.",
+  "screenshots": [
+    {
+      "url": "screenshots/calls-room.png",
+      "caption": "A private Call Room with persistent chat, reactions, pinned messages, and meeting controls"
+    }
+  ],
+  "codeLink": "https://github.com/hrbrlife/melusina_teleport2"
+}

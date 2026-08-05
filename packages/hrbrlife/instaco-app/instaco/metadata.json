@@ -1,0 +1,27 @@
+{
+  "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+  "name": "InstaCo",
+  "version": "0.1.3",
+  "versionNumber": 10,
+  "packageId": "4dda08ea7e7aed33fff4424f6d5ccc92",
+  "shortDescription": "Montana series-LLC management pearl — form, hold, operate entities end-to-end.",
+  "categories": [
+    "Productivity"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776618664000,
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source). See https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "marketingVersion": "0.1.3"
+}

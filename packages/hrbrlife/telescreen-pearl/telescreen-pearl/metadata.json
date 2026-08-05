@@ -1,14 +1,27 @@
 {
   "appId": "cpz5eny8kwmcqmh42n1cjmchddap37y4s92u1ge3sq3243uag9qh",
-  "packageId": "7c1059187524369005b56cc6d9730ae4",
+  "packageId": "e0adefc1abc65b2c2fc67739192b96f8",
   "name": "TeleScreen Pearl",
-  "version": "0.5.1",
-  "versionNumber": 13,
-  "shortDescription": "United TeleScreen aggregator \u2014 no http-out; grabs opensanctions/creeper/ai-lagoon leaf caps and fuses a holistic screening verdict.",
+  "version": "0.5.3",
+  "versionNumber": 15,
+  "shortDescription": "United TeleScreen aggregator — no http-out; grabs opensanctions/creeper/ai-lagoon leaf caps and fuses a holistic screening verdict.",
   "description": "R-TS6 united TeleScreen capability pearl. Holds Grapple caps to the opensanctions, creeper, and ai-lagoon leaf pearls and fuses their sanctions + OSINT + adverse-media results into one holistic verdict. Zero http-out; the DueProcess station claims its WebSession capability.",
   "categories": [
     "Productivity"
   ],
-  "marketingVersion": "0.5.1",
-  "sha256": "7c1059187524369005b56cc6d9730ae4e2dac596c84528a0967cd6f5cf2030fd"
+  "marketingVersion": "0.5.3",
+  "isOpenSource": true,
+  "license": "MIT",
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/DueProcess",
+  "upstreamAuthor": "hrbr.life",
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "support@bloom.identity"
+  },
+  "createdAt": 1785288832000
 }

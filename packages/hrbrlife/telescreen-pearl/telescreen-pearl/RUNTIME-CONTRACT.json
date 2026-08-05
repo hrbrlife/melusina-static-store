@@ -1,0 +1,32 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "cpz5eny8kwmcqmh42n1cjmchddap37y4s92u1ge3sq3243uag9qh",
+    "version": "0.5.3",
+    "spkSha256": "e0adefc1abc65b2c2fc67739192b96f8bda18ca1d70f05695f80a89c7d31e492",
+    "appHash": "9f7ca7f951cc05c1e99bb9b0c7b9d9dcb3537343a9161152a3162dd542c0ade7"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Create a TeleScreen Pearl grain and open it.",
+        "expectedResult": "The aggregator's claim screen renders and lists the three leaf providers (OpenSanctions, Creeper, Ai-Lagoon) as unclaimed."
+      },
+      {
+        "action": "Read the posture statement on that first screen without claiming anything.",
+        "expectedResult": "The page states it has no http-out of its own and fuses leaf provider pearls claimed via PowerBox."
+      }
+    ],
+    "expectedResult": "A human can open a TeleScreen Pearl grain and reach its claim screen under enforced authz, with no leaf capability granted yet."
+  },
+  "fixtures": [],
+  "cleanup": {
+    "steps": [
+      "Delete the probe grain created for the launch probe.",
+      "Delete the probe grain. No external state is created: this pearl NEVER dials a sidecar. main.go:256 and leaf_fusion.go:97 both say so explicitly, and main.go:661 renders the same statement to the user - the leaf pearls hold the only http-out to their sidecars."
+    ]
+  }
+}

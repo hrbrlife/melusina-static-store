@@ -1,0 +1,32 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
+    "version": "0.1.16",
+    "spkSha256": "170fd2f44b9bd772a586171aa6ed488dfd4e3ffe197bfac9f75df0bc4a651de7",
+    "appHash": "a1e3851600832a6521f355f2c8c2227b0ef7198c945740de87bddfcfbe8f5b80"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Create a Cyberteller Config grain and open it.",
+        "expectedResult": "The install-admin configuration console renders its first screen."
+      },
+      {
+        "action": "Read the ConfigGate status shown on that screen without saving anything.",
+        "expectedResult": "The console reports its current boot-environment configuration state for this install."
+      }
+    ],
+    "expectedResult": "A human can open the Cyberteller Config grain and read its ConfigGate state under enforced authz, with nothing saved."
+  },
+  "fixtures": [],
+  "cleanup": {
+    "steps": [
+      "Delete the probe grain created for the launch probe.",
+      "Delete the probe grain created for the launch probe. The probe only reads; it saves no configuration, so no cyberteller grain's boot environment is altered."
+    ]
+  }
+}

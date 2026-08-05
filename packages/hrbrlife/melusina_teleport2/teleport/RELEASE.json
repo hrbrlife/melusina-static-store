@@ -1,0 +1,19 @@
+{
+  "$schema": "melusina-release-v1",
+  "appHash": "a320a93773fb7d226b40a43fd8eb0dcde04d239c8107722d7669c1480e120c84",
+  "releaseHash": "fb8d7997838818586adc793b1932c7b8f24b886f6a29d5c8d98ec1f84e4ebc3e",
+  "version": "1.3.1",
+  "signedAtUnix": 1785938193,
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+  "releaseEntryPda": "J7LuqakQyC5TBwWkdDBnJU383CtkUUPUZkuitHbzDgW7",
+  "authorSig": "QQMYYVtIgH7KwYrRH2pzolj1KeiRiM9MuqlVHKpJgZ1sSD3obTB4njFQnlnvurgPxDteeCfc6TUyO3IHqa39CA==",
+  "quorumPolicy": {
+    "threshold": 3,
+    "memberCount": 4,
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+  },
+  "releaseNonce": "e7f480cac2bb9002439e280703bbae1e",
+  "runtimeContractSchema": "melusina-app-runtime-contract-v1",
+  "runtimeContractSha256": "c928428f20c2e453111dd8890e5046c37feac0a96ccc26b79a3bc2764acadf4a"
+}

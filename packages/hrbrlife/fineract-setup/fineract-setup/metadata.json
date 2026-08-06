@@ -1,10 +1,10 @@
 {
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
   "name": "Fineract Setup",
-  "version": "0.2.3",
+  "version": "0.2.9",
   "versionNumber": 9,
-  "packageId": "dc9ec6cd40e1a6885ca00379a89d3a17",
-  "shortDescription": "Bootstrap wizard for Apache Fineract integration — configure, trust-bundle export.",
+  "packageId": "bfae158da2ccf123efa754734490d38d",
+  "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
   "description": "",
   "categories": [
     "Productivity",
@@ -24,12 +24,12 @@
     "email": "ak@hrbr.life",
     "website": "https://hrbr.life"
   },
-  "license": "Proprietary — Internal development build",
+  "license": "Proprietary \u2014 Internal development build",
   "screenshots": [],
   "tier": "admin",
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.2.3",
-  "sha256": "dc9ec6cd40e1a6885ca00379a89d3a17d6472545a7dcd034248610369317b2cc"
+  "marketingVersion": "0.2.9",
+  "sha256": "bfae158da2ccf123efa754734490d38d722b4de56d4bcb032c128486d5ec47d0"
 }

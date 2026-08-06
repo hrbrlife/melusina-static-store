@@ -1,0 +1,61 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+    "version": "0.2.9",
+    "spkSha256": "bfae158da2ccf123efa754734490d38d722b4de56d4bcb032c128486d5ec47d0",
+    "appHash": "9affefaec1fa7dccf7fda7fac5612df9ea4467346a221bc0ecc7308c9d764bf2"
+  },
+  "sidecars": [
+    {
+      "id": "fineract",
+      "host": "fineract.sidecar.host",
+      "port": 8443,
+      "transport": "https",
+      "tls": {
+        "required": true,
+        "serverName": "fineract.sidecar.host",
+        "trust": "system-ca",
+        "minimumVersion": "TLS1.2"
+      },
+      "capabilities": [
+        "http-out"
+      ],
+      "safeProbe": {
+        "action": "In the wizard's \"Connectivity Check\" step, press the control that re-runs the sidecar reachability probe. The grain resolves its HTTP-out Powerbox capability and issues one GET against the sidecar base URL. Observe the port actually dialled \u2014 from egress on the sidecar host, or the sidecar's own access log \u2014 rather than from the wizard's summary line.",
+        "expectedResult": "The grain dials the sidecar on port 8443 (or whatever FINERACT_SIDECAR_PORT names) and the connectivity step reports it reachable. It must NOT dial 443. Up to and including 0.2.7 the URL carried no port, so the grain dialled 443, got ECONNREFUSED, and released a PowerBox capability it had legitimately been granted \u2014 which reads like a Powerbox failure and is not one."
+      }
+    }
+  ],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this release from the store and launch a new grain through the app's create action, then open it as the grain owner.",
+        "expectedResult": "The grain serves the wizard titled \"Fineract Sidecar Setup Wizard v1\" with its step rail visible: \"Verify ledger positions\", \"Connectivity Check\", \"Tenant & Install Identity\", and the organisation step. It is served with a normal success status: no 403, no blank iframe, no supervisor reset."
+      },
+      {
+        "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
+        "expectedResult": "The grain reports this release's marketing version. A grain still showing 0.2.7 means the userAction pin was not advanced and a fresh grain is launching the superseded package \u2014 the app is then NOT upgraded regardless of what the catalog serves."
+      },
+      {
+        "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
+        "expectedResult": "The step completes against the sidecar on the configured port. Under 0.2.7 and earlier this step failed with ECONNREFUSED against port 443 while the PowerBox claim itself had succeeded. Passing this step is the whole point of this release."
+      },
+      {
+        "action": "Set FINERACT_SIDECAR_PORT to a value other than 8443 in the sidecar's deployment environment, relaunch, and re-run the connectivity step.",
+        "expectedResult": "The wizard dials the overridden port. This is the negative control: it proves the port is configuration rather than a constant. Restore the deployment to 8443 afterwards."
+      }
+    ],
+    "expectedResult": "A fresh grain of this release renders the Fineract Sidecar Setup Wizard and completes its Connectivity Check against the sidecar on the configured port, with the port honoured from FINERACT_SIDECAR_PORT rather than assumed."
+  },
+  "fixtures": [],
+  "cleanup": {
+    "steps": [
+      "Delete the probe grains created for the launch probe; each is a fresh grain created solely for this probe.",
+      "If step 4 changed FINERACT_SIDECAR_PORT, restore the deployment's value to 8443 and re-run the connectivity step once so the install is left reachable.",
+      "The probe reads the sidecar and does not write ledger, tenant, or organisation state, so there is no Fineract-side record to retract. Do not advance the wizard past the Connectivity Check while running this probe."
+    ]
+  }
+}

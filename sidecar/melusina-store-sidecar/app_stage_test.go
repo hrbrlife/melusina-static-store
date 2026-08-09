@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 func TestStagedAppRejectsAppIDThatCannotFitDerivedJSONFilename(t *testing.T) {
@@ -111,6 +112,102 @@ func TestStagedApp_DurableIdempotentAndTamperEvident(t *testing.T) {
 	}
 	if _, _, _, _, err := loadStagedApp(root, manifest.StageID); err == nil {
 		t.Fatal("tampered staged bytes were accepted")
+	}
+}
+
+func TestStagedAppV2BindsAndPersistsExactRuntimeContract(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Unix(1_700_000_000, 0).UTC()
+	legacy, spk, metadata, legacyRelease := testStageMaterial(t, "runtime-v2", at)
+	rel := mustReleaseJSON(legacyRelease)
+	runtimeContract := runtimeContractForTest(t, spk, metadata, rel)
+	runtimeSum := sha256.Sum256(runtimeContract)
+	rel.RuntimeContractSchema = runtimecontract.Schema
+	rel.RuntimeContractSHA256 = hex.EncodeToString(runtimeSum[:])
+	release := mustJSON(t, rel)
+
+	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, legacy.SlotHint, at, runtimeContract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Schema != appStageSchemaV2 {
+		t.Fatalf("runtime-bound stage schema = %q, want %q", manifest.Schema, appStageSchemaV2)
+	}
+	if manifest.StageID == legacy.StageID {
+		t.Fatal("runtime-bound candidate reused the legacy v1 stage ID")
+	}
+	if manifest.RuntimeContractSHA256 != hex.EncodeToString(runtimeSum[:]) || manifest.RuntimeContractSize != len(runtimeContract) {
+		t.Fatalf("runtime binding not recorded in stage manifest: %+v", manifest)
+	}
+	if err := persistStagedApp(root, manifest, spk, metadata, release, runtimeContract); err != nil {
+		t.Fatal(err)
+	}
+	loaded, gotSPK, gotMetadata, gotRelease, gotRuntime, err := loadStagedAppWithRuntime(root, manifest.StageID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded != manifest || !bytes.Equal(gotSPK, spk) || !bytes.Equal(gotMetadata, metadata) ||
+		!bytes.Equal(gotRelease, release) || !bytes.Equal(gotRuntime, runtimeContract) {
+		t.Fatal("v2 stage did not round-trip the exact submitted candidate")
+	}
+	runtimePath := filepath.Join(root, manifest.StageID, "RUNTIME-CONTRACT.json")
+	info, err := os.Stat(runtimePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("runtime contract mode = %v, want 0600", info.Mode().Perm())
+	}
+	if err := os.WriteFile(runtimePath, append([]byte(nil), runtimeContract[:len(runtimeContract)-1]...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, _, _, err := loadStagedAppWithRuntime(root, manifest.StageID); err == nil {
+		t.Fatal("truncated staged runtime contract was accepted")
+	}
+}
+
+func TestStagedAppV2RejectsReleaseContractBindingMutation(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Unix(1_700_000_000, 0).UTC()
+	legacy, spk, metadata, legacyRelease := testStageMaterial(t, "runtime-binding-mutation", at)
+	rel := mustReleaseJSON(legacyRelease)
+	runtimeContract := runtimeContractForTest(t, spk, metadata, rel)
+	runtimeSum := sha256.Sum256(runtimeContract)
+	rel.RuntimeContractSchema = runtimecontract.Schema
+	rel.RuntimeContractSHA256 = hex.EncodeToString(runtimeSum[:])
+	release := mustJSON(t, rel)
+	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, legacy.SlotHint, at, runtimeContract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistStagedApp(root, manifest, spk, metadata, release, runtimeContract); err != nil {
+		t.Fatal(err)
+	}
+
+	// StageID deliberately excludes the provisional RELEASE.json byte hash so
+	// the ceremony can finalize its permitted fields. Rebinding the release to
+	// different runtime bytes must still fail even if an attacker also updates
+	// releaseSha256/releaseSize in the unsigned stage ledger.
+	rel.RuntimeContractSHA256 = strings.Repeat("f", 64)
+	mutatedRelease := mustJSON(t, rel)
+	mutatedReleaseSum := sha256.Sum256(mutatedRelease)
+	manifest.ReleaseSHA256 = hex.EncodeToString(mutatedReleaseSum[:])
+	manifest.ReleaseSize = len(mutatedRelease)
+	stageDir := filepath.Join(root, manifest.StageID)
+	if err := os.WriteFile(filepath.Join(stageDir, "RELEASE.json"), mutatedRelease, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stageDir, "stage.json"), append(mustJSON(t, manifest), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, _, _, err := loadStagedAppWithRuntime(root, manifest.StageID); err == nil || !strings.Contains(err.Error(), "runtime contract") {
+		t.Fatalf("mutated RELEASE-to-contract binding was accepted: %v", err)
 	}
 }
 

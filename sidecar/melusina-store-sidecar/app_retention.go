@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/stagefinalization"
 )
 
 func selectVerifiedRetentionPredecessor(store AppCatalogGenerationStore, currentID string, rolloutAppIDs []string, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (string, error) {
@@ -71,6 +73,9 @@ type appRetentionPlan struct {
 // removal. Validation failures therefore leave every candidate untouched.
 func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollouts map[string]appRolloutState, currentID, predecessorID string, now time.Time, expectedUID, expectedGID uint32) (appRetentionPlan, error) {
 	var plan appRetentionPlan
+	if err := stagefinalization.RecoverAll(filepath.Clean(cfg.PrivateStageDir), maxRetentionRootEntries); err != nil {
+		return plan, fmt.Errorf("recover staged release finalization before retention: %w", err)
+	}
 	selected, err := store.ResolveCurrent()
 	if err != nil {
 		return plan, fmt.Errorf("resolve retention current: %w", err)
@@ -286,13 +291,15 @@ func validateCommittedStageTree(root string, expectedUID, expectedGID uint32) er
 	if err := validatePrivateStageTree(root, expectedUID, expectedGID); err != nil {
 		return err
 	}
-	entries, err := readDirBounded(root, 4)
+	entries, err := readDirBounded(root, 5)
 	if err != nil {
 		return err
 	}
 	want := map[string]bool{"app.spk": true, "metadata.json": true, "RELEASE.json": true, "stage.json": true}
-	if len(entries) != len(want) {
-		return errors.New("committed private stage must contain exactly four files")
+	if len(entries) == 5 {
+		want["RUNTIME-CONTRACT.json"] = true
+	} else if len(entries) != len(want) {
+		return errors.New("committed private stage must contain exactly four legacy files or five runtime-bound files")
 	}
 	for _, entry := range entries {
 		if !want[entry.Name()] || entry.IsDir() {

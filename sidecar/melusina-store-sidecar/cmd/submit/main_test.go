@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -524,6 +526,29 @@ func TestBuildSubmittedReceiptIntentMatchesStageContract(t *testing.T) {
 	}
 }
 
+func TestBuildSubmittedReceiptIntentV2BindsRuntimeContract(t *testing.T) {
+	appHash := sha256.Sum256([]byte("app"))
+	releaseHash := sha256.Sum256([]byte("release"))
+	runtimeContract := []byte(`{"schema":"contract"}`)
+	got, err := buildSubmittedReceiptIntent(
+		[]byte("spk"),
+		[]byte(`{"appId":"app-1"}`),
+		ReleaseClaims{
+			AppHash:       hex.EncodeToString(appHash[:]),
+			ReleaseHash:   hex.EncodeToString(releaseHash[:]),
+			Version:       "1.2.3",
+			MasterNftMint: "mint",
+		},
+		"dev", "repo", "slug", runtimeContract,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.StageID != "9fbead53b27d1b92de6a5e8ee46b98f69cb8367b24684bd9c05520be59825f4a" {
+		t.Fatalf("runtime-bound submitted stage ID drifted: %s", got.StageID)
+	}
+}
+
 func TestAcceptStageReceiptRejectsValidOtherCandidateBeforeReceiptOut(t *testing.T) {
 	appHash, releaseHash, domainHash, licenseMint, domain := receiptInputs(t)
 	op := newTestIdentity(t, "store-operator", licenseMint, domain)
@@ -850,6 +875,7 @@ func TestHostFromURL(t *testing.T) {
 func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	master := randPubkeyB58(t)
 	spk, metadata, releaseBytes, claims := testRelease(t, master)
+	runtimeContract := []byte("{\n  \"schema\": \"exact-runtime-contract-test\"\n}\n")
 
 	licenseMint := randPubkeyB58(t)
 	domain := "store.example.org"
@@ -888,6 +914,17 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 				http.Error(w, "missing multipart slot hint", http.StatusBadRequest)
 				return
 			}
+			contractFile, _, err := r.FormFile("runtime_contract")
+			if err != nil {
+				http.Error(w, "no runtime contract part", http.StatusBadRequest)
+				return
+			}
+			gotRuntime, err := io.ReadAll(contractFile)
+			_ = contractFile.Close()
+			if err != nil || !bytes.Equal(gotRuntime, runtimeContract) {
+				http.Error(w, "runtime contract multipart bytes changed", http.StatusBadRequest)
+				return
+			}
 		} else {
 			var req publishRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -897,6 +934,11 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 			sigIn = req.Envelope
 			if req.Developer != wantDeveloper || req.Repo != wantRepo || req.Slug != wantSlug {
 				http.Error(w, "missing JSON slot hint", http.StatusBadRequest)
+				return
+			}
+			gotRuntime, err := base64.StdEncoding.DecodeString(req.RuntimeContractB64)
+			if err != nil || !bytes.Equal(gotRuntime, runtimeContract) {
+				http.Error(w, "runtime contract JSON bytes changed", http.StatusBadRequest)
 				return
 			}
 		}
@@ -940,7 +982,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 		store: srv.URL, timeout: 10 * time.Second,
 		developer: wantDeveloper, repo: wantRepo, slug: wantSlug,
 	}
-	body, status, err := postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
+	body, status, err := postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata, runtimeContract)
 	if err != nil {
 		t.Fatalf("postPublish: %v", err)
 	}
@@ -963,7 +1005,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 
 	// Also exercise the multipart path against the same server.
 	publishOptions.useMultipart = true
-	body, status, err = postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
+	body, status, err = postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata, runtimeContract)
 	if err != nil {
 		t.Fatalf("postPublish(multipart): %v", err)
 	}
@@ -976,6 +1018,7 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 	required := []string{
 		"--store", "https://store.example", "--spk", "app.spk",
 		"--metadata", "metadata.json", "--release", "RELEASE.json",
+		"--runtime-contract", "RUNTIME-CONTRACT.json",
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
 	}

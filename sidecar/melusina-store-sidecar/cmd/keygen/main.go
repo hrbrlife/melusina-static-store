@@ -2,24 +2,24 @@
 // self-publish path (cmd/submit) needs and which, until now, existed nowhere
 // on disk:
 //
-//   publisher <solana-keypair.json> > publisher.key.json
-//       Derives an attest identity.Private for --publisher-key from an
-//       EXISTING Solana ed25519 keypair file (the standard 64-byte
-//       [seed(32)||pubkey(32)] array format, e.g.
-//       test-wallets/core-app-team/publisher.json). The resulting
-//       sign_pubkey_b58 is byte-identical to the Solana keypair's own
-//       pubkey (both are raw ed25519), so an already-allowlisted
-//       accept_publishers entry (a Solana pubkey) keeps working unchanged.
-//       A fresh x25519 box seed is generated (envelope encryption is not
-//       exercised by /publish; the seed only needs to be well-formed).
+//	publisher <solana-keypair.json> > publisher.key.json
+//	    Derives an attest identity.Private for --publisher-key from an
+//	    EXISTING Solana ed25519 keypair file (the standard 64-byte
+//	    [seed(32)||pubkey(32)] array format, e.g.
+//	    test-wallets/core-app-team/publisher.json). The resulting
+//	    sign_pubkey_b58 is byte-identical to the Solana keypair's own
+//	    pubkey (both are raw ed25519), so an already-allowlisted
+//	    accept_publishers entry (a Solana pubkey) keeps working unchanged.
+//	    A fresh x25519 box seed is generated (envelope encryption is not
+//	    exercised by /publish; the seed only needs to be well-formed).
 //
-//   store-pubkey > store-pubkey.json
-//       Reconstructs the store operator's identity.Public (the envelope
-//       DESTINATION for --store-pubkey) byte-for-byte from already-public
-//       on-chain-registered facts (no secret material involved) — the
-//       same Ref shape boot_identity.go's sidecarIdentityRef() builds
-//       server-side, so identity.Public.Digest() matches what the running
-//       sidecar computes for itself.
+//	store-pubkey > store-pubkey.json
+//	    Reconstructs the store operator's identity.Public (the envelope
+//	    DESTINATION for --store-pubkey) byte-for-byte from already-public
+//	    on-chain-registered facts (no secret material involved) — the
+//	    same Ref shape boot_identity.go's sidecarIdentityRef() builds
+//	    server-side, so identity.Public.Digest() matches what the running
+//	    sidecar computes for itself.
 //
 // Both subcommands print the finished JSON to stdout; write it to disk with
 // shell redirection so this tool never needs a --out flag or write access.
@@ -70,14 +70,18 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return doPublisher(fs.Arg(0), *licenseMint, *domain, *programID, *chainID, *pearlIDHash, *label, stdout)
 	case "store-pubkey":
 		fs := flag.NewFlagSet("store-pubkey", flag.ContinueOnError)
-		signPubkeyB58 := fs.String("sign-pubkey-b58", "HgE1Xm4MHuRC5qcDJ8KMP5PwyWXzi8cqi5NW6XQ4FJVz", "store operator signing_pubkey_b58 (from the on-chain SidecarIdentityEntry / register-sidecar ceremony record)")
-		boxPubkeyB58 := fs.String("box-pubkey-b58", "EakrLPifYEKko6p8DtMPqFpbfiM8wMtvraJSpqm2Ehry", "store operator encryption_pubkey_b58")
-		licenseMint := fs.String("license-mint", "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN", "store operator license_nft_mint")
+		// The production Bazaar operator is the v2 boot identity under the
+		// melusina-os.org license. Keep these defaults aligned with the active
+		// on-chain SidecarIdentityEntry so a normal publish cannot seal to the
+		// retired dev.paype.cc identity.
+		signPubkeyB58 := fs.String("sign-pubkey-b58", "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV", "store operator signing_pubkey_b58 (from the active on-chain SidecarIdentityEntry)")
+		boxPubkeyB58 := fs.String("box-pubkey-b58", "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5", "store operator encryption_pubkey_b58")
+		licenseMint := fs.String("license-mint", "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J", "store operator license_nft_mint")
 		domain := fs.String("domain", "bazaar.melusina-os.org", "store serving domain")
 		programID := fs.String("program-id", "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "license-registry program id")
 		chainID := fs.String("chain-id", "solana:devnet", "chain id")
-		pda := fs.String("pda", "GPAHfx1kuVNRhHy3jycaaTH9Ed2EHrKCC5LfGtoCSBzA", "SidecarIdentityEntry PDA base58")
-		sidecarID := fs.String("sidecar-id", "melusina-os-root-store", "store sidecar_id")
+		pda := fs.String("pda", "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6", "active SidecarIdentityEntry PDA base58")
+		sidecarID := fs.String("sidecar-id", "melusina-os-root-store-v2", "active store sidecar_id")
 		keyVersion := fs.Uint("key-version", 1, "SidecarIdentityEntry key_version")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err

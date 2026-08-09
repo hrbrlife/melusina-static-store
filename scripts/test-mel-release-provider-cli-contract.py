@@ -34,6 +34,11 @@ def restore_env(old):
 def test_finalize_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
+        release = root / "RELEASE.json"
+        release.write_text(json.dumps({
+            "runtimeContractSchema": "melusina-app-runtime-contract-v1",
+            "runtimeContractSha256": "a" * 64,
+        }))
         captured = []
         old_run = provider.run
         old = with_env({
@@ -41,7 +46,14 @@ def test_finalize_uses_only_supported_flags():
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         })
         try:
-            provider.run = lambda args, **_: captured.append(args) or ""
+            def fake_run(args, **_):
+                captured.append(args)
+                # The currently installed Pearl finalizer rewrites the release
+                # from its known schema and drops extension claims. Exercise
+                # the provider's obligation to restore the exact binding.
+                release.write_text(json.dumps({"releaseEntryPda": "release-pda"}))
+                return ""
+            provider.run = fake_run
             provider.finalize_release({
                 "catalogDir": str(root / "catalog"),
                 "ceremonyDir": str(root / "ceremony"),
@@ -58,6 +70,9 @@ def test_finalize_uses_only_supported_flags():
         assert args[1] == "finalize-release"
         for unsupported in ("--artifact-spk", "--artifact-metadata", "--quorum-threshold", "--quorum-member-count"):
             assert unsupported not in args, args
+        finalized = json.loads(release.read_text())
+        assert finalized["runtimeContractSchema"] == "melusina-app-runtime-contract-v1"
+        assert finalized["runtimeContractSha256"] == "a" * 64
 
 
 def test_propose_uses_only_supported_flags():
@@ -117,6 +132,42 @@ def test_propose_uses_only_supported_flags():
             assert unsupported not in proposal, proposal
 
 
+def test_rewrite_release_binds_exact_runtime_contract():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        release = root / "RELEASE.json"
+        release.write_text("{}")
+        contract = root / "RUNTIME-CONTRACT.json"
+        contract.write_text(json.dumps({"schema": provider.RUNTIME_CONTRACT_SCHEMA}))
+        old = with_env({
+            "MEL_RELEASE_MASTER_NFT_MINT": "master",
+            "MEL_RELEASE_SQUADS_VAULT": "vault",
+        })
+        try:
+            provider.rewrite_release({
+                "releasePath": str(release),
+                "runtimeContractPath": str(contract),
+            }, "app", "a" * 64, "b" * 64, "1.2.3", "nonce")
+        finally:
+            restore_env(old)
+        rewritten = json.loads(release.read_text())
+        assert rewritten["runtimeContractSchema"] == provider.RUNTIME_CONTRACT_SCHEMA
+        assert rewritten["runtimeContractSha256"] == provider.hashlib.sha256(contract.read_bytes()).hexdigest()
+
+
+def test_build_receipt_runtime_contract_ref_is_complete():
+    with tempfile.TemporaryDirectory() as tmp:
+        contract = Path(tmp) / "RUNTIME-CONTRACT.json"
+        contract.write_bytes(b'{"schema":"melusina-app-runtime-contract-v1"}\n')
+        ref = provider.runtime_contract_ref(contract)
+        assert ref == {
+            "path": str(contract),
+            "sha256": provider.hashlib.sha256(contract.read_bytes()).hexdigest(),
+            "size": contract.stat().st_size,
+            "schema": provider.RUNTIME_CONTRACT_SCHEMA,
+        }
+
+
 def test_submit_binds_the_immutable_catalog_slot():
     old = with_env({
         "MEL_RELEASE_STORE_URL": "https://store.example.test",
@@ -130,6 +181,7 @@ def test_submit_binds_the_immutable_catalog_slot():
             "spkPath": "/tmp/app.spk",
             "metadataPath": "/tmp/metadata.json",
             "releasePath": "/tmp/RELEASE.json",
+            "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json",
             "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
         }, Path("/tmp/receipt.json"), stage_only=True)
     finally:
@@ -137,6 +189,7 @@ def test_submit_binds_the_immutable_catalog_slot():
     assert args[args.index("--developer") + 1] == "hrbrlife", args
     assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
     assert args[args.index("--slug") + 1] == "popaye", args
+    assert args[args.index("--runtime-contract") + 1] == "/tmp/RUNTIME-CONTRACT.json", args
     assert "--stage" in args, args
 
 
@@ -162,6 +215,8 @@ def test_submit_refuses_missing_catalog_slot():
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
+    test_rewrite_release_binds_exact_runtime_contract()
+    test_build_receipt_runtime_contract_ref_is_complete()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
     print("mel-release provider CLI-contract tests passed")

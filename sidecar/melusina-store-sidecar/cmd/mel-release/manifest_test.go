@@ -72,12 +72,21 @@ func writeAcceptedTerminal(t *testing.T, cfg Config, app App, spk []byte) {
 	if err := os.WriteFile(spkPath, spk, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	runtimeContract := []byte("governed-runtime-contract-" + app.AppID)
+	runtimeContractPath := filepath.Join(dir, "RUNTIME-CONTRACT.json")
+	if err := os.WriteFile(runtimeContractPath, runtimeContract, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	sha := sha256Hex(spk)
 	build := buildReceipt{Schema: buildSchema, AppHash: sha256Hex([]byte("content-" + app.AppID)), PackageID: sha[:32], MasterNftMint: "master", SpkPath: spkPath, MetadataPath: filepath.Join(dir, "metadata.json")}
 	build.App.AppID = app.AppID
 	build.App.Version = "1.2.3"
 	build.Artifact.SHA256 = sha
 	build.Artifact.Size = int64(len(spk))
+	build.RuntimeContract = runtimeContractRef{
+		Path: runtimeContractPath, SHA256: sha256Hex(runtimeContract), Size: int64(len(runtimeContract)),
+		Schema: "melusina-app-runtime-contract-v1",
+	}
 	buildRaw, err := json.Marshal(build)
 	if err != nil {
 		t.Fatal(err)

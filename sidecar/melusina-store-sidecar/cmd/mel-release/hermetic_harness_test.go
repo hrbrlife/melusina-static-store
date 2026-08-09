@@ -18,6 +18,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -203,7 +204,7 @@ func (s *fakeStore) handlePost(w http.ResponseWriter, r *http.Request) {
 type provRef struct{ PDA, AppHash, Version string }
 
 type provVersion struct {
-	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, ArtifactSha string
+	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, RuntimePath, ArtifactSha string
 	ArtifactSize                                                   int64
 	PdaNew, PreviousSha256, PreviousVersion                        string
 }
@@ -319,9 +320,10 @@ func newHarness(t *testing.T) *harness {
 
 	mkVersion := func(ver, tag, prevSha, prevVer string) provVersion {
 		spk := []byte("fake-spk-" + ver + "-" + strings.Repeat(tag, 8))
-		meta := []byte("{\"name\":\"testapp\",\"version\":\"" + ver + "\"}")
+		meta := []byte("{\"name\":\"testapp\",\"appId\":\"" + testAppID + "\",\"version\":\"" + ver + "\"}")
 		spkPath := filepath.Join(filesDir, "app-"+ver+".spk")
 		metaPath := filepath.Join(filesDir, "metadata-"+ver+".json")
+		runtimePath := filepath.Join(filesDir, "runtime-"+ver+".json")
 		if err := os.WriteFile(spkPath, spk, 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -333,13 +335,21 @@ func newHarness(t *testing.T) *harness {
 			t.Fatalf("apphash %s: %v", ver, err)
 		}
 		artSum := sha256.Sum256(spk)
+		contract := runtimecontract.Contract{
+			SchemaURL: runtimecontract.SchemaURL, Schema: runtimecontract.Schema,
+			App: runtimecontract.App{AppID: testAppID, Version: ver, SPKSHA256: hex.EncodeToString(artSum[:]), AppHash: ah},
+			Sidecars: []runtimecontract.Sidecar{},
+			LaunchProbe: runtimecontract.VisibleProbe{Kind: "visible-ui", Steps: []runtimecontract.ProbeStep{{Action: "Open the test app screen.", ExpectedResult: "The test app screen renders."}}, ExpectedResult: "The test app opens normally."},
+			Fixtures: []runtimecontract.Fixture{}, Cleanup: runtimecontract.Cleanup{Steps: []string{"No test data remains."}},
+		}
+		mustWriteJSON(t, runtimePath, contract)
 		pdaNew, err := deriveReleasePDA(masterMint, ah, programID)
 		if err != nil {
 			t.Fatalf("derive pda %s: %v", ver, err)
 		}
 		return provVersion{
 			AppHash: ah, PkgID: "testapp-" + ver + ".spk", MasterMint: masterMint,
-			SpkPath: spkPath, MetadataPath: metaPath,
+			SpkPath: spkPath, MetadataPath: metaPath, RuntimePath: runtimePath,
 			ArtifactSha: hex.EncodeToString(artSum[:]), ArtifactSize: int64(len(spk)),
 			PdaNew: pdaNew, PreviousSha256: prevSha, PreviousVersion: prevVer,
 		}

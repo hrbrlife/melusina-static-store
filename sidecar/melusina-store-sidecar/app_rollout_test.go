@@ -109,6 +109,22 @@ func writeRolloutDist(t *testing.T, cfg Config, f rolloutFixture) {
 	}
 }
 
+func TestCaptureCurrentlyServedRelease_RejectsClaimedMissingRuntimeContract(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	fixture := makeRolloutFixture(t, randPubkeyB58(t), "claimed-runtime-app", "1.0.0", "claimed-runtime", now)
+	fixture.rel.RuntimeContractSchema = "melusina-app-runtime-contract-v1"
+	fixture.rel.RuntimeContractSHA256 = strings.Repeat("a", 64)
+	fixture.release = mustJSON(t, fixture.rel)
+	writeRolloutDist(t, cfg, fixture)
+
+	_, ok, err := captureCurrentlyServedRelease(cfg, fixture.manifest.AppID, now)
+	if err == nil || ok || !strings.Contains(err.Error(), "claims a runtime contract") {
+		t.Fatalf("claimed-but-missing runtime contract was not rejected: ok=%v err=%v", ok, err)
+	}
+}
+
 func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)

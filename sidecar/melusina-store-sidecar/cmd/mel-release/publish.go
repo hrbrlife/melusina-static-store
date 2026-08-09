@@ -25,6 +25,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 func runPublish(c Config, fam *Family, selector, version string) (string, error) {
@@ -112,7 +113,23 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 
 func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	if rec.BuildReceipt.SHA256 != "" {
-		return verifyArtifactRef(rec.BuildReceipt)
+		if err := verifyArtifactRef(rec.BuildReceipt); err != nil {
+			return err
+		}
+		b, _, err := readBuildReceipt(rec.BuildReceipt.Path, rec.AppID, rec.Version)
+		if err != nil {
+			return err
+		}
+		if err := verifyAppHash(b); err != nil {
+			return err
+		}
+		if err := verifyBuildRuntimeContract(b); err != nil {
+			return err
+		}
+		if rec.NewAppHash != b.AppHash || rec.ArtifactSHA != b.Artifact.SHA256 || rec.ArtifactSize != b.Artifact.Size || rec.RuntimeContract != b.RuntimeContract {
+			return errors.New("persisted build receipt no longer binds the WAL candidate")
+		}
+		return nil
 	}
 	buildPath := c.receiptPath(rec.AppID, "build.json")
 	if err := prov.Build(rec.AppID, rec.Version, buildPath); err != nil {
@@ -125,6 +142,9 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	// Local app_hash pre-check: recompute the on-chain app_hash from the staged
 	// {app.spk, metadata.json} and refuse if it disagrees with the build claim.
 	if err := verifyAppHash(b); err != nil {
+		return err
+	}
+	if err := verifyBuildRuntimeContract(b); err != nil {
 		return err
 	}
 	active, err := prov.ActiveReleases(rec.AppID)
@@ -158,6 +178,7 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	rec.MasterNftMint = b.MasterNftMint
 	rec.ArtifactSHA = b.Artifact.SHA256
 	rec.ArtifactSize = b.Artifact.Size
+	rec.RuntimeContract = b.RuntimeContract
 	rec.PreviousSHA256 = b.PreviousSHA256
 	rec.PreviousVersion = b.PreviousVersion
 	rec.ReleaseHash = relHash
@@ -168,6 +189,39 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	rec.StalePDAs = stale
 	rec.ActiveBefore = active
 	rec.BuildReceipt = ref
+	return nil
+}
+
+func verifyBuildRuntimeContract(b buildReceipt) error {
+	info, err := os.Lstat(b.RuntimeContract.Path)
+	if err != nil {
+		return fmt.Errorf("inspect staged runtime contract: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() != b.RuntimeContract.Size {
+		return errors.New("staged runtime contract is not the build-receipt regular file")
+	}
+	raw, err := os.ReadFile(b.RuntimeContract.Path)
+	if err != nil {
+		return err
+	}
+	if int64(len(raw)) != b.RuntimeContract.Size || sha256Hex(raw) != b.RuntimeContract.SHA256 {
+		return errors.New("staged runtime contract drifted from the build receipt")
+	}
+	metadata, err := os.ReadFile(b.MetadataPath)
+	if err != nil {
+		return err
+	}
+	contract, err := runtimecontract.ValidateClaim(raw, runtimecontract.Binding{
+		Metadata: metadata, AppHash: b.AppHash, Version: b.App.Version,
+		ReleaseContractSHA256: b.RuntimeContract.SHA256,
+		ReleaseContractSchema: b.RuntimeContract.Schema,
+	})
+	if err != nil {
+		return fmt.Errorf("validate build runtime contract: %w", err)
+	}
+	if contract.App.SPKSHA256 != b.Artifact.SHA256 {
+		return errors.New("runtime contract app.spkSha256 does not bind the build artifact")
+	}
 	return nil
 }
 
@@ -223,7 +277,7 @@ func ensureProposed(c Config, prov SignerProvider, rec *walReceipt) error {
 	if err := prov.ProposeRegister(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, c.SquadsMultisig, c.SquadsVault, relJSONPath, proposePath); err != nil {
 		return err
 	}
-	rel, relRef, err := readFinalReleaseJSON(relJSONPath, rec.NewAppHash, rec.Version, rec.ReleaseNonce)
+	rel, relRef, err := readFinalReleaseJSON(relJSONPath, rec.NewAppHash, rec.Version, rec.ReleaseNonce, rec.RuntimeContract)
 	if err != nil {
 		return err
 	}
@@ -300,6 +354,7 @@ func buildCandidate(c Config, app App, rec walReceipt) candidateReceipt {
 		Version:      rec.Version,
 		Component:    comp,
 		Artifact:     artifactRef{Path: rec.PackageID, SHA256: rec.ArtifactSHA, Size: rec.ArtifactSize},
+		RuntimeContract: rec.RuntimeContract,
 		ReleaseNonce: rec.ReleaseNonce,
 		StageReceipt: rec.StageReceiptRef,
 		SquadsProposal: squadsProposalRef{

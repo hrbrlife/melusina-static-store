@@ -87,6 +87,7 @@ type walReceipt struct {
 	MasterNftMint  string `json:"masterNftMint,omitempty"`
 	ArtifactSHA    string `json:"artifactSha256,omitempty"`
 	ArtifactSize   int64  `json:"artifactSize,omitempty"`
+	RuntimeContract runtimeContractRef `json:"runtimeContract,omitempty"`
 	NewReleasePDA  string `json:"newReleasePda,omitempty"`
 	StageID        string `json:"stageId,omitempty"`
 	TransactionPDA string `json:"transactionPda,omitempty"`

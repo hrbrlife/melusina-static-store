@@ -18,11 +18,15 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/stagefinalization"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
-	appStageSchema        = "melusina-app-stage-v1"
+	appStageSchemaV1      = "melusina-app-stage-v1"
+	appStageSchemaV2      = "melusina-app-stage-v2"
+	appStageSchema        = appStageSchemaV1 // legacy test and migration shorthand
 	appStageReceiptSchema = "melusina-app-stage-receipt-v1"
 	maxCatalogAppIDBytes  = 255 - len(".json")
 )
@@ -35,20 +39,22 @@ var appStageReceiptDomain = []byte("melusina-app-stage-receipt-v1\x00")
 // finalized, so its exact body hash is recorded for stage integrity but is not
 // part of StageID.
 type stagedAppManifest struct {
-	Schema         string   `json:"schema"`
-	StageID        string   `json:"stageId"`
-	AppID          string   `json:"appId"`
-	AppHash        string   `json:"appHash"`
-	ReleaseHash    string   `json:"releaseHash"`
-	Version        string   `json:"version"`
-	SPKSHA256      string   `json:"spkSha256"`
-	MetadataSHA256 string   `json:"metadataSha256"`
-	ReleaseSHA256  string   `json:"releaseSha256"`
-	SPKSize        int      `json:"spkSize"`
-	MetadataSize   int      `json:"metadataSize"`
-	ReleaseSize    int      `json:"releaseSize"`
-	StoredAt       int64    `json:"storedAt"`
-	SlotHint       slotHint `json:"slotHint"`
+	Schema                string   `json:"schema"`
+	StageID               string   `json:"stageId"`
+	AppID                 string   `json:"appId"`
+	AppHash               string   `json:"appHash"`
+	ReleaseHash           string   `json:"releaseHash"`
+	Version               string   `json:"version"`
+	SPKSHA256             string   `json:"spkSha256"`
+	MetadataSHA256        string   `json:"metadataSha256"`
+	ReleaseSHA256         string   `json:"releaseSha256"`
+	RuntimeContractSHA256 string   `json:"runtimeContractSha256,omitempty"`
+	SPKSize               int      `json:"spkSize"`
+	MetadataSize          int      `json:"metadataSize"`
+	ReleaseSize           int      `json:"releaseSize"`
+	RuntimeContractSize   int      `json:"runtimeContractSize,omitempty"`
+	StoredAt              int64    `json:"storedAt"`
+	SlotHint              slotHint `json:"slotHint"`
 }
 
 // StageReceipt proves durable private persistence only. It is deliberately
@@ -65,8 +71,12 @@ type StageReceipt struct {
 	OperatorSignature string `json:"operatorSignature"`
 }
 
-func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint slotHint, storedAt time.Time) (stagedAppManifest, error) {
+func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint slotHint, storedAt time.Time, runtimeContracts ...[]byte) (stagedAppManifest, error) {
 	var zero stagedAppManifest
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return zero, err
+	}
 	appID := metadataAppID(metadata)
 	if !isSafePathSegment(appID) {
 		return zero, errors.New("metadata.json carries no safe appId")
@@ -90,20 +100,40 @@ func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint
 	if err := hint.validate(); err != nil {
 		return zero, err
 	}
+	if len(runtimeContract) != 0 {
+		if _, err := runtimecontract.Validate(runtimeContract, runtimecontract.Binding{
+			SPK:                   spk,
+			Metadata:              metadata,
+			AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+			Version:               rel.Version,
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}); err != nil {
+			return zero, fmt.Errorf("validate staged runtime contract: %w", err)
+		}
+	}
 
 	spkHash := sha256.Sum256(spk)
 	metadataHash := sha256.Sum256(metadata)
 	releaseHash := sha256.Sum256(release)
+	runtimeContractHash := sha256.Sum256(runtimeContract)
 	releaseIntent, _ := hash32FromHex(strings.TrimSpace(rel.ReleaseHash))
 	versionHash := sha256.Sum256([]byte(strings.TrimSpace(rel.Version)))
 	masterMintHash := sha256.Sum256([]byte(strings.TrimSpace(rel.MasterNftMint)))
+	stageSchema := appStageSchemaV1
+	if len(runtimeContract) != 0 {
+		stageSchema = appStageSchemaV2
+	}
 	stageHasher := sha256.New()
-	_, _ = stageHasher.Write([]byte(appStageSchema + "\x00"))
+	_, _ = stageHasher.Write([]byte(stageSchema + "\x00"))
 	_, _ = stageHasher.Write(spkHash[:])
 	_, _ = stageHasher.Write(metadataHash[:])
 	_, _ = stageHasher.Write(releaseIntent[:])
 	_, _ = stageHasher.Write(versionHash[:])
 	_, _ = stageHasher.Write(masterMintHash[:])
+	if stageSchema == appStageSchemaV2 {
+		_, _ = stageHasher.Write(runtimeContractHash[:])
+	}
 	for _, part := range []string{hint.Developer, hint.Repo, hint.Slug} {
 		var size [4]byte
 		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
@@ -113,7 +143,7 @@ func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint
 	stageID := hex.EncodeToString(stageHasher.Sum(nil))
 
 	return stagedAppManifest{
-		Schema:         appStageSchema,
+		Schema:         stageSchema,
 		StageID:        stageID,
 		AppID:          appID,
 		AppHash:        strings.ToLower(computedAppHash),
@@ -122,25 +152,45 @@ func buildStagedAppManifest(spk, metadata, release []byte, rel ReleaseJSON, hint
 		SPKSHA256:      hex.EncodeToString(spkHash[:]),
 		MetadataSHA256: hex.EncodeToString(metadataHash[:]),
 		ReleaseSHA256:  hex.EncodeToString(releaseHash[:]),
-		SPKSize:        len(spk),
-		MetadataSize:   len(metadata),
-		ReleaseSize:    len(release),
-		StoredAt:       storedAt.UTC().Unix(),
-		SlotHint:       hint,
+		RuntimeContractSHA256: func() string {
+			if stageSchema == appStageSchemaV2 {
+				return hex.EncodeToString(runtimeContractHash[:])
+			}
+			return ""
+		}(),
+		SPKSize:             len(spk),
+		MetadataSize:        len(metadata),
+		ReleaseSize:         len(release),
+		RuntimeContractSize: len(runtimeContract),
+		StoredAt:            storedAt.UTC().Unix(),
+		SlotHint:            hint,
 	}, nil
 }
 
 func sameStagedReleaseIntent(staged, submitted stagedAppManifest) bool {
-	return staged.StageID == submitted.StageID &&
+	return staged.Schema == submitted.Schema &&
+		staged.StageID == submitted.StageID &&
 		staged.AppID == submitted.AppID &&
 		staged.AppHash == submitted.AppHash &&
 		staged.ReleaseHash == submitted.ReleaseHash &&
 		staged.Version == submitted.Version &&
 		staged.SPKSHA256 == submitted.SPKSHA256 &&
 		staged.MetadataSHA256 == submitted.MetadataSHA256 &&
+		staged.RuntimeContractSHA256 == submitted.RuntimeContractSHA256 &&
 		staged.SPKSize == submitted.SPKSize &&
 		staged.MetadataSize == submitted.MetadataSize &&
+		staged.RuntimeContractSize == submitted.RuntimeContractSize &&
 		staged.SlotHint == submitted.SlotHint
+}
+
+func oneRuntimeContract(values [][]byte) ([]byte, error) {
+	if len(values) > 1 {
+		return nil, errors.New("at most one runtime contract may be supplied")
+	}
+	if len(values) == 0 {
+		return nil, nil
+	}
+	return values[0], nil
 }
 
 type stagePersistencePlan struct {
@@ -178,15 +228,19 @@ func planStagePersistence(root string, manifest stagedAppManifest) (stagePersist
 	return plan, nil
 }
 
-func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, release []byte) error {
+func persistStagedApp(root string, manifest stagedAppManifest, spk, metadata, release []byte, runtimeContracts ...[]byte) error {
 	plan, err := planStagePersistence(root, manifest)
 	if err != nil {
 		return err
 	}
-	return persistStagedAppPlanned(root, manifest, spk, metadata, release, plan)
+	return persistStagedAppPlanned(root, manifest, spk, metadata, release, plan, runtimeContracts...)
 }
 
-func persistStagedAppPlanned(root string, manifest stagedAppManifest, spk, metadata, release []byte, plan stagePersistencePlan) error {
+func persistStagedAppPlanned(root string, manifest stagedAppManifest, spk, metadata, release []byte, plan stagePersistencePlan, runtimeContracts ...[]byte) error {
+	runtimeContract, err := runtimeContractForManifest(manifest, runtimeContracts)
+	if err != nil {
+		return err
+	}
 	if plan.alreadyPresent {
 		return nil
 	}
@@ -223,6 +277,11 @@ func persistStagedAppPlanned(root string, manifest stagedAppManifest, spk, metad
 			return err
 		}
 	}
+	if len(runtimeContract) != 0 {
+		if err := writeSyncedFile(filepath.Join(tmp, "RUNTIME-CONTRACT.json"), runtimeContract, 0o600); err != nil {
+			return err
+		}
+	}
 	if err := syncDir(tmp); err != nil {
 		return err
 	}
@@ -231,6 +290,31 @@ func persistStagedAppPlanned(root string, manifest stagedAppManifest, spk, metad
 	}
 	cleanup = false
 	return syncDir(root)
+}
+
+func runtimeContractForManifest(manifest stagedAppManifest, values [][]byte) ([]byte, error) {
+	runtimeContract, err := oneRuntimeContract(values)
+	if err != nil {
+		return nil, err
+	}
+	switch manifest.Schema {
+	case appStageSchemaV1:
+		if manifest.RuntimeContractSHA256 != "" || manifest.RuntimeContractSize != 0 || len(runtimeContract) != 0 {
+			return nil, errors.New("legacy v1 stage cannot carry a runtime contract")
+		}
+		return nil, nil
+	case appStageSchemaV2:
+		if manifest.RuntimeContractSize <= 0 || len(runtimeContract) != manifest.RuntimeContractSize {
+			return nil, errors.New("runtime contract size does not match v2 stage manifest")
+		}
+		digest := sha256.Sum256(runtimeContract)
+		if manifest.RuntimeContractSHA256 != hex.EncodeToString(digest[:]) {
+			return nil, errors.New("runtime contract hash does not match v2 stage manifest")
+		}
+		return runtimeContract, nil
+	default:
+		return nil, fmt.Errorf("unsupported staged app schema %q", manifest.Schema)
+	}
 }
 
 func ensureStagePersistenceCapacity(root, stageID string) error {
@@ -251,50 +335,84 @@ func ensureStagePersistenceCapacity(root, stageID string) error {
 }
 
 func loadStagedApp(root, stageID string) (stagedAppManifest, []byte, []byte, []byte, error) {
+	manifest, spk, metadata, release, _, err := loadStagedAppWithRuntime(root, stageID)
+	return manifest, spk, metadata, release, err
+}
+
+func loadStagedAppWithRuntime(root, stageID string) (stagedAppManifest, []byte, []byte, []byte, []byte, error) {
 	var zero stagedAppManifest
 	if len(stageID) != 64 {
-		return zero, nil, nil, nil, errors.New("stageId must be 32-byte lowercase hex")
+		return zero, nil, nil, nil, nil, errors.New("stageId must be 32-byte lowercase hex")
 	}
 	if _, err := hex.DecodeString(stageID); err != nil || strings.ToLower(stageID) != stageID {
-		return zero, nil, nil, nil, errors.New("stageId must be 32-byte lowercase hex")
+		return zero, nil, nil, nil, nil, errors.New("stageId must be 32-byte lowercase hex")
+	}
+	if _, err := stagefinalization.Recover(filepath.Clean(root), stageID, nil); err != nil {
+		return zero, nil, nil, nil, nil, fmt.Errorf("recover staged release finalization: %w", err)
 	}
 	stageFD, err := openStagedAppDir(root, stageID)
 	if err != nil {
-		return zero, nil, nil, nil, err
+		return zero, nil, nil, nil, nil, err
 	}
 	defer syscall.Close(stageFD)
 	manifestBytes, err := readStagedAppFile(stageFD, "stage.json", maxCatalogBootstrapJSON, false)
 	if err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("read staged manifest: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("read staged manifest: %w", err)
 	}
 	var manifest stagedAppManifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("decode staged manifest: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("decode staged manifest: %w", err)
 	}
-	if manifest.SPKSize < 0 || manifest.MetadataSize < 0 || manifest.ReleaseSize < 0 ||
-		int64(manifest.SPKSize)+int64(manifest.MetadataSize)+int64(manifest.ReleaseSize) > maxAppPublishBody {
-		return zero, nil, nil, nil, errors.New("staged candidate sizes exceed app publish bound")
+	if manifest.Schema != appStageSchemaV1 && manifest.Schema != appStageSchemaV2 {
+		return zero, nil, nil, nil, nil, fmt.Errorf("unsupported staged app schema %q", manifest.Schema)
+	}
+	if manifest.SPKSize < 0 || manifest.MetadataSize < 0 || manifest.ReleaseSize < 0 || manifest.RuntimeContractSize < 0 ||
+		int64(manifest.SPKSize)+int64(manifest.MetadataSize)+int64(manifest.ReleaseSize)+int64(manifest.RuntimeContractSize) > maxAppPublishBody {
+		return zero, nil, nil, nil, nil, errors.New("staged candidate sizes exceed app publish bound")
+	}
+	if manifest.Schema == appStageSchemaV1 && (manifest.RuntimeContractSHA256 != "" || manifest.RuntimeContractSize != 0) {
+		return zero, nil, nil, nil, nil, errors.New("legacy v1 stage carries runtime-contract fields")
+	}
+	if manifest.Schema == appStageSchemaV2 && (manifest.RuntimeContractSize <= 0 || len(manifest.RuntimeContractSHA256) != 64) {
+		return zero, nil, nil, nil, nil, errors.New("v2 stage lacks a runtime contract binding")
+	}
+	if manifest.Schema == appStageSchemaV1 {
+		fd, openErr := syscall.Openat(stageFD, "RUNTIME-CONTRACT.json", syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+		if openErr == nil {
+			_ = syscall.Close(fd)
+			return zero, nil, nil, nil, nil, errors.New("legacy v1 stage contains an unbound runtime contract")
+		}
+		if !errors.Is(openErr, syscall.ENOENT) {
+			return zero, nil, nil, nil, nil, fmt.Errorf("inspect legacy runtime contract: %w", openErr)
+		}
 	}
 	spk, err := readStagedAppFile(stageFD, "app.spk", int64(manifest.SPKSize), true)
 	if err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("read staged SPK: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("read staged SPK: %w", err)
 	}
 	metadata, err := readStagedAppFile(stageFD, "metadata.json", int64(manifest.MetadataSize), true)
 	if err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("read staged metadata: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("read staged metadata: %w", err)
 	}
 	release, err := readStagedAppFile(stageFD, "RELEASE.json", int64(manifest.ReleaseSize), true)
 	if err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("read staged release: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("read staged release: %w", err)
 	}
-	rebuilt, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), manifest.SlotHint, time.Unix(manifest.StoredAt, 0))
+	var runtimeContract []byte
+	if manifest.Schema == appStageSchemaV2 {
+		runtimeContract, err = readStagedAppFile(stageFD, "RUNTIME-CONTRACT.json", int64(manifest.RuntimeContractSize), true)
+		if err != nil {
+			return zero, nil, nil, nil, nil, fmt.Errorf("read staged runtime contract: %w", err)
+		}
+	}
+	rebuilt, err := buildStagedAppManifest(spk, metadata, release, mustReleaseJSON(release), manifest.SlotHint, time.Unix(manifest.StoredAt, 0), runtimeContract)
 	if err != nil {
-		return zero, nil, nil, nil, fmt.Errorf("verify staged candidate: %w", err)
+		return zero, nil, nil, nil, nil, fmt.Errorf("verify staged candidate: %w", err)
 	}
 	if rebuilt != manifest || manifest.StageID != stageID {
-		return zero, nil, nil, nil, errors.New("staged candidate manifest/content mismatch")
+		return zero, nil, nil, nil, nil, errors.New("staged candidate manifest/content mismatch")
 	}
-	return manifest, spk, metadata, release, nil
+	return manifest, spk, metadata, release, runtimeContract, nil
 }
 
 func openStagedAppDir(root, stageID string) (int, error) {

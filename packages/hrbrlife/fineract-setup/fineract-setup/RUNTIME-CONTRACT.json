@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-    "version": "0.2.14",
-    "spkSha256": "fd1be770766251d02a2923e627907d9ccdf2cac9ea0f451e66dfa4b771acc3eb",
-    "appHash": "9cac697d8a2e4e369fc66f989fdd20fc0dc7de3fdb0659a1c7dc16e0868bcf34"
+    "version": "0.2.15",
+    "spkSha256": "d957f4b498d8cdb088e237d91a82822476e86d5e202f31e3749f8fbf96f62519",
+    "appHash": "9ccf1c6e9aef6a1eddb220ebf92db20dcbef10b7bbc9816ba033bccf6e32c06c"
   },
   "sidecars": [
     {
@@ -37,7 +37,7 @@
       },
       {
         "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
-        "expectedResult": "The grain reports 0.2.14. A grain still showing 0.2.13 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
+        "expectedResult": "The grain reports 0.2.15. A grain still showing 0.2.14 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
       },
       {
         "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
@@ -46,7 +46,7 @@
       },
       {
         "action": "Enter the install's bundle-signing seed in Tenant & Install Identity. In Organization, visibly select USD and USDC, advance to the Payment Types panel, visibly select Bank Transfer and Crypto, then use the final Provision all action once.",
-        "expectedResult": "Before the first write, the grain completes a bundle-root-signed GET /offices through POST /api/v1/bootstrap/fineract. The Payment Types panel submission retains the currency selections from its sibling panel, so Fineract receives USD and USDC together and creates or reuses both payment types. A wrong seed, replay, tenant mismatch, unlisted operation, or unavailable currency is visibly rejected and produces no partial success claim."
+        "expectedResult": "Before the first write, the grain completes a bundle-root-signed GET /offices through POST /api/v1/bootstrap/fineract. The Payment Types panel submission retains the currency selections from its sibling panel, and the wizard sends Fineract the exact string array {\"currencies\":[\"USD\",\"USDC\"]}; both currencies and payment types are created or reused. A wrong seed, replay, tenant mismatch, unlisted operation, or unavailable currency is visibly rejected and produces no partial success claim."
       },
       {
         "action": "Select MSB Standard without adding custom GL rows, then enter a decimal Savings charge such as 0.50 and provision Products & Charges, including one USD and one USDC savings product.",

@@ -510,6 +510,37 @@ def served_hash(app_id: str) -> None:
         sys.stdout.write(value)
 
 
+ATTESTATION_STATUS_NAMES = {
+    0: "Active",
+    1: "Revoked",
+    2: "Superseded",
+}
+
+
+def decode_release_entry(raw: bytes, pda: str) -> dict[str, Any]:
+    """Decode the stable ReleaseEntry fields used by the read-only status gate."""
+    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version
+    offset = 8 + 32 + 32 + 32 + 32
+    if len(raw) < offset + 4:
+        raise ProviderError("ReleaseEntry is truncated before version")
+    n = int.from_bytes(raw[offset:offset + 4], "little")
+    offset += 4
+    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
+        raise ProviderError("ReleaseEntry has an invalid version/status layout")
+    try:
+        version = raw[offset:offset + n].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProviderError("ReleaseEntry version is not valid UTF-8") from exc
+    offset += n
+    offset += 32 + 32 + 64 + 32 + 32 + 8
+    status = raw[offset]
+    status_name = ATTESTATION_STATUS_NAMES.get(status)
+    if status_name is None:
+        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
+    app_hash = raw[8 + 32:8 + 64].hex()
+    return {"pda": pda, "appHash": app_hash, "version": version, "status": status_name}
+
+
 def release_status(pda: str) -> None:
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
     req = urllib.request.Request(rpc, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": "confirmed"}]}).encode(), headers={"Content-Type": "application/json"})
@@ -522,22 +553,7 @@ def release_status(pda: str) -> None:
     if not isinstance(value, dict) or not value.get("data"):
         raise ProviderError(f"ReleaseEntry {pda} is not present")
     raw = base64.b64decode(value["data"][0])
-    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version
-    offset = 8 + 32 + 32 + 32 + 32
-    if len(raw) < offset + 4:
-        raise ProviderError("ReleaseEntry is truncated before version")
-    n = int.from_bytes(raw[offset:offset + 4], "little")
-    offset += 4
-    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
-        raise ProviderError("ReleaseEntry has an invalid version/status layout")
-    version = raw[offset:offset + n].decode("utf-8")
-    offset += n
-    offset += 32 + 32 + 64 + 32 + 32 + 8
-    status = raw[offset]
-    if status not in (1, 2):
-        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
-    app_hash = raw[8 + 32:8 + 64].hex()
-    print(json.dumps({"pda": pda, "appHash": app_hash, "version": version, "status": "Active" if status == 1 else "Revoked"}, separators=(",", ":")))
+    print(json.dumps(decode_release_entry(raw, pda), separators=(",", ":")))
 
 
 def revoke(pda: str, receipt_out: Path) -> None:

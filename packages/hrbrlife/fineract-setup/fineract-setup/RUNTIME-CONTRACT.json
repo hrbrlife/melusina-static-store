@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-    "version": "0.2.10",
-    "spkSha256": "b5ca9fdbdf9ed7647bdfa48acb4b4bbebbff9fe66a5ee9a2ba16f5e312d0ef70",
-    "appHash": "4d1f21c2117baf37e02d26a741f6bc38cc8104b8acdfb8b309ebd1260cd19dd5"
+    "version": "0.2.11",
+    "spkSha256": "90d2e5c6e96f3ba8da2c8e31d406acc159be36e216e63a248b2a13424814c5d0",
+    "appHash": "cc15a3aab078f8e61dfe3e990e3548fc59ed68deb0b7388588caac95a53cb7da"
   },
   "sidecars": [
     {
@@ -23,8 +23,8 @@
         "http-out"
       ],
       "safeProbe": {
-        "action": "In the wizard's \"Connectivity Check\" step, press the control that re-runs the sidecar reachability probe. The grain resolves its HTTP-out Powerbox capability and issues one GET against the sidecar base URL. Observe the port actually dialled \u2014 from egress on the sidecar host, or the sidecar's own access log \u2014 rather than from the wizard's summary line.",
-        "expectedResult": "The grain dials the sidecar on port 8443 (or whatever FINERACT_SIDECAR_PORT names) and the connectivity step reports it reachable. It must NOT dial 443. Up to and including 0.2.7 the URL carried no port, so the grain dialled 443, got ECONNREFUSED, and released a PowerBox capability it had legitimately been granted \u2014 which reads like a Powerbox failure and is not one."
+        "action": "In the wizard's \"Connectivity Check\" step, grant the visible sidecar PowerBox connection and press \"Re-check\". The grain must issue GET /__health and GET /Fineract-provider/api/v1/offices through that claimed capability. Observe the requests in the sidecar access log as well as the two visible endpoint rows.",
+        "expectedResult": "Both endpoint rows report Connected, Continue is enabled, and the sidecar receives both reads on port 8443 (or whatever FINERACT_SIDECAR_PORT names). A Sandstorm-only informational/skip result is a failure: 0.2.10 acquired the capability but never used it for these two wizard gates."
       }
     }
   ],
@@ -37,11 +37,11 @@
       },
       {
         "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
-        "expectedResult": "The grain reports this release's marketing version. A grain still showing 0.2.7 means the userAction pin was not advanced and a fresh grain is launching the superseded package \u2014 the app is then NOT upgraded regardless of what the catalog serves."
+        "expectedResult": "The grain reports 0.2.11. A grain still showing 0.2.10 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
       },
       {
         "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
-        "expectedResult": "The step completes against the sidecar on the configured port. Under 0.2.7 and earlier this step failed with ECONNREFUSED against port 443 while the PowerBox claim itself had succeeded. Passing this step is the whole point of this release."
+        "expectedResult": "The step shows both Sidecar and Fineract API as Connected through the granted capability, and Continue is enabled. Under 0.2.10 these rows stayed skipped and Continue stayed disabled even after the claim succeeded."
       },
       {
         "action": "Set FINERACT_SIDECAR_PORT to a value other than 8443 in the sidecar's deployment environment, relaunch, and re-run the connectivity step.",

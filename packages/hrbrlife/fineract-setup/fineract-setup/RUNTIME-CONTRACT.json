@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-    "version": "0.2.12",
-    "spkSha256": "c20ff277a39105a58315a8e71172f34eee9fb744f7b597c7395f0d17ef64c6dc",
-    "appHash": "6914feb8dd8de966bba3632546100d8c103af221411fd7098614a5b4d550cc8e"
+    "version": "0.2.13",
+    "spkSha256": "d4995dbb1b46d4f873491fae31a325fc8a053bfb7489084dc147b88106f6420e",
+    "appHash": "c4056fb965e5ec37af8432fa614f046c3db6e97fa9b11dcddb5507771c0dc21c"
   },
   "sidecars": [
     {
@@ -37,16 +37,19 @@
       },
       {
         "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
-        "expectedResult": "The grain reports 0.2.12. A grain still showing 0.2.11 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
+        "expectedResult": "The grain reports 0.2.13. A grain still showing 0.2.12 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
       },
       {
         "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
         "expectedResult": "The step shows both Sidecar and Fineract API as Connected through the granted capability, and Continue is enabled. The second row proves authenticated upstream reachability without requiring a production-route signer."
-
       },
       {
         "action": "Enter the install's bundle-signing seed in Tenant & Install Identity, then use the visible Organization submit action once.",
         "expectedResult": "Before the first write, the grain completes a bundle-root-signed GET /offices through POST /api/v1/bootstrap/fineract. It then reuses the existing Head Office where present, applies the complete currency set once, and creates or reuses each selected payment type. A wrong seed, replay, tenant mismatch, or unlisted operation is visibly rejected and produces no Fineract mutation."
+      },
+      {
+        "action": "Select MSB Standard without adding custom GL rows, then enter a decimal Savings charge such as 0.50 and provision Products & Charges.",
+        "expectedResult": "The preset provisions its canonical ledger without hidden custom-row errors. The decimal value remains visible and the signed bootstrap request creates or reuses a Fineract charge with chargeTimeType 2 (specified due date), never the loan-only disbursement value 1."
       },
       {
         "action": "Set FINERACT_SIDECAR_PORT to a value other than 8443 in the sidecar's deployment environment, relaunch, and re-run the connectivity step.",

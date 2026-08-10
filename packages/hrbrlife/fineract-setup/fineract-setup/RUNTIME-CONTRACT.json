@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-    "version": "0.2.15",
-    "spkSha256": "d957f4b498d8cdb088e237d91a82822476e86d5e202f31e3749f8fbf96f62519",
-    "appHash": "9ccf1c6e9aef6a1eddb220ebf92db20dcbef10b7bbc9816ba033bccf6e32c06c"
+    "version": "0.2.16",
+    "spkSha256": "ff3aa65388f74d3513fe5e4bea55b103bfca0ee446170646d51837bb7722adf8",
+    "appHash": "8a04f905e7818bbcc994b0599dfeae839338ec6e4dc79af9870e08946f6755dd"
   },
   "sidecars": [
     {
@@ -37,7 +37,7 @@
       },
       {
         "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
-        "expectedResult": "The grain reports 0.2.15. A grain still showing 0.2.14 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
+        "expectedResult": "The grain reports 0.2.16. A grain still showing 0.2.15 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
       },
       {
         "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",

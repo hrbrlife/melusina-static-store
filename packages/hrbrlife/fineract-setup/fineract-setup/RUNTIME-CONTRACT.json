@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-    "version": "0.2.11",
-    "spkSha256": "90d2e5c6e96f3ba8da2c8e31d406acc159be36e216e63a248b2a13424814c5d0",
-    "appHash": "cc15a3aab078f8e61dfe3e990e3548fc59ed68deb0b7388588caac95a53cb7da"
+    "version": "0.2.12",
+    "spkSha256": "c20ff277a39105a58315a8e71172f34eee9fb744f7b597c7395f0d17ef64c6dc",
+    "appHash": "6914feb8dd8de966bba3632546100d8c103af221411fd7098614a5b4d550cc8e"
   },
   "sidecars": [
     {
@@ -23,8 +23,8 @@
         "http-out"
       ],
       "safeProbe": {
-        "action": "In the wizard's \"Connectivity Check\" step, grant the visible sidecar PowerBox connection and press \"Re-check\". The grain must issue GET /__health and GET /Fineract-provider/api/v1/offices through that claimed capability. Observe the requests in the sidecar access log as well as the two visible endpoint rows.",
-        "expectedResult": "Both endpoint rows report Connected, Continue is enabled, and the sidecar receives both reads on port 8443 (or whatever FINERACT_SIDECAR_PORT names). A Sandstorm-only informational/skip result is a failure: 0.2.10 acquired the capability but never used it for these two wizard gates."
+        "action": "In the wizard's \"Connectivity Check\" step, grant the visible sidecar PowerBox connection and press \"Re-check\". The grain must issue GET /__health and GET /__health/fineract through that claimed capability. Observe the requests in the sidecar access log as well as the two visible endpoint rows.",
+        "expectedResult": "Both endpoint rows report Connected, Continue is enabled, and the sidecar receives both reads on port 8443 (or whatever FINERACT_SIDECAR_PORT names). The Fineract row must use the authenticated data-free health bridge rather than the production route-policy proxy."
       }
     }
   ],
@@ -37,25 +37,30 @@
       },
       {
         "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
-        "expectedResult": "The grain reports 0.2.11. A grain still showing 0.2.10 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
+        "expectedResult": "The grain reports 0.2.12. A grain still showing 0.2.11 means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
       },
       {
         "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
-        "expectedResult": "The step shows both Sidecar and Fineract API as Connected through the granted capability, and Continue is enabled. Under 0.2.10 these rows stayed skipped and Continue stayed disabled even after the claim succeeded."
+        "expectedResult": "The step shows both Sidecar and Fineract API as Connected through the granted capability, and Continue is enabled. The second row proves authenticated upstream reachability without requiring a production-route signer."
+
+      },
+      {
+        "action": "Enter the install's bundle-signing seed in Tenant & Install Identity, then use the visible Organization submit action once.",
+        "expectedResult": "Before the first write, the grain completes a bundle-root-signed GET /offices through POST /api/v1/bootstrap/fineract. It then reuses the existing Head Office where present, applies the complete currency set once, and creates or reuses each selected payment type. A wrong seed, replay, tenant mismatch, or unlisted operation is visibly rejected and produces no Fineract mutation."
       },
       {
         "action": "Set FINERACT_SIDECAR_PORT to a value other than 8443 in the sidecar's deployment environment, relaunch, and re-run the connectivity step.",
         "expectedResult": "The wizard dials the overridden port. This is the negative control: it proves the port is configuration rather than a constant. Restore the deployment to 8443 afterwards."
       }
     ],
-    "expectedResult": "A fresh grain of this release renders the Fineract Sidecar Setup Wizard and completes its Connectivity Check against the sidecar on the configured port, with the port honoured from FINERACT_SIDECAR_PORT rather than assumed."
+    "expectedResult": "A fresh grain of this release renders the Fineract Sidecar Setup Wizard, completes its Connectivity Check, and can provision through the bundle-root-signed bootstrap bridge on the configured sidecar port."
   },
   "fixtures": [],
   "cleanup": {
     "steps": [
       "Delete the probe grains created for the launch probe; each is a fresh grain created solely for this probe.",
       "If step 4 changed FINERACT_SIDECAR_PORT, restore the deployment's value to 8443 and re-run the connectivity step once so the install is left reachable.",
-      "The probe reads the sidecar and does not write ledger, tenant, or organisation state, so there is no Fineract-side record to retract. Do not advance the wizard past the Connectivity Check while running this probe."
+      "The connectivity probe itself is read-only. If the provisioning probe was run, retain its exact office, currency, and payment-type records as the intended idempotent setup state; a second visible submit must reuse them rather than duplicate them."
     ]
   }
 }

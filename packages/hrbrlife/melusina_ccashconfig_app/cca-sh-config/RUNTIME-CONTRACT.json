@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-    "version": "0.0.71",
-    "spkSha256": "3deb933ab693c3f882a32f30668940f3860e83d3c34d1c5630e7d6607725d2f6",
-    "appHash": "d8ce462b025c444996d6c4d52c4dc10b203e2a2463955824db483cda9d0a9229"
+    "version": "0.0.72",
+    "spkSha256": "c2bfac2e1ce226c3997e40f826d3a4d6ef04d78282575af92460923563a67a4f",
+    "appHash": "51940c3dd57a629b1d1d9c66f198138685fe363cbed84f31b52da0d4189e7d71"
   },
   "sidecars": [],
   "launchProbe": {

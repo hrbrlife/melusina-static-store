@@ -479,7 +479,7 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     register_path = state_path.with_name("register-release-entry.ix.json")
     write_json(register_path, register_ix)
     raw = run([
-        "node", str(executor()), str(register_path), "--propose-only", "--multisig", multisig, "--vault", vault,
+        "node", str(executor()), str(register_path), "--propose-only", "--expected-index", str(transaction_index), "--multisig", multisig, "--vault", vault,
     ], extra_env=executor_env())
     result = last_json(raw)
     if result.get("status") != "proposed" or result.get("transactionPda") != state.get("transactionPda"):

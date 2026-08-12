@@ -115,6 +115,8 @@ def test_propose_uses_only_supported_flags():
         assert proposal[1] == "propose-release"
         for unsupported in ("--artifact-spk", "--artifact-metadata"):
             assert unsupported not in proposal, proposal
+        adapter = next(args for args in captured if "--propose-only" in args)
+        assert adapter[adapter.index("--expected-index") + 1] == "1167", adapter
 
 
 def test_submit_binds_the_immutable_catalog_slot():

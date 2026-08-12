@@ -48,6 +48,7 @@ function parseArgs(argv) {
   const out = { op: "", ix: "", preExecuteIx: "", expectedIndex: null, executeIndex: null, multisig: "", vault: "", members: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === "--validate-instruction") { out.op = "validate-instruction"; out.ix = argv[++i] || ""; continue; }
     if (arg === "--next-index") { out.op = "next-index"; continue; }
     if (arg === "--propose-only") { out.op = "propose-only"; continue; }
     if (arg === "--execute-existing") { out.op = "execute-existing"; out.executeIndex = argv[++i] || ""; continue; }
@@ -60,6 +61,7 @@ function parseArgs(argv) {
     if (!out.ix) { out.ix = arg; continue; }
     die(`unexpected positional argument ${arg}`);
   }
+  if (out.op === "validate-instruction") return out;
   if (!out.op || !out.multisig || !out.vault) die(usage());
   return out;
 }
@@ -80,12 +82,12 @@ function members(args) {
 function readInstruction(file) {
   if (!file) die("instruction JSON is required");
   const raw = JSON.parse(fs.readFileSync(file, "utf8"));
-  if (!raw || Array.isArray(raw) || typeof raw !== "object" || typeof raw.programId !== "string" || !Array.isArray(raw.accounts) || typeof raw.data !== "string") {
-    die("instruction JSON must contain programId, accounts[], and base64 data");
+  if (!raw || Array.isArray(raw) || typeof raw !== "object" || typeof raw.programId !== "string" || (raw.accounts !== null && !Array.isArray(raw.accounts)) || typeof raw.data !== "string") {
+    die("instruction JSON must contain programId, accounts[] or null, and base64 data");
   }
   return new TransactionInstruction({
     programId: new PublicKey(raw.programId),
-    keys: raw.accounts.map((account) => {
+    keys: (raw.accounts || []).map((account) => {
       if (!account || typeof account.pubkey !== "string" || typeof account.isSigner !== "boolean" || typeof account.isWritable !== "boolean") {
         die("instruction account must contain pubkey, isSigner, and isWritable");
       }
@@ -197,6 +199,11 @@ async function executeExisting(connection, multisigPda, args) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.op === "validate-instruction") {
+    const ix = readInstruction(args.ix);
+    console.log(JSON.stringify({ status: "validated", programId: ix.programId.toBase58(), accountCount: ix.keys.length, dataBytes: ix.data.length }));
+    return;
+  }
   const connection = new Connection(rpcURL, "confirmed");
   const multisigPda = new PublicKey(args.multisig);
   const vaultPda = new PublicKey(args.vault);

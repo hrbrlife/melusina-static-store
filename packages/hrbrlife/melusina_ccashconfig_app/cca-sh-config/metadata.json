@@ -1,9 +1,9 @@
 {
   "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "packageId": "f253e92bc48d33e071d24231e96caa4e",
+  "packageId": "2f9b00b9edbcb703ae47f814b2c989d3",
   "name": "ccash Config",
-  "version": "0.0.55",
-  "versionNumber": 63,
+  "version": "0.0.74",
+  "versionNumber": 82,
   "shortDescription": "ccash companion admin app",
   "description": "Configure Fineract-talker endpoints, settlement windows, and wholesale routing policy for cca.sh Wholesale + Domain Template grains under this install.",
   "categories": [
@@ -24,10 +24,17 @@
     "website": "https://hrbr.life"
   },
   "screenshots": [],
-  "license": "Melusina Public License v1.0 (source-available, not open source) — see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
   "tier": "admin",
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.0.55"
+  "marketingVersion": "0.0.74",
+  "appTitle": "ccash Config",
+  "authorName": "Melusina",
+  "authorEmail": "support@bloom.identity",
+  "website": "https://sails.to/melusina",
+  "codeUrl": "https://github.com/hrbrlife/melusina_ccashconfig_app",
+  "licenseType": "source-available",
+  "sha256": "2f9b00b9edbcb703ae47f814b2c989d30540360eccc09cdc7c09fff6cc5a22e3"
 }

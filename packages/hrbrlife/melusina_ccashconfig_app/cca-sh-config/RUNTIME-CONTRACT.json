@@ -3,9 +3,9 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-    "version": "0.0.55",
-    "spkSha256": "f253e92bc48d33e071d24231e96caa4e60d42aac9757d1e670d3b3440ee2b624",
-    "appHash": "1e63c972f6e1b1e558a78ae6b8320ce7205635fe3662e3b369d6c732c0fc514e"
+    "version": "0.0.74",
+    "spkSha256": "2f9b00b9edbcb703ae47f814b2c989d30540360eccc09cdc7c09fff6cc5a22e3",
+    "appHash": "23a5978e6e447c13fc48f0bb31a26e07a6393940998e40f61d5d1d46f458e8b5"
   },
   "sidecars": [],
   "launchProbe": {
@@ -13,11 +13,11 @@
     "steps": [
       {
         "action": "Launch a new grain through the app's \"New cca.sh Config\" action, with no operator admin identity provisioned anywhere, and open it as its owner.",
-        "expectedResult": "The grain SERVES, and its first screen is the setup page headed \"Set up this configuration service\". It states that the service is not set up yet and that every other screen is closed until setup completes, and asks for the administrator PUBLIC key (64 hexadecimal characters), noting the private key stays in the operator's offline signer. It closes with \"This can only be done once.\" A grain that exits at boot here is a FAILURE (that was the 0.0.54 defect: it could be published, Active, installed and pinned and still boot on no tenant). A grain that serves the CONFIGURATION console in this state is also a FAILURE."
+        "expectedResult": "The grain SERVES, and its first screen is the setup page headed \"Set up this configuration service\". It states that every browser configuration screen and every broad AdminGate operation is closed until setup completes, and asks for the administrator PUBLIC key (64 hexadecimal characters), noting the private key stays in the operator's offline signer. It also names the two narrow exceptions truthfully: the signed purpose-confined NamedCoin resolver retains its own protocol checks, and a legacy station reference may be restored or persisted at boot but cannot be consumed through the closed broad gate. It closes with \"This can only be done once.\" A grain that exits at boot here is a FAILURE (that was the 0.0.54 defect: it could be published, Active, installed and pinned and still boot on no tenant). A grain that serves the CONFIGURATION console in this state is also a FAILURE."
       },
       {
         "action": "Without completing setup, open the grain's debug log from the shell, and separately try to reach a configuration screen by clicking through from the setup page.",
-        "expectedResult": "The log records \"admin auth: UNBOOTSTRAPPED [CCAC-1]\" and states that AdminGate is NOT vended to any caller and every configuration surface answers 503. No configuration screen is reachable: there is no link out of the setup page other than completing it. This is the fail-closed state, not a packaging defect."
+        "expectedResult": "The log records \"admin auth: UNBOOTSTRAPPED [CCAC-1]\" and states that the broad AdminGate is NOT vended to any caller and every browser configuration surface answers 503. No configuration screen is reachable: there is no link out of the setup page other than completing it. The purpose-confined NamedCoin resolver is deliberately independent and remains subject to its signed protocol-1.12 request/provider checks; it is not a broad AdminGate bypass. If a retained STATION_STURDYREF compatibility value exists, boot may restore or persist that binding, but the unarmed broad gate cannot expose or use it. This is the fail-closed state, not a packaging defect."
       },
       {
         "action": "Enter the install-admin Ed25519 public key (as 64 lower-case hexadecimal characters) into the setup form and click \"Complete setup\".",
@@ -29,38 +29,38 @@
       },
       {
         "action": "Reopen the grain from the shell and navigate back to the setup page by any means available.",
-        "expectedResult": "The grain answers 409 with \"Setup is already complete\", naming the account that completed it, and states that to use a different administrator identity a NEW configuration grain must be created because an existing grain can never be re-claimed. A page that offers the setup form again is a FAILURE — it would let anyone who later gains access to this grain take over the installation."
+        "expectedResult": "The grain answers 409 with \"Setup is already complete\", naming the account that completed it, and states that to use a different administrator identity a NEW configuration grain must be created because an existing grain can never be re-claimed. A page that offers the setup form again is a FAILURE \u2014 it would let anyone who later gains access to this grain take over the installation."
       },
       {
-        "action": "Click \"Connect workspace\" on the Compliance workspace card, read the page without completing the capability picker, then click \"← Back to config\".",
-        "expectedResult": "The page \"Connect compliance workspace\" renders with a Case type selector defaulting to \"Account opening\", an optional \"Workspace reference\" field, and a \"Connect…\" button. Nothing is bound by viewing it. The back link returns to the landing page. Note the honest limitation this probe records: the page shows no current binding, so it looks identical whether or not a workspace is already connected."
+        "action": "Click \"Connect workspace\" on the Compliance workspace card, read the page without completing the capability picker, then click \"\u2190 Back to config\".",
+        "expectedResult": "The page \"Connect compliance workspace\" renders with a Case type selector defaulting to \"Account opening\", an optional \"Workspace reference\" field, and a \"Connect\u2026\" button. Nothing is bound by viewing it. The back link returns to the landing page. Note the honest limitation this probe records: the page shows no current binding, so it looks identical whether or not a workspace is already connected."
       },
       {
         "action": "Return to the landing page and click \"Configure tenant\" on the PSP tenant card.",
-        "expectedResult": "The page \"PSP tenant configuration\" renders successfully with every operator input blank and no error banner — this is the correct empty state, not a failure. One value is populated: \"Lease issuer public key\" shows a real base58 key, because the grain generates its own lease-signing identity at boot rather than receiving one from a deployer. The write-only Fineract secret field is blank, and the page states that the namedcoin-sidecar is not leased from this pearl."
+        "expectedResult": "The page \"PSP tenant configuration\" renders successfully with every operator input blank and no error banner \u2014 this is the correct empty state, not a failure. One value is populated: \"Lease issuer public key\" shows a real base58 key, because the grain generates its own lease-signing identity at boot rather than receiving one from a deployer. The write-only Fineract secret field is blank. The page requires signed receipt and encryption-key enrolments for Fineract, TeleScreen, and NamedCoin; all three receive the same signed non-secret tenant snapshot, while NamedCoin's separate HMAC credential remains owned by its configuration pearl."
       },
       {
         "action": "Reopen the grain from the shell to return to the landing page (the tenant page intentionally carries no in-app back link), then click \"Connect NamedCoin station\" on the NamedCoin identity station card.",
         "expectedResult": "The grain answers 503 with the plain-text refusal \"NamedCoin cannot be connected until the signed tenant configuration and exact account-opening template are ready.\" This is the correct fresh-grain result and the probe records it as the pearl's real ordering constraint: the NamedCoin binding cannot be claimed before a sealed tenant configuration exists. A page that offers a NamedCoin picker on an unsealed grain is a FAILURE."
       }
     ],
-    "expectedResult": "A fresh configuration grain serves ONLY its first-launch setup page and refuses every configuration surface and every AdminGate vending route until an authorised operator enrols the install-admin identity through the UI. That enrolment is one-shot, attributable to the enrolling Sandstorm account, persisted in the grain's own store, and cannot be repeated. Once complete the grain serves its authenticated operator landing page and its connect and tenant panels in a truthful empty state — every binding unconnected, every secret field blank, and the NamedCoin path explicitly refused until a tenant configuration is sealed. This probe binds no capability, saves no configuration, and delivers no lease."
+    "expectedResult": "A fresh configuration grain serves its owner-only first-launch setup page (plus health/version endpoints) and refuses every browser configuration surface and every broad AdminGate vending route until its owner enrols the install-admin identity through the UI. The signed purpose-confined NamedCoin resolver remains independently governed by protocol 1.12, and retained STATION_STURDYREF* restoration is an inert upgrade-compatibility exception that cannot be consumed through the unarmed broad gate. Enrolment is one-shot, attributable to the enrolling Sandstorm owner, persisted as one atomic compound authority+receipt record in the grain's own store, and cannot be repeated. Once complete the grain serves its authenticated operator landing page and its connect and tenant panels in a truthful empty state \u2014 every probe fixture binding unconnected, every secret field blank, and the NamedCoin station claim explicitly refused until a tenant configuration is sealed. This probe binds no capability, saves no configuration, and delivers no lease."
   },
   "fixtures": [
     {
       "name": "Install-admin Ed25519 PUBLIC key",
       "purpose": "Complete the first-launch setup so any configuration screen becomes reachable. Steps 1 and 2 of the probe deliberately observe the fail-closed state BEFORE it is supplied.",
-      "setup": "Have the install-admin Ed25519 PUBLIC key to hand as 64 lower-case hexadecimal characters, and type it into the setup form in step 3. It is entered THROUGH THE UI by the signed-in grain owner; it is never written into a deployer env file, a pkgdef environ, or any /var seed — those paths are retired and are not read by this artifact. This is a public authorisation identity, not a service credential; the matching private key stays in the operator's offline signer."
+      "setup": "Have the install-admin Ed25519 PUBLIC key to hand as 64 lower-case hexadecimal characters, and type it into the setup form in step 3. It is entered THROUGH THE UI by the signed-in grain owner; it is never written into a deployer env file, a pkgdef environ, or any /var seed \u2014 those paths are retired and are not read by this artifact. This is a public authorisation identity, not a service credential; the matching private key stays in the operator's offline signer."
     },
     {
       "name": "A signed-in grain owner",
-      "purpose": "The setup step is authorised by Sandstorm's own resolved session: it requires the admin permission AND a signed-in identity, and records which account performed it.",
-      "setup": "Open the grain as its owner in a logged-in Sandstorm session. Do not perform the probe through an anonymous sharing link — an anonymous visitor is refused with 403 by design, and that refusal is itself part of the contract."
+      "purpose": "The setup step is authorised by Sandstorm's owner-only permission ordinal: bootstrap-owner is granted by no shared role, and a non-empty resolved identity is also required and recorded.",
+      "setup": "Open the grain as its owner in a logged-in Sandstorm session. Do not use any sharing link, including a signed-in explicitly Admin share: shared roles never carry bootstrap-owner and are refused with 403. Anonymous sessions are also refused."
     },
     {
       "name": "Nothing else configured",
       "purpose": "Prove the pearl reports an unbound installation honestly instead of presenting an unconnected service as ready.",
-      "setup": "Do not connect a compliance workspace, service bundle, template service or NamedCoin station; do not save operational wiring; do not save or activate a tenant configuration. No sidecar enrolment and no outbound network access is required for this probe."
+      "setup": "Do not connect a compliance workspace, service bundle, template service or NamedCoin station; do not save operational wiring; do not save or activate a tenant configuration. Ensure no legacy STATION_STURDYREF or STATION_STURDYREF_<TYPE> compatibility value is supplied for this fresh-grain probe. No sidecar enrolment and no outbound network access is required."
     }
   ],
   "cleanup": {

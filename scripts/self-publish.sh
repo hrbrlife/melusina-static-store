@@ -228,8 +228,25 @@ fi
 info "EXACT-CURRENT: no app chain write; existing Active ReleaseEntry remains authoritative"
 KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("releaseEntryPda") or "")' "$CAT_PATH/RELEASE.json")"
 [[ -n "$KNOWN_RELEASE_PDA" ]] || fail "exact-current release has no releaseEntryPda"
+assert_exact_release_active() {
+  local active_set="$1"
+  python3 - "$active_set" "$KNOWN_RELEASE_PDA" "$CAT_PATH/RELEASE.json" <<'PY'
+import json, sys
+
+active_path, expected_pda, release_path = sys.argv[1:]
+release = json.load(open(release_path, encoding="utf-8"))
+rows = [json.loads(line) for line in open(active_path, encoding="utf-8") if line.strip()]
+matches = [row for row in rows if row.get("pda") == expected_pda]
+if len(matches) != 1:
+    raise SystemExit(f"exact-current release {expected_pda} is not uniquely Active")
+row = matches[0]
+for field in ("version", "appHash"):
+    if row.get(field) != release.get(field):
+        raise SystemExit(f"exact-current Active ReleaseEntry {expected_pda} {field} mismatch")
+PY
+}
 "$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_BEFORE"
-[[ "$(wc -l <"$ACTIVE_BEFORE" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry before promotion"
+assert_exact_release_active "$ACTIVE_BEFORE" || fail "exact-current release is not Active before promotion"
 
 # Envelope P is freshly generated here and is valid only at /publish. It never
 # reuses the stage nonce or purpose.
@@ -238,7 +255,7 @@ KNOWN_RELEASE_PDA="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))
   --store "$STORE_URL" --license-mint "$STORE_LICENSE_MINT" \
   --domain "$STORE_DOMAIN" --rpc-url "$RPC_URL"
 "$ACTIVE_BIN" -rpc-url "$RPC_URL" -known-pda "$KNOWN_RELEASE_PDA" | LC_ALL=C sort >"$ACTIVE_AFTER"
-[[ "$(wc -l <"$ACTIVE_AFTER" | tr -d '[:space:]')" == "1" ]] || fail "exact-current requires exactly one Active ReleaseEntry after promotion"
+assert_exact_release_active "$ACTIVE_AFTER" || fail "exact-current release is not Active after promotion"
 cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER" || fail "Active ReleaseEntry set changed during exact-current promotion"
 
 APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"

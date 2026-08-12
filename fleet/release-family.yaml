@@ -45,9 +45,16 @@ families:
         role: four-eyes-casework
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
-        source_path: /home/user/Desktop/worktrees/governed-cyberteller-0188
+        # v168 is the tested v164→v165 SQLite migration repair. The former
+        # governed-cyberteller-0188 checkout no longer exists after the
+        # workstation recovery; this clean, pushed release worktree is its
+        # explicit replacement.
+        source_path: worktrees/cyberteller-v168-governed-release
         publish_slug: cyberteller
         catalog_name: cyberteller
+        catalog_developer: hrbrlife
+        catalog_repo: cyberteller
+        catalog_slug: cyberteller
         role: crypto-deposit-and-swap
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h

@@ -170,6 +170,7 @@ def test_release_executor_contract_is_present():
     assert "--execute-existing" in source
     assert "preExecuteIx ? [preExecuteIx, executeIx] : [executeIx]" in source
     assert "SQUADS_NODE_MODULES" in source
+    assert "state.appId" in source
 
 
 def test_build_keeps_runtime_contract_outside_pearl_ceremony_tree():

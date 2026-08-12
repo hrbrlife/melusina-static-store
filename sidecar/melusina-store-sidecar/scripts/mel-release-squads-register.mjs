@@ -204,7 +204,7 @@ async function run() {
       return;
     }
     if (await nextIndex(connection, multisigPda) !== transactionIndex) fail("Squads transaction index changed after dry-run; refuse to create a mismatched proposal");
-    const auditSigs = await createProposal(connection, multisigPda, vaultPda, transactionIndex, [decodeIx(readJSON(ixPath))], `Melusina ReleaseEntry ${state.appID}`);
+    const auditSigs = await createProposal(connection, multisigPda, vaultPda, transactionIndex, [decodeIx(readJSON(ixPath))], `Melusina ReleaseEntry ${state.appId}`);
     process.stdout.write(JSON.stringify({ status: "proposed", transactionPda: state.transactionPda, proposalPda: state.proposalPda, alreadyProposed: false, auditSigs }) + "\n");
     return;
   }

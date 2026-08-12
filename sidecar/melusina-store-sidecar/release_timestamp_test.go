@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"math"
 	"net/http"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
@@ -92,7 +94,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 
 	t.Run("first_publish_no_served_slot", func(t *testing.T) {
 		dist := t.TempDir()
-		if err := verifyReleaseTimestampForward(dist, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
 			t.Fatalf("first publish must pass, got: %v", err)
 		}
 	})
@@ -100,7 +102,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 	t.Run("strictly_greater_accepts", func(t *testing.T) {
 		dist := t.TempDir()
 		writeServedReleaseClaim(t, dist, appID, 1000)
-		if err := verifyReleaseTimestampForward(dist, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
 			t.Fatalf("strictly-greater must pass, got: %v", err)
 		}
 	})
@@ -108,7 +110,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 	t.Run("equal_rejects", func(t *testing.T) {
 		dist := t.TempDir()
 		writeServedReleaseClaim(t, dist, appID, 2000)
-		err := verifyReleaseTimestampForward(dist, appID, ReleaseJSON{SignedAtUnix: 2000})
+		err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000})
 		if err == nil || !strings.Contains(err.Error(), "check=release_timestamp_monotonic") {
 			t.Fatalf("equal timestamp must reject with monotonic check, got: %v", err)
 		}
@@ -117,7 +119,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 	t.Run("older_rejects", func(t *testing.T) {
 		dist := t.TempDir()
 		writeServedReleaseClaim(t, dist, appID, 3000)
-		err := verifyReleaseTimestampForward(dist, appID, ReleaseJSON{SignedAtUnix: 2000})
+		err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000})
 		if err == nil || !strings.Contains(err.Error(), "check=release_timestamp_monotonic") {
 			t.Fatalf("older timestamp must reject with monotonic check, got: %v", err)
 		}
@@ -130,7 +132,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 		// prior to advance past, even with an equal timestamp.
 		writeServedReleaseClaim(t, dist, appID, 2000) // writes appHash = "aaaa...a" (64)
 		rel := ReleaseJSON{AppHash: strings.Repeat("a", 64), SignedAtUnix: 2000}
-		if err := verifyReleaseTimestampForward(dist, appID, rel); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, rel); err != nil {
 			t.Fatalf("same-app_hash idempotent re-publish must pass, got: %v", err)
 		}
 	})
@@ -140,8 +142,40 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 		// A served release under a DIFFERENT appId slot must not bar this app's
 		// publish, even with a much higher timestamp.
 		writeServedReleaseClaim(t, dist, "otherslot00000000000000000000000000000000000000000000", 9000)
-		if err := verifyReleaseTimestampForward(dist, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000}); err != nil {
 			t.Fatalf("different-slot prior must not bar, got: %v", err)
+		}
+	})
+
+	t.Run("malformed_prior_fails_closed", func(t *testing.T) {
+		dist := t.TempDir()
+		path := filepath.Join(dist, "attest", appID, "RELEASE.json")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("not-json"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000}); err == nil || !strings.Contains(err.Error(), "malformed") {
+			t.Fatalf("malformed served prior did not fail closed: %v", err)
+		}
+	})
+
+	t.Run("symlinked_prior_fails_closed", func(t *testing.T) {
+		dist := t.TempDir()
+		dir := filepath.Join(dist, "attest", appID)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(dist, "outside-release.json")
+		if err := os.WriteFile(target, mustJSON(t, ReleaseJSON{AppHash: strings.Repeat("a", 64), SignedAtUnix: 1000}), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(dir, "RELEASE.json")); err != nil {
+			t.Fatal(err)
+		}
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, appID, ReleaseJSON{SignedAtUnix: 2000}); err == nil {
+			t.Fatal("symlinked served prior did not fail closed")
 		}
 	})
 
@@ -149,7 +183,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 		dist := t.TempDir()
 		writeServedReleaseClaim(t, dist, appID, 9000)
 		// No served-slot identity to anchor the bar; the on-chain gate still governs.
-		if err := verifyReleaseTimestampForward(dist, "", ReleaseJSON{SignedAtUnix: 1}); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, "", ReleaseJSON{SignedAtUnix: 1}); err != nil {
 			t.Fatalf("empty appId must skip, got: %v", err)
 		}
 	})
@@ -158,7 +192,7 @@ func TestVerifyReleaseTimestampForward(t *testing.T) {
 		dist := t.TempDir()
 		// A traversal appId must never be joined into the dist path; it is rejected
 		// as unsafe and the check skips (defense-in-depth).
-		if err := verifyReleaseTimestampForward(dist, "../../etc", ReleaseJSON{SignedAtUnix: 1}); err != nil {
+		if err := verifyReleaseTimestampForward(AppCatalogSnapshot{Root: dist}, "../../etc", ReleaseJSON{SignedAtUnix: 1}); err != nil {
 			t.Fatalf("unsafe appId must skip, got: %v", err)
 		}
 	})
@@ -197,13 +231,11 @@ func TestHandlePublish_AttestationProximityReject(t *testing.T) {
 		status:       verify.AttestationStatusActive,
 		registeredAt: f.rel.SignedAtUnix + 48*3600,
 	}
-	svc := newTestService(t, cfg, m, op)
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	acceptPublisherOf(svc, sig)
-
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("got %d, want 403: %s", w.Code, w.Body.String())
@@ -228,13 +260,11 @@ func TestHandlePublish_MonotonicTimestampReject(t *testing.T) {
 	f.pinAccept(m, operatorPub) // registeredAt = signedAtUnix -> proximity passes
 	// Serve a prior version of THIS app's slot (same appId) with an EQUAL claim.
 	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix)
-	svc := newTestService(t, cfg, m, op)
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	acceptPublisherOf(svc, sig)
-
 	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
 	if w.Code != http.StatusConflict {
 		t.Fatalf("got %d, want 409: %s", w.Code, w.Body.String())
@@ -260,14 +290,13 @@ func TestHandlePublish_MonotonicTimestampAccept(t *testing.T) {
 	// Served prior claims an OLDER time -> the submitted publish strictly advances.
 	writeServedReleaseClaim(t, cfg.DistDir, metadataAppID(f.metadata), f.rel.SignedAtUnix-1000)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
-	svc := newTestService(t, cfg, m, op)
-
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	sig := signPublish(t, pub, op.Public(), f.spk, release)
-	acceptPublisherOf(svc, sig)
-
-	w := doPublish(t, svc, jsonPublishBody(t, sig, release, f.spk, f.metadata))
+	svc := newTestService(t, cfg, m, op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	w := stageThenPromote(t, svc, pub, op.Public(), f.spk, release, func(sig envelope.Signed) *bytes.Buffer {
+		return jsonPublishBody(t, sig, release, f.spk, f.metadata)
+	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("got %d, want 200: %s", w.Code, w.Body.String())
 	}

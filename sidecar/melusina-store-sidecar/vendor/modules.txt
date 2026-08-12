@@ -1,0 +1,27 @@
+# filippo.io/edwards25519 v1.2.0
+## explicit; go 1.24.0
+filippo.io/edwards25519
+filippo.io/edwards25519/field
+# github.com/hrbrlife/melusina-attest v0.0.0-00010101000000-000000000000 => ../../../Melusina/shared/melusina-attest
+## explicit; go 1.24.0
+github.com/hrbrlife/melusina-attest/canonical
+github.com/hrbrlife/melusina-attest/derive
+github.com/hrbrlife/melusina-attest/envelope
+github.com/hrbrlife/melusina-attest/graincert
+github.com/hrbrlife/melusina-attest/identity
+github.com/hrbrlife/melusina-attest/pda
+github.com/hrbrlife/melusina-attest/sidecarresult
+# github.com/hrbrlife/melusina-identity-gate v0.0.0-00010101000000-000000000000 => ../../../Melusina/shared/melusina-identity-gate
+## explicit; go 1.22
+github.com/hrbrlife/melusina-identity-gate/bundle
+github.com/hrbrlife/melusina-identity-gate/envelope
+github.com/hrbrlife/melusina-identity-gate/verify
+# github.com/melusina-os/melusina-solana-primitives v0.0.0 => ../../../Melusina/shared/melusina-solana-primitives
+## explicit; go 1.24.0
+github.com/melusina-os/melusina-solana-primitives
+# golang.org/x/crypto v0.28.0
+## explicit; go 1.20
+golang.org/x/crypto/hkdf
+# github.com/hrbrlife/melusina-attest => ../../../Melusina/shared/melusina-attest
+# github.com/hrbrlife/melusina-identity-gate => ../../../Melusina/shared/melusina-identity-gate
+# github.com/melusina-os/melusina-solana-primitives => ../../../Melusina/shared/melusina-solana-primitives

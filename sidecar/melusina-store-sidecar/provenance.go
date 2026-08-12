@@ -15,11 +15,15 @@ import (
 // the RAW 96-byte tuple appHash||releaseHash||servingDomainHash (contract C-2);
 // hex/base58 in the JSON below are presentation only.
 type Receipt struct {
-	AppHash           string `json:"appHash"`           // lowercase hex of [32]byte
-	ReleaseHash       string `json:"releaseHash"`       // lowercase hex of [32]byte
-	ServingDomainHash string `json:"servingDomainHash"` // lowercase hex of [32]byte (= StoreDomainHash(cfg.Domain))
-	OperatorSignature string `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
-	StoredAt          int64  `json:"storedAt"`          // unix seconds
+	Schema            string             `json:"schema,omitempty"`
+	AppHash           string             `json:"appHash"`           // lowercase hex of [32]byte
+	ReleaseHash       string             `json:"releaseHash"`       // lowercase hex of [32]byte
+	ServingDomainHash string             `json:"servingDomainHash"` // lowercase hex of [32]byte (= StoreDomainHash(cfg.Domain))
+	OperatorSignature string             `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
+	StoredAt          int64              `json:"storedAt"`          // unix seconds
+	Stage             *StageReceipt      `json:"stage,omitempty"`
+	Rollout           *AppRolloutReceipt `json:"rollout,omitempty"`
+	Catalog           *AppCatalogPointer `json:"catalog,omitempty"`
 }
 
 // receiptMessage assembles the EXACT bytes the operator signs / a verifier
@@ -42,6 +46,7 @@ func SignReceipt(operator *identity.Private, appHash, releaseHash, servingDomain
 	msg := receiptMessage(appHash, releaseHash, servingDomainHash)
 	sig := operator.Sign(msg)
 	return Receipt{
+		Schema:            "melusina-app-promotion-receipt-v1",
 		AppHash:           hex.EncodeToString(appHash[:]),
 		ReleaseHash:       hex.EncodeToString(releaseHash[:]),
 		ServingDomainHash: hex.EncodeToString(servingDomainHash[:]),

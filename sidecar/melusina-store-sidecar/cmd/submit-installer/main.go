@@ -126,11 +126,6 @@ func run(args []string, stdout io.Writer) error {
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
-	// KindPublishRequest (§4.3/D-9). THIS SITE WAS MISSING FROM D-9's KILL-LIST,
-	// which named only handler.go:187,315 + cmd/submit. It is a real KindArtifact
-	// signing site: had the rename landed against that list alone, every shell and
-	// Python-sidecar publish (the HT14 path) would have kept emitting the old kind
-	// and failed closed at the gate — surfacing only at a live publish.
 	signed, err := envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
 		RequestHash: hashHex,
 		TTL:         ttl,

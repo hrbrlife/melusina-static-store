@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"bytes"
@@ -46,20 +48,21 @@ type activeEntry struct {
 
 func main() {
 	rpcURL := flag.String("rpc-url", "", "Solana JSON-RPC endpoint (required)")
-	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; required — used to read app_id)")
+	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; alternative to -app-id)")
+	appIDFlag := flag.String("app-id", "", "immutable Sandstorm base32 appId (alternative to -known-pda)")
 	programIDFlag := flag.String("program-id", defaultLicenseProgramID, "license-registry program id")
 	flag.Parse()
-	if *rpcURL == "" || *knownPDA == "" {
-		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> -known-pda <pda>")
+	if *rpcURL == "" || (*knownPDA == "" && *appIDFlag == "") || (*knownPDA != "" && *appIDFlag != "") {
+		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> (-app-id <Sandstorm-appId> | -known-pda <pda>)")
 		os.Exit(2)
 	}
-	if err := run(*rpcURL, *knownPDA, *programIDFlag); err != nil {
+	if err := run(*rpcURL, *knownPDA, *appIDFlag, *programIDFlag); err != nil {
 		fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(rpcURL, knownPDA, programIDB58 string) error {
+func run(rpcURL, knownPDA, appIDText, programIDB58 string) error {
 	programID, err := primitives.PubkeyFromBase58(programIDB58)
 	if err != nil {
 		return fmt.Errorf("bad -program-id: %w", err)
@@ -68,16 +71,24 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	data, err := cr.GetAccountInfo(ctx, knownPDA)
-	if err != nil {
-		return fmt.Errorf("fetch known PDA %s: %w", knownPDA, err)
-	}
-	if data == nil {
-		return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
-	}
-	appID, err := verify.ReadReleaseEntryAppID(data)
-	if err != nil {
-		return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+	var appID [32]byte
+	if appIDText != "" {
+		appID, err = decodeSandstormAppID(appIDText)
+		if err != nil {
+			return fmt.Errorf("decode -app-id: %w", err)
+		}
+	} else {
+		data, err := cr.GetAccountInfo(ctx, knownPDA)
+		if err != nil {
+			return fmt.Errorf("fetch known PDA %s: %w", knownPDA, err)
+		}
+		if data == nil {
+			return fmt.Errorf("known PDA %s not found on-chain", knownPDA)
+		}
+		appID, err = verify.ReadReleaseEntryAppID(data)
+		if err != nil {
+			return fmt.Errorf("decode app_id from %s: %w", knownPDA, err)
+		}
 	}
 	fmt.Fprintf(os.Stderr, "app_id (base58 of raw bytes): %s\n", primitives.EncodeBase58(appID[:]))
 
@@ -104,6 +115,25 @@ func run(rpcURL, knownPDA, programIDB58 string) error {
 	}
 	fmt.Fprintf(os.Stderr, "%d Active ReleaseEntry account(s) found for this app_id\n", found)
 	return nil
+}
+
+// decodeSandstormAppID derives the ReleaseEntry app_id representation. The
+// user-visible Sandstorm id is an immutable lower-case 52-character token, but
+// ReleaseEntry stores SHA-256(the appId text), as do the store submit and
+// catalog paths. Decoding it as base32 produced a different key (and rejects
+// real ids containing characters outside base32hex), so no prior releases were
+// found for a perfectly valid app.
+func decodeSandstormAppID(value string) ([32]byte, error) {
+	var out [32]byte
+	if len(value) != 52 || strings.ToLower(value) != value {
+		return out, errors.New("Sandstorm appId must be exactly 52 lower-case characters")
+	}
+	for _, r := range value {
+		if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') {
+			return out, errors.New("Sandstorm appId contains an invalid character")
+		}
+	}
+	return sha256.Sum256([]byte(value)), nil
 }
 
 type programAccount struct {

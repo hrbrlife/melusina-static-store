@@ -124,6 +124,63 @@ func TestRunReusesCompleteShardSet(t *testing.T) {
 	}
 }
 
+func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
+	dir := t.TempDir()
+	shardsDir := filepath.Join(dir, "shards")
+	binaryPath := filepath.Join(dir, "bin")
+	if err := os.WriteFile(binaryPath, []byte("bin"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	certPath, _ := writeTestCert(t, dir, "melusina-os.org")
+	licenseMint := randPubkeyB58(t)
+
+	base := []string{
+		"-shards-dir", shardsDir,
+		"-license-mint", licenseMint,
+		"-sidecar-id", "store",
+		"-binary", binaryPath,
+		"-tls-cert", certPath,
+	}
+	var v1 bytes.Buffer
+	if err := run(append(append([]string{}, base...),
+		"-domain", "bazaar.melusina-os.org",
+		"-key-version", "1",
+	), &v1); err != nil {
+		t.Fatal(err)
+	}
+	var first ceremonyReport
+	if err := json.Unmarshal(v1.Bytes(), &first); err != nil {
+		t.Fatal(err)
+	}
+
+	var v3 bytes.Buffer
+	if err := run(append(append([]string{}, base...),
+		"-domain", "melusina-os.org",
+		"-key-version", "3",
+		"-operator-key-version", "1",
+		"-operator-domain", "bazaar.melusina-os.org",
+	), &v3); err != nil {
+		t.Fatal(err)
+	}
+	var rotated ceremonyReport
+	if err := json.Unmarshal(v3.Bytes(), &rotated); err != nil {
+		t.Fatal(err)
+	}
+	if rotated.IdentityRef.KeyVersion != 3 || rotated.IdentityRef.Domain != "melusina-os.org" {
+		t.Fatalf("binding Ref not rotated: %+v", rotated.IdentityRef)
+	}
+	if rotated.OperatorIdentityRef != first.OperatorIdentityRef {
+		t.Fatalf("operator Ref drifted: got %+v want %+v", rotated.OperatorIdentityRef, first.OperatorIdentityRef)
+	}
+	if rotated.RegisterSidecarInput.SigningPubkeyBase58 != first.RegisterSidecarInput.SigningPubkeyBase58 ||
+		rotated.RegisterSidecarInput.EncryptionPubkeyBase58 != first.RegisterSidecarInput.EncryptionPubkeyBase58 {
+		t.Fatal("operator public keys rotated with the binding")
+	}
+	if rotated.ConfigBootIdentity.OperatorKeyVersion != 1 || rotated.ConfigBootIdentity.OperatorDomain != "bazaar.melusina-os.org" {
+		t.Fatalf("config snippet omitted stable operator coordinates: %+v", rotated.ConfigBootIdentity)
+	}
+}
+
 func TestRunRejectsPartialShardSet(t *testing.T) {
 	dir := t.TempDir()
 	shardsDir := filepath.Join(dir, "shards")

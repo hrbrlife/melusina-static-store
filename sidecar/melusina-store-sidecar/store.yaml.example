@@ -30,6 +30,10 @@ policy:
 rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
 listen_addr: ":8443"
 dist_dir: "dist-publish"           # the build output to serve (relative to CWD or absolute)
+private_stage_dir: "/var/lib/melusina-store/private-app-candidates"  # MUST be outside dist_dir; mode 0700
+catalog_generation_root: "/var/lib/melusina-store/app-catalog-generations"  # immutable generations; sibling filesystem to dist_dir
+catalog_migration_state_dir: "/var/lib/melusina-store/migrations"  # root-owned 0700; apply helper owns writer.lock + catalog-v104.json
+app_rollback_window_seconds: 86400  # previous Active app remains chain-gated/servable for rollback; negative disables
 
 tls:
   cert_path: "/etc/melusina/store/tls/cert.pem"

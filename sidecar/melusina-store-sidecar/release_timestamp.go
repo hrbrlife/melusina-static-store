@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"os"
 	"strings"
 )
 
@@ -77,8 +77,8 @@ func verifyAttestationProximity(rel ReleaseJSON, meta releaseEntryMeta) error {
 
 // verifyReleaseTimestampForward (hygiene check b) rejects a publish whose claimed
 // release time does not strictly advance past the currently-published version of
-// the SAME app. The prior version is the descriptor the catalog CURRENTLY serves
-// for this app's slot — <distDir>/attest/<appId>/RELEASE.json, where appId is the
+// the SAME app. The prior version is the descriptor the resolved snapshot CURRENTLY
+// serves for this app's slot — attest/<appId>/RELEASE.json, where appId is the
 // Sandstorm app identity (from the publish's metadata.json). appId is the stable
 // served-slot key: it is what the UI overwrites on re-publish and it does NOT
 // change across a master-NFT re-anchor (unlike masterNftMint), so it is the correct
@@ -87,16 +87,23 @@ func verifyAttestationProximity(rel ReleaseJSON, meta releaseEntryMeta) error {
 // before it is joined into the dist path; a missing/unsafe appId skips the check
 // (the on-chain version+supersede gate still governs). READ-ONLY over the served
 // tree.
-func verifyReleaseTimestampForward(distDir, appID string, rel ReleaseJSON) error {
+func verifyReleaseTimestampForward(snapshot AppCatalogSnapshot, appID string, rel ReleaseJSON) error {
 	if !isSafePathSegment(appID) {
 		// No safe served-slot identity to anchor the monotonic bar (missing / odd /
 		// traversal appId). The on-chain checks (app_hash, Active ReleaseEntry, semver
 		// version-bump, supersede) still fully govern this publish.
 		return nil
 	}
-	prior, ok := readReleaseClaim(filepath.Join(distDir, "attest", appID, "RELEASE.json"))
+	priorBytes, err := readSnapshotFileBounded(snapshot, "attest/"+appID+"/RELEASE.json", maxAppPublishBody)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil // first publish for this slot
+	}
+	if err != nil {
+		return fmt.Errorf("check=release_timestamp_monotonic: read current published release: %w", err)
+	}
+	prior, ok := parseReleaseClaim(priorBytes)
 	if !ok {
-		return nil // first publish for this slot (or an unreadable/malformed prior)
+		return errors.New("check=release_timestamp_monotonic: current published release is malformed")
 	}
 	// If the served descriptor IS this exact release (same content app_hash), it is an
 	// idempotent re-publish — or a copy of THIS publish already staged into the served

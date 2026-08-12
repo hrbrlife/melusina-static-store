@@ -455,13 +455,23 @@ def finalize_release(context: dict[str, Any]) -> None:
     ])
 
 
-def finalize_release_with_runtime_binding(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
+def rebind_runtime_contract(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str) -> Path:
+    state = read_json(clean_abs(str(context["statePath"]), "provider statePath"))
+    if state.get("appId") != app_id or state.get("appHash") != app_hash or state.get("releaseHash") != release_hash or state.get("version") != version:
+        raise ProviderError("prepared proposal facts do not match the candidate being rebound")
+    nonce = state.get("releaseNonce")
+    if not isinstance(nonce, str) or not nonce:
+        raise ProviderError("prepared proposal is missing its release nonce")
+    return rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
+
+
+def finalize_release_with_runtime_binding(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str) -> Path:
     # Pearl finalization rewrites RELEASE.json from the on-chain ReleaseEntry.
     # Re-apply the independently-materialized runtime-contract binding afterwards:
     # it is a Store serving contract, not an on-chain ReleaseEntry field, and the
     # subsequent submit must bind both surfaces to this exact candidate.
     finalize_release(context)
-    return rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
+    return rebind_runtime_contract(context, app_id, app_hash, release_hash, version)
 
 
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
@@ -529,7 +539,7 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
         raise ProviderError("prepared proposal appId does not match approval request")
     finalized = finalize_release_with_runtime_binding(
         context, app_id, str(state["appHash"]), str(state["releaseHash"]),
-        str(state["version"]), str(state["releaseNonce"]),
+        str(state["version"]),
     )
     if finalized != Path(context["releasePath"]):
         raise ProviderError("finalized release path drifted from the immutable candidate context")
@@ -544,7 +554,8 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
 
 def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
     context = require_context(app_id)
-    release = read_json(Path(context["releasePath"]))
+    release_path = rebind_runtime_contract(context, app_id, app_hash, release_hash, version)
+    release = read_json(release_path)
     if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
         raise ProviderError("promotion context no longer binds the staged candidate")
     run(submit_args(context, receipt_out, stage_only=False))

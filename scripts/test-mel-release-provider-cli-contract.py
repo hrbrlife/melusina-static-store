@@ -63,18 +63,18 @@ def test_finalize_uses_only_supported_flags():
 
 
 def test_finalize_rebinds_runtime_contract_after_pearl_finalize():
-    context = {"releasePath": "/tmp/RELEASE.json"}
+    context = {"releasePath": "/tmp/RELEASE.json", "statePath": "/tmp/state.json"}
     order = []
-    old_finalize, old_rewrite = provider.finalize_release, provider.rewrite_release
+    old_finalize, old_rebind = provider.finalize_release, provider.rebind_runtime_contract
     try:
         provider.finalize_release = lambda c: order.append(("finalize", c))
-        provider.rewrite_release = lambda c, *facts: order.append(("rebind", c, facts)) or Path(c["releasePath"])
-        got = provider.finalize_release_with_runtime_binding(context, "app", "a" * 64, "b" * 64, "1.2.3", "c" * 32)
+        provider.rebind_runtime_contract = lambda c, *facts: order.append(("rebind", c, facts)) or Path(c["releasePath"])
+        got = provider.finalize_release_with_runtime_binding(context, "app", "a" * 64, "b" * 64, "1.2.3")
     finally:
-        provider.finalize_release, provider.rewrite_release = old_finalize, old_rewrite
+        provider.finalize_release, provider.rebind_runtime_contract = old_finalize, old_rebind
     assert got == Path("/tmp/RELEASE.json")
     assert [step[0] for step in order] == ["finalize", "rebind"]
-    assert order[1][2] == ("app", "a" * 64, "b" * 64, "1.2.3", "c" * 32)
+    assert order[1][2] == ("app", "a" * 64, "b" * 64, "1.2.3")
 
 
 def test_approve_rebinds_before_copying_final_release():
@@ -82,6 +82,13 @@ def test_approve_rebinds_before_copying_final_release():
     approve = source.split("def approve(", 1)[1].split("def promote(", 1)[0]
     assert "finalize_release_with_runtime_binding(" in approve
     assert approve.index("finalize_release_with_runtime_binding(") < approve.index("shutil.copyfile(context[\"releasePath\"], final_release_out)")
+
+
+def test_promote_rebinds_before_store_submission():
+    source = (HERE / "mel-release-provider.py").read_text()
+    promote = source.split("def promote(", 1)[1].split("def active_releases(", 1)[0]
+    assert "rebind_runtime_contract(context, app_id, app_hash, release_hash, version)" in promote
+    assert promote.index("rebind_runtime_contract(context, app_id, app_hash, release_hash, version)") < promote.index("submit_args(context, receipt_out, stage_only=False)")
 
 
 def test_propose_uses_only_supported_flags():
@@ -245,6 +252,7 @@ if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_finalize_rebinds_runtime_contract_after_pearl_finalize()
     test_approve_rebinds_before_copying_final_release()
+    test_promote_rebinds_before_store_submission()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()

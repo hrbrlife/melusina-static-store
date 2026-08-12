@@ -174,6 +174,15 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "money-path" {
 		t.Fatalf("namedcoin-admin fields wrong: %+v", admin)
 	}
+	popaye, err := fam.Select("popaye")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if popaye.SourcePath != "worktrees/popaye-account-opening-expiry-20260809" ||
+		popaye.CatalogDeveloper != "hrbrlife" || popaye.CatalogRepo != "ccash_go_htmx" ||
+		popaye.CatalogSlug != "popaye" {
+		t.Fatalf("popaye governed release coordinates wrong: %+v", popaye)
+	}
 }
 
 // TestLoadFamilyFailsClosedOnTabIndent proves a tab-indented app field is rejected

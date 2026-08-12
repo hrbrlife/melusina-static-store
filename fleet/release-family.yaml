@@ -24,12 +24,15 @@ families:
         role: issuer-operations
       popaye:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
-        # This checkout is deliberately sibling to the canonical Fineract
-        # sidecar, so Popaye's declared local Go-module dependency resolves
-        # exactly as it does in the production source topology.
-        source_path: /home/user/Desktop/governed-popaye-0168
+        # The release provider resolves this relative to MEL_RELEASE_DESKTOP_ROOT.
+        # This checked-out candidate is clean, pushed, and builds Popaye with its
+        # declared local module topology intact.
+        source_path: worktrees/popaye-account-opening-expiry-20260809
         publish_slug: popaye
         catalog_name: popaye
+        catalog_developer: hrbrlife
+        catalog_repo: ccash_go_htmx
+        catalog_slug: popaye
         role: account-opening-and-client-money-ui
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0

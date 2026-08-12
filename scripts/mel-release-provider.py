@@ -455,6 +455,15 @@ def finalize_release(context: dict[str, Any]) -> None:
     ])
 
 
+def finalize_release_with_runtime_binding(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
+    # Pearl finalization rewrites RELEASE.json from the on-chain ReleaseEntry.
+    # Re-apply the independently-materialized runtime-contract binding afterwards:
+    # it is a Store serving contract, not an on-chain ReleaseEntry field, and the
+    # subsequent submit must bind both surfaces to this exact candidate.
+    finalize_release(context)
+    return rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
+
+
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
     context = require_context(app_id)
     if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig or env("MEL_RELEASE_SQUADS_VAULT", required=True) != vault:
@@ -516,7 +525,14 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
         result = last_json(raw)
         if result.get("status") != "executed":
             raise ProviderError("Squads did not execute the registered proposal")
-    finalize_release(context)
+    if state.get("appId") != app_id:
+        raise ProviderError("prepared proposal appId does not match approval request")
+    finalized = finalize_release_with_runtime_binding(
+        context, app_id, str(state["appHash"]), str(state["releaseHash"]),
+        str(state["version"]), str(state["releaseNonce"]),
+    )
+    if finalized != Path(context["releasePath"]):
+        raise ProviderError("finalized release path drifted from the immutable candidate context")
     shutil.copyfile(context["releasePath"], final_release_out)
     signatures = [v for v in result.get("auditSigs", {}).values() if isinstance(v, str) and v]
     signatures.extend(v.get("signature") for v in result.get("auditSigs", {}).get("approvals", []) if isinstance(v, dict) and isinstance(v.get("signature"), str))

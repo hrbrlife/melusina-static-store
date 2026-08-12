@@ -62,6 +62,28 @@ def test_finalize_uses_only_supported_flags():
             assert unsupported not in args, args
 
 
+def test_finalize_rebinds_runtime_contract_after_pearl_finalize():
+    context = {"releasePath": "/tmp/RELEASE.json"}
+    order = []
+    old_finalize, old_rewrite = provider.finalize_release, provider.rewrite_release
+    try:
+        provider.finalize_release = lambda c: order.append(("finalize", c))
+        provider.rewrite_release = lambda c, *facts: order.append(("rebind", c, facts)) or Path(c["releasePath"])
+        got = provider.finalize_release_with_runtime_binding(context, "app", "a" * 64, "b" * 64, "1.2.3", "c" * 32)
+    finally:
+        provider.finalize_release, provider.rewrite_release = old_finalize, old_rewrite
+    assert got == Path("/tmp/RELEASE.json")
+    assert [step[0] for step in order] == ["finalize", "rebind"]
+    assert order[1][2] == ("app", "a" * 64, "b" * 64, "1.2.3", "c" * 32)
+
+
+def test_approve_rebinds_before_copying_final_release():
+    source = (HERE / "mel-release-provider.py").read_text()
+    approve = source.split("def approve(", 1)[1].split("def promote(", 1)[0]
+    assert "finalize_release_with_runtime_binding(" in approve
+    assert approve.index("finalize_release_with_runtime_binding(") < approve.index("shutil.copyfile(context[\"releasePath\"], final_release_out)")
+
+
 def test_propose_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -221,6 +243,8 @@ def test_build_keeps_runtime_contract_outside_pearl_ceremony_tree():
 
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
+    test_finalize_rebinds_runtime_contract_after_pearl_finalize()
+    test_approve_rebinds_before_copying_final_release()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()

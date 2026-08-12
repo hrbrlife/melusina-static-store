@@ -144,6 +144,20 @@ def test_submit_binds_the_immutable_catalog_slot():
     assert "--stage" in args, args
 
 
+def test_next_index_uses_release_adapter_contract():
+    captured = []
+    old_run, old_executor_env, old_executor = provider.run, provider.executor_env, provider.executor
+    try:
+        provider.run = lambda args, **_: captured.append(args) or json.dumps({"status": "observed", "nextTransactionIndex": 42})
+        provider.executor_env = lambda: {}
+        provider.executor = lambda: Path("/tmp/mel-release-squads-adapter.js")
+        assert provider.next_index("multisig", "vault") == 42
+    finally:
+        provider.run, provider.executor_env, provider.executor = old_run, old_executor_env, old_executor
+    assert "--next-index" in captured[0], captured
+    assert "--print-next-index" not in captured[0], captured
+
+
 def test_submit_refuses_missing_catalog_slot():
     old = with_env({
         "MEL_RELEASE_STORE_URL": "https://store.example.test",
@@ -186,6 +200,7 @@ if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
+    test_next_index_uses_release_adapter_contract()
     test_submit_refuses_missing_catalog_slot()
     test_catalog_package_uses_declared_slot_over_legacy_duplicate()
     print("mel-release provider CLI-contract tests passed")

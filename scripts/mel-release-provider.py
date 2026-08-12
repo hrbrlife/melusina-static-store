@@ -413,7 +413,7 @@ def last_json(raw: str) -> dict[str, Any]:
 
 
 def next_index(multisig: str, vault: str) -> int:
-    raw = run(["node", str(executor()), "--print-next-index", "--multisig", multisig, "--vault", vault], extra_env=executor_env())
+    raw = run(["node", str(executor()), "--next-index", "--multisig", multisig, "--vault", vault], extra_env=executor_env())
     value = last_json(raw)
     index = value.get("nextTransactionIndex")
     if not isinstance(index, int) or index < 1:

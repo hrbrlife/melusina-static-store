@@ -186,13 +186,17 @@ fi
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "MELUSINA_STORE_RPC_URL or MELUSINA_RPC_URL is required"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
-if [[ ! -x "$SUBMIT_BIN" ]]; then
-  (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/submit ./cmd/submit)
-fi
 ACTIVE_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/list-active-releases"
-if [[ ! -x "$ACTIVE_BIN" ]]; then
-  (cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar" && mkdir -p bin && go build -o bin/list-active-releases ./cmd/list-active-releases)
-fi
+# These clients enforce the local half of the Store receipt contract. They are
+# deliberately rebuilt from this checked-out source for every publication:
+# an ignored stale binary can otherwise calculate a different StageID and mask
+# a source-rail repair. They are release tooling, not target VM artifacts.
+(
+  cd "$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar"
+  mkdir -p bin
+  go build -o bin/submit ./cmd/submit
+  go build -o bin/list-active-releases ./cmd/list-active-releases
+)
 RECEIPT_DIR="${MELUSINA_PUBLISH_RECEIPT_DIR:-/tmp/melusina-publish-receipts/$APP_SLUG}"
 mkdir -p "$RECEIPT_DIR"
 chmod 700 "$RECEIPT_DIR"

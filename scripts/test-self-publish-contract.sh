@@ -35,6 +35,10 @@ grep -q 'SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1
 grep -q -- '--promote-existing-active requires --catalog-path' "$DRIVER"
 grep -q 'CANDIDATE_SPK="$CAT_PATH/app.spk"' "$DRIVER"
 grep -q 'Do not rebuild it' "$DRIVER"
+grep -q 'rebuilt from this checked-out source for every publication' "$DRIVER"
+grep -q 'go build -o bin/submit ./cmd/submit' "$DRIVER"
+grep -q 'go build -o bin/list-active-releases ./cmd/list-active-releases' "$DRIVER"
+! grep -q 'if \[\[ ! -x "$SUBMIT_BIN" \]\]' "$DRIVER"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then

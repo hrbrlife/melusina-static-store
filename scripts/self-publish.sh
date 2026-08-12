@@ -100,8 +100,23 @@ if $DRY_RUN; then
 fi
 need_file "$SCRIPT_DIR/pack-app-candidate.sh"
 CANDIDATE_RECEIPT="${MELUSINA_CANDIDATE_RECEIPT:-/tmp/melusina-$APP_SLUG-candidate.json}"
-"$SCRIPT_DIR/pack-app-candidate.sh" "$APP_DIR" --receipt-out "$CANDIDATE_RECEIPT"
+# Most app sources keep metadata at their root. A governed catalog release may
+# instead own its metadata in the declared catalog slot (as MerMail does). Do
+# not synthesize or copy metadata: pack and later stage the tracked slot bytes.
+SOURCE_METADATA_PATH="$APP_DIR/metadata.json"
+if [[ ! -f "$SOURCE_METADATA_PATH" && -n "$CATALOG_PATH_OVERRIDE" ]]; then
+  SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"
+fi
+need_file "$SOURCE_METADATA_PATH"
+CANDIDATE_METADATA_OUT="$(mktemp "/tmp/melusina-$APP_SLUG-candidate-metadata.XXXXXX")"
+"$SCRIPT_DIR/pack-app-candidate.sh" "$APP_DIR" \
+  --metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT" \
+  --receipt-out "$CANDIDATE_RECEIPT"
 need_file "$APP_DIR/app.spk"
+STAGE_METADATA_PATH="$SOURCE_METADATA_PATH"
+if [[ -s "$CANDIDATE_METADATA_OUT" ]]; then
+  STAGE_METADATA_PATH="$CANDIDATE_METADATA_OUT"
+fi
 
 CAT_PATH="$CATALOG_PATH_OVERRIDE"
 if [[ -z "$CAT_PATH" ]]; then
@@ -118,9 +133,11 @@ case "$CAT_PATH" in "$PACKAGES_ROOT"/*) ;; *) fail "catalog path must resolve in
 # The exact candidate above is used for both private stage and any later
 # ceremony; no rebuild is permitted between these gates.
 if $PROMOTE_EXISTING; then
-  PRESERVE_EXISTING_RELEASE=1 "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
+  SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1 \
+    "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
 else
-  "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
+  SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" \
+    "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
 fi
 for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
 

@@ -1,8 +1,9 @@
 // Command submit-installer publishes one immutable whole-file release through
-// the root store's gated POST /publish/installer API, then downloads the served
-// object and verifies its gate headers and bytes. It is the supported publisher
-// for shell, deployer, sidecar, and bootstrap artifacts; it never writes the
-// catalog directly.
+// the root store's gated POST /publish/installer API. Immediately gated classes
+// are downloaded and verified in the same invocation. A sidecar is staged
+// first, then becomes downloadable only after a signed DesiredGeneration and
+// SidecarIdentity cascade verify its exact bytes; it never writes the catalog
+// directly.
 package main
 
 import (
@@ -28,6 +29,8 @@ import (
 )
 
 const defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+
+const sidecarClass = "sidecar"
 
 type publisherKeyFile struct {
 	Ref      identity.Ref `json:"ref"`
@@ -147,6 +150,17 @@ func run(args []string, stdout io.Writer) error {
 	if result.Class != o.class || result.Name != o.name ||
 		!strings.EqualFold(result.InstallerHash, hashHex) {
 		return fmt.Errorf("store response mismatch: %#v", result)
+	}
+	if o.class == sidecarClass {
+		// A sidecar's public GET is deliberately gated by the signed generation
+		// that this upload is about to help create. Requiring GET read-back here
+		// would make first publication circular: the store must not serve the
+		// bytes before its generation names them, while the generation promotion
+		// independently re-hashes the staged file and re-verifies its complete
+		// SidecarIdentity authority cascade.
+		fmt.Fprintf(stdout, "PUBLISH SIDECAR STAGED class=%s name=%s sha256=%s path=%s; pending signed DesiredGeneration verification\n",
+			result.Class, result.Name, hashHex, result.Path)
+		return nil
 	}
 	if err := verifyServed(context.Background(), client, o.store, result.Path, artifactHash); err != nil {
 		return err

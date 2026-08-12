@@ -127,4 +127,69 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	}
 }
 
+func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
+	publisher, signSeed, boxSeed := testPrivate(t, "publisher")
+	operator, _, _ := testPrivate(t, "store")
+	artifact := []byte("immutable sidecar artifact")
+	digest := sha256.Sum256(artifact)
+	hashHex := hex.EncodeToString(digest[:])
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/publish/installer":
+			if err := r.ParseMultipartForm(1 << 20); err != nil {
+				t.Fatalf("parse multipart: %v", err)
+			}
+			if r.FormValue("class") != sidecarClass || r.FormValue("name") != "mermail-sidecar.bin" {
+				t.Fatalf("bad target: %s/%s", r.FormValue("class"), r.FormValue("name"))
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(publishResult{
+				Class: sidecarClass, Name: "mermail-sidecar.bin",
+				InstallerHash: hashHex, Path: "/releases/sidecar/mermail-sidecar.bin",
+			})
+		default:
+			t.Fatalf("sidecar upload attempted premature GET %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	artifactPath := filepath.Join(dir, "mermail-sidecar.bin")
+	publisherPath := filepath.Join(dir, "publisher.json")
+	operatorPath := filepath.Join(dir, "operator.json")
+	if err := os.WriteFile(artifactPath, artifact, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	publisherJSON, _ := json.Marshal(publisherKeyFile{
+		Ref: publisher.Public().Ref, SignSeed: hex.EncodeToString(signSeed[:]), BoxSeed: hex.EncodeToString(boxSeed[:]),
+	})
+	if err := os.WriteFile(publisherPath, publisherJSON, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	operatorJSON, _ := json.Marshal(operator.Public())
+	if err := os.WriteFile(operatorPath, operatorJSON, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var output strings.Builder
+	err := run([]string{
+		"--store", server.URL,
+		"--class", sidecarClass,
+		"--name", "mermail-sidecar.bin",
+		"--artifact", artifactPath,
+		"--publisher-key", publisherPath,
+		"--store-pubkey", operatorPath,
+		"--verified-slot", "123",
+	}, &output)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !strings.Contains(output.String(), "PUBLISH SIDECAR STAGED") ||
+		!strings.Contains(output.String(), "pending signed DesiredGeneration") ||
+		!strings.Contains(output.String(), hashHex) {
+		t.Fatalf("unexpected output: %q", output.String())
+	}
+}
+
 func ptrPublic(value identity.Public) *identity.Public { return &value }

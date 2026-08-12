@@ -303,7 +303,7 @@ PY
   )
   if [[ -z "$RELEASE_RUNTIME_SCHEMA" && -z "$RELEASE_RUNTIME_SHA256" ]]; then
     rm -f "$SHADOW/RUNTIME-CONTRACT.json"
-  elif [[ "$RELEASE_RUNTIME_SCHEMA" != "runtime-contract-v1" || ! "$RELEASE_RUNTIME_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  elif [[ "$RELEASE_RUNTIME_SCHEMA" != "melusina-app-runtime-contract-v1" || ! "$RELEASE_RUNTIME_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
     fail "  RELEASE.json has an invalid runtime-contract binding (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
   elif [[ ! -f "$SOURCE_RUNTIME_CONTRACT" ]]; then

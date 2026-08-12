@@ -203,13 +203,13 @@ d["name"] = "Explicit Metadata Name"
 open(p, "w").write(json.dumps(d) + "\n")
 PY
 mkdir -p "$TMP/contract"
-printf '{"schema":"runtime-contract-v1","fixture":true}\n' > "$TMP/contract/RUNTIME-CONTRACT.json"
+printf '{"schema":"melusina-app-runtime-contract-v1","fixture":true}\n' > "$TMP/contract/RUNTIME-CONTRACT.json"
 contract_sha="$(sha256sum "$TMP/contract/RUNTIME-CONTRACT.json" | awk '{print $1}')"
 python3 - "$TMP/catalog/RELEASE.json" "$contract_sha" <<'PY'
 import json, sys
 p, digest = sys.argv[1:]
 d = json.load(open(p))
-d["runtimeContractSchema"] = "runtime-contract-v1"
+d["runtimeContractSchema"] = "melusina-app-runtime-contract-v1"
 d["runtimeContractSha256"] = digest
 open(p, "w").write(json.dumps(d) + "\n")
 PY

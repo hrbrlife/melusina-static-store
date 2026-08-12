@@ -116,14 +116,17 @@ import hashlib, json, sys
 before, after, spk = sys.argv[1:]
 old = json.load(open(before, encoding="utf-8"))
 new = json.load(open(after, encoding="utf-8"))
-expected = hashlib.sha256(open(spk, "rb").read()).hexdigest()[:32]
+artifact_sha = hashlib.sha256(open(spk, "rb").read()).hexdigest()
+expected = artifact_sha[:32]
 old.pop("packageId", "")
+old.pop("sha256", "")
 package_id = new.pop("packageId", "")
-print("yes" if old == new and package_id == expected else "no")
+package_sha = new.pop("sha256", "")
+print("yes" if old == new and package_id == expected and package_sha == artifact_sha else "no")
 PY
 )"
   [[ "$generated_ok" == yes ]] || {
-    echo "pack mutated metadata beyond the generated packageId; refusing to publish" >&2
+    echo "pack mutated metadata beyond the generated packageId/sha256; refusing to publish" >&2
     exit 2
   }
   mkdir -p "$(dirname "$METADATA_OUT")"

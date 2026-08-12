@@ -17,7 +17,7 @@ pack:
 else
 pack-local:
 	@printf 'candidate-bytes' > app.spk
-	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}' | cut -c1-32); printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$sha" > metadata.json; fi
+	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); short=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$short" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
 endif
 MAKE
@@ -65,7 +65,9 @@ python3 - "$WORK/generated-metadata.json" "$APP/metadata.json" <<'PY'
 import json, sys
 generated, source = map(lambda p: json.load(open(p)), sys.argv[1:])
 assert generated["packageId"]
+assert generated["sha256"]
 assert "packageId" not in source
+assert "sha256" not in source
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

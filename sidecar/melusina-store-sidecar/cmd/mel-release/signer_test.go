@@ -115,8 +115,11 @@ func TestRegisterHelperExecutesOnlyApprovedSquadsProposal(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(raw)
-	if !strings.Contains(text, "if (before === \"Active\")") || !strings.Contains(text, "status) !== \"Approved\"") {
+	if !strings.Contains(text, "String(proposal.pretty().status) === \"Active\"") || !strings.Contains(text, "status) !== \"Approved\"") {
 		t.Fatalf("register helper %s does not implement Active -> Approved -> execute", path)
+	}
+	if !strings.Contains(text, "preExecuteIx ? [preExecuteIx, executeIx] : [executeIx]") {
+		t.Fatalf("register helper %s does not bind the required Ed25519 precompile to ReleaseEntry execution", path)
 	}
 	if strings.Contains(text, "status) !== \"Active\") throw new Error(`proposal is not executable") {
 		t.Fatalf("register helper %s still rejects the approved state Squads requires for execution", path)

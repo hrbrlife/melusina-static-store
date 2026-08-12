@@ -161,9 +161,19 @@ def test_submit_refuses_missing_catalog_slot():
         restore_env(old)
 
 
+def test_release_executor_contract_is_present():
+    executor = HERE / ".." / "sidecar" / "melusina-store-sidecar" / "scripts" / "mel-release-squads-register.mjs"
+    source = executor.read_text()
+    assert "--propose-only" in source
+    assert "--execute-existing" in source
+    assert "preExecuteIx ? [preExecuteIx, executeIx] : [executeIx]" in source
+    assert "SQUADS_NODE_MODULES" in source
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
+    test_release_executor_contract_is_present()
     print("mel-release provider CLI-contract tests passed")

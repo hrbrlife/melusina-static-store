@@ -386,9 +386,12 @@ def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out
 
 def executor_env() -> dict[str, str]:
     members = env("MEL_RELEASE_SQUADS_MEMBERS", required=True)
+    member_paths = [value.strip() for value in members.split(",") if value.strip()]
+    if not member_paths:
+        raise ProviderError("MEL_RELEASE_SQUADS_MEMBERS named no keypair paths")
     return {
         "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
-        "SQUADS_MEMBER_KEYPAIRS": members,
+        "SQUADS_MEMBER_KEYPAIRS": ",".join(member_paths),
         "SQUADS_NODE_MODULES": env("MEL_RELEASE_SQUADS_NODE_MODULES", default="/home/user/Desktop/Melusina/deployer/scripts/node_modules"),
     }
 

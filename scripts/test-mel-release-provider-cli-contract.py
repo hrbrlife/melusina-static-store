@@ -7,8 +7,10 @@ unknown flag after a real Squads proposal would strand an approval.
 """
 
 import importlib.util
+import hashlib
 import json
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -170,10 +172,57 @@ def test_release_executor_contract_is_present():
     assert "SQUADS_NODE_MODULES" in source
 
 
+def test_build_keeps_runtime_contract_outside_pearl_ceremony_tree():
+    app_id = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo, source, state = root / "repo", root / "source", root / "state"
+        catalog = repo / "packages" / "hrbrlife" / "ccash_go_htmx" / "popaye"
+        source.mkdir()
+        catalog.mkdir(parents=True)
+        spk = source / "app.spk"
+        spk.write_bytes(b"candidate-spk")
+        package_id = hashlib.sha256(spk.read_bytes()).hexdigest()[:32]
+        (source / "metadata.json").write_text(json.dumps({"appId": app_id, "packageId": package_id}))
+        (source / "RUNTIME-CONTRACT.json").write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
+        }))
+        (catalog / "app.spk").write_bytes(b"old")
+        (catalog / "metadata.json").write_text(json.dumps({"appId": app_id, "packageId": hashlib.sha256(b"old").hexdigest()[:32]}))
+        (catalog / "RELEASE.json").write_text("{}")
+        receipt = root / "build.json"
+        old_run, old_source, old_slot, old_catalog, old_root, old_bin = provider.run, provider.source_path, provider.catalog_slot, provider.catalog_package, provider.ROOT, provider.ensure_bin
+        old = with_env({"MEL_RELEASE_STATE_DIR": str(state), "MEL_RELEASE_MASTER_NFT_MINT": "master"})
+        try:
+            provider.source_path = lambda _: source
+            provider.catalog_slot = lambda _: {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"}
+            provider.catalog_package = lambda _: catalog
+            provider.ROOT = repo
+            provider.ensure_bin = lambda *_: root / "apphash"
+            def fake_run(args, **kwargs):
+                if args[0].endswith("stage-into-catalog.sh"):
+                    shutil.copyfile(args[1], Path(args[2]) / "app.spk")
+                    shutil.copyfile(kwargs["extra_env"]["SOURCE_METADATA_PATH"], Path(args[2]) / "metadata.json")
+                    return ""
+                if Path(args[0]).name == "apphash":
+                    return "a" * 64
+                return ""
+            provider.run = fake_run
+            provider.build(app_id, "0.3.187", receipt)
+        finally:
+            provider.run, provider.source_path, provider.catalog_slot, provider.catalog_package, provider.ROOT, provider.ensure_bin = old_run, old_source, old_slot, old_catalog, old_root, old_bin
+            restore_env(old)
+        context = json.loads((state / "apps" / app_id / "provider" / "context.json").read_text())
+        assert Path(context["runtimeContractPath"]).is_file()
+        assert not (Path(context["ceremonyDir"]) / "RUNTIME-CONTRACT.json").exists()
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
     test_release_executor_contract_is_present()
+    test_build_keeps_runtime_contract_outside_pearl_ceremony_tree()
     print("mel-release provider CLI-contract tests passed")

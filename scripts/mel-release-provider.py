@@ -297,7 +297,6 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     master = env("MEL_RELEASE_MASTER_NFT_MINT", required=True)
     runtime_contract = work / "RUNTIME-CONTRACT.json"
     materialize_runtime_contract(source, runtime_contract, app_id, version, artifact_sha, apphash)
-    shutil.copyfile(runtime_contract, ceremony / "RUNTIME-CONTRACT.json")
 
     context = {
         "schema": "melusina-mel-release-provider-context-v1",

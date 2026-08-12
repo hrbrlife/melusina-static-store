@@ -533,7 +533,14 @@ def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_i
     # schema, so re-attach the independently materialized Store contract before
     # every promotion. This is idempotent and preserves the already-verified
     # ReleaseEntry fields; it also makes a restart after registration safe.
-    rewrite_release(context, app_id, app_hash, release_hash, version, env("MEL_RELEASE_NONCE", required=True))
+    existing = read_json(Path(context["releasePath"]))
+    nonce = existing.get("releaseNonce")
+    if not isinstance(nonce, str) or len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+        raise ProviderError("final RELEASE.json has no valid releaseNonce for promotion")
+    expected_release_hash = hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+    if expected_release_hash != release_hash:
+        raise ProviderError("final RELEASE.json nonce does not bind the promotion releaseHash")
+    rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
     release = read_json(Path(context["releasePath"]))
     if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
         raise ProviderError("promotion context no longer binds the staged candidate")

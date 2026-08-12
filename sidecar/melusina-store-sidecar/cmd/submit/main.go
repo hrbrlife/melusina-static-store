@@ -47,6 +47,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -151,10 +152,12 @@ type AppCatalogPointer struct {
 // the sidecar re-checks every trust field on-chain, so this struct only reads
 // what the client itself uses.
 type ReleaseClaims struct {
-	AppHash       string `json:"appHash"`
-	ReleaseHash   string `json:"releaseHash"`
-	Version       string `json:"version"`
-	MasterNftMint string `json:"masterNftMint"`
+	AppHash               string `json:"appHash"`
+	ReleaseHash           string `json:"releaseHash"`
+	Version               string `json:"version"`
+	MasterNftMint         string `json:"masterNftMint"`
+	RuntimeContractSHA256 string `json:"runtimeContractSha256,omitempty"`
+	RuntimeContractSchema string `json:"runtimeContractSchema,omitempty"`
 }
 
 // submittedReceiptIntent is the exact local candidate identity a store receipt
@@ -183,13 +186,14 @@ type publisherKeyFile struct {
 // publishRequest is the JSON wire form the sidecar's /publish accepts when the
 // client does not use multipart. Mirrors handler.go publishRequest. base64-std.
 type publishRequest struct {
-	Envelope    envelope.Signed `json:"envelope"`
-	ReleaseB64  string          `json:"release_b64"`
-	SPKB64      string          `json:"spk_b64"`
-	MetadataB64 string          `json:"metadata_b64"`
-	Developer   string          `json:"developer,omitempty"`
-	Repo        string          `json:"repo,omitempty"`
-	Slug        string          `json:"slug,omitempty"`
+	Envelope           envelope.Signed `json:"envelope"`
+	ReleaseB64         string          `json:"release_b64"`
+	SPKB64             string          `json:"spk_b64"`
+	MetadataB64        string          `json:"metadata_b64"`
+	RuntimeContractB64 string          `json:"runtime_contract_b64,omitempty"`
+	Developer          string          `json:"developer,omitempty"`
+	Repo               string          `json:"repo,omitempty"`
+	Slug               string          `json:"slug,omitempty"`
 }
 
 func main() {
@@ -200,24 +204,25 @@ func main() {
 }
 
 type options struct {
-	store             string
-	spkPath           string
-	metadataPath      string
-	releasePath       string
-	publisherKey      string // path; or env name via --publisher-key env:NAME
-	storePubkey       string // path to the sidecar operator identity.Public JSON
-	licenseMint       string // store operator's license_nft_mint (StoreOperatorAuthz seed)
-	domain            string // store serving domain (store_domain_hash seed)
-	rpcURL            string // Solana JSON-RPC for receipt verification
-	verifiedSlot      uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
-	useMultipart      bool
-	stageOnly         bool
-	developer         string
-	repo              string
-	slug              string
-	receiptOut        string
-	verifyReceiptPath string
-	timeout           time.Duration
+	store               string
+	spkPath             string
+	metadataPath        string
+	releasePath         string
+	runtimeContractPath string
+	publisherKey        string // path; or env name via --publisher-key env:NAME
+	storePubkey         string // path to the sidecar operator identity.Public JSON
+	licenseMint         string // store operator's license_nft_mint (StoreOperatorAuthz seed)
+	domain              string // store serving domain (store_domain_hash seed)
+	rpcURL              string // Solana JSON-RPC for receipt verification
+	verifiedSlot        uint64 // ChainEvidence.verified_slot (publisher's local pre-check slot)
+	useMultipart        bool
+	stageOnly           bool
+	developer           string
+	repo                string
+	slug                string
+	receiptOut          string
+	verifyReceiptPath   string
+	timeout             time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -227,6 +232,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
+	fs.StringVar(&o.runtimeContractPath, "runtime-contract", "", "path to the raw RUNTIME-CONTRACT.json when RELEASE.json binds one")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
@@ -248,7 +254,7 @@ func parseFlags(args []string) (options, error) {
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
 	if verifyMode {
-		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" ||
+		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.runtimeContractPath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
 			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" {
 			return o, errors.New("--verify-receipt cannot be combined with publish, stage, catalog, or receipt-output flags")
@@ -359,7 +365,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if appHashHex != wantAppHash {
 		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
-	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug)
+	runtimeContract, err := readAndValidateRuntimeContract(o.runtimeContractPath, spk, metadata, claims)
+	if err != nil {
+		return fmt.Errorf("check=runtime_contract: %w", err)
+	}
+	expectedReceipt, err := buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract, claims, o.developer, o.repo, o.slug)
 	if err != nil {
 		return fmt.Errorf("check=receipt_submission: %w", err)
 	}
@@ -399,7 +409,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("envelope: %w", err)
 	}
 
-	resp, status, err := postPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata)
+	resp, status, err := postPublishWithRuntimeContract(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContract)
 	if err != nil {
 		return fmt.Errorf("publish POST: %w", err)
 	}
@@ -433,6 +443,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 }
 
 func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
+	return buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, nil, claims, developer, repo, slug)
+}
+
+func buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
 	var metadataIdentity struct {
 		AppID string `json:"appId"`
 	}
@@ -462,12 +476,23 @@ func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, dev
 
 	spkHash := sha256.Sum256(spk)
 	metadataHash := sha256.Sum256(metadata)
+	runtimeContractHash := sha256.Sum256(runtimeContract)
 	versionHash := sha256.Sum256([]byte(version))
 	masterMintHash := sha256.Sum256([]byte(masterMint))
 	stageHasher := sha256.New()
 	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
 	_, _ = stageHasher.Write(spkHash[:])
 	_, _ = stageHasher.Write(metadataHash[:])
+	binding := runtimecontract.Binding{SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version, ReleaseContractSHA256: claims.RuntimeContractSHA256, ReleaseContractSchema: claims.RuntimeContractSchema}
+	if runtimecontract.RequiresContract(binding) {
+		if _, err := runtimecontract.Validate(runtimeContract, binding); err != nil {
+			return submittedReceiptIntent{}, fmt.Errorf("runtime contract: %w", err)
+		}
+		_, _ = stageHasher.Write([]byte("runtime-contract-v1\x00"))
+		_, _ = stageHasher.Write(runtimeContractHash[:])
+	} else if len(runtimeContract) != 0 {
+		return submittedReceiptIntent{}, errors.New("runtime contract supplied but RELEASE.json does not bind one")
+	}
 	_, _ = stageHasher.Write(releaseHash[:])
 	_, _ = stageHasher.Write(versionHash[:])
 	_, _ = stageHasher.Write(masterMintHash[:])
@@ -649,6 +674,10 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 // or multipart/form-data, returning the raw body + status code. metadata is the
 // app's metadata.json bytes, bound into the on-chain appHash the sidecar recomputes.
 func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
+	return postPublishWithRuntimeContract(ctx, o, endpoint, sig, releaseBytes, spk, metadata, nil)
+}
+
+func postPublishWithRuntimeContract(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte) ([]byte, int, error) {
 	if endpoint != appPromoteTarget && endpoint != appStageTarget {
 		return nil, 0, fmt.Errorf("app publish endpoint must be exactly %q or %q", appPromoteTarget, appStageTarget)
 	}
@@ -681,6 +710,11 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
 			return nil, 0, werr
 		}
+		if len(runtimeContract) != 0 {
+			if werr := writePart(mw, "runtime_contract", "RUNTIME-CONTRACT.json", runtimeContract); werr != nil {
+				return nil, 0, werr
+			}
+		}
 		for name, value := range map[string]string{
 			"developer": o.developer,
 			"repo":      o.repo,
@@ -702,13 +736,14 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 		req.Header.Set("Content-Type", mw.FormDataContentType())
 	} else {
 		body, merr := json.Marshal(publishRequest{
-			Envelope:    sig,
-			ReleaseB64:  stdB64(releaseBytes),
-			SPKB64:      stdB64(spk),
-			MetadataB64: stdB64(metadata),
-			Developer:   o.developer,
-			Repo:        o.repo,
-			Slug:        o.slug,
+			Envelope:           sig,
+			ReleaseB64:         stdB64(releaseBytes),
+			SPKB64:             stdB64(spk),
+			MetadataB64:        stdB64(metadata),
+			RuntimeContractB64: stdB64(runtimeContract),
+			Developer:          o.developer,
+			Repo:               o.repo,
+			Slug:               o.slug,
 		})
 		if merr != nil {
 			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)
@@ -730,6 +765,30 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 		return nil, resp.StatusCode, err
 	}
 	return out, resp.StatusCode, nil
+}
+
+func readAndValidateRuntimeContract(path string, spk, metadata []byte, claims ReleaseClaims) ([]byte, error) {
+	binding := runtimecontract.Binding{
+		SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version,
+		ReleaseContractSHA256: claims.RuntimeContractSHA256, ReleaseContractSchema: claims.RuntimeContractSchema,
+	}
+	if !runtimecontract.RequiresContract(binding) {
+		if strings.TrimSpace(path) != "" {
+			return nil, errors.New("--runtime-contract was supplied but RELEASE.json does not bind one")
+		}
+		return nil, nil
+	}
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("RELEASE.json binds a runtime contract; pass --runtime-contract")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	if _, err := runtimecontract.Validate(raw, binding); err != nil {
+		return nil, err
+	}
+	return raw, nil
 }
 
 func writeReceiptFile(path string, raw []byte) error {

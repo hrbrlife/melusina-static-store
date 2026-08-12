@@ -19,6 +19,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 // ── SERVE-TIME on-chain gate (B1-01; canon §5b) ───────────────────────────────
@@ -79,10 +80,11 @@ type serveGate struct {
 // SPK: its on-chain-anchored RELEASE.json claim and the EXACT metadata.json bytes
 // the on-chain AppHash binds (both are part of the catalog the operator serves).
 type servedApp struct {
-	rel        ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
-	metadata   []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
-	spkPath    string      // current dist package or private retained candidate
-	validUntil int64       // rollback release deadline; 0 for current catalog entries
+	rel                   ReleaseJSON // attest/<appId>/RELEASE.json (AppHash = on-chain tree-hash)
+	metadata              []byte      // signatures/<appId>/metadata.json (the ceremony's exact bytes)
+	spkPath               string      // current dist package or private retained candidate
+	validUntil            int64       // rollback release deadline; 0 for current catalog entries
+	runtimeContractStatus string      // declared for a bound contract; uncertified for legacy releases
 }
 
 // errServeNoChainReader marks the fail-closed "no chain configured" condition,
@@ -245,6 +247,7 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
 	w.Header().Set("X-Store-AppHash", appHash)
+	w.Header().Set("X-Melusina-Runtime-Contract", app.runtimeContractStatus)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, base, st.ModTime(), f)
 }
@@ -538,14 +541,33 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 				if err != nil {
 					continue
 				}
+				binding := runtimecontract.Binding{
+					Metadata:              meta,
+					AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+					Version:               rel.Version,
+					ReleaseContractSHA256: rel.RuntimeContractSHA256,
+					ReleaseContractSchema: rel.RuntimeContractSchema,
+				}
+				contractStatus := "uncertified"
+				if runtimecontract.RequiresContract(binding) {
+					raw, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json")))
+					if err != nil {
+						continue
+					}
+					if _, err := runtimecontract.ValidateClaim(raw, binding); err != nil {
+						continue
+					}
+					contractStatus = "declared"
+				}
 				spkPath := ""
 				if !hasSnapshot {
 					spkPath = filepath.Join(g.distDir, "packages", pkgID)
 				}
 				idx[pkgID] = servedApp{
-					rel:      rel,
-					metadata: meta,
-					spkPath:  spkPath,
+					rel:                   rel,
+					metadata:              meta,
+					spkPath:               spkPath,
+					runtimeContractStatus: contractStatus,
 				}
 			}
 		}
@@ -561,7 +583,7 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
 			continue
 		}
-		manifest, spk, meta, releaseBytes, err := loadStagedApp(g.cfg.PrivateStageDir, state.PreviousStageID)
+		manifest, spk, meta, releaseBytes, runtimeContract, err := loadStagedAppWithRuntimeContract(g.cfg.PrivateStageDir, state.PreviousStageID)
 		if err != nil || manifest.AppID != appID {
 			continue
 		}
@@ -573,15 +595,30 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 		if json.Unmarshal(releaseBytes, &rel) != nil {
 			continue
 		}
+		binding := runtimecontract.Binding{
+			Metadata:              meta,
+			AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+			Version:               rel.Version,
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}
+		contractStatus := "uncertified"
+		if runtimecontract.RequiresContract(binding) {
+			if _, err := runtimecontract.ValidateClaim(runtimeContract, binding); err != nil {
+				continue
+			}
+			contractStatus = "declared"
+		}
 		if _, exists := idx[pkgID]; exists {
 			continue
 		}
 		_ = spk // loadStagedApp already verified the exact private SPK bytes.
 		idx[pkgID] = servedApp{
-			rel:        rel,
-			metadata:   meta,
-			spkPath:    filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
-			validUntil: state.PreviousValidUntil,
+			rel:                   rel,
+			metadata:              meta,
+			spkPath:               filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
+			validUntil:            state.PreviousValidUntil,
+			runtimeContractStatus: contractStatus,
 		}
 	}
 	return idx

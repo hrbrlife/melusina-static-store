@@ -151,10 +151,11 @@ func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub
 func jsonPublishBody(t *testing.T, sig envelope.Signed, release, spk, metadata []byte) *bytes.Buffer {
 	t.Helper()
 	req := publishRequest{
-		Envelope:    sig,
-		ReleaseB64:  b64(release),
-		SPKB64:      b64(spk),
-		MetadataB64: b64(metadata),
+		Envelope:           sig,
+		ReleaseB64:         b64(release),
+		SPKB64:             b64(spk),
+		MetadataB64:        b64(metadata),
+		RuntimeContractB64: b64(runtimeContractForRelease(t, release, spk, metadata)),
 	}
 	b, err := json.Marshal(req)
 	if err != nil {
@@ -225,7 +226,7 @@ func TestPublishBodyLimitsAreEndpointSpecific(t *testing.T) {
 	appRequest := httptest.NewRequest(http.MethodPost, "/publish", http.NoBody)
 	appRequest.Header.Set("Content-Type", "application/json")
 	appRequest.ContentLength = maxAppPublishBody + 1
-	if _, _, _, _, _, err := parsePublishBody(appRequest); err == nil ||
+	if _, _, _, _, _, _, err := parsePublishBody(appRequest); err == nil ||
 		!strings.Contains(err.Error(), "limit is") {
 		t.Fatalf("app publish did not reject a body above its limit: %v", err)
 	}
@@ -551,7 +552,7 @@ func TestAppStageExistingCorruptCandidateRefusesBeforeNonceClaim(t *testing.T) {
 	if got := doStagePublish(t, svc, jsonPublishBody(t, first, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
 		t.Fatalf("first stage = %d: %s", got.Code, got.Body.String())
 	}
-	manifest, err := buildStagedAppManifest(fixture.spk, fixture.metadata, release, fixture.rel, slotHint{}, now)
+	manifest, err := buildStagedAppManifestWithRuntimeContract(fixture.spk, fixture.metadata, release, fixture.runtimeContract, fixture.rel, slotHint{}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1287,6 +1288,9 @@ func TestHandlePublish_AllowsOlderActiveReleaseDuringRollout(t *testing.T) {
 	operatorPub := operatorSignPub32(t, op)
 	f := buildValidFixture(t, cfg, randPubkeyB58(t))
 	f.rel.Version = "2.0.0"
+	f.runtimeContract = runtimeContractForTest(t, f.spk, f.metadata, f.rel)
+	runtimeContractSum := sha256.Sum256(f.runtimeContract)
+	f.rel.RuntimeContractSHA256 = hex.EncodeToString(runtimeContractSum[:])
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)

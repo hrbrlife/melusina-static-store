@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 // CatalogAssembler materializes the read surface directly from bytes that have
@@ -49,7 +51,40 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	return a.assemblePublishedAppProjection(spk, release, metadata, projection)
 }
 
+// AssemblePublishedAppWithRuntimeContract is the test/bootstrap counterpart of
+// the governed publish path. It refuses a raw contract that RELEASE.json does
+// not bind and validates every claimed contract before materializing it.
+func (a *CatalogAssembler) AssemblePublishedAppWithRuntimeContract(spk, release, metadata, runtimeContract []byte) error {
+	if strings.TrimSpace(a.DistDir) == "" {
+		return fmt.Errorf("catalog dist dir is empty")
+	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(release, &rel); err != nil {
+		return fmt.Errorf("decode release: %w", err)
+	}
+	binding := runtimecontract.Binding{
+		SPK: spk, Metadata: metadata, AppHash: rel.AppHash, Version: rel.Version,
+		ReleaseContractSHA256: rel.RuntimeContractSHA256, ReleaseContractSchema: rel.RuntimeContractSchema,
+	}
+	if runtimecontract.RequiresContract(binding) {
+		if _, err := runtimecontract.Validate(runtimeContract, binding); err != nil {
+			return fmt.Errorf("validate runtime contract: %w", err)
+		}
+	} else if len(runtimeContract) != 0 {
+		return errors.New("runtime contract was supplied but RELEASE.json does not bind one")
+	}
+	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
+	if err != nil {
+		return err
+	}
+	return a.assemblePublishedAppProjectionWithRuntimeContract(spk, release, metadata, runtimeContract, projection)
+}
+
 func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection) error {
+	return a.assemblePublishedAppProjectionWithRuntimeContract(spk, release, metadata, nil, projection)
+}
+
+func (a *CatalogAssembler) assemblePublishedAppProjectionWithRuntimeContract(spk, release, metadata, runtimeContract []byte, projection catalogProjection) error {
 	appID, packageID := projection.appID, projection.packageID
 
 	for _, dir := range []string{
@@ -71,6 +106,11 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 	if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RELEASE.json", release); err != nil {
 		return err
 	}
+	if len(runtimeContract) != 0 {
+		if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RUNTIME-CONTRACT.json", runtimeContract); err != nil {
+			return err
+		}
+	}
 	return atomicWriteInto(filepath.Join(a.DistDir, "apps"), "index.json", projection.indexBytes)
 }
 
@@ -78,12 +118,20 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 // candidate assembler replaces is absent or already a regular no-follow file.
 // Parent type/symlink conflicts are surfaced by Snapshot.Open as well.
 func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection) error {
-	for _, relative := range []string{
+	return validateCatalogAssemblyTargetsWithRuntimeContract(snapshot, projection, false)
+}
+
+func validateCatalogAssemblyTargetsWithRuntimeContract(snapshot AppCatalogSnapshot, projection catalogProjection, hasRuntimeContract bool) error {
+	targets := []string{
 		filepath.ToSlash(filepath.Join("packages", projection.packageID)),
 		filepath.ToSlash(filepath.Join("signatures", projection.appID, "metadata.json")),
 		filepath.ToSlash(filepath.Join("attest", projection.appID, "RELEASE.json")),
 		"apps/index.json",
-	} {
+	}
+	if hasRuntimeContract {
+		targets = append(targets, filepath.ToSlash(filepath.Join("attest", projection.appID, "RUNTIME-CONTRACT.json")))
+	}
+	for _, relative := range targets {
 		f, err := snapshot.Open(relative)
 		if errors.Is(err, os.ErrNotExist) {
 			continue

@@ -63,12 +63,13 @@ func (s *publishService) appMutationStep(step string) error {
 const maxAppEnvelopeTTL = 30 * time.Minute
 
 type appPublishPreflight struct {
-	sig          envelope.Signed
-	releaseBytes []byte
-	spk          []byte
-	metadata     []byte
-	hint         slotHint
-	release      ReleaseJSON
+	sig             envelope.Signed
+	releaseBytes    []byte
+	spk             []byte
+	metadata        []byte
+	runtimeContract []byte
+	hint            slotHint
+	release         ReleaseJSON
 }
 
 func (s *publishService) currentTime() time.Time {
@@ -84,7 +85,7 @@ func (s *publishService) currentTime() time.Time {
 // state and no plan made outside the lock can later commit.
 func (s *publishService) preflightAppPublish(r *http.Request, route string) (appPublishPreflight, error) {
 	var out appPublishPreflight
-	sig, releaseBytes, spk, metadata, hint, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
 	if err != nil {
 		return out, fmt.Errorf("check=request: %w", err)
 	}
@@ -149,7 +150,7 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
 		return out, fmt.Errorf("check=release_json: %w", err)
 	}
-	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, hint: hint, release: rel}, nil
+	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}, nil
 }
 
 func verifyTightAppEnvelopeWindow(payload envelope.Payload, now time.Time) error {
@@ -192,6 +193,8 @@ type publishRequest struct {
 	// SPK they form the canonical tree the on-chain AppHash binds; the gate
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
+	// RuntimeContractB64 is the raw RUNTIME-CONTRACT.json bound by RELEASE.json.
+	RuntimeContractB64 string `json:"runtime_contract_b64,omitempty"`
 	// Developer/Repo/Slug OPTIONALLY name the catalog slot
 	// (packages/<developer>/<repo>/<slug>) for the FIRST publish of a new app.
 	// A re-publish resolves its existing slot by the appId in metadata.json and
@@ -389,7 +392,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
 		return
 	}
-	manifest, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	manifest, err := buildStagedAppManifestWithRuntimeContract(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.runtimeContract, preflight.release, preflight.hint, lockedNow)
 	if err != nil {
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
@@ -404,7 +407,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistStagedAppPlanned(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, stagePlan); err != nil {
+	if err := persistStagedAppPlannedWithRuntimeContract(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.runtimeContract, stagePlan); err != nil {
 		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -512,12 +515,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// the chain mutation. Recompute its content address from the submitted bytes,
 	// load the private copy, and promote those persisted bytes rather than the
 	// request body. A direct register→POST flow now fails closed.
-	wantStage, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	wantStage, err := buildStagedAppManifestWithRuntimeContract(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.runtimeContract, preflight.release, preflight.hint, lockedNow)
 	if err != nil {
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	staged, stagedSPK, stagedMetadata, _, err := loadStagedApp(s.cfg.PrivateStageDir, wantStage.StageID)
+	staged, stagedSPK, stagedMetadata, _, stagedRuntimeContract, err := loadStagedAppWithRuntimeContract(s.cfg.PrivateStageDir, wantStage.StageID)
 	if err != nil {
 		http.Error(w, "check=stage: candidate was not durably staged before activation: "+err.Error(), http.StatusConflict)
 		return
@@ -565,16 +568,16 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
 		return
 	}
-	if err := validateCatalogAssemblyTargets(activeGeneration, projection); err != nil {
+	if err := validateCatalogAssemblyTargetsWithRuntimeContract(activeGeneration, projection, len(stagedRuntimeContract) != 0); err != nil {
 		http.Error(w, "check=catalog_assembly_plan: "+err.Error(), http.StatusConflict)
 		return
 	}
-	pointerPlan, err := buildSignedAppCatalogPointerPlan(s.cfg, activeGeneration, projection, spk, metadata, preflight.releaseBytes, s.operator, &rollout, staged.AppID, promotedAt)
+	pointerPlan, err := buildSignedAppCatalogPointerPlanWithRuntimeContract(s.cfg, activeGeneration, projection, spk, metadata, preflight.releaseBytes, stagedRuntimeContract, s.operator, &rollout, staged.AppID, promotedAt)
 	if err != nil {
 		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs)); err != nil {
+	if err := ensureCatalogPromotionMemberCapacityWithRuntimeContract(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs), len(stagedRuntimeContract) != 0); err != nil {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
@@ -587,7 +590,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistPublishedAppPlanned(sourcePlan, spk, preflight.releaseBytes, metadata); err != nil {
+	if err := persistPublishedAppPlannedWithRuntimeContract(sourcePlan, spk, preflight.releaseBytes, metadata, stagedRuntimeContract); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -597,7 +600,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
 		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
-		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection); err != nil {
+		if err := candidateAssembler.assemblePublishedAppProjectionWithRuntimeContract(spk, preflight.releaseBytes, metadata, stagedRuntimeContract, projection); err != nil {
 			return fmt.Errorf("assemble: %w", err)
 		}
 		return WriteSignedAppCatalogPointersForGeneration(candidateRoot, pointerPlan)
@@ -881,80 +884,88 @@ func requireEnvelopePresent(sig envelope.Signed) error {
 // (publishRequest). metadata is REQUIRED (the on-chain AppHash binds
 // {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
 // and is malformed.
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, hint slotHint, err error) {
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, err error) {
 	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
-		return sig, nil, nil, nil, hint, err
+		return sig, nil, nil, nil, nil, hint, err
 	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
 		}
 		metadata, perr = readFormFile(r, "metadata")
 		if perr != nil {
-			return sig, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
 		}
 		if len(metadata) == 0 {
-			return sig, nil, nil, nil, hint, errors.New("metadata is empty")
+			return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+		}
+		runtimeContract, perr = readFormFile(r, "runtime_contract")
+		if perr != nil && !errors.Is(perr, http.ErrMissingFile) {
+			return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract part: %w", perr)
 		}
 		hint = slotHint{
 			Developer: strings.TrimSpace(r.FormValue("developer")),
 			Repo:      strings.TrimSpace(r.FormValue("repo")),
 			Slug:      strings.TrimSpace(r.FormValue("slug")),
 		}
-		return sig, release, spk, metadata, hint, nil
+		return sig, release, spk, metadata, runtimeContract, hint, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, nil, hint, errors.New("spk is empty")
+		return sig, nil, nil, nil, nil, hint, errors.New("spk is empty")
 	}
 	metadata, perr = stdB64(req.MetadataB64)
 	if perr != nil {
-		return sig, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
 	}
 	if len(metadata) == 0 {
-		return sig, nil, nil, nil, hint, errors.New("metadata is empty")
+		return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+	}
+	runtimeContract, perr = stdB64(req.RuntimeContractB64)
+	if perr != nil {
+		return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract_b64: %w", perr)
 	}
 	hint = slotHint{
 		Developer: strings.TrimSpace(req.Developer),
 		Repo:      strings.TrimSpace(req.Repo),
 		Slug:      strings.TrimSpace(req.Slug),
 	}
-	return sig, release, spk, metadata, hint, nil
+	return sig, release, spk, metadata, runtimeContract, hint, nil
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {

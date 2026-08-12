@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ed25519"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -286,18 +287,32 @@ func validateCommittedStageTree(root string, expectedUID, expectedGID uint32) er
 	if err := validatePrivateStageTree(root, expectedUID, expectedGID); err != nil {
 		return err
 	}
-	entries, err := readDirBounded(root, 4)
+	entries, err := readDirBounded(root, 5)
 	if err != nil {
 		return err
 	}
 	want := map[string]bool{"app.spk": true, "metadata.json": true, "RELEASE.json": true, "stage.json": true}
-	if len(entries) != len(want) {
-		return errors.New("committed private stage must contain exactly four files")
-	}
 	for _, entry := range entries {
-		if !want[entry.Name()] || entry.IsDir() {
+		if (!want[entry.Name()] && entry.Name() != "RUNTIME-CONTRACT.json") || entry.IsDir() {
 			return fmt.Errorf("unexpected committed private-stage member %q", entry.Name())
 		}
+	}
+	if len(entries) == len(want) {
+		return nil
+	}
+	if len(entries) != len(want)+1 {
+		return errors.New("committed private stage must contain exactly four files, or five with a bound runtime contract")
+	}
+	manifestBytes, err := os.ReadFile(filepath.Join(root, "stage.json"))
+	if err != nil {
+		return fmt.Errorf("read stage manifest for runtime contract: %w", err)
+	}
+	var manifest stagedAppManifest
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return fmt.Errorf("decode stage manifest for runtime contract: %w", err)
+	}
+	if manifest.RuntimeContractSHA256 == "" || manifest.RuntimeContractSize <= 0 {
+		return errors.New("runtime contract file is not bound by staged manifest")
 	}
 	return nil
 }

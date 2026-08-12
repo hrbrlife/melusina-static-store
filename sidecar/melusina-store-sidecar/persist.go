@@ -169,18 +169,29 @@ func planPublishedAppPersistence(catalogRoot, slotDir string) (publishedAppPersi
 // persistPublishedAppPlanned consumes only the slot frozen by the preclaim
 // plan, then writes each verified file by same-directory atomic replacement.
 func persistPublishedAppPlanned(plan publishedAppPersistencePlan, spk, release, metadata []byte) error {
+	return persistPublishedAppPlannedWithRuntimeContract(plan, spk, release, metadata, nil)
+}
+
+func persistPublishedAppPlannedWithRuntimeContract(plan publishedAppPersistencePlan, spk, release, metadata, runtimeContract []byte) error {
 	slotDir := plan.slotDir
 	if err := os.MkdirAll(slotDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", slotDir, err)
 	}
-	for _, f := range []struct {
+	files := []struct {
 		name string
 		data []byte
 	}{
 		{"app.spk", spk},
 		{"RELEASE.json", release},
 		{"metadata.json", metadata},
-	} {
+	}
+	if len(runtimeContract) != 0 {
+		files = append(files, struct {
+			name string
+			data []byte
+		}{"RUNTIME-CONTRACT.json", runtimeContract})
+	}
+	for _, f := range files {
 		if err := atomicWriteInto(slotDir, f.name, f.data); err != nil {
 			return err
 		}

@@ -129,6 +129,7 @@ def test_submit_binds_the_immutable_catalog_slot():
         args = provider.submit_args({
             "spkPath": "/tmp/app.spk",
             "metadataPath": "/tmp/metadata.json",
+            "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json",
             "releasePath": "/tmp/RELEASE.json",
             "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
         }, Path("/tmp/receipt.json"), stage_only=True)
@@ -137,6 +138,7 @@ def test_submit_binds_the_immutable_catalog_slot():
     assert args[args.index("--developer") + 1] == "hrbrlife", args
     assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
     assert args[args.index("--slug") + 1] == "popaye", args
+    assert args[args.index("--runtime-contract") + 1] == "/tmp/RUNTIME-CONTRACT.json", args
     assert "--stage" in args, args
 
 
@@ -150,7 +152,7 @@ def test_submit_refuses_missing_catalog_slot():
     })
     try:
         try:
-            provider.submit_args({"spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json", "releasePath": "/tmp/RELEASE.json"}, Path("/tmp/receipt.json"), stage_only=True)
+            provider.submit_args({"spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json", "releasePath": "/tmp/RELEASE.json", "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json"}, Path("/tmp/receipt.json"), stage_only=True)
         except provider.ProviderError as exc:
             assert "catalogSlot" in str(exc), exc
         else:

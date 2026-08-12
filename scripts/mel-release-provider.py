@@ -180,7 +180,7 @@ def catalog_package(app_id: str) -> Path:
 
 def require_context(app_id: str) -> dict[str, Any]:
     context = read_json(context_path(app_id))
-    for key in ("catalogDir", "ceremonyDir", "spkPath", "metadataPath", "releasePath", "statePath"):
+    for key in ("catalogDir", "ceremonyDir", "spkPath", "metadataPath", "runtimeContractPath", "releasePath", "statePath"):
         if not context.get(key):
             raise ProviderError(f"provider context lacks {key}")
     return context
@@ -208,6 +208,30 @@ def current_pointer(app_id: str) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         raise ProviderError("served pointer is not an object")
     return value
+
+
+def materialize_runtime_contract(source: Path, destination: Path, app_id: str, version: str, spk_sha256: str, app_hash: str) -> None:
+    """Bind the tracked source contract to exactly one built candidate.
+
+    Source contracts deliberately contain PENDING_BUILD for the three values a
+    pack can only know after creating the exact SPK.  The materialized copy is
+    private candidate evidence: it never rewrites the committed source file.
+    """
+    source_contract = source / "RUNTIME-CONTRACT.json"
+    if source_contract.is_symlink() or not source_contract.is_file():
+        raise ProviderError(f"source runtime contract is not a regular file: {source_contract}")
+    run(["git", "-C", str(source), "ls-files", "--error-unmatch", "RUNTIME-CONTRACT.json"])
+    contract = read_json(source_contract)
+    if contract.get("schema") != "melusina-app-runtime-contract-v1":
+        raise ProviderError("source runtime contract has the wrong schema")
+    app = contract.get("app")
+    if not isinstance(app, dict) or app.get("appId") != app_id:
+        raise ProviderError("source runtime contract app.appId does not match the release family appId")
+    for field in ("version", "spkSha256", "appHash"):
+        if app.get(field) != "PENDING_BUILD":
+            raise ProviderError(f"source runtime contract app.{field} must be exactly PENDING_BUILD")
+    app.update({"version": version, "spkSha256": spk_sha256, "appHash": app_hash})
+    write_json(destination, contract)
 
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
@@ -271,6 +295,9 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     # catalog and must be the same value used to derive/propose the ReleaseEntry.
     # Never let an inherited catalog field silently replace that authority.
     master = env("MEL_RELEASE_MASTER_NFT_MINT", required=True)
+    runtime_contract = work / "RUNTIME-CONTRACT.json"
+    materialize_runtime_contract(source, runtime_contract, app_id, version, artifact_sha, apphash)
+    shutil.copyfile(runtime_contract, ceremony / "RUNTIME-CONTRACT.json")
 
     context = {
         "schema": "melusina-mel-release-provider-context-v1",
@@ -280,6 +307,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "ceremonyDir": str(ceremony),
         "spkPath": str(spk),
         "metadataPath": str(metadata),
+        "runtimeContractPath": str(runtime_contract),
         "releasePath": str(release),
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
@@ -295,12 +323,20 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "masterNftMint": master,
         "spkPath": str(spk),
         "metadataPath": str(metadata),
+        "runtimeContract": {"sha256": hex_sha(runtime_contract), "size": runtime_contract.stat().st_size, "path": str(runtime_contract)},
     })
 
 
 def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
     release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
     release = read_json(release_path)
+    contract_path = clean_abs(str(context["runtimeContractPath"]), "provider runtimeContractPath")
+    contract = read_json(contract_path)
+    contract_app = contract.get("app")
+    if not isinstance(contract_app, dict) or contract.get("schema") != "melusina-app-runtime-contract-v1":
+        raise ProviderError("materialized runtime contract is malformed")
+    if contract_app.get("appId") != app_id or contract_app.get("version") != version or contract_app.get("appHash") != app_hash:
+        raise ProviderError("materialized runtime contract is not bound to this release")
     release.update({
         "$schema": "melusina-release-v1",
         "appHash": app_hash,
@@ -309,6 +345,8 @@ def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release
         "releaseNonce": nonce,
         "masterNftMint": env("MEL_RELEASE_MASTER_NFT_MINT", default=str(release.get("masterNftMint", ""))),
         "licenseSquadsVault": env("MEL_RELEASE_SQUADS_VAULT", required=True),
+        "runtimeContractSha256": hex_sha(contract_path),
+        "runtimeContractSchema": str(contract["schema"]),
     })
     if not release["masterNftMint"]:
         raise ProviderError("MEL_RELEASE_MASTER_NFT_MINT is required")
@@ -328,6 +366,7 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
         str(ensure_bin("submit", "./cmd/submit")), "--store", store_url,
         "--spk", str(context["spkPath"]), "--metadata", str(context["metadataPath"]),
         "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
+        "--runtime-contract", str(context["runtimeContractPath"]),
         "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
         "--domain", domain, "--rpc-url", rpc, "--timeout", "480s", "--receipt-out", str(receipt_out),
         "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],

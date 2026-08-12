@@ -19,13 +19,14 @@ import (
 func jsonPublishBodyWithSlot(t *testing.T, sig envelope.Signed, release, spk, metadata []byte, dev, repo, slug string) *bytes.Buffer {
 	t.Helper()
 	req := publishRequest{
-		Envelope:    sig,
-		ReleaseB64:  b64(release),
-		SPKB64:      b64(spk),
-		MetadataB64: b64(metadata),
-		Developer:   dev,
-		Repo:        repo,
-		Slug:        slug,
+		Envelope:           sig,
+		ReleaseB64:         b64(release),
+		SPKB64:             b64(spk),
+		MetadataB64:        b64(metadata),
+		RuntimeContractB64: b64(runtimeContractForRelease(t, release, spk, metadata)),
+		Developer:          dev,
+		Repo:               repo,
+		Slug:               slug,
 	}
 	b, err := json.Marshal(req)
 	if err != nil {

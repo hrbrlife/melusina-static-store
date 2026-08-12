@@ -19,6 +19,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -467,6 +468,19 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 				strings.TrimSpace(release.Version) != pointer.Version {
 				return fmt.Errorf("selected release intent mismatch for %s", appID)
 			}
+			binding := runtimecontract.Binding{
+				SPK: spk, Metadata: metadata, AppHash: release.AppHash, Version: release.Version,
+				ReleaseContractSHA256: release.RuntimeContractSHA256, ReleaseContractSchema: release.RuntimeContractSchema,
+			}
+			if runtimecontract.RequiresContract(binding) {
+				raw, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json")), maxAppPublishBody)
+				if err != nil {
+					return fmt.Errorf("read selected runtime contract for %s: %w", appID, err)
+				}
+				if _, err := runtimecontract.Validate(raw, binding); err != nil {
+					return fmt.Errorf("validate selected runtime contract for %s: %w", appID, err)
+				}
+			}
 			if err := verifyPointer(pointer); err != nil {
 				return fmt.Errorf("verify app catalog pointer %s: %w", appID, err)
 			}
@@ -486,6 +500,10 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 // complete replacement pointer directory. It runs before nonce claim; the active
 // generation cannot change under the service writer lock.
 func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, packageID string, pointerCount int) error {
+	return ensureCatalogPromotionMemberCapacityWithRuntimeContract(snapshot, appID, packageID, pointerCount, false)
+}
+
+func ensureCatalogPromotionMemberCapacityWithRuntimeContract(snapshot AppCatalogSnapshot, appID, packageID string, pointerCount int, hasRuntimeContract bool) error {
 	if !isSafePathSegment(appID) || !isSafePathSegment(packageID) {
 		return errors.New("unsafe appId/packageId for catalog capacity reservation")
 	}
@@ -526,6 +544,12 @@ func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, pa
 			steadyAdds++
 		}
 	}
+	if hasRuntimeContract {
+		relative := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+		if _, exists := present[relative]; !exists {
+			steadyAdds++
+		}
+	}
 
 	if pointerCount < 1 || pointerCount > maxRetentionRootEntries {
 		return fmt.Errorf("invalid frozen pointer count %d", pointerCount)
@@ -550,6 +574,10 @@ type appCatalogPointerPlan struct {
 // buildSignedAppCatalogPointerPlan freezes every rollout/stage semantic input
 // before nonce claim. Postclaim materialization consumes only this plan.
 func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, projection catalogProjection, projectedSPK, projectedMetadata, projectedRelease []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {
+	return buildSignedAppCatalogPointerPlanWithRuntimeContract(cfg, snapshot, projection, projectedSPK, projectedMetadata, projectedRelease, nil, operator, pending, requiredAppID, now)
+}
+
+func buildSignedAppCatalogPointerPlanWithRuntimeContract(cfg Config, snapshot AppCatalogSnapshot, projection catalogProjection, projectedSPK, projectedMetadata, projectedRelease, projectedRuntimeContract []byte, operator *identity.Private, pending *appRolloutState, requiredAppID string, now time.Time) (appCatalogPointerPlan, error) {
 	var zero appCatalogPointerPlan
 	var index catalogIndex
 	if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
@@ -613,7 +641,7 @@ func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, p
 				return zero, fmt.Errorf("read projected package for rollout %s: %w", appID, err)
 			}
 		}
-		candidateMetadata, candidateRelease := projectedMetadata, projectedRelease
+		candidateMetadata, candidateRelease, candidateRuntimeContract := projectedMetadata, projectedRelease, projectedRuntimeContract
 		if appID != projection.appID {
 			candidateMetadata, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")), maxAppPublishBody)
 			if err != nil {
@@ -639,6 +667,21 @@ func buildSignedAppCatalogPointerPlan(cfg Config, snapshot AppCatalogSnapshot, p
 			strings.TrimSpace(candidateIntent.ReleaseHash) != manifest.ReleaseHash ||
 			strings.TrimSpace(candidateIntent.Version) != manifest.Version {
 			return zero, fmt.Errorf("projected release intent mismatch for rollout %s", appID)
+		}
+		binding := runtimecontract.Binding{
+			SPK: candidateSPK, Metadata: candidateMetadata, AppHash: candidateIntent.AppHash, Version: candidateIntent.Version,
+			ReleaseContractSHA256: candidateIntent.RuntimeContractSHA256, ReleaseContractSchema: candidateIntent.RuntimeContractSchema,
+		}
+		if runtimecontract.RequiresContract(binding) {
+			if appID != projection.appID {
+				candidateRuntimeContract, err = readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json")), maxAppPublishBody)
+				if err != nil {
+					return zero, fmt.Errorf("read projected runtime contract for rollout %s: %w", appID, err)
+				}
+			}
+			if _, err := runtimecontract.Validate(candidateRuntimeContract, binding); err != nil {
+				return zero, fmt.Errorf("validate projected runtime contract for rollout %s: %w", appID, err)
+			}
 		}
 		pointer, err := signAppCatalogPointer(operator, state, manifest, packageID, catalogHash, domainHash, now)
 		if err != nil {

@@ -475,6 +475,26 @@ func runtimeContractForTest(t *testing.T, spk, metadata []byte, rel ReleaseJSON)
 	return b
 }
 
+// runtimeContractForRelease keeps ordinary publish fixtures truthful: a release
+// that claims a contract carries the exact raw bytes that claim binds. Tests
+// that exercise a missing/tampered contract construct their wire request
+// directly instead of accidentally relying on an implicit production fallback.
+func runtimeContractForRelease(t *testing.T, release, spk, metadata []byte) []byte {
+	t.Helper()
+	var rel ReleaseJSON
+	if err := json.Unmarshal(release, &rel); err != nil {
+		t.Fatalf("decode release for runtime-contract fixture: %v", err)
+	}
+	binding := runtimecontract.Binding{
+		SPK: spk, Metadata: metadata, AppHash: rel.AppHash, Version: rel.Version,
+		ReleaseContractSHA256: rel.RuntimeContractSHA256, ReleaseContractSchema: rel.RuntimeContractSchema,
+	}
+	if !runtimecontract.RequiresContract(binding) {
+		return nil
+	}
+	return runtimeContractForTest(t, spk, metadata, rel)
+}
+
 // pinAccept wires the mock to ACCEPT the fixture: Active ReleaseEntry pinning the
 // app_hash + app_id, Active StoreOperatorAuthorization whose store_authority ==
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), no

@@ -191,3 +191,55 @@ d = json.load(open(sys.argv[1]))
 assert d["name"] == "Explicit Metadata Name"
 PY
 printf 'ok  stage rejects a preserved RELEASE.json that does not bind the staged bytes\n'
+
+# Runtime-contract bytes are part of a governed stage identity. A bound release
+# accepts only the declared source file, copies it atomically, and an unbound
+# release removes any stale inherited contract.
+python3 - "$TMP/explicit/product.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["name"] = "Explicit Metadata Name"
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+mkdir -p "$TMP/contract"
+printf '{"schema":"runtime-contract-v1","fixture":true}\n' > "$TMP/contract/RUNTIME-CONTRACT.json"
+contract_sha="$(sha256sum "$TMP/contract/RUNTIME-CONTRACT.json" | awk '{print $1}')"
+python3 - "$TMP/catalog/RELEASE.json" "$contract_sha" <<'PY'
+import json, sys
+p, digest = sys.argv[1:]
+d = json.load(open(p))
+d["runtimeContractSchema"] = "runtime-contract-v1"
+d["runtimeContractSha256"] = digest
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+if ! PATH="$TMP/bin:$PATH" MELUSINA_APPHASH_BIN="$TMP/bin/apphash" \
+  PRESERVE_EXISTING_RELEASE=1 \
+  SOURCE_METADATA_PATH="$TMP/explicit/product.json" \
+  SOURCE_RUNTIME_CONTRACT_PATH="$TMP/contract/RUNTIME-CONTRACT.json" \
+  "$ROOT/scripts/stage-into-catalog.sh" "$TMP/source/right.spk" "$TMP/catalog" \
+  >"$TMP/runtime-contract-output" 2>&1; then
+  cat "$TMP/runtime-contract-output" >&2
+  exit 1
+fi
+cmp -s "$TMP/contract/RUNTIME-CONTRACT.json" "$TMP/catalog/RUNTIME-CONTRACT.json"
+printf 'ok  stage copies the exact runtime contract bound by RELEASE.json\n'
+
+python3 - "$TMP/catalog/RELEASE.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d.pop("runtimeContractSchema", None)
+d.pop("runtimeContractSha256", None)
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+if ! PATH="$TMP/bin:$PATH" MELUSINA_APPHASH_BIN="$TMP/bin/apphash" \
+  PRESERVE_EXISTING_RELEASE=1 \
+  SOURCE_METADATA_PATH="$TMP/explicit/product.json" \
+  "$ROOT/scripts/stage-into-catalog.sh" "$TMP/source/right.spk" "$TMP/catalog" \
+  >"$TMP/remove-runtime-contract-output" 2>&1; then
+  cat "$TMP/remove-runtime-contract-output" >&2
+  exit 1
+fi
+[[ ! -e "$TMP/catalog/RUNTIME-CONTRACT.json" ]]
+printf 'ok  stage removes a stale runtime contract from an unbound release\n'

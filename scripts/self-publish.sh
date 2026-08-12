@@ -124,6 +124,33 @@ else
 fi
 for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
 
+# A bound runtime contract is part of the Store's staged candidate identity.
+# Pass its exact bytes to both the private-stage and promotion requests; without
+# it the client derives a different StageID than the Store and correctly rejects
+# the otherwise valid signed receipt.
+mapfile -t runtime_contract_fields < <(
+  python3 - "$CAT_PATH/RELEASE.json" <<'PY'
+import json, sys
+release = json.load(open(sys.argv[1], encoding="utf-8"))
+print(release.get("runtimeContractSchema", ""))
+print(release.get("runtimeContractSha256", ""))
+PY
+)
+RUNTIME_CONTRACT_SCHEMA="${runtime_contract_fields[0]:-}"
+RUNTIME_CONTRACT_SHA256="${runtime_contract_fields[1]:-}"
+RUNTIME_CONTRACT_ARGS=()
+if [[ -z "$RUNTIME_CONTRACT_SCHEMA" && -z "$RUNTIME_CONTRACT_SHA256" ]]; then
+  [[ ! -e "$CAT_PATH/RUNTIME-CONTRACT.json" ]] || fail "unbound RELEASE.json must not retain RUNTIME-CONTRACT.json"
+elif [[ "$RUNTIME_CONTRACT_SCHEMA" != "runtime-contract-v1" || ! "$RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  fail "RELEASE.json has an invalid runtime-contract binding"
+else
+  need_file "$CAT_PATH/RUNTIME-CONTRACT.json"
+  ACTUAL_RUNTIME_CONTRACT_SHA256="$(sha256sum "$CAT_PATH/RUNTIME-CONTRACT.json" | cut -d' ' -f1)"
+  [[ "${ACTUAL_RUNTIME_CONTRACT_SHA256,,}" == "${RUNTIME_CONTRACT_SHA256,,}" ]] || \
+    fail "RUNTIME-CONTRACT.json sha256 does not match RELEASE.json"
+  RUNTIME_CONTRACT_ARGS=(--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json")
+fi
+
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "MELUSINA_STORE_RPC_URL or MELUSINA_RPC_URL is required"
 SUBMIT_BIN="$STATIC_STORE_ROOT/sidecar/melusina-store-sidecar/bin/submit"
@@ -145,6 +172,7 @@ ACTIVE_AFTER="$RECEIPT_DIR/$APP_SLUG-active-after.jsonl"
 submit_common=(
   --store "$STORE_URL" --spk "$CAT_PATH/app.spk"
   --metadata "$CAT_PATH/metadata.json" --release "$CAT_PATH/RELEASE.json"
+  "${RUNTIME_CONTRACT_ARGS[@]}"
   --publisher-key "$KEYS_DIR/publisher.key.json" --store-pubkey "$KEYS_DIR/store-pubkey.json"
   --license-mint "$STORE_LICENSE_MINT" --domain "$STORE_DOMAIN"
   --rpc-url "$RPC_URL" --timeout 480s

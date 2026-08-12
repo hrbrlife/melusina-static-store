@@ -141,7 +141,7 @@ RUNTIME_CONTRACT_SHA256="${runtime_contract_fields[1]:-}"
 RUNTIME_CONTRACT_ARGS=()
 if [[ -z "$RUNTIME_CONTRACT_SCHEMA" && -z "$RUNTIME_CONTRACT_SHA256" ]]; then
   [[ ! -e "$CAT_PATH/RUNTIME-CONTRACT.json" ]] || fail "unbound RELEASE.json must not retain RUNTIME-CONTRACT.json"
-elif [[ "$RUNTIME_CONTRACT_SCHEMA" != "runtime-contract-v1" || ! "$RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+elif [[ "$RUNTIME_CONTRACT_SCHEMA" != "melusina-app-runtime-contract-v1" || ! "$RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
   fail "RELEASE.json has an invalid runtime-contract binding"
 else
   need_file "$CAT_PATH/RUNTIME-CONTRACT.json"

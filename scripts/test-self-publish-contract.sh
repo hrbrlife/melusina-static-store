@@ -29,6 +29,9 @@ grep -q 'requires exactly one Active ReleaseEntry before promotion' "$DRIVER"
 grep -q 'RUNTIME_CONTRACT_ARGS=()' "$DRIVER"
 grep -q -- '--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json"' "$DRIVER"
 grep -q 'RUNTIME_CONTRACT_ARGS\[@\]' "$DRIVER"
+grep -q 'SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"' "$DRIVER"
+grep -q -- '--metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT"' "$DRIVER"
+grep -q 'SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then

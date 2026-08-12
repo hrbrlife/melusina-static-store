@@ -212,6 +212,17 @@ func runAppRetentionGC(cfg Config, store AppCatalogGenerationStore, rollouts map
 		store.Barrier.Lock()
 		defer store.Barrier.Unlock()
 	}
+	// A claimed-but-missing runtime contract is quarantined, not deleted. Keep
+	// its private stage and pre-reconciliation generations intact until a normal
+	// Store publish replaces every affected rollout with bound contract bytes.
+	classified, err := classifyRolloutStatesAt(cfg, now)
+	if err != nil {
+		return fmt.Errorf("classify rollout state before retention: %w", err)
+	}
+	if len(classified.quarantined) != 0 {
+		return nil
+	}
+	rollouts = classified.serving
 	const maxBatches = (2*maxRetentionRootEntries)/maxRetentionDeletes + 1
 	for batch := 0; batch < maxBatches; batch++ {
 		plan, err := collectAppRetentionPlan(cfg, store, rollouts, currentID, predecessorID, now, expectedUID, expectedGID)

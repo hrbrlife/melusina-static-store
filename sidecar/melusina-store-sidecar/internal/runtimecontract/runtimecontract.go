@@ -38,6 +38,12 @@ const (
 	SchemaURL = "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json"
 )
 
+// ErrEmpty is returned only when a RELEASE.json claims a runtime contract but
+// the corresponding raw artifact is absent. Callers may use it to quarantine
+// that already-unservable historical selection; they must never treat it as an
+// uncertified legacy release or synthesize contract bytes.
+var ErrEmpty = errors.New("runtime contract is empty")
+
 var (
 	hex64RE     = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	sidecarIDRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
@@ -172,7 +178,7 @@ func ValidateClaim(raw []byte, b Binding) (Contract, error) {
 		return Contract{}, errors.New("release.runtimeContractSha256 must be 64 lowercase hex characters")
 	}
 	if len(raw) == 0 {
-		return Contract{}, errors.New("runtime contract is empty")
+		return Contract{}, ErrEmpty
 	}
 	gotHash := sha256.Sum256(raw)
 	if wantHash != hex.EncodeToString(gotHash[:]) {

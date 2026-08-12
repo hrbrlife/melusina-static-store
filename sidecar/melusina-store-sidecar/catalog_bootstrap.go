@@ -94,6 +94,7 @@ type catalogBootstrapOptions struct {
 	expectedUID       uint32
 	expectedGID       uint32
 	nonce             publishNonceLedgerOptions
+	operator          *identity.Private
 	operatorPublicKey ed25519.PublicKey
 }
 
@@ -109,6 +110,7 @@ func bootstrapCatalogRuntime(cfg Config, operator *identity.Private) (catalogRun
 			return catalogRuntime{}, fmt.Errorf("catalog bootstrap operator key: %w", err)
 		}
 		opts.operatorPublicKey = ed25519.PublicKey(publicKey)
+		opts.operator = operator
 	}
 	return bootstrapCatalogRuntimeWithOptions(cfg, operator != nil, opts)
 }
@@ -295,13 +297,17 @@ func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID u
 }
 
 func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationStore, ledgerRoot, ledgerID string, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
-	rollouts, err := exactRolloutStates(cfg)
+	classified, err := classifyRolloutStatesAt(cfg, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
+	rollouts := classified.serving
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	servingDomainHash := hex.EncodeToString(domainHash[:])
 	snapshot, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	if err != nil && len(classified.quarantined) != 0 {
+		snapshot, err = store.RebuildCurrentExcludingQuarantined(rollouts, classified.quarantined, opts.operator, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
@@ -325,8 +331,10 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	if opts.nonce.Now != nil {
 		retentionNow = opts.nonce.Now().UTC()
 	}
-	if err := runAppRetentionGC(cfg, store, rollouts, snapshot.ID, predecessorID, retentionNow, opts.expectedUID, opts.expectedGID); err != nil {
-		return nil, fmt.Errorf("catalog startup retention: %w", err)
+	if len(classified.quarantined) == 0 {
+		if err := runAppRetentionGC(cfg, store, rollouts, snapshot.ID, predecessorID, retentionNow, opts.expectedUID, opts.expectedGID); err != nil {
+			return nil, fmt.Errorf("catalog startup retention: %w", err)
+		}
 	}
 	return ledger, nil
 }

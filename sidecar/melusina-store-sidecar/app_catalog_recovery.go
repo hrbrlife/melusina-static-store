@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +13,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 type appCatalogRecoveryCandidate struct {
@@ -101,6 +106,220 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		currentErr = errors.New("current app catalog generation is unavailable")
 	}
 	return AppCatalogSnapshot{}, fmt.Errorf("no fully verified app catalog generation (current: %v; rejected: %s)", currentErr, strings.Join(rejected, ","))
+}
+
+// RebuildCurrentExcludingQuarantined creates one new immutable catalog
+// generation containing only rollout selections whose staged bytes verify.
+// It is deliberately narrower than a repair API: it does not alter rollout
+// records, fabricate a missing RUNTIME-CONTRACT.json, or reclassify a claimed
+// contract as legacy. The quarantined release remains private evidence and can
+// return only through a normal, runtime-contract-bound Store publish.
+func (s AppCatalogGenerationStore) RebuildCurrentExcludingQuarantined(rollouts, quarantined map[string]appRolloutState, operator *identity.Private, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
+	if len(quarantined) == 0 {
+		return AppCatalogSnapshot{}, errors.New("catalog reconciliation requires a quarantined rollout")
+	}
+	if operator == nil {
+		return AppCatalogSnapshot{}, errors.New("app catalog reconciliation requires the active operator signer")
+	}
+	if len(operatorKey) != ed25519.PublicKeySize {
+		return AppCatalogSnapshot{}, errors.New("app catalog reconciliation requires an ed25519 operator public key")
+	}
+	derivedOperatorKey, err := operator.Public().SignPublicKey()
+	if err != nil || !bytes.Equal(derivedOperatorKey, operatorKey) {
+		return AppCatalogSnapshot{}, errors.New("app catalog reconciliation signer does not match the boot operator key")
+	}
+	if strings.TrimSpace(stagedRoot) == "" {
+		return AppCatalogSnapshot{}, errors.New("app catalog reconciliation requires the durable private-stage root")
+	}
+	rolloutAppIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		rolloutAppIDs = append(rolloutAppIDs, appID)
+	}
+	sort.Strings(rolloutAppIDs)
+	validate := func(snapshot AppCatalogSnapshot) error {
+		if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
+			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
+				return err
+			}
+			rollout, ok := rollouts[pointer.AppID]
+			if !ok {
+				return errors.New("catalog pointer has no durable rollout")
+			}
+			if pointer.StageID != rollout.CurrentStageID ||
+				pointer.AppHash != rollout.CurrentAppHash ||
+				pointer.Version != rollout.CurrentVersion ||
+				pointer.ServingDomainHash != servingDomainHash {
+				return errors.New("catalog pointer does not match durable rollout selection")
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
+	}
+	return s.BuildAndSwitch(func(candidateRoot string) error {
+		if err := removeQuarantinedCatalogEntries(candidateRoot, quarantined); err != nil {
+			return err
+		}
+		return resignCandidateCatalogPointers(candidateRoot, rollouts, operator, servingDomainHash, stagedRoot, time.Now().UTC())
+	}, validate)
+}
+
+// removeQuarantinedCatalogEntries edits only an unsealed, freshly copied
+// candidate generation. Every entry removed from apps/index.json also loses
+// its pointer, signature and release path; an unshared package is removed too.
+func removeQuarantinedCatalogEntries(root string, quarantined map[string]appRolloutState) error {
+	indexPath := filepath.Join(root, "apps", "index.json")
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		return fmt.Errorf("read candidate app index: %w", err)
+	}
+	var index struct {
+		Apps []map[string]any `json:"apps"`
+	}
+	if err := json.Unmarshal(raw, &index); err != nil {
+		return fmt.Errorf("decode candidate app index: %w", err)
+	}
+	kept := make([]map[string]any, 0, len(index.Apps))
+	removedPackages := make(map[string]struct{}, len(quarantined))
+	retainedPackages := make(map[string]struct{}, len(index.Apps))
+	for _, app := range index.Apps {
+		appID, _ := app["appId"].(string)
+		packageID, _ := app["packageId"].(string)
+		if _, remove := quarantined[appID]; remove {
+			if !isSafePathSegment(appID) || !validCatalogPackageID(packageID) {
+				return fmt.Errorf("quarantined catalog row has invalid appId/packageId %q/%q", appID, packageID)
+			}
+			removedPackages[packageID] = struct{}{}
+			continue
+		}
+		kept = append(kept, app)
+		if validCatalogPackageID(packageID) {
+			retainedPackages[packageID] = struct{}{}
+		}
+	}
+	for appID := range quarantined {
+		if err := removeCandidateCatalogFile(root, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json"))); err != nil {
+			return fmt.Errorf("remove quarantined pointer %s: %w", appID, err)
+		}
+		for _, namespace := range []string{"signatures", "attest"} {
+			if err := removeCandidateCatalogDirectory(root, filepath.ToSlash(filepath.Join(namespace, appID))); err != nil {
+				return fmt.Errorf("remove quarantined %s for %s: %w", namespace, appID, err)
+			}
+		}
+	}
+	for packageID := range removedPackages {
+		if _, retained := retainedPackages[packageID]; retained {
+			continue
+		}
+		if err := removeCandidateCatalogFile(root, filepath.ToSlash(filepath.Join("packages", packageID))); err != nil {
+			return fmt.Errorf("remove quarantined package %s: %w", packageID, err)
+		}
+	}
+	index.Apps = kept
+	body, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode quarantined catalog index: %w", err)
+	}
+	body = append(body, '\n')
+	if len(body) > maxAppCatalogJSONBytes {
+		return fmt.Errorf("%w: got %d bytes, cap %d", errCatalogIndexCapacity, len(body), maxAppCatalogJSONBytes)
+	}
+	return atomicWriteInto(filepath.Join(root, "apps"), "index.json", body)
+}
+
+func removeCandidateCatalogFile(root, relative string) error {
+	path := filepath.Join(root, filepath.FromSlash(relative))
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return errors.New("candidate catalog target is not a regular file")
+	}
+	return os.Remove(path)
+}
+
+func removeCandidateCatalogDirectory(root, relative string) error {
+	path := filepath.Join(root, filepath.FromSlash(relative))
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return errors.New("candidate catalog target is not a real directory")
+	}
+	if err := walkCatalogTree(path, nil); err != nil {
+		return err
+	}
+	return os.RemoveAll(path)
+}
+
+// resignCandidateCatalogPointers binds every surviving selection to the
+// reconciled index digest. Removing a row necessarily changes that digest, so
+// retaining old signatures would be a cryptographic mismatch, not recovery.
+func resignCandidateCatalogPointers(root string, rollouts map[string]appRolloutState, operator *identity.Private, servingDomainHash, stagedRoot string, now time.Time) error {
+	snapshot := AppCatalogSnapshot{Root: root}
+	indexBytes, err := readSnapshotFileBounded(snapshot, "apps/index.json", maxAppCatalogJSONBytes)
+	if err != nil {
+		return err
+	}
+	var index catalogIndex
+	if err := json.Unmarshal(indexBytes, &index); err != nil {
+		return fmt.Errorf("decode reconciled app index: %w", err)
+	}
+	packageByApp := make(map[string]string, len(index.Apps))
+	for _, app := range index.Apps {
+		if !isSafePathSegment(app.AppID) || !validCatalogPackageID(app.PackageID) {
+			return errors.New("reconciled app index contains invalid appId/packageId")
+		}
+		if _, exists := packageByApp[app.AppID]; exists {
+			return fmt.Errorf("reconciled app index duplicates appId %s", app.AppID)
+		}
+		packageByApp[app.AppID] = app.PackageID
+	}
+	catalogHash := sha256.Sum256(indexBytes)
+	domainHash, err := hex.DecodeString(servingDomainHash)
+	if err != nil || len(domainHash) != 32 {
+		return errors.New("reconciled catalog has invalid serving domain hash")
+	}
+	var domain [32]byte
+	copy(domain[:], domainHash)
+	appIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		appIDs = append(appIDs, appID)
+	}
+	sort.Strings(appIDs)
+	pointers := make(map[string]AppCatalogPointer, len(appIDs))
+	bodies := make(map[string][]byte, len(appIDs))
+	for _, appID := range appIDs {
+		rollout := rollouts[appID]
+		manifest, _, metadata, _, err := loadStagedApp(stagedRoot, rollout.CurrentStageID)
+		if err != nil {
+			return fmt.Errorf("load retained staged release for %s: %w", appID, err)
+		}
+		packageID := metadataPackageID(metadata)
+		if packageID == "" || packageByApp[appID] != packageID {
+			return fmt.Errorf("reconciled app index does not select rollout %s packageId %s", appID, packageID)
+		}
+		pointer, err := signAppCatalogPointer(operator, rollout, manifest, packageID, catalogHash, domain, now)
+		if err != nil {
+			return fmt.Errorf("sign reconciled pointer for %s: %w", appID, err)
+		}
+		body, err := json.MarshalIndent(pointer, "", "  ")
+		if err != nil {
+			return err
+		}
+		pointers[appID] = pointer
+		bodies[appID] = append(body, '\n')
+	}
+	return WriteSignedAppCatalogPointersForGeneration(root, appCatalogPointerPlan{pointers: pointers, pointerBodies: bodies, rolloutAppIDs: appIDs})
 }
 
 func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) error {
@@ -301,44 +520,69 @@ func validateRemovableCatalogTree(root string) error {
 	})
 }
 
-// exactRolloutStates derives the mandatory pointer selections from the complete,
-// durable rollout directory. Unexpected members fail closed rather than being
-// silently omitted from cold-start generation verification.
+// rolloutClassification separates selections that may safely be served from
+// historical releases which claim a runtime contract but omitted its bytes.
+// The latter are unservable by definition: they stay on disk for ordinary
+// Store-UI republish, but are excluded from the served catalog rather than
+// making every unrelated valid package unavailable.
+type rolloutClassification struct {
+	serving     map[string]appRolloutState
+	quarantined map[string]appRolloutState
+}
+
+// exactRolloutStates derives the mandatory *servable* pointer selections from
+// the complete durable rollout directory. Unexpected members and every error
+// other than the precise missing-bound-contract condition still fail closed.
 func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 	return exactRolloutStatesAt(cfg, time.Now().UTC())
 }
 
 func exactRolloutStatesAt(cfg Config, now time.Time) (map[string]appRolloutState, error) {
+	classified, err := classifyRolloutStatesAt(cfg, now)
+	if err != nil {
+		return nil, err
+	}
+	return classified.serving, nil
+}
+
+func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, error) {
+	classified := rolloutClassification{
+		serving:     make(map[string]appRolloutState),
+		quarantined: make(map[string]appRolloutState),
+	}
 	root := rolloutStateDir(cfg)
 	entries, err := readDirBounded(root, maxRetentionRootEntries)
 	if err != nil {
-		return nil, fmt.Errorf("read exact rollout set: %w", err)
+		return rolloutClassification{}, fmt.Errorf("read exact rollout set: %w", err)
 	}
-	rollouts := make(map[string]appRolloutState, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		path := filepath.Join(root, name)
 		info, err := os.Lstat(path)
 		if err != nil {
-			return nil, fmt.Errorf("lstat rollout member %s: %w", name, err)
+			return rolloutClassification{}, fmt.Errorf("lstat rollout member %s: %w", name, err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || filepath.Ext(name) != ".json" {
-			return nil, fmt.Errorf("invalid rollout state member %s", name)
+			return rolloutClassification{}, fmt.Errorf("invalid rollout state member %s", name)
 		}
 		appID := strings.TrimSuffix(name, ".json")
 		if !isSafePathSegment(appID) {
-			return nil, fmt.Errorf("invalid rollout appId %q", appID)
+			return rolloutClassification{}, fmt.Errorf("invalid rollout appId %q", appID)
 		}
 		rollout, err := loadAppRollout(cfg, appID)
 		if err != nil {
-			return nil, fmt.Errorf("validate rollout %s: %w", appID, err)
+			return rolloutClassification{}, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
 		if err := validateRolloutStagedSelectionsAt(cfg, rollout, now); err != nil {
-			return nil, fmt.Errorf("validate rollout %s staged selection: %w", appID, err)
+			if errors.Is(err, runtimecontract.ErrEmpty) {
+				classified.quarantined[appID] = rollout
+				continue
+			}
+			return rolloutClassification{}, fmt.Errorf("validate rollout %s staged selection: %w", appID, err)
 		}
-		rollouts[appID] = rollout
+		classified.serving[appID] = rollout
 	}
-	return rollouts, nil
+	return classified, nil
 }
 
 func validateRolloutStagedSelections(cfg Config, rollout appRolloutState) error {

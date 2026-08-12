@@ -596,27 +596,12 @@ func buildSignedAppCatalogPointerPlanWithRuntimeContract(cfg Config, snapshot Ap
 		packageByApp[appID] = packageID
 	}
 
-	rolloutEntries, err := readDirBounded(rolloutStateDir(cfg), maxRetentionRootEntries)
+	rollouts, err := exactRolloutStatesAt(cfg, now)
 	if err != nil {
-		return zero, fmt.Errorf("read rollout state: %w", err)
+		return zero, fmt.Errorf("read serving rollout state: %w", err)
 	}
 	catalogHash := sha256.Sum256(projection.indexBytes)
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	rollouts := make(map[string]appRolloutState, len(rolloutEntries)+1)
-	for _, entry := range rolloutEntries {
-		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || filepath.Ext(entry.Name()) != ".json" {
-			return zero, fmt.Errorf("invalid rollout state member %s", entry.Name())
-		}
-		appID := strings.TrimSuffix(entry.Name(), ".json")
-		if !isSafePathSegment(appID) {
-			return zero, fmt.Errorf("invalid rollout state appId %q", appID)
-		}
-		state, err := loadAppRollout(cfg, appID)
-		if err != nil {
-			return zero, fmt.Errorf("load rollout %s: %w", appID, err)
-		}
-		rollouts[appID] = state
-	}
 	if pending != nil {
 		if pending.AppID != requiredAppID || !isSafePathSegment(pending.AppID) {
 			return zero, errors.New("pending rollout does not match required appId")

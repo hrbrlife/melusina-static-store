@@ -195,22 +195,38 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 
 	var previous stagedAppManifest
 	var previousCapture *capturedAppRelease
+	hasPrior := false
 	if prior, err := loadAppRollout(cfg, current.AppID); err == nil && prior.CurrentStageID != "" {
-		published, publishedErr := rolloutStateIsCatalogCurrent(cfg, prior)
-		if publishedErr != nil {
-			return appRolloutState{}, publishedErr
+		quarantined, validationErr := rolloutCurrentStageIsQuarantined(cfg, prior, now)
+		if validationErr != nil {
+			return appRolloutState{}, validationErr
 		}
-		if !published {
-			return appRolloutState{}, fmt.Errorf(
-				"pending rollout %s was not published as the signed catalog current; retry that exact candidate before promoting stage %s",
-				prior.CurrentStageID, current.StageID)
+		if quarantined {
+			// The prior record is preserved as evidence, but it never reached a
+			// servable catalog because its claimed contract bytes were absent. A
+			// normal governed publish may replace it; it must not retain it as a
+			// rollback candidate or require an impossible retry of bad bytes.
+			prior = appRolloutState{}
 		}
-		loaded, _, _, _, loadErr := loadStagedApp(cfg.PrivateStageDir, prior.CurrentStageID)
-		if loadErr != nil {
-			return appRolloutState{}, fmt.Errorf("load current rollout candidate: %w", loadErr)
+		if prior.CurrentStageID != "" {
+			published, publishedErr := rolloutStateIsCatalogCurrent(cfg, prior)
+			if publishedErr != nil {
+				return appRolloutState{}, publishedErr
+			}
+			if !published {
+				return appRolloutState{}, fmt.Errorf(
+					"pending rollout %s was not published as the signed catalog current; retry that exact candidate before promoting stage %s",
+					prior.CurrentStageID, current.StageID)
+			}
+			loaded, _, _, _, loadErr := loadStagedApp(cfg.PrivateStageDir, prior.CurrentStageID)
+			if loadErr != nil {
+				return appRolloutState{}, fmt.Errorf("load current rollout candidate: %w", loadErr)
+			}
+			previous = loaded
+			hasPrior = true
 		}
-		previous = loaded
-	} else {
+	}
+	if !hasPrior {
 		captured, ok, captureErr := captureCurrentlyServedRelease(cfg, current.AppID, now)
 		if captureErr != nil {
 			return appRolloutState{}, captureErr
@@ -240,6 +256,17 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 		state.capturedPrevious = previousCapture
 	}
 	return state, nil
+}
+
+func rolloutCurrentStageIsQuarantined(cfg Config, state appRolloutState, now time.Time) (bool, error) {
+	err := validateRolloutStagedSelectionsAt(cfg, state, now)
+	if errors.Is(err, runtimecontract.ErrEmpty) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("validate current rollout selection: %w", err)
+	}
+	return false, nil
 }
 
 // commitAppRollout performs the durable half of a prepared rollout. It must be

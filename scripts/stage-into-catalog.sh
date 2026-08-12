@@ -18,6 +18,11 @@
 # Optional env:
 #   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
 #                         Defaults to metadata.json beside the source SPK.
+#   SOURCE_RUNTIME_CONTRACT_PATH
+#                         Raw committed RUNTIME-CONTRACT.json for a single
+#                         staged app. Defaults to RUNTIME-CONTRACT.json beside
+#                         the source SPK when the governed RELEASE.json binds
+#                         a runtime contract.
 #   PRESERVE_EXISTING_RELEASE=1
 #                         Preserve the catalog RELEASE.json byte-for-byte and
 #                         require its appHash to bind the newly staged bytes.
@@ -64,13 +69,14 @@ if (( $# < 2 || $# % 2 != 0 )); then
 fi
 
 # PACKAGE-ATOMIC STAGING (CODEX-G + CODEX-SDL F1).
-# A catalog package is the {app.spk, metadata.json, RELEASE.json} TRIPLE (plus
-# icon/screenshots). They must update as ONE unit — a reader / serve-gate must
-# never see a new app.spk against a stale metadata/RELEASE, or vice-versa.
+# A catalog package is the {app.spk, metadata.json, RELEASE.json,
+# RUNTIME-CONTRACT.json?} tuple (plus icon/screenshots). They must update as
+# ONE unit — a reader / serve-gate must never see a new app.spk against stale
+# metadata, release, or runtime-contract bytes, or vice-versa.
 # Three separate per-file renames cannot guarantee that (a kill between them
 # leaves a mismatched package). So we build a complete SHADOW of the package
 # dir (hardlink-cloned from the live dir = instant, no 57 MB SPK data copy),
-# replace the triple INSIDE the shadow, validate there, then swap the WHOLE
+# replace the governed tuple INSIDE the shadow, validate there, then swap the WHOLE
 # package dir with a SINGLE atomic rename. Any failure/interruption leaves the
 # live package dir byte-for-byte unchanged; an interrupted swap is repaired by
 # the trap (live dir gone + saved prev present -> restore prev).
@@ -104,6 +110,7 @@ while (( $# >= 2 )); do
   fi
   CAT_META="$PKG/metadata.json"
   SOURCE_META="${SOURCE_METADATA_PATH:-$(dirname "$SPK")/metadata.json}"
+  SOURCE_RUNTIME_CONTRACT="${SOURCE_RUNTIME_CONTRACT_PATH:-$(dirname "$SPK")/RUNTIME-CONTRACT.json}"
   if [[ ! -f "$CAT_META" ]]; then
     fail "  catalog metadata.json missing: $CAT_META"; FAILS=$((FAILS+1)); continue
   fi
@@ -112,6 +119,9 @@ while (( $# >= 2 )); do
   fi
   if [[ -n "${SOURCE_METADATA_PATH:-}" && ! -f "$SOURCE_META" ]]; then
     fail "  explicit source metadata missing: $SOURCE_META"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -n "${SOURCE_RUNTIME_CONTRACT_PATH:-}" && ! -f "$SOURCE_RUNTIME_CONTRACT" ]]; then
+    fail "  explicit source runtime contract missing: $SOURCE_RUNTIME_CONTRACT"; FAILS=$((FAILS+1)); continue
   fi
 
   SHADOWS+=("$PKG")
@@ -277,6 +287,36 @@ PY
   if [[ ! -s "$SHADOW/RELEASE.json" ]]; then
     fail "  RELEASE.json is absent or empty after staging $(basename "$PKG") (live entry untouched)"
     rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+
+  # 3b) A governed RELEASE.json may bind a raw runtime contract. Its hash is
+  # part of the Store StageID, so the raw file must be staged atomically with
+  # the SPK/metadata/release tuple and must exactly match the governed digest.
+  # Conversely, an unbound release must not retain a stale contract inherited
+  # from the hardlink clone.
+  read -r RELEASE_RUNTIME_SCHEMA RELEASE_RUNTIME_SHA256 < <(
+    python3 - "$SHADOW/RELEASE.json" <<'PY'
+import json, sys
+release = json.load(open(sys.argv[1], encoding="utf-8"))
+print(release.get("runtimeContractSchema", ""), release.get("runtimeContractSha256", ""))
+PY
+  )
+  if [[ -z "$RELEASE_RUNTIME_SCHEMA" && -z "$RELEASE_RUNTIME_SHA256" ]]; then
+    rm -f "$SHADOW/RUNTIME-CONTRACT.json"
+  elif [[ "$RELEASE_RUNTIME_SCHEMA" != "runtime-contract-v1" || ! "$RELEASE_RUNTIME_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    fail "  RELEASE.json has an invalid runtime-contract binding (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  elif [[ ! -f "$SOURCE_RUNTIME_CONTRACT" ]]; then
+    fail "  RELEASE.json binds a runtime contract but source contract is missing: $SOURCE_RUNTIME_CONTRACT (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  else
+    ACTUAL_RUNTIME_SHA256="$(sha256sum "$SOURCE_RUNTIME_CONTRACT" | cut -d' ' -f1)"
+    if [[ "${ACTUAL_RUNTIME_SHA256,,}" != "${RELEASE_RUNTIME_SHA256,,}" ]]; then
+      fail "  source runtime contract sha256 $ACTUAL_RUNTIME_SHA256 != RELEASE.json $RELEASE_RUNTIME_SHA256 (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+    rm -f "$SHADOW/RUNTIME-CONTRACT.json"
+    cp -f "$SOURCE_RUNTIME_CONTRACT" "$SHADOW/RUNTIME-CONTRACT.json"
   fi
 
   # 4) COMMIT POINT — the whole package is built & verified in the shadow.

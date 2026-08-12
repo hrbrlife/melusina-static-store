@@ -26,6 +26,9 @@ grep -q 'PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
 grep -q 'no app-chain writer' "$DRIVER"
 grep -q 'Active ReleaseEntry set changed' "$DRIVER"
 grep -q 'requires exactly one Active ReleaseEntry before promotion' "$DRIVER"
+grep -q 'RUNTIME_CONTRACT_ARGS=()' "$DRIVER"
+grep -q -- '--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json"' "$DRIVER"
+grep -q 'RUNTIME_CONTRACT_ARGS\[@\]' "$DRIVER"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then

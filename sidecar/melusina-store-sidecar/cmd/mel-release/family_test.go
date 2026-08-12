@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -132,30 +133,34 @@ func TestSelectUnknownFails(t *testing.T) {
 	}
 }
 
-// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 9 apps)
+// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 8 apps)
 // so the fail-closed parser is exercised against every legitimate shape it must
 // still accept: family-level squads: bodies, quoted values with spaces, unknown
 // per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
 // trailing-comment stripping, and the folded `out_of_scope_note: >` block scalar.
 func TestLoadFamilyRealManifest(t *testing.T) {
-	const realPath = "/home/user/Desktop/agentchat/fleet/release-family.yaml"
-	if _, err := os.Stat(realPath); err != nil {
-		t.Skipf("real manifest not present (%v)", err)
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
 	}
+	realPath := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "fleet", "release-family.yaml"))
 	fam, err := LoadFamily(realPath)
 	if err != nil {
 		t.Fatalf("LoadFamily(real): %v", err)
 	}
-	if len(fam.Apps) != 9 {
+	if fam.Schema != "melusina-release-family/v1" {
+		t.Fatalf("real manifest schema = %q", fam.Schema)
+	}
+	if len(fam.Apps) != 8 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		 t.Fatalf("want 9 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 8 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
-		"popaye", "ccash-domain-template", "ccashconfig", "cyberteller",
-		"cyberteller-config", "dueprocess", "namedcoin", "namedcoin-admin", "fineract-setup",
+		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
+		"namedcoin", "namedcoin-admin", "fineract-setup",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -166,7 +171,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "namedcoin" {
+	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "money-path" {
 		t.Fatalf("namedcoin-admin fields wrong: %+v", admin)
 	}
 }

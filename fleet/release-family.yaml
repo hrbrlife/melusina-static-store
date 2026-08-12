@@ -1,4 +1,4 @@
-schema: melusina-release-family-v1
+schema: melusina-release-family/v1
 # Account-opening proof constellation. appId is authoritative; source paths and
 # catalog names are deliberately descriptive because they historically differ.
 families:
@@ -33,7 +33,7 @@ families:
         role: account-opening-and-client-money-ui
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
-        source_path: /home/user/Desktop/worktrees/governed-ccashconfig-0048
+        source_path: /home/user/Desktop/worktrees/ccashconfig-lease-audience-v67
         publish_slug: ccashconfig
         catalog_name: ccashconfig
         role: central-connection-hub

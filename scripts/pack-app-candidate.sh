@@ -92,7 +92,7 @@ if [[ -z "$PACK_TARGET" ]]; then
     # Do not use grep -q here: with pipefail it closes the pipe early, Make
     # receives SIGPIPE while dumping its database, and a real target looks
     # absent. Let grep consume the complete database instead.
-    make -C "$APP_DIR" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
   }
   if make_target_exists pack-local; then
     PACK_TARGET="pack-local"

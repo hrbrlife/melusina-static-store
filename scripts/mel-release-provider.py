@@ -165,17 +165,22 @@ def catalog_slot(app_id: str) -> dict[str, str]:
     return slot
 
 
-def catalog_package(app_id: str) -> Path:
-    matches: list[Path] = []
-    for metadata in (ROOT / "packages").rglob("metadata.json"):
-        try:
-            if read_json(metadata).get("appId") == app_id:
-                matches.append(metadata.parent)
-        except ProviderError:
-            continue
-    if len(matches) != 1:
-        raise ProviderError(f"expected exactly one catalog package for {app_id}, found {len(matches)}")
-    return matches[0]
+def catalog_package(app_id: str, slot: dict[str, str]) -> Path:
+    """Resolve the immutable app into its explicitly governed catalog slot.
+
+    Historic catalog directories can retain a retired copy of an appId.  A
+    recursive first-match scan would turn that harmless history into a release
+    outage (or, worse, select a path based on traversal order).  The release
+    family names the single mutable slot; validate its tracked metadata binds
+    the appId before staging any bytes.
+    """
+    package = ROOT / "packages" / slot["developer"] / slot["repo"] / slot["slug"]
+    metadata = package / "metadata.json"
+    if package.is_symlink() or not package.is_dir() or metadata.is_symlink() or not metadata.is_file():
+        raise ProviderError(f"declared catalog slot is not a regular package: {package}")
+    if read_json(metadata).get("appId") != app_id:
+        raise ProviderError(f"declared catalog slot appId does not match {app_id}: {package}")
+    return package
 
 
 def require_context(app_id: str) -> dict[str, Any]:
@@ -253,13 +258,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
 
-    declared_catalog = ROOT / "packages" / slot["developer"] / slot["repo"] / slot["slug"]
-    catalog_source = catalog_package(app_id)
-    if catalog_source.resolve() != declared_catalog.resolve():
-        raise ProviderError(
-            f"catalog slot drift for {app_id}: manifest names {declared_catalog}, "
-            f"but the immutable appId currently resolves to {catalog_source}"
-        )
+    catalog_source = catalog_package(app_id, slot)
     catalog = work / "catalog"
     shutil.copytree(catalog_source, catalog, symlinks=False)
     run(

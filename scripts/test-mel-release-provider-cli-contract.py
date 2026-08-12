@@ -161,9 +161,29 @@ def test_submit_refuses_missing_catalog_slot():
         restore_env(old)
 
 
+def test_catalog_package_uses_declared_slot_over_legacy_duplicate():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app_id = "test-app-id"
+        slot = {"developer": "acme", "repo": "wallet", "slug": "cyberteller"}
+        declared = root / "packages" / slot["developer"] / slot["repo"] / slot["slug"]
+        legacy = root / "packages" / "legacy-copy"
+        declared.mkdir(parents=True)
+        legacy.mkdir(parents=True)
+        (declared / "metadata.json").write_text(json.dumps({"appId": app_id}))
+        (legacy / "metadata.json").write_text(json.dumps({"appId": app_id}))
+        old_root = provider.ROOT
+        try:
+            provider.ROOT = root
+            assert provider.catalog_package(app_id, slot) == declared
+        finally:
+            provider.ROOT = old_root
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
+    test_catalog_package_uses_declared_slot_over_legacy_duplicate()
     print("mel-release provider CLI-contract tests passed")

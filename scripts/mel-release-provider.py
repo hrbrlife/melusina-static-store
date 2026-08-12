@@ -517,6 +517,7 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
         if result.get("status") != "executed":
             raise ProviderError("Squads did not execute the registered proposal")
     finalize_release(context)
+    rewrite_release(context, app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True))
     shutil.copyfile(context["releasePath"], final_release_out)
     signatures = [v for v in result.get("auditSigs", {}).values() if isinstance(v, str) and v]
     signatures.extend(v.get("signature") for v in result.get("auditSigs", {}).get("approvals", []) if isinstance(v, dict) and isinstance(v.get("signature"), str))
@@ -528,6 +529,11 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
 
 def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
     context = require_context(app_id)
+    # A finalizer owns the on-chain attest fields and serializes only that
+    # schema, so re-attach the independently materialized Store contract before
+    # every promotion. This is idempotent and preserves the already-verified
+    # ReleaseEntry fields; it also makes a restart after registration safe.
+    rewrite_release(context, app_id, app_hash, release_hash, version, env("MEL_RELEASE_NONCE", required=True))
     release = read_json(Path(context["releasePath"]))
     if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
         raise ProviderError("promotion context no longer binds the staged candidate")

@@ -158,6 +158,32 @@ def test_next_index_uses_release_adapter_contract():
     assert "--print-next-index" not in captured[0], captured
 
 
+def test_rewrite_release_preserves_final_attestation_and_binds_contract():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        release_path = root / "RELEASE.json"
+        contract_path = root / "RUNTIME-CONTRACT.json"
+        app_id, version, app_hash, release_hash, nonce = "app", "1.2.3", "a" * 64, "b" * 64, "c" * 32
+        release_path.write_text(json.dumps({
+            "$schema": "melusina-release-v1", "appHash": app_hash, "releaseHash": release_hash,
+            "version": version, "releaseNonce": nonce, "releaseEntryPda": "entry", "authorSig": "sig",
+            "signedAtUnix": 1, "masterNftMint": "master", "licenseSquadsVault": "vault",
+        }))
+        contract_path.write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {"appId": app_id, "version": version, "spkSha256": "d" * 64, "appHash": app_hash},
+        }))
+        old = with_env({"MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_RELEASE_SQUADS_VAULT": "vault"})
+        try:
+            provider.rewrite_release({"releasePath": str(release_path), "runtimeContractPath": str(contract_path)}, app_id, app_hash, release_hash, version, nonce)
+        finally:
+            restore_env(old)
+        final = json.loads(release_path.read_text())
+        assert final["releaseEntryPda"] == "entry" and final["authorSig"] == "sig" and final["signedAtUnix"] == 1
+        assert final["runtimeContractSchema"] == "melusina-app-runtime-contract-v1"
+        assert final["runtimeContractSha256"] == provider.hex_sha(contract_path)
+
+
 def test_submit_refuses_missing_catalog_slot():
     old = with_env({
         "MEL_RELEASE_STORE_URL": "https://store.example.test",
@@ -201,6 +227,7 @@ if __name__ == "__main__":
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_next_index_uses_release_adapter_contract()
+    test_rewrite_release_preserves_final_attestation_and_binds_contract()
     test_submit_refuses_missing_catalog_slot()
     test_catalog_package_uses_declared_slot_over_legacy_duplicate()
     print("mel-release provider CLI-contract tests passed")

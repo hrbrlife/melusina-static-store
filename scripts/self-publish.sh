@@ -99,33 +99,48 @@ if $DRY_RUN; then
   exit 0
 fi
 need_file "$SCRIPT_DIR/pack-app-candidate.sh"
-CANDIDATE_RECEIPT="${MELUSINA_CANDIDATE_RECEIPT:-/tmp/melusina-$APP_SLUG-candidate.json}"
-# Most app sources keep metadata at their root. A governed catalog release may
-# instead own its metadata in the declared catalog slot (as MerMail does). Do
-# not synthesize or copy metadata: pack and later stage the tracked slot bytes.
-SOURCE_METADATA_PATH="$APP_DIR/metadata.json"
-if [[ ! -f "$SOURCE_METADATA_PATH" && -n "$CATALOG_PATH_OVERRIDE" ]]; then
-  SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"
-fi
-need_file "$SOURCE_METADATA_PATH"
-CANDIDATE_METADATA_OUT="$(mktemp "/tmp/melusina-$APP_SLUG-candidate-metadata.XXXXXX")"
-"$SCRIPT_DIR/pack-app-candidate.sh" "$APP_DIR" \
-  --metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT" \
-  --receipt-out "$CANDIDATE_RECEIPT"
-need_file "$APP_DIR/app.spk"
-STAGE_METADATA_PATH="$SOURCE_METADATA_PATH"
-if [[ -s "$CANDIDATE_METADATA_OUT" ]]; then
-  STAGE_METADATA_PATH="$CANDIDATE_METADATA_OUT"
-fi
-
 CAT_PATH="$CATALOG_PATH_OVERRIDE"
-if [[ -z "$CAT_PATH" ]]; then
-  command -v spk >/dev/null 2>&1 || fail "spk CLI is required to resolve appId"
-  APP_ID="$(spk verify "$APP_DIR/app.spk" 2>/dev/null | sed -n 's/.*"appId": "\([^"]*\)".*/\1/p' | head -1)"
-  [[ -n "$APP_ID" ]] || fail "could not extract appId from app.spk"
-  mapfile -t matches < <(grep -rl --include=metadata.json "\"appId\": *\"$APP_ID\"" "$STATIC_STORE_ROOT/packages" 2>/dev/null || true)
-  [[ ${#matches[@]} -eq 1 ]] || fail "expected exactly one catalog slot for appId=$APP_ID; pass --catalog-path only for a governed first publish"
-  CAT_PATH="$(canonical_dir "${matches[0]%/metadata.json}")" || fail "catalog path is not canonical"
+CANDIDATE_SPK=""
+STAGE_METADATA_PATH=""
+if $PROMOTE_EXISTING; then
+  # An Active ReleaseEntry already fixes the exact SPK and metadata tuple. Do
+  # not rebuild it: rebuilding can produce bytes that are valid but different
+  # from the governed release. Re-stage the committed tuple and let the Store,
+  # on-chain entry, runtime contract, and signed receipts verify it.
+  [[ -n "$CAT_PATH" ]] || fail "--promote-existing-active requires --catalog-path"
+  for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
+  git -C "$APP_DIR" status --porcelain --untracked-files=normal | grep -q '^' && \
+    fail "source tree is dirty before exact-current promotion"
+  CANDIDATE_SPK="$CAT_PATH/app.spk"
+  STAGE_METADATA_PATH="$CAT_PATH/metadata.json"
+else
+  CANDIDATE_RECEIPT="${MELUSINA_CANDIDATE_RECEIPT:-/tmp/melusina-$APP_SLUG-candidate.json}"
+  # Most app sources keep metadata at their root. A governed catalog release
+  # may instead own its metadata in the declared catalog slot (as MerMail does).
+  # Do not synthesize or copy metadata: pack and later stage tracked bytes.
+  SOURCE_METADATA_PATH="$APP_DIR/metadata.json"
+  if [[ ! -f "$SOURCE_METADATA_PATH" && -n "$CATALOG_PATH_OVERRIDE" ]]; then
+    SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"
+  fi
+  need_file "$SOURCE_METADATA_PATH"
+  CANDIDATE_METADATA_OUT="$(mktemp "/tmp/melusina-$APP_SLUG-candidate-metadata.XXXXXX")"
+  "$SCRIPT_DIR/pack-app-candidate.sh" "$APP_DIR" \
+    --metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT" \
+    --receipt-out "$CANDIDATE_RECEIPT"
+  need_file "$APP_DIR/app.spk"
+  CANDIDATE_SPK="$APP_DIR/app.spk"
+  STAGE_METADATA_PATH="$SOURCE_METADATA_PATH"
+  if [[ -s "$CANDIDATE_METADATA_OUT" ]]; then
+    STAGE_METADATA_PATH="$CANDIDATE_METADATA_OUT"
+  fi
+  if [[ -z "$CAT_PATH" ]]; then
+    command -v spk >/dev/null 2>&1 || fail "spk CLI is required to resolve appId"
+    APP_ID="$(spk verify "$CANDIDATE_SPK" 2>/dev/null | sed -n 's/.*"appId": "\([^"]*\)".*/\1/p' | head -1)"
+    [[ -n "$APP_ID" ]] || fail "could not extract appId from app.spk"
+    mapfile -t matches < <(grep -rl --include=metadata.json "\"appId\": *\"$APP_ID\"" "$STATIC_STORE_ROOT/packages" 2>/dev/null || true)
+    [[ ${#matches[@]} -eq 1 ]] || fail "expected exactly one catalog slot for appId=$APP_ID; pass --catalog-path only for a governed first publish"
+    CAT_PATH="$(canonical_dir "${matches[0]%/metadata.json}")" || fail "catalog path is not canonical"
+  fi
 fi
 PACKAGES_ROOT="$(canonical_dir "$STATIC_STORE_ROOT/packages")" || fail "packages root is not canonical"
 case "$CAT_PATH" in "$PACKAGES_ROOT"/*) ;; *) fail "catalog path must resolve inside static_store/packages" ;; esac
@@ -134,10 +149,10 @@ case "$CAT_PATH" in "$PACKAGES_ROOT"/*) ;; *) fail "catalog path must resolve in
 # ceremony; no rebuild is permitted between these gates.
 if $PROMOTE_EXISTING; then
   SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1 \
-    "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
+    "$SCRIPT_DIR/stage-into-catalog.sh" "$CANDIDATE_SPK" "$CAT_PATH"
 else
   SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" \
-    "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
+    "$SCRIPT_DIR/stage-into-catalog.sh" "$CANDIDATE_SPK" "$CAT_PATH"
 fi
 for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
 

@@ -311,6 +311,9 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	if err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
+	if _, _, err := reconcileDesiredGenerationAfterAppCatalogQuarantine(cfg, opts.operator, opts.operatorPublicKey, classified.quarantined, time.Now().UTC()); err != nil {
+		return nil, fmt.Errorf("reconcile desired generation after catalog quarantine: %w", err)
+	}
 	appIDs := make([]string, 0, len(rollouts))
 	for appID := range rollouts {
 		appIDs = append(appIDs, appID)

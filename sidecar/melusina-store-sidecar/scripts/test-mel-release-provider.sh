@@ -98,4 +98,12 @@ grep -Fq 'MEL_RELEASE_CONFIG' "$FAMILY_ADAPTER"
 grep -Fq 'refusing to package a dirty app checkout' "$FAMILY_ADAPTER"
 grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$FAMILY_ADAPTER"
 grep -Fq "melusina-release-family/v1" "$FAMILY_ADAPTER"
+# Candidate creation must compile a fresh checkout and use spkmodule's
+# pre-chain package verifier.  The old PREAPPROVAL escape hatch was circular:
+# it asked an app to verify a ReleaseEntry before the candidate existed.
+grep -Fq '"${MEL_RELEASE_MAKE:-make}" build pack-local' "$PROVIDER"
+if grep -Fq 'MEL_RELEASE_PREAPPROVAL' "$PROVIDER"; then
+  echo "provider must not bypass release verification through PREAPPROVAL" >&2
+  exit 1
+fi
 echo "mel-release-provider contract: PASS"

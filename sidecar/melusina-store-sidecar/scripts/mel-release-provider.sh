@@ -116,13 +116,12 @@ build() {
   [[ "$spk" = /* ]] || spk="$app/$spk"
   [[ "$meta" = /* ]] || meta="$app/$meta"
 
-  # The app's canonical Makefile owns build + deterministic package creation.
-  # A ReleaseEntry cannot exist before the candidate SPK exists.  The source
-  # Makefile still declares APP_PEARL_ENABLED=yes, but this one explicit
-  # pre-approval mode performs only SPK parsing here.  approve-register later
-  # finalizes and verifies this exact stored SPK against the on-chain entry
-  # before the catalog pointer is promoted.
-  (cd "$app" && MEL_RELEASE_PREAPPROVAL=1 "${MEL_RELEASE_MAKE:-make}" pack)
+  # The app's canonical Makefile owns compilation and deterministic candidate
+  # creation.  pack-local validates the SPK package itself without pretending
+  # that the not-yet-created ReleaseEntry already exists.  approve-register
+  # later verifies these exact stored bytes against the finalized on-chain
+  # entry before the catalog pointer is promoted.
+  (cd "$app" && "${MEL_RELEASE_MAKE:-make}" build pack-local)
   [[ -f "$spk" && ! -L "$spk" ]] || die "pack did not produce a regular SPK: $spk"
   [[ -f "$meta" && ! -L "$meta" ]] || die "pack did not leave regular metadata: $meta"
   command -v spk >/dev/null || die "spk is required for release verification"

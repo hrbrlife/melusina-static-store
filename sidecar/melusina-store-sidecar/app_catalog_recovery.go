@@ -398,7 +398,13 @@ func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) er
 	if staged.MasterNftMint != finalized.MasterNftMint {
 		return errors.New("masterNftMint changed")
 	}
-	if staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
+	// The private stage is written before the ReleaseEntry ceremony has a
+	// publisher-custody vault to record.  Finalization may therefore fill an
+	// initially blank vault, but it must never replace an already selected
+	// vault (or clear one).  This is the same one-way transition accepted by
+	// cmd/reconcile-stage-finalization; recovery must not make a valid
+	// historical ceremony result impossible to serve after restart.
+	if staged.LicenseSquadsVault != "" && staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
 		return errors.New("licenseSquadsVault changed")
 	}
 	if staged.ReleaseNonce != finalized.ReleaseNonce {

@@ -287,6 +287,7 @@ func TestAppCatalogRecoveryAcceptsCeremonyFinalizedRelease(t *testing.T) {
 	// registered the release.  They must not turn a valid staged candidate into
 	// an unrecoverable cold-start catalog.
 	release.SignedAtUnix = 1_700_000_123
+	release.LicenseSquadsVault = "publisher-custody-vault"
 	release.ReleaseEntryPda = "chain-final-release-entry"
 	release.AuthorSig = "chain-final-author-signature"
 	release.QuorumPolicy = QuorumPolicy{Threshold: 3, MemberCount: 4, MultisigPda: "core-app-team"}
@@ -305,6 +306,23 @@ func TestAppCatalogRecoveryAcceptsCeremonyFinalizedRelease(t *testing.T) {
 	}
 	if _, err := recoverTestCurrent(root, recoveryRollouts("app-one"), pub); err != nil {
 		t.Fatalf("ceremony-finalized release rejected: %v", err)
+	}
+}
+
+func TestValidateFinalizedReleaseAgainstStageAllowsOnlyBlankVaultFinalization(t *testing.T) {
+	staged := ReleaseJSON{
+		Schema: "melusina-release-v1", AppHash: "app-hash", ReleaseHash: "release-hash",
+		Version: "1.0.0", MasterNftMint: "master-mint", ReleaseNonce: "nonce",
+	}
+	finalized := staged
+	finalized.LicenseSquadsVault = "publisher-custody-vault"
+	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized)); err != nil {
+		t.Fatalf("blank staged custody vault could not be finalized: %v", err)
+	}
+
+	staged.LicenseSquadsVault = "original-custody-vault"
+	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized)); err == nil || !strings.Contains(err.Error(), "licenseSquadsVault changed") {
+		t.Fatalf("changed non-empty custody vault accepted: %v", err)
 	}
 }
 

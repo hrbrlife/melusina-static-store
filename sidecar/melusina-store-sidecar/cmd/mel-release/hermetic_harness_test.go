@@ -24,17 +24,18 @@ import (
 // ── the fake store (httptest) ───────────────────────────────────────────────────
 
 type fakeStore struct {
-	mu           sync.Mutex
-	operator     *identity.Private
-	storeID      string
-	bundleOrigin string
-	channel      string
-	gen          *componentrelease.DesiredGeneration
-	raw          []byte
-	postCount    int
-	foldCount    int
-	failMode     string // "", "reject", "fold-then-fail"
-	server       *httptest.Server
+	mu               sync.Mutex
+	operator         *identity.Private
+	storeID          string
+	bundleOrigin     string
+	channel          string
+	gen              *componentrelease.DesiredGeneration
+	raw              []byte
+	postCount        int
+	foldCount        int
+	failMode         string // "", "reject", "fold-then-fail"
+	serveUnavailable bool
+	server           *httptest.Server
 }
 
 func newFakeStore(op *identity.Private, storeID, bundleOrigin, channel string) *fakeStore {
@@ -50,6 +51,12 @@ func (s *fakeStore) setFail(mode string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failMode = mode
+}
+
+func (s *fakeStore) setServeUnavailable(value bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.serveUnavailable = value
 }
 
 func (s *fakeStore) counts() (post, fold int) {
@@ -79,6 +86,10 @@ func (s *fakeStore) served() bool {
 func (s *fakeStore) handleGet(w http.ResponseWriter, _ *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.serveUnavailable {
+		http.Error(w, "check=serve_surface: injected fail-closed public generation", http.StatusServiceUnavailable)
+		return
+	}
 	if s.gen == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -89,11 +100,15 @@ func (s *fakeStore) handleGet(w http.ResponseWriter, _ *http.Request) {
 
 func (s *fakeStore) handlePost(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"schema": generationReadinessSchema,
-			"status": "ready",
-		})
+		readiness := generationPromoteReadiness{Schema: generationReadinessSchema, Status: "ready"}
+		if s.gen != nil {
+			id := s.gen.GenerationID
+			readiness.CurrentGenerationID = &id
+		}
+		_ = json.NewEncoder(w).Encode(readiness)
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -178,6 +193,10 @@ func (s *fakeStore) handlePost(w http.ResponseWriter, r *http.Request) {
 	s.gen = &signed
 	s.raw = raw
 	s.foldCount++
+	// A successful governed promotion repairs the intentionally stale public
+	// surface in this harness, just as the real Store republishes a generation
+	// bound to the current catalog pointer before the client read-back.
+	s.serveUnavailable = false
 
 	sum := sha256.Sum256(raw)
 	result := generationPromoteResult{

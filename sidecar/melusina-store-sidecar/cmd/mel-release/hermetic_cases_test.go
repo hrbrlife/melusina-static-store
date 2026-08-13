@@ -320,6 +320,49 @@ func TestHermeticGeneratedIdempotency(t *testing.T) {
 	}
 }
 
+// A Store may correctly withhold a persisted, operator-signed generation when
+// its old component pointer no longer matches the current catalog. The
+// readiness floor lets the already-authorized next release repair that exact
+// state through the usual signed CAS POST; it is not a direct generation write.
+func TestHermeticRepairsFailClosedGenerationSurfaceFromVerifiedReadinessFloor(t *testing.T) {
+	h := newHarness(t)
+
+	mustNoErr(t, "publish v1", h.publish("1.0.1"))
+	mustNoErr(t, "approve v1", h.approve())
+	if id, _, ok := h.store.genComponent(testAppID); !ok || id != 1 {
+		t.Fatalf("initial generation id=%d present=%v, want id=1 present", id, ok)
+	}
+
+	// Simulate the live split state: the Store has a valid persisted generation
+	// but its public serve gate returns 503. The private readiness contract still
+	// proves the signed CAS floor (generation 1).
+	mustNoErr(t, "publish v2", h.publish("1.0.2"))
+	h.store.setServeUnavailable(true)
+	mustNoErr(t, "approve v2 through readiness recovery", h.approve())
+	mustState(h, stateDone)
+
+	if id, comp, ok := h.store.genComponent(testAppID); !ok || id != 2 || comp.Version != "1.0.2" {
+		t.Fatalf("repaired generation id=%d version=%q present=%v, want id=2 version=1.0.2 present", id, comp.Version, ok)
+	}
+	if post, fold := h.store.counts(); post != 2 || fold != 2 {
+		t.Fatalf("readiness recovery did not make exactly one normal follow-up promote: post=%d fold=%d, want 2/2", post, fold)
+	}
+}
+
+// A 503 remains fail-closed when readiness cannot prove any signed persisted
+// generation floor. This is the mutation/negative control for recovery above:
+// deleting the verified-floor condition must not let a blind promote proceed.
+func TestHermeticRefusesUnavailableGenerationWithoutReadinessFloor(t *testing.T) {
+	h := newHarness(t)
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	h.store.setServeUnavailable(true)
+	mustErr(t, "approve without verified readiness floor", h.approve())
+	mustState(h, statePromoted)
+	if post, fold := h.store.counts(); post != 0 || fold != 0 {
+		t.Fatalf("unverified 503 advanced generation: post=%d fold=%d", post, fold)
+	}
+}
+
 // ── CASE 3: replay/idempotency after DONE ───────────────────────────────────────
 
 func TestHermeticReplayAfterDone(t *testing.T) {

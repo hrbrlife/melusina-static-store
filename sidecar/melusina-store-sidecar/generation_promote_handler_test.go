@@ -470,12 +470,79 @@ func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET readiness want 200 got %d", rec.Code)
 	}
-	var readiness map[string]string
+	var readiness generationPromoteReadiness
 	if err := json.Unmarshal(rec.Body.Bytes(), &readiness); err != nil {
 		t.Fatalf("decode readiness: %v", err)
 	}
-	if readiness["schema"] != "melusina-generation-promote-readiness-v1" || readiness["status"] != "ready" {
+	if readiness.Schema != "melusina-generation-promote-readiness-v1" || readiness.Status != "ready" {
 		t.Fatalf("unexpected readiness: %#v", readiness)
+	}
+	if readiness.CurrentGenerationID != nil {
+		t.Fatalf("readiness exposed a generation floor without a locally verified persisted generation: %#v", readiness)
+	}
+
+	// A verified persisted generation may disclose only its CAS floor. This is
+	// sufficient for the normal signed promote request to repair a public
+	// serve-surface mismatch without disclosing the generation contents.
+	doc := sampleShellGeneration()
+	doc.GenerationID = 61
+	doc.PreviousGeneration = 60
+	signed, err := componentrelease.Sign(op, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistDesiredGeneration(svc.cfg.DistDir, raw); err != nil {
+		t.Fatal(err)
+	}
+	rec = httptest.NewRecorder()
+	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodGet, "/publish/generation", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("verified generation readiness want 200 got %d: %s", rec.Code, rec.Body.String())
+	}
+	readiness = generationPromoteReadiness{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &readiness); err != nil {
+		t.Fatalf("decode verified readiness: %v", err)
+	}
+	if readiness.CurrentGenerationID == nil || *readiness.CurrentGenerationID != 61 {
+		t.Fatalf("verified readiness generation floor = %#v, want 61", readiness.CurrentGenerationID)
+	}
+
+	// A persisted document whose signer binding is not the active operator must
+	// not become a CAS oracle, even though it remains structurally valid JSON.
+	foreign, err := componentrelease.Sign(op, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign.OperatorPubkey = strings.Repeat("1", 32)
+	opPub, err := operatorSignPublicKey(op)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := componentrelease.Verify(opPub, svc.cfg.StoreID, foreign); err == nil {
+		t.Fatal("test mutation did not break the persisted generation signer binding")
+	}
+	raw, err = json.Marshal(foreign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistDesiredGeneration(svc.cfg.DistDir, raw); err != nil {
+		t.Fatal(err)
+	}
+	rec = httptest.NewRecorder()
+	svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodGet, "/publish/generation", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("foreign generation readiness want 200 got %d: %s", rec.Code, rec.Body.String())
+	}
+	readiness = generationPromoteReadiness{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &readiness); err != nil {
+		t.Fatalf("decode foreign readiness: %v", err)
+	}
+	if readiness.CurrentGenerationID != nil {
+		t.Fatalf("readiness exposed foreign-signed generation floor: %#v", readiness.CurrentGenerationID)
 	}
 
 	// Readiness must refuse a store whose deployer omitted the public origin.

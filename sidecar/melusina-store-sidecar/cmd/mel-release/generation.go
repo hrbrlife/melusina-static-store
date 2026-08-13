@@ -43,6 +43,18 @@ const (
 // error.
 var errNoGenerationServed = errors.New("no generation served")
 
+// errGenerationServeUnavailable marks a fail-closed 503 from the public
+// generation surface. It is recoverable only when the Store's separate
+// readiness response supplies a locally verified CAS floor; it never makes a
+// generic public-endpoint failure safe to ignore.
+var errGenerationServeUnavailable = errors.New("generation serve surface unavailable")
+
+type generationPromoteReadiness struct {
+	Schema              string  `json:"schema"`
+	Status              string  `json:"status"`
+	CurrentGenerationID *uint64 `json:"currentGenerationId,omitempty"`
+}
+
 // requireGenerationPromotionReady is the publish-side interlock for the two
 // command release protocol. A candidate may be privately staged and a Squads
 // ReleaseEntry proposal may be created only when the RUNNING store advertises
@@ -57,38 +69,45 @@ func requireGenerationPromotionReady(c Config) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.StoreURL, "/")+generationPromoteTarget, nil)
+	_, err := readGenerationPromotionReadiness(ctx, &http.Client{Timeout: timeout}, c.StoreURL)
+	return err
+}
+
+// readGenerationPromotionReadiness reads the Store's bounded readiness
+// contract. CurrentGenerationID is intentionally optional: it is present only
+// when the Store locally verified its persisted signed generation and lets an
+// already-authorized release repair a public serve-surface mismatch through the
+// normal signed CAS request.
+func readGenerationPromotionReadiness(ctx context.Context, client *http.Client, store string) (generationPromoteReadiness, error) {
+	var status generationPromoteReadiness
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(store, "/")+generationPromoteTarget, nil)
 	if err != nil {
-		return fmt.Errorf("build generation readiness request: %w", err)
+		return status, fmt.Errorf("build generation readiness request: %w", err)
 	}
-	resp, err := (&http.Client{Timeout: timeout}).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("read generation readiness: %w", err)
+		return status, fmt.Errorf("read generation readiness: %w", err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
 	if err != nil {
-		return fmt.Errorf("read generation readiness body: %w", err)
+		return status, fmt.Errorf("read generation readiness body: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("store lacks approval-side generation promotion (GET %s: HTTP %d: %s)", generationPromoteTarget, resp.StatusCode, strings.TrimSpace(string(raw)))
-	}
-	var status struct {
-		Schema string `json:"schema"`
-		Status string `json:"status"`
+		return status, fmt.Errorf("store lacks approval-side generation promotion (GET %s: HTTP %d: %s)", generationPromoteTarget, resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&status); err != nil {
-		return fmt.Errorf("decode generation readiness: %w", err)
+		return status, fmt.Errorf("decode generation readiness: %w", err)
 	}
 	if err := dec.Decode(new(json.RawMessage)); err != io.EOF {
-		return errors.New("generation readiness has trailing data")
+		return status, errors.New("generation readiness has trailing data")
 	}
 	if status.Schema != generationReadinessSchema || status.Status != "ready" {
-		return fmt.Errorf("store returned invalid generation readiness %q/%q", status.Schema, status.Status)
+		return status, fmt.Errorf("store returned invalid generation readiness %q/%q", status.Schema, status.Status)
 	}
-	return nil
+	return status, nil
 }
 
 type publisherKeyFile struct {
@@ -181,22 +200,28 @@ func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	client := &http.Client{Timeout: timeout}
+	readiness, err := readGenerationPromotionReadiness(ctx, client, c.StoreURL)
+	if err != nil {
+		return 0, "", err
+	}
 
 	// Idempotent resume/no-op: the served generation is the durable guard. If it
 	// already carries our component at the candidate's identity, we are done.
 	if gid, ghash, ok, err := servedGenerationHas(ctx, client, c, operatorKey, comp); err != nil {
-		return 0, "", err
+		if !errors.Is(err, errGenerationServeUnavailable) || readiness.CurrentGenerationID == nil {
+			return 0, "", err
+		}
 	} else if ok {
 		return gid, ghash, nil
 	}
 
 	var lastConflict error
 	for attempt := 0; attempt < maxGenerationCASAttempts; attempt++ {
-		expected, err := fetchCurrentGenerationID(ctx, client, c.StoreURL)
+		expected, recoveryFloor, err := fetchCurrentGenerationID(ctx, client, c.StoreURL, readiness.CurrentGenerationID)
 		if err != nil {
 			return 0, "", err
 		}
-		gid, ghash, conflict, err := promoteOnce(ctx, client, c, publisher, destination, operatorKey, comp, expected)
+		gid, ghash, conflict, err := promoteOnce(ctx, client, c, publisher, destination, operatorKey, comp, expected, recoveryFloor)
 		if err == nil {
 			return gid, ghash, nil
 		}
@@ -206,8 +231,14 @@ func submitGeneration(c Config, cand candidateReceipt) (uint64, string, error) {
 		lastConflict = err
 		// Another app advanced the global pointer. If that advance already carried
 		// our component we are done; otherwise retry against the fresh floor.
-		if gid, ghash, ok, err := servedGenerationHas(ctx, client, c, operatorKey, comp); err != nil {
+		readiness, err = readGenerationPromotionReadiness(ctx, client, c.StoreURL)
+		if err != nil {
 			return 0, "", err
+		}
+		if gid, ghash, ok, err := servedGenerationHas(ctx, client, c, operatorKey, comp); err != nil {
+			if !errors.Is(err, errGenerationServeUnavailable) || readiness.CurrentGenerationID == nil {
+				return 0, "", err
+			}
 		} else if ok {
 			return gid, ghash, nil
 		}
@@ -242,7 +273,7 @@ func servedGenerationHas(ctx context.Context, client *http.Client, c Config, ope
 // reads back and verifies the served generation. The bool return is true when the
 // failure was a store CAS/lost-update conflict (HTTP 409), which the caller may
 // retry against a refreshed floor.
-func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *identity.Private, destination identity.Public, operatorKey []byte, comp componentrelease.ComponentRelease, expected uint64) (uint64, string, bool, error) {
+func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *identity.Private, destination identity.Public, operatorKey []byte, comp componentrelease.ComponentRelease, expected uint64, recoveryFloor bool) (uint64, string, bool, error) {
 	request := generationPromoteRequest{
 		Schema:                    generationPromoteSchema,
 		Channel:                   c.Channel,
@@ -286,9 +317,15 @@ func promoteOnce(ctx context.Context, client *http.Client, c Config, publisher *
 	// Superset preservation (audit FIX 4): capture the component set of the
 	// generation served at this floor BEFORE the promote, so we can prove the
 	// promote folds ours in WITHOUT silently dropping another app's component. A
-	// 404 means no prior generation — nothing to preserve.
+	// 404 means no prior generation — nothing to preserve. When a verified
+	// readiness floor is recovering a deliberately fail-closed 503 surface, the
+	// Store itself still re-verifies and folds the persisted generation under its
+	// writer lock; public bytes are unavailable to this client until that repair.
 	var prevComponentIDs []string
-	if _, prevDoc, perr := fetchAndVerifyGeneration(ctx, client, c.StoreURL, c.StoreID, operatorKey); perr == nil {
+	if recoveryFloor {
+		// The normal post-promote read-back below remains mandatory; recovery
+		// never reports success from the readiness floor alone.
+	} else if _, prevDoc, perr := fetchAndVerifyGeneration(ctx, client, c.StoreURL, c.StoreID, operatorKey); perr == nil {
 		prevComponentIDs = make([]string, 0, len(prevDoc.Components))
 		for _, pc := range prevDoc.Components {
 			prevComponentIDs = append(prevComponentIDs, pc.ComponentID)
@@ -378,6 +415,9 @@ func fetchAndVerifyGeneration(ctx context.Context, client *http.Client, store, s
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, zero, errNoGenerationServed
 	}
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, zero, fmt.Errorf("%w: %s", errGenerationServeUnavailable, strings.TrimSpace(string(raw)))
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, zero, fmt.Errorf("promoted generation read-back HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
@@ -399,35 +439,40 @@ func fetchAndVerifyGeneration(ctx context.Context, client *http.Client, store, s
 }
 
 // fetchCurrentGenerationID reads the currently-served generationId as the CAS
-// floor. A 404 (no generation yet) yields 0.
-func fetchCurrentGenerationID(ctx context.Context, client *http.Client, store string) (uint64, error) {
+// floor. A 404 (no generation yet) yields 0. A 503 is usable only with a
+// verified readiness fallback, and the bool reports that exceptional recovery
+// path to the caller so it keeps the normal public supersession check intact.
+func fetchCurrentGenerationID(ctx context.Context, client *http.Client, store string, fallback *uint64) (uint64, bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(store, "/")+generationServedPath, nil)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	req.Header.Set("Cache-Control", "no-cache")
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("read current generation: %w", err)
+		return 0, false, fmt.Errorf("read current generation: %w", err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxGenerationBytes+1))
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return 0, nil
+		return 0, false, nil
+	}
+	if resp.StatusCode == http.StatusServiceUnavailable && fallback != nil {
+		return *fallback, true, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("current generation read HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		return 0, false, fmt.Errorf("current generation read HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	var doc struct {
 		GenerationID uint64 `json:"generationId"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return 0, fmt.Errorf("decode current generation: %w", err)
+		return 0, false, fmt.Errorf("decode current generation: %w", err)
 	}
-	return doc.GenerationID, nil
+	return doc.GenerationID, false, nil
 }
 
 func loadPublisherKey(arg string) (*identity.Private, error) {

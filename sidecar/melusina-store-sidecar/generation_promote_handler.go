@@ -42,6 +42,18 @@ type generationPromoteBody struct {
 	RequestB64 string          `json:"request_b64"`
 }
 
+// generationPromoteReadiness is the deliberately small, read-only contract
+// checked before a release ceremony. CurrentGenerationID is present only when
+// the persisted generation is signed by this store's active operator for this
+// exact StoreID. It lets a publisher repair a non-servable generation through
+// the ordinary signed CAS POST; it never exposes the generation contents,
+// policy, staged bytes, or any authority material.
+type generationPromoteReadiness struct {
+	Schema              string  `json:"schema"`
+	Status              string  `json:"status"`
+	CurrentGenerationID *uint64 `json:"currentGenerationId,omitempty"`
+}
+
 // A promotion carries release facts and an envelope, never an artifact. Keep
 // this endpoint narrowly bounded instead of inheriting the app-SPK upload cap.
 const maxGenerationPromoteBody int64 = 1 << 20 // 1 MiB
@@ -66,11 +78,24 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 			http.Error(w, "generation promote gate not initialized (no public_base_url to pin the bundle origin)", http.StatusServiceUnavailable)
 			return
 		}
+		readiness := generationPromoteReadiness{
+			Schema: "melusina-generation-promote-readiness-v1",
+			Status: "ready",
+		}
+		// The public serve endpoint may correctly fail closed when an older
+		// signed generation no longer matches the current catalog pointer. Only
+		// a locally re-verified persisted generation may supply the CAS floor
+		// needed to repair that state through the normal signed POST.
+		if operatorKey, err := operatorSignPublicKey(s.operator); err == nil {
+			if current, _, err := loadCurrentGeneration(s.cfg.DistDir); err == nil {
+				if err := componentrelease.Verify(operatorKey, s.cfg.StoreID, current); err == nil {
+					id := current.GenerationID
+					readiness.CurrentGenerationID = &id
+				}
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"schema": "melusina-generation-promote-readiness-v1",
-			"status": "ready",
-		})
+		_ = json.NewEncoder(w).Encode(readiness)
 		return
 	}
 	if r.Method != http.MethodPost {

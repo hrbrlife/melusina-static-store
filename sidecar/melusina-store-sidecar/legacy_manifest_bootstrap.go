@@ -10,6 +10,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -67,6 +68,32 @@ func legacyManifestFromGeneration(doc componentrelease.DesiredGeneration, operat
 	}
 	m.Signature = base64.StdEncoding.EncodeToString(operatorSig(canonical))
 	return m, nil
+}
+
+// legacyManifestReplacementAllowed keeps the rollback floor while allowing the
+// store to repair an equal-build document that was not produced by this
+// endpoint. An older direct publisher wrote an unsigned compatibility manifest;
+// treating any syntactically-decodable equal-build JSON as authoritative makes
+// that bad projection permanently unrecoverable. A valid equal-build projection
+// is already current and remains immutable. A higher build is never replaced,
+// even when malformed or unsigned, because doing so would be a rollback.
+func legacyManifestReplacementAllowed(prior []byte, next legacyManifest, operator ed25519.PublicKey) bool {
+	var old legacyManifest
+	if json.Unmarshal(prior, &old) != nil {
+		return true
+	}
+	if old.Build < next.Build {
+		return true
+	}
+	if old.Build > next.Build {
+		return false
+	}
+	canonical, err := legacyManifestCanonical(old)
+	if err != nil {
+		return true
+	}
+	sig, err := base64.StdEncoding.DecodeString(old.Signature)
+	return err != nil || !ed25519.Verify(operator, canonical, sig)
 }
 
 func (s *publishService) handleLegacyManifestBootstrap(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +187,7 @@ func (s *publishService) handleLegacyManifestBootstrap(w http.ResponseWriter, r 
 	}
 	p := filepath.Join(s.cfg.DistDir, "update", "manifest.json")
 	if prior, err := os.ReadFile(p); err == nil {
-		var old legacyManifest
-		if json.Unmarshal(prior, &old) == nil && old.Build >= m.Build {
+		if !legacyManifestReplacementAllowed(prior, m, key) {
 			http.Error(w, "check=rollback: legacy manifest build is already newer or equal", http.StatusConflict)
 			return
 		}

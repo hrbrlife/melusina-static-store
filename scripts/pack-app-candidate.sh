@@ -116,10 +116,22 @@ import hashlib, json, sys
 before, after, spk = sys.argv[1:]
 old = json.load(open(before, encoding="utf-8"))
 new = json.load(open(after, encoding="utf-8"))
-expected = hashlib.sha256(open(spk, "rb").read()).hexdigest()[:32]
+expected_sha256 = hashlib.sha256(open(spk, "rb").read()).hexdigest()
+expected_package_id = expected_sha256[:32]
+
+# A post-pack hook may derive only the package identity from the exact SPK:
+# `packageId` is mandatory and `sha256` may either remain its authored value
+# or be synchronised to the same artifact. Every other product-owned field
+# must remain byte-for-byte equivalent as JSON data.
 old.pop("packageId", "")
+old_sha256 = old.pop("sha256", "")
 package_id = new.pop("packageId", "")
-print("yes" if old == new and package_id == expected else "no")
+new_sha256 = new.pop("sha256", "")
+print("yes" if (
+    old == new
+    and package_id == expected_package_id
+    and new_sha256 in (old_sha256, expected_sha256)
+) else "no")
 PY
 )"
   [[ "$generated_ok" == yes ]] || {

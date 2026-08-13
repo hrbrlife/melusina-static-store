@@ -17,7 +17,8 @@ pack:
 else
 pack-local:
 	@printf 'candidate-bytes' > app.spk
-	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}' | cut -c1-32); printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$sha" > metadata.json; fi
+	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
+	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
 endif
 MAKE
@@ -56,6 +57,27 @@ assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# Some real app hooks synchronise both packageId and the full artifact digest.
+# That exact SPK-derived pair is admissible; a changed product field remains a
+# hard failure.
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MUTATE_METADATA=1 MUTATE_METADATA_SHA=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/generated-sha-metadata.json" --receipt-out "$WORK/generated-sha-receipt.json"
+python3 - "$WORK/generated-sha-metadata.json" "$WORK/generated-sha-receipt.json" <<'PY'
+import json, sys
+metadata, receipt = map(lambda p: json.load(open(p)), sys.argv[1:])
+assert metadata["packageId"] == receipt["app"]["packageId"]
+assert metadata["sha256"] == receipt["artifact"]["sha256"]
+PY
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MUTATE_METADATA_BAD=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/tampered-metadata.json" >"$WORK/tampered-metadata.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'pack mutated metadata beyond the generated packageId' "$WORK/tampered-metadata.log"
 
 # A post-pack packageId derivation is the only permitted source mutation. The
 # helper snapshots it for staging and restores the committed metadata file.

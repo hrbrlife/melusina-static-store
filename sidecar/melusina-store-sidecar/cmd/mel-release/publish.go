@@ -208,7 +208,46 @@ func ensureStaged(c Config, prov SignerProvider, app App, rec *walReceipt) error
 	return nil
 }
 
+// revalidateStagedReceipt re-runs, at the STAGED->PROPOSED boundary, the exact
+// verification ensureStaged performed when it recorded the stage receipt, and
+// additionally binds the on-disk bytes to the receipt the WAL journaled. A WAL
+// that reached STAGED proves the receipt WAS valid once — not that it still is:
+// advanceWAL fsyncs the WAL, but the provider-written stage.json may still be
+// in the page cache, so a host crash can durably journal STAGED while leaving a
+// truncated (even zero-byte) stage.json behind (this exact artifact was left by
+// the 2026-08-13 host reboot during the popaye 0.3.189 publish). Resuming into
+// the Squads propose-register governance mutation on that state is the defect;
+// this guard refuses first, without invoking the provider or touching the WAL.
+func revalidateStagedReceipt(c Config, rec *walReceipt) error {
+	stagePath := c.receiptPath(rec.AppID, "stage.json")
+	refuse := func(cause error) error {
+		return fmt.Errorf("refusing to resume from STAGED: the signed stage receipt %s failed revalidation: %v — "+
+			"the WAL journaled STAGED durably but the stage receipt on disk is not the receipt that was verified at staging time "+
+			"(e.g. a host crash truncated it after the WAL fsync); no Squads proposal was created and the WAL state is unchanged; "+
+			"recovery: re-run the idempotent stage step by re-running `mel-release publish` for this app under a fresh "+
+			"MEL_RELEASE_STATE_DIR — never hand-edit stage.json or the WAL", stagePath, cause)
+	}
+	s, ref, err := readStageReceipt(stagePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash)
+	if err != nil {
+		return refuse(err)
+	}
+	if s.StageID != rec.StageID {
+		return refuse(fmt.Errorf("stage receipt stageId %s != WAL stageId %s", s.StageID, rec.StageID))
+	}
+	if ref.SHA256 != rec.StageReceiptRef.SHA256 || ref.Size != rec.StageReceiptRef.Size {
+		return refuse(fmt.Errorf("stage.json bytes (sha256 %s, %d bytes) are not the receipt the WAL recorded at staging time (sha256 %s, %d bytes)",
+			ref.SHA256, ref.Size, rec.StageReceiptRef.SHA256, rec.StageReceiptRef.Size))
+	}
+	return nil
+}
+
 func ensureProposed(c Config, prov SignerProvider, rec *walReceipt) error {
+	// A resumed STAGED state is untrusted until the stage receipt revalidates.
+	// This runs before the already-proposed short-circuit too: a candidate must
+	// never be frozen over a stage receipt that no longer matches its WAL binding.
+	if err := revalidateStagedReceipt(c, rec); err != nil {
+		return err
+	}
 	if rec.ProposalReceipt.SHA256 != "" {
 		return verifyArtifactRef(rec.ProposalReceipt)
 	}

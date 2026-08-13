@@ -602,6 +602,101 @@ func (s *revokeGuardStubProvider) RevokeRelease(pda, receiptOut string) error {
 	return os.WriteFile(receiptOut, raw, 0o600)
 }
 
+// ── regression: resumed STAGED must revalidate the signed stage receipt ─────────
+//
+// Adopted deep-audit finding (2026-08-13): a host reboot truncated stage.json to
+// ZERO bytes after advanceWAL had already durably journaled STAGED (advanceWAL
+// fsyncs the WAL; the provider-written receipt was still in the page cache). The
+// old resume path entered ensureProposed and invoked the Squads propose-register
+// governance mutation with no revalidation of the receipt it was proposing from.
+// Mutation controls: every corrupt-receipt resume must make ZERO provider
+// invocations, ZERO store POSTs, and leave the WAL bytes byte-identical; the
+// restored valid receipt must still proceed to PROPOSED (the guard is a
+// revalidation, not a permanent refusal).
+func TestHermeticStagedResumeRevalidatesStageReceipt(t *testing.T) {
+	h := newHarness(t)
+
+	// Drive the WAL to a durable STAGED exactly like the reboot: fault the
+	// propose-register op so publish stops after journaling STAGED.
+	h.setFaultOp("propose-register")
+	mustErr(t, "publish (propose-register faulted)", h.publish("1.0.1"))
+	h.clearFault()
+	mustState(h, stateStaged)
+
+	stagePath := h.cfg.receiptPath(testAppID, "stage.json")
+	goodStage, err := os.ReadFile(stagePath)
+	mustNoErr(t, "read verified stage.json", err)
+	walRaw := func() []byte {
+		raw, err := os.ReadFile(h.cfg.walPath(testAppID))
+		mustNoErr(t, "read wal.json", err)
+		return raw
+	}
+	rec := h.wal()
+
+	// A schema-complete receipt a parse-only validator would accept: correct
+	// schema and bindings, but not the bytes the WAL recorded (foreign stageId).
+	forged, err := json.Marshal(map[string]any{
+		"schema": stageSchema, "stageId": strings.Repeat("d", 64),
+		"appId": rec.AppID, "appHash": rec.NewAppHash, "releaseHash": rec.ReleaseHash,
+	})
+	mustNoErr(t, "marshal forged stage receipt", err)
+
+	corruptions := []struct {
+		name  string
+		bytes []byte
+	}{
+		{"zero_byte", []byte{}}, // the live 2026-08-13 reboot artifact
+		{"corrupt_json", []byte(`{"schema":"melusina-app-stage-receipt-v1","stageId":`)},
+		{"schema_valid_wrong_bytes", forged},
+	}
+	for _, tc := range corruptions {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(stagePath, tc.bytes, 0o600); err != nil {
+				t.Fatalf("write corrupt stage.json: %v", err)
+			}
+			opsBefore := h.callOps()
+			postBefore, foldBefore := h.store.counts()
+			walBefore := walRaw()
+
+			err := h.publish("1.0.1")
+			mustErr(t, "resume from STAGED with corrupt stage receipt", err)
+			if !strings.Contains(err.Error(), "stage receipt") || !strings.Contains(err.Error(), "re-run") {
+				t.Fatalf("refusal must name the stage-receipt defect and the re-stage recovery, got: %v", err)
+			}
+
+			// ZERO provider invocations of any kind — governance untouched.
+			opsAfter := h.callOps()
+			if len(opsAfter) != len(opsBefore) {
+				t.Fatalf("corrupt-receipt resume invoked the provider: %v", opsAfter[len(opsBefore):])
+			}
+			if got, want := countOp(opsAfter, "propose-register"), countOp(opsBefore, "propose-register"); got != want {
+				t.Fatalf("propose-register count changed %d->%d on corrupt-receipt resume", want, got)
+			}
+			if post, fold := h.store.counts(); post != postBefore || fold != foldBefore {
+				t.Fatalf("corrupt-receipt resume touched the store: post %d->%d fold %d->%d", postBefore, post, foldBefore, fold)
+			}
+			// WAL unchanged — state AND bytes.
+			mustState(h, stateStaged)
+			if !bytes.Equal(walBefore, walRaw()) {
+				t.Fatal("WAL bytes changed during a refused resume")
+			}
+		})
+	}
+
+	// Positive control: restore the exact verified receipt bytes — the resume
+	// must proceed through propose-register to PROPOSED and freeze a candidate.
+	mustNoErr(t, "restore verified stage.json", os.WriteFile(stagePath, goodStage, 0o600))
+	proposeBefore := countOp(h.callOps(), "propose-register")
+	mustNoErr(t, "resume publish with valid receipt", h.publish("1.0.1"))
+	mustState(h, statePosed)
+	if got := countOp(h.callOps(), "propose-register"); got != proposeBefore+1 {
+		t.Fatalf("valid-receipt resume made %d propose-register calls, want exactly 1", got-proposeBefore)
+	}
+	if _, err := os.Stat(h.cfg.candidatePath(testAppID)); err != nil {
+		t.Fatalf("candidate not written after valid-receipt resume: %v", err)
+	}
+}
+
 func TestEnsureOldRevokedRefusesWhenNewReleaseNotLiveYet(t *testing.T) {
 	dir := t.TempDir()
 	cfg := Config{StateDir: dir, AllowGlobalReleaseRevoke: true}

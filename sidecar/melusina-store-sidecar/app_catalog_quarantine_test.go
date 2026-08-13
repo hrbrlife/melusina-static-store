@@ -109,6 +109,103 @@ func TestCatalogRecoveryDoesNotQuarantineMalformedRuntimeContract(t *testing.T) 
 	}
 }
 
+func TestCatalogRecoveryQuarantinesOnlyReleaseAppHashMismatch(t *testing.T) {
+	root := t.TempDir()
+	cleanupImmutableCatalog(t, root)
+	_, legacySigner, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldID := appCatalogGenerationPrefix + strings.Repeat("c", 32)
+	writeRecoveryGeneration(t, root, oldID, []string{"app-one", "app-two"}, legacySigner)
+	if err := os.Symlink(oldID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{PrivateStageDir: filepath.Join(root, "stages")}
+	if err := os.MkdirAll(rolloutStateDir(cfg), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(rolloutStateDir(cfg), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	state := recoveryRollouts("app-two")["app-two"]
+	writeReleaseAppHashMismatchStage(t, cfg.PrivateStageDir, state)
+	if err := writeAppRollout(cfg, recoveryRollouts("app-one")["app-one"]); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAppRollout(cfg, state); err != nil {
+		t.Fatal(err)
+	}
+
+	classified, err := classifyRolloutStatesAt(cfg, time.Unix(2, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(classified.serving) != 1 || classified.serving["app-one"].AppID != "app-one" {
+		t.Fatalf("serving rollouts = %#v", classified.serving)
+	}
+	if len(classified.quarantined) != 1 || classified.quarantined["app-two"].AppID != "app-two" {
+		t.Fatalf("quarantined rollouts = %#v", classified.quarantined)
+	}
+	if _, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID); !errors.Is(err, ErrStagedReleaseAppHashMismatch) {
+		t.Fatalf("quarantined stage was not the exact app-hash refusal: %v", err)
+	}
+
+	store := AppCatalogGenerationStore{Root: root}
+	operator := newTestIdentity(t, "store-reconcile", randPubkeyB58(t), "recovery.test")
+	operatorPub, err := operator.Public().SignPublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rebuilt, err := store.RebuildCurrentExcludingQuarantined(classified.serving, classified.quarantined, operator, operatorPub, recoveryDomainHash(), cfg.PrivateStageDir, uint32(os.Getuid()), uint32(os.Getgid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateAppCatalogSnapshot(rebuilt, []string{"app-one"}, func(pointer AppCatalogPointer) error {
+		return verifyAppCatalogPointer(operatorPub, pointer)
+	}); err != nil {
+		t.Fatalf("reconciled generation is not a valid one-app catalog: %v", err)
+	}
+}
+
+func writeReleaseAppHashMismatchStage(t *testing.T, root string, state appRolloutState) {
+	t.Helper()
+	spk, metadata, release, _ := recoveryReleaseBytes(state.AppID, state.CurrentVersion)
+	var releaseDoc map[string]any
+	if err := json.Unmarshal(release, &releaseDoc); err != nil {
+		t.Fatal(err)
+	}
+	releaseDoc["appHash"] = strings.Repeat("e", 64)
+	release, err := json.Marshal(releaseDoc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := recoveryManifest(state.AppID, state.CurrentVersion)
+	manifest.StageID = state.CurrentStageID
+	manifest.ReleaseSize = len(release)
+	dir := filepath.Join(root, state.CurrentStageID)
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	stage, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string][]byte{
+		"app.spk":       spk,
+		"metadata.json": metadata,
+		"RELEASE.json":  release,
+		"stage.json":    append(stage, '\n'),
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func writeClaimedRuntimeContractStage(t *testing.T, root string, state appRolloutState, rawContract []byte) {
 	t.Helper()
 	spk, metadata, release, _ := recoveryReleaseBytes(state.AppID, state.CurrentVersion)

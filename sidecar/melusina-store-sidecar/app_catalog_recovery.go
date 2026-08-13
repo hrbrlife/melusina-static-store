@@ -521,10 +521,10 @@ func validateRemovableCatalogTree(root string) error {
 }
 
 // rolloutClassification separates selections that may safely be served from
-// historical releases which claim a runtime contract but omitted its bytes.
-// The latter are unservable by definition: they stay on disk for ordinary
-// Store-UI republish, but are excluded from the served catalog rather than
-// making every unrelated valid package unavailable.
+// historical releases with precise, durable integrity failures. Quarantined
+// releases stay on disk for ordinary Store-UI republish, but are excluded from
+// the served catalog rather than making every unrelated valid package
+// unavailable.
 type rolloutClassification struct {
 	serving     map[string]appRolloutState
 	quarantined map[string]appRolloutState
@@ -532,7 +532,8 @@ type rolloutClassification struct {
 
 // exactRolloutStates derives the mandatory *servable* pointer selections from
 // the complete durable rollout directory. Unexpected members and every error
-// other than the precise missing-bound-contract condition still fail closed.
+// other than a precise, durable quarantinable integrity condition still fail
+// closed.
 func exactRolloutStates(cfg Config) (map[string]appRolloutState, error) {
 	return exactRolloutStatesAt(cfg, time.Now().UTC())
 }
@@ -574,7 +575,7 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 			return rolloutClassification{}, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
 		if err := validateRolloutStagedSelectionsAt(cfg, rollout, now); err != nil {
-			if errors.Is(err, runtimecontract.ErrEmpty) {
+			if quarantinableHistoricalStageError(err) {
 				classified.quarantined[appID] = rollout
 				continue
 			}
@@ -583,6 +584,14 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 		classified.serving[appID] = rollout
 	}
 	return classified, nil
+}
+
+// quarantinableHistoricalStageError deliberately names only permanent,
+// cryptographically-provable historical stage failures. Filesystem, network,
+// parsing, and authorization errors remain fail-closed instead of being hidden
+// as a quarantine.
+func quarantinableHistoricalStageError(err error) bool {
+	return errors.Is(err, runtimecontract.ErrEmpty) || errors.Is(err, ErrStagedReleaseAppHashMismatch)
 }
 
 func validateRolloutStagedSelections(cfg Config, rollout appRolloutState) error {

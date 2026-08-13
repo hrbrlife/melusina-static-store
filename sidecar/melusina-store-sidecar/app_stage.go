@@ -22,6 +22,12 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+// ErrStagedReleaseAppHashMismatch is returned only when the immutable staged
+// package and metadata recompute to an app hash different from the staged
+// release's declared app hash. It identifies durable cryptographic evidence,
+// not a transient read or transport failure.
+var ErrStagedReleaseAppHashMismatch = errors.New("staged release app hash mismatch")
+
 const (
 	appStageSchema        = "melusina-app-stage-v1"
 	appStageReceiptSchema = "melusina-app-stage-receipt-v1"
@@ -90,7 +96,7 @@ func buildStagedAppManifestWithRuntimeContract(spk, metadata, release, runtimeCo
 		return zero, fmt.Errorf("compute app hash: %w", err)
 	}
 	if !strings.EqualFold(computedAppHash, strings.TrimSpace(rel.AppHash)) {
-		return zero, fmt.Errorf("apphash(spk,metadata)=%s != release.appHash=%s", computedAppHash, rel.AppHash)
+		return zero, fmt.Errorf("%w: apphash(spk,metadata)=%s != release.appHash=%s", ErrStagedReleaseAppHashMismatch, computedAppHash, rel.AppHash)
 	}
 	if _, err := hash32FromHex(strings.TrimSpace(rel.ReleaseHash)); err != nil {
 		return zero, fmt.Errorf("releaseHash: %w", err)

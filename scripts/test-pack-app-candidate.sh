@@ -58,6 +58,19 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# Supplying --metadata-out is optional staging capacity, not a promise that a
+# post-pack hook will rewrite metadata. When it remains unused, the receipt
+# must still read the committed metadata rather than a nonexistent path.
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/unused-metadata.json" --receipt-out "$WORK/unchanged-receipt.json"
+[[ ! -e "$WORK/unused-metadata.json" ]]
+python3 - "$WORK/unchanged-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["app"]["version"] == "1.2.3"
+PY
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a
 # hard failure.

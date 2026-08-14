@@ -165,7 +165,10 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   exit 2
 }
 
-candidate_metadata="${METADATA_OUT:-$METADATA}"
+candidate_metadata="$METADATA"
+if [[ -n "$METADATA_OUT" && -f "$METADATA_OUT" ]]; then
+  candidate_metadata="$METADATA_OUT"
+fi
 readarray -t source_meta < <(python3 - "$candidate_metadata" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))

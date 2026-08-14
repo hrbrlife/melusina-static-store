@@ -43,8 +43,12 @@ git -C "$ROOT" for-each-ref --format='%(refname)' --contains "$HEAD" refs/remote
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-generation-release.XXXXXX")"
-W1="$TMP/build-1"
-W2="$TMP/build-2"
+# Go module replacements are intentionally relative to a direct child of the
+# shared worktrees root (../../../Melusina). Do not nest detached worktrees
+# under TMP: that changes the replacement base and makes the supposedly
+# isolated release build unable to resolve its pinned shared modules.
+W1="$WORK_BASE/$(basename "$TMP").build-1"
+W2="$WORK_BASE/$(basename "$TMP").build-2"
 PUBLISH_TMP=""
 cleanup() {
   git -C "$ROOT" worktree remove --force "$W1" >/dev/null 2>&1 || true
@@ -57,8 +61,14 @@ git -C "$ROOT" worktree add --detach "$W1" "$HEAD" >/dev/null
 git -C "$ROOT" worktree add --detach "$W2" "$HEAD" >/dev/null
 
 build_once() {
-  local work="$1" out="$2" stage="$2/stage"
+  local work="$1" out="$2" stage="$2/stage" ui_manifest_sha
   mkdir -p "$stage/bin" "$stage/systemd" "$stage/config"
+  # The root Bazaar shell is compiled into the sidecar ELF. Verify the tracked
+  # generated tree against this detached source checkout before compiling: a
+  # frontend-only change cannot silently leave the old shell embedded in a new
+  # governed binary.
+  "$work/scripts/build-sidecar-ui.sh" --check
+  ui_manifest_sha="$(sha256sum "$work/sidecar/melusina-store-sidecar/ui/UI-MANIFEST.json" | awk '{print $1}')"
   (
     cd "$work/sidecar/melusina-store-sidecar"
     unset GOEXPERIMENT GODEBUG GOROOT
@@ -80,7 +90,7 @@ build_once() {
     "$stage/config/store.config.template.json"
   install -m 0644 "$work/deploy/store-generation/DEPLOYMENT-CONTRACT.md" \
     "$stage/DEPLOYMENT-CONTRACT.md"
-  printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"builds\":2,\"byteIdentical\":true}" \
+  printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"uiManifestSha256\":\"$ui_manifest_sha\",\"builds\":2,\"byteIdentical\":true}" \
     >"$stage/BUILD-PROVENANCE.json"
   find "$stage" -type d -exec chmod 0755 {} +
   chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep"

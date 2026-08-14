@@ -80,8 +80,12 @@ validate_completed_output() {
 }
 WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-release-$VERSION.XXXXXX")"
-W1="$TMP/build-1"
-W2="$TMP/build-2"
+# Keep detached worktrees directly below WORK_BASE. The sidecar's vendored Go
+# module uses deliberate ../../../Melusina replacements; a nested TMP/build-N
+# checkout resolves those paths somewhere else and makes a clean release build
+# fail before it can prove determinism.
+W1="$WORK_BASE/$(basename "$TMP").build-1"
+W2="$WORK_BASE/$(basename "$TMP").build-2"
 PUBLISH_TMP=""
 cleanup() {
   git -C "$ROOT" worktree remove --force "$W1" >/dev/null 2>&1 || true

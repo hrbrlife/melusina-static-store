@@ -63,6 +63,10 @@ func main() {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("config after overrides: %v", err)
 	}
+	ui, err := newGovernedUIStatic()
+	if err != nil {
+		log.Fatalf("governed UI: %v", err)
+	}
 	setProgramIDFromConfig(cfg.ProgramID)
 
 	// The on-chain reader is the trust gate for /publish (VerifyPublish). It is
@@ -119,6 +123,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("catalog bootstrap: %v", err)
 	}
+	catalogState.ui = ui
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker

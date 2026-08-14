@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,6 +89,7 @@ type catalogRuntime struct {
 	catalogGenerations AppCatalogGenerationStore
 	expectedUID        uint32
 	expectedGID        uint32
+	ui                 http.Handler
 }
 
 type catalogBootstrapOptions struct {

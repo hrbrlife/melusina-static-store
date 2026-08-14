@@ -32,22 +32,12 @@ test("baked second catalog src/apps.json is absent", () => {
   );
 });
 
-test("curated capability profiles carry no catalog fields", () => {
-  const raw = JSON.parse(readFileSync(join(SRC, "capabilities.json"), "utf8"));
-  assert.equal(raw.schema, "melusina-store-capability-profiles-v1");
-  const profiles = raw.profiles || {};
-  const ids = Object.keys(profiles);
-  assert.ok(ids.length > 0, "capability profiles must not be empty (positive control)");
-  for (const [appId, caps] of Object.entries(profiles)) {
-    for (const field of CATALOG_FIELDS) {
-      assert.ok(
-        !(field in caps),
-        `CATALOG FIELD IN CURATION FILE: profile ${appId} carries "${field}". ` +
-        `src/capabilities.json is editorial only — install-affecting fields come from ` +
-        `the served catalog.`
-      );
-    }
-  }
+test("no store-local app profile map remains", () => {
+  assert.equal(
+    existsSync(join(SRC, "capabilities.json")), false,
+    "SECOND APP PRESENTATION AUTHORITY: src/capabilities.json is back. " +
+    "Capabilities must come from the signed, served catalog row with the app release."
+  );
 });
 
 test("the app never seeds its catalog from a bundled import", () => {
@@ -55,6 +45,10 @@ test("the app never seeds its catalog from a bundled import", () => {
   assert.ok(
     !/import\s+\w+\s+from\s+["']\.\/apps\.json["']/.test(main),
     "BAKED CATALOG IMPORTED: src/main.jsx imports ./apps.json again."
+  );
+  assert.ok(
+    !/import\s+\w+\s+from\s+["']\.\/capabilities\.json["']/.test(main),
+    "STORE-LOCAL CAPABILITY MAP IMPORTED: src/main.jsx imports ./capabilities.json again."
   );
   // positive control — the live fetch path and its explicit states still exist
   assert.ok(main.includes("/apps/index.json"), "live catalog fetch path is missing");
@@ -78,8 +72,8 @@ test("the store generator refuses to rebuild a baked catalog", () => {
   );
 });
 
-test("the built bundle embeds no catalog rows", { skip: !existsSync(join(ROOT, "dist")) }, () => {
-  const assets = join(ROOT, "dist", "assets");
+test("the governed sidecar bundle embeds no catalog rows", { skip: !existsSync(join(ROOT, "sidecar", "melusina-store-sidecar", "ui")) }, () => {
+  const assets = join(ROOT, "sidecar", "melusina-store-sidecar", "ui", "assets");
   if (!existsSync(assets)) return;
   for (const f of readdirSync(assets).filter((f) => f.endsWith(".js"))) {
     const js = readFileSync(join(assets, f), "utf8");

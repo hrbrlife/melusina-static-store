@@ -220,8 +220,10 @@ type installerPublishRequest struct {
 
 // newRouter builds the sidecar HTTP surface.
 //
-//	READ surface (public, unauthenticated, byte-identical to today's static store):
-//	  GET /            -> dist-publish/  (SPA, /apps/index.json, /attest/*, /packages/*, /verifier/*)
+//	READ surface (public, unauthenticated):
+//	  GET /            -> governed UI embedded in this sidecar ELF
+//	  GET /apps/*      -> immutable app-catalog generation
+//	  GET /images/*, /screenshots/*, /releases/*, /update/*, /verifier/* -> DistDir
 //	WRITE surface (gated; the sidecar is the SINGLE WRITER):
 //	  POST /publish    -> sealed/signed envelope verify + on-chain re-verification
 //	Ops:
@@ -313,7 +315,15 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// served bytes must content-match an Active on-chain ReleaseEntry or the GET
 	// is refused (403). Fail-closed: with no chain reader, SPK serves 503.
 	flatStatic := http.FileServer(http.Dir(cfg.DistDir))
-	static := requestScopedStatic{flat: flatStatic}
+	ui := runtime.ui
+	if ui == nil {
+		var err error
+		ui, err = newGovernedUIStatic()
+		if err != nil {
+			ui = unavailableUIStatic{err: err}
+		}
+	}
+	static := requestScopedStatic{flat: flatStatic, ui: ui}
 	gate := newServeGate(cfg, cr, static, svc.operator)
 	var readSurface http.Handler = gate
 	if runtime.appNonces != nil && runtime.catalogGenerations.Root != "" {

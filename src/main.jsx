@@ -8,7 +8,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { format, formatDistanceToNow } from "date-fns";
-import capabilityProfiles from "./capabilities.json";
 
 /* Self-hosted fonts — no CDN */
 import "@fontsource/orbitron/400.css";
@@ -1611,23 +1610,9 @@ function buildSidecarProfile(caps) {
   }
 }
 
-// Store-side curated profiles, keyed by appId. INTERIM: build-store.sh already reads a
-// per-app `capabilities.json` from each app's own package dir and publishes it on the
-// catalog row, but no app ships one yet, so every served row carries
-// `capabilities: null`. Until that rollout lands these curated profiles fill the gap.
-// They are editorial only — no version, packageId or other install-affecting field —
-// and the served catalog wins the moment an app ships its own profile, so this file
-// drains to empty rather than becoming a second source of truth.
-const CURATED_SIDECARS = (() => {
-  const out = {};
-  for (const [appId, caps] of Object.entries((capabilityProfiles && capabilityProfiles.profiles) || {})) {
-    const profile = buildSidecarProfile(caps);
-    if (profile) out[appId] = profile;
-  }
-  return out;
-})();
-
-// Profiles carried by the served catalog itself. These take precedence.
+// Capabilities belong to the served, signed catalog row. A store-local profile
+// map would be a second presentation authority that can outlive an app release,
+// exactly the split that previously made the grid flash stale app data.
 const LIVE_SIDECARS = {};
 function registerLiveCapabilities(apps) {
   for (const app of apps || []) {
@@ -1637,7 +1622,7 @@ function registerLiveCapabilities(apps) {
 }
 
 function getAppSidecars(appId) {
-  return LIVE_SIDECARS[appId] || CURATED_SIDECARS[appId] ||
+  return LIVE_SIDECARS[appId] ||
     { sidecars: [], grapple: [], capabilities: null };
 }
 

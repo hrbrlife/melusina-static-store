@@ -770,26 +770,19 @@ if [[ "$VALID" -eq 0 ]]; then
   exit 1
 fi
 
-# --- Step 2: Build Vite frontend (unless --aggregate) -------------------------
+# --- Step 2: Verify the governed sidecar UI (unless --aggregate) --------------
 if ! $AGGREGATE_ONLY; then
-  # NO baked catalog is generated here any more. The bundle used to embed a full
-  # copy of the catalog (src/apps.json) so the grid could paint before the network
-  # answered. That copy froze at build time and rotted with every publish that did
-  # not also rebuild the store: measured 2026-08-14, the deployed bundle painted 30
-  # apps of which 11 were no longer published at all, and 18 of the 20 that survived
-  # carried a stale packageId -- so an INSTALL clicked during the flash aimed at a
-  # package the catalog no longer serves. The served /apps/index.json is now the one
-  # and only catalog; the UI shows a skeleton until it answers and says so plainly if
-  # it cannot. Curated capability profiles live in src/capabilities.json and are
-  # superseded per app by the per-app capabilities.json read in step 1.
+  # The Bazaar shell belongs to the governed Go sidecar ELF, not this mutable
+  # catalog assembly tree. A prior build placed a Vite bundle in dist-publish/;
+  # that bundle painted a stale 30-row catalog before the immutable sidecar
+  # generation replaced it with 22 rows. Keep only the generated, release-bound
+  # UI input and refuse a second catalog source here.
   if [[ -f src/apps.json ]]; then
     fail "src/apps.json exists -- the baked second catalog is back. The served /apps/index.json is the only catalog; delete src/apps.json."
     exit 1
   fi
-
-  info "Running Vite build..."
-  npm install --silent
-  npx vite build
+  info "Verifying release-bound sidecar UI..."
+  scripts/build-sidecar-ui.sh --check
   echo ""
 fi
 
@@ -809,24 +802,11 @@ _stage_cleanup() {
 trap _stage_cleanup EXIT
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/assets" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures" "$OUTPUT_DIR/schemas"
+mkdir -p "$IMAGES_OUT" "$PACKAGES_OUT" "$APPS_OUT" "$ATTEST_OUT" "$OUTPUT_DIR/verifier" "$OUTPUT_DIR/screenshots" "$UPDATE_OUT" "$OUTPUT_DIR/signatures" "$OUTPUT_DIR/schemas"
 
-# Copy Vite build output
-if [[ -d "dist" ]]; then
-  cp dist/index.html "$OUTPUT_DIR/index.html"
-  cp dist/assets/* "$OUTPUT_DIR/assets/"
-else
-  fail "No dist/ directory. Run without --aggregate first."
-  exit 1
-fi
-
-# Copy PWA assets from public/
-if [[ -d "public/icons" ]]; then
-  cp -r public/icons "$OUTPUT_DIR/icons"
-  echo "  Copied PWA icons"
-fi
-[[ -f "public/manifest.json" ]] && cp public/manifest.json "$OUTPUT_DIR/manifest.json" && echo "  Copied manifest.json"
-[[ -f "public/sw.js" ]] && cp public/sw.js "$OUTPUT_DIR/sw.js" && echo "  Copied sw.js"
+# Do not copy index.html, assets/, icons/, manifest.json or sw.js into DistDir.
+# Those shell-owned paths are served exclusively from the sidecar's embedded UI
+# and must never be reintroduced by a catalog-only rebuild.
 
 # Copy verifier
 if [[ -f "$VERIFIER_SRC/index.html" ]]; then

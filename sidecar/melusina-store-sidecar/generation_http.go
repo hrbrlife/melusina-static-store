@@ -66,6 +66,7 @@ func isAppCatalogRequestPath(urlPath string) bool {
 // immutable root. Non-catalog paths retain the legacy flat DistDir surface.
 type requestScopedStatic struct {
 	flat http.Handler
+	ui   http.Handler
 }
 
 func (h requestScopedStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +88,14 @@ func (h requestScopedStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+		return
+	}
+	if isUIPath(r.URL.Path) {
+		if h.ui == nil {
+			http.Error(w, "governed UI unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		h.ui.ServeHTTP(w, r)
 		return
 	}
 	h.flat.ServeHTTP(w, r)

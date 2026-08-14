@@ -65,7 +65,7 @@ families:
     apps:
       minigit:
         appId: pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50
-        source_path: worktrees/minigit-fd3-websession-20260813
+        source_path: worktrees/minigit-v029-live-20260814
         publish_slug: minigit
         catalog_name: MiniGit
         catalog_developer: hrbrlife

@@ -17,7 +17,17 @@
 #
 # Optional env:
 #   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
-#                         Defaults to metadata.json beside the source SPK.
+#                         Defaults to metadata.json beside the source SPK. It is
+#                         a path override only: the bytes it names must still be
+#                         the ones the candidate receipt binds to the staged SPK
+#                         (check=metadata_binding).
+#   MELUSINA_CANDIDATE_RECEIPT
+#                         pack-app-candidate.sh --receipt-out file for the exact
+#                         SPK being staged. REQUIRED for a new release; it is
+#                         what binds the catalog row to the commit that produced
+#                         these bytes. Optional under PRESERVE_EXISTING_RELEASE=1,
+#                         where the governed RELEASE.json appHash already binds
+#                         {app.spk, metadata.json}; verified anyway when given.
 #   SOURCE_RUNTIME_CONTRACT_PATH
 #                         Raw committed RUNTIME-CONTRACT.json for a single
 #                         staged app. Defaults to RUNTIME-CONTRACT.json beside
@@ -187,6 +197,88 @@ PY
     SOURCE_APP_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("appId",""))' "$SOURCE_META")"
     if [[ -z "$SOURCE_APP_ID" || "$STAGED_APP_ID" != "$SOURCE_APP_ID" ]]; then
       fail "  unpacked appId $STAGED_APP_ID != source metadata appId ${SOURCE_APP_ID:-<empty>} (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
+
+  # 1b) METADATA BINDING (F-193). The catalog row for a version must be derived
+  #     from the commit that produced that version's bytes. Nothing above forces
+  #     that: appId equality alone accepts ANY metadata.json for this app, so a
+  #     file from a different worktree, branch or catalog slot used to overwrite
+  #     the row wholesale — MiniGit 0.2.10 shipped with the M6 codeUrl and M8
+  #     screenshots its own committed metadata had already removed.
+  #
+  #     pack-app-candidate.sh already proves its metadata is tracked, clean and
+  #     pushed at the exact candidate revision, and records that file's digest
+  #     next to the SPK digest. Re-check both here: the receipt must be about
+  #     THESE SPK bytes, and the metadata about to be merged must be the file
+  #     that receipt binds to them. SOURCE_METADATA_PATH therefore survives as a
+  #     path override (MerMail keeps metadata in its catalog slot; a post-pack
+  #     hook materialises a packageId copy outside the source tree) but can no
+  #     longer change WHICH BYTES reach the row.
+  #
+  #     PRESERVE_EXISTING_RELEASE=1 does not need a receipt: the governed
+  #     RELEASE.json appHash covers {app.spk, metadata.json}, so a foreign
+  #     metadata cannot reproduce it and the appHash check below refuses it.
+  CANDIDATE_RECEIPT="${MELUSINA_CANDIDATE_RECEIPT:-}"
+  if [[ -z "$CANDIDATE_RECEIPT" && "$PRESERVE_EXISTING_RELEASE" != "1" ]]; then
+    fail "  check=metadata_binding: staging a new release requires MELUSINA_CANDIDATE_RECEIPT — the pack-app-candidate.sh --receipt-out file for these exact SPK bytes (live entry untouched)"
+    rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+  fi
+  if [[ -n "$CANDIDATE_RECEIPT" ]]; then
+    if ! BINDING_ERROR="$(python3 - "$CANDIDATE_RECEIPT" "$SOURCE_META" "$FULL_SHA" "$STAGED_APP_ID" "$PKG_ID" <<'PY'
+import hashlib, json, pathlib, sys
+
+receipt_path, source_meta, spk_sha, app_id, package_id = sys.argv[1:6]
+
+
+def die(message):
+    print(message)
+    raise SystemExit(1)
+
+
+try:
+    raw = pathlib.Path(receipt_path).read_bytes()
+except OSError as exc:
+    die("candidate receipt is unreadable: %s: %s" % (receipt_path, exc.strerror))
+try:
+    receipt = json.loads(raw)
+except ValueError as exc:
+    die("candidate receipt is not JSON: %s: %s" % (receipt_path, exc))
+if not isinstance(receipt, dict):
+    die("candidate receipt must be a JSON object: %s" % receipt_path)
+if receipt.get("schema") != "melusina-app-candidate-receipt-v1":
+    die("candidate receipt schema %r is not melusina-app-candidate-receipt-v1" % (receipt.get("schema"),))
+
+artifact = receipt.get("artifact") if isinstance(receipt.get("artifact"), dict) else {}
+declared_spk = str(artifact.get("sha256", "")).lower()
+if declared_spk != spk_sha.lower():
+    die("candidate receipt covers SPK sha256 %s, but the staged SPK is %s"
+        % (declared_spk or "<absent>", spk_sha))
+
+app = receipt.get("app") if isinstance(receipt.get("app"), dict) else {}
+if str(app.get("appId", "")) != app_id:
+    die("candidate receipt appId %s != unpacked appId %s" % (app.get("appId") or "<absent>", app_id))
+if package_id and str(app.get("packageId", "")).lower() != package_id.lower():
+    die("candidate receipt packageId %s != package packageId %s"
+        % (app.get("packageId") or "<absent>", package_id))
+
+metadata = receipt.get("metadata") if isinstance(receipt.get("metadata"), dict) else None
+if not metadata or not metadata.get("sha256"):
+    die("candidate receipt records no metadata.sha256; rebuild the candidate with "
+        "pack-app-candidate.sh so the release's own metadata is bound to its bytes")
+want = str(metadata["sha256"]).lower()
+try:
+    got = hashlib.sha256(pathlib.Path(source_meta).read_bytes()).hexdigest()
+except OSError as exc:
+    die("staged source metadata is unreadable: %s: %s" % (source_meta, exc.strerror))
+if got != want:
+    die("staged metadata %s has sha256 %s but the candidate receipt binds %s to these SPK bytes "
+        "(revision %s); the catalog row must come from the commit that produced this release"
+        % (source_meta, got, want, (receipt.get("source") or {}).get("revision", "<unknown>")))
+PY
+    )"; then
+      fail "  check=metadata_binding: ${BINDING_ERROR:-candidate receipt verification failed} (live entry untouched)"
       rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
     fi
   fi

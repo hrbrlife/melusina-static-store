@@ -234,3 +234,53 @@ func TestCatalogAssemblerReplacesOneAppWithoutDroppingOthers(t *testing.T) {
 		t.Fatalf("existing app dropped: %#v", index.Apps)
 	}
 }
+
+// TestProjectCatalogIndexUpdatedAtMatchesBuildStoreChain pins the one fallback
+// chain both catalog writers use (F-199). build-store.sh once had a four-step
+// chain ending in the SPK mtime and the checkout's commit time while this
+// writer had none, so the same release produced different updatedAt values
+// depending on which writer built the row. The agreed chain is
+// signedAtUnix*1000, then createdAt, then 0 — and never a filesystem or
+// checkout timestamp, which is re-stamped on every build.
+func TestProjectCatalogIndexUpdatedAtMatchesBuildStoreChain(t *testing.T) {
+	spk := []byte("signed package")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	appID := "testapp0000000000000000000000000000000000000000000000"
+	base := `{"appId":"` + appID + `","packageId":"` + sha[:32] + `","name":"Test","version":"1"`
+
+	for _, tc := range []struct {
+		name     string
+		metadata string
+		release  string
+		want     float64
+	}{
+		{"signed release time wins", base + `}`, `{"signedAtUnix":123}`, 123000},
+		{"createdAt when unsigned", base + `,"createdAt":777}`, `{"signedAtUnix":0}`, 777},
+		{"createdAt when absent", base + `,"createdAt":777}`, `{}`, 777},
+		{"zero when neither is present", base + `}`, `{}`, 0},
+		// A row is built by copying metadata, so an updatedAt carried in
+		// metadata.json must not survive as the release timestamp.
+		{"stale metadata value never survives", base + `,"updatedAt":999999}`, `{"signedAtUnix":123}`, 123000},
+		{"stale metadata value falls back to createdAt", base + `,"updatedAt":999999,"createdAt":777}`, `{}`, 777},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			projection, err := projectCatalogIndex(AppCatalogSnapshot{}, spk, []byte(tc.release), []byte(tc.metadata))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var index struct {
+				Apps []map[string]any `json:"apps"`
+			}
+			if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
+				t.Fatal(err)
+			}
+			if len(index.Apps) != 1 {
+				t.Fatalf("index has %d rows", len(index.Apps))
+			}
+			if got := index.Apps[0]["updatedAt"]; got != tc.want {
+				t.Fatalf("updatedAt = %#v, want %v", got, tc.want)
+			}
+		})
+	}
+}

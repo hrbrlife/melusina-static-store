@@ -35,6 +35,18 @@ grep -q 'RUNTIME_CONTRACT_ARGS\[@\]' "$DRIVER"
 grep -q 'SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"' "$DRIVER"
 grep -q -- '--metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT"' "$DRIVER"
 grep -q 'SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
+# A new release stages under the candidate receipt that binds its metadata to
+# these exact SPK bytes (F-193); the exact-current path is bound by the governed
+# RELEASE.json appHash instead and must not smuggle a receipt in.
+grep -q 'MELUSINA_CANDIDATE_RECEIPT="$CANDIDATE_RECEIPT"' "$DRIVER"
+python3 - "$DRIVER" <<'PY'
+import pathlib, sys
+s = pathlib.Path(sys.argv[1]).read_text()
+assert s.count('MELUSINA_CANDIDATE_RECEIPT="$CANDIDATE_RECEIPT"') == 1
+preserve = s.index('SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1')
+receipt = s.index('MELUSINA_CANDIDATE_RECEIPT="$CANDIDATE_RECEIPT"')
+assert preserve < receipt, "the receipt belongs to the new-release branch, not exact-current"
+PY
 grep -q -- '--promote-existing-active requires --catalog-path' "$DRIVER"
 grep -q 'CANDIDATE_SPK="$CAT_PATH/app.spk"' "$DRIVER"
 grep -q 'not rebuild it:' "$DRIVER"

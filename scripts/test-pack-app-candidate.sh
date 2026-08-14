@@ -55,6 +55,17 @@ assert d["source"]["dirty"] is False
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/main"
 assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
+# The receipt binds the metadata that produced these bytes, so staging can
+# refuse any other metadata.json for this app (F-193).
+assert d["metadata"]["sourcePath"] == "metadata.json"
+assert d["metadata"]["generatedByPack"] is False
+assert d["metadata"]["sha256"] == d["metadata"]["sourceSha256"]
+PY
+committed_metadata_sha="$(sha256sum "$APP/metadata.json" | awk '{print $1}')"
+python3 - "$WORK/receipt.json" "$committed_metadata_sha" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["metadata"]["sha256"] == sys.argv[2], (d["metadata"]["sha256"], sys.argv[2])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
@@ -101,6 +112,19 @@ import json, sys
 generated, source = map(lambda p: json.load(open(p)), sys.argv[1:])
 assert generated["packageId"]
 assert "packageId" not in source
+PY
+# When a post-pack hook derives packageId, the bytes staging must use are the
+# GENERATED copy — the receipt binds those, and records the committed file it
+# came from so provenance stays checkable.
+python3 - "$WORK/generated-receipt.json" "$WORK/generated-metadata.json" "$APP/metadata.json" <<'PY'
+import hashlib, json, sys
+receipt = json.load(open(sys.argv[1]))
+generated = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
+committed = hashlib.sha256(open(sys.argv[3], "rb").read()).hexdigest()
+assert receipt["metadata"]["sha256"] == generated, receipt["metadata"]
+assert receipt["metadata"]["sourceSha256"] == committed, receipt["metadata"]
+assert receipt["metadata"]["generatedByPack"] is True
+assert generated != committed
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

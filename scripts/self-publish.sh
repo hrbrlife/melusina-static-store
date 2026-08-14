@@ -148,10 +148,16 @@ case "$CAT_PATH" in "$PACKAGES_ROOT"/*) ;; *) fail "catalog path must resolve in
 # The exact candidate above is used for both private stage and any later
 # ceremony; no rebuild is permitted between these gates.
 if $PROMOTE_EXISTING; then
+  # The Active ReleaseEntry's governed RELEASE.json appHash already binds
+  # {app.spk, metadata.json}; staging re-derives and re-checks it, so this path
+  # carries its own metadata binding and needs no candidate receipt.
   SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1 \
     "$SCRIPT_DIR/stage-into-catalog.sh" "$CANDIDATE_SPK" "$CAT_PATH"
 else
+  # A new release has no governed appHash yet, so the candidate receipt is what
+  # binds the catalog row to the commit that produced these bytes (F-193).
   SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" \
+    MELUSINA_CANDIDATE_RECEIPT="$CANDIDATE_RECEIPT" \
     "$SCRIPT_DIR/stage-into-catalog.sh" "$CANDIDATE_SPK" "$CAT_PATH"
 fi
 for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done

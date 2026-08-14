@@ -1,6 +1,11 @@
 schema: melusina-release-family/v1
 # Account-opening proof constellation. appId is authoritative; source paths and
 # catalog names are deliberately descriptive because they historically differ.
+#
+# Every source_path below is relative to MEL_RELEASE_SOURCE_ROOT.  The release
+# provider rejects an unset, non-canonical, symlinked, or escaping root/path.
+# This prevents a release from silently following a vanished workstation
+# worktree while keeping the manifest portable between clean release hosts.
 families:
   money-path:
     apps:
@@ -12,9 +17,17 @@ families:
         role: public-account-opening-entry
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
-        source_path: /home/user/Desktop/worktrees/melrelease-health-namedcoin
+        source_path: namedcoin
         publish_slug: namedcoin
         catalog_name: NamedCoin
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-namedcoin-app
+        catalog_slug: namedcoin
+        # The source Makefile deliberately refuses the disclosed devnet
+        # keybox inputs in its default build.  This reviewed profile invokes
+        # only its explicit `make pack-msb-test` target; no other app inherits
+        # its build tags.
+        pack_profile: namedcoin-msb-devnet
         role: identity-attestation-gate
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
@@ -42,25 +55,40 @@ families:
         role: central-connection-hub
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
-        source_path: worktrees/dueprocess-v76-union-20260814
+        source_path: dueprocess
         publish_slug: dueprocess
-        catalog_name: dueprocess
+        catalog_name: DueProcess
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess
         role: four-eyes-casework
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
-        source_path: /home/user/Desktop/worktrees/governed-cyberteller-0188
+        source_path: cyberteller
         publish_slug: cyberteller
         catalog_name: cyberteller
+        catalog_developer: hrbrlife
+        catalog_repo: cyberteller
+        catalog_slug: cyberteller
         role: crypto-deposit-and-swap
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
-        source_path: /home/user/Desktop/worktrees/codex-fineract-setup-release/fineract-sidecar
+        source_path: fineract-setup/fineract-sidecar
         publish_slug: fineract-setup
-        catalog_name: fineract-setup
+        catalog_name: Fineract Setup
+        catalog_developer: hrbrlife
+        catalog_repo: fineract-setup
+        catalog_slug: fineract-setup
         role: ledger-setup-and-trust-bundle
+      telescreen:
+        appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
+        source_path: telescreen
+        publish_slug: telescreen
+        catalog_name: TeleScreen Hub
+        catalog_developer: hrbrlife
+        catalog_repo: pr_ninja
+        catalog_slug: telescreen
+        role: sanctions-screening-and-review
   platform-tools:
     apps:
       minigit:

@@ -8,12 +8,17 @@ set -euo pipefail
 umask 077
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly PROVIDER="$SCRIPT_DIR/mel-release-provider.sh"
+# The Python provider is the canonical source-aware rail used by the released
+# CLI and HOW_TO_PUBLISH.  Keep this family adapter as the appId->clean-source
+# gate, but never fork its candidate/staging semantics in the older shell
+# provider beside it.
+readonly STORE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
+readonly PROVIDER="$STORE_ROOT/scripts/mel-release-provider.py"
 
 die() { printf 'mel-release-family-provider: %s\n' "$*" >&2; exit 2; }
 
 [[ $# -eq 1 ]] || die 'usage: mel-release-family-provider.sh <operation>'
-[[ -x "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular executable: $PROVIDER"
+[[ -f "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular file: $PROVIDER"
 
 # Exact-PDA status/revocation has no source-tree input.  Requiring MEL_APP_ID
 # here would make the cleanup half of a completed candidate impossible: the Go
@@ -22,7 +27,7 @@ die() { printf 'mel-release-family-provider: %s\n' "$*" >&2; exit 2; }
 # the caller's already-validated Squads authority.
 case "$1" in
   release-status|revoke)
-    exec "$PROVIDER" "$1"
+    exec python3 "$PROVIDER" "$1"
     ;;
 esac
 
@@ -32,26 +37,17 @@ esac
 [[ -f "$MEL_RELEASE_CONFIG" && ! -L "$MEL_RELEASE_CONFIG" ]] || die 'MEL_RELEASE_CONFIG must be a regular file'
 [[ "$MEL_APP_ID" =~ ^[a-z0-9]{52}$ ]] || die 'MEL_APP_ID must be a 52-character immutable appId'
 
-app_dir="$(python3 - "$MEL_RELEASE_CONFIG" "$MEL_APP_ID" <<'PY'
-import os, sys
-import yaml
+app_dir="$(python3 - "$PROVIDER" "$MEL_APP_ID" <<'PY'
+import importlib.util
+import sys
 
-config, app_id = sys.argv[1:]
-with open(config, encoding='utf-8') as fh:
-    doc = yaml.safe_load(fh)
-if not isinstance(doc, dict) or doc.get('schema') != 'melusina-release-family/v1':
-    raise SystemExit('release family schema is not melusina-release-family/v1')
-matches = []
-for family in (doc.get('families') or {}).values():
-    for spec in (family.get('apps') or {}).values() if isinstance(family, dict) else ():
-        if isinstance(spec, dict) and spec.get('appId') == app_id:
-            matches.append(spec.get('source_path'))
-if len(matches) != 1 or not isinstance(matches[0], str) or not matches[0]:
-    raise SystemExit('manifest must contain exactly one non-empty source_path for appId')
-path = matches[0]
-if not os.path.isabs(path) or os.path.realpath(path) != path:
-    raise SystemExit('manifest source_path must be an absolute resolved path')
-print(path)
+provider_path, app_id = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("mel_release_provider", provider_path)
+if spec is None or spec.loader is None:
+    raise SystemExit("could not load canonical mel-release provider")
+provider = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(provider)
+print(provider.source_path(app_id))
 PY
 )" || die 'could not resolve the app source from release-family.yaml'
 
@@ -61,4 +57,4 @@ git -C "$app_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "manife
 [[ -z "$(git -C "$app_dir" status --porcelain --untracked-files=all)" ]] || die "refusing to package a dirty app checkout: $app_dir"
 
 export MEL_RELEASE_APP_DIR="$app_dir"
-exec "$PROVIDER" "$1"
+exec python3 "$PROVIDER" "$1"

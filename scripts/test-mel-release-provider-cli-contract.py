@@ -452,6 +452,180 @@ def test_release_status_requires_program_owner():
         restore_env(old)
 
 
+def write_family_config(path, apps):
+    path.write_text(json.dumps({
+        "schema": "melusina-release-family/v1",
+        "families": {"msb": {"apps": apps}},
+    }) + "\n", encoding="utf-8")
+
+
+def test_source_root_resolves_only_clean_relative_manifest_paths():
+    app_id = provider.NAMEDCOIN_APP_ID
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        app = sources / "namedcoin"
+        app.mkdir(parents=True)
+        (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        config = root / "release-family.yaml"
+        write_family_config(config, {
+            "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
+        })
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        try:
+            assert provider.source_path(app_id) == app
+
+            write_family_config(config, {
+                "namedcoin": {"appId": app_id, "source_path": str(app)},
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "unsafe source_path" in str(exc), exc
+            else:
+                raise AssertionError("absolute manifest source_path was accepted")
+
+            write_family_config(config, {
+                "namedcoin": {"appId": app_id, "source_path": "../namedcoin"},
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "unsafe source_path" in str(exc), exc
+            else:
+                raise AssertionError("escaping manifest source_path was accepted")
+
+            link = root / "linked-sources"
+            link.symlink_to(sources, target_is_directory=True)
+            os.environ["MEL_RELEASE_SOURCE_ROOT"] = str(link)
+            write_family_config(config, {
+                "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "canonical non-symlink" in str(exc), exc
+            else:
+                raise AssertionError("symlinked source root was accepted")
+        finally:
+            restore_env(old)
+
+
+def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
+    namedcoin = provider.NAMEDCOIN_APP_ID
+    apps = {
+        "namedcoin": {
+            "appId": namedcoin, "source_path": "namedcoin",
+            "catalog_developer": "hrbrlife", "catalog_repo": "melusina-namedcoin-app", "catalog_slug": "namedcoin",
+            "pack_profile": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+        },
+        "fineract": {
+            "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "source_path": "fineract-setup/fineract-sidecar",
+            "catalog_developer": "hrbrlife", "catalog_repo": "fineract-setup", "catalog_slug": "fineract-setup",
+        },
+        "dueprocess": {
+            "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "source_path": "dueprocess",
+            "catalog_developer": "hrbrlife", "catalog_repo": "DueProcess", "catalog_slug": "dueprocess",
+        },
+        "telescreen": {
+            "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "source_path": "telescreen",
+            "catalog_developer": "hrbrlife", "catalog_repo": "pr_ninja", "catalog_slug": "telescreen",
+        },
+        "cyberteller": {
+            "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "source_path": "cyberteller",
+            "catalog_developer": "hrbrlife", "catalog_repo": "cyberteller", "catalog_slug": "cyberteller",
+        },
+        "wrong-profile": {
+            "appId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "source_path": "other",
+            "pack_profile": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "release-family.yaml"
+        write_family_config(config, apps)
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            # pack_profile_env must overwrite this inherited global value for
+            # ordinary apps rather than allowing a devnet build to leak.
+            "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+        })
+        try:
+            assert provider.catalog_slot(namedcoin) == {
+                "developer": "hrbrlife", "repo": "melusina-namedcoin-app", "slug": "namedcoin",
+            }
+            assert provider.catalog_slot(apps["fineract"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "fineract-setup", "slug": "fineract-setup",
+            }
+            assert provider.catalog_slot(apps["dueprocess"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "DueProcess", "slug": "dueprocess",
+            }
+            assert provider.catalog_slot(apps["telescreen"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "pr_ninja", "slug": "telescreen",
+            }
+            assert provider.catalog_slot(apps["cyberteller"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "cyberteller", "slug": "cyberteller",
+            }
+            assert provider.pack_profile_env(namedcoin) == {
+                "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+            }
+            assert provider.pack_profile_env(apps["dueprocess"]["appId"]) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+            }
+            try:
+                provider.pack_profile_env(apps["wrong-profile"]["appId"])
+            except provider.ProviderError as exc:
+                assert "only NamedCoin" in str(exc), exc
+            else:
+                raise AssertionError("NamedCoin devnet pack profile was accepted for another app")
+        finally:
+            restore_env(old)
+
+
+def test_catalog_package_binds_declared_slot_despite_preserved_duplicate():
+    """A historical duplicate must not select or poison the configured slot."""
+    app_id = "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
+    apps = {
+        "cyberteller": {
+            "appId": app_id,
+            "source_path": "cyberteller",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "cyberteller",
+            "catalog_slug": "cyberteller",
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "release-family.yaml"
+        write_family_config(config, apps)
+        canonical = root / "packages" / "hrbrlife" / "cyberteller" / "cyberteller"
+        legacy = root / "packages" / "58c45de8c72c6b6588bb3611c7fe1d1d"
+        canonical.mkdir(parents=True)
+        legacy.mkdir(parents=True)
+        (canonical / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        # This is preserved evidence of an old CyberTeller catalog entry. It
+        # must neither be selected nor deleted by a new canonical release.
+        (legacy / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        old_root, old = provider.ROOT, with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            provider.ROOT = root
+            assert provider.catalog_package(app_id) == canonical
+            assert (legacy / "metadata.json").is_file()
+
+            (canonical / "metadata.json").write_text(json.dumps({"appId": "wrong-app"}) + "\n")
+            try:
+                provider.catalog_package(app_id)
+            except provider.ProviderError as exc:
+                assert "declared catalog slot appId" in str(exc), exc
+            else:
+                raise AssertionError("declared catalog slot with the wrong appId was accepted")
+        finally:
+            provider.ROOT = old_root
+            restore_env(old)
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
@@ -461,4 +635,7 @@ if __name__ == "__main__":
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
+    test_source_root_resolves_only_clean_relative_manifest_paths()
+    test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
+    test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     print("mel-release provider CLI-contract tests passed")

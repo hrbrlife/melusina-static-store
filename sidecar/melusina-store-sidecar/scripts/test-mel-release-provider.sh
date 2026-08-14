@@ -90,11 +90,42 @@ grep -Fq 'MEL_RELEASE_NODE_MODULES must contain ${requiredPackage}' "$ROOT/scrip
 # master in the license slot creates a proposal that can never truthfully bind
 # the app release. Keep this exact provider contract under test.
 grep -Fq -- '--license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT"' "$PROVIDER"
+# The family adapter must use the exact same root-relative resolver as the
+# canonical Python provider. Drive it through a non-mutating unknown operation:
+# reaching the provider's named refusal proves it resolved a clean tracked app
+# from MEL_RELEASE_SOURCE_ROOT rather than the obsolete absolute-path rule.
+ADAPTER_APP=8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
+mkdir -p "$TMP/sources/namedcoin"
+printf '{"appId":"%s"}\n' "$ADAPTER_APP" >"$TMP/sources/namedcoin/metadata.json"
+git -C "$TMP/sources/namedcoin" init -q
+git -C "$TMP/sources/namedcoin" config user.email test@example.invalid
+git -C "$TMP/sources/namedcoin" config user.name test
+git -C "$TMP/sources/namedcoin" add metadata.json
+git -C "$TMP/sources/namedcoin" commit -qm fixture
+cat >"$TMP/release-family.yaml" <<YAML
+schema: melusina-release-family/v1
+families:
+  msb:
+    apps:
+      namedcoin:
+        appId: $ADAPTER_APP
+        source_path: namedcoin
+YAML
+set +e
+MEL_RELEASE_CONFIG="$TMP/release-family.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
+  "$FAMILY_ADAPTER" unknown >"$TMP/family-adapter.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -Fq "unknown provider operation 'unknown'" "$TMP/family-adapter.log"
 # The Go CLI has authority only as an immutable appId.  It must resolve that
 # through the reviewed family manifest, never from a caller-controlled source
 # directory; keep the adapter's guard part of this provider contract.
 bash -n "$FAMILY_ADAPTER"
 grep -Fq 'MEL_RELEASE_CONFIG' "$FAMILY_ADAPTER"
+grep -Fq 'MEL_RELEASE_SOURCE_ROOT' "$FAMILY_ADAPTER"
+grep -Fq 'provider.source_path(app_id)' "$FAMILY_ADAPTER"
+grep -Fq 'scripts/mel-release-provider.py' "$FAMILY_ADAPTER"
 grep -Fq 'refusing to package a dirty app checkout' "$FAMILY_ADAPTER"
 grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$FAMILY_ADAPTER"
 grep -Fq "melusina-release-family/v1" "$FAMILY_ADAPTER"

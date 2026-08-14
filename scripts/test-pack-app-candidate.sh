@@ -10,7 +10,7 @@ mkdir -p "$APP" "$BIN"
 
 cat > "$APP/Makefile" <<'MAKE'
 build:
-	@:
+	@if [ -n "$${BUILD_LOG:-}" ]; then printf 'default-build\n' >> "$$BUILD_LOG"; fi
 ifeq ($(PACK_MODE),pack)
 pack:
 	@printf 'candidate-bytes-pack' > app.spk
@@ -21,6 +21,10 @@ pack-local:
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
 endif
+
+pack-msb-test:
+	@printf 'namedcoin-msb-test\n' >> "$${BUILD_LOG:?BUILD_LOG is required for the profile fixture}"
+	@printf 'candidate-bytes-msb-test' > app.spk
 MAKE
 cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
@@ -32,7 +36,12 @@ cat > "$BIN/spk" <<'SPK'
 set -euo pipefail
 [[ "$1" == verify ]]
 sha="$(sha256sum "$2" | awk '{print $1}')"
-printf '{ "appId": "testappid", "packageId": "%s" }\n' "${sha:0:32}"
+app_id="$(python3 - "$2" <<'PY'
+import json, os, sys
+print(json.load(open(os.path.join(os.path.dirname(sys.argv[1]), "metadata.json"), encoding="utf-8")).get("appId", ""))
+PY
+)"
+printf '{ "appId": "%s", "packageId": "%s" }\n' "$app_id" "${sha:0:32}"
 SPK
 chmod +x "$BIN/spk"
 
@@ -113,6 +122,49 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["app"]["packageId"] == d["artifact"]["sha256"][:32]
 PY
+
+# NamedCoin's devnet package is the one reviewed combined target: the generic
+# helper must not run the untagged default build first, because the real app
+# correctly refuses its devnet-only keybox inputs there. The profile itself is
+# still appId-pinned; changing that identity makes the invocation fail before
+# Make runs.
+python3 - "$APP/metadata.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p, encoding="utf-8"))
+d["appId"] = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
+with open(p, "w", encoding="utf-8") as f:
+    json.dump(d, f)
+    f.write("\n")
+PY
+git -C "$APP" add metadata.json
+git -C "$APP" commit -qm namedcoin-profile
+git -C "$APP" push -qu origin HEAD:main
+BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/namedcoin-profile-receipt.json"
+[[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+python3 - "$APP/metadata.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p, encoding="utf-8"))
+d["appId"] = "testappid"
+with open(p, "w", encoding="utf-8") as f:
+    json.dump(d, f)
+    f.write("\n")
+PY
+git -C "$APP" add metadata.json
+git -C "$APP" commit -qm non-namedcoin-profile-control
+git -C "$APP" push -qu origin HEAD:main
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/namedcoin-profile-refusal.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'valid only for the NamedCoin appId' "$WORK/namedcoin-profile-refusal.log"
 
 printf 'local-only\n' >> "$APP/tracked.txt"
 git -C "$APP" add tracked.txt

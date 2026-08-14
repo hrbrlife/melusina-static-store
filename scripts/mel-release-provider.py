@@ -31,6 +31,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
+NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
+NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 
 
 class ProviderError(RuntimeError):
@@ -49,6 +51,21 @@ def clean_abs(value: str, name: str) -> Path:
     if not p.is_absolute() or p != Path(os.path.abspath(value)):
         raise ProviderError(f"{name} must be an absolute clean path")
     return p
+
+
+def clean_source_root() -> Path:
+    """Return the one explicit root for reviewed, clean app checkouts.
+
+    A release-family manifest is source control, not a record of whichever
+    worktree happened to exist on one developer laptop.  Its source_path values
+    are consequently relative names beneath this operator-supplied root.  Both
+    the manifest and every filesystem edge are checked so a symlink or `..`
+    cannot redirect a governed build outside the reviewed checkout set.
+    """
+    root = clean_abs(env("MEL_RELEASE_SOURCE_ROOT", required=True), "MEL_RELEASE_SOURCE_ROOT")
+    if not root.is_dir() or root.is_symlink() or root.resolve() != root:
+        raise ProviderError("MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory")
+    return root
 
 
 def run(cmd: list[str], *, cwd: Path | None = None, extra_env: dict[str, str] | None = None) -> str:
@@ -132,20 +149,50 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "catalog_developer": str(spec.get("catalog_developer", "")),
                     "catalog_repo": str(spec.get("catalog_repo", "")),
                     "catalog_slug": str(spec.get("catalog_slug", "")),
+                    "pack_profile": str(spec.get("pack_profile", "")),
                 }
     raise ProviderError(f"immutable appId {app_id} is not declared in release-family.yaml")
 
 
 def source_path(app_id: str) -> Path:
     spec = app_spec(app_id)
-    rel = spec["source_path"]
-    if not rel or Path(rel).is_absolute() or ".." in Path(rel).parts:
-        raise ProviderError(f"unsafe source_path for {app_id}: {rel!r}")
-    desktop = clean_abs(env("MEL_RELEASE_DESKTOP_ROOT", default="/home/user/Desktop"), "MEL_RELEASE_DESKTOP_ROOT")
-    path = desktop / rel
-    if not path.is_dir() or not (path / "metadata.json").is_file():
+    rel_text = spec["source_path"]
+    rel = Path(rel_text)
+    if (not rel_text or str(rel) != rel_text or rel.is_absolute() or "\\" in rel_text or
+            any(part in {"", ".", ".."} for part in rel.parts)):
+        raise ProviderError(f"unsafe source_path for {app_id}: {rel_text!r}")
+    root = clean_source_root()
+    path = root / rel
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise ProviderError(f"declared source path is not a checked-out app: {path}: {exc}") from exc
+    if resolved != path or root not in (resolved, *resolved.parents):
+        raise ProviderError(f"declared source path escapes MEL_RELEASE_SOURCE_ROOT: {path}")
+    metadata = path / "metadata.json"
+    if not path.is_dir() or path.is_symlink() or not metadata.is_file() or metadata.is_symlink():
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
     return path
+
+
+def pack_profile_env(app_id: str) -> dict[str, str]:
+    """Select the only reviewed non-default package recipe.
+
+    The profile does *not* pass Go tags or key material through the release
+    environment.  NamedCoin owns those test-only inputs in its explicit Make
+    target.  Every other app gets a literal `standard` override, so a globally
+    inherited environment variable can never make another candidate use the
+    NamedCoin devnet recipe.
+    """
+    profile = app_spec(app_id)["pack_profile"].strip()
+    if not profile:
+        return {"MEL_RELEASE_PACK_PROFILE": "standard"}
+    if profile == NAMEDCOIN_MSB_DEVNET_PROFILE and app_id == NAMEDCOIN_APP_ID:
+        return {"MEL_RELEASE_PACK_PROFILE": NAMEDCOIN_MSB_DEVNET_PROFILE}
+    raise ProviderError(
+        f"unsupported pack_profile {profile!r} for {app_id}; "
+        "only NamedCoin may use the reviewed MSB devnet profile"
+    )
 
 
 def catalog_slot(app_id: str) -> dict[str, str]:
@@ -167,16 +214,34 @@ def catalog_slot(app_id: str) -> dict[str, str]:
 
 
 def catalog_package(app_id: str) -> Path:
-    matches: list[Path] = []
-    for metadata in (ROOT / "packages").rglob("metadata.json"):
-        try:
-            if read_json(metadata).get("appId") == app_id:
-                matches.append(metadata.parent)
-        except ProviderError:
-            continue
-    if len(matches) != 1:
-        raise ProviderError(f"expected exactly one catalog package for {app_id}, found {len(matches)}")
-    return matches[0]
+    """Return the configured, immutable catalog package slot for an app.
+
+    App IDs can occur in preserved legacy catalog directories.  Searching for
+    the first (or only) metadata match would allow such a directory to redirect
+    a governed release, or make a correct first-publish slot unavailable merely
+    because historical evidence remains on disk.  The release-family slot is
+    therefore authoritative, but its metadata must still bind the exact appId
+    before anything can be copied into it.
+    """
+    slot = catalog_slot(app_id)
+    packages = ROOT / "packages"
+    declared = packages / slot["developer"] / slot["repo"] / slot["slug"]
+    try:
+        resolved_packages = packages.resolve(strict=True)
+        resolved = declared.resolve(strict=True)
+    except OSError as exc:
+        raise ProviderError(f"declared catalog package is missing: {declared}: {exc}") from exc
+    if (not declared.is_dir() or declared.is_symlink() or resolved != declared or
+            resolved_packages not in (resolved, *resolved.parents)):
+        raise ProviderError(f"declared catalog package is not a canonical directory: {declared}")
+    metadata = declared / "metadata.json"
+    if not metadata.is_file() or metadata.is_symlink():
+        raise ProviderError(f"declared catalog package metadata is not a regular file: {metadata}")
+    if read_json(metadata).get("appId") != app_id:
+        raise ProviderError(
+            f"declared catalog slot appId does not match release-family appId: {declared}"
+        )
+    return declared
 
 
 def require_context(app_id: str) -> dict[str, Any]:
@@ -278,21 +343,16 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     # The package Makefile writes its ignored app.spk in the committed source
     # tree. pack-app-candidate enforces source cleanliness before and after it.
     built_metadata = work / "metadata.json"
+    pack_env = {"MEL_RELEASE_GREENFIELD_PACK": "1", **pack_profile_env(app_id)}
     run(
         [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
-        extra_env={"MEL_RELEASE_GREENFIELD_PACK": "1"},
+        extra_env=pack_env,
     )
     built_spk = source / "app.spk"
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
 
-    declared_catalog = ROOT / "packages" / slot["developer"] / slot["repo"] / slot["slug"]
     catalog_source = catalog_package(app_id)
-    if catalog_source.resolve() != declared_catalog.resolve():
-        raise ProviderError(
-            f"catalog slot drift for {app_id}: manifest names {declared_catalog}, "
-            f"but the immutable appId currently resolves to {catalog_source}"
-        )
     catalog = work / "catalog"
     shutil.copytree(catalog_source, catalog, symlinks=False)
     run(

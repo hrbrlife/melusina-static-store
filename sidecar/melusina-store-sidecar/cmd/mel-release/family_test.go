@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -151,16 +152,16 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if fam.Schema != "melusina-release-family/v1" {
 		t.Fatalf("real manifest schema = %q", fam.Schema)
 	}
-	if len(fam.Apps) != 9 {
+	if len(fam.Apps) != 10 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 9 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 10 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
 		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
-		"namedcoin", "namedcoin-admin", "fineract-setup", "minigit",
+		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "minigit",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -182,6 +183,31 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		minigit.Family != "platform-tools" || minigit.CatalogDeveloper != "hrbrlife" ||
 		minigit.CatalogRepo != "MiniGit" || minigit.CatalogSlug != "gitpearl" {
 		t.Fatalf("minigit fields wrong: %+v", minigit)
+	}
+
+	// The MSB constellation is configured through immutable app IDs and exact
+	// first-publish slot coordinates, not a current workstation path or an
+	// inferred display name. SourcePath is deliberately relative to the one
+	// MEL_RELEASE_SOURCE_ROOT used by both provider adapters.
+	type want struct {
+		selector, appID, source, developer, repo, slug, profile string
+	}
+	for _, tc := range []want{
+		{"namedcoin", "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh", "namedcoin", "hrbrlife", "melusina-namedcoin-app", "namedcoin", "namedcoin-msb-devnet"},
+		{"fineract-setup", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "hrbrlife", "fineract-setup", "fineract-setup", ""},
+		{"dueprocess", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "hrbrlife", "DueProcess", "dueprocess", ""},
+		{"telescreen", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "hrbrlife", "pr_ninja", "telescreen", ""},
+		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
+	} {
+		app, err := fam.Select(tc.selector)
+		if err != nil {
+			t.Fatalf("Select(%q): %v", tc.selector, err)
+		}
+		if app.AppID != tc.appID || app.SourcePath != tc.source ||
+			app.CatalogDeveloper != tc.developer || app.CatalogRepo != tc.repo ||
+			app.CatalogSlug != tc.slug || app.PackProfile != tc.profile {
+			t.Fatalf("MSB manifest entry %q drifted: %+v", tc.selector, app)
+		}
 	}
 }
 
@@ -210,5 +236,17 @@ func TestLoadFamilyFailsClosedOnMisindentedField(t *testing.T) {
 	}
 	if _, err := LoadFamily(path); err == nil {
 		t.Fatal("expected fail-closed error on a mis-indented line inside apps")
+	}
+}
+
+func TestLoadFamilyRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
+	const m = "schema: s\nfamilies:\n  fam:\n    apps:\n      not-namedcoin:\n        appId: other-app\n        source_path: other\n        pack_profile: namedcoin-msb-devnet\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.yaml")
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFamily(path); err == nil || !strings.Contains(err.Error(), "only NamedCoin") {
+		t.Fatalf("wrong-app namedcoin profile error = %v, want fail-closed NamedCoin refusal", err)
 	}
 }

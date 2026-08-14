@@ -55,6 +55,36 @@ else
 fi
 export SOURCE_DATE_EPOCH="$source_epoch"
 
+# A normal release builds first and then invokes the app's ordinary pack target.
+# NamedCoin is the one reviewed exception: its devnet pkgdef deliberately
+# contains already-disclosed test keybox inputs, and its *default* production
+# build refuses them.  That candidate must use the app-owned, explicit
+# `pack-msb-test` target.  Keep the exception here as a named profile rather
+# than leaking build tags into a global GOFLAGS/BUILD_TAGS environment.
+PACK_PROFILE="${MEL_RELEASE_PACK_PROFILE:-standard}"
+case "$PACK_PROFILE" in
+  standard) ;;
+  namedcoin-msb-devnet)
+    profile_app_id="$(python3 - "$METADATA" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1], encoding="utf-8")).get("appId", ""))
+PY
+)"
+    [[ "$profile_app_id" = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh" ]] || {
+      echo "MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet is valid only for the NamedCoin appId" >&2
+      exit 2
+    }
+    [[ -z "${MEL_RELEASE_PACK_TARGET:-}" ]] || {
+      echo "NamedCoin MSB devnet profile owns its pack target; MEL_RELEASE_PACK_TARGET is forbidden" >&2
+      exit 2
+    }
+    ;;
+  *)
+    echo "unknown MEL_RELEASE_PACK_PROFILE: $PACK_PROFILE" >&2
+    exit 2
+    ;;
+esac
+
 # spkmodule's post-pack hook legitimately derives metadata.packageId from the
 # exact new SPK. Preserve that generated metadata outside the source checkout
 # and restore the committed source file afterwards. Any other mutation remains
@@ -77,33 +107,49 @@ MAKE_VARS=()
 if [[ "${MEL_RELEASE_GREENFIELD_PACK:-}" == "1" ]]; then
   MAKE_VARS+=("APP_PEARL_ENABLED=no")
 fi
-make -C "$APP_DIR" "${MAKE_VARS[@]}" build
-# The historic helper target was only present in the hermetic fixture. Real
-# MSB apps expose the normal spkmodule `pack` target. Prefer an explicit
-# operator override, then retain pack-local compatibility for a repository
-# that deliberately provides it, then fall back to the common `pack` target.
-# Do not guess a target that Make does not declare: publishing must stop before
-# producing a candidate rather than treating an arbitrary artifact as an SPK.
-PACK_TARGET="${MEL_RELEASE_PACK_TARGET:-}"
-if [[ -z "$PACK_TARGET" ]]; then
-  # `make -q target` reports whether target is up-to-date, not whether it
-  # exists, so inspect Make's parsed rule database without executing a target.
-  make_target_exists() {
-    # Do not use grep -q here: with pipefail it closes the pipe early, Make
-    # receives SIGPIPE while dumping its database, and a real target looks
-    # absent. Let grep consume the complete database instead.
-    make -C "$APP_DIR" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
-  }
-  if make_target_exists pack-local; then
-    PACK_TARGET="pack-local"
-  elif make_target_exists pack; then
-    PACK_TARGET="pack"
-  else
-    echo "app Makefile declares neither pack-local nor pack; set MEL_RELEASE_PACK_TARGET explicitly" >&2
-    exit 2
-  fi
-fi
-make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+# `make -q target` reports whether target is up-to-date, not whether it
+# exists, so inspect Make's parsed rule database without executing a target.
+make_target_exists() {
+  # Do not use grep -q here: with pipefail it closes the pipe early, Make
+  # receives SIGPIPE while dumping its database, and a real target looks
+  # absent. Let grep consume the complete database instead.
+  make -C "$APP_DIR" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
+}
+
+case "$PACK_PROFILE" in
+  standard)
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" build
+    # The historic helper target was only present in the hermetic fixture. Real
+    # MSB apps expose the normal spkmodule `pack` target. Prefer an explicit
+    # operator override, then retain pack-local compatibility for a repository
+    # that deliberately provides it, then fall back to the common `pack` target.
+    # Do not guess a target that Make does not declare: publishing must stop before
+    # producing a candidate rather than treating an arbitrary artifact as an SPK.
+    PACK_TARGET="${MEL_RELEASE_PACK_TARGET:-}"
+    if [[ -z "$PACK_TARGET" ]]; then
+      if make_target_exists pack-local; then
+        PACK_TARGET="pack-local"
+      elif make_target_exists pack; then
+        PACK_TARGET="pack"
+      else
+        echo "app Makefile declares neither pack-local nor pack; set MEL_RELEASE_PACK_TARGET explicitly" >&2
+        exit 2
+      fi
+    fi
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    ;;
+  namedcoin-msb-devnet)
+    # Do NOT run `make build` first: that untagged production target is meant
+    # to refuse this devnet-only pkgdef. The app-owned combined target selects
+    # its exact tags and then packs, with no release-wide tag propagation.
+    make_target_exists pack-msb-test || {
+      echo "NamedCoin MSB devnet profile requires an app-owned pack-msb-test target" >&2
+      exit 2
+    }
+    PACK_TARGET="pack-msb-test"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    ;;
+esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
 
 if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then

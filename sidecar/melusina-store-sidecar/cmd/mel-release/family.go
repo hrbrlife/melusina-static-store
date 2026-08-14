@@ -27,6 +27,7 @@ type App struct {
 	CatalogDeveloper string
 	CatalogRepo      string
 	CatalogSlug      string
+	PackProfile      string
 	Role             string
 }
 
@@ -35,6 +36,11 @@ type Family struct {
 	Schema string
 	Apps   []App
 }
+
+const (
+	namedCoinAppID            = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
+	namedCoinMSBDevnetProfile = "namedcoin-msb-devnet"
+)
 
 // LoadFamily parses the manifest at path. The manifest has one fixed shape
 // (2-space indentation: families -> <family> -> apps -> <app> -> scalar fields).
@@ -167,6 +173,9 @@ func LoadFamily(path string) (*Family, error) {
 		if seen[a.AppID] {
 			return nil, fmt.Errorf("duplicate appId %q in manifest", a.AppID)
 		}
+		if a.PackProfile != "" && (a.AppID != namedCoinAppID || a.PackProfile != namedCoinMSBDevnetProfile) {
+			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile)
+		}
 		seen[a.AppID] = true
 	}
 	return fam, nil
@@ -217,6 +226,8 @@ func assignAppField(a *App, key, val string) {
 		a.CatalogRepo = val
 	case "catalog_slug":
 		a.CatalogSlug = val
+	case "pack_profile":
+		a.PackProfile = val
 	case "role":
 		a.Role = val
 	}

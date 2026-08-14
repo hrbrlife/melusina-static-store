@@ -42,7 +42,12 @@ type Policy struct {
 }
 
 type Config struct {
-	LicenseNFTMint  string `json:"license_nft_mint"`
+	LicenseNFTMint string `json:"license_nft_mint"`
+	// StoreAuthority is the public key that owns this store's exact
+	// StoreReleaseListing PDAs. It is deliberately explicit: serve-time must
+	// never discover a store by scanning arbitrary listings, because that would
+	// allow a different store's projection to authorize this one.
+	StoreAuthority  string `json:"store_authority"`
 	ProgramID       string `json:"program_id"`
 	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 	StoreID         string `json:"store_id"`
@@ -227,6 +232,13 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.LicenseNFTMint == "" {
 		return cfg, fmt.Errorf("config: license_nft_mint is required")
+	}
+	cfg.StoreAuthority = strings.TrimSpace(cfg.StoreAuthority)
+	if cfg.StoreAuthority == "" {
+		return cfg, fmt.Errorf("config: store_authority is required")
+	}
+	if _, err := primitives.PubkeyFromBase58(cfg.StoreAuthority); err != nil {
+		return cfg, fmt.Errorf("config: store_authority is invalid: %w", err)
 	}
 	cfg.ProgramID = strings.TrimSpace(cfg.ProgramID)
 	if cfg.ProgramID == "" {

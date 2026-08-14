@@ -7,6 +7,87 @@ import (
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
+// buildStoreReleaseListingBlobForTest pins the on-chain account layout used by
+// the target-scoped serve gate. It intentionally exercises both Option<i64>
+// encodings because fields after revoked_at shift when a delist timestamp is
+// present.
+func buildStoreReleaseListingBlobForTest(storeAuthority, appHash, releaseEntry, domainHash, operatorAuth [32]byte, status storeListingStatus, revokedAt *int64) []byte {
+	b := append([]byte{}, accountDiscriminator("StoreReleaseListing")...)
+	b = append(b, storeAuthority[:]...)
+	b = append(b, appHash[:]...)
+	b = append(b, releaseEntry[:]...)
+	b = append(b, make([]byte, 32)...) // store_cert_fingerprint
+	b = append(b, make([]byte, 32)...) // listed_by
+	b = append(b, make([]byte, 8)...)  // listed_at
+	b = append(b, byte(status))
+	if revokedAt == nil {
+		b = append(b, 0)
+	} else {
+		b = append(b, 1)
+		unix := make([]byte, 8)
+		binary.LittleEndian.PutUint64(unix, uint64(*revokedAt))
+		b = append(b, unix...)
+	}
+	b = append(b, domainHash[:]...)
+	b = append(b, operatorAuth[:]...)
+	b = append(b, 7) // bump
+	return b
+}
+
+func TestReadStoreReleaseListingMeta_ByteDecodeAndDelistedStatus(t *testing.T) {
+	var authority, appHash, releaseEntry, domainHash, operatorAuth [32]byte
+	for i := range authority {
+		authority[i] = byte(0x10 + i)
+		appHash[i] = byte(0x20 + i)
+		releaseEntry[i] = byte(0x30 + i)
+		domainHash[i] = byte(0x40 + i)
+		operatorAuth[i] = byte(0x50 + i)
+	}
+	when := int64(1_786_724_839)
+	meta, err := readStoreReleaseListingMeta(buildStoreReleaseListingBlobForTest(
+		authority, appHash, releaseEntry, domainHash, operatorAuth, storeListingStatusDelisted, &when,
+	))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if meta.Status != storeListingStatusDelisted {
+		t.Fatalf("status = %s, want Delisted", meta.Status)
+	}
+	if meta.StoreAuthority != authority || meta.AppHash != appHash || meta.ReleaseEntry != releaseEntry || meta.StoreDomainHash != domainHash || meta.OperatorAuthorization != operatorAuth {
+		t.Fatalf("decoded listing fields do not match the frozen account layout: %+v", meta)
+	}
+}
+
+func TestReadStoreReleaseListingMeta_RefusesMalformedStates(t *testing.T) {
+	var z [32]byte
+	valid := buildStoreReleaseListingBlobForTest(z, z, z, z, z, storeListingStatusActive, nil)
+	for _, tc := range []struct {
+		name string
+		blob []byte
+	}{
+		{name: "short", blob: valid[:len(valid)-2]},
+		{name: "wrong_discriminator", blob: append([]byte{}, valid...)},
+		{name: "unknown_status", blob: append([]byte{}, valid...)},
+		{name: "invalid_option_tag", blob: append([]byte{}, valid...)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			blob := tc.blob
+			switch tc.name {
+			case "unknown_status":
+				// 8 discriminator + 32*5 + 8 listed_at = status byte.
+				blob[verify.AccountDiscriminatorLen+32*5+8] = 99
+			case "wrong_discriminator":
+				blob[0] ^= 0xff
+			case "invalid_option_tag":
+				blob[verify.AccountDiscriminatorLen+32*5+8+1] = 2
+			}
+			if _, err := readStoreReleaseListingMeta(blob); err == nil {
+				t.Fatal("malformed listing was accepted")
+			}
+		})
+	}
+}
+
 // buildReleaseEntryBlobForTest replicates the on-chain ReleaseEntry account layout
 // (authoritative: melusina-identity-gate/verify store_test.go buildReleaseEntryBlob)
 // with an explicit registered_at, so the byte-level reader — now load-bearing for the

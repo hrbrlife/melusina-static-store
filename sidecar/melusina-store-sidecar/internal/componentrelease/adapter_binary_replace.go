@@ -43,6 +43,8 @@ package componentrelease
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -78,12 +80,15 @@ const binaryReplaceProbeWindow = 30 * time.Second
 
 var binaryReplaceProbeRetryInterval = 250 * time.Millisecond
 
+const selfReportHTTPTimeout = 10 * time.Second
+
 // NewBinaryReplaceAdapter returns the binary-replace adapter. A nil getter selects
-// the split default policies (origin-pinned no-redirect for Stage, loopback-only
-// no-redirect for Probe). A non-nil getter is used for BOTH phases (test/override).
+// the split default policies (origin-pinned no-redirect for Stage and the
+// registry-pinned loopback/TLS policy for Probe). A non-nil getter is used for
+// BOTH phases (test/override).
 func NewBinaryReplaceAdapter(get HTTPGetter) Adapter {
 	if get == nil {
-		return NewBinaryReplaceAdapterWithFetchers(defaultBundleGet, defaultLoopbackGet)
+		return &binaryReplaceAdapter{stageGet: defaultBundleGet}
 	}
 	return NewBinaryReplaceAdapterWithFetchers(get, get)
 }
@@ -329,7 +334,7 @@ func (a *binaryReplaceAdapter) probeOnce(ctx context.Context, desired ComponentR
 	if install.SelfReportURL == "" {
 		return nil
 	}
-	body, err := a.probeGet(ctx, install.SelfReportURL)
+	body, err := a.getSelfReport(ctx, install)
 	if err != nil {
 		return fmt.Errorf("self-report fetch: %w", err)
 	}
@@ -347,6 +352,13 @@ func (a *binaryReplaceAdapter) probeOnce(ctx context.Context, desired ComponentR
 		return fmt.Errorf("self-report does not bind the applied hash %s in a structured field", strings.ToLower(desired.SHA256))
 	}
 	return nil
+}
+
+func (a *binaryReplaceAdapter) getSelfReport(ctx context.Context, install ComponentInstall) (io.ReadCloser, error) {
+	if a.probeGet != nil {
+		return a.probeGet(ctx, install.SelfReportURL)
+	}
+	return FetchSelfReport(ctx, install)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -450,6 +462,16 @@ func defaultBundleGet(ctx context.Context, url string) (io.ReadCloser, error) {
 }
 
 func defaultLoopbackGet(ctx context.Context, url string) (io.ReadCloser, error) {
+	return FetchSelfReport(ctx, ComponentInstall{SelfReportURL: url})
+}
+
+// FetchSelfReport fetches an install-local self-report using the local registry's
+// exact dial and trust policy. The URL's hostname remains the TLS ServerName;
+// SelfReportDialAddress, when configured, may only be a literal loopback target.
+// This lets a private sidecar certificate retain its real DNS identity without
+// creating an ambient DNS/network capability or disabling certificate checks.
+func FetchSelfReport(ctx context.Context, install ComponentInstall) (io.ReadCloser, error) {
+	url := install.SelfReportURL
 	u, err := neturl.Parse(url)
 	if err != nil {
 		return nil, err
@@ -461,30 +483,90 @@ func defaultLoopbackGet(ctx context.Context, url string) (io.ReadCloser, error) 
 	if u.Scheme != "https" {
 		return nil, fmt.Errorf("self-report must use https, got %q", u.Scheme)
 	}
-	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return nil, fmt.Errorf("resolve self-report host %q: %w", host, err)
-	}
-
-	// Keep the signed TLS hostname in the request so certificate verification is
-	// real, but pin the dial target to the just-verified loopback address.  This
-	// supports a component certificate for its chain-bound DNS identity without
-	// turning a registry self-report into a remote network capability.
-	dialAddr, err := loopbackDialAddress(host, u.Port(), ips)
-	if err != nil {
-		return nil, err
+	var dialAddr string
+	if install.SelfReportDialAddress != "" {
+		if !validLoopbackDialAddress(install.SelfReportDialAddress) {
+			return nil, fmt.Errorf("self-report configured dial address %q is not explicit loopback", install.SelfReportDialAddress)
+		}
+		_, configuredPort, _ := net.SplitHostPort(install.SelfReportDialAddress)
+		urlPort := u.Port()
+		if urlPort == "" {
+			urlPort = "443"
+		}
+		if configuredPort != urlPort {
+			return nil, fmt.Errorf("self-report configured dial port %q != URL port %q", configuredPort, urlPort)
+		}
+		dialAddr = install.SelfReportDialAddress
+	} else {
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("resolve self-report host %q: %w", host, err)
+		}
+		// Keep the signed TLS hostname in the request so certificate verification
+		// is real, but pin the dial target to the just-verified loopback address.
+		dialAddr, err = loopbackDialAddress(host, u.Port(), ips)
+		if err != nil {
+			return nil, err
+		}
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if install.SelfReportCAFile != "" {
+		roots, err := x509.SystemCertPool()
+		if err != nil || roots == nil {
+			roots = x509.NewCertPool()
+		}
+		pemBytes, err := readSelfReportCAPEM(install.SelfReportCAFile, install.SelfReportCASHA256)
+		if err != nil {
+			return nil, fmt.Errorf("read self-report CA file: %w", err)
+		}
+		if !roots.AppendCertsFromPEM(pemBytes) {
+			return nil, fmt.Errorf("self-report CA file %q contains no PEM certificate", install.SelfReportCAFile)
+		}
+		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}
+	}
 	dialer := &net.Dialer{}
 	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		return dialer.DialContext(ctx, network, dialAddr)
 	}
 	return noRedirectGetWithClient(ctx, url, &http.Client{
 		Transport: transport,
+		Timeout:   selfReportHTTPTimeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return errors.New("redirects are not allowed")
 		},
 	})
+}
+
+const maxSelfReportCABytes = 1 << 20
+
+func readSelfReportCAPEM(path, wantSHA256 string) ([]byte, error) {
+	if !isLowerHex(wantSHA256, 64) {
+		return nil, fmt.Errorf("%s has no valid pinned SHA-256", path)
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	pemBytes, err := io.ReadAll(io.LimitReader(f, maxSelfReportCABytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(pemBytes) > maxSelfReportCABytes {
+		return nil, fmt.Errorf("%s exceeds %d byte limit", path, maxSelfReportCABytes)
+	}
+	got := sha256.Sum256(pemBytes)
+	if hex.EncodeToString(got[:]) != wantSHA256 {
+		return nil, fmt.Errorf("%s SHA-256 does not match its registry pin", path)
+	}
+	return pemBytes, nil
 }
 
 func loopbackDialAddress(host, port string, ips []net.IPAddr) (string, error) {

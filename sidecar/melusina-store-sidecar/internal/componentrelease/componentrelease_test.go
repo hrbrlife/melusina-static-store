@@ -331,6 +331,37 @@ func TestRegistryRejectsMissingHealthCommand(t *testing.T) {
 	}
 }
 
+func TestRegistryRejectsUnsafePinnedSelfReportTransport(t *testing.T) {
+	reg := sampleRegistry()
+	e := reg.Components["melusina-store-sidecar"]
+	e.SelfReportURL = "https://fineract.sidecar.host:8443/__release-info"
+	e.SelfReportDialAddress = "10.100.0.58:8443"
+	reg.Components["melusina-store-sidecar"] = e
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted a non-loopback self-report dial address")
+	}
+
+	e.SelfReportDialAddress = "127.0.0.1:8443"
+	e.SelfReportCAFile = "relative-ca.pem"
+	reg.Components["melusina-store-sidecar"] = e
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted a relative self-report CA file")
+	}
+
+	e.SelfReportCAFile = "/etc/melusina/sidecar-ca/ca.crt"
+	e.SelfReportCASHA256 = ""
+	reg.Components["melusina-store-sidecar"] = e
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted a self-report CA file without its SHA-256 pin")
+	}
+
+	e.SelfReportCASHA256 = "not-a-hash"
+	reg.Components["melusina-store-sidecar"] = e
+	if err := reg.Validate(); err == nil {
+		t.Fatal("Validate accepted a malformed self-report CA SHA-256 pin")
+	}
+}
+
 func TestRegistryRejectsUnknownApplyKind(t *testing.T) {
 	reg := sampleRegistry()
 	e := reg.Components["sandstorm-shell"]

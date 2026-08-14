@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -107,6 +109,19 @@ type ComponentInstall struct {
 	// structured runtime gate rather than minting a receipt for an old process.
 	RuntimeEnvFile string `json:"runtimeEnvFile,omitempty"`
 
+	// SelfReportDialAddress is an optional root-owned loopback-only target for
+	// the TLS self-report URL. It preserves the URL hostname for certificate
+	// verification while avoiding ambient DNS or network routing. The remote
+	// DesiredGeneration never controls this address.
+	SelfReportDialAddress string `json:"selfReportDialAddress,omitempty"`
+	// SelfReportCAFile is an optional root-owned PEM bundle used only when
+	// verifying SelfReportURL. It avoids both a global trust-store mutation and
+	// an insecure TLS bypass for private sidecar certificates. Its bytes are
+	// bound by SelfReportCASHA256 so replacing a locally readable CA file cannot
+	// silently widen the controller's trust root.
+	SelfReportCAFile   string `json:"selfReportCaFile,omitempty"`
+	SelfReportCASHA256 string `json:"selfReportCaSha256,omitempty"`
+
 	KeepOldBuilds int `json:"keepOldBuilds,omitempty"` // pruning floor for tarball-symlink-swap
 }
 
@@ -160,10 +175,45 @@ func (ci ComponentInstall) validate(key string) error {
 	if ci.RuntimeEnvFile != "" && (!filepath.IsAbs(ci.RuntimeEnvFile) || filepath.Clean(ci.RuntimeEnvFile) != ci.RuntimeEnvFile) {
 		return fmt.Errorf("registry %s: runtimeEnvFile must be an absolute clean path", key)
 	}
+	if ci.SelfReportDialAddress != "" {
+		if strings.TrimSpace(ci.SelfReportURL) == "" {
+			return fmt.Errorf("registry %s: selfReportDialAddress requires selfReportUrl", key)
+		}
+		if !validLoopbackDialAddress(ci.SelfReportDialAddress) {
+			return fmt.Errorf("registry %s: selfReportDialAddress must be an explicit loopback host:port", key)
+		}
+	}
+	if ci.SelfReportCAFile != "" || ci.SelfReportCASHA256 != "" {
+		if strings.TrimSpace(ci.SelfReportURL) == "" {
+			return fmt.Errorf("registry %s: selfReport CA pin requires selfReportUrl", key)
+		}
+		if ci.SelfReportCAFile == "" || ci.SelfReportCASHA256 == "" {
+			return fmt.Errorf("registry %s: selfReportCaFile and selfReportCaSha256 must be set together", key)
+		}
+		if !validAbsPath(ci.SelfReportCAFile) || filepath.Clean(ci.SelfReportCAFile) != ci.SelfReportCAFile {
+			return fmt.Errorf("registry %s: selfReportCaFile must be an absolute clean path", key)
+		}
+		if !isLowerHex(ci.SelfReportCASHA256, 64) {
+			return fmt.Errorf("registry %s: selfReportCaSha256 must be 64 lowercase hex characters", key)
+		}
+	}
 	if ci.KeepOldBuilds < 0 {
 		return fmt.Errorf("registry %s: keepOldBuilds must be non-negative", key)
 	}
 	return nil
+}
+
+func validLoopbackDialAddress(address string) bool {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || host == "" || port == "" {
+		return false
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !ip.IsLoopback() {
+		return false
+	}
+	n, err := strconv.ParseUint(port, 10, 16)
+	return err == nil && n > 0
 }
 
 // Validate checks the registry as a whole: correct schema and every entry valid

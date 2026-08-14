@@ -2,8 +2,14 @@ package componentrelease
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/pem"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +32,57 @@ func TestLoopbackDialAddressPinsVerifiedLoopback(t *testing.T) {
 	if got != "127.0.0.1:8443" {
 		t.Fatalf("dial address = %q, want loopback pin", got)
 	}
+}
+
+func TestFetchSelfReportUsesRegistryPinnedLoopbackAndCA(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/__release-info" {
+			t.Fatalf("request path = %q, want /__release-info", r.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{"artifactSha256":"bound"}`)
+	}))
+	defer server.Close()
+	if err := server.Certificate().VerifyHostname("example.com"); err != nil {
+		t.Fatalf("httptest certificate must carry example.com for pinned-dial proof: %v", err)
+	}
+	caPath := filepath.Join(t.TempDir(), "self-report-ca.pem")
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := neturl.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := "https://" + net.JoinHostPort("example.com", parsed.Port()) + "/__release-info"
+	install := ComponentInstall{
+		SelfReportURL:         url,
+		SelfReportDialAddress: parsed.Host,
+		SelfReportCAFile:      caPath,
+		SelfReportCASHA256:    sha256Hex(caPEM),
+	}
+	body, err := FetchSelfReport(context.Background(), install)
+	if err != nil {
+		t.Fatalf("pinned self-report fetch: %v", err)
+	}
+	defer body.Close()
+	raw, err := io.ReadAll(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `{"artifactSha256":"bound"}` {
+		t.Fatalf("self-report body = %q", raw)
+	}
+
+	install.SelfReportCASHA256 = strings.Repeat("0", 64)
+	if _, err := FetchSelfReport(context.Background(), install); err == nil {
+		t.Fatal("self-report with a mismatched pinned CA unexpectedly verified")
+	}
+}
+
+func sha256Hex(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }
 
 func TestBinaryReplaceProbeWaitsForServiceReadiness(t *testing.T) {

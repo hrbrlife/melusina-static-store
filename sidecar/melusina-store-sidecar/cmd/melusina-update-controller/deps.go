@@ -139,24 +139,16 @@ type releaseInfoReport struct {
 }
 
 func newRuntimeObserver() func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) (hostupdate.RuntimeEvidence, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
 	return func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) (hostupdate.RuntimeEvidence, error) {
 		if strings.TrimSpace(install.SelfReportURL) == "" {
 			return hostupdate.RuntimeEvidence{}, fmt.Errorf("component %s has no selfReportUrl to bind the running build", c.ComponentID)
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, install.SelfReportURL, nil)
-		if err != nil {
-			return hostupdate.RuntimeEvidence{}, err
-		}
-		resp, err := client.Do(req)
+		body, err := componentrelease.FetchSelfReport(ctx, install)
 		if err != nil {
 			return hostupdate.RuntimeEvidence{}, fmt.Errorf("fetch %s release-info: %w", c.ComponentID, err)
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return hostupdate.RuntimeEvidence{}, fmt.Errorf("%s release-info: HTTP %d", c.ComponentID, resp.StatusCode)
-		}
-		raw, err := io.ReadAll(io.LimitReader(resp.Body, maxReleaseInfoBytes+1))
+		defer body.Close()
+		raw, err := io.ReadAll(io.LimitReader(body, maxReleaseInfoBytes+1))
 		if err != nil {
 			return hostupdate.RuntimeEvidence{}, err
 		}

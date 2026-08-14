@@ -9,8 +9,15 @@ BIN="$WORK/bin"
 mkdir -p "$APP" "$BIN"
 
 cat > "$APP/Makefile" <<'MAKE'
+# DueProcess-like release policy: a source-controlled epoch must win whenever
+# the caller has not explicitly supplied one. The helper used to overwrite this
+# with the Git commit timestamp before Make could evaluate the `?=` assignment.
+SOURCE_DATE_EPOCH ?= 1704067200
+export SOURCE_DATE_EPOCH
+
 build:
 	@if [ -n "$${BUILD_LOG:-}" ]; then printf 'default-build\n' >> "$$BUILD_LOG"; fi
+	@if [ -n "$${EPOCH_LOG:-}" ]; then printf '%s\n' "$$SOURCE_DATE_EPOCH" >> "$$EPOCH_LOG"; fi
 ifeq ($(PACK_MODE),pack)
 pack:
 	@printf 'candidate-bytes-pack' > app.spk
@@ -54,16 +61,34 @@ git init --bare -q "$WORK/origin.git"
 git -C "$APP" remote add origin "$WORK/origin.git"
 git -C "$APP" push -qu origin HEAD:main
 
-PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+env -u SOURCE_DATE_EPOCH EPOCH_LOG="$WORK/pinned-epoch.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/receipt.json"
+[[ "$(cat "$WORK/pinned-epoch.log")" == "1704067200" ]]
 python3 - "$WORK/receipt.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["schema"] == "melusina-app-candidate-receipt-v1"
 assert d["source"]["dirty"] is False
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/main"
+assert d["source"]["sourceDateEpoch"] == 1704067200
+assert d["source"]["sourceDateEpochOrigin"] == "makefile"
+assert isinstance(d["source"]["sourceCommitEpoch"], int)
 assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
+PY
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# An explicit caller value remains authoritative over a DueProcess-like `?=`
+# policy, and the receipt distinguishes that input from the app-controlled
+# default rather than reporting the Git commit timestamp as the archive epoch.
+SOURCE_DATE_EPOCH=1704067201 EPOCH_LOG="$WORK/caller-epoch.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/caller-epoch-receipt.json"
+[[ "$(cat "$WORK/caller-epoch.log")" == "1704067201" ]]
+python3 - "$WORK/caller-epoch-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["sourceDateEpoch"] == 1704067201
+assert d["source"]["sourceDateEpochOrigin"] == "caller-override"
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

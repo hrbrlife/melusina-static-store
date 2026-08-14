@@ -643,6 +643,153 @@ def test_catalog_package_binds_declared_slot_despite_preserved_duplicate():
             restore_env(old)
 
 
+def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata():
+    """First publish may not redirect to a legacy appId match on disk."""
+    app_id = provider.NAMEDCOIN_APP_ID
+    apps = {
+        "namedcoin": {
+            "appId": app_id,
+            "source_path": "namedcoin",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-namedcoin-app",
+            "catalog_slug": "namedcoin",
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "release-family.yaml"
+        write_family_config(config, apps)
+        source = root / "sources" / "namedcoin"
+        source.mkdir(parents=True)
+        source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
+        (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
+
+        # Preserved stale evidence is deliberately at a different slot. The
+        # bootstrap must neither use nor alter it.
+        legacy = root / "packages" / "legacy" / "namedcoin" / "old"
+        legacy.mkdir(parents=True)
+        (legacy / "metadata.json").write_text(json.dumps({"appId": app_id, "name": "legacy"}) + "\n")
+
+        old_root, old = provider.ROOT, with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            provider.ROOT = root
+            assert provider.catalog_package(app_id) is None
+            destination = root / "private-candidate" / "catalog"
+            destination.parent.mkdir()
+            assert provider.prepare_candidate_catalog(source, app_id, destination) is True
+            assert json.loads((destination / "metadata.json").read_text()) == source_metadata
+            assert json.loads((legacy / "metadata.json").read_text())["name"] == "legacy"
+            assert not (root / "packages" / "hrbrlife" / "melusina-namedcoin-app" / "namedcoin").exists()
+
+            bad_source = root / "sources" / "wrong-app"
+            bad_source.mkdir()
+            (bad_source / "metadata.json").write_text(json.dumps({"appId": "wrong-app"}) + "\n")
+            try:
+                provider.prepare_candidate_catalog(bad_source, app_id, root / "bad-candidate")
+            except provider.ProviderError as exc:
+                assert "source metadata appId" in str(exc), exc
+            else:
+                raise AssertionError("bootstrap accepted source metadata for another appId")
+            assert not (root / "bad-candidate").exists()
+        finally:
+            provider.ROOT = old_root
+            restore_env(old)
+
+
+def test_build_records_private_bootstrap_without_writing_catalog_tree():
+    """Exercise the provider build path for a missing configured NamedCoin slot."""
+    app_id = provider.NAMEDCOIN_APP_ID
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source_root = root / "sources"
+        source = source_root / "namedcoin"
+        source.mkdir(parents=True)
+        source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
+        (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
+        (source / "RUNTIME-CONTRACT.json").write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
+        }) + "\n")
+        # A legacy match proves that build cannot select a slot by scanning the
+        # appId: only the exact configured hrbrlife/.../namedcoin slot is valid.
+        legacy = root / "packages" / "legacy" / "namedcoin" / "old"
+        legacy.mkdir(parents=True)
+        (legacy / "metadata.json").write_text(json.dumps({"appId": app_id, "name": "legacy"}) + "\n")
+        config = root / "release-family.yaml"
+        write_family_config(config, {
+            "namedcoin": {
+                "appId": app_id,
+                "source_path": "namedcoin",
+                "catalog_developer": "hrbrlife",
+                "catalog_repo": "melusina-namedcoin-app",
+                "catalog_slug": "namedcoin",
+                "pack_profile": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+            },
+        })
+        state = root / "state"
+        state.mkdir()
+        receipt = root / "candidate-receipt.json"
+        expected_spk = b"candidate-spk"
+        expected_sha = provider.hashlib.sha256(expected_spk).hexdigest()
+        staged_metadata = {
+            **source_metadata,
+            "packageId": expected_sha[:32],
+            "sha256": expected_sha,
+        }
+        calls = []
+        old_root, old_run, old_bin = provider.ROOT, provider.run, provider.ensure_bin
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(source_root),
+            "MEL_RELEASE_STATE_DIR": str(state),
+            "MEL_RELEASE_MASTER_NFT_MINT": "master",
+        })
+        try:
+            provider.ROOT = root
+
+            def fake_run(args, **kwargs):
+                calls.append((args, kwargs))
+                if args[0].endswith("pack-app-candidate.sh"):
+                    assert kwargs["extra_env"] == {
+                        "MEL_RELEASE_GREENFIELD_PACK": "1",
+                        "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+                    }
+                    source.joinpath("app.spk").write_bytes(expected_spk)
+                    Path(args[args.index("--metadata-out") + 1]).write_text(json.dumps(staged_metadata) + "\n")
+                    return ""
+                if args[0].endswith("stage-into-catalog.sh"):
+                    catalog = Path(args[2])
+                    # This is the exact source metadata bootstrap, before the
+                    # stage script replaces product/release fields from the
+                    # packed candidate under F-193.
+                    assert json.loads((catalog / "metadata.json").read_text()) == source_metadata
+                    assert kwargs["extra_env"] == {"SOURCE_METADATA_PATH": str(catalog.parent / "metadata.json")}
+                    Path(args[2], "app.spk").write_bytes(expected_spk)
+                    Path(args[2], "metadata.json").write_text(json.dumps(staged_metadata) + "\n")
+                    Path(args[2], "RELEASE.json").write_text("{}\n")
+                    return ""
+                if args[0] == "git":
+                    return ""
+                if args[0] == str(root / "apphash"):
+                    return "a" * 64
+                raise AssertionError(f"unexpected provider command: {args}")
+
+            provider.run = fake_run
+            provider.ensure_bin = lambda *_: root / "apphash"
+            provider.build(app_id, "0.1.35", receipt)
+        finally:
+            provider.ROOT, provider.run, provider.ensure_bin = old_root, old_run, old_bin
+            restore_env(old)
+
+        context = json.loads((state / "apps" / app_id / "provider" / "context.json").read_text())
+        stored_receipt = json.loads(receipt.read_text())
+        assert context["catalogBootstrap"] is True
+        assert stored_receipt["catalogBootstrap"] is True
+        assert json.loads((legacy / "metadata.json").read_text())["name"] == "legacy"
+        assert not (root / "packages" / "hrbrlife" / "melusina-namedcoin-app" / "namedcoin").exists()
+        assert any(args[0].endswith("stage-into-catalog.sh") for args, _ in calls)
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
@@ -655,4 +802,6 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
+    test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
+    test_build_records_private_bootstrap_without_writing_catalog_tree()
     print("mel-release provider CLI-contract tests passed")

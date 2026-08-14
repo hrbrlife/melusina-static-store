@@ -48,12 +48,28 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
-  source_epoch="${SOURCE_DATE_EPOCH:-$(git -C "$APP_DIR" log -1 --format=%ct HEAD)}"
+  source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"
 else
   echo "candidate builds require a committed Git source tree" >&2
   exit 2
 fi
-export SOURCE_DATE_EPOCH="$source_epoch"
+
+# An explicitly supplied epoch is an operator-controlled reproducibility input
+# and must survive intact.  In its absence, do NOT export the commit timestamp:
+# several app Makefiles deliberately pin SOURCE_DATE_EPOCH with `?=` so their
+# archived bytes stay stable across metadata-only commits. Exporting a default
+# here silently defeated that app-level release policy (DueProcess v78 was the
+# concrete failure). The shared pack core still has the source-commit fallback
+# when neither caller nor Makefile supplies one.
+caller_source_epoch="${SOURCE_DATE_EPOCH:-}"
+if [[ -n "$caller_source_epoch" ]]; then
+  [[ "$caller_source_epoch" =~ ^[0-9]+$ ]] || {
+    echo "SOURCE_DATE_EPOCH must be a non-negative integer when supplied" >&2
+    exit 2
+  }
+else
+  unset SOURCE_DATE_EPOCH
+fi
 
 # A normal release builds first and then invokes the app's ordinary pack target.
 # NamedCoin is the one reviewed exception: its devnet pkgdef deliberately
@@ -116,6 +132,29 @@ make_target_exists() {
   make -C "$APP_DIR" -prRn 2>/dev/null | grep -E "^$1:" >/dev/null
 }
 
+# Read Make's effective exported value without executing a build target. This
+# is receipt evidence only; the build environment above remains untouched.
+# If no Makefile declares it, spkmodule's documented fallback is the committed
+# source epoch, which is recorded distinctly rather than masquerading as a
+# caller override.
+effective_source_epoch() {
+  local make_epoch
+  make_epoch="$(make -C "$APP_DIR" -prRn 2>/dev/null | awk '
+    /^SOURCE_DATE_EPOCH[[:space:]]*[:?+]?=/ {
+      value = $0
+      sub(/^[^=]*=[[:space:]]*/, "", value)
+      sub(/[[:space:]]*#.*/, "", value)
+      if (value ~ /^[0-9]+$/) epoch = value
+    }
+    END { if (epoch != "") print epoch }
+  ')"
+  if [[ -n "$make_epoch" ]]; then
+    printf '%s\tmakefile\n' "$make_epoch"
+  else
+    printf '%s\tspkmodule-default-source-commit\n' "$source_commit_epoch"
+  fi
+}
+
 case "$PACK_PROFILE" in
   standard)
     make -C "$APP_DIR" "${MAKE_VARS[@]}" build
@@ -151,6 +190,15 @@ case "$PACK_PROFILE" in
     ;;
 esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
+
+IFS=$'\t' read -r source_epoch source_epoch_origin < <(effective_source_epoch)
+[[ "$source_epoch" =~ ^[0-9]+$ ]] || {
+  echo "could not determine an effective numeric SOURCE_DATE_EPOCH" >&2
+  exit 2
+}
+if [[ -n "$caller_source_epoch" && "$source_epoch" == "$caller_source_epoch" ]]; then
+  source_epoch_origin="caller-override"
+fi
 
 if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then
   [[ -n "$METADATA_OUT" ]] || {
@@ -229,13 +277,20 @@ PY
 
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
-  python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_epoch" "$app_id" "$package_id" \
-    "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
+  python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_commit_epoch" "$source_epoch" \
+    "$source_epoch_origin" "$app_id" "$package_id" "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
 import json, os, sys
-out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
+out, revision, pushed_ref, commit_epoch, epoch, epoch_origin, app_id, package_id, version, sha, size = sys.argv[1:]
 doc = {
     "schema": "melusina-app-candidate-receipt-v1",
-    "source": {"revision": revision, "pushedRemoteRef": pushed_ref, "dirty": False, "sourceDateEpoch": int(epoch)},
+    "source": {
+        "revision": revision,
+        "pushedRemoteRef": pushed_ref,
+        "dirty": False,
+        "sourceCommitEpoch": int(commit_epoch),
+        "sourceDateEpoch": int(epoch),
+        "sourceDateEpochOrigin": epoch_origin,
+    },
     "app": {"appId": app_id, "packageId": package_id, "version": version},
     "artifact": {"sha256": sha, "size": int(size)},
     "verification": {"spk": "valid", "packageIdMatchesSha256": True},

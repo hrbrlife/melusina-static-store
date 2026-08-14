@@ -213,27 +213,34 @@ def catalog_slot(app_id: str) -> dict[str, str]:
     return slot
 
 
-def catalog_package(app_id: str) -> Path:
-    """Return the configured, immutable catalog package slot for an app.
+def catalog_package(app_id: str) -> Path | None:
+    """Return the configured catalog package, or ``None`` for first publish.
 
     App IDs can occur in preserved legacy catalog directories.  Searching for
     the first (or only) metadata match would allow such a directory to redirect
-    a governed release, or make a correct first-publish slot unavailable merely
-    because historical evidence remains on disk.  The release-family slot is
-    therefore authoritative, but its metadata must still bind the exact appId
-    before anything can be copied into it.
+    a governed release. The release-family slot is therefore authoritative.
+
+    A declared slot can legitimately be absent on a first publish (including a
+    clean checkout whose pinned catalog submodule has not been initialized).
+    That is not permission to select a legacy match: callers must construct a
+    private candidate seed from the exact source metadata and pass the same
+    explicit slot hint to the Store. Existing slots still must bind this appId.
     """
     slot = catalog_slot(app_id)
     packages = ROOT / "packages"
     declared = packages / slot["developer"] / slot["repo"] / slot["slug"]
-    try:
-        resolved_packages = packages.resolve(strict=True)
-        resolved = declared.resolve(strict=True)
-    except OSError as exc:
-        raise ProviderError(f"declared catalog package is missing: {declared}: {exc}") from exc
-    if (not declared.is_dir() or declared.is_symlink() or resolved != declared or
-            resolved_packages not in (resolved, *resolved.parents)):
-        raise ProviderError(f"declared catalog package is not a canonical directory: {declared}")
+    for index, path in enumerate((packages, packages / slot["developer"],
+                                  packages / slot["developer"] / slot["repo"], declared)):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            if index == 0:
+                raise ProviderError(f"catalog packages root is missing: {packages}")
+            return None
+        except OSError as exc:
+            raise ProviderError(f"lstat declared catalog path {path}: {exc}") from exc
+        if path.is_symlink() or not path.is_dir():
+            raise ProviderError(f"declared catalog package is not a real directory: {path}")
     metadata = declared / "metadata.json"
     if not metadata.is_file() or metadata.is_symlink():
         raise ProviderError(f"declared catalog package metadata is not a regular file: {metadata}")
@@ -242,6 +249,35 @@ def catalog_package(app_id: str) -> Path:
             f"declared catalog slot appId does not match release-family appId: {declared}"
         )
     return declared
+
+
+def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> bool:
+    """Materialize a private catalog candidate; return whether it is a bootstrap.
+
+    This never writes ``ROOT/packages``. A missing configured slot is a normal
+    first-publish condition: the sidecar will create that exact slot only after
+    its stage/promotion gate accepts the same appId and supplied slot hint. The
+    private seed contains only the tracked source metadata, which remains
+    authoritative under F-193; no legacy metadata or presentation files can
+    leak into a first-publish candidate.
+    """
+    existing = catalog_package(app_id)
+    if existing is not None:
+        shutil.copytree(existing, destination, symlinks=False)
+        return False
+
+    source_metadata = source / "metadata.json"
+    if source_metadata.is_symlink() or not source_metadata.is_file():
+        raise ProviderError(f"source metadata is not a regular file: {source_metadata}")
+    if read_json(source_metadata).get("appId") != app_id:
+        raise ProviderError("source metadata appId does not match the release family appId")
+    try:
+        destination.mkdir(mode=0o700)
+        shutil.copyfile(source_metadata, destination / "metadata.json")
+        os.chmod(destination / "metadata.json", 0o600)
+    except OSError as exc:
+        raise ProviderError(f"bootstrap private catalog candidate: {exc}") from exc
+    return True
 
 
 def require_context(app_id: str) -> dict[str, Any]:
@@ -352,9 +388,8 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     if not built_spk.is_file():
         raise ProviderError(f"candidate pack did not create {built_spk}")
 
-    catalog_source = catalog_package(app_id)
     catalog = work / "catalog"
-    shutil.copytree(catalog_source, catalog, symlinks=False)
+    catalog_bootstrap = prepare_candidate_catalog(source, app_id, catalog)
     run(
         [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
         extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
@@ -411,6 +446,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
         "catalogSlot": slot,
+        "catalogBootstrap": catalog_bootstrap,
     }
     write_json(context_path(app_id), context)
     write_json(receipt_out, {
@@ -419,6 +455,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "artifact": {"sha256": artifact_sha, "size": spk.stat().st_size},
         "appHash": apphash,
         "packageId": package_id,
+        "catalogBootstrap": catalog_bootstrap,
         "masterNftMint": master,
         "spkPath": str(spk),
         "metadataPath": str(metadata),

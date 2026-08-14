@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { format, formatDistanceToNow } from "date-fns";
-import data from "./apps.json";
+import capabilityProfiles from "./capabilities.json";
 
 /* Self-hosted fonts — no CDN */
 import "@fontsource/orbitron/400.css";
@@ -929,6 +929,9 @@ body::after{
 .card-slideshow-dots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:4}
 .card-slideshow-dot{width:6px;height:6px;border-radius:50%;border:none;padding:0;cursor:pointer;transition:all .25s;background:rgba(255,255,255,.35)}
 .card-slideshow-dot.active{background:${T.cyan};box-shadow:0 0 6px ${T.cyan}88;width:16px;border-radius:3px}
+.app-card-skeleton{animation:skeletonPulse 1.15s ease-in-out infinite}
+@keyframes skeletonPulse{0%,100%{opacity:.35}50%{opacity:.75}}
+@media (prefers-reduced-motion: reduce){.app-card-skeleton{animation:none;opacity:.5}}
 .card-slideshow-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:4;width:28px;height:28px;border-radius:50%;border:none;background:rgba(17,14,36,.7);color:${T.text};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .card-slideshow:hover .card-slideshow-nav{opacity:1}
 .card-slideshow-nav.prev{left:6px}
@@ -1554,18 +1557,17 @@ Full license text: https://www.gnu.org/licenses/agpl-3.0.en.html`;
 
 /* ─── Sidecars & Grapple Connections ───────────────────────────────────────── */
 //
-// As of capabilities-v1: every app ships a `capabilities` object on its
-// apps.json entry — an 8-axis profile per pearl: sidecars, grapple,
+// As of capabilities-v1: an app's `capabilities` object is an 8-axis profile
+// per pearl: sidecars, grapple,
 // encryption, roles, blockchains, staticPublishing, httpOut, incomingApi.
 // The legacy {sidecars, grapple} shape used by badges + the existing
 // SidecarsTab is derived by flattening the per-pearl profiles. New axes
 // (encryption, roles, etc.) render as additional sections in PearlProfileTab.
-const APP_SIDECARS = (() => {
-  const out = {};
-  const apps = (data && data.apps) || [];
-  for (const app of apps) {
-    const caps = app.capabilities;
-    if (!caps || !Array.isArray(caps.pearls)) continue;
+// Turn one app's capability profile into the legacy {sidecars, grapple} shape the
+// badges and SidecarsTab render. Returns null when the profile is absent or malformed.
+function buildSidecarProfile(caps) {
+  if (!caps || !Array.isArray(caps.pearls)) return null;
+  {
     const grapple = [];
     const sidecars = [];
     for (const pearl of caps.pearls) {
@@ -1605,13 +1607,38 @@ const APP_SIDECARS = (() => {
         });
       }
     }
-    out[app.appId] = { sidecars, grapple, capabilities: caps };
+    return { sidecars, grapple, capabilities: caps };
+  }
+}
+
+// Store-side curated profiles, keyed by appId. INTERIM: build-store.sh already reads a
+// per-app `capabilities.json` from each app's own package dir and publishes it on the
+// catalog row, but no app ships one yet, so every served row carries
+// `capabilities: null`. Until that rollout lands these curated profiles fill the gap.
+// They are editorial only — no version, packageId or other install-affecting field —
+// and the served catalog wins the moment an app ships its own profile, so this file
+// drains to empty rather than becoming a second source of truth.
+const CURATED_SIDECARS = (() => {
+  const out = {};
+  for (const [appId, caps] of Object.entries((capabilityProfiles && capabilityProfiles.profiles) || {})) {
+    const profile = buildSidecarProfile(caps);
+    if (profile) out[appId] = profile;
   }
   return out;
 })();
 
+// Profiles carried by the served catalog itself. These take precedence.
+const LIVE_SIDECARS = {};
+function registerLiveCapabilities(apps) {
+  for (const app of apps || []) {
+    const profile = buildSidecarProfile(app && app.capabilities);
+    if (profile) LIVE_SIDECARS[app.appId] = profile;
+  }
+}
+
 function getAppSidecars(appId) {
-  return APP_SIDECARS[appId] || { sidecars: [], grapple: [], capabilities: null };
+  return LIVE_SIDECARS[appId] || CURATED_SIDECARS[appId] ||
+    { sidecars: [], grapple: [], capabilities: null };
 }
 
 function getConnectivityBadges(appId) {
@@ -2511,16 +2538,21 @@ function App() {
   const [installModalApp, setInstallModalApp] = useState(null);
   const [showGetMelusina, setShowGetMelusina] = useState(false);
   const [appNotFound, setAppNotFound] = useState(null);
+  // "loading" until a served catalog answers; never a baked stand-in. The store used to
+  // paint a catalog baked into this bundle at build time and then swap it for the live
+  // one. That made every card wrong for the first paint: 11 baked apps were no longer
+  // published at all, and 18 of the 20 rows that did survive carried a stale packageId,
+  // so an INSTALL clicked during the flash targeted a package the catalog no longer
+  // serves. The served catalog is now the only catalog.
+  const [catalogState, setCatalogState] = useState("loading"); // loading | ready | error
 
   useEffect(() => {
     let cancelled = false;
     const normalize = (arr) => arr.map((a) => ({ ...a, categories: a.categories || [] }));
-    // Paint instantly from the baked catalog (no empty flash, no regression if offline).
-    setApps(normalize(Array.isArray(data) ? data : data.apps || []));
-    // Then refresh from the live served catalog so card version + packageId are never
-    // stale — no rebuild-per-publish crutch (HT15). Same-origin path first (the store
-    // serving this page), then the published mirror; on any failure we keep the baked
-    // paint above, so cards never vanish.
+    // Both entries resolve to the same origin today (APP_INDEX_BASE is
+    // window.location.origin), so this is one source, not a fallback pair. Kept as a
+    // list so a real mirror can be added without restructuring the loader — but do not
+    // read it as redundancy that exists.
     const sources = ["/apps/index.json", `${APP_INDEX_BASE}/apps/index.json`];
     (async () => {
       for (const url of sources) {
@@ -2529,9 +2561,12 @@ function App() {
           if (!r.ok) continue;
           const j = await r.json();
           const src = Array.isArray(j) ? j : j.apps || [];
-          if (src.length && !cancelled) { setApps(normalize(src)); return; }
-        } catch { /* try next source, else keep baked */ }
+          if (src.length && !cancelled) { registerLiveCapabilities(src); setApps(normalize(src)); setCatalogState("ready"); return; }
+        } catch { /* try next source */ }
       }
+      // Every source failed. Say so plainly rather than showing a catalog we cannot
+      // stand behind — a wrong install target is worse than a visible outage.
+      if (!cancelled) setCatalogState("error");
     })();
     return () => { cancelled = true; };
   }, []);
@@ -2768,13 +2803,52 @@ function App() {
             fontFamily: "'JetBrains Mono', monospace",
             letterSpacing: ".06em",
           }}>
-            <span style={{ color: T.cyan + "aa" }}>{filtered.length}</span>
-            {" "}app{filtered.length !== 1 ? "s" : ""}
-            {category !== "All" && <> in <span style={{ color: T.magenta + "aa" }}>{category}</span></>}
+            {catalogState === "ready" ? (
+              <>
+                <span style={{ color: T.cyan + "aa" }}>{filtered.length}</span>
+                {" "}app{filtered.length !== 1 ? "s" : ""}
+                {category !== "All" && <> in <span style={{ color: T.magenta + "aa" }}>{category}</span></>}
+              </>
+            ) : catalogState === "loading" ? (
+              <span style={{ color: T.cyan + "aa" }}>loading catalog…</span>
+            ) : (
+              <span style={{ color: T.magenta + "aa" }}>catalog unavailable</span>
+            )}
           </span>
         </div>
 
-        {filtered.length > 0 ? (
+        {catalogState === "loading" ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 310px), 1fr))",
+            gap: 16,
+          }} aria-busy="true" aria-label="Loading catalog">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="app-card-skeleton" style={{
+                height: 208, borderRadius: 3,
+                border: `1px solid ${T.cyan}22`,
+                background: `linear-gradient(135deg, ${T.cyan}0c, ${T.magenta}08)`,
+                animationDelay: `${i * 80}ms`,
+              }} />
+            ))}
+          </div>
+        ) : catalogState === "error" ? (
+          <div style={{ textAlign: "center", padding: "80px 20px", color: T.textDim }}>
+            <div style={{
+              fontSize: 56, marginBottom: 16, opacity: .35, color: T.magenta,
+              textShadow: `0 0 20px ${T.magenta}55`,
+              fontFamily: "'Orbitron', sans-serif",
+            }}>⚠</div>
+            <p style={{
+              fontSize: 14, fontWeight: 700, color: T.textSec,
+              fontFamily: "'Orbitron', sans-serif", letterSpacing: ".1em",
+            }}>CATALOG UNAVAILABLE</p>
+            <p style={{
+              fontSize: 12, marginTop: 8, color: T.textDim,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>the served app catalog could not be reached — reload to retry</p>
+          </div>
+        ) : filtered.length > 0 ? (
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 310px), 1fr))",

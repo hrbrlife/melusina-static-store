@@ -772,27 +772,20 @@ fi
 
 # --- Step 2: Build Vite frontend (unless --aggregate) -------------------------
 if ! $AGGREGATE_ONLY; then
-  info "Generating src/apps.json from submodule metadata..."
-
-  # Build the apps.json that Vite will bundle
-  python3 - "$APP_JSON_FILE" <<'PY'
-import json
-import sys
-
-apps = []
-with open(sys.argv[1]) as f:
-    for line in f:
-        line = line.strip()
-        if line:
-            apps.append(json.loads(line))
-
-apps.sort(key=lambda a: a.get('name', '').lower())
-
-with open('src/apps.json', 'w') as f:
-    json.dump({'apps': apps}, f, indent=2)
-
-print(f'  Wrote {len(apps)} apps to src/apps.json')
-PY
+  # NO baked catalog is generated here any more. The bundle used to embed a full
+  # copy of the catalog (src/apps.json) so the grid could paint before the network
+  # answered. That copy froze at build time and rotted with every publish that did
+  # not also rebuild the store: measured 2026-08-14, the deployed bundle painted 30
+  # apps of which 11 were no longer published at all, and 18 of the 20 that survived
+  # carried a stale packageId -- so an INSTALL clicked during the flash aimed at a
+  # package the catalog no longer serves. The served /apps/index.json is now the one
+  # and only catalog; the UI shows a skeleton until it answers and says so plainly if
+  # it cannot. Curated capability profiles live in src/capabilities.json and are
+  # superseded per app by the per-app capabilities.json read in step 1.
+  if [[ -f src/apps.json ]]; then
+    fail "src/apps.json exists -- the baked second catalog is back. The served /apps/index.json is the only catalog; delete src/apps.json."
+    exit 1
+  fi
 
   info "Running Vite build..."
   npm install --silent

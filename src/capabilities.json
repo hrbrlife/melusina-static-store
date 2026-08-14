@@ -1,0 +1,2133 @@
+{
+ "schema": "melusina-store-capability-profiles-v1",
+ "$comment": "STORE-CURATED capability profiles ONLY, keyed by appId. This file is NOT a catalog and must never carry version, versionNumber, marketingVersion, packageId, sha256, attest, imageId or any other install-affecting field: the catalog is the live /apps/index.json, fetched at runtime. A baked second catalog is what made the store paint 30 stale rows (11 of them no longer published, 18 of 20 shared rows carrying a stale packageId) before the live fetch replaced them. Guarded by src/capability-profiles.test.mjs, which fails by name if a catalog field reappears here.",
+ "profiles": {
+  "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": {
+   "schemaVersion": 2,
+   "appSlug": "ai-lagoon",
+   "appName": "AiLagoon",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "ai-lagoon",
+     "pearlName": "AiLagoon",
+     "pearlType": "user-pearl",
+     "purpose": "AI model hub pearl — register Ollama / OpenAI / OpenRouter providers, manage per-model connections, expose AI capabilities to peer Pearls via Grapple. The pearl itself doesn't talk to the public internet directly; one HTTP_COMPONENT sidecar mediates every provider call. Inference transcripts are pinned to the user's Solana wallet so they're tamper-evident and citable across Pearls.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "ai-text",
+        "interface": "AiLagoon.AiText@1",
+        "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider."
+       },
+       {
+        "name": "ai-vision",
+        "interface": "AiLagoon.AiVision@1",
+        "purpose": "Image understanding + OCR. Same routing model as ai-text."
+       },
+       {
+        "name": "ai-generic",
+        "interface": "AiLagoon.AiGeneric@1",
+        "purpose": "Open-ended capability — the user picks the exact model in the Grapple UI at grant time."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope; transcripts wallet-anchored",
+      "fields": [
+       "Provider API keys (OpenAI, OpenRouter, Ollama tokens)",
+       "Inference transcripts",
+       "Pinned-transcript signatures"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure provider credentials",
+        "purpose": "Owner-only: add / rotate / revoke provider credentials. OTP-gated."
+       },
+       {
+        "name": "Manage Grapple consumers",
+        "purpose": "Decide which peer Pearls may claim ai-text / ai-vision / ai-generic."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Run inference",
+        "purpose": "Anyone with a Grapple cap can request inference; routing is scoped to that cap."
+       },
+       {
+        "name": "Pin a transcript",
+        "purpose": "Wallet-OTP signs the transcript; anchored on-chain via release-entry pattern."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation. Pinned-transcript anchors are off-chain ed25519 over the canonical transcript hash, signed by the user's wallet."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": true,
+      "via": "sidecar:HTTP_COMPONENT",
+      "purpose": "All AI provider API calls — never directly from the pearl, only through the HTTP_COMPONENT sidecar.",
+      "endpoints": [
+       "https://api.openai.com/*",
+       "https://openrouter.ai/api/*",
+       "(operator-configured Ollama host)"
+      ]
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "AiLagoon.AiText@1",
+        "purpose": "Generic text / chat completion — the consuming pearl picks model class; this pearl picks provider.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "AiLagoon.AiVision@1",
+        "purpose": "Image understanding + OCR. Same routing model as ai-text.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "AiLagoon.AiGeneric@1",
+        "purpose": "Open-ended capability — the user picks the exact model in the Grapple UI at grant time.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0": {
+   "schemaVersion": 2,
+   "appSlug": "botmother",
+   "appName": "BotMother",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "botmother",
+     "pearlName": "BotMother Hub",
+     "pearlType": "user-pearl",
+     "purpose": "The hub Pearl — defines bot personas, routing rules, conversation templates, and which channels (Telegram, internal chatroom) to surface them on. Operators write rules that decide which incoming messages get handed to which downstream pearls.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "botmother-route",
+        "interface": "BotMother.Route@1",
+        "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl — defines which messages flow there."
+       }
+      ],
+      "requests": [
+       {
+        "name": "ai-text",
+        "interface": "AiLagoon.AiText@1",
+        "purpose": "Optional: AI text completion for auto-replies; supplied by AiLagoon Pearl.",
+        "required": false
+       }
+      ]
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Persona definitions",
+       "Routing rules",
+       "Conversation history"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Define personas + routing",
+        "purpose": "Owner-only: persona prompts, routing rules, channel bindings."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "View hub state",
+        "purpose": "Read-only operator view."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appCapnpAuthorize",
+        "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+       }
+      ],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BotMother.Route@1",
+        "purpose": "Issue a routing capability to a downstream chatroom or telegram pearl — defines which messages flow there.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    },
+    {
+     "pearlId": "telegram",
+     "pearlName": "Telegram Bridge",
+     "pearlType": "infrastructure-pearl",
+     "purpose": "Telegram-webhook handler. Receives Telegram messages, delivers them to the BotMother hub via a Route capability, sends replies back through the Telegram Bot API. Only Pearl in the package allowed to talk to api.telegram.org directly.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [],
+      "requests": [
+       {
+        "name": "botmother-route",
+        "interface": "BotMother.Route@1",
+        "purpose": "The hub-issued capability defining what to do with incoming Telegram messages.",
+        "required": true
+       }
+      ]
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Telegram bot token",
+       "Per-chat session state"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure bot token / webhook",
+        "purpose": "Owner-only: set the Telegram bot token + webhook URL."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": []
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appCapnpAuthorize",
+        "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+       }
+      ],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": true,
+      "via": "sidecar:HTTP_COMPONENT",
+      "purpose": "Telegram Bot API for sending messages + acknowledging webhooks.",
+      "endpoints": [
+       "https://api.telegram.org/bot{token}/*"
+      ]
+     },
+     "apis": {
+      "capnp": [],
+      "http": [
+       {
+        "name": "POST /telegram/webhook",
+        "roleGate": "anyMember"
+       }
+      ]
+     }
+    },
+    {
+     "pearlId": "chatroom",
+     "pearlName": "Chatroom",
+     "pearlType": "user-pearl",
+     "purpose": "Internal chatroom Pearl — operators chat with each other, optionally with bot personas joining. Messages get routed to BotMother for auto-reply if the routing rules say so.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [],
+      "requests": [
+       {
+        "name": "botmother-route",
+        "interface": "BotMother.Route@1",
+        "purpose": "Hub-issued routing cap deciding which chatroom messages go to bots.",
+        "required": false
+       }
+      ]
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Chat history",
+       "Uploaded files"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Manage chatroom membership",
+        "purpose": "Add / remove members."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Send / receive messages",
+        "purpose": "Standard chat."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appCapnpAuthorize",
+        "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+       }
+      ],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "grain.MainView",
+        "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    },
+    {
+     "pearlId": "station",
+     "pearlName": "Station",
+     "pearlType": "admin-pearl",
+     "purpose": "Admin Pearl — bundles per-jurisdiction config (allowed bot models, content policy, retention) and issues constellation-level capabilities. Powerbox-claim only; no public UI.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "botmother-policy",
+        "interface": "BotMother.Policy@1",
+        "purpose": "Issue per-constellation policy: allowed models, retention, content rules."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Station policy"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Push station policy",
+        "purpose": "Squads-signed; consumed by hub on next request."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": []
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appCapnpAuthorize",
+        "purpose": "TODO: review — needed to authorise the broker→worker capnp surfaces"
+       }
+      ],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+         "label": "Squads v4 multisig",
+         "calls": [
+          "proposalApprove",
+          "vaultTransactionExecute"
+         ]
+        }
+       ],
+       "purpose": "Squads-rooted policy attestations."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BotMother.Policy@1",
+        "purpose": "Issue per-constellation policy: allowed models, retention, content rules.",
+        "roleGate": "adminOnly"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": {
+   "schemaVersion": 2,
+   "appSlug": "bureau-cal",
+   "appName": "Cal Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "bureau-cal",
+     "pearlName": "Cal Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "A calendar-and-scheduling pearl in the Bureau family. Hosts events, recurring schedules, and shared calendar views. The pearl runs entirely client-side (no outbound network); any sharing happens through Grapple — another pearl claims a calendar capability and gets scoped read or write access.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "calendar-read",
+        "interface": "BureauCalendar.Read@1",
+        "purpose": "Lets another pearl read scoped events from one of this calendar's domains."
+       },
+       {
+        "name": "calendar-write",
+        "interface": "BureauCalendar.Write@1",
+        "purpose": "Lets another pearl create events in a specific calendar; writes are explicit per-event (no silent inserts)."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Manage calendars + sharing rules",
+        "purpose": "Owner-only: create/delete calendars, define which calendars can be Grappled by which Pearls."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "View shared events",
+        "purpose": "Anyone the owner shared with can see scoped events."
+       },
+       {
+        "name": "Create events",
+        "purpose": "Members with calendar-write Grapple can add events."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauCalendar.Read@1",
+        "purpose": "Lets another pearl read scoped events from one of this calendar's domains.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauCalendar.Write@1",
+        "purpose": "Lets another pearl create events in a specific calendar; writes are explicit per-event (no silent inserts).",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": {
+   "schemaVersion": 2,
+   "appSlug": "cca-sh-config",
+   "appName": "cca.sh Config",
+   "tier": "admin",
+   "companionApps": [
+    "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+    "9tc4v3j2kz6evqhdw4064szmfj1t39h742869f0chc7uht62jpwh",
+    "ngafx721jajfca1y7zuh6tthyc5nfq0urk4xfxgwuscpcv11e9kh",
+    "8yaffw5afhse1m1d1yemp6gcs77jd4a1jf8a5skkmm342mauexjh"
+   ],
+   "pearls": [
+    {
+     "pearlId": "cca-sh-config",
+     "pearlName": "Configuration",
+     "pearlType": "admin-pearl",
+     "purpose": "The admin companion grain for the ccash constellation. Holds policy state (allowed templates, station tree, hook allowlist, manifest pins) and exposes an AdminGate over Grapple. Operator ccash grains claim the AdminGate to read policy; admin promotions and policy changes flow back through Identity Gate. No browser UI — Grapple-claim only.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "ccash-admin-gate",
+        "interface": "ccash.AdminGate@1",
+        "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks)."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Admin journal (every policy mutation)",
+       "Hook allowlist database",
+       "Station tree YAML cache (mtime-aware re-read on each request)"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Push policy update",
+        "purpose": "Squads-signed; updates the manifest pin every ccash grain reads on next request."
+       },
+       {
+        "name": "Add/remove operator wallet",
+        "purpose": "Add a wallet to the operator allowlist for the constellation."
+       },
+       {
+        "name": "Update station templates",
+        "purpose": "YAML edit; mtime-aware cache invalidation pushes to all grains on next request."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": []
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appContractPair",
+        "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+       },
+       {
+        "bit": "contractWhitelistEdit",
+        "purpose": "TODO: review — needed to edit the contract whitelist used by ccash installs"
+       },
+       {
+        "bit": "installAdminEdit",
+        "purpose": "TODO: review — needed to push policy updates to operator installs"
+       }
+      ],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "approve_global_app",
+          "RegisterReleaseEntry"
+         ]
+        },
+        {
+         "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+         "label": "Squads v4 multisig",
+         "calls": [
+          "proposalApprove",
+          "vaultTransactionExecute"
+         ]
+        }
+       ],
+       "purpose": "Solana programs invoked by the pearl release ceremony (offline signer + Squads vault + license-registry RegisterReleaseEntry). Not invoked at grain runtime — recorded for catalog visibility into the app's on-chain release lineage."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "ccash.AdminGate@1",
+        "purpose": "Surface configuration to peer ccash operator grains (read policy, fetch template, list allowed hooks).",
+        "roleGate": "adminOnly"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h": {
+   "schemaVersion": 2,
+   "appSlug": "cca-sh-domain-template",
+   "appName": "cca.sh Domain Template",
+   "tier": "infrastructure",
+   "pearls": [
+    {
+     "pearlId": "cca-sh-domain-template",
+     "pearlName": "Domain Template",
+     "pearlType": "infrastructure-pearl",
+     "purpose": "Holds the canonical domain template for a ccash constellation: jurisdictions, regulatory profile, station tree, default risk policies. Operator ccash grains Grapple-claim this pearl's TemplateService cap (capnp TypeID 0xf1e2d3c4b5a69780) to seed their own setup; updates here propagate to all consumers on next request via mtime-aware cache.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "domain-template",
+        "interface": "ccash.DomainTemplate@1",
+        "purpose": "Read the canonical template — jurisdictions, station tree, default policies."
+       },
+       {
+        "name": "station-template",
+        "interface": "ccash.StationTemplate@1",
+        "purpose": "Pick a station template (per-jurisdiction) at workspace setup time."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Update domain templates",
+        "purpose": "Owner pushes new YAML; consumers see the change on their next request."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Read templates",
+        "purpose": "Anyone with a Grapple claim can read."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only; this pearl makes no other on-chain calls."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "ccash.DomainTemplate@1",
+        "purpose": "Read the canonical template — jurisdictions, station tree, default policies.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "ccash.StationTemplate@1",
+        "purpose": "Pick a station template (per-jurisdiction) at workspace setup time.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": {
+   "schemaVersion": 2,
+   "appSlug": "bureau-contacts",
+   "appName": "Contacts Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "bureau-contacts",
+     "pearlName": "Contacts Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "Contact-management pearl in the Bureau family — people, organisations, relationships, free-text notes. Stays local to the pearl; sharing fields with other Pearls (e.g. Mail, Calendar, Bureau Doc for mailmerge) is explicit per-record via Grapple.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Hosts the SPA, mediates auth + Grapple plumbing."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "contact-read",
+        "interface": "BureauContacts.Read@1",
+        "purpose": "Read scoped contact records by tag or list — for mailmerge, address lookup, etc."
+       },
+       {
+        "name": "contact-pick",
+        "interface": "BureauContacts.Pick@1",
+        "purpose": "Interactive contact picker — the consuming pearl raises a UI; the user picks; the picked records flow back via the capability."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Manage contact lists + sharing",
+        "purpose": "Owner-only: define which contact subsets can be Grappled by which peers."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Browse contacts",
+        "purpose": "View permitted records."
+       },
+       {
+        "name": "Edit contacts",
+        "purpose": "Add/update if the owner granted write."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauContacts.Read@1",
+        "purpose": "Read scoped contact records by tag or list — for mailmerge, address lookup, etc.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauContacts.Pick@1",
+        "purpose": "Interactive contact picker — the consuming pearl raises a UI; the user picks; the picked records flow back via the capability.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0": {
+   "schemaVersion": 2,
+   "appSlug": "cyberteller",
+   "appName": "cyberteller",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "cyberteller",
+     "pearlName": "Wallet",
+     "pearlType": "user-pearl",
+     "purpose": "Personal Solana wallet pearl — sign transactions, hold tokens, anchor identity proofs. Wallet keys live encrypted inside the pearl; all sensitive operations require an Identity Gate OTP rooted in the user's master keypair.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "wallet-sign",
+        "interface": "cyberteller.Sign@1",
+        "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction."
+       },
+       {
+        "name": "wallet-pubkey",
+        "interface": "cyberteller.Pubkey@1",
+        "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope; master-key-anchored",
+      "fields": [
+       "Wallet private key",
+       "Transaction history",
+       "Pinned signatures + payload hashes"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Rotate wallet key",
+        "purpose": "Master-OTP-gated key rotation; old key archived in audit log."
+       },
+       {
+        "name": "Manage Grapple consumers",
+        "purpose": "Which peer Pearls may claim wallet-sign / wallet-pubkey."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Sign transaction",
+        "purpose": "Standard wallet operation; OTP per high-value sig."
+       },
+       {
+        "name": "View balance",
+        "purpose": "Read-only wallet view."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        },
+        {
+         "id": "11111111111111111111111111111111",
+         "label": "System Program",
+         "calls": [
+          "transfer"
+         ]
+        },
+        {
+         "id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+         "label": "SPL Token",
+         "calls": [
+          "transfer",
+          "approve"
+         ]
+        }
+       ],
+       "purpose": "Native SOL + SPL transfers + on-chain identity proofs against the license registry."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "cyberteller.Sign@1",
+        "purpose": "Sign a presented payload with the user's wallet key — used by peer Pearls (ccash) when the user authorizes a transaction.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "cyberteller.Pubkey@1",
+        "purpose": "Read-only: hand the wallet pubkey to a peer pearl for verification.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10": {
+   "schemaVersion": 2,
+   "appSlug": "cybertellerconfig",
+   "appName": "Cyberteller Config",
+   "tier": "admin",
+   "companionApps": [
+    "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
+   ],
+   "pearls": [
+    {
+     "pearlId": "cybertellerconfig",
+     "pearlName": "Configuration",
+     "pearlType": "admin-pearl",
+     "purpose": "The install-admin companion grain for the Cyberteller constellation. Hosts the single ConfigGate Grapple capability every cyberteller grain claims at first launch — hands back the 6 boot env vars (AITX_URL, FINREACT_SIDECAR_URL, FINREACT_TRUST_BUNDLE, FINREACT_CREDIT_PRIVKEY, FINREACT_TEMP_SUSPENSE_GLID, FINREACT_COLD_WALLET_GLID). Admin browser session edits values via HTML form gated on the Sandstorm `admin` permission bit; peer cyberteller grains receive a non-admin Consumer role at share time so they can call getEnv but not setEnv. No external sidecar dependencies.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "config-gate",
+        "interface": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
+        "purpose": "Single Grapple cap claimed by every cyberteller grain in the install. Methods: hello(grainId) -> Greeting (install label + config digest for drift detection), getEnv() -> EnvConfig (read-only, returns the 6 boot env strings + updatedAtMs), setEnv(env) -> digest (admin-bit-gated mutation)."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Admin journal (every policy mutation)",
+       "Rail allowlist database",
+       "Fee cap schedule cache (mtime-aware re-read on each request)"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Push policy update",
+        "purpose": "Squads-signed; updates the manifest pin every Cyberteller grain reads on next request."
+       },
+       {
+        "name": "Add/remove operator wallet",
+        "purpose": "Add a wallet to the operator allowlist for the constellation."
+       },
+       {
+        "name": "Update rail / fee-cap schedule",
+        "purpose": "Edit the allowed-rail set and per-rail fee ceiling; mtime-aware cache invalidation pushes to all grains on next request."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": []
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "appContractPair",
+        "purpose": "TODO: review — needed to bind wholesale apps to operator contracts"
+       },
+       {
+        "bit": "contractWhitelistEdit",
+        "purpose": "TODO: review — needed to edit the contract whitelist used by Cyberteller installs"
+       },
+       {
+        "bit": "installAdminEdit",
+        "purpose": "TODO: review — needed to push policy updates to operator installs"
+       }
+      ],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "approve_global_app",
+          "RegisterReleaseEntry"
+         ]
+        },
+        {
+         "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+         "label": "Squads v4 multisig",
+         "calls": [
+          "proposalApprove",
+          "vaultTransactionExecute"
+         ]
+        }
+       ],
+       "purpose": "Policy attestations are Squads-vault-signed; a peer Cyberteller grain can verify an admin-issued policy snapshot was approved by the multisig."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "cybertellerconfig.ConfigGate@0xc1f5a7d9e3b24682",
+        "purpose": "Hosted via NewSession(sessionType = ConfigGate_TypeID) per pkg/server.ConfigGate. Three methods — hello (handshake + digest), getEnv (read-only boot fetch), setEnv (admin-bit-gated mutation). Source-of-truth schema at melusina_cybertellerconfig_app/capnp/cybertellerconfig.capnp.",
+        "roleGate": "consumerOrAdmin"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420": {
+   "schemaVersion": 2,
+   "appSlug": "diagram-bureau",
+   "appName": "Diagrams Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "diagram-bureau",
+     "pearlName": "Diagrams Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "Vector-diagram editor (flowcharts, network maps, org charts, mind maps). Drawio-based front end hosted by the Bureau Shell; diagrams are saved as pearl-local files and embedded in other Bureau Pearls (Doc, Sheets, Notes) via Grapple.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Hosts the editor SPA + file I/O."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "diagram-embed",
+        "interface": "BureauDiagram.Embed@1",
+        "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) — peer holds a capability to fetch the live SVG."
+       },
+       {
+        "name": "diagram-export",
+        "interface": "BureauDiagram.Export@1",
+        "purpose": "Export the current diagram as SVG/PNG/PDF on demand for downstream consumers."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Diagram permissions",
+        "purpose": "Owner-only: control which Pearls may embed each diagram."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "View / edit diagrams",
+        "purpose": "Standard editing for permitted users."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauDiagram.Embed@1",
+        "purpose": "Embed a diagram into a peer pearl (Doc, Notes, Sheets, etc.) — peer holds a capability to fetch the live SVG.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauDiagram.Export@1",
+        "purpose": "Export the current diagram as SVG/PNG/PDF on demand for downstream consumers.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": {
+   "schemaVersion": 2,
+   "appSlug": "doc-bureau",
+   "appName": "Doc Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "doc-bureau",
+     "pearlName": "Doc Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "Rich-text document editor in the Bureau family. Yjs CRDT real-time collaboration, multi-section support, DOCX export, pinned snapshots. Storage is per-pearl; sharing sections with peer Pearls (Sheets, Calendar) goes through Grapple per-section.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Bureau apps run as static SPAs hosted by the Bureau Shell. The shell handles auth, file I/O, and cross-bureau Grapple routing."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "section-read",
+        "interface": "BureauDoc.SectionRead@1",
+        "purpose": "Read scoped document sections by name/id — for summaries, mailmerge, search."
+       },
+       {
+        "name": "section-write",
+        "interface": "BureauDoc.SectionWrite@1",
+        "purpose": "Append or replace a named section from a peer pearl (e.g. AI assistant, Calendar)."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Manage sections + sharing",
+        "purpose": "Owner-only: define which sections can be Grappled by which peers."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Read document",
+        "purpose": "View permitted sections."
+       },
+       {
+        "name": "Edit document",
+        "purpose": "Collaborative real-time editing."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauDoc.SectionRead@1",
+        "purpose": "Read scoped document sections by name/id.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauDoc.SectionWrite@1",
+        "purpose": "Append or replace a named section from a peer pearl.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": {
+   "schemaVersion": 2,
+   "appSlug": "Fineract-setup",
+   "appName": "Fineract Setup",
+   "tier": "infrastructure",
+   "pearls": [
+    {
+     "pearlId": "Fineract-setup",
+     "pearlName": "Fineract Setup",
+     "pearlType": "infrastructure-pearl",
+     "purpose": "Setup + admin pearl for the Apache Fineract back-end that ccash and adjacent operator tools talk to via the Fineract-sidecar. Configures the Fineract base URL, tenant credentials, chart-of-accounts, and revocation rules; issues a FineractAdmin capability that ccash claims to push settlements.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "Fineract-admin",
+        "interface": "Fineract.Admin@1",
+        "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Tenant credentials",
+       "Chart-of-accounts",
+       "Operator audit log"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure Fineract endpoint + creds",
+        "purpose": "OTP-gated; rotates the tenant credentials in the sidecar."
+       },
+       {
+        "name": "Issue / revoke FineractAdmin caps",
+        "purpose": "Decide which operator pearls have settlement authority."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": []
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": true,
+      "via": "sidecar:HTTP_COMPONENT",
+      "purpose": "Fineract REST API for setup + per-settlement push.",
+      "endpoints": [
+       "(operator-configured Fineract base URL)"
+      ]
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "Fineract.Admin@1",
+        "purpose": "Issue a settlement-capable cap that ccash + wholesale operator pearls claim to push transactions.",
+        "roleGate": "adminOnly"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": {
+   "schemaVersion": 2,
+   "appSlug": "mermail",
+   "appName": "MerMail",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "mermail",
+     "pearlName": "MerMail",
+     "pearlType": "user-pearl",
+     "purpose": "Per-user email pearl — receive mail via the Foundation's mail relay sidecar, send via the same path. Mail is stored encrypted; thread / tag state is local to the pearl. Operators can Grapple-route incoming mail to peer Pearls (ticket → cca.sh, parcel → cratelink, etc.).",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "mail-read",
+        "interface": "MerMail.Read@1",
+        "purpose": "Scoped read of incoming mail by tag / sender for downstream Pearls (e.g. ticket auto-routing)."
+       },
+       {
+        "name": "mail-send",
+        "interface": "MerMail.Send@1",
+        "purpose": "Send a mail from a peer pearl — peer presents a payload + recipient; user reviews + sends."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Mailbox",
+       "Thread state",
+       "Drafts"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure routing rules",
+        "purpose": "Owner-only: define which incoming mail flows to which Grapple consumer."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Read + send mail",
+        "purpose": "Standard mailbox use."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": true,
+      "via": "sidecar:HTTP_COMPONENT",
+      "purpose": "Mail send + receive via Foundation-operated relay sidecar.",
+      "endpoints": [
+       "https://mailrelay.melusina.example/*"
+      ]
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "MerMail.Read@1",
+        "purpose": "Scoped read of incoming mail by tag / sender for downstream Pearls (e.g. ticket auto-routing).",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "MerMail.Send@1",
+        "purpose": "Send a mail from a peer pearl — peer presents a payload + recipient; user reviews + sends.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50": {
+   "schemaVersion": 2,
+   "appSlug": "gitpearl",
+   "appName": "MiniGit",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "gitpearl",
+     "pearlName": "MiniGit",
+     "pearlType": "user-pearl",
+     "purpose": "In-Pearl Git server — host repos, browse code + history, clone over Grapple-scoped capabilities. No HTTP-out; pull/push happens through Grapple, so a consuming Pearl (e.g. an assistant Pearl pulling its own working repo) gets a scoped capability rather than a public clone URL.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "repo-read",
+        "interface": "MiniGit.RepoRead@1",
+        "purpose": "Read-only access to a specific repo (clone + fetch)."
+       },
+       {
+        "name": "repo-write",
+        "interface": "MiniGit.RepoWrite@1",
+        "purpose": "Push access to a specific repo."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Manage repos",
+        "purpose": "Create / delete repos; control which repos are Grapple-readable / writable."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Browse + commit",
+        "purpose": "Standard Git operations within issued cap scope."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "No HTTP-out — pull/push goes through Grapple-scoped caps, not external Git URLs.",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "MiniGit.RepoRead@1",
+        "purpose": "Read-only access to a specific repo (clone + fetch).",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "MiniGit.RepoWrite@1",
+        "purpose": "Push access to a specific repo.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": {
+   "schemaVersion": 2,
+   "appSlug": "paint-bureau",
+   "appName": "Paint Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "paint-bureau",
+     "pearlName": "Paint Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "Bitmap image editor (mini-Paint style — layers, brushes, selection, simple filters). Outputs PNG/JPEG; consumed by other Bureau Pearls (Doc, Notes) via Grapple's Embed capability.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Hosts the editor + file I/O."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "image-embed",
+        "interface": "BureauPaint.Embed@1",
+        "purpose": "Live-embed an image into a peer pearl; updates reflect when the source changes."
+       },
+       {
+        "name": "image-export",
+        "interface": "BureauPaint.Export@1",
+        "purpose": "On-demand export of the current canvas as PNG/JPEG/WebP."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Image permissions",
+        "purpose": "Owner-only: which images may be Grappled by which Pearls."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Edit images",
+        "purpose": "Standard image editing."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauPaint.Embed@1",
+        "purpose": "Live-embed an image into a peer pearl; updates reflect when the source changes.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauPaint.Export@1",
+        "purpose": "On-demand export of the current canvas as PNG/JPEG/WebP.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": {
+   "schemaVersion": 2,
+   "appSlug": "sheets-bureau",
+   "appName": "Sheets Bureau",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "sheets-bureau",
+     "pearlName": "Sheets Bureau",
+     "pearlType": "user-pearl",
+     "purpose": "Spreadsheet pearl in the Bureau family — Univer-based grid, formulas, charts, named ranges. Storage local; range-level Grapple offers let peer Pearls read live values from a named range without seeing the full sheet.",
+     "hostShell": {
+      "id": "BUREAU_SHELL",
+      "label": "Bureau Shell",
+      "appId": "dwe1pv4ckrxjx3y45mjh166vxjmayqzu6zfg1x2rypy0zk0stcxh",
+      "purpose": "Hosts the spreadsheet SPA + file I/O."
+     },
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "range-read",
+        "interface": "BureauSheets.RangeRead@1",
+        "purpose": "Read a single named range; returns values + formulas."
+       },
+       {
+        "name": "range-write",
+        "interface": "BureauSheets.RangeWrite@1",
+        "purpose": "Write to a named range from a peer pearl (e.g. report builder dropping rows in)."
+       },
+       {
+        "name": "chart-embed",
+        "interface": "BureauSheets.ChartEmbed@1",
+        "purpose": "Embed a live chart from a sheet into a peer pearl."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Range permissions",
+        "purpose": "Owner-only: scope which ranges can be Grappled by which peers, read vs write."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Edit spreadsheet",
+        "purpose": "Standard editing."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "BureauSheets.RangeRead@1",
+        "purpose": "Read a single named range; returns values + formulas.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauSheets.RangeWrite@1",
+        "purpose": "Write to a named range from a peer pearl (e.g. report builder dropping rows in).",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "BureauSheets.ChartEmbed@1",
+        "purpose": "Embed a live chart from a sheet into a peer pearl.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": {
+   "schemaVersion": 2,
+   "appSlug": "telescreen",
+   "appName": "TeleScreen",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "telescreen",
+     "pearlName": "TeleScreen",
+     "pearlType": "user-pearl",
+     "purpose": "Public-relations / publication-ready surface — push curated content from peer Pearls (Doc, Sheets, Diagram) to a static site that's served to the open internet. The pearl assembles + signs the static bundle; the Foundation's static-publish sidecar does the actual upload to the public CDN.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [],
+      "requests": [
+       {
+        "name": "doc-read",
+        "interface": "BureauDoc.Read@1",
+        "purpose": "Pull doc content for the publish bundle.",
+        "required": false
+       },
+       {
+        "name": "image-export",
+        "interface": "BureauPaint.Export@1",
+        "purpose": "Pull image exports.",
+        "required": false
+       },
+       {
+        "name": "diagram-export",
+        "interface": "BureauDiagram.Export@1",
+        "purpose": "Pull diagram SVG/PNG.",
+        "required": false
+       },
+       {
+        "name": "range-read",
+        "interface": "BureauSheets.RangeRead@1",
+        "purpose": "Pull spreadsheet ranges as data tables.",
+        "required": false
+       }
+      ]
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Pre-publish drafts",
+       "Per-publish audit trail (timestamps, source-cap evidence)"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure publish target",
+        "purpose": "Owner-only: which static-publish endpoint, which signing wallet."
+       },
+       {
+        "name": "Push publish",
+        "purpose": "OTP-gated; the signed bundle hash is recorded on-chain via release-entry pattern."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Draft content",
+        "purpose": "Compose pre-publish content."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Each publish creates a signed audit record; appHash + content-bundle hash are anchored."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": true,
+      "via": "melusina-static-publish",
+      "purpose": "Push the assembled, signed publish bundle to the operator-configured public CDN target. The static-publish sidecar handles the upload; this pearl only assembles + signs."
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "All egress goes through the static-publish sidecar; no direct HTTP out.",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "grain.MainView",
+        "purpose": "Standard Sandstorm grain interface — UiView for users opening the app, Restore for resuming a saved capability, Drop for releasing one.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": {
+   "schemaVersion": 2,
+   "appSlug": "vintage",
+   "appName": "Vintage Remote Desktop",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "vintage",
+     "pearlName": "Vintage Desktop",
+     "pearlType": "user-pearl",
+     "purpose": "Per-user vintage operating-system desktop pearl — runs old-school environments inside a pearl for nostalgia, software preservation, and isolated computing. The desktop's filesystem is local to the pearl; outbound network is gated by the standard sidecars (none enabled by default — fully airgapped).",
+     "sidecars": [],
+     "grapple": {
+      "offers": [],
+      "requests": []
+     },
+     "encryption": {
+      "supported": false,
+      "scheme": "",
+      "fields": []
+     },
+     "roles": {
+      "adminOnly": [],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Use the desktop",
+        "purpose": "Standard interactive desktop session."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "Airgapped by default; no outbound network from the vintage environment.",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [],
+      "http": [
+       {
+        "name": "GET /",
+        "purpose": "HTML/VNC desktop client",
+        "roleGate": "anyMember"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": {
+   "schemaVersion": 2,
+   "appSlug": "canboard",
+   "appName": "CanBoard",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "canboard",
+     "pearlName": "Kanban Board",
+     "pearlType": "user-pearl",
+     "purpose": "Kanban / lane-based task tracker. Boards, columns, cards, swimlanes; per-board membership; standard kanban features. Local-first storage, with Grapple offers so peer Pearls can drop cards in (e.g. a ticket from cca.sh, an action item from agentchat) without giving the source pearl read access to other cards.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "card-create",
+        "interface": "CanBoard.CardCreate@1",
+        "purpose": "Drop a card into a specific board's intake column from a peer pearl."
+       },
+       {
+        "name": "board-read",
+        "interface": "CanBoard.BoardRead@1",
+        "purpose": "Read a specific board's state for embedding / dashboard use."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Boards + cards + comments",
+       "Attachments"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Board admin",
+        "purpose": "Create / archive boards; manage members."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Edit cards",
+        "purpose": "Standard kanban editing."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation only."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "CanBoard.CardCreate@1",
+        "purpose": "Drop a card into a specific board's intake column from a peer pearl.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "CanBoard.BoardRead@1",
+        "purpose": "Read a specific board's state for embedding / dashboard use.",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  },
+  "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h": {
+   "schemaVersion": 2,
+   "appSlug": "cratelink",
+   "appName": "CrateLink",
+   "tier": "regular",
+   "pearls": [
+    {
+     "pearlId": "cratelink",
+     "pearlName": "CrateLink",
+     "pearlType": "user-pearl",
+     "purpose": "Per-user shipment tracker / supply-chain pearl — define shipments, track waypoints, sign attestations of custody handoff. pearl-to-pearl handoffs (custody transferred between two participants) are Grapple-mediated so each party only sees their slice of the shipment record.",
+     "sidecars": [],
+     "grapple": {
+      "offers": [
+       {
+        "name": "custody-accept",
+        "interface": "CrateLink.Accept@1",
+        "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate."
+       },
+       {
+        "name": "shipment-read",
+        "interface": "CrateLink.Read@1",
+        "purpose": "Read a shipment's history (only your participation slice)."
+       }
+      ],
+      "requests": []
+     },
+     "encryption": {
+      "supported": true,
+      "scheme": "AES-256-GCM via grain-crypto-journal envelope",
+      "fields": [
+       "Shipment manifests",
+       "Custody handoff signatures",
+       "Per-party private notes"
+      ]
+     },
+     "roles": {
+      "adminOnly": [
+       {
+        "name": "Configure crate templates",
+        "purpose": "Owner-only: define crate types + handoff rules."
+       }
+      ],
+      "organizationOnly": [],
+      "anyMember": [
+       {
+        "name": "Create shipment",
+        "purpose": "Start a new shipment + set initial custodian."
+       },
+       {
+        "name": "Sign handoff",
+        "purpose": "OTP-gated custody transfer."
+       }
+      ]
+     },
+     "authority": {
+      "requires": [
+       {
+        "bit": "pearlRegister",
+        "purpose": "TODO: review — needed to register child cratelink pearls under the parent license"
+       },
+       {
+        "bit": "audit",
+        "purpose": "TODO: review — needed for cross-org audit trails"
+       }
+      ],
+      "grants": []
+     },
+     "blockchains": [
+      {
+       "chain": "Solana",
+       "cluster": "devnet",
+       "programs": [
+        {
+         "id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+         "label": "license-registry",
+         "calls": [
+          "RegisterReleaseEntry"
+         ]
+        }
+       ],
+       "purpose": "Release attestation; custody handoffs are off-chain ed25519 over canonical handoff payloads."
+      }
+     ],
+     "staticPublishing": {
+      "enabled": false,
+      "via": "",
+      "purpose": ""
+     },
+     "httpOut": {
+      "enabled": false,
+      "via": "none",
+      "purpose": "",
+      "endpoints": []
+     },
+     "apis": {
+      "capnp": [
+       {
+        "name": "CrateLink.Accept@1",
+        "purpose": "Counterparty pearl claims this cap to accept custody of a specific shipment crate.",
+        "roleGate": "anyMember"
+       },
+       {
+        "name": "CrateLink.Read@1",
+        "purpose": "Read a shipment's history (only your participation slice).",
+        "roleGate": "anyMember"
+       }
+      ],
+      "http": []
+     }
+    }
+   ]
+  }
+ }
+}

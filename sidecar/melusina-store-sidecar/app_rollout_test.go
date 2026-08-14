@@ -109,6 +109,52 @@ func writeRolloutDist(t *testing.T, cfg Config, f rolloutFixture) {
 	}
 }
 
+// pinRolloutListingActive supplies the exact per-store listing needed to serve
+// a retained rollback release. A rollback is still an app projection, not an
+// exemption from the same target-scoped visibility gate as the current row.
+func pinRolloutListingActive(t *testing.T, m *mockChainReader, cfg Config, f rolloutFixture) {
+	t.Helper()
+	storeAuthority, err := primitives.PubkeyFromBase58(cfg.StoreAuthority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appHash, err := hash32FromHex(f.rel.AppHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseEntry, err := primitives.PubkeyFromBase58(f.relPDA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	domainHash := primitives.StoreDomainHash(cfg.Domain)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.storeAuthz[authzPDA.Base58()] = mockStoreAuthz{
+		status:     verify.AuthorizationStatusActive,
+		authority:  verify.Pubkey(storeAuthority),
+		tierMask:   0xff,
+		domainHash: domainHash,
+	}
+	m.storeListing[listingPDA.Base58()] = mockStoreReleaseListing{
+		storeAuthority:        storeAuthority,
+		appHash:               appHash,
+		releaseEntry:          releaseEntry,
+		storeDomainHash:       domainHash,
+		operatorAuthorization: authzPDA,
+		status:                storeListingStatusActive,
+	}
+}
+
 func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)
@@ -285,6 +331,7 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 		status:       verify.AttestationStatusActive,
 		registeredAt: old.rel.SignedAtUnix,
 	}
+	pinRolloutListingActive(t, m, cfg, old)
 	gate := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
 	clock := now.Add(time.Minute)
 	gate.now = func() time.Time { return clock }

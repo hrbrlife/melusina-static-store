@@ -27,6 +27,7 @@ import (
 type mockChainReader struct {
 	releaseEntry    map[string]mockReleaseEntry
 	storeAuthz      map[string]mockStoreAuthz
+	storeListing    map[string]mockStoreReleaseListing
 	blacklist       map[string]mockBlacklist
 	installerEntry  map[string]mockInstallerEntry
 	foundationApp   map[string]mockFoundationApp
@@ -39,6 +40,7 @@ type mockChainReader struct {
 	// global error injection: if set, the named Fetch returns this error.
 	releaseErr    error
 	authzErr      error
+	listingErr    error
 	blacklistErr  error
 	installerErr  error
 	foundationErr error
@@ -68,6 +70,16 @@ type mockStoreAuthz struct {
 	err        error
 }
 
+type mockStoreReleaseListing struct {
+	storeAuthority        pda.Pubkey
+	appHash               [32]byte
+	releaseEntry          pda.Pubkey
+	storeDomainHash       [32]byte
+	operatorAuthorization pda.Pubkey
+	status                storeListingStatus
+	err                   error
+}
+
 type mockBlacklist struct {
 	present   bool
 	entryType verify.BlacklistType
@@ -92,6 +104,7 @@ func newMockChainReader() *mockChainReader {
 	return &mockChainReader{
 		releaseEntry:    map[string]mockReleaseEntry{},
 		storeAuthz:      map[string]mockStoreAuthz{},
+		storeListing:    map[string]mockStoreReleaseListing{},
 		blacklist:       map[string]mockBlacklist{},
 		installerEntry:  map[string]mockInstallerEntry{},
 		foundationApp:   map[string]mockFoundationApp{},
@@ -198,6 +211,28 @@ func (m *mockChainReader) FetchStoreOperatorAuthz(_ context.Context, addr string
 		return 0, verify.Pubkey{}, 0, false, [32]byte{}, a.err
 	}
 	return a.status, a.authority, a.tierMask, a.isRoot, a.domainHash, nil
+}
+
+func (m *mockChainReader) FetchStoreReleaseListingMeta(_ context.Context, addr string) (storeReleaseListingMeta, error) {
+	if m.listingErr != nil {
+		return storeReleaseListingMeta{}, m.listingErr
+	}
+	l, ok := m.storeListing[addr]
+	if !ok {
+		return storeReleaseListingMeta{}, verify.ErrPDANotFound
+	}
+	if l.err != nil {
+		return storeReleaseListingMeta{}, l.err
+	}
+	return storeReleaseListingMeta{
+		PDA:                   addr,
+		StoreAuthority:        l.storeAuthority,
+		AppHash:               l.appHash,
+		ReleaseEntry:          l.releaseEntry,
+		StoreDomainHash:       l.storeDomainHash,
+		OperatorAuthorization: l.operatorAuthorization,
+		Status:                l.status,
+	}, nil
 }
 
 func (m *mockChainReader) FetchBlacklistEntry(_ context.Context, addr string) (bool, verify.BlacklistType, error) {
@@ -328,6 +363,8 @@ type publishFixture struct {
 	appHashBytes    [32]byte // the tree-hash app_hash the ReleaseEntry PDA is derived under
 	relPDA          string
 	authzPDA        string
+	listingPDA      string
+	storeAuthority  pda.Pubkey
 	foundationPDA   string
 	blAppPDA        string
 	blLicPDA        string
@@ -339,6 +376,7 @@ func testConfig(t *testing.T) (Config, string) {
 	licenseMint := randPubkeyB58(t)
 	return Config{
 		LicenseNFTMint:  licenseMint,
+		StoreAuthority:  randPubkeyB58(t),
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",
@@ -390,6 +428,14 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	if err != nil {
 		t.Fatal(err)
 	}
+	storeAuthority, err := primitives.PubkeyFromBase58(cfg.StoreAuthority)
+	if err != nil {
+		t.Fatalf("bad test store authority: %v", err)
+	}
+	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHashBytes, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	blApp, _, err := pda.BlacklistEntry(masterMint, programID)
 	if err != nil {
 		t.Fatal(err)
@@ -435,6 +481,8 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 		appHashBytes:    appHashBytes,
 		relPDA:          relPDA.Base58(),
 		authzPDA:        authzPDA.Base58(),
+		listingPDA:      listingPDA.Base58(),
+		storeAuthority:  storeAuthority,
 		foundationPDA:   foundationPDA.Base58(),
 		blAppPDA:        blApp.Base58(),
 		blLicPDA:        blLic.Base58(),
@@ -510,6 +558,35 @@ func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
 	}
 	// no FoundationAppEntry pinned => resolveFoundationTier returns tier 0 (no ceiling)
 	// no blacklist entries => clear
+}
+
+// pinServeListingActive adds the exact per-store projection required by the
+// serve gate. It intentionally uses cfg.StoreAuthority rather than the test's
+// publish operator: write authority and a store's selected visibility are
+// separate facts.
+func (f publishFixture) pinServeListingActive(m *mockChainReader) {
+	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
+		status:     verify.AuthorizationStatusActive,
+		authority:  verify.Pubkey(f.storeAuthority),
+		tierMask:   0xff,
+		domainHash: primitives.StoreDomainHash(f.cfg.Domain),
+	}
+	releasePDA, err := primitives.PubkeyFromBase58(f.relPDA)
+	if err != nil {
+		panic("test fixture release PDA: " + err.Error())
+	}
+	authzPDA, err := primitives.PubkeyFromBase58(f.authzPDA)
+	if err != nil {
+		panic("test fixture authorization PDA: " + err.Error())
+	}
+	m.storeListing[f.listingPDA] = mockStoreReleaseListing{
+		storeAuthority:        f.storeAuthority,
+		appHash:               f.appHashBytes,
+		releaseEntry:          releasePDA,
+		storeDomainHash:       primitives.StoreDomainHash(f.cfg.Domain),
+		operatorAuthorization: authzPDA,
+		status:                storeListingStatusActive,
+	}
 }
 
 // pinFoundationApp marks the fixture's app as a Foundation app of the given tier

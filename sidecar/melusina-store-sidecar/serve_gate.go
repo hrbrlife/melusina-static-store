@@ -20,6 +20,7 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // ── SERVE-TIME on-chain gate (B1-01; canon §5b) ───────────────────────────────
@@ -125,6 +126,14 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators
 }
 
 func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/apps/index.json" {
+		g.serveCatalogIndex(w, r)
+		return
+	}
+	if appID, ok := catalogPointerAppID(r.URL.Path); ok {
+		g.serveCatalogPointer(w, r, appID)
+		return
+	}
 	if class, name, isRelease := releaseBase(r.URL.Path); isRelease {
 		g.serveRelease(w, r, class, name)
 		return
@@ -250,6 +259,233 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Melusina-Runtime-Contract", app.runtimeContractStatus)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeContent(w, r, base, st.ModTime(), f)
+}
+
+// storeCatalogProjection holds both the exact stored source and its verified serving
+// view. Keeping the unchanged source bytes is load-bearing: existing signed app
+// pointers bind their `catalogSha256` to those exact bytes. We only serialize a
+// new document after a custody-authorized listing has explicitly delisted one
+// target, and the paired pointer route then re-signs matching pointer bytes.
+type storeCatalogProjection struct {
+	source     []byte
+	encoded    []byte
+	visibleApp map[string]struct{}
+	changed    bool
+}
+
+// serveCatalogIndex projects the immutable catalog through exact active
+// StoreReleaseListing records. It never writes or repairs the catalog on disk:
+// it returns a request-time view where an explicit target-scoped Delisted record
+// removes only that row. Every other problem (missing/malformed listing, wrong
+// PDA/domain/app hash/release, RPC failure) is a 503, not an omission, so a
+// broken verifier cannot silently turn a partial catalog into truth.
+func (g *serveGate) serveCatalogIndex(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	projection, err := g.projectCatalog(r.Context(), r)
+	if err != nil {
+		http.Error(w, "store catalog gate refused: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Store-Catalog-Gate", "verified")
+	if r.Method == http.MethodHead {
+		return
+	}
+	if _, err := w.Write(projection.encoded); err != nil {
+		return
+	}
+}
+
+// projectCatalog makes the single fail-closed visibility decision shared by
+// index and pointer requests. If every row remains Active, it returns the raw
+// bytes byte-for-byte so existing pointer hashes stay valid. If and only if an
+// exact listing is Delisted, it produces a filtered document and requires an
+// operator identity whose public key equals cfg.store_authority; otherwise it
+// refuses rather than expose an index that no signed pointer can attest.
+func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeCatalogProjection, error) {
+	var zero storeCatalogProjection
+	if g.cr == nil {
+		return zero, errServeNoChainReader
+	}
+	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
+	raw, err := g.readCatalogFile(snapshot, hasSnapshot, "apps/index.json")
+	if err != nil {
+		return zero, fmt.Errorf("check=catalog: read apps/index.json: %w", err)
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return zero, fmt.Errorf("check=catalog: malformed apps/index.json: %w", err)
+	}
+	rawApps, ok := doc["apps"]
+	if !ok {
+		return zero, errors.New("check=catalog: apps field missing")
+	}
+	var entries []json.RawMessage
+	if err := json.Unmarshal(rawApps, &entries); err != nil {
+		return zero, fmt.Errorf("check=catalog: apps field malformed: %w", err)
+	}
+
+	projection := storeCatalogProjection{
+		source:     raw,
+		visibleApp: make(map[string]struct{}, len(entries)),
+	}
+	projected := make([]json.RawMessage, 0, len(entries))
+	for _, rawEntry := range entries {
+		var entry catalogIndexApp
+		if err := json.Unmarshal(rawEntry, &entry); err != nil {
+			return zero, fmt.Errorf("check=catalog: app row malformed: %w", err)
+		}
+		appID := strings.TrimSpace(entry.AppID)
+		packageID := strings.ToLower(strings.TrimSpace(entry.PackageID))
+		if packageID == "" || !isSafePathSegment(appID) {
+			return zero, errors.New("check=catalog: app row has unsafe identity")
+		}
+		app, ok := g.lookupApp(packageID, snapshot, hasSnapshot)
+		if !ok {
+			return zero, fmt.Errorf("check=release_provenance: no on-chain-anchored app for packageId=%s", packageID)
+		}
+		if err := g.gate(ctx, app.rel.AppHash, app.rel); err != nil {
+			if errors.Is(err, errStoreReleaseListingDelisted) {
+				projection.changed = true
+				continue // The only permitted omission: an explicit exact transition.
+			}
+			return zero, err
+		}
+		projection.visibleApp[appID] = struct{}{}
+		projected = append(projected, rawEntry)
+	}
+	if !projection.changed {
+		projection.encoded = raw
+		return projection, nil
+	}
+	if _, err := g.catalogProjectionOperator(); err != nil {
+		return zero, fmt.Errorf("check=catalog_projection: %w", err)
+	}
+	doc["apps"], err = json.Marshal(projected)
+	if err != nil {
+		return zero, fmt.Errorf("check=catalog: encode projection: %w", err)
+	}
+	projection.encoded, err = json.Marshal(doc)
+	if err != nil {
+		return zero, fmt.Errorf("check=catalog: encode document: %w", err)
+	}
+	return projection, nil
+}
+
+// catalogProjectionOperator returns an operator allowed to re-sign a dynamic
+// catalog pointer. A different local signing key must not be allowed to make a
+// listing delist look like a new catalog release.
+func (g *serveGate) catalogProjectionOperator() (*identity.Private, error) {
+	if g.operator == nil {
+		return nil, errors.New("no operator identity for dynamic catalog projection")
+	}
+	want, err := primitives.PubkeyFromBase58(strings.TrimSpace(g.cfg.StoreAuthority))
+	if err != nil {
+		return nil, fmt.Errorf("bad cfg.store_authority: %w", err)
+	}
+	got, err := signPubkey32(g.operator.Public())
+	if err != nil {
+		return nil, err
+	}
+	if got != [32]byte(want) {
+		return nil, errors.New("operator signing key does not match cfg.store_authority")
+	}
+	return g.operator, nil
+}
+
+func catalogPointerAppID(urlPath string) (string, bool) {
+	const prefix = "/apps/pointers/"
+	clean := path.Clean(urlPath)
+	if !strings.HasPrefix(clean, prefix) || !strings.HasSuffix(clean, ".json") {
+		return "", false
+	}
+	appID := strings.TrimSuffix(strings.TrimPrefix(clean, prefix), ".json")
+	if !isSafePathSegment(appID) {
+		return "", false
+	}
+	return appID, true
+}
+
+// serveCatalogPointer preserves a signed pointer verbatim while the source
+// catalog is unchanged. After an exact delist changes the catalog projection,
+// it hides the delisted app's pointer and re-signs each surviving pointer over
+// the projected catalog hash. This keeps catalogSha256 meaningful instead of
+// creating a UI-only view that every verifier rejects.
+func (g *serveGate) serveCatalogPointer(w http.ResponseWriter, r *http.Request, appID string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	projection, err := g.projectCatalog(r.Context(), r)
+	if err != nil {
+		http.Error(w, "store catalog gate refused: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if _, ok := projection.visibleApp[appID]; !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if !projection.changed {
+		g.fileServer.ServeHTTP(w, r)
+		return
+	}
+	operator, err := g.catalogProjectionOperator()
+	if err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_projection: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
+	rawPointer, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")))
+	if errors.Is(err, os.ErrNotExist) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: read pointer", http.StatusServiceUnavailable)
+		return
+	}
+	var pointer AppCatalogPointer
+	if err := json.Unmarshal(rawPointer, &pointer); err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: malformed pointer", http.StatusServiceUnavailable)
+		return
+	}
+	if pointer.AppID != appID {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: appId mismatch", http.StatusServiceUnavailable)
+		return
+	}
+	pub, err := operatorSignPublicKey(operator)
+	if err != nil || verifyAppCatalogPointer(pub, pointer) != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: source pointer signature invalid", http.StatusServiceUnavailable)
+		return
+	}
+	sourceHash := sha256.Sum256(projection.source)
+	if pointer.CatalogSHA256 != hex.EncodeToString(sourceHash[:]) {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: source pointer catalog hash mismatch", http.StatusServiceUnavailable)
+		return
+	}
+	projectedHash := sha256.Sum256(projection.encoded)
+	pointer.CatalogSHA256 = hex.EncodeToString(projectedHash[:])
+	pointerMessage, err := appCatalogPointerMessage(pointer)
+	if err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: pointer message", http.StatusServiceUnavailable)
+		return
+	}
+	pointer.OperatorSignature = primitives.EncodeBase58(operator.Sign(pointerMessage))
+	encoded, err := json.Marshal(pointer)
+	if err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: encode pointer", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Store-Catalog-Gate", "verified")
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(encoded)
+	}
 }
 
 func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, name string) {
@@ -382,13 +618,14 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 }
 
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
-// served: either a fresh cached verdict, or a live on-chain re-verification
-// (Active ReleaseEntry pinning that AppHash + app not blacklisted). It is the
-// single fail-closed decision point. The caller guarantees g.cr != nil.
+// served. A fresh cache avoids re-fetching the global ReleaseEntry and blacklist
+// facts, but it NEVER caches StoreReleaseListing visibility: an explicit exact
+// DELIST must take effect on the next request. The caller guarantees g.cr !=
+// nil.
 func (g *serveGate) gate(ctx context.Context, appHash string, rel ReleaseJSON) error {
 	h := strings.ToLower(strings.TrimSpace(appHash))
 	if g.verdictFresh(h) {
-		return nil
+		return verifyCurrentStoreReleaseListing(ctx, g.cr, g.cfg, h, rel)
 	}
 	if err := VerifyServeHash(ctx, g.cr, g.cfg, h, rel); err != nil {
 		return err

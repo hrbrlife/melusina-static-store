@@ -38,6 +38,11 @@ func (c *exactCurrentReadOnlyChain) FetchReleaseEntryMeta(ctx context.Context, a
 	return c.mockChainReader.FetchReleaseEntryMeta(ctx, addr)
 }
 
+func (c *exactCurrentReadOnlyChain) FetchStoreReleaseListingMeta(ctx context.Context, addr string) (storeReleaseListingMeta, error) {
+	c.readCalls++
+	return c.mockChainReader.FetchStoreReleaseListingMeta(ctx, addr)
+}
+
 func (c *exactCurrentReadOnlyChain) FetchActiveReleaseEntriesByAppID(ctx context.Context, appID [32]byte) ([]releaseEntryMeta, error) {
 	c.readCalls++
 	return c.mockChainReader.FetchActiveReleaseEntriesByAppID(ctx, appID)
@@ -72,6 +77,10 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	cfg.ServeVerifyTTLSeconds = -1
 
 	operator := newTestIdentity(t, "exact-current-operator", cfg.LicenseNFTMint, cfg.Domain)
+	// The current sidecar identity is the exact StoreReleaseListing authority
+	// for this read-only proof; a blank config value is intentionally invalid in
+	// production and cannot be used as a test bypass.
+	cfg.StoreAuthority = operator.Public().SignPubkeyB58
 	publisher := newTestIdentity(t, "exact-current-publisher", randPubkeyB58(t), "publisher.example.org")
 	cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
 	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
@@ -83,6 +92,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 
 	baseChain := newMockChainReader()
 	fixture.pinAccept(baseChain, operatorSignPub32(t, operator))
+	fixture.pinServeListingActive(baseChain)
 	chain := &exactCurrentReadOnlyChain{mockChainReader: baseChain}
 	activeBefore := exactActiveSetBytes(t, baseChain, fixture.appID)
 	if len(baseChain.releaseEntry) != 1 {

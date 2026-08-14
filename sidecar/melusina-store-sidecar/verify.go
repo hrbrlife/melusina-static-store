@@ -40,6 +40,11 @@ func setProgramIDFromConfig(s string) {
 type chainReader interface {
 	FetchReleaseEntry(ctx context.Context, addrB58 string) (appHash [32]byte, status verify.AttestationStatus, err error)
 	FetchReleaseEntryMeta(ctx context.Context, addrB58 string) (releaseEntryMeta, error)
+	// FetchStoreReleaseListingMeta reads the exact per-store projection that
+	// authorizes this sidecar to serve one release. It is intentionally separate
+	// from the legacy shared reader: the registry's new Delisted state is a
+	// listing-only state and must not be decoded as generic authorization status.
+	FetchStoreReleaseListingMeta(ctx context.Context, addrB58 string) (storeReleaseListingMeta, error)
 	FetchActiveReleaseEntriesByAppID(ctx context.Context, appID [32]byte) ([]releaseEntryMeta, error)
 	// FetchReleaseEntryAppID reads the on-chain ReleaseEntry.app_id (the stable
 	// per-application identity, distinct from app_hash). The publish gate derives
@@ -62,6 +67,63 @@ type chainReader interface {
 	// binary hash must all match the on-chain SidecarIdentityEntry before /publish
 	// is enabled.
 	FetchSidecarIdentity(ctx context.Context, addrB58 string) (verify.SidecarIdentity, error)
+}
+
+// storeListingStatus is the frozen Borsh enum stored in
+// StoreReleaseListing.status. It preserves the historical encoding
+// Active=0/Revoked=1 and adds Delisted=2. Unknown bytes are refused.
+type storeListingStatus uint8
+
+const (
+	storeListingStatusActive storeListingStatus = iota
+	storeListingStatusRevoked
+	storeListingStatusDelisted
+)
+
+func (s storeListingStatus) String() string {
+	switch s {
+	case storeListingStatusActive:
+		return "Active"
+	case storeListingStatusRevoked:
+		return "Revoked"
+	case storeListingStatusDelisted:
+		return "Delisted"
+	default:
+		return fmt.Sprintf("Unknown(%d)", uint8(s))
+	}
+}
+
+// errStoreReleaseListingDelisted is deliberately typed so catalog projection
+// can remove only a deliberately delisted target. Every other chain error,
+// mismatch, or unknown state aborts the catalog response instead of silently
+// hiding data or serving it unverified.
+var errStoreReleaseListingDelisted = errors.New("store release listing is Delisted")
+
+func (s storeListingStatus) requireActive() error {
+	switch s {
+	case storeListingStatusActive:
+		return nil
+	case storeListingStatusDelisted:
+		return errStoreReleaseListingDelisted
+	case storeListingStatusRevoked:
+		return errors.New("store release listing is Revoked")
+	default:
+		return fmt.Errorf("invalid store release listing status %d", uint8(s))
+	}
+}
+
+// storeReleaseListingMeta is the sidecar's minimal, read-only decoding of the
+// program's StoreReleaseListing account. Each field below participates in an
+// exact target binding; omitting any one would let a listing for another
+// app/domain/release authorize the current store.
+type storeReleaseListingMeta struct {
+	PDA                   string
+	StoreAuthority        pda.Pubkey
+	AppHash               [32]byte
+	ReleaseEntry          pda.Pubkey
+	StoreDomainHash       [32]byte
+	OperatorAuthorization pda.Pubkey
+	Status                storeListingStatus
 }
 
 // compile-time assertion: the production wrapper satisfies the interface.
@@ -238,18 +300,111 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 //	(b) an Active on-chain ReleaseEntry (masterNftMint+appHash) pins that appHash
 //	(d) the app's master NFT mint is not blacklisted
 //
-// It deliberately OMITS VerifyPublish's StoreOperatorAuthorization/operator check
-// (c): that is a write-authority concern requiring the operator identity (the
-// boot-identity ceremony, tracked separately as B1-02). cfg is accepted for
-// signature parity with VerifyPublish and future per-store policy; it is not used
-// by the read-only serve checks today.
+// Unlike the original release-only gate, it also requires an Active exact
+// StoreReleaseListing for *this* configured store. ReleaseEntry authenticity is
+// global; visibility in this store is target-scoped. A Delisted listing refuses
+// the package while leaving ReleaseEntry/history untouched for other stores.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
-	_ = cfg
-	masterMint, _, _, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
+	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
 	if err != nil {
 		return err
 	}
-	return verifyNotBlacklisted(ctx, cr, masterMint, "app")
+	if err := verifyNotBlacklisted(ctx, cr, masterMint, "app"); err != nil {
+		return err
+	}
+	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
+}
+
+// verifyCurrentStoreReleaseListing re-checks the target-scoped visibility fact
+// after a cached global ReleaseEntry verdict. A DELIST must take effect on the
+// next package or catalog request; it must not inherit the (documented) bounded
+// cache window used for global release revocation. The caller has already
+// verified this exact release while populating that cache, but we still derive
+// the ReleaseEntry PDA afresh from the supplied release to bind the listing to
+// the same master mint + app hash.
+func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
+	gotHash := strings.ToLower(strings.TrimSpace(appHashHex))
+	wantHash := strings.ToLower(strings.TrimSpace(rel.AppHash))
+	if gotHash != wantHash {
+		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", gotHash, wantHash)
+	}
+	appHash, err := hash32FromHex(wantHash)
+	if err != nil {
+		return fmt.Errorf("check=app_hash: release.appHash not 32-byte hex: %w", err)
+	}
+	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(rel.MasterNftMint))
+	if err != nil {
+		return fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
+	}
+	releasePDA, _, err := pda.Release(masterMint, appHash, programID)
+	if err != nil {
+		return fmt.Errorf("check=release_entry: derive PDA: %w", err)
+	}
+	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
+}
+
+// verifyStoreReleaseListing proves that the globally active ReleaseEntry is
+// intentionally projected by THIS store. The configuration pins one store
+// authority; the active StoreOperatorAuthorization pins that authority to the
+// configured license+domain; and the listing PDA pins that tuple to this exact
+// app hash. A missing, malformed, mismatched, revoked, unknown, or RPC-unreadable
+// listing always refuses service. Only an explicitly Delisted exact listing is
+// distinguishable so the catalog projection can omit that one target.
+func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, appHash [32]byte, releasePDA pda.Pubkey) error {
+	storeAuthority, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.StoreAuthority))
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: bad cfg.store_authority: %w", err)
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: bad cfg.license_nft_mint: %w", err)
+	}
+	domainHash := primitives.StoreDomainHash(cfg.Domain)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, programID)
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: derive store operator authorization: %w", err)
+	}
+	authzStatus, onchainStoreAuthority, _, _, onchainDomainHash, err := cr.FetchStoreOperatorAuthz(ctx, authzPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: fetch store operator authorization %s: %w", authzPDA.Base58(), err)
+	}
+	if err := authzStatus.RequireActive(); err != nil {
+		return fmt.Errorf("check=store_release_listing: StoreOperatorAuthorization status %s not Active: %w", authzStatus, err)
+	}
+	if onchainStoreAuthority != verify.Pubkey(storeAuthority) {
+		return fmt.Errorf("check=store_release_listing: StoreOperatorAuthorization store_authority %x != cfg.store_authority %x", onchainStoreAuthority[:], storeAuthority[:])
+	}
+	if onchainDomainHash != domainHash {
+		return fmt.Errorf("check=store_release_listing: StoreOperatorAuthorization domain hash %x != cfg domain hash %x", onchainDomainHash[:], domainHash[:])
+	}
+
+	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID)
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: derive listing PDA: %w", err)
+	}
+	listing, err := cr.FetchStoreReleaseListingMeta(ctx, listingPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("check=store_release_listing: fetch %s: %w", listingPDA.Base58(), err)
+	}
+	if err := listing.Status.requireActive(); err != nil {
+		return fmt.Errorf("check=store_release_listing: status %s not Active: %w", listing.Status, err)
+	}
+	if listing.StoreAuthority != storeAuthority {
+		return fmt.Errorf("check=store_release_listing: listing store_authority %x != cfg.store_authority %x", listing.StoreAuthority[:], storeAuthority[:])
+	}
+	if listing.AppHash != appHash {
+		return fmt.Errorf("check=store_release_listing: listing app_hash %x != served app_hash %x", listing.AppHash[:], appHash[:])
+	}
+	if listing.ReleaseEntry != releasePDA {
+		return fmt.Errorf("check=store_release_listing: listing release_entry %s != derived ReleaseEntry %s", listing.ReleaseEntry.Base58(), releasePDA.Base58())
+	}
+	if listing.StoreDomainHash != domainHash {
+		return fmt.Errorf("check=store_release_listing: listing domain hash %x != cfg domain hash %x", listing.StoreDomainHash[:], domainHash[:])
+	}
+	if listing.OperatorAuthorization != authzPDA {
+		return fmt.Errorf("check=store_release_listing: listing operator_authorization %s != derived authorization %s", listing.OperatorAuthorization.Base58(), authzPDA.Base58())
+	}
+	return nil
 }
 
 // errReleaseMasterMintRequired marks an operator configuration that has not

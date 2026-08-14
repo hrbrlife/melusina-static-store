@@ -41,6 +41,22 @@ func (c *storeRPCReader) FetchReleaseEntryMeta(ctx context.Context, addr string)
 	return meta, nil
 }
 
+func (c *storeRPCReader) FetchStoreReleaseListingMeta(ctx context.Context, addr string) (storeReleaseListingMeta, error) {
+	data, err := c.GetAccountInfo(ctx, addr)
+	if err != nil {
+		return storeReleaseListingMeta{}, err
+	}
+	if data == nil {
+		return storeReleaseListingMeta{}, verify.ErrPDANotFound
+	}
+	meta, err := readStoreReleaseListingMeta(data)
+	if err != nil {
+		return storeReleaseListingMeta{}, err
+	}
+	meta.PDA = addr
+	return meta, nil
+}
+
 func (c *storeRPCReader) FetchInstallerReleaseEntryMeta(ctx context.Context, addr string) (installerReleaseMeta, error) {
 	data, err := c.GetAccountInfo(ctx, addr)
 	if err != nil {
@@ -256,6 +272,76 @@ func readInstallerReleaseEntryMeta(data []byte) (installerReleaseMeta, error) {
 		return meta, err
 	}
 	meta.Status = status
+	return meta, nil
+}
+
+// readStoreReleaseListingMeta decodes the exact current Anchor/Borsh account
+// layout from the license-registry program. The program's StoreListingStatus is
+// listing-specific (Active=0, Revoked=1, Delisted=2), so use a local decoder
+// rather than verify.ReadAuthorizationStatusByte, which knows only the first
+// two generic authorization states. Every short, malformed, or unknown-status
+// account is refused rather than treated as unlisted.
+func readStoreReleaseListingMeta(data []byte) (storeReleaseListingMeta, error) {
+	var meta storeReleaseListingMeta
+	if len(data) < verify.AccountDiscriminatorLen {
+		return meta, errors.New("store_release_listing: discriminator: buffer too short")
+	}
+	if !bytes.Equal(data[:verify.AccountDiscriminatorLen], accountDiscriminator("StoreReleaseListing")) {
+		return meta, errors.New("store_release_listing: discriminator mismatch")
+	}
+	offset := verify.AccountDiscriminatorLen
+	var err error
+	if offset, err = copyFixed(data, offset, meta.StoreAuthority[:], "store_release_listing", "store_authority"); err != nil {
+		return meta, err
+	}
+	if offset, err = copyFixed(data, offset, meta.AppHash[:], "store_release_listing", "app_hash"); err != nil {
+		return meta, err
+	}
+	if offset, err = copyFixed(data, offset, meta.ReleaseEntry[:], "store_release_listing", "release_entry"); err != nil {
+		return meta, err
+	}
+	for _, step := range []struct {
+		name string
+		n    int
+	}{
+		{"store_cert_fingerprint", 32},
+		{"listed_by", 32},
+		{"listed_at", 8},
+	} {
+		if offset, err = skipFixed(data, offset, step.n, "store_release_listing", step.name); err != nil {
+			return meta, err
+		}
+	}
+	if offset >= len(data) {
+		return meta, errors.New("store_release_listing: status: buffer too short")
+	}
+	meta.Status = storeListingStatus(data[offset])
+	if meta.Status != storeListingStatusActive && meta.Status != storeListingStatusRevoked && meta.Status != storeListingStatusDelisted {
+		return meta, fmt.Errorf("store_release_listing: invalid status byte %d", data[offset])
+	}
+	offset++
+	if offset >= len(data) {
+		return meta, errors.New("store_release_listing: revoked_at option: buffer too short")
+	}
+	switch data[offset] {
+	case 0:
+		offset++
+	case 1:
+		if offset, err = skipFixed(data, offset+1, 8, "store_release_listing", "revoked_at"); err != nil {
+			return meta, err
+		}
+	default:
+		return meta, fmt.Errorf("store_release_listing: revoked_at option tag %d is invalid", data[offset])
+	}
+	if offset, err = copyFixed(data, offset, meta.StoreDomainHash[:], "store_release_listing", "store_domain_hash"); err != nil {
+		return meta, err
+	}
+	if offset, err = copyFixed(data, offset, meta.OperatorAuthorization[:], "store_release_listing", "operator_authorization"); err != nil {
+		return meta, err
+	}
+	if _, err = skipFixed(data, offset, 1, "store_release_listing", "bump"); err != nil {
+		return meta, err
+	}
 	return meta, nil
 }
 

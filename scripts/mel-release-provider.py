@@ -13,6 +13,7 @@ receipt.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import json
 import os
@@ -677,6 +678,35 @@ def served_hash(app_id: str) -> None:
         sys.stdout.write(value)
 
 
+def decode_release_entry(raw: bytes, pda: str) -> dict[str, str]:
+    """Decode the stable ReleaseEntry fields used by the durable WAL."""
+    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version.
+    offset = 8 + 32 + 32 + 32 + 32
+    if len(raw) < offset + 4:
+        raise ProviderError("ReleaseEntry is truncated before version")
+    n = int.from_bytes(raw[offset:offset + 4], "little")
+    offset += 4
+    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
+        raise ProviderError("ReleaseEntry has an invalid version/status layout")
+    try:
+        version = raw[offset:offset + n].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProviderError(f"ReleaseEntry version is not UTF-8: {exc}") from exc
+    offset += n + 32 + 32 + 64 + 32 + 32 + 8
+    status = raw[offset]
+    # AttestationStatus is the Anchor/Borsh ordinal, not a one-based wire enum.
+    # Active=0, Revoked=1, Superseded=2.
+    status_names = ("Active", "Revoked", "Superseded")
+    if status >= len(status_names):
+        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
+    return {
+        "pda": pda,
+        "appHash": raw[8 + 32:8 + 64].hex(),
+        "version": version,
+        "status": status_names[status],
+    }
+
+
 def release_status(pda: str) -> None:
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
     req = urllib.request.Request(rpc, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": "confirmed"}]}).encode(), headers={"Content-Type": "application/json"})
@@ -685,26 +715,17 @@ def release_status(pda: str) -> None:
             payload = json.loads(response.read())
     except (OSError, json.JSONDecodeError) as exc:
         raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
-    value = payload.get("result", {}).get("value")
+    result = payload.get("result")
+    value = result.get("value") if isinstance(result, dict) else None
     if not isinstance(value, dict) or not value.get("data"):
         raise ProviderError(f"ReleaseEntry {pda} is not present")
-    raw = base64.b64decode(value["data"][0])
-    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version
-    offset = 8 + 32 + 32 + 32 + 32
-    if len(raw) < offset + 4:
-        raise ProviderError("ReleaseEntry is truncated before version")
-    n = int.from_bytes(raw[offset:offset + 4], "little")
-    offset += 4
-    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
-        raise ProviderError("ReleaseEntry has an invalid version/status layout")
-    version = raw[offset:offset + n].decode("utf-8")
-    offset += n
-    offset += 32 + 32 + 64 + 32 + 32 + 8
-    status = raw[offset]
-    if status not in (1, 2):
-        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
-    app_hash = raw[8 + 32:8 + 64].hex()
-    print(json.dumps({"pda": pda, "appHash": app_hash, "version": version, "status": "Active" if status == 1 else "Revoked"}, separators=(",", ":")))
+    if value.get("owner") != env("MEL_PROGRAM_ID", required=True):
+        raise ProviderError(f"ReleaseEntry {pda} owner does not match MEL_PROGRAM_ID")
+    try:
+        raw = base64.b64decode(value["data"][0], validate=True)
+    except (ValueError, TypeError, binascii.Error) as exc:
+        raise ProviderError(f"ReleaseEntry {pda} base64 decode failed: {exc}") from exc
+    print(json.dumps(decode_release_entry(raw, pda), separators=(",", ":")))
 
 
 def revoke(pda: str, receipt_out: Path) -> None:

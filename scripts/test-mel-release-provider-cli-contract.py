@@ -379,6 +379,79 @@ def test_promote_repairs_registered_resume_runtime_binding():
         assert captured[0][captured[0].index("--runtime-contract") + 1] == str(runtime_contract), captured
 
 
+def release_entry_fixture(status, version="1.2.3"):
+    return b"".join([
+        b"D" * 8,
+        b"M" * 32,
+        b"A" * 32,
+        b"I" * 32,
+        b"R" * 32,
+        len(version.encode()).to_bytes(4, "little"),
+        version.encode(),
+        b"V" * 32,
+        b"P" * 32,
+        b"S" * 64,
+        b"H" * 32,
+        b"B" * 32,
+        b"T" * 8,
+        bytes([status]),
+    ])
+
+
+def test_release_entry_status_uses_zero_based_borsh_ordinals():
+    expected = {0: "Active", 1: "Revoked", 2: "Superseded"}
+    for status, name in expected.items():
+        decoded = provider.decode_release_entry(release_entry_fixture(status), "release-pda")
+        assert decoded == {
+            "pda": "release-pda",
+            "appHash": (b"A" * 32).hex(),
+            "version": "1.2.3",
+            "status": name,
+        }, decoded
+    try:
+        provider.decode_release_entry(release_entry_fixture(3), "release-pda")
+    except provider.ProviderError as exc:
+        assert "unknown status 3" in str(exc), exc
+    else:
+        raise AssertionError("unknown ReleaseEntry status was accepted")
+
+
+def test_release_status_requires_program_owner():
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "result": {
+                    "value": {
+                        "owner": "wrong-program",
+                        "data": [provider.base64.b64encode(release_entry_fixture(0)).decode(), "base64"],
+                    },
+                },
+            }).encode()
+
+    old_urlopen = provider.urllib.request.urlopen
+    old = with_env({
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_PROGRAM_ID": "expected-program",
+    })
+    try:
+        provider.urllib.request.urlopen = lambda *_args, **_kwargs: FakeResponse()
+        try:
+            provider.release_status("release-pda")
+        except provider.ProviderError as exc:
+            assert "owner does not match" in str(exc), exc
+        else:
+            raise AssertionError("ReleaseEntry owned by a different program was accepted")
+    finally:
+        provider.urllib.request.urlopen = old_urlopen
+        restore_env(old)
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
@@ -386,4 +459,6 @@ if __name__ == "__main__":
     test_submit_refuses_missing_catalog_slot()
     test_release_helper_owns_index_and_atomic_approval_commands()
     test_promote_repairs_registered_resume_runtime_binding()
+    test_release_entry_status_uses_zero_based_borsh_ordinals()
+    test_release_status_requires_program_owner()
     print("mel-release provider CLI-contract tests passed")

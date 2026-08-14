@@ -461,15 +461,20 @@ def write_family_config(path, apps):
 
 def test_source_root_resolves_only_clean_relative_manifest_paths():
     app_id = provider.NAMEDCOIN_APP_ID
+    admin_app_id = "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         sources = root / "sources"
         app = sources / "namedcoin"
+        admin = sources / "namedcoin-admin"
         app.mkdir(parents=True)
+        admin.mkdir(parents=True)
         (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        (admin / "metadata.json").write_text(json.dumps({"appId": admin_app_id}) + "\n")
         config = root / "release-family.yaml"
         write_family_config(config, {
             "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
+            "namedcoin-admin": {"appId": admin_app_id, "source_path": "namedcoin-admin"},
         })
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
@@ -477,6 +482,7 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
         })
         try:
             assert provider.source_path(app_id) == app
+            assert provider.source_path(admin_app_id) == admin
 
             write_family_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": str(app)},
@@ -516,11 +522,16 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
 
 def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
     namedcoin = provider.NAMEDCOIN_APP_ID
+    namedcoin_admin = "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"
     apps = {
         "namedcoin": {
             "appId": namedcoin, "source_path": "namedcoin",
             "catalog_developer": "hrbrlife", "catalog_repo": "melusina-namedcoin-app", "catalog_slug": "namedcoin",
             "pack_profile": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+        },
+        "namedcoin-admin": {
+            "appId": namedcoin_admin, "source_path": "namedcoin-admin",
+            "catalog_developer": "hrbrlife", "catalog_repo": "melusina-namedcoin-admin-app", "catalog_slug": "namedcoin-admin",
         },
         "fineract": {
             "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "source_path": "fineract-setup/fineract-sidecar",
@@ -556,6 +567,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             assert provider.catalog_slot(namedcoin) == {
                 "developer": "hrbrlife", "repo": "melusina-namedcoin-app", "slug": "namedcoin",
             }
+            assert provider.catalog_slot(namedcoin_admin) == {
+                "developer": "hrbrlife", "repo": "melusina-namedcoin-admin-app", "slug": "namedcoin-admin",
+            }
             assert provider.catalog_slot(apps["fineract"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "fineract-setup", "slug": "fineract-setup",
             }
@@ -572,6 +586,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
                 "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
             }
             assert provider.pack_profile_env(apps["dueprocess"]["appId"]) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+            }
+            assert provider.pack_profile_env(namedcoin_admin) == {
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
             try:

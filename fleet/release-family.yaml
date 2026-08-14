@@ -31,9 +31,12 @@ families:
         role: identity-attestation-gate
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
-        source_path: /home/user/Desktop/worktrees/melrelease-health-namedcoin-admin
+        source_path: namedcoin-admin
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Admin
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-namedcoin-admin-app
+        catalog_slug: namedcoin-admin
         role: issuer-operations
       popaye:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510

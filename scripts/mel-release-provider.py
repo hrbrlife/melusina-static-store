@@ -392,6 +392,36 @@ def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release
     return release_path
 
 
+def bind_runtime_contract_to_release(context: dict[str, Any]) -> Path:
+    """Restore the Store-only runtime-contract fields after Pearl finalization.
+
+    The Pearl tool owns and rewrites the on-chain ReleaseEntry fields.  Its
+    schema intentionally does not know the Store's raw runtime-contract
+    extension, so finalization drops those two JSON members.  They are not part
+    of the author-signed ReleaseEntry payload; the publisher envelope signs the
+    complete restored RELEASE.json when it is submitted to the Store.
+    """
+    release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
+    contract_path = clean_abs(str(context["runtimeContractPath"]), "provider runtimeContractPath")
+    spk_path = clean_abs(str(context["spkPath"]), "provider spkPath")
+    release = read_json(release_path)
+    contract = read_json(contract_path)
+    contract_app = contract.get("app")
+    if contract.get("schema") != "melusina-app-runtime-contract-v1" or not isinstance(contract_app, dict):
+        raise ProviderError("materialized runtime contract is malformed after finalization")
+    if (contract_app.get("appId") != context.get("appId") or
+            contract_app.get("version") != release.get("version") or
+            contract_app.get("appHash") != release.get("appHash") or
+            contract_app.get("spkSha256") != hex_sha(spk_path)):
+        raise ProviderError("materialized runtime contract no longer binds the finalized release")
+    release.update({
+        "runtimeContractSha256": hex_sha(contract_path),
+        "runtimeContractSchema": str(contract["schema"]),
+    })
+    write_json(release_path, release)
+    return release_path
+
+
 def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool) -> list[str]:
     store_url = env("MEL_RELEASE_STORE_URL", required=True)
     store_license = env("MEL_RELEASE_STORE_LICENSE_MINT", required=True)
@@ -545,6 +575,7 @@ def finalize_release(context: dict[str, Any]) -> None:
         str(pearl), "finalize-release", "--app-dir", str(pearl_artifact_dir(context)), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
     ])
+    bind_runtime_contract_to_release(context)
 
 
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
@@ -619,7 +650,11 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
 
 def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
     context = require_context(app_id)
-    release = read_json(Path(context["releasePath"]))
+    # A durable WAL may resume directly from REGISTERED after an older provider
+    # finalized the Pearl release but crashed before restoring the Store-only
+    # runtime-contract binding. Repair it from the immutable candidate evidence
+    # before validating or submitting the promotion.
+    release = read_json(bind_runtime_contract_to_release(context))
     if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
         raise ProviderError("promotion context no longer binds the staged candidate")
     run(submit_args(context, receipt_out, stage_only=False))

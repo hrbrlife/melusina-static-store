@@ -34,8 +34,23 @@ def restore_env(old):
 def test_finalize_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        (root / "app.spk").write_bytes(b"spk")
+        spk = root / "app.spk"
+        spk.write_bytes(b"spk")
         (root / "metadata.json").write_text("{}\n")
+        app_hash = "a" * 64
+        version = "1.2.3"
+        release = root / "RELEASE.json"
+        release.write_text(json.dumps({"appHash": app_hash, "version": version}) + "\n")
+        runtime_contract = root / "RUNTIME-CONTRACT.json"
+        runtime_contract.write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {
+                "appId": "app-id",
+                "version": version,
+                "spkSha256": provider.hashlib.sha256(b"spk").hexdigest(),
+                "appHash": app_hash,
+            },
+        }) + "\n")
         captured = []
         old_run = provider.run
         old = with_env({
@@ -45,12 +60,14 @@ def test_finalize_uses_only_supported_flags():
         try:
             provider.run = lambda args, **_: captured.append(args) or ""
             provider.finalize_release({
+                "appId": "app-id",
                 "catalogDir": str(root / "catalog"),
                 "ceremonyDir": str(root / "ceremony"),
                 "statePath": str(root / "state.json"),
-                "releasePath": str(root / "RELEASE.json"),
-                "spkPath": str(root / "app.spk"),
+                "releasePath": str(release),
+                "spkPath": str(spk),
                 "metadataPath": str(root / "metadata.json"),
+                "runtimeContractPath": str(runtime_contract),
             })
         finally:
             provider.run = old_run
@@ -62,6 +79,9 @@ def test_finalize_uses_only_supported_flags():
         assert sorted(path.name for path in app_dir.iterdir()) == ["app.spk", "metadata.json"]
         for unsupported in ("--artifact-spk", "--artifact-metadata", "--quorum-threshold", "--quorum-member-count"):
             assert unsupported not in args, args
+        finalized = json.loads(release.read_text())
+        assert finalized["runtimeContractSha256"] == provider.hex_sha(runtime_contract), finalized
+        assert finalized["runtimeContractSchema"] == "melusina-app-runtime-contract-v1", finalized
 
 
 def test_propose_uses_only_supported_flags():
@@ -236,11 +256,35 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             "releaseHash": "a" * 64,
             "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
         }))
+        app_hash = "b" * 64
+        version = "1.2.3"
         release = root / "RELEASE.json"
-        release.write_text("{}\n")
+        release.write_text(json.dumps({
+            "appHash": app_hash,
+            "releaseHash": "a" * 64,
+            "version": version,
+        }) + "\n")
+        spk = root / "app.spk"
+        spk.write_bytes(b"spk")
+        runtime_contract = root / "RUNTIME-CONTRACT.json"
+        runtime_contract.write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {
+                "appId": "app",
+                "version": version,
+                "spkSha256": provider.hashlib.sha256(b"spk").hexdigest(),
+                "appHash": app_hash,
+            },
+        }) + "\n")
         final_release = root / "final-RELEASE.json"
         receipt = root / "register.json"
-        context = {"statePath": str(state), "releasePath": str(release)}
+        context = {
+            "appId": "app",
+            "statePath": str(state),
+            "releasePath": str(release),
+            "spkPath": str(spk),
+            "runtimeContractPath": str(runtime_contract),
+        }
         captured = []
         old_run = provider.run
         old_context = provider.require_context
@@ -250,7 +294,7 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         try:
             provider.require_context = lambda _: context
             provider.release_entry_exists = lambda _: False
-            provider.finalize_release = lambda _: None
+            provider.finalize_release = provider.bind_runtime_contract_to_release
             provider.run = lambda args, **_: captured.append(args) or json.dumps({
                 "alreadyExecuted": False,
                 "transactionSignatures": ["approve-1", "approve-2", "approve-3", "execute"],
@@ -269,10 +313,77 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         assert final_release.read_text() == release.read_text()
 
 
+def test_promote_repairs_registered_resume_runtime_binding():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app_hash = "a" * 64
+        release_hash = "b" * 64
+        version = "1.2.3"
+        spk = root / "app.spk"
+        spk.write_bytes(b"spk")
+        metadata = root / "metadata.json"
+        metadata.write_text("{}\n")
+        release = root / "RELEASE.json"
+        release.write_text(json.dumps({
+            "appHash": app_hash,
+            "releaseHash": release_hash,
+            "version": version,
+        }) + "\n")
+        runtime_contract = root / "RUNTIME-CONTRACT.json"
+        runtime_contract.write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {
+                "appId": "app",
+                "version": version,
+                "spkSha256": provider.hashlib.sha256(b"spk").hexdigest(),
+                "appHash": app_hash,
+            },
+        }) + "\n")
+        receipt = root / "promote.json"
+        context = {
+            "appId": "app",
+            "spkPath": str(spk),
+            "metadataPath": str(metadata),
+            "releasePath": str(release),
+            "runtimeContractPath": str(runtime_contract),
+            "catalogSlot": {"developer": "dev", "repo": "repo", "slug": "app"},
+        }
+        submit = root / "submit"
+        submit.write_text("#!/bin/sh\n")
+        submit.chmod(0o700)
+        captured = []
+        old_context = provider.require_context
+        old_ensure_bin = provider.ensure_bin
+        old_run = provider.run
+        old = with_env({
+            "MEL_RELEASE_STORE_URL": "https://store.example.test",
+            "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+            "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+            "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+        })
+        try:
+            provider.require_context = lambda _: context
+            provider.ensure_bin = lambda *_: submit
+            provider.run = lambda args, **_: captured.append(args) or ""
+            provider.promote("app", app_hash, release_hash, version, "stage-id", receipt)
+        finally:
+            provider.require_context = old_context
+            provider.ensure_bin = old_ensure_bin
+            provider.run = old_run
+            restore_env(old)
+        repaired = json.loads(release.read_text())
+        assert repaired["runtimeContractSha256"] == provider.hex_sha(runtime_contract), repaired
+        assert repaired["runtimeContractSchema"] == "melusina-app-runtime-contract-v1", repaired
+        assert len(captured) == 1, captured
+        assert captured[0][captured[0].index("--runtime-contract") + 1] == str(runtime_contract), captured
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
     test_release_helper_owns_index_and_atomic_approval_commands()
+    test_promote_repairs_registered_resume_runtime_binding()
     print("mel-release provider CLI-contract tests passed")

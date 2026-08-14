@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/pda"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -191,6 +189,15 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// SUBMISSION BOUNDARY: a generation carries HOST components only. Refuse an
+	// app before any chain read or writer-lock acquisition, and say why — an app
+	// publisher that reaches this route is using the wrong rail, not failing a
+	// check. Apps go out through their own signed catalog pointer + ReleaseEntry.
+	if err := componentrelease.RejectAppComponents(req.Components); err != nil {
+		http.Error(w, "check=component_class: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	operatorPub, err := signPubkey32(operatorIdentity)
 	if err != nil {
 		http.Error(w, "check=operator_key: "+err.Error(), http.StatusInternalServerError)
@@ -252,12 +259,11 @@ func generationPromoteRequiresRoot(components []componentrelease.ComponentReleas
 	return false
 }
 
-// verifyComponentReleaseOnChain re-verifies ONE component against the chain and
-// the served bytes — the store never trusts the publisher's asserted hash/PDA.
-// installer_release (shell + data) is fully wired via VerifyInstallerReleaseHash;
-// release_v2 (app) and sidecar_identity (sidecar) are fail-closed pending their
-// verify wiring (app comes with the app-publisher branch; sidecar with the
-// SidecarIdentity + approval-cascade verify).
+// verifyComponentReleaseOnChain re-verifies ONE HOST component against the chain
+// and the served bytes — the store never trusts the publisher's asserted
+// hash/PDA. installer_release (shell + data) is wired via
+// VerifyInstallerReleaseHash; sidecar_identity via the SidecarIdentity re-derive.
+// release_v2 (app) is refused: apps are not generation components.
 func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
 	switch c.Chain.Kind {
 	case componentrelease.AuthorityInstallerRelease:
@@ -272,231 +278,13 @@ func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c co
 	case componentrelease.AuthoritySidecarIdentity:
 		return s.verifySidecarComponentOnChain(ctx, c)
 	case componentrelease.AuthorityReleaseV2:
-		return s.verifyAppComponentOnChain(ctx, c)
+		// release_v2 is the app authority. handleGeneratePromote already refuses
+		// app components at the submission boundary; this arm keeps the switch
+		// exhaustive and fail-closed if any other caller ever reaches it.
+		return fmt.Errorf("component %s: %w", c.ComponentID, componentrelease.ErrAppNotAGenerationComponent)
 	default:
 		return fmt.Errorf("component %s: unknown authority kind %q", c.ComponentID, c.Chain.Kind)
 	}
-}
-
-// verifyAppComponentOnChain re-derives the ReleaseEntry PDA from the app's
-// content hash (the on-chain tree hash, deliberately distinct from the served
-// SPK hash), requires that exact account to be Active and hash-pinned, then
-// proves the advertised SPK AND catalog metadata recompute to that tree hash.
-// Neither a publisher-supplied PDA, a matching artifact hash, nor a
-// store-signed pointer alone is authority.
-func (s *publishService) verifyAppComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
-	if c.ComponentClass != componentrelease.ClassApp {
-		return fmt.Errorf("component %s: release_v2 authority requires app class", c.ComponentID)
-	}
-	if strings.TrimSpace(c.Chain.Program) != programID.Base58() {
-		return fmt.Errorf("component %s: chain program %q != pinned %q", c.ComponentID, c.Chain.Program, programID.Base58())
-	}
-	contentHash, err := hash32FromHex(c.ContentSHA256)
-	if err != nil {
-		return fmt.Errorf("component %s: bad app contentSha256: %w", c.ComponentID, err)
-	}
-	master, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.MasterNftMint))
-	if err != nil {
-		return fmt.Errorf("component %s: bad masterNftMint: %w", c.ComponentID, err)
-	}
-	derived, _, err := pda.Release(master, contentHash, programID)
-	if err != nil {
-		return fmt.Errorf("component %s: derive ReleaseEntry PDA: %w", c.ComponentID, err)
-	}
-	claimed, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.ReleasePDA))
-	if err != nil || claimed != derived {
-		return fmt.Errorf("component %s: ReleaseEntry PDA does not equal the locally derived content-hash PDA", c.ComponentID)
-	}
-	meta, err := s.cr.FetchReleaseEntryMeta(ctx, derived.Base58())
-	if err != nil {
-		return fmt.Errorf("component %s: fetch ReleaseEntry %s: %w", c.ComponentID, derived.Base58(), err)
-	}
-	if meta.AppHash != contentHash {
-		return fmt.Errorf("component %s: on-chain app_hash %x != contentSha256 %x", c.ComponentID, meta.AppHash[:], contentHash[:])
-	}
-	if err := meta.Status.RequireActive(); err != nil {
-		return fmt.Errorf("component %s: ReleaseEntry not Active: %w", c.ComponentID, err)
-	}
-	return s.verifyAppComponentServedBytes(c)
-}
-
-// verifyAppComponentServedBytes binds an app-class ComponentRelease to the
-// store's already-signed catalog selection. Apps are deliberately different
-// from host artifacts: their SPKs are served as /packages/<packageId>, never
-// under /releases/. A matching ReleaseEntry and an arbitrary SPK hash are not
-// enough; the exact current signed pointer and apps/index.json must select the
-// same package for the same app before a DesiredGeneration may name it.
-func (s *publishService) verifyAppComponentServedBytes(c componentrelease.ComponentRelease) error {
-	if s.operator == nil {
-		return fmt.Errorf("component %s: store operator identity is required to verify app catalog pointer", c.ComponentID)
-	}
-	origin := strings.TrimRight(strings.TrimSpace(s.cfg.PublicBaseURL), "/")
-	prefix := origin + "/packages/"
-	if !strings.HasPrefix(c.BundleURL, prefix) {
-		return fmt.Errorf("component %s: app bundleUrl %q is not an exact package URL under %s", c.ComponentID, c.BundleURL, prefix)
-	}
-	packageID := strings.TrimPrefix(c.BundleURL, prefix)
-	if !validCatalogPackageID(packageID) {
-		return fmt.Errorf("component %s: app bundleUrl packageId %q is invalid", c.ComponentID, packageID)
-	}
-	if strings.TrimSpace(c.ArtifactName) != packageID {
-		return fmt.Errorf("component %s: app artifactName %q != bundle packageId %q", c.ComponentID, c.ArtifactName, packageID)
-	}
-	if !isSafePathSegment(c.ComponentID) {
-		return fmt.Errorf("component %s: unsafe appId", c.ComponentID)
-	}
-
-	// App publishing atomically switches the immutable catalog/current
-	// generation. The HTTP reader resolves that generation once for every
-	// request, so generation promotion must verify the same served snapshot
-	// rather than the legacy flat staging directory. Otherwise a valid signed
-	// pointer can be visible to consumers while this gate incorrectly reports it
-	// missing from the old flat tree.
-	catalogRoot, err := s.servedAppCatalogRoot()
-	if err != nil {
-		return fmt.Errorf("component %s: resolve served app catalog: %w", c.ComponentID, err)
-	}
-	pointerPath := filepath.Join(catalogRoot, "apps", "pointers", c.ComponentID+".json")
-	pointerBody, err := readDistRegularNoFollow(pointerPath, maxAppCatalogJSONBytes)
-	if err != nil {
-		return fmt.Errorf("component %s: read signed app catalog pointer: %w", c.ComponentID, err)
-	}
-	if err := assertNoDuplicateJSONKeys(pointerBody); err != nil {
-		return fmt.Errorf("component %s: signed app catalog pointer: %w", c.ComponentID, err)
-	}
-	var pointer AppCatalogPointer
-	dec := json.NewDecoder(bytes.NewReader(pointerBody))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&pointer); err != nil {
-		return fmt.Errorf("component %s: decode signed app catalog pointer: %w", c.ComponentID, err)
-	}
-	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
-		return fmt.Errorf("component %s: signed app catalog pointer has trailing data", c.ComponentID)
-	}
-	operatorPub, err := operatorSignPublicKey(s.operator)
-	if err != nil {
-		return fmt.Errorf("component %s: operator public key: %w", c.ComponentID, err)
-	}
-	if err := verifyAppCatalogPointer(operatorPub, pointer); err != nil {
-		return fmt.Errorf("component %s: signed app catalog pointer: %w", c.ComponentID, err)
-	}
-	domainHash := primitives.StoreDomainHash(s.cfg.Domain)
-	wantDomainHash := hex.EncodeToString(domainHash[:])
-	if pointer.AppID != c.ComponentID || pointer.PackageID != packageID ||
-		pointer.Version != c.Version || pointer.AppHash != c.ContentSHA256 ||
-		pointer.ServingDomainHash != wantDomainHash {
-		return fmt.Errorf("component %s: signed app catalog pointer does not bind this app/package/version/content/domain", c.ComponentID)
-	}
-	if c.ReleaseHash != "" && pointer.ReleaseHash != c.ReleaseHash {
-		return fmt.Errorf("component %s: signed app catalog pointer releaseHash mismatch", c.ComponentID)
-	}
-	if c.StageID != "" && pointer.StageID != c.StageID {
-		return fmt.Errorf("component %s: signed app catalog pointer stageId mismatch", c.ComponentID)
-	}
-
-	indexBody, err := readDistRegularNoFollow(filepath.Join(catalogRoot, "apps", "index.json"), maxAppCatalogJSONBytes)
-	if err != nil {
-		return fmt.Errorf("component %s: read app catalog index: %w", c.ComponentID, err)
-	}
-	if err := assertNoDuplicateJSONKeys(indexBody); err != nil {
-		return fmt.Errorf("component %s: app catalog index: %w", c.ComponentID, err)
-	}
-	indexHash := sha256.Sum256(indexBody)
-	if pointer.CatalogSHA256 != hex.EncodeToString(indexHash[:]) {
-		return fmt.Errorf("component %s: signed app catalog pointer catalog sha256 mismatch", c.ComponentID)
-	}
-	var index catalogIndex
-	if err := json.Unmarshal(indexBody, &index); err != nil {
-		return fmt.Errorf("component %s: decode app catalog index: %w", c.ComponentID, err)
-	}
-	found := false
-	for _, app := range index.Apps {
-		if strings.TrimSpace(app.AppID) != c.ComponentID {
-			continue
-		}
-		if found || strings.TrimSpace(app.PackageID) != packageID {
-			return fmt.Errorf("component %s: app catalog does not select exactly the signed package", c.ComponentID)
-		}
-		found = true
-	}
-	if !found {
-		return fmt.Errorf("component %s: app catalog has no selected package", c.ComponentID)
-	}
-	metadataPath := filepath.Join(catalogRoot, "signatures", c.ComponentID, "metadata.json")
-	metadata, err := readDistRegularNoFollow(metadataPath, maxAppCatalogJSONBytes)
-	if err != nil {
-		return fmt.Errorf("component %s: read served app metadata: %w", c.ComponentID, err)
-	}
-
-	packagePath := filepath.Join(catalogRoot, "packages", packageID)
-	f, size, err := openDistRegularNoFollow(packagePath)
-	if err != nil {
-		return fmt.Errorf("component %s: open served app package: %w", c.ComponentID, err)
-	}
-	defer f.Close()
-	if size != c.SizeBytes {
-		return fmt.Errorf("component %s: served app package size %d != component size %d", c.ComponentID, size, c.SizeBytes)
-	}
-	h := sha256.New()
-	n, err := io.Copy(h, f)
-	if err != nil {
-		return fmt.Errorf("component %s: hash served app package: %w", c.ComponentID, err)
-	}
-	if n != c.SizeBytes {
-		return fmt.Errorf("component %s: served app package size %d != component size %d", c.ComponentID, n, c.SizeBytes)
-	}
-	if got := hex.EncodeToString(h.Sum(nil)); got != strings.ToLower(strings.TrimSpace(c.SHA256)) {
-		return fmt.Errorf("component %s: served app package sha256 %s != component sha256 %s", c.ComponentID, got, c.SHA256)
-	}
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("component %s: rewind served app package for content binding: %w", c.ComponentID, err)
-	}
-	gotContentHash, err := apphash.Canonical(f, metadata)
-	if err != nil {
-		return fmt.Errorf("component %s: recompute served app contentSha256: %w", c.ComponentID, err)
-	}
-	if gotContentHash != strings.ToLower(strings.TrimSpace(c.ContentSHA256)) {
-		return fmt.Errorf("component %s: served {app.spk,metadata.json} contentSha256 %s != component contentSha256 %s", c.ComponentID, gotContentHash, c.ContentSHA256)
-	}
-	return nil
-}
-
-// servedAppCatalogRoot returns the exact catalog root exposed by the app HTTP
-// surface. Older stores serve directly from DistDir; generation-aware stores
-// serve only from their selected immutable catalog generation.
-func (s *publishService) servedAppCatalogRoot() (string, error) {
-	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
-		return s.cfg.DistDir, nil
-	}
-	current, err := s.catalogGenerations.ResolveCurrent()
-	if err != nil {
-		return "", err
-	}
-	return current.Root, nil
-}
-
-// readDistRegularNoFollow reads a bounded, final regular file from the serving
-// tree. Promotion is an authority decision, so an Lstat followed by os.ReadFile
-// is insufficient: a replace-to-symlink race would otherwise let bytes outside
-// DistDir participate in an on-chain promotion. The descriptor is the object
-// that is checked and read.
-func readDistRegularNoFollow(path string, limit int64) ([]byte, error) {
-	f, size, err := openDistRegularNoFollow(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	if size > limit {
-		return nil, fmt.Errorf("regular file size %d exceeds cap %d", size, limit)
-	}
-	body, err := io.ReadAll(io.LimitReader(f, limit+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(body)) > limit {
-		return nil, fmt.Errorf("regular file grew beyond cap %d while reading", limit)
-	}
-	return body, nil
 }
 
 // openDistRegularNoFollow opens and validates the final path through the same

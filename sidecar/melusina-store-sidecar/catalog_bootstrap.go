@@ -311,9 +311,11 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	if err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
 	}
-	if _, _, err := reconcileDesiredGenerationAfterAppCatalogQuarantine(cfg, opts.operator, opts.operatorPublicKey, classified.quarantined, time.Now().UTC()); err != nil {
-		return nil, fmt.Errorf("reconcile desired generation after catalog quarantine: %w", err)
-	}
+	// A quarantined app no longer touches the desired generation: apps are not
+	// generation components, so there is nothing in the signed generation for a
+	// catalog quarantine to poison and nothing to reconcile. The whole
+	// reconciliation pass existed only because an app rollout could invalidate a
+	// generation's own serve-surface check.
 	appIDs := make([]string, 0, len(rollouts))
 	for appID := range rollouts {
 		appIDs = append(appIDs, appID)

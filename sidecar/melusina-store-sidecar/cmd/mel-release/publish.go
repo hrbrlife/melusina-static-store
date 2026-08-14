@@ -35,13 +35,12 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 	if version == "" {
 		return "", fmt.Errorf("--version is required")
 	}
-	// Check the live approval-side endpoint before creating a private stage or
-	// an unexecuted chain proposal. An old store may still accept /publish/stage
-	// while lacking /publish/generation; proceeding would create a candidate
-	// that cannot truthfully reach the two-command terminal boundary.
-	if err := requireGenerationPromotionReady(c); err != nil {
-		return "", err
-	}
+	// The publish-side /publish/generation readiness probe is gone with the
+	// GENERATED step it guarded. approve no longer promotes a DesiredGeneration
+	// for an app, so a store whose host-generation rail is unhealthy has no
+	// bearing on whether this app release can reach its terminal boundary —
+	// keeping the probe would have made every app publish hostage to exactly the
+	// coupling this change removes.
 	prov := newExecProvider(c)
 
 	lock, err := acquireAppLock(appLockPath(c.lockDir(), app.AppID))

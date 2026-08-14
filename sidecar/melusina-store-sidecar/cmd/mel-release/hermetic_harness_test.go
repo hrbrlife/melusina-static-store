@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -13,208 +12,54 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// ── the fake store (httptest) ───────────────────────────────────────────────────
+// ── the fake store: a WITNESS, not a participant ────────────────────────────────
+//
+// An app release no longer touches the store's DesiredGeneration rail at all —
+// apps are not generation components, so `approve` has no GENERATED step and
+// `publish` has no /publish/generation readiness probe. This server therefore
+// exists to prove a NEGATIVE: it records every request it receives and refuses
+// it. Cases assert the recorded set stayed empty, which is the mutation control
+// for the whole change — re-introduce a generation submit into the app path and
+// every hermetic case turns red instead of silently passing.
 
 type fakeStore struct {
-	mu               sync.Mutex
-	operator         *identity.Private
-	storeID          string
-	bundleOrigin     string
-	channel          string
-	gen              *componentrelease.DesiredGeneration
-	raw              []byte
-	postCount        int
-	foldCount        int
-	failMode         string // "", "reject", "fold-then-fail"
-	serveUnavailable bool
-	server           *httptest.Server
+	mu       sync.Mutex
+	requests []string
+	server   *httptest.Server
 }
 
-func newFakeStore(op *identity.Private, storeID, bundleOrigin, channel string) *fakeStore {
-	s := &fakeStore{operator: op, storeID: storeID, bundleOrigin: bundleOrigin, channel: channel}
-	mux := http.NewServeMux()
-	mux.HandleFunc(generationServedPath, s.handleGet)     // /update/generation.json
-	mux.HandleFunc(generationPromoteTarget, s.handlePost) // /publish/generation
-	s.server = httptest.NewServer(mux)
+func newFakeStore() *fakeStore {
+	s := &fakeStore{}
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		s.requests = append(s.requests, r.Method+" "+r.URL.Path)
+		s.mu.Unlock()
+		http.Error(w, "app releases must not contact the store generation rail", http.StatusGone)
+	}))
 	return s
 }
 
-func (s *fakeStore) setFail(mode string) {
+// touched returns every request the app release path made to the store, in
+// order. It must be empty for every app publish/approve.
+func (s *fakeStore) touched() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.failMode = mode
+	return append([]string(nil), s.requests...)
 }
 
-func (s *fakeStore) setServeUnavailable(value bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.serveUnavailable = value
-}
-
-func (s *fakeStore) counts() (post, fold int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.postCount, s.foldCount
-}
-
-// genComponent reports the served generation id and, if present, the component
-// entry for id (nil-safe when nothing has been served yet).
-func (s *fakeStore) genComponent(id string) (genID uint64, comp componentrelease.ComponentRelease, ok bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.gen == nil {
-		return 0, componentrelease.ComponentRelease{}, false
-	}
-	c, present := s.gen.Component(id)
-	return s.gen.GenerationID, c, present
-}
-
-func (s *fakeStore) served() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.gen != nil
-}
-
-func (s *fakeStore) handleGet(w http.ResponseWriter, _ *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.serveUnavailable {
-		http.Error(w, "check=serve_surface: injected fail-closed public generation", http.StatusServiceUnavailable)
-		return
-	}
-	if s.gen == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(s.raw)
-}
-
-func (s *fakeStore) handlePost(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		readiness := generationPromoteReadiness{Schema: generationReadinessSchema, Status: "ready"}
-		if s.gen != nil {
-			id := s.gen.GenerationID
-			readiness.CurrentGenerationID = &id
-		}
-		_ = json.NewEncoder(w).Encode(readiness)
-		return
-	}
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.postCount++
-
-	var body generationPromoteBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "bad body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	reqBytes, err := base64.StdEncoding.DecodeString(body.RequestB64)
-	if err != nil {
-		http.Error(w, "bad request_b64: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	var req generationPromoteRequest
-	if err := json.Unmarshal(reqBytes, &req); err != nil {
-		http.Error(w, "bad request json: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	cur := uint64(0)
-	if s.gen != nil {
-		cur = s.gen.GenerationID
-	}
-	if req.ExpectedCurrentGeneration != cur {
-		http.Error(w, "CAS conflict", http.StatusConflict)
-		return
-	}
-	if s.failMode == "reject" {
-		http.Error(w, "injected pre-commit reject", http.StatusInternalServerError)
-		return
-	}
-
-	// Fold: superset-preserve existing components, replace/append by id.
-	byID := map[string]componentrelease.ComponentRelease{}
-	order := []string{}
-	add := func(c componentrelease.ComponentRelease) {
-		if _, ok := byID[c.ComponentID]; !ok {
-			order = append(order, c.ComponentID)
-		}
-		byID[c.ComponentID] = c
-	}
-	if s.gen != nil {
-		for _, c := range s.gen.Components {
-			add(c)
-		}
-	}
-	for _, c := range req.Components {
-		add(c)
-	}
-	comps := make([]componentrelease.ComponentRelease, 0, len(order))
-	for _, id := range order {
-		comps = append(comps, byID[id])
-	}
-
-	doc := componentrelease.DesiredGeneration{
-		GenerationID:       cur + 1,
-		PreviousGeneration: cur,
-		StoreID:            s.storeID,
-		BundleOrigin:       s.bundleOrigin,
-		Channel:            s.channel,
-		SignedAtUnix:       time.Now().Unix(),
-		Components:         comps,
-	}
-	signed, err := componentrelease.Sign(s.operator, doc)
-	if err != nil {
-		http.Error(w, "sign: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	raw, err := json.Marshal(signed)
-	if err != nil {
-		http.Error(w, "marshal: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// Commit atomically (this is the fold the CLI must never redo).
-	s.gen = &signed
-	s.raw = raw
-	s.foldCount++
-	// A successful governed promotion repairs the intentionally stale public
-	// surface in this harness, just as the real Store republishes a generation
-	// bound to the current catalog pointer before the client read-back.
-	s.serveUnavailable = false
-
-	sum := sha256.Sum256(raw)
-	result := generationPromoteResult{
-		GenerationID:       signed.GenerationID,
-		PreviousGeneration: signed.PreviousGeneration,
-		GenerationHash:     signed.GenerationHash,
-		ServedSHA256:       hex.EncodeToString(sum[:]),
-		Path:               generationServedPath,
-	}
-	if s.failMode == "fold-then-fail" {
-		// The store committed + serves the generation, but the response fails: the
-		// crash-between-fold-and-WAL-advance case the GENERATED idempotency guard
-		// must survive without minting a second generation.
-		http.Error(w, "injected post-commit failure", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(result)
+// publisherKeyFile is the on-disk publisher key shape. No Go code in this module
+// parses it any more — the external signer provider does, via
+// MEL_RELEASE_PUBLISHER_KEY — so the harness carries the shape it writes.
+type publisherKeyFile struct {
+	Ref      identity.Ref `json:"ref"`
+	SignSeed string       `json:"sign_seed_hex"`
+	BoxSeed  string       `json:"box_seed_hex"`
 }
 
 // ── test-side mirrors of the provider's fixture / state shapes ──────────────────
@@ -389,7 +234,7 @@ func newHarness(t *testing.T) *harness {
 	os.Setenv("MEL_FAKE_CALLLOG", callLog)
 	os.Setenv("MEL_FAKE_CHAINLOG", chainLog)
 
-	store := newFakeStore(operator, testStoreID, testBundle, "dev")
+	store := newFakeStore()
 	t.Cleanup(store.server.Close)
 
 	// Minimal one-app family manifest (selector = immutable appId).

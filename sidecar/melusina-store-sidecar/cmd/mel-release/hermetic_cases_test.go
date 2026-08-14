@@ -83,8 +83,8 @@ func TestHermeticHappyPath(t *testing.T) {
 	if _, err := os.Stat(h.cfg.candidatePath(testAppID)); err != nil {
 		t.Fatalf("candidate not written: %v", err)
 	}
-	if h.store.served() {
-		t.Fatal("publish must not serve a generation (nothing served)")
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("publish contacted the store generation rail: %v", got)
 	}
 	ps := h.provState()
 	if len(ps.Active) != 1 || ps.Active[0].PDA != h.pdaOld {
@@ -102,18 +102,6 @@ func TestHermeticHappyPath(t *testing.T) {
 	mustState(h, stateDone)
 	if _, err := os.Stat(filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")); err != nil {
 		t.Fatalf("terminal receipt not written: %v", err)
-	}
-
-	// The served generation carries exactly the new release.
-	genID, comp, ok := h.store.genComponent(testAppID)
-	if !ok {
-		t.Fatal("served generation does not carry the app component")
-	}
-	if genID != 1 {
-		t.Fatalf("generation id = %d, want 1", genID)
-	}
-	if comp.ContentSHA256 != v1.AppHash || comp.Version != "1.0.1" {
-		t.Fatalf("served component mismatch: contentSha=%q version=%q", comp.ContentSHA256, comp.Version)
 	}
 
 	// Terminal on-chain shape: exactly-1-Active == new, served == new, stale Revoked.
@@ -167,8 +155,11 @@ func TestHermeticHappyPath(t *testing.T) {
 		t.Fatalf("revoke did not happen LAST: register=%d promote=%d revoke=%d", reg, prom, rev)
 	}
 
-	if _, fold := h.store.counts(); fold != 1 {
-		t.Fatalf("expected exactly 1 generation fold, got %d", fold)
+	// A complete app release, start to terminal receipt, without one request to
+	// the store's generation rail. This is the whole point of Option A: an app
+	// publish can no longer disturb — or be disturbed by — host generations.
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("app release contacted the store generation rail: %v", got)
 	}
 }
 
@@ -255,8 +246,9 @@ func TestHermeticInterruptResume(t *testing.T) {
 	approveSteps := []step{
 		{"PROPOSED", h.approve, func() { h.setFaultOp("approve-register") }, h.clearFault, statePosed},
 		{"REGISTERED", h.approve, func() { h.setFaultOp("promote") }, h.clearFault, stateRegistered},
-		{"PROMOTED", h.approve, func() { h.store.setFail("reject") }, func() { h.store.setFail("") }, statePromoted},
-		{"GENERATED", h.approve, func() { h.setFaultOp("revoke") }, h.clearFault, stateGenerated},
+		// PROMOTED now advances straight to REVOKED (GENERATED is retired), so the
+		// fault that stops it is the revoke op itself.
+		{"PROMOTED", h.approve, func() { h.setFaultOp("revoke") }, h.clearFault, statePromoted},
 		{"REVOKED", h.approve, func() { h.setFailActiveEq(v1.PdaNew) }, h.clearFailActiveEq, stateRevoked},
 	}
 	for _, s := range approveSteps {
@@ -272,9 +264,9 @@ func TestHermeticInterruptResume(t *testing.T) {
 	mustState(h, stateDone)
 
 	// No duplicate side-effects:
-	//  - exactly one generation fold across the whole interrupted lifecycle;
-	if _, fold := h.store.counts(); fold != 1 {
-		t.Fatalf("expected exactly 1 generation fold across resumes, got %d", fold)
+	//  - not one request to the store generation rail, across every resume;
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("an interrupted resume contacted the store generation rail: %v", got)
 	}
 	//  - the immutable candidate was never rewritten;
 	if !bytes.Equal(frozen, h.candidateBytes()) {
@@ -291,75 +283,35 @@ func TestHermeticInterruptResume(t *testing.T) {
 	}
 }
 
-// ── CASE 2 (guard): GENERATED idempotency — store folded, WAL did not advance ────
-
-func TestHermeticGeneratedIdempotency(t *testing.T) {
-	h := newHarness(t)
-
-	mustNoErr(t, "publish", h.publish("1.0.1"))
-
-	// The store folds + serves the generation but the response fails: the CLI errors
-	// with the WAL still at PROMOTED, exactly the crash the GENERATED guard covers.
-	h.store.setFail("fold-then-fail")
-	mustErr(t, "approve (fold-then-fail)", h.approve())
-	mustState(h, statePromoted)
-	if post, fold := h.store.counts(); post != 1 || fold != 1 {
-		t.Fatalf("after fold-then-fail want post=1 fold=1, got post=%d fold=%d", post, fold)
-	}
-
-	// Resume: submitGeneration must detect its component already served and NOT POST
-	// a redundant generation (servedGenerationHas short-circuit).
-	h.store.setFail("")
-	mustNoErr(t, "resume approve", h.approve())
-	mustState(h, stateDone)
-	if post, fold := h.store.counts(); post != 1 || fold != 1 {
-		t.Fatalf("resume minted a redundant generation: want post=1 fold=1, got post=%d fold=%d", post, fold)
-	}
-	if id, _, ok := h.store.genComponent(testAppID); !ok || id != 1 {
-		t.Fatalf("served generation id=%d present=%v, want id=1 present", id, ok)
-	}
-}
-
-// A Store may correctly withhold a persisted, operator-signed generation when
-// its old component pointer no longer matches the current catalog. The
-// readiness floor lets the already-authorized next release repair that exact
-// state through the usual signed CAS POST; it is not a direct generation write.
-func TestHermeticRepairsFailClosedGenerationSurfaceFromVerifiedReadinessFloor(t *testing.T) {
+// ── CASE 2 (guard): the app path never advances a generation ────────────────────
+//
+// This replaces three cases that existed only to exercise the retired GENERATED
+// step: its fold idempotency, its recovery from a fail-closed public generation
+// surface via the readiness floor, and the negative control for that recovery.
+// All three tested a transport an app release no longer uses. What must hold now
+// is stronger and simpler: a full app lifecycle, including a version bump over an
+// already-DONE release, touches the store generation rail exactly zero times.
+func TestHermeticAppLifecycleNeverTouchesGenerationRail(t *testing.T) {
 	h := newHarness(t)
 
 	mustNoErr(t, "publish v1", h.publish("1.0.1"))
 	mustNoErr(t, "approve v1", h.approve())
-	if id, _, ok := h.store.genComponent(testAppID); !ok || id != 1 {
-		t.Fatalf("initial generation id=%d present=%v, want id=1 present", id, ok)
-	}
-
-	// Simulate the live split state: the Store has a valid persisted generation
-	// but its public serve gate returns 503. The private readiness contract still
-	// proves the signed CAS floor (generation 1).
-	mustNoErr(t, "publish v2", h.publish("1.0.2"))
-	h.store.setServeUnavailable(true)
-	mustNoErr(t, "approve v2 through readiness recovery", h.approve())
 	mustState(h, stateDone)
 
-	if id, comp, ok := h.store.genComponent(testAppID); !ok || id != 2 || comp.Version != "1.0.2" {
-		t.Fatalf("repaired generation id=%d version=%q present=%v, want id=2 version=1.0.2 present", id, comp.Version, ok)
-	}
-	if post, fold := h.store.counts(); post != 2 || fold != 2 {
-		t.Fatalf("readiness recovery did not make exactly one normal follow-up promote: post=%d fold=%d, want 2/2", post, fold)
-	}
-}
+	mustNoErr(t, "publish v2", h.publish("1.0.2"))
+	mustNoErr(t, "approve v2", h.approve())
+	mustState(h, stateDone)
 
-// A 503 remains fail-closed when readiness cannot prove any signed persisted
-// generation floor. This is the mutation/negative control for recovery above:
-// deleting the verified-floor condition must not let a blind promote proceed.
-func TestHermeticRefusesUnavailableGenerationWithoutReadinessFloor(t *testing.T) {
-	h := newHarness(t)
-	mustNoErr(t, "publish", h.publish("1.0.1"))
-	h.store.setServeUnavailable(true)
-	mustErr(t, "approve without verified readiness floor", h.approve())
-	mustState(h, statePromoted)
-	if post, fold := h.store.counts(); post != 0 || fold != 0 {
-		t.Fatalf("unverified 503 advanced generation: post=%d fold=%d", post, fold)
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("two full app releases contacted the store generation rail: %v", got)
+	}
+	// The releases really did happen — this is not a vacuous pass.
+	v2 := h.fx.Versions["1.0.2"]
+	if h.status(v2.PdaNew) != "Active" {
+		t.Fatalf("v2 release is not Active: %q", h.status(v2.PdaNew))
+	}
+	if ps := h.provState(); ps.Served != v2.AppHash {
+		t.Fatalf("served appHash = %q, want the v2 hash %q", ps.Served, v2.AppHash)
 	}
 }
 
@@ -371,14 +323,11 @@ func TestHermeticReplayAfterDone(t *testing.T) {
 	mustNoErr(t, "publish", h.publish("1.0.1"))
 	mustNoErr(t, "approve", h.approve())
 	mustState(h, stateDone)
-	postBefore, foldBefore := h.store.counts()
-
-	// Re-run approve after DONE → no-op, no new generation minted.
+	// Re-run approve after DONE → no-op.
 	mustNoErr(t, "replay approve", h.approve())
 	mustState(h, stateDone)
-	postAfter, foldAfter := h.store.counts()
-	if postAfter != postBefore || foldAfter != foldBefore {
-		t.Fatalf("replay touched the store: post %d->%d fold %d->%d", postBefore, postAfter, foldBefore, foldAfter)
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("replay contacted the store generation rail: %v", got)
 	}
 	if _, err := os.Stat(filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")); err != nil {
 		t.Fatalf("terminal receipt missing after replay: %v", err)
@@ -420,14 +369,18 @@ func TestHermeticVersionBumpRotation(t *testing.T) {
 		t.Fatalf("archived history has no terminal.json: %v", err)
 	}
 
-	// Approve v2 end-to-end → generation 2, v1 superseded.
+	// Approve v2 end-to-end → v1 superseded. The rotation is proven on chain and
+	// on the served pointer, which is where an app release has always actually
+	// lived; no generation is minted for it.
 	mustNoErr(t, "approve v2", h.approve())
 	mustState(h, stateDone)
-	genID, comp, ok := h.store.genComponent(testAppID)
-	if !ok || genID != 2 || comp.ContentSHA256 != v2.AppHash || comp.Version != "1.0.2" {
-		t.Fatalf("v2 generation wrong: id=%d present=%v contentSha=%q version=%q", genID, ok, comp.ContentSHA256, comp.Version)
+	if got := h.store.touched(); len(got) != 0 {
+		t.Fatalf("version bump contacted the store generation rail: %v", got)
 	}
 	ps := h.provState()
+	if ps.Served != v2.AppHash {
+		t.Fatalf("served appHash = %q, want the v2 hash %q", ps.Served, v2.AppHash)
+	}
 	if len(ps.Active) != 1 || ps.Active[0].PDA != v2.PdaNew {
 		t.Fatalf("v2 final Active not exactly new: %+v", ps.Active)
 	}
@@ -466,13 +419,13 @@ func TestHermeticCandidateImmutability(t *testing.T) {
 			t.Fatalf("expected a candidate-binding error, got: %v", err)
 		}
 		// Nothing was promoted/served on the fail-closed path.
-		if h.store.served() {
-			t.Fatal("a tampered candidate must not reach the generation POST")
+		if got := h.store.touched(); len(got) != 0 {
+			t.Fatalf("a tampered candidate reached the store: %v", got)
 		}
 	})
 }
 
-// ── CASE 6: rollback grace — stale stays Active until AFTER GENERATED ────────────
+// ── CASE 6: rollback grace — stale stays Active until AFTER PROMOTED ────────────
 
 func TestHermeticRollbackGrace(t *testing.T) {
 	h := newHarness(t)
@@ -480,18 +433,20 @@ func TestHermeticRollbackGrace(t *testing.T) {
 
 	mustNoErr(t, "publish", h.publish("1.0.1"))
 
-	// Crash at GENERATED (fault the revoke): the new release is Active AND served,
-	// but the stale release has NOT been revoked yet.
+	// Crash at PROMOTED (fault the revoke): the new release is Active AND served,
+	// but the stale release has NOT been revoked yet. This used to be the
+	// GENERATED boundary; retiring that step moved the grace window's start, not
+	// its guarantee.
 	h.setFaultOp("revoke")
 	mustErr(t, "approve (revoke faulted)", h.approve())
 	h.clearFault()
-	mustState(h, stateGenerated)
+	mustState(h, statePromoted)
 
 	if h.status(h.pdaOld) != "Active" {
-		t.Fatalf("stale release revoked too early (before GENERATED complete): %q", h.status(h.pdaOld))
+		t.Fatalf("stale release revoked too early (before the revoke boundary): %q", h.status(h.pdaOld))
 	}
 	if !h.activeHas(h.pdaOld) || !h.activeHas(v1.PdaNew) {
-		t.Fatalf("both old and new must be Active through PROMOTED+GENERATED: %v", h.activePDAs())
+		t.Fatalf("both old and new must be Active through PROMOTED: %v", h.activePDAs())
 	}
 	if h.provState().Served != v1.AppHash {
 		t.Fatalf("new release not served before revoke: %q", h.provState().Served)
@@ -517,7 +472,7 @@ func TestHermeticVerifiedResume(t *testing.T) {
 	mustNoErr(t, "publish", h.publish("1.0.1"))
 	mustNoErr(t, "approve", h.approve())
 	mustState(h, stateDone)
-	postBefore, foldBefore := h.store.counts()
+	touchedBefore := len(h.store.touched())
 
 	// Rewind the WAL to VERIFIED (drop the terminal timestamp) and remove terminal.json.
 	rec := h.wal()
@@ -540,8 +495,8 @@ func TestHermeticVerifiedResume(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")); err != nil {
 		t.Fatalf("terminal receipt not re-emitted: %v", err)
 	}
-	if post, fold := h.store.counts(); post != postBefore || fold != foldBefore {
-		t.Fatalf("VERIFIED->DONE resume touched the store: post %d->%d fold %d->%d", postBefore, post, foldBefore, fold)
+	if got := h.store.touched(); len(got) != touchedBefore {
+		t.Fatalf("VERIFIED->DONE resume touched the store: %v", got[touchedBefore:])
 	}
 }
 
@@ -655,7 +610,7 @@ func TestHermeticStagedResumeRevalidatesStageReceipt(t *testing.T) {
 				t.Fatalf("write corrupt stage.json: %v", err)
 			}
 			opsBefore := h.callOps()
-			postBefore, foldBefore := h.store.counts()
+			touchedBefore := len(h.store.touched())
 			walBefore := walRaw()
 
 			err := h.publish("1.0.1")
@@ -672,8 +627,8 @@ func TestHermeticStagedResumeRevalidatesStageReceipt(t *testing.T) {
 			if got, want := countOp(opsAfter, "propose-register"), countOp(opsBefore, "propose-register"); got != want {
 				t.Fatalf("propose-register count changed %d->%d on corrupt-receipt resume", want, got)
 			}
-			if post, fold := h.store.counts(); post != postBefore || fold != foldBefore {
-				t.Fatalf("corrupt-receipt resume touched the store: post %d->%d fold %d->%d", postBefore, post, foldBefore, fold)
+			if got := h.store.touched(); len(got) != touchedBefore {
+				t.Fatalf("corrupt-receipt resume touched the store: %v", got[touchedBefore:])
 			}
 			// WAL unchanged — state AND bytes.
 			mustState(h, stateStaged)

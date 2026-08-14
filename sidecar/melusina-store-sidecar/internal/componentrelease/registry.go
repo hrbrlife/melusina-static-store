@@ -132,6 +132,13 @@ func (ci ComponentInstall) validate(key string) error {
 	if !validClass(ci.ComponentClass) {
 		return fmt.Errorf("registry %s: invalid class %q", key, ci.ComponentClass)
 	}
+	// An app is never a host install. None of the six ApplyKinds below installs a
+	// Sandstorm app, so this was already unreachable through validApplyKind —
+	// refusing by class makes the registry say WHY rather than complain about a
+	// missing apply strategy.
+	if ci.ComponentClass == ClassApp {
+		return fmt.Errorf("registry %s: %w", key, ErrAppNotAGenerationComponent)
+	}
 	if !validApplyKind(ci.ApplyKind) {
 		return fmt.Errorf("registry %s: invalid applyKind %q", key, ci.ApplyKind)
 	}

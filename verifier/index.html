@@ -111,11 +111,11 @@
       <h2>Verify with the CLI</h2>
       <p>The reference verifier is <code>melusina-pearl-tool</code>. Build from <a href="https://github.com/hrbrlife/melusina-attestdeployer-tool">hrbrlife/melusina-attestdeployer-tool</a> or grab a release binary, then:</p>
       <pre><code># Pull the app's RELEASE.json + the .spk
-curl -sLO https://hrbrlife.github.io/melusina-static_store/attest/&lt;appId&gt;/RELEASE.json
-curl -sLO https://hrbrlife.github.io/melusina-static_store/packages/&lt;packageId&gt;.spk
+curl -sLO https://bazaar.melusina-os.org/attest/&lt;appId&gt;/RELEASE.json
+curl -sLO https://bazaar.melusina-os.org/packages/&lt;packageId&gt;.spk
 
 # Save the matching metadata.json from /signatures/&lt;appId&gt;/metadata.json
-curl -sLO https://hrbrlife.github.io/melusina-static_store/signatures/&lt;appId&gt;/metadata.json
+curl -sLO https://bazaar.melusina-os.org/signatures/&lt;appId&gt;/metadata.json
 
 # Verify against the on-chain ReleaseEntry
 melusina-pearl-tool verify-release \

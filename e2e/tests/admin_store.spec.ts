@@ -47,10 +47,10 @@ test.describe('Admin app market', () => {
     // Pick the first app's packageId from the public catalog and check the
     // admin "install by URL" flow accepts it (just resolves status, no real install).
     const ctx = await request.newContext();
-    const cat = await (await ctx.get('https://hrbrlife.github.io/melusina-static_store/apps/index.json')).json();
+    const cat = await (await ctx.get('https://bazaar.melusina-os.org/apps/index.json')).json();
     const app = cat.apps[0];
     const installUrl = new URL(`/install/${app.packageId}`, ADMIN);
-    installUrl.searchParams.set('url', `https://hrbrlife.github.io/melusina-static_store/packages/${app.packageId}`);
+    installUrl.searchParams.set('url', `https://bazaar.melusina-os.org/packages/${app.packageId}`);
     const resp = await page.goto(installUrl.toString(), { waitUntil: 'domcontentloaded' });
     expect(resp).not.toBeNull();
     expect(resp!.status()).toBeLessThan(500);

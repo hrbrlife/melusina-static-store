@@ -40,7 +40,7 @@ GH_HARD_LIMIT_BYTES=104857600  # GitHub's documented push rejection limit (100 M
 RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
-BASE_URL="https://hrbrlife.github.io/melusina-static-store"
+BASE_URL="https://bazaar.melusina-os.org"
 RUNTIME_CONTRACT_VALIDATOR="$SCRIPT_DIR/scripts/validate-runtime-contract.py"
 RUNTIME_CONTRACT_SCHEMA="$SCRIPT_DIR/schemas/melusina-app-runtime-contract-v1.schema.json"
 
@@ -1213,7 +1213,7 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   # own signed update/ payload — including generation.json and install.sh — with
   # whatever that unrelated origin happens to serve. Copy locally when the live
   # file exists; only reach for the remote mirror when it does not.
-  LIVE_BASE="${MELUSINA_STORE_UPDATE_LIVE_BASE:-https://hrbrlife.github.io/melusina-static-store/update}"
+  LIVE_BASE="${MELUSINA_STORE_UPDATE_LIVE_BASE:-https://bazaar.melusina-os.org/update}"
   for f in dev stable latest.json manifest.json install.sh; do
     if [[ -f "$FINAL_DIR/update/$f" ]]; then
       cp "$FINAL_DIR/update/$f" "$UPDATE_OUT/$f"
@@ -1260,7 +1260,7 @@ elif [[ -d "$SANDSTORM_SRC" ]]; then
     # client's Sandstorm binary on next self-update poll. Hit once 2026-05-19:
     # local source dir held only builds 0+1 while live was build=4.
     LIVE_BUILD="$(curl -sf --max-time 8 \
-      "https://hrbrlife.github.io/melusina-static-store/update/manifest.json" \
+      "https://bazaar.melusina-os.org/update/manifest.json" \
       2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("build",-1))' \
       2>/dev/null || echo -1)"
     if [[ "$LIVE_BUILD" =~ ^[0-9]+$ ]] && [[ "$SANDSTORM_BUILD_NUM" -lt "$LIVE_BUILD" ]]; then

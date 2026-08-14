@@ -1,5 +1,10 @@
 const CACHE_NAME = 'melusina-market-v3';
-const BASE = '/melusina-static-store/';
+// Served at the ORIGIN ROOT by the melusina-store-sidecar (handler.go
+// http.FileServer(DistDir) mounts dist-publish/ at "/"). This was
+// '/melusina-static-store/' — the retired GitHub Pages sub-path — which made
+// every NO_CACHE_PREFIXES entry below match nothing, so the never-cache guards
+// for packages/, apps/index.json, update/ and signatures/ were all inert.
+const BASE = '/';
 
 /* Precache only the shell files needed to boot the app offline.
  * Hashed bundle chunks (assets/*) are cached on-demand via the fetch handler.

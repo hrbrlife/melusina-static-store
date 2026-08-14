@@ -9,7 +9,7 @@ import { EXPECTED_APPS } from '../fixtures/expected_apps';
  */
 
 const STORE = process.env.STORE_BASE_URL
-  ?? 'https://hrbrlife.github.io/melusina-static_store/';
+  ?? 'https://bazaar.melusina-os.org/';
 const norm = (s: string) => s.replace(/\/+$/, '');
 const STORE_NORM = norm(STORE);
 

@@ -134,7 +134,7 @@ fi
 # --- 4. gh-pages reachable ---------------------------------------------------
 section "4. Live catalog reachable"
 
-LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://hrbrlife.github.io/melusina-static-store/apps/index.json}"
+LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://bazaar.melusina-os.org/apps/index.json}"
 LIVE_TMP=$(mktemp /tmp/doctor-live.XXXXXX.json)
 trap 'rm -f "$LIVE_TMP"' EXIT
 

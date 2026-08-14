@@ -37,7 +37,7 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT"
 
 # --- Configuration -----------------------------------------------------------
-LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://hrbrlife.github.io/melusina-static-store/apps/index.json}"
+LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://bazaar.melusina-os.org/apps/index.json}"
 LOCAL_BUILD="dist-publish/apps/index.json"
 DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json}"
 PACKAGES_DIR="packages"

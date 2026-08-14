@@ -17,7 +17,10 @@
 #
 # Optional env:
 #   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
-#                         Defaults to metadata.json beside the source SPK.
+#                         When explicit, this is the authoritative product
+#                         document: fields absent from it are intentionally
+#                         removed. Defaults to an overlay metadata.json beside
+#                         the source SPK for legacy callers.
 #   SOURCE_RUNTIME_CONTRACT_PATH
 #                         Raw committed RUNTIME-CONTRACT.json for a single
 #                         staged app. Defaults to RUNTIME-CONTRACT.json beside
@@ -190,15 +193,28 @@ PY
       rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
     fi
   fi
-
-  # 2) rewrite metadata.json IN THE SHADOW. Catalog-only presentation fields
-  #    survive, but committed source metadata wins for product-owned fields.
-  #    The signed SPK remains authoritative for version/packageId, and its full
-  #    sha256 is always recomputed here.
-  rm -f "$SHADOW/metadata.json"
-  if ! python3 - "$CAT_META" "$SOURCE_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" <<'PY'
+  if [[ -n "${SOURCE_METADATA_PATH:-}" ]]; then
+    read -r SOURCE_VERSION SOURCE_VERSION_NUMBER < <(python3 - "$SOURCE_META" <<'PY'
 import json, sys
-catalog, source, dst, ver, num, pkg_id, full_sha = sys.argv[1:8]
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+print(d.get("marketingVersion") or d.get("version") or "", d.get("versionNumber", ""))
+PY
+    )
+    if [[ "$SOURCE_VERSION" != "$NEW_VER" || "$SOURCE_VERSION_NUMBER" != "$NEW_NUM" ]]; then
+      fail "  explicit source metadata declares v${SOURCE_VERSION:-<empty>}/vN=${SOURCE_VERSION_NUMBER:-<empty>}, but staged SPK is v$NEW_VER/vN=$NEW_NUM (live entry untouched)"
+      rm -rf "$SHADOW"; FAILS=$((FAILS+1)); continue
+    fi
+  fi
+
+  # 2) rewrite metadata.json IN THE SHADOW. An explicitly selected committed
+  #    source document is authoritative, including intentional field deletion;
+  #    otherwise the legacy beside-the-SPK discovery remains an overlay so old
+  #    callers retain catalog-only presentation. The signed SPK remains
+  #    authoritative for version/packageId, and its full sha256 is recomputed.
+  rm -f "$SHADOW/metadata.json"
+  if ! python3 - "$CAT_META" "$SOURCE_META" "$SHADOW/metadata.json" "$NEW_VER" "$NEW_NUM" "${PKG_ID:-}" "$FULL_SHA" "${SOURCE_METADATA_PATH:+authoritative}" <<'PY'
+import json, sys
+catalog, source, dst, ver, num, pkg_id, full_sha, mode = sys.argv[1:9]
 d = json.load(open(catalog))
 try:
     with open(source) as f:
@@ -207,7 +223,10 @@ except FileNotFoundError:
     committed = {}
 if not isinstance(committed, dict):
     raise SystemExit("source metadata must be a JSON object")
-d.update(committed)
+if mode == "authoritative":
+    d = committed.copy()
+else:
+    d.update(committed)
 d["version"] = ver
 d["marketingVersion"] = ver
 d["versionNumber"] = int(num)

@@ -11,7 +11,7 @@ mkdir -p "$TMP/bin" "$TMP/catalog/screenshots"
 printf 'old-package\n' > "$TMP/catalog/app.spk"
 printf 'existing screenshot\n' > "$TMP/catalog/screenshots/store-only.png"
 cat > "$TMP/catalog/metadata.json" <<JSON
-{"appId":"$EXPECTED_APP","packageId":"00000000000000000000000000000000","version":"1.0.0","marketingVersion":"1.0.0","versionNumber":1,"license":"stale catalog license","screenshots":[{"url":"screenshots/store-only.png"}]}
+{"appId":"$EXPECTED_APP","packageId":"00000000000000000000000000000000","version":"1.0.0","marketingVersion":"1.0.0","versionNumber":1,"license":"stale catalog license","codeUrl":"https://stale.invalid/source","screenshots":[{"url":"screenshots/store-only.png"}]}
 JSON
 printf '{}\n' > "$TMP/catalog/RELEASE.json"
 printf 'new-package-for-another-app\n' > "$TMP/wrong.spk"
@@ -99,6 +99,7 @@ assert d["appId"] == sys.argv[2]
 assert d["name"] == "Committed Name"
 assert d["license"] == "MPL v3"
 assert d["screenshots"] == [{"url": "screenshots/store-only.png"}]
+assert d["codeUrl"] == "https://stale.invalid/source"
 assert d["version"] == "2.0.0" and d["versionNumber"] == 2
 assert d["packageId"] == "11111111111111111111111111111111"
 PY
@@ -125,8 +126,32 @@ python3 - "$TMP/catalog/metadata.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["name"] == "Explicit Metadata Name"
+assert "screenshots" not in d
+assert "codeUrl" not in d
 PY
-printf 'ok  stage accepts an explicit committed source metadata path\n'
+printf 'ok  explicit source metadata is authoritative, including deletions\n'
+
+cp "$TMP/explicit/product.json" "$TMP/explicit/stale-product.json"
+python3 - "$TMP/explicit/stale-product.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["version"] = d["marketingVersion"] = "1.9.0"
+d["versionNumber"] = 19
+open(p, "w").write(json.dumps(d) + "\n")
+PY
+metadata_before="$(sha256sum "$TMP/catalog/metadata.json" | awk '{print $1}')"
+set +e
+PATH="$TMP/bin:$PATH" RELEASE_JSON_STUB="$TMP/bin/release-json-stub" \
+  SOURCE_METADATA_PATH="$TMP/explicit/stale-product.json" \
+  "$ROOT/scripts/stage-into-catalog.sh" "$TMP/source/right.spk" "$TMP/catalog" \
+  >"$TMP/stale-source-output" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]] || { echo "stale source metadata was accepted" >&2; exit 1; }
+grep -q 'explicit source metadata declares v1.9.0/vN=19, but staged SPK is v2.0.0/vN=2' "$TMP/stale-source-output"
+[[ "$(sha256sum "$TMP/catalog/metadata.json" | awk '{print $1}')" == "$metadata_before" ]]
+printf 'ok  explicit metadata must belong to the staged app version\n'
 
 release_before="$(sha256sum "$TMP/catalog/RELEASE.json" | awk '{print $1}')"
 if ! PATH="$TMP/bin:$PATH" MELUSINA_APPHASH_BIN="$TMP/bin/apphash" \
@@ -162,7 +187,8 @@ python3 - "$TMP/catalog/metadata.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["name"] == "Explicit Metadata Name"
-assert d["screenshots"] == [{"url": "screenshots/store-only.png"}]
+assert "screenshots" not in d
+assert "codeUrl" not in d
 PY
 printf 'ok  stage rejects missing screenshots without changing the live entry\n'
 
@@ -200,6 +226,7 @@ import json, sys
 p = sys.argv[1]
 d = json.load(open(p))
 d["name"] = "Explicit Metadata Name"
+d.pop("screenshots", None)
 open(p, "w").write(json.dumps(d) + "\n")
 PY
 mkdir -p "$TMP/contract"

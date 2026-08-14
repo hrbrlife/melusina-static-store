@@ -384,19 +384,70 @@ def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out
     run(submit_args(context, receipt_out, stage_only=True))
 
 
-def executor_env() -> dict[str, str]:
-    members = env("MEL_RELEASE_SQUADS_MEMBERS", required=True)
+def member_keypair_paths() -> list[Path]:
+    """Resolve the configured quorum without ever copying key material.
+
+    The release-specific Squads helper consumes numbered absolute keypair
+    paths.  Operators may keep using the compact comma-separated
+    MEL_RELEASE_SQUADS_MEMBERS value; relative names resolve only against an
+    explicit TEST_WALLETS_DIR, never the process working directory.
+    """
+    names = [part.strip() for part in env("MEL_RELEASE_SQUADS_MEMBERS", required=True).split(",") if part.strip()]
+    if not names:
+        raise ProviderError("MEL_RELEASE_SQUADS_MEMBERS names no member keypairs")
+    root_text = env("TEST_WALLETS_DIR")
+    result: list[Path] = []
+    for name in names:
+        candidate = Path(name)
+        if not candidate.is_absolute():
+            if not root_text:
+                raise ProviderError("relative MEL_RELEASE_SQUADS_MEMBERS require TEST_WALLETS_DIR")
+            root = clean_abs(root_text, "TEST_WALLETS_DIR")
+            candidate = root / candidate
+        candidate = clean_abs(str(candidate), "MEL_RELEASE_SQUADS_MEMBERS entry")
+        if not candidate.is_file() or candidate.is_symlink():
+            raise ProviderError(f"Squads member keypair must be a regular non-symlink file: {candidate}")
+        result.append(candidate)
+    threshold = int(env("MEL_RELEASE_SQUADS_THRESHOLD", required=True))
+    if threshold < 1 or len(result) < threshold:
+        raise ProviderError(f"Squads threshold is {threshold} but only {len(result)} member keypairs were configured")
+    return result
+
+
+def register_executor_env() -> dict[str, str]:
+    result = {
+        "MEL_RELEASE_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
+        "MEL_RELEASE_SQUADS_MULTISIG": env("MEL_RELEASE_SQUADS_MULTISIG", required=True),
+        "MEL_RELEASE_NODE_MODULES": env(
+            "MEL_RELEASE_SQUADS_NODE_MODULES",
+            default="/home/user/Desktop/Melusina/melusina_solana_dev-license104/frontend-vite/node_modules",
+        ),
+    }
+    for index, path in enumerate(member_keypair_paths(), start=1):
+        result[f"MEL_RELEASE_MEMBER_KEYPAIR_{index}"] = str(path)
+    return result
+
+
+def generic_executor_env() -> dict[str, str]:
     return {
         "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
-        "SQUADS_MEMBER_KEYPAIRS": members,
-        "SQUADS_NODE_MODULES": env("MEL_RELEASE_SQUADS_NODE_MODULES", default="/home/user/Desktop/Melusina/deployer/scripts/node_modules"),
+        "MELUSINA_RPC_PRIMARY": env("MEL_RELEASE_RPC_URL", required=True),
+        "SQUADS_MEMBER_KEYPAIRS": ",".join(str(path) for path in member_keypair_paths()),
     }
 
 
-def executor() -> Path:
+def register_executor() -> Path:
+    default = MODULE / "scripts" / "mel-release-squads-register.mjs"
+    path = clean_abs(env("MEL_RELEASE_REGISTER_EXECUTOR", default=str(default)), "MEL_RELEASE_REGISTER_EXECUTOR")
+    if not path.is_file() or path.is_symlink():
+        raise ProviderError(f"MEL_RELEASE_REGISTER_EXECUTOR is not a regular file: {path}")
+    return path
+
+
+def generic_executor() -> Path:
     path = clean_abs(env("MEL_RELEASE_SQUADS_EXECUTOR", required=True), "MEL_RELEASE_SQUADS_EXECUTOR")
-    if not path.is_file():
-        raise ProviderError(f"MEL_RELEASE_SQUADS_EXECUTOR is not a file: {path}")
+    if not path.is_file() or path.is_symlink():
+        raise ProviderError(f"MEL_RELEASE_SQUADS_EXECUTOR is not a regular file: {path}")
     return path
 
 
@@ -414,11 +465,16 @@ def last_json(raw: str) -> dict[str, Any]:
 
 
 def next_index(multisig: str, vault: str) -> int:
-    raw = run(["node", str(executor()), "--print-next-index", "--multisig", multisig, "--vault", vault], extra_env=executor_env())
-    value = last_json(raw)
-    index = value.get("nextTransactionIndex")
-    if not isinstance(index, int) or index < 1:
-        raise ProviderError("Squads executor returned an invalid next transaction index")
+    del vault  # the helper reads the configured index-0 vault from ceremony state
+    if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig:
+        raise ProviderError("next-index multisig does not match configured governed authority")
+    raw = run(["node", str(register_executor()), "next-index"], extra_env=register_executor_env()).strip()
+    try:
+        index = int(raw)
+    except ValueError as exc:
+        raise ProviderError("release Squads helper returned an invalid next transaction index") from exc
+    if index < 1:
+        raise ProviderError("release Squads helper returned an invalid next transaction index")
     return index
 
 
@@ -479,18 +535,23 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
         raise ProviderError("prepared ceremony state lacks register_release_entry instruction")
     register_path = state_path.with_name("register-release-entry.ix.json")
     write_json(register_path, register_ix)
-    raw = run([
-        "node", str(executor()), str(register_path), "--propose-only", "--multisig", multisig, "--vault", vault,
-    ], extra_env=executor_env())
+    raw = run(["node", str(register_executor()), "propose", str(state_path)], extra_env=register_executor_env())
     result = last_json(raw)
-    if result.get("status") != "proposed" or result.get("transactionPda") != state.get("transactionPda"):
+    if (result.get("transactionPda") != state.get("transactionPda") or
+            result.get("proposalPda") != state.get("proposalPda") or
+            result.get("transactionIndex") != state.get("transactionIndex") or
+            not result.get("vaultTransactionCreateSignature") or
+            not result.get("proposalCreateSignature")):
         raise ProviderError("Squads proposal result does not bind prepared ceremony state")
     shutil.copyfile(release_path, release_out)
     write_json(receipt_out, {
         "schema": "melusina-register-proposal-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
         "transactionPda": state["transactionPda"], "multisig": multisig, "vault": vault,
         "instruction": "register_release_entry", "status": "Proposed", "proposalPda": result.get("proposalPda", ""),
-        "transactionSignatures": result.get("auditSigs", {}),
+        "transactionSignatures": {
+            "vaultTransactionCreate": result["vaultTransactionCreateSignature"],
+            "proposalCreate": result["proposalCreateSignature"],
+        },
     })
 
 
@@ -503,21 +564,15 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
     if not isinstance(ed_ix, dict):
         raise ProviderError("prepared ceremony state lacks Ed25519 instruction")
     already_registered = release_entry_exists(str(state["releaseEntryPda"]))
-    result: dict[str, Any] = {"auditSigs": {}}
+    result: dict[str, Any] = {"transactionSignatures": []}
     if not already_registered:
-        ed_path = Path(context["statePath"]).with_name("ed25519.ix.json")
-        write_json(ed_path, ed_ix)
-        raw = run([
-            "node", str(executor()), "--execute-existing", str(state["transactionIndex"]), "--pre-execute-ix", str(ed_path),
-            "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True),
-        ], extra_env=executor_env())
+        raw = run(["node", str(register_executor()), "approve-execute", str(context["statePath"])], extra_env=register_executor_env())
         result = last_json(raw)
-        if result.get("status") != "executed":
+        if result.get("alreadyExecuted") is not False or not result.get("executeSignature") or not result.get("transactionSignatures"):
             raise ProviderError("Squads did not execute the registered proposal")
     finalize_release(context)
     shutil.copyfile(context["releasePath"], final_release_out)
-    signatures = [v for v in result.get("auditSigs", {}).values() if isinstance(v, str) and v]
-    signatures.extend(v.get("signature") for v in result.get("auditSigs", {}).get("approvals", []) if isinstance(v, dict) and isinstance(v.get("signature"), str))
+    signatures = [value for value in result.get("transactionSignatures", []) if isinstance(value, str) and value]
     write_json(receipt_out, {
         "schema": "melusina-register-release-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
         "releaseHash": state["releaseHash"], "status": "Active", "alreadyRegistered": already_registered, "transactionSignatures": signatures,
@@ -615,7 +670,7 @@ def revoke(pda: str, receipt_out: Path) -> None:
             {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
         ], "data": discriminator,
     })
-    result = last_json(run(["node", str(executor()), str(ix_path), "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True)], extra_env=executor_env()))
+    result = last_json(run(["node", str(generic_executor()), str(ix_path), "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True)], extra_env=generic_executor_env()))
     if result.get("status") != "executed":
         raise ProviderError("stale ReleaseEntry revoke did not execute")
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})

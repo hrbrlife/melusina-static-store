@@ -9,13 +9,21 @@ package main
 //	              lands -> ReleaseEntry Active (the ONE governed authority act).
 //	PROMOTED   -> promote the store catalog pointer for the NEW bytes (no gap:
 //	              the prior release is still Active + on-chain).
-//	GENERATED  -> submit the single-component signed DesiredGeneration and
-//	              read-back-verify it via componentrelease.Verify.
 //	REVOKED    -> complete the global-retirement boundary. Normal target-scoped
 //	              approval retains global history; explicit global revocation is
 //	              a separately opted-in operation.
 //	VERIFIED   -> this target serves the new hash and that hash is Active.
 //	DONE       -> immutable terminal receipt.
+//
+// GENERATED is RETIRED. It submitted a single-component signed DesiredGeneration
+// naming the app, but apps are not generation components: the host update
+// controller has no apply strategy for a Sandstorm app, so nothing ever consumed
+// that entry, while its presence let one app's catalog pointer take the whole
+// estate's shell-update endpoints to HTTP 503 (2026-08-14, MiniGit 0.2.11 vs
+// generation 174). An app release is complete when its bytes are staged, its
+// ReleaseEntry is Active, and the store's per-app signed catalog pointer selects
+// it. The state constant survives in wal.go so a WAL already parked at GENERATED
+// still resumes, straight into the revoke boundary.
 //
 // When global retirement is explicitly enabled, its Active->Revoked transition
 // is strictly after PROMOTED, so the served release is always Active-backed.
@@ -52,9 +60,11 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 		return "", fmt.Errorf("app %s is at state %q; approve requires a completed publish (>= PROPOSED)", app.AppID, rec.State)
 	}
 
-	// Re-validate the immutable candidate + its staging/proposal proofs.
-	cand, err := revalidateCandidate(c, app, &rec)
-	if err != nil {
+	// Re-validate the immutable candidate + its staging/proposal proofs. Nothing
+	// downstream reads the receipt any more — the generation submit was its only
+	// consumer — but the re-validation itself is the point: approve refuses to
+	// advance a WAL whose candidate, staged bytes, or Squads proposal have moved.
+	if _, err := revalidateCandidate(c, app, &rec); err != nil {
 		return "", fmt.Errorf("candidate re-validation: %w", err)
 	}
 
@@ -74,17 +84,10 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 			if err := advanceWAL(walPath, &rec, statePromoted); err != nil {
 				return "", err
 			}
-		case statePromoted:
-			gid, ghash, err := submitGeneration(c, cand)
-			if err != nil {
-				return "", fmt.Errorf("generation promote: %w", err)
-			}
-			rec.GenerationID = gid
-			rec.GenerationHash = ghash
-			if err := advanceWAL(walPath, &rec, stateGenerated); err != nil {
-				return "", err
-			}
-		case stateGenerated:
+		// statePromoted goes straight to the revoke boundary. stateGenerated is
+		// accepted alongside it only so a WAL written before GENERATED was retired
+		// resumes instead of reporting a corrupt state.
+		case statePromoted, stateGenerated:
 			if err := ensureOldRevoked(c, prov, walPath, &rec); err != nil {
 				return "", fmt.Errorf("revoke-stale: %w", err)
 			}

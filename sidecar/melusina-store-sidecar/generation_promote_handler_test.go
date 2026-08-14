@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -113,276 +114,39 @@ func TestVerifyComponentReleaseOnChainFailClosed(t *testing.T) {
 	}
 }
 
-func TestVerifyAppComponentOnChain(t *testing.T) {
-	cfg, _ := testConfig(t)
-	cfg.Domain = "bazaar.melusina-os.org"
-	cfg.PublicBaseURL = "https://bazaar.melusina-os.org"
-	f := buildValidFixture(t, cfg, testMaster)
-	m := newMockChainReader()
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive}
-	dist := t.TempDir()
-	spkSum := sha256.Sum256(f.spk)
-	packageID := hex.EncodeToString(spkSum[:])[:32]
-	dir := filepath.Join(dist, "packages")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
+// TestAppComponentIsRefusedOnChainAndSkippedOnServeSurface replaces the former
+// TestVerifyAppComponentOnChain. Apps are no longer generation components, so
+// there is no app projection left for a generation to re-verify: the promote
+// path refuses an app outright, and the public serve surface treats an app entry
+// carried by a generation signed before the change as inert.
+func TestAppComponentIsRefusedOnChainAndSkippedOnServeSurface(t *testing.T) {
+	const origin = "https://bazaar.melusina-os.org"
+	svc := &publishService{cfg: Config{DistDir: t.TempDir(), Domain: "bazaar.melusina-os.org", PublicBaseURL: origin}}
+	app := appComponentFixture("test-app", "1.0.0", origin)
+
+	// Promote side: refused by name, carrying the reason.
+	err := svc.verifyComponentReleaseOnChain(context.Background(), app)
+	if err == nil {
+		t.Fatal("app component accepted into a generation promote")
 	}
-	if err := os.WriteFile(filepath.Join(dir, packageID), f.spk, 0o644); err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, componentrelease.ErrAppNotAGenerationComponent) {
+		t.Fatalf("app refusal is not the app-class refusal: %v", err)
 	}
-	appID := "test-app"
-	indexBody := []byte(`{"apps":[{"appId":"` + appID + `","packageId":"` + packageID + `"}]}`)
-	if err := os.MkdirAll(filepath.Join(dist, "apps", "pointers"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(dist, "signatures", appID), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), f.metadata, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	indexHash := sha256.Sum256(indexBody)
-	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
-	pointer := AppCatalogPointer{
-		Schema:            appCatalogPointerSchema,
-		AppID:             appID,
-		PackageID:         packageID,
-		Version:           f.rel.Version,
-		AppHash:           f.rel.AppHash,
-		ReleaseHash:       f.rel.ReleaseHash,
-		StageID:           strings.Repeat("1", 64),
-		CatalogSHA256:     hex.EncodeToString(indexHash[:]),
-		ServingDomainHash: hex.EncodeToString(domainHash[:]),
-		PublishedAt:       1,
-	}
-	message, err := appCatalogPointerMessage(pointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
-	pointerBody, err := json.Marshal(pointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	c := componentrelease.ComponentRelease{
-		ComponentID: appID, ComponentClass: componentrelease.ClassApp, Version: f.rel.Version,
-		SHA256: hex.EncodeToString(spkSum[:]), ContentSHA256: f.rel.AppHash, SizeBytes: int64(len(f.spk)),
-		ArtifactName: packageID, BundleURL: cfg.PublicBaseURL + "/packages/" + packageID,
-		ReleaseHash: f.rel.ReleaseHash, StageID: pointer.StageID,
-		Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthorityReleaseV2, Program: programID.Base58(), MasterNftMint: testMaster, ReleasePDA: f.relPDA},
-	}
-	svc := &publishService{cfg: Config{DistDir: dist, Domain: cfg.Domain, PublicBaseURL: cfg.PublicBaseURL}, operator: op, cr: m}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
-		t.Fatalf("valid app component refused: %v", err)
-	}
-	// The desired-generation serve surface requires the whole app projection,
-	// not merely a signed document: package + pointer + index must all remain
-	// present and byte-bound while the generation is advertised.
-	doc := componentrelease.DesiredGeneration{Components: []componentrelease.ComponentRelease{c}}
+
+	// Serve side: NOTHING for this app exists anywhere under dist — no package, no
+	// pointer, no index. Under the old whole-generation gate that was a guaranteed
+	// 503. It must now be inert.
+	doc := componentrelease.DesiredGeneration{Components: []componentrelease.ComponentRelease{app}}
 	if err := svc.verifyDesiredGenerationServeSurface(doc); err != nil {
-		t.Fatalf("valid app projection refused by desired-generation serve surface: %v", err)
+		t.Fatalf("legacy app entry gated the serve surface: %v", err)
 	}
-	if err := os.Remove(filepath.Join(dist, "apps", "pointers", appID+".json")); err != nil {
-		t.Fatal(err)
-	}
+
+	// MUTATION CONTROL: the same surface still fails closed for a HOST component
+	// whose served bytes are absent, so the skip above is app-scoped and the gate
+	// has been narrowed rather than disabled.
+	doc.Components = append(doc.Components, sampleShellGeneration().Components[0])
 	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
-		t.Fatal("desired generation accepted an app with no signed pointer")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dist, "apps", "index.json")); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
-		t.Fatal("desired generation accepted an app with no catalog index")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dist, "packages", packageID)); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyDesiredGenerationServeSurface(doc); err == nil {
-		t.Fatal("desired generation accepted an app with no public package")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "packages", packageID), f.spk, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyDesiredGenerationServeSurface(doc); err != nil {
-		t.Fatalf("restored app projection refused by desired-generation serve surface: %v", err)
-	}
-	// A generation-aware catalog serves only its immutable current snapshot.
-	// Make the legacy flat pointer disappear after bootstrapping that snapshot;
-	// the verification must still succeed, or a freshly published app can never
-	// be promoted even though consumers can already read its signed pointer.
-	if err := os.MkdirAll(filepath.Join(dist, "attest"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	generations := AppCatalogGenerationStore{Root: t.TempDir()}
-	// Bootstrap seals immutable generations mode 0555/0444. Restore test-owned
-	// permissions before testing.T cleans its temporary directory; production
-	// never unseals a committed generation.
-	defer func() {
-		_ = filepath.Walk(generations.Root, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info == nil {
-				return nil
-			}
-			if info.IsDir() {
-				return os.Chmod(path, 0o755)
-			}
-			return os.Chmod(path, 0o644)
-		})
-	}()
-	if _, err := generations.BootstrapFromFlat(dist, nil); err != nil {
-		t.Fatalf("bootstrap immutable app catalog: %v", err)
-	}
-	svc.catalogGenerations = generations
-	pointerPath := filepath.Join(dist, "apps", "pointers", appID+".json")
-	if err := os.Remove(pointerPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
-		t.Fatalf("immutable current catalog was not used for app verification: %v", err)
-	}
-	if err := os.WriteFile(pointerPath, pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	svc.catalogGenerations = AppCatalogGenerationStore{}
-	// The publisher must bind the descriptors it reads, not merely Lstat a
-	// public-tree path and then follow a later attacker-installed symlink.
-	outside := t.TempDir()
-	outsidePackage := filepath.Join(outside, "package.spk")
-	if err := os.WriteFile(outsidePackage, f.spk, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	packagePath := filepath.Join(dist, "packages", packageID)
-	if err := os.Remove(packagePath); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(outsidePackage, packagePath); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
-		t.Fatal("accepted app package through a final-path symlink")
-	}
-	if err := os.Remove(packagePath); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(packagePath, f.spk, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	outsidePointer := filepath.Join(outside, "pointer.json")
-	if err := os.WriteFile(outsidePointer, pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(pointerPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(outsidePointer, pointerPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
-		t.Fatal("accepted app catalog pointer through a final-path symlink")
-	}
-	if err := os.Remove(pointerPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(pointerPath, pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// The release_v2 ContentSHA256 is the tree hash over the exact pair
-	// {app.spk, metadata.json}. A signed catalog pointer must never be able to
-	// pair an arbitrary new SPK with an old, otherwise-valid ReleaseEntry.
-	forgedSPK := []byte("arbitrary unpinned app bytes")
-	forgedSum := sha256.Sum256(forgedSPK)
-	forgedPackageID := hex.EncodeToString(forgedSum[:])[:32]
-	if err := os.WriteFile(filepath.Join(dist, "packages", forgedPackageID), forgedSPK, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	forgedIndex := []byte(`{"apps":[{"appId":"` + appID + `","packageId":"` + forgedPackageID + `"}]}`)
-	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), forgedIndex, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	forgedPointer := pointer
-	forgedPointer.PackageID = forgedPackageID
-	forgedIndexHash := sha256.Sum256(forgedIndex)
-	forgedPointer.CatalogSHA256 = hex.EncodeToString(forgedIndexHash[:])
-	message, err = appCatalogPointerMessage(forgedPointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	forgedPointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
-	forgedPointerBody, err := json.Marshal(forgedPointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), forgedPointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	forged := c
-	forged.ArtifactName = forgedPackageID
-	forged.BundleURL = cfg.PublicBaseURL + "/packages/" + forgedPackageID
-	forged.SHA256 = hex.EncodeToString(forgedSum[:])
-	forged.SizeBytes = int64(len(forgedSPK))
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), forged); err == nil {
-		t.Fatal("accepted arbitrary served SPK under a valid but different ReleaseEntry tree hash")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "index.json"), indexBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	forgedMetadata := []byte(`{"appTitle":"Forged metadata"}`)
-	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), forgedMetadata, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
-		t.Fatal("accepted valid served SPK with metadata that does not match the ReleaseEntry tree hash")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "signatures", appID, "metadata.json"), f.metadata, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// A valid ReleaseEntry plus a separately signed pointer to another package is
-	// still not this component. The app selection is part of the authority.
-	wrongPointer := pointer
-	wrongPointer.PackageID = strings.Repeat("0", 32)
-	message, err = appCatalogPointerMessage(wrongPointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wrongPointer.OperatorSignature = primitives.EncodeBase58(op.Sign(message))
-	wrongPointerBody, err := json.Marshal(wrongPointer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), wrongPointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil {
-		t.Fatal("accepted app ReleaseEntry with signed pointer to a different package")
-	}
-	if err := os.WriteFile(filepath.Join(dist, "apps", "pointers", appID+".json"), pointerBody, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	for _, mutate := range []func(*componentrelease.ComponentRelease){
-		func(x *componentrelease.ComponentRelease) { x.Chain.ReleasePDA = testProg },
-		func(x *componentrelease.ComponentRelease) { x.ContentSHA256 = strings.Repeat("0", 64) },
-		func(x *componentrelease.ComponentRelease) { x.Chain.Program = testMaster },
-	} {
-		bad := c
-		mutate(&bad)
-		if err := svc.verifyComponentReleaseOnChain(context.Background(), bad); err == nil {
-			t.Fatal("accepted forged app authority")
-		}
+		t.Fatal("serve surface accepted a host component with no served bytes")
 	}
 }
 

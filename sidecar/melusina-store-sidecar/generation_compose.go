@@ -44,8 +44,10 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 // composeNextGeneration deterministically assembles the UNSIGNED next desired
 // generation from the current one (nil => genesis) and the component updates the
 // publisher has already built + on-chain-sealed + staged. It:
+//   - refuses any app-class update outright (apps are not generation members);
 //   - mints generationId = current+1 (1 at genesis) and previousGeneration=current;
-//   - takes the id set = union(current, updates), each id appearing once;
+//   - takes the id set = union(current, updates), each id appearing once, MINUS
+//     any app component the current generation still carries;
 //   - for an updated id uses the update entry, minting a version if it is empty;
 //   - for an unchanged id carries the current entry forward verbatim;
 //   - on an UPDATE generation, preserves an explicitly supplied rollback floor
@@ -59,13 +61,28 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 // The result is NOT signed and NOT promoted — the store operator signs it and the
 // promote step swaps it under generationCAS.
 func composeNextGeneration(current *componentrelease.DesiredGeneration, policy GenerationPolicy, signedAtUnix int64, updates []componentrelease.ComponentRelease) (componentrelease.DesiredGeneration, error) {
+	// A generation is host-only. An app offered as an update is refused here, at
+	// the deterministic engine, so no signing path can be reached with one.
+	if err := componentrelease.RejectAppComponents(updates); err != nil {
+		return componentrelease.DesiredGeneration{}, err
+	}
+
 	var genID, prevGen uint64 = 1, 0
 	curByID := make(map[string]componentrelease.ComponentRelease)
 	var curOrder []string
+	droppedApps := make(map[string]struct{})
 	if current != nil {
 		genID = current.GenerationID + 1
 		prevGen = current.GenerationID
 		for _, c := range current.Components {
+			// Carry-forward is where a generation signed before apps were retired
+			// would otherwise preserve its app entries verbatim and keep minting
+			// successors that still name them. Drop them instead: the next
+			// generation is the migration, and no separate rewrite is needed.
+			if componentrelease.IsAppComponent(c) {
+				droppedApps[c.ComponentID] = struct{}{}
+				continue
+			}
 			curByID[c.ComponentID] = c
 			curOrder = append(curOrder, c.ComponentID)
 		}
@@ -129,6 +146,20 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 			}
 		}
 		components = append(components, c)
+	}
+
+	// Dropping an app must never silently rewrite the dependency graph. If a
+	// retained host component still declares a requires[] edge to one, refuse and
+	// name both sides: that edge is a real modelling error somebody has to fix,
+	// not something this composer may quietly delete.
+	if len(droppedApps) > 0 {
+		for _, c := range components {
+			for _, dep := range c.Requires {
+				if _, dropped := droppedApps[dep.ComponentID]; dropped {
+					return componentrelease.DesiredGeneration{}, fmt.Errorf("component %s requires app %s, which is no longer a generation component: remove the dependency (apps are served through their own signed catalog pointer)", c.ComponentID, dep.ComponentID)
+				}
+			}
+		}
 	}
 
 	return componentrelease.DesiredGeneration{

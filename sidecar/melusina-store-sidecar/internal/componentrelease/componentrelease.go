@@ -74,14 +74,63 @@ var (
 // Component classes select the ON-CHAIN AUTHORITY model a consumer verifies; a
 // class is NOT an apply strategy (that is the registry's ApplyKind, chosen
 // locally). shell => InstallerReleaseEntry; sidecar => SidecarIdentityEntry +
-// approval cascade; app => ReleaseEntry; data => a separately-versioned data
-// artifact riding a sidecar/installer authority (e.g. the OpenSanctions dataset).
+// approval cascade; data => a separately-versioned data artifact riding a
+// sidecar/installer authority (e.g. the OpenSanctions dataset).
+//
+// ClassApp is RETIRED as a generation member — see ErrAppNotAGenerationComponent.
+// It remains defined because generations signed before that retirement name app
+// components and must stay readable.
 const (
 	ClassShell   = "shell"
 	ClassSidecar = "sidecar"
 	ClassApp     = "app"
 	ClassData    = "data"
 )
+
+// ── apps are not generation components ───────────────────────────────────────
+//
+// A Sandstorm app is served through its OWN per-app operator-signed catalog
+// pointer (/apps/pointers/<appId>.json) plus its on-chain ReleaseEntry, and the
+// host update controller has NO apply strategy for one: none of the six
+// ApplyKinds in registry.go installs a Sandstorm app, so ResolveComponent could
+// only ever refuse it. Naming an app in a DesiredGeneration was therefore pure
+// coupling — it bought no attestation the app did not already carry, and it made
+// every host update hostage to every app's catalog pointer.
+//
+// It cost an estate-wide outage. On 2026-08-14 publishing MiniGit 0.2.11 moved
+// that app's signed pointer; generation 174 still named 0.2.10; the whole-
+// generation serve-surface gate re-checked every component and returned on the
+// first failure, so BOTH /update/generation.json and /update/manifest.json
+// answered HTTP 503 across the estate while /apps/index.json served perfectly.
+//
+// ClassApp stays a RECOGNISED class in validClass on purpose. The operator
+// signature over an already-published generation covers its app entries byte for
+// byte; a structural validator that rejected the class would make every
+// historical generation fail Verify — the public surface would stay 503 and the
+// promote path could never even read the CAS floor it needs to publish a
+// successor. Reading history stays possible; ORIGINATING an app component does
+// not. RejectAppComponents is the submission boundary; the composer drops app
+// entries on carry-forward so the next generation is host-only.
+var ErrAppNotAGenerationComponent = errors.New("apps are not DesiredGeneration components: a Sandstorm app is served through its own per-app operator-signed catalog pointer and its on-chain ReleaseEntry, and no host apply strategy exists for one — publish it through the app catalog path and leave generations to host components (shell, sidecar, data)")
+
+// IsAppComponent reports whether c is an app entry, by EITHER of the two marks
+// that identify one: the app class, or the release_v2 (ReleaseEntry) authority
+// that only an app may ride. Checking both means a component cannot dodge the
+// boundary by carrying one mark and not the other.
+func IsAppComponent(c ComponentRelease) bool {
+	return c.ComponentClass == ClassApp || c.Chain.Kind == AuthorityReleaseV2
+}
+
+// RejectAppComponents is the submission boundary: it refuses, by name, any
+// app-class component offered for inclusion in a new generation.
+func RejectAppComponents(components []ComponentRelease) error {
+	for _, c := range components {
+		if IsAppComponent(c) {
+			return fmt.Errorf("component %s: %w", c.ComponentID, ErrAppNotAGenerationComponent)
+		}
+	}
+	return nil
+}
 
 // On-chain authority kinds.
 //   - installer_release => InstallerReleaseEntry PDA (["installer_release",
@@ -410,6 +459,12 @@ func safeComponentID(s string) bool {
 	return s[0] != '.' && !strings.Contains(s, "..")
 }
 
+// validClass reports whether a class is STRUCTURALLY known. ClassApp is included
+// deliberately: this predicate runs inside validateUnsigned, which Verify uses on
+// already-signed documents, and generations signed before apps were retired from
+// the generation layer name app components. Rejecting the class here would make
+// those signed bytes unverifiable rather than merely obsolete. Origination is
+// refused at the submission boundary instead — see ErrAppNotAGenerationComponent.
 func validClass(c string) bool {
 	switch c {
 	case ClassShell, ClassSidecar, ClassApp, ClassData:

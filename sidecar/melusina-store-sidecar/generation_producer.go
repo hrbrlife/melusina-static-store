@@ -217,26 +217,25 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 // This is intentionally narrower than verifyComponentReleaseOnChain: promotion
 // already performs the live authority re-verification, and the public GET path
 // must additionally catch projection drift even when the chain remains healthy.
-// Apps have a three-part public contract (package, signed pointer, and index);
-// every other component has a release bundle contract. Any missing or mismatched
+// Every HOST component has a release bundle contract; any missing or mismatched
 // member makes /update/generation.json unavailable rather than handing a client
 // a signed-but-uninstallable desired state.
+//
+// App components are skipped. They are not part of this promise and never were
+// installable from it — no ApplyKind exists for a Sandstorm app, so a host could
+// never have applied one. An app's real contract is its own per-app signed
+// pointer plus its on-chain ReleaseEntry, checked on the app catalog surface.
+// The `continue` below is what retires the outage class: before it, publishing an
+// app moved that app's pointer, generation 174 stopped binding it, and this
+// first-failure loop took BOTH shell-update endpoints to 503 estate-wide.
+// Generations signed before apps were retired still name them; their entries are
+// inert and must never gate a host update.
 func (s *publishService) verifyDesiredGenerationServeSurface(doc componentrelease.DesiredGeneration) error {
 	for _, component := range doc.Components {
-		var err error
-		switch component.ComponentClass {
-		case componentrelease.ClassApp:
-			if component.Chain.Kind != componentrelease.AuthorityReleaseV2 {
-				return fmt.Errorf("component %s: app class does not carry release_v2 authority", component.ComponentID)
-			}
-			err = s.verifyAppComponentServedBytes(component)
-		default:
-			if component.Chain.Kind == componentrelease.AuthorityReleaseV2 {
-				return fmt.Errorf("component %s: release_v2 authority is only valid for app class", component.ComponentID)
-			}
-			err = s.verifyComponentServedBytes(component)
+		if componentrelease.IsAppComponent(component) {
+			continue
 		}
-		if err != nil {
+		if err := s.verifyComponentServedBytes(component); err != nil {
 			return err
 		}
 	}

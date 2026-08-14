@@ -209,12 +209,26 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 		return deps.State.Store(ctx, state)
 	}
 
+	// A DesiredGeneration is store-wide, while this controller is installed on
+	// one host with a root-owned action registry.  Components absent from that
+	// registry are not a local failure and must never block a different host's
+	// controller.  Select only this host's allowlisted closure; a selected
+	// component may not depend on a component the same host cannot manage.
+	localGeneration, err := selectLocalGeneration(vg.Doc, deps.Apply.Registry)
+	if err != nil {
+		return fmt.Errorf("select local generation %d: %w", vg.Doc.GenerationID, err)
+	}
+	if len(localGeneration.Components) == 0 {
+		state.Pending = cursorFromGeneration(vg)
+		return deps.State.Store(ctx, state)
+	}
+
 	// ON: apply the generation. ApplyGeneration runs the full-set chain preflight,
 	// then per component Stage->Verify->BeforeMutation(policy+chain re-read)->apply->
 	// restart->Probe->RuntimeGate->healthy-unstable. Completion (LastCommitted) is
 	// deferred to a LATER tick's deep-stable service — the first apply never seals.
 	applyDeps := deps.applyDepsFor(vg, trigger, policy, now)
-	outcomes, err := ApplyGeneration(ctx, vg.Doc, applyDeps)
+	outcomes, err := ApplyGeneration(ctx, localGeneration, applyDeps)
 	if err != nil {
 		if generationRolledBack(outcomes) {
 			recordTerminalCursor(&state, cursorFromGeneration(vg))
@@ -225,6 +239,38 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 	}
 	state.Pending = cursorFromGeneration(vg)
 	return deps.State.Store(ctx, state)
+}
+
+// selectLocalGeneration projects a store-wide signed generation onto one
+// controller's root-owned component registry.  It is deliberately a projection,
+// not a rewrite: all signature/cursor checks remain bound to the original
+// generation document, while ApplyGeneration sees only host actions this machine
+// is explicitly allowed to perform.
+func selectLocalGeneration(gen componentrelease.DesiredGeneration, registry componentrelease.ComponentRegistry) (componentrelease.DesiredGeneration, error) {
+	local := gen
+	local.Components = nil
+	selected := make(map[string]struct{}, len(registry.Components))
+	for _, component := range gen.Components {
+		if _, ok := registry.Components[component.ComponentID]; !ok {
+			continue
+		}
+		// Registry validation already refuses apps; keep this explicit so a
+		// malformed in-memory test/config can never turn an app pointer into a
+		// host action.
+		if componentrelease.IsAppComponent(component) {
+			return componentrelease.DesiredGeneration{}, fmt.Errorf("registry selected app component %s", component.ComponentID)
+		}
+		local.Components = append(local.Components, component)
+		selected[component.ComponentID] = struct{}{}
+	}
+	for _, component := range local.Components {
+		for _, dependency := range component.Requires {
+			if _, ok := selected[dependency.ComponentID]; !ok {
+				return componentrelease.DesiredGeneration{}, fmt.Errorf("local component %s depends on unmanaged component %s", component.ComponentID, dependency.ComponentID)
+			}
+		}
+	}
+	return local, nil
 }
 
 // applyDepsFor wires the poll loop's gates into the coordinator: BeforeMutation is

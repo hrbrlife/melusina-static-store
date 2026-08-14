@@ -289,15 +289,15 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// chain-verified current DesiredGeneration; it never accepts artifact facts.
 	mux.HandleFunc("/publish/legacy-manifest-bootstrap", svc.handleLegacyManifestBootstrap)
 
-	// SIGNED UPDATE MANIFEST (B2-04): the operator-signed Sandstorm-shell update
-	// ── DESIRED-GENERATION producer (GET /update/generation.json) ──────────────
+	// ── DESIRED-GENERATION producers ──────────────────────────────────────────
 	// The operator-signed typed desired-generation document the external host
 	// update controller fetches + verifies before applying. Registered as an EXACT
 	// route so it beats the catch-all FileServer. Serves the exact persisted signed
 	// bytes; fail-closed 503 until a generation is published and verifies under the
-	// store operator key + storeId. Greenfield replacement for the deleted
-	// shell-only /update/manifest.json — no compatibility branch.
+	// store operator key + storeId. The legacy manifest is generated from that same
+	// verified document on every request, never maintained as a second pointer.
 	mux.HandleFunc("/update/generation.json", svc.handleDesiredGeneration)
+	mux.HandleFunc("/update/manifest.json", svc.handleLegacyManifest)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle

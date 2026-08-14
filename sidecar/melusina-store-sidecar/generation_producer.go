@@ -138,46 +138,53 @@ func sameOrigin(a, b string) bool {
 	return strings.TrimRight(a, "/") == strings.TrimRight(b, "/") && a != ""
 }
 
-// handleDesiredGeneration serves GET /update/generation.json: the operator-signed
-// typed desired-generation document the external host update controller fetches
-// and verifies before applying. FAIL-CLOSED (Inv 5): no operator identity to
-// attest, no persisted generation, or a generation that does not verify under
-// THIS store's operator key + storeId all return a 5xx rather than an
-// unverifiable or foreign-signed document. There is deliberately no env bypass
-// (mirrors the /publish stance). Replaces the deleted shell-only
-// /update/manifest.json (greenfield, no compatibility branch).
-func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+// loadVerifiedDesiredGeneration is the single trust path behind both the typed
+// generation feed and its legacy Shell-only projection. Keeping signature,
+// store identity, and origin validation here prevents compatibility clients
+// from observing a weaker or independently-maintained release pointer.
+func (s *publishService) loadVerifiedDesiredGeneration() (componentrelease.DesiredGeneration, []byte, error) {
 	pub, err := operatorSignPublicKey(s.operator)
 	if err != nil {
-		http.Error(w, "generation gate not initialized (no operator identity to attest)", http.StatusServiceUnavailable)
-		return
+		return componentrelease.DesiredGeneration{}, nil, errors.New("no operator identity to attest")
 	}
 	doc, raw, err := loadCurrentGeneration(s.cfg.DistDir)
 	if err != nil {
-		http.Error(w, "check=load_generation: "+err.Error(), http.StatusServiceUnavailable)
-		return
+		return componentrelease.DesiredGeneration{}, nil, fmt.Errorf("load_generation: %w", err)
 	}
 	// Defense-in-depth: never relay a generation that does not verify under this
 	// store's own operator key + destination. A tampered or foreign-signed file
 	// dropped onto the served tree is refused, not served.
 	if err := componentrelease.Verify(pub, s.cfg.StoreID, doc); err != nil {
-		http.Error(w, "check=verify_generation: "+err.Error(), http.StatusServiceUnavailable)
-		return
+		return componentrelease.DesiredGeneration{}, nil, fmt.Errorf("verify_generation: %w", err)
 	}
 	// Origin pin: even a validly-operator-signed generation must advertise THIS
 	// store's configured public origin — the served bundle host is the store's own
 	// bazaar, never a foreign origin. Fail-closed if the store has no configured
 	// origin to pin against.
 	if s.cfg.PublicBaseURL == "" {
-		http.Error(w, "generation gate not initialized (no public_base_url to pin the origin)", http.StatusServiceUnavailable)
-		return
+		return componentrelease.DesiredGeneration{}, nil, errors.New("no public_base_url to pin the origin")
 	}
 	if !sameOrigin(doc.BundleOrigin, s.cfg.PublicBaseURL) {
-		http.Error(w, "check=origin_pin: generation bundleOrigin does not match this store's public_base_url", http.StatusServiceUnavailable)
+		return componentrelease.DesiredGeneration{}, nil, errors.New("origin_pin: generation bundleOrigin does not match this store's public_base_url")
+	}
+	return doc, raw, nil
+}
+
+// handleDesiredGeneration serves GET /update/generation.json: the operator-signed
+// typed desired-generation document the external host update controller fetches
+// and verifies before applying. FAIL-CLOSED (Inv 5): no operator identity to
+// attest, no persisted generation, or a generation that does not verify under
+// THIS store's operator key + storeId all return a 5xx rather than an
+// unverifiable or foreign-signed document. There is deliberately no env bypass
+// (mirrors the /publish stance).
+func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	doc, raw, err := s.loadVerifiedDesiredGeneration()
+	if err != nil {
+		http.Error(w, "check=generation: "+err.Error(), http.StatusServiceUnavailable)
 		return
 	}
 	// The generation signature says what this store intends to serve; it is not
@@ -194,6 +201,7 @@ func (s *publishService) handleDesiredGeneration(w http.ResponseWriter, r *http.
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodHead {
 		w.WriteHeader(http.StatusOK)
 		return

@@ -87,9 +87,12 @@ version selector.
 
 ---
 
-## 3. CURRENT (shell-only) vs REQUIRED (desired-generation)
+## 3. Canonical desired generation and legacy Shell projection
 
-The live store serves `GET /update/manifest.json` — 8 fields, single component:
+`GET /update/generation.json` is the only persisted release pointer. For
+installed Shells that still consume the older API, the Store also serves
+`GET /update/manifest.json` as an operator-signed projection of that current
+generation's `sandstorm-shell` component — 8 fields, single component:
 
 ```
 build, version, channel, tarball, sha256, size, bundle_url, signature
@@ -111,9 +114,12 @@ build, version, channel, tarball, sha256, size, bundle_url, signature
 | — | `components[].previousSha256/previousVersion` | **NEW** (per-component rollback floor) |
 | — | `components[].requires[]` | **NEW** (dependency ordering) |
 
-The shell-only manifest producer (`update_manifest.go`) and its unsigned
-descriptor (`update/shell-release.json`) are **deleted in the same change** —
-no compatibility branch (greenfield doctrine).
+The legacy document is derived and signed on each request after the same
+generation signature, store identity, origin, and served-byte checks. It is not
+loaded from `dist/update/manifest.json`; therefore promotion cannot advance the
+canonical generation while leaving legacy clients on a stale build. The old
+independent producer (`update_manifest.go`) and unsigned descriptor
+(`update/shell-release.json`) remain deleted.
 
 ---
 

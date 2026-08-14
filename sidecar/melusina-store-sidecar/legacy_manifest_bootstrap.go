@@ -1,12 +1,10 @@
 package main
 
-// A deliberately narrow one-time bridge from the legacy shell updater to the
-// signed DesiredGeneration protocol.  It exists only because deployed build-62
-// hosts still read /update/manifest.json while build-63 is the first consumer
-// of /update/generation.json.  The request chooses a generation number, not a
-// bundle: the store verifies the persisted signed generation, re-verifies its
-// InstallerReleaseEntry and served bytes, then derives and operator-signs the
-// legacy projection atomically.
+// Compatibility support for shell updaters that still read
+// /update/manifest.json. The public GET is derived directly from the current
+// signed DesiredGeneration, so generation.json remains the only release
+// pointer. The authenticated bootstrap endpoint remains as a repair tool for
+// older sidecar binaries that still serve the compatibility file statically.
 
 import (
 	"bytes"
@@ -94,6 +92,48 @@ func legacyManifestReplacementAllowed(prior []byte, next legacyManifest, operato
 	}
 	sig, err := base64.StdEncoding.DecodeString(old.Signature)
 	return err != nil || !ed25519.Verify(operator, canonical, sig)
+}
+
+// handleLegacyManifest serves a signed Shell-only view of the canonical
+// DesiredGeneration. It intentionally ignores any dist/update/manifest.json
+// file, preventing a stale compatibility file from diverging from the current
+// generation after promotion. Signature, store identity, origin, and the full
+// served component surface are checked through the same path as generation.json.
+func (s *publishService) handleLegacyManifest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	doc, _, err := s.loadVerifiedDesiredGeneration()
+	if err != nil {
+		http.Error(w, "check=generation: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.verifyDesiredGenerationServeSurface(doc); err != nil {
+		http.Error(w, "check=serve_surface: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	m, err := legacyManifestFromGeneration(doc, s.operator.Sign)
+	if err != nil {
+		http.Error(w, "check=projection: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, "encode", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(out)
 }
 
 func (s *publishService) handleLegacyManifestBootstrap(w http.ResponseWriter, r *http.Request) {

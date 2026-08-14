@@ -34,6 +34,8 @@ def restore_env(old):
 def test_finalize_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
+        (root / "app.spk").write_bytes(b"spk")
+        (root / "metadata.json").write_text("{}\n")
         captured = []
         old_run = provider.run
         old = with_env({
@@ -56,6 +58,8 @@ def test_finalize_uses_only_supported_flags():
         assert len(captured) == 1
         args = captured[0]
         assert args[1] == "finalize-release"
+        app_dir = Path(args[args.index("--app-dir") + 1])
+        assert sorted(path.name for path in app_dir.iterdir()) == ["app.spk", "metadata.json"]
         for unsupported in ("--artifact-spk", "--artifact-metadata", "--quorum-threshold", "--quorum-member-count"):
             assert unsupported not in args, args
 
@@ -65,6 +69,13 @@ def test_propose_uses_only_supported_flags():
         root = Path(tmp)
         release = root / "RELEASE.json"
         release.write_text("{}")
+        spk = root / "app.spk"
+        spk.write_bytes(b"spk")
+        metadata = root / "metadata.json"
+        metadata.write_text("{}\n")
+        ceremony = root / "ceremony"
+        ceremony.mkdir()
+        (ceremony / "RUNTIME-CONTRACT.json").write_text("{}\n")
         state = root / "state.json"
         transaction_pda = "proposal-pda"
         app_hash = "a" * 64
@@ -87,7 +98,14 @@ def test_propose_uses_only_supported_flags():
             member.write_text("[]\n")
             members.append(str(member))
         ix_out, receipt_out = root / "release.json", root / "receipt.json"
-        context = {"catalogDir": str(root), "ceremonyDir": str(root), "statePath": str(state), "releasePath": str(release)}
+        context = {
+            "catalogDir": str(root),
+            "ceremonyDir": str(ceremony),
+            "spkPath": str(spk),
+            "metadataPath": str(metadata),
+            "statePath": str(state),
+            "releasePath": str(release),
+        }
         captured = []
         old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
         old = with_env({
@@ -127,6 +145,9 @@ def test_propose_uses_only_supported_flags():
             restore_env(old)
         proposal = captured[0]
         assert proposal[1] == "propose-release"
+        app_dir = Path(proposal[proposal.index("--app-dir") + 1])
+        assert sorted(path.name for path in app_dir.iterdir()) == ["app.spk", "metadata.json"]
+        assert app_dir != ceremony
         for unsupported in ("--artifact-spk", "--artifact-metadata"):
             assert unsupported not in proposal, proposal
         helper = captured[1]

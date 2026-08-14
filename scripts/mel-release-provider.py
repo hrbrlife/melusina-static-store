@@ -186,6 +186,38 @@ def require_context(app_id: str) -> dict[str, Any]:
     return context
 
 
+def pearl_artifact_dir(context: dict[str, Any]) -> Path:
+    """Return a two-file AppHash input for the Pearl ceremony.
+
+    RELEASE.json and RUNTIME-CONTRACT.json are separately signed release
+    evidence; neither is part of the canonical AppHash, which is exactly the
+    served {app.spk, metadata.json} tree.  A dedicated directory prevents a
+    future evidence file from silently changing what the Pearl tool hashes.
+    The fallback materializes this directory for a durable pre-upgrade WAL.
+    """
+    ceremony = clean_abs(str(context["ceremonyDir"]), "provider ceremonyDir")
+    value = str(context.get("pearlArtifactDir", "")).strip()
+    target = clean_abs(value, "provider pearlArtifactDir") if value else ceremony.parent / "pearl-artifact"
+    if target.is_symlink():
+        raise ProviderError(f"Pearl artifact directory must not be a symlink: {target}")
+    target.mkdir(mode=0o700, parents=True, exist_ok=True)
+    expected = {"app.spk": clean_abs(str(context["spkPath"]), "provider spkPath"),
+                "metadata.json": clean_abs(str(context["metadataPath"]), "provider metadataPath")}
+    extras = {entry.name for entry in target.iterdir()} - set(expected)
+    if extras:
+        raise ProviderError(f"Pearl artifact directory contains non-AppHash evidence: {sorted(extras)}")
+    for name, source in expected.items():
+        destination = target / name
+        if destination.exists() and (destination.is_symlink() or not destination.is_file()):
+            raise ProviderError(f"Pearl artifact is not a regular file: {destination}")
+        if not destination.exists() or hex_sha(destination) != hex_sha(source):
+            tmp = destination.with_name(destination.name + ".tmp")
+            shutil.copyfile(source, tmp)
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, destination)
+    return target
+
+
 def ensure_bin(name: str, command: str) -> Path:
     out = MODULE / "bin" / name
     if not out.is_file() or not os.access(out, os.X_OK):
@@ -299,12 +331,18 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     materialize_runtime_contract(source, runtime_contract, app_id, version, artifact_sha, apphash)
     shutil.copyfile(runtime_contract, ceremony / "RUNTIME-CONTRACT.json")
 
+    pearl_dir = work / "pearl-artifact"
+    pearl_dir.mkdir(mode=0o700)
+    shutil.copyfile(spk, pearl_dir / "app.spk")
+    shutil.copyfile(metadata, pearl_dir / "metadata.json")
+
     context = {
         "schema": "melusina-mel-release-provider-context-v1",
         "appId": app_id,
         "sourceDir": str(source),
         "catalogDir": str(catalog),
         "ceremonyDir": str(ceremony),
+        "pearlArtifactDir": str(pearl_dir),
         "spkPath": str(spk),
         "metadataPath": str(metadata),
         "runtimeContractPath": str(runtime_contract),
@@ -504,7 +542,7 @@ def release_entry_exists(pda: str) -> bool:
 def finalize_release(context: dict[str, Any]) -> None:
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
     run([
-        str(pearl), "finalize-release", "--app-dir", str(context["ceremonyDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
+        str(pearl), "finalize-release", "--app-dir", str(pearl_artifact_dir(context)), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
     ])
 
@@ -518,7 +556,7 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     state_path = clean_abs(str(context["statePath"]), "provider statePath")
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
     run([
-        str(pearl), "propose-release", "--dry-run", "--app-dir", str(clean_abs(str(context["ceremonyDir"]), "provider ceremonyDir")),
+        str(pearl), "propose-release", "--dry-run", "--app-dir", str(pearl_artifact_dir(context)),
         "--app-id", app_id, "--release-json", str(release_path), "--license-mint", env("MEL_RELEASE_LICENSE_MINT", required=True),
         "--master-mint", env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "--version", version, "--state-out", str(state_path),
         "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,

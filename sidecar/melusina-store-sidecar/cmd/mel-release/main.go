@@ -1,6 +1,6 @@
-// Command mel-release is the ONE consolidated app-release CLI for the MSB
-// app-release family (fleet/release-family.yaml: the 8 CCASH/Popaye + NamedCoin
-// apps, keyed on the IMMUTABLE appId). It replaces the three separate clients —
+// Command mel-release is the ONE consolidated app-release CLI for every app
+// explicitly declared in fleet/release-family.yaml, keyed on the IMMUTABLE
+// appId. It replaces the three separate clients —
 // cmd/submit (store stage/publish), cmd/publish-supersede (no-gap register/
 // promote/revoke WAL), and cmd/submit-generation (signed DesiredGeneration) —
 // with two release subcommands split at a real authority boundary, plus a

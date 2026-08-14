@@ -61,3 +61,14 @@ families:
         publish_slug: fineract-setup
         catalog_name: fineract-setup
         role: ledger-setup-and-trust-bundle
+  platform-tools:
+    apps:
+      minigit:
+        appId: pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50
+        source_path: worktrees/minigit-fd3-websession-20260813
+        publish_slug: minigit
+        catalog_name: MiniGit
+        catalog_developer: hrbrlife
+        catalog_repo: MiniGit
+        catalog_slug: gitpearl
+        role: private-git-and-static-publishing

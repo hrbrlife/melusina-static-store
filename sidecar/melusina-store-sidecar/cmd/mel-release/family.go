@@ -30,7 +30,7 @@ type App struct {
 	Role             string
 }
 
-// Family manifest, closed at the 8-app CCASH/Popaye + NamedCoin surface.
+// Family is the closed set of apps explicitly declared by one manifest.
 type Family struct {
 	Schema string
 	Apps   []App

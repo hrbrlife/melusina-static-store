@@ -133,7 +133,7 @@ func TestSelectUnknownFails(t *testing.T) {
 	}
 }
 
-// TestLoadFamilyRealManifest parses the actual frozen fleet manifest (all 8 apps)
+// TestLoadFamilyRealManifest parses the actual fleet manifest (all declared apps)
 // so the fail-closed parser is exercised against every legitimate shape it must
 // still accept: family-level squads: bodies, quoted values with spaces, unknown
 // per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
@@ -151,16 +151,16 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if fam.Schema != "melusina-release-family/v1" {
 		t.Fatalf("real manifest schema = %q", fam.Schema)
 	}
-	if len(fam.Apps) != 8 {
+	if len(fam.Apps) != 9 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 8 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 9 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
 		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
-		"namedcoin", "namedcoin-admin", "fineract-setup",
+		"namedcoin", "namedcoin-admin", "fineract-setup", "minigit",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -173,6 +173,15 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	}
 	if admin.CatalogName != "NamedCoin Admin" || admin.Family != "money-path" {
 		t.Fatalf("namedcoin-admin fields wrong: %+v", admin)
+	}
+	minigit, err := fam.Select("minigit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if minigit.AppID != "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50" ||
+		minigit.Family != "platform-tools" || minigit.CatalogDeveloper != "hrbrlife" ||
+		minigit.CatalogRepo != "MiniGit" || minigit.CatalogSlug != "gitpearl" {
+		t.Fatalf("minigit fields wrong: %+v", minigit)
 	}
 }
 

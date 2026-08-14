@@ -109,6 +109,7 @@ func serveSetup(t *testing.T) (Config, *mockChainReader, publishFixture, *serveG
 // app_hash — the ACCEPT state for the serve gate.
 func pinReleaseActive(m *mockChainReader, f publishFixture) {
 	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusActive}
+	f.pinServeListingActive(m)
 }
 
 func serveGet(t *testing.T, h http.Handler, method, target string) *httptest.ResponseRecorder {

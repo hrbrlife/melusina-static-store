@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -165,15 +166,15 @@ func TestRouterUsesGenerationsOnlyForWriteCapableRuntime(t *testing.T) {
 	})
 	w := httptest.NewRecorder()
 	writeRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/apps/index.json", nil))
-	if w.Code != http.StatusOK || w.Body.String() != "generation-index" {
-		t.Fatalf("write runtime did not use generation: status=%d body=%q", w.Code, w.Body.String())
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "no on-chain reader") {
+		t.Fatalf("write runtime served an unverified generation: status=%d body=%q", w.Code, w.Body.String())
 	}
 
 	readRouter := newRouterWithCatalogRuntime(cfg, nil, nil, nil, catalogRuntime{catalogGenerations: store})
 	w = httptest.NewRecorder()
 	readRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/apps/index.json", nil))
-	if w.Code != http.StatusOK || w.Body.String() != "legacy-flat-index" {
-		t.Fatalf("read-only runtime stopped using flat dist: status=%d body=%q", w.Code, w.Body.String())
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "no on-chain reader") {
+		t.Fatalf("read-only runtime served an unverified flat catalog: status=%d body=%q", w.Code, w.Body.String())
 	}
 }
 

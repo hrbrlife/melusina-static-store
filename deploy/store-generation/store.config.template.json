@@ -1,5 +1,6 @@
 {
   "license_nft_mint": "REPLACE_WITH_TARGET_LICENSE_MINT",
+  "store_authority": "REPLACE_WITH_STORE_OPERATOR_AUTHORITY_PUBLIC_KEY",
   "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "domain": "REPLACE_WITH_STORE_IDENTITY_DOMAIN",
   "store_id": "REPLACE_WITH_PINNED_STORE_ID",

@@ -600,14 +600,15 @@ m['imageId'] = image_id
 if isinstance(m.get('createdAt'), float):
     m['createdAt'] = int(m['createdAt'])
 
-# updatedAt: the authoritative release timestamp. Prefer RELEASE.json's
-# signedAtUnix (the multisig-signed release time, in seconds) because it is
-# stable across rebuilds and fresh clones — unlike the SPK file mtime, which
-# is re-stamped to checkout time (submodules) or store-build time (plain
-# dirs) on every build and so falsely freshens apps that did not change.
-# Fall back to SPK mtime, then the publish-branch commit time, then
-# createdAt. Recorded in ms (UTC) to match createdAt's units.
-import subprocess
+# updatedAt: the authoritative release timestamp. RELEASE.json's signedAtUnix
+# (the multisig-signed release time, in seconds) is stable across rebuilds and
+# fresh clones; createdAt is the only admissible fallback. This is exactly the
+# chain the sidecar's projectCatalogIndex uses (F-199: two writers, one
+# behaviour). The SPK file mtime and the checkout's commit time are deliberately
+# NOT consulted: both are re-stamped to checkout time (submodules) or
+# store-build time (plain dirs) on every build, so they falsely freshen apps
+# that did not change and make the row unreproducible. Recorded in ms (UTC) to
+# match createdAt's units.
 updated_ms = None
 signed_at = release.get('signedAtUnix')
 try:
@@ -615,23 +616,6 @@ try:
         updated_ms = int(signed_at) * 1000
 except (TypeError, ValueError):
     pass
-spk_path_for_mtime = os.path.join(os.path.dirname(meta_file), 'app.spk')
-if updated_ms is None and os.path.isfile(spk_path_for_mtime):
-    try:
-        updated_ms = int(os.path.getmtime(spk_path_for_mtime) * 1000)
-    except Exception:
-        pass
-if updated_ms is None:
-    try:
-        # Last commit time on the publish branch checkout (or whatever HEAD
-        # the submodule is currently at). %ct is committer-date Unix seconds.
-        r = subprocess.run(
-            ['git', '-C', os.path.dirname(meta_file), 'log', '-1', '--format=%ct'],
-            capture_output=True, text=True, timeout=5)
-        if r.returncode == 0 and r.stdout.strip():
-            updated_ms = int(r.stdout.strip()) * 1000
-    except Exception:
-        pass
 m['updatedAt'] = updated_ms or m.get('createdAt') or 0
 
 # Full RELEASE.json is copied to /attest/<appId>/RELEASE.json. The catalog keeps

@@ -295,9 +295,14 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         )
     catalog = work / "catalog"
     shutil.copytree(catalog_source, catalog, symlinks=False)
+    # The receipt pack-app-candidate.sh just wrote binds the metadata digest to
+    # these exact SPK bytes; staging refuses any other metadata.json (F-193).
     run(
         [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
-        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
+        extra_env={
+            "SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json"),
+            "MELUSINA_CANDIDATE_RECEIPT": str(work / "source-build.json"),
+        },
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"

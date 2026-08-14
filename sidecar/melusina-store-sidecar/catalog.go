@@ -197,8 +197,23 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 	}
 	row["sha256"] = packageSHA
 	row["attest"] = attest
-	if signedAt, ok := numberAsInt64(attest["signedAtUnix"]); ok {
+	// updatedAt is the authoritative release timestamp in ms, and this writer
+	// must agree with build-store.sh's chain (F-199). RELEASE.json's
+	// signedAtUnix is the signed release time and is stable across rebuilds and
+	// fresh clones; createdAt is the only admissible fallback. Neither writer
+	// may fall back to an SPK mtime or a checkout's commit time: those are
+	// re-stamped on every build and falsely freshen apps that did not change.
+	// Always assign: a row that merely copied `meta` would otherwise silently
+	// inherit whatever stale updatedAt the metadata carried.
+	switch signedAt, ok := numberAsInt64(attest["signedAtUnix"]); {
+	case ok && signedAt > 0:
 		row["updatedAt"] = signedAt * 1000
+	default:
+		createdAt, hasCreatedAt := numberAsInt64(row["createdAt"])
+		if !hasCreatedAt || createdAt <= 0 {
+			createdAt = 0
+		}
+		row["updatedAt"] = createdAt
 	}
 
 	index := struct {

@@ -181,17 +181,46 @@ PY
   exit 2
 }
 
+# The receipt is what carries this candidate's provenance forward to staging.
+# Everything above already proved the metadata is TRACKED at the candidate
+# revision, in a CLEAN tree, at a revision reachable from a fetched remote ref.
+# Recording its digest beside the SPK digest is what lets stage-into-catalog.sh
+# refuse a metadata.json that came from any other worktree, branch or slot
+# (F-193: a foreign metadata.json re-injected defects the release's own source
+# had already removed). $candidate_metadata is the exact file staging must use:
+# the pack-generated copy when a post-pack hook derived packageId, otherwise the
+# committed source file itself.
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
   python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_epoch" "$app_id" "$package_id" \
-    "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" <<'PY'
-import json, os, sys
-out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size = sys.argv[1:]
+    "${source_meta[1]:-}" "$spk_sha" "$(stat -c%s "$SPK_OUT")" \
+    "$candidate_metadata" "$METADATA" "$metadata_rel" <<'PY'
+import hashlib, json, os, sys
+(out, revision, pushed_ref, epoch, app_id, package_id, version, sha, size,
+ candidate_metadata, source_metadata, metadata_rel) = sys.argv[1:]
+
+
+def digest(path):
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+staged_sha = digest(candidate_metadata)
+source_sha = digest(source_metadata)
 doc = {
     "schema": "melusina-app-candidate-receipt-v1",
     "source": {"revision": revision, "pushedRemoteRef": pushed_ref, "dirty": False, "sourceDateEpoch": int(epoch)},
     "app": {"appId": app_id, "packageId": package_id, "version": version},
     "artifact": {"sha256": sha, "size": int(size)},
+    "metadata": {
+        # The exact bytes stage-into-catalog.sh must merge into the catalog row.
+        "sha256": staged_sha,
+        # The committed file at source.revision. Equal to sha256 unless a
+        # post-pack hook derived packageId/sha256 from this exact SPK.
+        "sourceSha256": source_sha,
+        "sourcePath": metadata_rel,
+        "generatedByPack": staged_sha != source_sha,
+    },
     "verification": {"spk": "valid", "packageIdMatchesSha256": True},
 }
 tmp = out + ".tmp"

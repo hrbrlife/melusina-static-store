@@ -799,11 +799,14 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
             "name": "sheets-bureau",
             "source_path": "sheets-bureau",
             "source_commit": "965766d662771323f770eb9e956f1e8b03bea7a0",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "sheets-bureau",
             "catalog_developer": "hrbrlife",
             "catalog_repo": "melusina-bureau-sheets-app",
             "catalog_slug": "sheets-bureau",
             "pack_profile": "",
+            "pack_target": "",
         }
         assert provider.catalog_slot(app_id) == {
             "developer": "hrbrlife",
@@ -1061,9 +1064,11 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         source_root = root / "sources"
         source = source_root / "namedcoin"
         source.mkdir(parents=True)
+        product = source / "product"
+        product.mkdir()
         source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
-        (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
-        (source / "RUNTIME-CONTRACT.json").write_text(json.dumps({
+        (product / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
+        (product / "RUNTIME-CONTRACT.json").write_text(json.dumps({
             "schema": "melusina-app-runtime-contract-v1",
             "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
         }) + "\n")
@@ -1077,6 +1082,8 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
             "namedcoin": {
                 "appId": app_id,
                 "source_path": "namedcoin",
+                "metadata_path": "product/metadata.json",
+                "runtime_contract_path": "product/RUNTIME-CONTRACT.json",
                 "catalog_developer": "hrbrlife",
                 "catalog_repo": "melusina-namedcoin-app",
                 "catalog_slug": "namedcoin",
@@ -1111,6 +1118,7 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                         "MEL_RELEASE_GREENFIELD_PACK": "1",
                         "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
                     }
+                    assert args[args.index("--metadata") + 1] == str(product / "metadata.json")
                     source.joinpath("app.spk").write_bytes(expected_spk)
                     Path(args[args.index("--metadata-out") + 1]).write_text(json.dumps(staged_metadata) + "\n")
                     return ""
@@ -1147,6 +1155,74 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         assert any(args[0].endswith("stage-into-catalog.sh") for args, _ in calls)
 
 
+def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
+    app_id = "b" * 52
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        source = sources / "unified-mail"
+        product = source / "mermail"
+        product.mkdir(parents=True)
+        (product / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        (product / "RUNTIME-CONTRACT.json").write_text(json.dumps({
+            "schema": "melusina-app-runtime-contract-v1",
+            "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
+        }) + "\n")
+        config = root / "release-family.yaml"
+        write_family_config(config, {
+            "unified-mail": {
+                "appId": app_id,
+                "source_path": "unified-mail",
+                "metadata_path": "mermail/metadata.json",
+                "runtime_contract_path": "mermail/RUNTIME-CONTRACT.json",
+                "pack_target": "pack-unified",
+            },
+        })
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        try:
+            assert provider.source_path(app_id) == source
+            assert provider.source_metadata_path(app_id, source) == product / "metadata.json"
+            assert provider.source_runtime_contract_path(app_id, source) == product / "RUNTIME-CONTRACT.json"
+            assert provider.pack_profile_env(app_id) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+                "MEL_RELEASE_PACK_TARGET": "pack-unified",
+            }
+
+            write_family_config(config, {
+                "unified-mail": {
+                    "appId": app_id,
+                    "source_path": "unified-mail",
+                    "metadata_path": "../metadata.json",
+                },
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "unsafe metadata_path" in str(exc), exc
+            else:
+                raise AssertionError("escaping metadata_path was accepted")
+
+            write_family_config(config, {
+                "unified-mail": {
+                    "appId": app_id,
+                    "source_path": "unified-mail",
+                    "metadata_path": "mermail/metadata.json",
+                    "pack_target": "unsafe target",
+                },
+            })
+            try:
+                provider.pack_profile_env(app_id)
+            except provider.ProviderError as exc:
+                assert "unsafe pack_target" in str(exc), exc
+            else:
+                raise AssertionError("unsafe pack_target was accepted")
+        finally:
+            restore_env(old)
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
@@ -1167,4 +1243,5 @@ if __name__ == "__main__":
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     test_build_records_private_bootstrap_without_writing_catalog_tree()
+    test_nested_release_artifacts_and_pack_target_are_explicit_and_safe()
     print("mel-release provider CLI-contract tests passed")

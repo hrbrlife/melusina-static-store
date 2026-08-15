@@ -163,6 +163,21 @@ function assertProposal(state,proposal,memberKeys) {
   });
 }
 
+function foreignTransactionIndex(state,disposition) {
+  // A ceremony state is prepared before the private Store stage.  Another
+  // governed publisher can legitimately consume its next Squads index between
+  // those two steps.  Report that exact, non-mutating collision to the Python
+  // rail so it can preserve the old state and prepare a fresh index.  Never
+  // treat a different VaultTransaction as a recoverable partial of this app.
+  process.stdout.write(JSON.stringify({
+    status:"ForeignTransactionIndex",
+    transactionPda:state.transactionPda,
+    proposalPda:state.proposalPda,
+    transactionIndex:state.transactionIndex,
+    disposition,
+  })+"\n");
+}
+
 async function propose(statePath) {
   const state=readJSON(statePath), {connection,multisigPda}=context(state);
   const appId=typeof state.appId === "string" ? state.appId : state.appID;
@@ -195,7 +210,11 @@ async function propose(statePath) {
     if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
     assertProposal(state,loadedProposal(createdProposal),memberKeys);
   } else if (disposition === "create-proposal-only") {
-    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    try {
+      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    } catch (error) {
+      foreignTransactionIndex(state,disposition); return;
+    }
     vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
     recoveredVaultTransaction=true;
     // The only mutation in this exact partial state. Never recreate the
@@ -207,7 +226,11 @@ async function propose(statePath) {
     if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
     assertProposal(state,loadedProposal(createdProposal),memberKeys);
   } else {
-    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    try {
+      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    } catch (error) {
+      foreignTransactionIndex(state,disposition); return;
+    }
     assertProposal(state,loadedProposal(proposalInfo),memberKeys);
     vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
     proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness({

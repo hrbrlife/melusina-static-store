@@ -193,6 +193,7 @@ def test_propose_uses_only_supported_flags():
         assert receipt["recovery"] == {
             "recoveredVaultTransaction": True,
             "alreadyProposed": False,
+            "repreparedForeignTransactionIndices": [],
         }, receipt
 
 
@@ -332,6 +333,89 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             restore_env(old)
         assert captured == [["node", str(executor), "propose", str(state_path)]], captured
         assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
+
+
+def test_propose_reprepares_after_a_foreign_transaction_index():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app_id, app_hash, nonce = "app", "a" * 64, "nonce"
+        version, release_hash = "1.2.3", provider.hashlib.sha256((app_hash + "1.2.3" + nonce).encode()).hexdigest()
+        state_path = root / "ceremony-state.json"
+
+        def state(index, transaction, proposal):
+            return {
+                "$schema": "melusina-release-ceremony-v1", "appId": app_id,
+                "appHash": app_hash, "releaseHash": release_hash, "version": version, "releaseNonce": nonce,
+                "multisigPda": "multisig", "licenseSquadsVault": "vault", "masterNftMint": "master", "programId": "program",
+                "transactionIndex": index, "transactionPda": transaction, "proposalPda": proposal, "releaseEntryPda": "release",
+                "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
+                "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+            }
+
+        old_state, new_state = state(1759, "old-transaction", "old-proposal"), state(1760, "new-transaction", "new-proposal")
+        state_path.write_text(json.dumps(old_state) + "\n")
+        release = root / "RELEASE.json"
+        release.write_text("{}\n")
+        for name, content in (("app.spk", b"spk"), ("metadata.json", b"{}\n"), ("RUNTIME-CONTRACT.json", b"{}\n")):
+            path = root / name
+            path.write_bytes(content)
+        executor = root / "executor.mjs"
+        executor.write_text("// test executor\n")
+        members = []
+        for index in range(3):
+            member = root / f"member-{index}.json"
+            member.write_text("[]\n")
+            members.append(str(member))
+        context = {
+            "catalogDir": str(root), "ceremonyDir": str(root), "spkPath": str(root / "app.spk"),
+            "metadataPath": str(root / "metadata.json"), "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json"),
+            "statePath": str(state_path), "releasePath": str(release),
+        }
+        captured = []
+        old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old = with_env({
+            "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
+            "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
+            "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool", "MEL_RELEASE_LICENSE_MINT": "license",
+            "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json", "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members), "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        })
+        try:
+            provider.require_context = lambda _: context
+            provider.rewrite_release = lambda *_: release
+            provider.next_index = lambda *_: 1760
+
+            def fake_run(args, **_):
+                captured.append(args)
+                if args[0] == "/tmp/melusina-pearl-tool":
+                    state_path.write_text(json.dumps(new_state) + "\n")
+                    return ""
+                node_calls = [item for item in captured if item[0] == "node"]
+                if len(node_calls) == 1:
+                    return json.dumps({
+                        "status": "ForeignTransactionIndex", "transactionPda": "old-transaction",
+                        "proposalPda": "old-proposal", "transactionIndex": 1759,
+                    })
+                return json.dumps({
+                    "transactionPda": "new-transaction", "proposalPda": "new-proposal", "transactionIndex": 1760,
+                    "vaultTransactionCreateSignature": "create", "proposalCreateSignature": "proposal",
+                    "recoveredVaultTransaction": False, "alreadyProposed": False,
+                })
+
+            provider.run = fake_run
+            out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
+            provider.propose(app_id, app_hash, version, nonce, "multisig", "vault", out_release, out_receipt)
+        finally:
+            provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            restore_env(old)
+        archived = root / "ceremony-state.foreign-index-1759.json"
+        assert json.loads(archived.read_text()) == old_state
+        assert json.loads(state_path.read_text()) == new_state
+        receipt = json.loads(out_receipt.read_text())
+        assert receipt["recovery"]["repreparedForeignTransactionIndices"] == [1759], receipt
+        assert [item[0] for item in captured].count("node") == 2, captured
 
 
 def test_submit_binds_the_immutable_catalog_slot():

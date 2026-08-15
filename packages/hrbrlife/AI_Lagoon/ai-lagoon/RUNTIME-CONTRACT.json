@@ -1,0 +1,61 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "b456896456d52f06e5d11cd1943f861a8ef3e8caddb8ebe525fde7e1ca2d8628",
+    "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+    "spkSha256": "c9366a1d74de9ebe415715752a55d7a52816a74fc1ab3856655efd9e27e2efd5",
+    "version": "0.7.21"
+  },
+  "cleanup": {
+    "steps": [
+      "Delete the temporary acceptance-test grain after the visible launch probe completes."
+    ]
+  },
+  "fixtures": [
+    {
+      "name": "disposable-provider-connection",
+      "purpose": "Exercise one reversible sidecar-routed connection test without storing a production provider credential.",
+      "setup": "Provision it only for the acceptance run; do not include credentials in this contract."
+    }
+  ],
+  "launchProbe": {
+    "expectedResult": "AiLagoon launches through its normal UI and preserves its PowerBox and grainauth boundaries.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install the candidate through the governed Bazaar path and launch a new AiLagoon grain through its normal app action.",
+        "expectedResult": "The normal UI and Connections view render without a grainauth unknown-action denial, blank page, reset loop, or process failure."
+      },
+      {
+        "action": "Configure a provider connection through the normal PowerBox HTTP-out flow; do not use a direct network bypass.",
+        "expectedResult": "The connection is saved through the grain UI and requests use the configured capability."
+      },
+      {
+        "action": "Attempt a mutating action with the grain authz socket or valid license authority unavailable.",
+        "expectedResult": "The grain visibly refuses the action rather than bypassing grainauth."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": [
+    {
+      "capabilities": [
+        "http-out"
+      ],
+      "host": "ailagoon.sidecar.host",
+      "id": "ailagoon",
+      "port": 443,
+      "safeProbe": {
+        "action": "In a fresh AiLagoon grain, use the visible Connections flow to grant HTTP-out for exactly https://ailagoon.sidecar.host, then run the connection test against a disposable provider fixture.",
+        "expectedResult": "The Powerbox grant and connection test complete without a 403, TLS failure, or direct-provider bypass; the configured request is routed through the declared sidecar."
+      },
+      "tls": {
+        "minimumVersion": "TLS1.2",
+        "required": true,
+        "serverName": "ailagoon.sidecar.host",
+        "trust": "system-ca"
+      },
+      "transport": "https"
+    }
+  ]
+}

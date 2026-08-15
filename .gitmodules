@@ -87,3 +87,7 @@
 	path = packages/hrbrlife/MLSNA_token
 	url = https://github.com/hrbrlife/MLSNA_token.git
 	branch = publish
+[submodule "packages/hrbrlife/GoldKey"]
+	path = packages/hrbrlife/GoldKey
+	url = https://github.com/hrbrlife/GoldKey.git
+	branch = publish

@@ -77,6 +77,18 @@ families:
         catalog_repo: cyberteller
         catalog_slug: cyberteller
         role: crypto-deposit-and-swap
+      cyberteller-config:
+        appId: 3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10
+        source_path: cybertellerconfig
+        publish_slug: cybertellerconfig
+        catalog_name: Cyberteller Config
+        # This Store path predates the source repo's current release layout.
+        # It is the existing appId-bound catalog slot, not a name inferred
+        # from the source directory or a new product identity.
+        catalog_developer: hrbrlife
+        catalog_repo: melusina_cybertellerconfig_app
+        catalog_slug: cybertellerconfig
+        role: install-scoped-configgate
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar

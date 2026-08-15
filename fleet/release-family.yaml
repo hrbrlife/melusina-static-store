@@ -92,6 +92,15 @@ families:
         catalog_repo: pr_ninja
         catalog_slug: telescreen
         role: sanctions-screening-and-review
+      teleport:
+        appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
+        source_path: teleport
+        publish_slug: teleport
+        catalog_name: Teleport
+        catalog_developer: hrbrlife
+        catalog_repo: melusina_teleport2
+        catalog_slug: teleport
+        role: private-chat-and-calls
   platform-tools:
     apps:
       minigit:

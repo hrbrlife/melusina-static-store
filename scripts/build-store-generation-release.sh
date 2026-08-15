@@ -41,6 +41,14 @@ git -C "$ROOT" for-each-ref --format='%(refname)' --contains "$HEAD" refs/remote
   echo "source HEAD is not reachable from a refreshed remote ref: $HEAD" >&2; exit 2; }
 
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
+# The UI is part of the governed ELF through go:embed. Regenerate it once from
+# the clean, pinned source commit before creating the two isolated Go build
+# worktrees. Re-running npm ci in each worktree is not a second independent
+# proof of the UI; it only duplicates a large dependency tree and can exhaust
+# the bounded release volume. Each detached worktree below must still carry
+# this exact, freshly verified manifest before it is compiled.
+"$ROOT/scripts/build-sidecar-ui.sh" --check
+UI_MANIFEST_SHA="$(sha256sum "$ROOT/sidecar/melusina-store-sidecar/ui/UI-MANIFEST.json" | awk '{print $1}')"
 WORK_BASE="$(dirname "$ROOT")"
 TMP="$(mktemp -d "$WORK_BASE/.store-generation-release.XXXXXX")"
 # Go module replacements are intentionally relative to a direct child of the
@@ -63,12 +71,11 @@ git -C "$ROOT" worktree add --detach "$W2" "$HEAD" >/dev/null
 build_once() {
   local work="$1" out="$2" stage="$2/stage" ui_manifest_sha
   mkdir -p "$stage/bin" "$stage/systemd" "$stage/config"
-  # The root Bazaar shell is compiled into the sidecar ELF. Verify the tracked
-  # generated tree against this detached source checkout before compiling: a
-  # frontend-only change cannot silently leave the old shell embedded in a new
-  # governed binary.
-  "$work/scripts/build-sidecar-ui.sh" --check
   ui_manifest_sha="$(sha256sum "$work/sidecar/melusina-store-sidecar/ui/UI-MANIFEST.json" | awk '{print $1}')"
+  [[ "$ui_manifest_sha" == "$UI_MANIFEST_SHA" ]] || {
+    echo "detached worktree UI manifest differs from the verified source commit" >&2
+    return 1
+  }
   (
     cd "$work/sidecar/melusina-store-sidecar"
     unset GOEXPERIMENT GODEBUG GOROOT

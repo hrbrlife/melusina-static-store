@@ -12,8 +12,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
@@ -23,6 +25,7 @@ import (
 const (
 	maxGenerationBytes  = 4 << 20
 	maxReleaseInfoBytes = 64 << 10
+	runtimeProofTimeout = 15 * time.Second
 )
 
 // buildPollDeps wires the REAL production PollDeps around the poller library. Every
@@ -140,6 +143,30 @@ type releaseInfoReport struct {
 
 func newRuntimeObserver() func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) (hostupdate.RuntimeEvidence, error) {
 	return func(ctx context.Context, c componentrelease.ComponentRelease, install componentrelease.ComponentInstall) (hostupdate.RuntimeEvidence, error) {
+		if install.UsesCommandRuntimeProof() {
+			raw, err := runCommandRuntimeProof(ctx, install.RuntimeProofCommand)
+			if err != nil {
+				return hostupdate.RuntimeEvidence{}, fmt.Errorf("run %s local runtime proof: %w", c.ComponentID, err)
+			}
+			r, err := decodeReleaseInfo(raw)
+			if err != nil {
+				return hostupdate.RuntimeEvidence{}, fmt.Errorf("decode %s local runtime proof: %w", c.ComponentID, err)
+			}
+			// A timer/oneshot proof cannot honestly identify a durable MainPID.
+			// PID=0 selects the separate file-hash binder in hostupdate; a nonzero
+			// value is a protocol violation, not a weaker process proof.
+			if r.PID != 0 {
+				return hostupdate.RuntimeEvidence{}, fmt.Errorf("local runtime proof %s reports pid %d; timer proof must report pid 0", c.ComponentID, r.PID)
+			}
+			return hostupdate.RuntimeEvidence{
+				Schema:         r.Schema,
+				ComponentID:    r.ComponentID,
+				GenerationID:   r.GenerationID,
+				Version:        r.Version,
+				PID:            r.PID,
+				ArtifactSHA256: r.ArtifactSHA256,
+			}, nil
+		}
 		if strings.TrimSpace(install.SelfReportURL) == "" {
 			return hostupdate.RuntimeEvidence{}, fmt.Errorf("component %s has no selfReportUrl to bind the running build", c.ComponentID)
 		}
@@ -168,6 +195,57 @@ func newRuntimeObserver() func(context.Context, componentrelease.ComponentReleas
 			ArtifactSHA256: r.ArtifactSHA256,
 		}, nil
 	}
+}
+
+// boundedCapture makes a malicious or defective checker proof unable to make a
+// root controller buffer arbitrary stdout/stderr.  It continues accepting bytes
+// so the child can exit normally, but the caller always refuses an overflow.
+type boundedCapture struct {
+	bytes.Buffer
+	limit    int
+	overflow bool
+}
+
+func (b *boundedCapture) Write(p []byte) (int, error) {
+	remaining := b.limit - b.Len()
+	if remaining <= 0 {
+		if len(p) > 0 {
+			b.overflow = true
+		}
+		return len(p), nil
+	}
+	if len(p) > remaining {
+		_, _ = b.Buffer.Write(p[:remaining])
+		b.overflow = true
+		return len(p), nil
+	}
+	return b.Buffer.Write(p)
+}
+
+func runCommandRuntimeProof(ctx context.Context, argv []string) ([]byte, error) {
+	if len(argv) == 0 {
+		return nil, errors.New("empty runtime proof command")
+	}
+	proofCtx, cancel := context.WithTimeout(ctx, runtimeProofTimeout)
+	defer cancel()
+	var stdout, stderr boundedCapture
+	stdout.limit = maxReleaseInfoBytes
+	stderr.limit = maxReleaseInfoBytes
+	cmd := exec.CommandContext(proofCtx, argv[0], argv[1:]...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if stdout.overflow || stderr.overflow {
+		return nil, errors.New("runtime proof output exceeds bounded limit")
+	}
+	if err != nil {
+		detail := strings.TrimSpace(stderr.String())
+		if detail != "" {
+			return nil, fmt.Errorf("runtime proof command: %w: %s", err, detail)
+		}
+		return nil, fmt.Errorf("runtime proof command: %w", err)
+	}
+	return append([]byte(nil), stdout.Bytes()...), nil
 }
 
 // decodeReleaseInfo accepts exactly one object with the six canonical runtime
@@ -246,15 +324,18 @@ func validateReleaseInfoObject(raw []byte) error {
 // InstallRoot is the executable file. Any error yields "" — an unknown delta safely
 // means "do not skip", never a false skip.
 func observeFor(install componentrelease.ComponentInstall) string {
-	info, err := os.Lstat(install.InstallRoot)
-	if err != nil || !info.Mode().IsRegular() {
-		return ""
-	}
-	f, err := os.Open(install.InstallRoot)
+	// A same-hash delta skip must not follow a substituted symlink.  Otherwise a
+	// local path swap could make a binary-replace component look current and skip
+	// the adapter's own O_NOFOLLOW mutation boundary altogether.
+	f, err := os.OpenFile(install.InstallRoot, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return ""
 	}
 	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return ""
+	}
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return ""

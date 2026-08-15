@@ -5,11 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
@@ -24,6 +26,14 @@ import (
 // downgrade/equivocation/chain-break against the persisted cursors.
 
 type PollTrigger string
+
+// A timer/oneshot script has no durable service MainPID to bind after its
+// health command returns.  The registry permits this mode only for a narrow
+// data/binary-replace entry whose local RuntimeProofCommand invokes the script's
+// strict self-report.  The script itself is deliberately small; cap the second
+// no-follow hash so a substituted file cannot turn the root controller into an
+// unbounded disk reader.
+const maxCommandProofArtifactBytes = 16 << 20
 
 const (
 	PollTriggerTimer  PollTrigger = "timer"
@@ -357,6 +367,9 @@ func validateRuntimeEvidenceTuple(ev RuntimeEvidence, vg VerifiedGeneration, c c
 // deep-stable pre-receipt check: a one-time proof at apply is not enough if the
 // unit can later restart or its release-info endpoint can change.
 func (deps PollDeps) bindRuntimeProcess(ctx context.Context, ev RuntimeEvidence, install componentrelease.ComponentInstall, componentID, expectedSHA string) error {
+	if install.UsesCommandRuntimeProof() {
+		return bindCommandRuntimeArtifact(ev, install, componentID, expectedSHA)
+	}
 	if deps.RuntimeBinder != nil {
 		return deps.RuntimeBinder(ctx, ev, install, componentID, expectedSHA)
 	}
@@ -382,6 +395,55 @@ func (deps PollDeps) bindRuntimeProcess(ctx context.Context, ev RuntimeEvidence,
 		return fmt.Errorf("/proc/%d/exe hash %s != desired %s for %s", pid1, exeHash, expectedSHA, componentID)
 	}
 	return nil
+}
+
+// bindCommandRuntimeArtifact is the explicit non-serving counterpart to the
+// normal systemd MainPID+/proc executable proof above.  It does not pretend a
+// timer script is continuously running: the controller first ran the
+// install-local self-report command, then re-hashes the exact no-follow script
+// path.  Normal services never reach this branch.
+func bindCommandRuntimeArtifact(ev RuntimeEvidence, install componentrelease.ComponentInstall, componentID, expectedSHA string) error {
+	if ev.PID != 0 {
+		return fmt.Errorf("command runtime proof for %s reports pid %d; timer proof must report pid 0", componentID, ev.PID)
+	}
+	got, err := regularFileSHA256NoFollow(install.InstallRoot, maxCommandProofArtifactBytes)
+	if err != nil {
+		return fmt.Errorf("hash command runtime artifact %s: %w", componentID, err)
+	}
+	if !strings.EqualFold(got, expectedSHA) {
+		return fmt.Errorf("command runtime artifact hash %s != desired %s for %s", got, expectedSHA, componentID)
+	}
+	return nil
+}
+
+func regularFileSHA256NoFollow(path string, maxBytes int64) (string, error) {
+	if maxBytes <= 0 {
+		return "", fmt.Errorf("invalid runtime artifact size limit %d", maxBytes)
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("not a regular file")
+	}
+	if info.Size() > maxBytes {
+		return "", fmt.Errorf("artifact is %d bytes; limit is %d", info.Size(), maxBytes)
+	}
+	h := sha256.New()
+	n, err := io.Copy(h, io.LimitReader(f, maxBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if n > maxBytes {
+		return "", fmt.Errorf("artifact exceeds %d bytes while reading", maxBytes)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func systemdMainPID(ctx context.Context, unit string) (int, error) {

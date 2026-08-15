@@ -2,6 +2,10 @@ package hostupdate
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -45,6 +49,57 @@ func TestValidateRuntimeEvidenceTupleRequiresEveryDeclaredField(t *testing.T) {
 				t.Fatal("accepted mismatched runtime evidence")
 			}
 		})
+	}
+}
+
+func TestCommandRuntimeProofBindsNoFollowScriptBytesWithoutMainPID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "melusina-update-checker.py")
+	bytes := []byte("#!/usr/bin/env python3\nprint('checker')\n")
+	if err := os.WriteFile(path, bytes, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(bytes)
+	hash := hex.EncodeToString(sum[:])
+	install := componentrelease.ComponentInstall{
+		InstallRoot:         path,
+		RuntimeProofCommand: []string{"/usr/bin/python3", path, "--self-report", "--runtime-env-file", "/var/lib/melusina/update/checker.env"},
+	}
+	ev := RuntimeEvidence{PID: 0, ArtifactSHA256: hash}
+	deps := PollDeps{}
+	if err := deps.bindRuntimeProcess(context.Background(), ev, install, "melusina-update-checker", hash); err != nil {
+		t.Fatalf("valid timer script proof refused: %v", err)
+	}
+
+	ev.PID = 123
+	if err := deps.bindRuntimeProcess(context.Background(), ev, install, "melusina-update-checker", hash); err == nil {
+		t.Fatal("timer proof claiming a durable PID was accepted")
+	}
+	ev.PID = 0
+	if err := os.WriteFile(path, []byte("substituted"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := deps.bindRuntimeProcess(context.Background(), ev, install, "melusina-update-checker", hash); err == nil {
+		t.Fatal("post-self-report script substitution was accepted")
+	}
+}
+
+func TestCommandRuntimeProofRefusesSymlinkedScript(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.py")
+	link := filepath.Join(dir, "checker.py")
+	if err := os.WriteFile(target, []byte("safe"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	hash := strings.Repeat("a", 64)
+	deps := PollDeps{}
+	err := deps.bindRuntimeProcess(context.Background(), RuntimeEvidence{PID: 0}, componentrelease.ComponentInstall{
+		InstallRoot: link, RuntimeProofCommand: []string{"/usr/bin/python3", link, "--self-report", "--runtime-env-file", "/var/lib/melusina/update/checker.env"},
+	}, "melusina-update-checker", hash)
+	if err == nil {
+		t.Fatal("symlinked timer script was accepted")
 	}
 }
 

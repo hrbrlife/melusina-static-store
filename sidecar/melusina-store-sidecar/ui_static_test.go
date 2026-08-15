@@ -102,3 +102,32 @@ func TestUIManifestFailsClosedOnHashMutation(t *testing.T) {
 		t.Fatalf("hash-mutated UI manifest was accepted: %v", err)
 	}
 }
+
+func TestGovernedUIServesLockedAppIcon(t *testing.T) {
+	ui, err := newGovernedUIStatic()
+	if err != nil {
+		t.Fatalf("load governed UI: %v", err)
+	}
+	h := requestScopedStatic{ui: ui}
+
+	// The AiLagoon path is one entry in the generated signed-SPK projection.
+	// newUIStatic has already hash-checked every manifest entry; this test proves
+	// the sidecar's owned /icons route serves that projection rather than falling
+	// through to mutable DistDir images.
+	icon := httptest.NewRecorder()
+	h.ServeHTTP(icon, httptest.NewRequest(http.MethodGet,
+		"/icons/apps/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.png", nil))
+	if icon.Code != http.StatusOK || icon.Body.Len() == 0 {
+		t.Fatalf("locked icon = HTTP %d, bytes=%d", icon.Code, icon.Body.Len())
+	}
+	if got := icon.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+		t.Fatalf("locked icon cache control = %q, want public 1h", got)
+	}
+
+	unknown := httptest.NewRecorder()
+	h.ServeHTTP(unknown, httptest.NewRequest(http.MethodGet,
+		"/icons/apps/not-a-locked-icon.png", nil))
+	if unknown.Code != http.StatusNotFound {
+		t.Fatalf("undeclared icon = HTTP %d, want 404", unknown.Code)
+	}
+}

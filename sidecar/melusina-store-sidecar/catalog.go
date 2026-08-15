@@ -195,6 +195,10 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 	if _, ok := row["capabilities"]; !ok {
 		row["capabilities"] = nil
 	}
+	// Never carry a source-authored "updatedAt" into the catalog. The Bazaar
+	// labels this field as a promotion timestamp, so it is authoritative only
+	// when derived below from the signed release record.
+	delete(row, "updatedAt")
 	row["sha256"] = packageSHA
 	row["attest"] = attest
 	if signedAt, ok := numberAsInt64(attest["signedAtUnix"]); ok {

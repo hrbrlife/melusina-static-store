@@ -27,6 +27,13 @@ NODE_MAJOR="$(node --version | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p')"
   exit 2
 }
 
+# Keep the generated signed-package icon projection separate from the runtime
+# catalog. This runs before Vite copies public/icons into the governed shell.
+node --test \
+  "$ROOT/src/catalog-source.test.mjs" \
+  "$ROOT/src/catalog-date-provenance.test.mjs" \
+  "$ROOT/src/app-icon-lock.test.mjs"
+
 TMP="$(mktemp -d "$ROOT/.sidecar-ui.XXXXXX")"
 cleanup() { rm -rf -- "$TMP"; }
 trap cleanup EXIT
@@ -73,6 +80,10 @@ with open(os.path.join(root, 'UI-MANIFEST.json'), 'w', encoding='utf-8', newline
               ensure_ascii=False, separators=(',', ':'))
     f.write('\n')
 PY
+
+# This must inspect the newly-built tree rather than the previously committed
+# sidecar UI, so a source date repair can produce its first governed bundle.
+BAZAAR_UI_TEST_DIR="$BUILD" node --test "$ROOT/src/catalog-date-provenance.test.mjs"
 
 if [[ "$MODE" == "check" ]]; then
   [[ -d "$OUT" ]] || { echo "check=ui_bundle: committed UI tree is missing: $OUT" >&2; exit 1; }

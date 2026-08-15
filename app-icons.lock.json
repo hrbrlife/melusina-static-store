@@ -1,0 +1,530 @@
+{
+  "assets": [
+    {
+      "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+      "assetSha256": "43ca45c4882ecaa316daccebf467f09927f72c4f58dda0fb9027a53668768cb6",
+      "path": "icons/apps/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.svg",
+      "source": {
+        "appHash": "8930d3356383a37e39153ddb9f48382fa23910bf04bec96ba46943c69f13bed3",
+        "format": "svg",
+        "packageId": "79ba33554d4afa89217b1c380f2055f6",
+        "packageSha256": "79ba33554d4afa89217b1c380f2055f663734dfd94af2410f45b0eba37e8c966",
+        "quality": "native",
+        "releaseEntryPda": "BsmqupfoXyo6F2RLhkcwpvsFKDtUrpL66KB8236yWAAp",
+        "releaseHash": "96af259394ae7c0aa8f5e9df1e706099bfd6a115e32aa451786f07ab4db9c443",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0",
+      "assetSha256": "d2ff9d797d04a1c8637c18a0cff9b726c0cf4b4861203256a794a19856d0dd9b",
+      "path": "icons/apps/130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0.svg",
+      "source": {
+        "appHash": "be0b35bf29c80fd5879f0b735423cf0b0879752348f118c9d275cbfd4ca43f4c",
+        "format": "svg",
+        "packageId": "119c207ed41a53fb0c2b4d169c6a9035",
+        "packageSha256": "119c207ed41a53fb0c2b4d169c6a9035ebd7a2f8ed0c8b45e9822a841bf1dc65",
+        "quality": "native",
+        "releaseEntryPda": "Bad4xN37dDgd6h1A7w8pLVoNVgafawBSUWZcoBYf4Tsb",
+        "releaseHash": "1bf780c31eb33b422fc88a34a977f36a23ebd7ca96e7bd63038cf15c6db01046",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
+      "assetSha256": "3b21079abff5f14c4e7b773f0ceff9785f8e51460ffd39cfe485ed52ac9f531c",
+      "path": "icons/apps/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.svg",
+      "source": {
+        "appHash": "f06ccfc9cdf65db42524573afb859b76039febcc2665b076a533ac7abc5e2c71",
+        "format": "svg",
+        "packageId": "04f87e88b35b8fae1c22281a4ecf6196",
+        "packageSha256": "04f87e88b35b8fae1c22281a4ecf6196cfbeef07da3e691defa9a33eb4ff9bc2",
+        "quality": "native",
+        "releaseEntryPda": "89ErWRHicgD9a8KHjhJKqD7VzvnKP9bUoEM7d2MoH5EW",
+        "releaseHash": "77aa2f5f3795cd920afeb76a4e67ccb200a97db10addd59f81aac15397732fe1",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
+      "assetSha256": "ae24827485102b0cbe7dff0fb208f2c0f8bc7386dd272fc78fedafdeef3a042c",
+      "path": "icons/apps/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.png",
+      "source": {
+        "appHash": "3b68cb4d4a9a9efe3b080a0383236e38dc5df6ce98c768fbe1cf3c8f5e2d0f93",
+        "format": "png",
+        "height": 256,
+        "packageId": "5ae51916adba64c06e279e679ce6ac6a",
+        "packageSha256": "5ae51916adba64c06e279e679ce6ac6a9b48db4e3afa59f945f2eadf141c7da7",
+        "quality": "native",
+        "releaseEntryPda": "9EA8f5LCr6S4GKq5mLnzNwsLt3tTDMf3e86xE1rCpT1d",
+        "releaseHash": "3d7b2cd530de90adc3c421bbdee671078fa7a056642fec81a49a600d2d29c382",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+      "assetSha256": "d5ab0224f9a74d038cc132b2f5b4e73f8b06074c4bc49f5d235715cd5fab6532",
+      "path": "icons/apps/47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0.png",
+      "source": {
+        "appHash": "969645c42d8e0d88780c36deacb1700a8d488d7ba4378c2dfc924f0c3ea3fa66",
+        "format": "png",
+        "height": 256,
+        "packageId": "3060e07cf7498d736db6ad8416007ba4",
+        "packageSha256": "3060e07cf7498d736db6ad8416007ba4e0684d1914758cb2f015edd375f32a96",
+        "quality": "native",
+        "releaseEntryPda": "AEANFDQsd4PPsYrNph6wC2dEDjHAKW9ngnoAiPtFSKEc",
+        "releaseHash": "c3ce57e76927d47f92eb622851b8fbd10c3c433894c087d1087141bda302dd8f",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
+      "assetSha256": "343d5b28a4be37bd48c7f99013740522779f712861a8f0de60d2bd7e0a9034fe",
+      "path": "icons/apps/55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60.png",
+      "source": {
+        "appHash": "3a2c9a8b12ee073d2bb994c84182644f8445a4369e0bb6428796710ca1ea45d0",
+        "format": "png",
+        "height": 256,
+        "packageId": "e118cb779799b9cf64f46acaa4b8cab9",
+        "packageSha256": "e118cb779799b9cf64f46acaa4b8cab96a3a89d6fda1d016dc706cd6d93261a1",
+        "quality": "native",
+        "releaseEntryPda": "2dUo3GpNhcoPAqaKo6q99DkYjBmzeZdHJauz35u4ckbs",
+        "releaseHash": "8fed41b16973773c9078cf5577141c326fff87d18fd81222031f04731b1491e0",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
+      "assetSha256": "73f29923410d788b2db1600fdd6e484d8d673cc792a4b8098133548754c47f18",
+      "path": "icons/apps/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.png",
+      "source": {
+        "appHash": "2afeb4aef2a1837a1f05b0a913dbf60bebfcf2975ca96ebf0bb4d4863b3775bb",
+        "format": "png",
+        "height": 128,
+        "packageId": "a14e5f25a804c645a7f18f3b122ea5eb",
+        "packageSha256": "a14e5f25a804c645a7f18f3b122ea5eb109e894435a037ce64daa6b70acf73c8",
+        "quality": "legacy-low-res",
+        "releaseEntryPda": "8woe9fuis3Q5ZjcFC4qy9hSCY7AWHpNkCKYrrz96opJp",
+        "releaseHash": "632ddab8369f3217671945d8118db40a84ac13a6d32bc5bfe06eeda329f9d171",
+        "slot": "market",
+        "variant": "dpi2x",
+        "width": 128
+      }
+    },
+    {
+      "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+      "assetSha256": "e7b3be3dea8235071cfbd47604580dabc677c20f0cef71be3033a805a45db492",
+      "path": "icons/apps/7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h.png",
+      "source": {
+        "appHash": "0e7e0cd0b377f0307ea7aa59db62f8281cc6f30da772d9bcd720a23d1341a7f9",
+        "format": "png",
+        "height": 128,
+        "packageId": "7da4f0ba0a542395126a950621481feb",
+        "packageSha256": "7da4f0ba0a542395126a950621481feba91ad7e4203abe81d075f805c41a3efc",
+        "quality": "native",
+        "releaseEntryPda": "6XxeEAkRrYFm4JPrwaLSB7rQwMn89nR692a4zHPTcvkZ",
+        "releaseHash": "478db978cf1fcfa047e9ff81e294c4fe65bc09ba4de3628eb5bf97f2c14bac7d",
+        "slot": "appGrid",
+        "variant": "dpi1x",
+        "width": 128
+      }
+    },
+    {
+      "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
+      "assetSha256": "202e35ed98c867e9010f0d966937ecce5a5f595d41a6f1767ec1a883d21d20e9",
+      "path": "icons/apps/8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh.png",
+      "source": {
+        "appHash": "0761eb0bc5b19b052ab89840fe0a0d5e1b04083f8a9046ba2a8676524a16515f",
+        "format": "png",
+        "height": 256,
+        "packageId": "52cada5a55e747763845df57eb51edb2",
+        "packageSha256": "52cada5a55e747763845df57eb51edb291a63d3da31dbe2f133a3e7d280968ff",
+        "quality": "native",
+        "releaseEntryPda": "CuuTLnhj37gWy9yqQnUEknR9ksFdgodj9y6xvkvCdETQ",
+        "releaseHash": "5668f0b1c2a419541e7800bfa4de3e2d5a61195707e68524c439c21ef356fd75",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+      "assetSha256": "91191b76a7bb63bbeadf768b082fea015418e8a7da2fe3cb52a8662a6767e259",
+      "path": "icons/apps/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.png",
+      "source": {
+        "appHash": "22f2487c6091922d48954ed4ba131d430a43a68e075f9c189e9ef289eb36d3b8",
+        "format": "png",
+        "height": 128,
+        "packageId": "379aa550bdefbe7ff66ed75c176aa32c",
+        "packageSha256": "379aa550bdefbe7ff66ed75c176aa32caf2a0b96b083ac437beee8be7897b42b",
+        "quality": "native",
+        "releaseEntryPda": "FpwceQESA8EpJ4CLSkX3HcU6365ewCUrHcKEWP1egHYu",
+        "releaseHash": "e90aa8c08d96c6c3a18f6180ea64fb316cf0e1bf1e02d761b91563c060a6d0fd",
+        "slot": "appGrid",
+        "variant": "dpi1x",
+        "width": 128
+      }
+    },
+    {
+      "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
+      "assetSha256": "e23b1e4fce37130cccee459a34eb66b83167dd1d44541c9184b140ddc230588f",
+      "path": "icons/apps/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.svg",
+      "source": {
+        "appHash": "cc73005b9f51781dfb74898f4a53d85f47c19e1a15de636ceda13c3178737661",
+        "format": "svg",
+        "packageId": "bd79518f3c00e42f4519830403b521e2",
+        "packageSha256": "bd79518f3c00e42f4519830403b521e236d24216a1be5ff314c43841a06ca834",
+        "quality": "native",
+        "releaseEntryPda": "F4oTaKTm5B16nbCxsiEKR2Hu9w3WBeVJLpCZ1gtoMCn9",
+        "releaseHash": "f41c0c64a414289188f0ac11087ce46eb5937cbd8e57c15b202dfeb7fe9028dc",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+      "assetSha256": "dbe0571c179596efcfe92d03f6a9b51a1c299a96b1236e23f74794bb9f87a2ad",
+      "path": "icons/apps/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.png",
+      "source": {
+        "appHash": "007206d9cefb5e3123f0e61af15f2ee2d1d0fe8669af4a2c4e47c11dc65ee7cf",
+        "format": "png",
+        "height": 256,
+        "packageId": "e13cb06e918b341727deda6a47fb4d60",
+        "packageSha256": "e13cb06e918b341727deda6a47fb4d60697fa23cbe41f010ecc0703f3aae23bf",
+        "quality": "native",
+        "releaseEntryPda": "FywFxvJty9F9kHg4QU6k13d5feYbpNhLYhHb9dQaBf7D",
+        "releaseHash": "2eef5584a567e8aa351aaca135fcd893e644f36149f15e06df2decb8d3a20ef2",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
+      "assetSha256": "a7da4e6c73ce9966f724f138e23bd4acff0a74d083a661b9f35092ca12be1d38",
+      "path": "icons/apps/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.svg",
+      "source": {
+        "appHash": "ca259527142c4bb5210306fb2990d25160176be0b27ab0b278e00c9f8853f597",
+        "format": "svg",
+        "packageId": "f501f3a72d2500b6277fa0b919a2fb38",
+        "packageSha256": "f501f3a72d2500b6277fa0b919a2fb38190080b1707eaf1b9ae8e9400d90b817",
+        "quality": "native",
+        "releaseEntryPda": "8nuvfDG13794Aq7hZH37j9acArPwnUr4oMNfEoJBUCQF",
+        "releaseHash": "d9d4cd3ff2c69c24545fa11260b4fced189b1148f0b6f6400e68cfb5cdadd58e",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+      "assetSha256": "aef6828c07ff2b058bb25b520e84ff0e196ad563112ed7711d65487ead721fdc",
+      "path": "icons/apps/nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh.svg",
+      "source": {
+        "appHash": "62e156d66d0be57aea947d46884d1bb57b9dc9710f56a1b531d6966989b69fc9",
+        "format": "svg",
+        "packageId": "ce77d32d6be315515dc30b5271ceb228",
+        "packageSha256": "ce77d32d6be315515dc30b5271ceb228db2565f4b638b19532acd74dcbabc32d",
+        "quality": "native",
+        "releaseEntryPda": "6n2idD76YZ7oEe8tyXTKw6sU6JCrr14N7yFKk4rNUigJ",
+        "releaseHash": "79203bf0181987eb042ece551c66f64be41f3859e6632358cb61ef8bfd963a0b",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+      "assetSha256": "cad9e8b33d484c9299c5327c8dfd82b6448e0338d51c41fbad2f915c5f8f6a30",
+      "path": "icons/apps/pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50.png",
+      "source": {
+        "appHash": "6ebfd29116459f95e1c8a98249ee89abed34cd785140399b15ced98851c89b53",
+        "format": "png",
+        "height": 256,
+        "packageId": "91d7f7c1f0b21b54b24fa89cd8386d40",
+        "packageSha256": "91d7f7c1f0b21b54b24fa89cd8386d40abeea3bc444f0ab2112a6619865a69e8",
+        "quality": "native",
+        "releaseEntryPda": "CNEXxmi36rmJ7p3XmGPpU6sTCwqoU68JrvP6FRRfw8ij",
+        "releaseHash": "b28f877eea5d8cfa9d2f2efb3c1650e5305ce150c3f7599739de8e4e942f3295",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
+      "assetSha256": "d2ff9d797d04a1c8637c18a0cff9b726c0cf4b4861203256a794a19856d0dd9b",
+      "path": "icons/apps/quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh.svg",
+      "source": {
+        "appHash": "74373199cd86de86c8209bb4cb681ac43af96ceea4dc452fbab06fdf398d386c",
+        "format": "svg",
+        "packageId": "cbf46985b31cbc3207393956617cb286",
+        "packageSha256": "cbf46985b31cbc3207393956617cb2861d1a6b8bd9c782e7ea1f40ba15935df5",
+        "quality": "native",
+        "releaseEntryPda": "57fJaUMyQ5SdhbeQa1A8dMP78UDxhBBE73mGzGpDADBH",
+        "releaseHash": "15ba132ad49fb6829e1f939195c124a1844b6824868f307284438eea55f1c809",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+      "assetSha256": "34dc35ac2a0d16682395dccd2ad7c660178e4a96f24a220864d676445d1ee20f",
+      "path": "icons/apps/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.svg",
+      "source": {
+        "appHash": "33ae6d74af5f8c857f1ac62d5d62a3695f9597e6a884aa515f78b9164b29a8fa",
+        "format": "svg",
+        "packageId": "d202c273373792a2e72235721dbf498f",
+        "packageSha256": "d202c273373792a2e72235721dbf498f64f619108f9337ddacadb6b484d1f37c",
+        "quality": "native",
+        "releaseEntryPda": "5sUAnKpMvBjRintQFSpmgJdUsr5RsWFNPpSYggwkCjWp",
+        "releaseHash": "944ef4193892bafc41ac2e151931e2f5d55f9e90ff1282801244a63f072fe5ab",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "assetSha256": "dbe0571c179596efcfe92d03f6a9b51a1c299a96b1236e23f74794bb9f87a2ad",
+      "path": "icons/apps/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.png",
+      "source": {
+        "appHash": "dc68d0508093933672bdd06730f25942956ca5ee0ad20273a52d1b929072dd8f",
+        "format": "png",
+        "height": 256,
+        "packageId": "af10fe12391ed62fc30157f07745036c",
+        "packageSha256": "af10fe12391ed62fc30157f07745036c58185dc64b1b6a81b799e42d147ad1c9",
+        "quality": "native",
+        "releaseEntryPda": "FuBvUytKZLChrZysVNLn1eCyovTQzXRYJmYaypJYc1e4",
+        "releaseHash": "420efc6bdb4126c4e7d9ffc531e6123b29b1422c6381ee606fa1985e45291b1b",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+      "assetSha256": "58b36c9b4dfbbd3a6093cefae2cf5f07f3a7726c57e87504ec40ead11fa3cedc",
+      "path": "icons/apps/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.png",
+      "source": {
+        "appHash": "b456896456d52f06e5d11cd1943f861a8ef3e8caddb8ebe525fde7e1ca2d8628",
+        "format": "png",
+        "height": 256,
+        "packageId": "c9366a1d74de9ebe415715752a55d7a5",
+        "packageSha256": "c9366a1d74de9ebe415715752a55d7a52816a74fc1ab3856655efd9e27e2efd5",
+        "quality": "native",
+        "releaseEntryPda": "FAETHrg5JYXroozWNDJhuS4DKxiNZysFD9Yg6ZmXKD6g",
+        "releaseHash": "f5f685541fcb0402d36f64a731ee8fb0afae95badf2e36b12e7542da68d42800",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+      "assetSha256": "94917b1593195072063d8586e87949b833b71ddffb0bf029d186f185ec3c7713",
+      "path": "icons/apps/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.png",
+      "source": {
+        "appHash": "e2aba13aa33c99dde6dc00736d5ab58e529b33c316d662072a451d07d39a0505",
+        "format": "png",
+        "height": 128,
+        "packageId": "8a14cd8aa632a5296dc43337c3af426a",
+        "packageSha256": "8a14cd8aa632a5296dc43337c3af426a2a3e800daf8bded72df4faf1302ca1b7",
+        "quality": "native",
+        "releaseEntryPda": "3zVatgR1mWr9nCrWP3mDwzBNZYqRViNDxAWgyBpX76Ve",
+        "releaseHash": "0e6ed04b3169348d37328916e1570defe19365cd1bca6b9fe5cfc4a6f3735b2c",
+        "slot": "appGrid",
+        "variant": "dpi1x",
+        "width": 128
+      }
+    },
+    {
+      "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
+      "assetSha256": "608f212a406b6a0bb88f623a9f66c14acce3a96d48cf02a949e093640d96265b",
+      "path": "icons/apps/wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h.png",
+      "source": {
+        "appHash": "1ce3c6cc35667bf1e9413c006c40f4300feaf94460ace895312520b6a90c6d6d",
+        "format": "png",
+        "height": 256,
+        "packageId": "e9b48c94f543a43563556cafcf6676d7",
+        "packageSha256": "e9b48c94f543a43563556cafcf6676d7c2420463ac37253c4e075b1b84daa1af",
+        "quality": "native",
+        "releaseEntryPda": "7zy6HAsVz4RUd47LqNLxeibjkzUd5ZeUSkpU2mV42Wvc",
+        "releaseHash": "58109ceaed037311bbb5168c913a1b5a1f921648c50077e0273a5e023e738eb1",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+      "assetSha256": "47145e511de03d28c177a5c542f6e4a6c21937316c5f77f12f79f2166ea50412",
+      "path": "icons/apps/xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0.png",
+      "source": {
+        "appHash": "dd073d19fa142ce42114fc0d0647b9550ee1b2caaa2b8dcd4b8945c047f3074e",
+        "format": "png",
+        "height": 256,
+        "packageId": "3e9faeba588d76117be93d529b618f28",
+        "packageSha256": "3e9faeba588d76117be93d529b618f288edb9adb3b7f2766ef9fcb069535a89f",
+        "quality": "native",
+        "releaseEntryPda": "3xCqdaym4oqTWzmnuy7ZWTN42tCrGiyoVV9sUL9FPMrv",
+        "releaseHash": "68d6a47ce168dd2d5c3e4740d9231624845cb7b02a29d17a9ce856aa3734481b",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    },
+    {
+      "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
+      "assetSha256": "75afa6a41887c283dce91ba60e9fe0f1794fc4f4d1419c02b07934e46511c6dd",
+      "path": "icons/apps/yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh.png",
+      "source": {
+        "appHash": "199af4ccc383e584af4239c918b332ba16efbdf2b24e8fdb1ecef3433749d605",
+        "format": "png",
+        "height": 128,
+        "packageId": "cd43fa535e8ce253411385be2bb80910",
+        "packageSha256": "cd43fa535e8ce253411385be2bb8091034cb882f4a8a74039de4494e3da8291c",
+        "quality": "native",
+        "releaseEntryPda": "8Hox1kupN4PFk69jZhMQwAiSfZu25Lyk3KBmu1k3NVGK",
+        "releaseHash": "b2c8058aa727de8ee36ca7a40bd2ed5457249d7cd52b1a998b336da1aab79802",
+        "slot": "appGrid",
+        "variant": "dpi1x",
+        "width": 128
+      }
+    },
+    {
+      "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
+      "assetSha256": "f89537c6cce648a584b55c4eb8b8faa7c4fd8311e0fa5663d15adfd45bc184f2",
+      "path": "icons/apps/zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0.svg",
+      "source": {
+        "appHash": "bcf57a4812078fc521ad5b650546fd784951bd42e37f72716625db7a8e9da710",
+        "format": "svg",
+        "packageId": "5dc159b665134be8f5eaf3f46aead234",
+        "packageSha256": "5dc159b665134be8f5eaf3f46aead234baba2ada3ff8170ce340d4aea3dbb95a",
+        "quality": "native",
+        "releaseEntryPda": "GWjy9mD3BeDecMK1YYtuu3h7nE49JggtRriPZ4V49C7X",
+        "releaseHash": "675832130b30e0dd706a1d71b83cd352a93e065f2ab2767117b9676cead91c92",
+        "slot": "appGrid",
+        "variant": "svg"
+      }
+    },
+    {
+      "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
+      "assetSha256": "5365e761c8edb04d3b913521426b4b6dde259e8e9c8b49f7b9f2e80ba832c1d1",
+      "path": "icons/apps/ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h.png",
+      "source": {
+        "appHash": "a779a551908bba6372ce522899ad45563a319b65c8c1722d6d01cdc6de077ce3",
+        "format": "png",
+        "height": 256,
+        "packageId": "3fa2f4c39cf1789016ca83450b46c1dc",
+        "packageSha256": "3fa2f4c39cf1789016ca83450b46c1dc0ff1e9fc21b255d8e0dc505110591111",
+        "quality": "native",
+        "releaseEntryPda": "3o8faP6g2vGi9qkYnzP8noWxPfA7E1pVbvM1C1owjbS2",
+        "releaseHash": "7fcfcd7c647901aa2ea440498ee49da1693ba420550dd571b704f05d47321b5f",
+        "slot": "appGrid",
+        "variant": "dpi2x",
+        "width": 256
+      }
+    }
+  ],
+  "catalogSha256": "d8d718bf9d17127d146b36f89dd6d2f1642bb206987ee3fdd07297d182570cf7",
+  "iconless": [
+    {
+      "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+      "source": {
+        "appHash": "def4d5c7c7ee55df16e94240b037922135a578ca242c4608548b2e97b6431eb5",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "2c477b4e3ddb597bc5065f102c7dfa84",
+        "packageSha256": "2c477b4e3ddb597bc5065f102c7dfa849a1e16f2eca7cbee05184b012d04b000",
+        "releaseEntryPda": "B3n96GMtvB26xYZMhA8RHEgC9y5bwb37LagvnpqELXyW",
+        "releaseHash": "d59d99c52385eed5ceeaf3f7417395484ef8c54838a919eb95540f071a1be284"
+      }
+    },
+    {
+      "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
+      "source": {
+        "appHash": "9611b3f620dfc0e78b3c0fa8517d603a5ef9ef161cf992196d2094e197a9e69b",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "df920fab6d77d9c824bfea5b54a6261f",
+        "packageSha256": "df920fab6d77d9c824bfea5b54a6261f0e7652125c5c79953bbfa7aa72acd630",
+        "releaseEntryPda": "6AbfSPXAYUkZz8djVRunXejDJTSMSvD6pHA4EBWbwLu5",
+        "releaseHash": "a8dc0ba0d6e49ebf1515568aeae2ad2bc9327204649f24247df615eb376cd5af"
+      }
+    },
+    {
+      "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
+      "source": {
+        "appHash": "d95582395ec790e54f423ce675be8a5633fb89b88acbfc694fb100b9b8655753",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "ccada18b51a8a3bc11335bb818ea0a47",
+        "packageSha256": "ccada18b51a8a3bc11335bb818ea0a473a5a2d50124fe6a29c140f2eb5e3ab0f",
+        "releaseEntryPda": "Cm1XKkqdxdnm34Hb8YMtx6nc7qX9SjJs7mrEgKmiHbDa",
+        "releaseHash": "b6cf8d7a8a4903fbf3c0c8f60b3d97b1aa47063fe15172f5c8b50107d22b958b"
+      }
+    },
+    {
+      "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
+      "source": {
+        "appHash": "699334f7c4353ddf130602f06ae662836cfabadad20a3a2c95a03c0ffc1c48f4",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "da5fb49060e1d4ddd5fb737156ed7968",
+        "packageSha256": "da5fb49060e1d4ddd5fb737156ed7968d755e19299e86c7d216ae297a50cad54",
+        "releaseEntryPda": "AhvpH9n9a9cJNVhrNDc63Ki83z8DFXagtYBKVCbZ4Sps",
+        "releaseHash": "2b1519091850f164a2135e48f165ea4a493890ffba7d71ffa03c95416150f741"
+      }
+    },
+    {
+      "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
+      "source": {
+        "appHash": "9bf7c9180104a252218490d0d28c3de0086705d3fb02c7e701f3e0eda17dc1ab",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "1de407216a9fb6010c865a684d88a311",
+        "packageSha256": "1de407216a9fb6010c865a684d88a31172039bc79e13a05f88aefd7733ac4029",
+        "releaseEntryPda": "2oaaQs8dF4PP9YWXwRt19p8gq6ojWmQJfRC4NtKWqr1i",
+        "releaseHash": "2674b265631f8a8ceb237b1a4107f2446acf4052d89636d8c466ac6f99a9842e"
+      }
+    },
+    {
+      "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
+      "source": {
+        "appHash": "7d51938ca94748934d3e6102a3c76fbc229889ad70f627802dc3369f1f237441",
+        "checkedSlots": [
+          "appGrid",
+          "market",
+          "grain"
+        ],
+        "packageId": "a3bb2b76887b0c9cc8373bb105a3b6bf",
+        "packageSha256": "a3bb2b76887b0c9cc8373bb105a3b6bfe3a8b2486023954ef45ffddc69f15c49",
+        "releaseEntryPda": "CF37vJ3GcQAjiUKAPo4RWns9mjq97k9HEZFB5Va8KWmD",
+        "releaseHash": "6cb6950fe1c16e203de2cd13570661f4dd1ef593a4e854422de3ea6412dfe705"
+      }
+    }
+  ],
+  "schema": "melusina-bazaar-app-icons-v1"
+}

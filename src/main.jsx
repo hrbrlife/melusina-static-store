@@ -24,6 +24,11 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
+import {
+  BAZAAR_MARK_ICON_PATH,
+  appIconPath,
+  isExplicitlyIconless,
+} from "./app-icon-map.js";
 
 // Self-hosted origin: every catalog asset AND the app-install package-download
 // URL resolve from the bazaar origin that served this SPA (the market popup is
@@ -73,7 +78,10 @@ const timeAgo = (v) => {
   try { return formatDistanceToNow(ts, { addSuffix: true }); } catch { return null; }
 };
 
-const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
+// The sidecar derives updatedAt from RELEASE.json's signedAtUnix when it
+// assembles a published row. createdAt is source metadata and must never be
+// presented as a promotion/update timestamp in the Bazaar.
+const signedPromotionAt = (app) => app?.updatedAt ?? null;
 
 const screenshotUrl = (appId, shot) => {
   const file = typeof shot === "string" ? shot : shot.url || "";
@@ -1023,28 +1031,16 @@ function Badge({ children, neon }) {
 }
 
 function AppIcon({ app, size = 48 }) {
-  const [err, setErr] = useState(false);
-  const src = imgUrl(app.imageId);
-  if (!src || err) {
-    const letter = (app.name || "?")[0].toUpperCase();
-    return (
-      <div style={{
-        width: size, height: size, borderRadius: T.radiusSm,
-        background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
-        border: `1px solid ${T.cyan}44`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * .42, fontWeight: 700,
-        fontFamily: "'Orbitron', sans-serif",
-        color: T.cyan, flexShrink: 0,
-        textShadow: `0 0 10px ${T.cyan}66`,
-        boxShadow: `0 0 15px ${T.accentGlow}`,
-      }}>
-        {letter}
-      </div>
-    );
-  }
+  const [failed, setFailed] = useState(false);
+  const appId = typeof app?.appId === "string" ? app.appId : "";
+  const iconless = isExplicitlyIconless(appId);
+  const signedIcon = iconless ? null : appIconPath(appId);
+  // The map is generated from the package's signed manifest. An explicitly
+  // iconless app, an app added after this shell release, or a failed asset all
+  // render the Bazaar mark — never a letter derived from mutable catalog text.
+  const src = failed || !signedIcon ? BAZAAR_MARK_ICON_PATH : signedIcon;
   return (
-    <img src={src} alt="" loading="lazy" onError={() => setErr(true)}
+    <img src={src} alt="" loading="lazy" onError={() => setFailed(true)}
       style={{
         width: size, height: size, borderRadius: T.radiusSm,
         objectFit: "contain", background: T.bgAlt, flexShrink: 0,
@@ -1122,7 +1118,7 @@ function CardSlideshow({ app, shots }) {
 function AppCard({ app, onSelect, onInstall }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
-  const updatedAgo = timeAgo(app.updatedAt || app.createdAt);
+  const updatedAgo = timeAgo(signedPromotionAt(app));
   const runtime = runtimeContractInfo(app);
 
   return (
@@ -1700,7 +1696,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       )}
     </>],
     ["UPSTREAM", app.upstreamAuthor || "—"],
-    ["DEPLOYED", fmtDate(app.createdAt)],
+    ...(signedPromotionAt(app) == null ? [] : [["LAST PROMOTED", fmtDate(signedPromotionAt(app))]]),
     ["PKG_ID", <code key="p" style={{
       fontSize: 10, color: T.cyan + "88", wordBreak: "break-all",
       fontFamily: "'JetBrains Mono', monospace",
@@ -2106,9 +2102,9 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                   build {app.versionNumber}
                 </span>
               )}
-              {timeAgo(app.updatedAt || app.createdAt) && (
+              {timeAgo(signedPromotionAt(app)) && (
                 <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {'\u00b7'} updated {timeAgo(app.updatedAt || app.createdAt)}
+                  {'\u00b7'} updated {timeAgo(signedPromotionAt(app))}
                 </span>
               )}
               {app.author?.name && (

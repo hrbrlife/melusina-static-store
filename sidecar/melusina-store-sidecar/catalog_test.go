@@ -47,6 +47,35 @@ func TestCatalogAssemblerMaterializesVerifiedTriple(t *testing.T) {
 	}
 }
 
+func TestProjectCatalogIndexDoesNotTrustMetadataUpdatedAt(t *testing.T) {
+	root := t.TempDir()
+	spk := []byte("signed package")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	appID := "testapp0000000000000000000000000000000000000000000000"
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + sha[:32] + `","name":"Test","version":"1.2.3","createdAt":1700000000000,"updatedAt":1700000000999}`)
+	// A release without signedAtUnix may still be materialized for legacy
+	// compatibility, but it must not inherit a source-authored update date.
+	release := []byte(`{"appHash":"abc"}`)
+
+	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, release, metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index struct {
+		Apps []map[string]any `json:"apps"`
+	}
+	if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Apps) != 1 {
+		t.Fatalf("apps = %d, want 1", len(index.Apps))
+	}
+	if _, exists := index.Apps[0]["updatedAt"]; exists {
+		t.Fatalf("source metadata updatedAt survived without signedAtUnix: %#v", index.Apps[0])
+	}
+}
+
 // TestProjectCatalogIndexStripsMongoUnsafeKeysPreservingAttestHashes proves the
 // publish path (projectCatalogIndex) emits an apps/index.json whose rows carry
 // NO Minimongo-unsafe key ($-prefixed or dotted) at any depth — so the shell's

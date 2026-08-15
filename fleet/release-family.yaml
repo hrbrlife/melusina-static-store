@@ -149,3 +149,15 @@ families:
         catalog_repo: jinn
         catalog_slug: jinn
         role: confined-ai-reporting-and-scheduled-sheets-assistance
+      cratelink:
+        appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
+        source_path: cratelink
+        publish_slug: cratelink
+        catalog_name: CrateLink
+        # The canonical GitHub repository uses an underscore while the
+        # historical Store slot uses a hyphen. Bind the preserved slot
+        # explicitly rather than inventing a second public product.
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-cratelink-app
+        catalog_slug: cratelink
+        role: controlled-workspace-file-transfer

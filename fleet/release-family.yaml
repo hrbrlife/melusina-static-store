@@ -101,6 +101,15 @@ families:
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
         role: private-chat-and-calls
+      instaco:
+        appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
+        source_path: instaco
+        publish_slug: instaco
+        catalog_name: InstaCo
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-instaco-app
+        catalog_slug: instaco
+        role: series-llc-formation-and-corporate-registry
   platform-tools:
     apps:
       minigit:

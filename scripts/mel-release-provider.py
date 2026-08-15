@@ -17,6 +17,7 @@ import binascii
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -140,6 +141,7 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "family": str(family_name),
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
+                    "source_commit": str(spec.get("source_commit", "")),
                     "publish_slug": str(spec.get("publish_slug", "")),
                     # The immutable appId is the authority, but a first
                     # publish into a clean store must also name the one
@@ -172,6 +174,16 @@ def source_path(app_id: str) -> Path:
     metadata = path / "metadata.json"
     if not path.is_dir() or path.is_symlink() or not metadata.is_file() or metadata.is_symlink():
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
+    expected_commit = spec["source_commit"].strip().lower()
+    if expected_commit:
+        if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
+            raise ProviderError(f"invalid source_commit for {app_id}: {expected_commit!r}")
+        actual_commit = run(["git", "-C", str(path), "rev-parse", "HEAD"]).strip().lower()
+        if actual_commit != expected_commit:
+            raise ProviderError(
+                f"declared source path is not at pinned source_commit for {app_id}: "
+                f"want {expected_commit}, got {actual_commit}"
+            )
     return path
 
 

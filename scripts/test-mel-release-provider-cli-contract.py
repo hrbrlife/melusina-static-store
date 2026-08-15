@@ -9,6 +9,7 @@ unknown flag after a real Squads proposal would strand an approval.
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -656,6 +657,68 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             restore_env(old)
 
 
+def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
+    app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        assert provider.app_spec(app_id) == {
+            "family": "bureau-rich-office",
+            "name": "sheets-bureau",
+            "source_path": "sheets-bureau",
+            "source_commit": "4a9c32b4288198faf0e57ed7acf588b918c1f062",
+            "publish_slug": "sheets-bureau",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-bureau-sheets-app",
+            "catalog_slug": "sheets-bureau",
+            "pack_profile": "",
+        }
+        assert provider.catalog_slot(app_id) == {
+            "developer": "hrbrlife",
+            "repo": "melusina-bureau-sheets-app",
+            "slug": "sheets-bureau",
+        }
+    finally:
+        restore_env(old)
+
+
+def test_source_commit_pin_refuses_any_other_clean_checkout():
+    app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app = root / "sheets-bureau"
+        app.mkdir()
+        (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        for args in (
+            ["git", "init", "-q", str(app)],
+            ["git", "-C", str(app), "config", "user.email", "release-test@example.invalid"],
+            ["git", "-C", str(app), "config", "user.name", "release-test"],
+            ["git", "-C", str(app), "add", "metadata.json"],
+            ["git", "-C", str(app), "commit", "-qm", "initial source"],
+        ):
+            subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        actual = subprocess.run(
+            ["git", "-C", str(app), "rev-parse", "HEAD"], check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        ).stdout.strip()
+        config = root / "release-family.yaml"
+        write_family_config(config, {
+            "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau", "source_commit": actual},
+        })
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root)})
+        try:
+            assert provider.source_path(app_id) == app
+            config.write_text(config.read_text().replace(actual, "f" * 40))
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "not at pinned source_commit" in str(exc), exc
+            else:
+                raise AssertionError("a clean but wrong source commit was accepted")
+        finally:
+            restore_env(old)
+
+
 def test_actual_cyberteller_config_family_binding_resolves_historical_slot():
     """The real manifest must retain Config's existing appId-bound slot."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -923,6 +986,8 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
+    test_checked_in_rich_sheets_family_selects_only_the_pinned_slot()
+    test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()

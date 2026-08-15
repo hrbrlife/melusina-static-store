@@ -819,6 +819,7 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
 
 def test_checked_in_release_pins_bind_exact_target_slots():
     config = HERE.parent / "fleet" / "release-family.yaml"
+    goldkey_app_id = "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh"
     goldkey_dev_app_id = "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"
     def spec(family, name, source_path, source_commit, publish_slug, developer, repo, slug,
              metadata_path="metadata.json", runtime_contract_path="RUNTIME-CONTRACT.json", pack_target=""):
@@ -869,6 +870,11 @@ def test_checked_in_release_pins_bind_exact_target_slots():
                 "slug": expected["catalog_slug"],
             }
             assert provider.pack_profile_env(app_id) == expected_pack_env
+
+        # GoldKey's named coordinate is intentionally a first publish. A
+        # missing package is a bootstrap condition, not permission to select a
+        # similarly named legacy directory.
+        assert provider.catalog_package(goldkey_app_id) is None
 
         try:
             provider.app_spec(goldkey_dev_app_id)

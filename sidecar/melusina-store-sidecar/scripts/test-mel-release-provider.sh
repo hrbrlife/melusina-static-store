@@ -82,6 +82,13 @@ PY
 # The outer precompile is the critical real-chain invariant. Keep this simple
 # assertion here so a refactor cannot silently fall back to generic execute.
 grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/scripts/mel-release-squads-register.mjs"
+# @sqds/multisig 2.1.4 assigns logs after translating a transaction error, while
+# recent web3 SendTransactionError exposes logs as getter-only. The helper must
+# normalize that one error shape before the SDK can mask the underlying Anchor
+# reason, and its raw logs must remain safely printable.
+grep -Fq 'wrapConnectionTransactionErrors' "$ROOT/scripts/mel-release-squads-register.mjs"
+grep -Fq 'formatTransactionFailure' "$ROOT/scripts/mel-release-squads-register.mjs"
+node "$ROOT/scripts/test-mel-release-squads-errors.mjs"
 # The signer provider must reject an arbitrary node_modules directory before it
 # can create a chain proposal. This caught a real workstation misconfiguration.
 grep -Fq 'MEL_RELEASE_NODE_MODULES must contain @solana/web3.js' "$PROVIDER"

@@ -8,6 +8,10 @@
 import fs from "fs";
 import path from "path";
 import { createRequire } from "module";
+import {
+  formatTransactionFailure,
+  wrapConnectionTransactionErrors,
+} from "./mel-release-squads-errors.mjs";
 
 function need(name) {
   const value = process.env[name];
@@ -54,13 +58,13 @@ async function sendAndConfirm(connection, transaction) {
 }
 function context(state) {
   const rpc=need("MEL_RELEASE_RPC_URL");
-  const connection=new Connection(rpc,{commitment:"confirmed"});
+  const connection=wrapConnectionTransactionErrors(new Connection(rpc,{commitment:"confirmed"}));
   const multisigPda=new PublicKey(state.multisigPda);
   return {connection,multisigPda};
 }
 async function nextIndex() {
   const msPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
-  const connection=new Connection(need("MEL_RELEASE_RPC_URL"),{commitment:"confirmed"});
+  const connection=wrapConnectionTransactionErrors(new Connection(need("MEL_RELEASE_RPC_URL"),{commitment:"confirmed"}));
   const account=await multisig.accounts.Multisig.fromAccountAddress(connection,msPda);
   process.stdout.write(String(BigInt(account.transactionIndex)+1n)+"\n");
 }
@@ -118,6 +122,6 @@ try {
   else if (op === "approve-execute" && statePath) await approveExecute(statePath);
   else throw new Error("usage: mel-release-squads-register.mjs {next-index|propose <state>|approve-execute <state>}");
 } catch (err) {
-  console.error(`mel-release-squads-register: ${err?.stack || err}`);
+  console.error(`mel-release-squads-register: ${formatTransactionFailure(err)}`);
   process.exit(1);
 }

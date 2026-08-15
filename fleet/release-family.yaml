@@ -218,19 +218,9 @@ families:
         catalog_repo: GoldKey
         catalog_slug: goldkey
         role: encrypted-team-vault
-      goldkey-dev:
-        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
-        source_path: GoldKey
-        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
-        metadata_path: metadata.dev.json
-        runtime_contract_path: RUNTIME-CONTRACT.dev.json
-        pack_target: dev-pack-local
-        publish_slug: goldkey-dev
-        catalog_name: GoldKey DEV
-        catalog_developer: hrbrlife
-        catalog_repo: GoldKey
-        catalog_slug: goldkey-dev
-        role: disposable-development-vault
+        # The separately signed GoldKey DEV identity is deliberately absent
+        # from this production release family. Its historical state is neither
+        # selected nor changed by the governed GoldKey production rail.
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main

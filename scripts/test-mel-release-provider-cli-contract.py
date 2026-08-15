@@ -819,6 +819,7 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
 
 def test_checked_in_release_pins_bind_exact_target_slots():
     config = HERE.parent / "fleet" / "release-family.yaml"
+    goldkey_dev_app_id = "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"
     def spec(family, name, source_path, source_commit, publish_slug, developer, repo, slug,
              metadata_path="metadata.json", runtime_contract_path="RUNTIME-CONTRACT.json", pack_target=""):
         return {
@@ -852,12 +853,6 @@ def test_checked_in_release_pins_bind_exact_target_slots():
                  "goldkey", "hrbrlife", "GoldKey", "goldkey"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
-        "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0": (
-            spec("productivity-apps", "goldkey-dev", "GoldKey", "10acf09c3d5377d763760b11b912b1053e0cbcce",
-                 "goldkey-dev", "hrbrlife", "GoldKey", "goldkey-dev",
-                 "metadata.dev.json", "RUNTIME-CONTRACT.dev.json", "dev-pack-local"),
-            {"MEL_RELEASE_PACK_PROFILE": "standard", "MEL_RELEASE_PACK_TARGET": "dev-pack-local"},
-        ),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": (
             spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4",
                  "mermail", "hrbrlife", "INSTASYS_MAIL", "mermail"),
@@ -874,6 +869,13 @@ def test_checked_in_release_pins_bind_exact_target_slots():
                 "slug": expected["catalog_slug"],
             }
             assert provider.pack_profile_env(app_id) == expected_pack_env
+
+        try:
+            provider.app_spec(goldkey_dev_app_id)
+        except provider.ProviderError as exc:
+            assert "not declared" in str(exc), exc
+        else:
+            raise AssertionError("GoldKey DEV was selectable from the production release family")
     finally:
         restore_env(old)
 

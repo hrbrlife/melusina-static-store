@@ -814,6 +814,46 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
         restore_env(old)
 
 
+def test_checked_in_ailagoon_and_instaco_pins_bind_exact_target_slots():
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    cases = {
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": {
+            "family": "money-path",
+            "name": "ai-lagoon",
+            "source_path": "ai-lagoon",
+            "source_commit": "db98212817e2393477eae058f6688b2251bb3482",
+            "publish_slug": "ai-lagoon",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "AI_Lagoon",
+            "catalog_slug": "ai-lagoon",
+            "pack_profile": "",
+        },
+        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": {
+            "family": "money-path",
+            "name": "instaco",
+            "source_path": "instaco",
+            "source_commit": "b13d042cc689de8faa40f46cd04713239b5c6ea8",
+            "publish_slug": "instaco",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "instaco-app",
+            "catalog_slug": "instaco",
+            "pack_profile": "",
+        },
+    }
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        for app_id, expected in cases.items():
+            assert provider.app_spec(app_id) == expected
+            assert provider.catalog_slot(app_id) == {
+                "developer": expected["catalog_developer"],
+                "repo": expected["catalog_repo"],
+                "slug": expected["catalog_slug"],
+            }
+            assert provider.pack_profile_env(app_id) == {"MEL_RELEASE_PACK_PROFILE": "standard"}
+    finally:
+        restore_env(old)
+
+
 def test_source_commit_pin_refuses_any_other_clean_checkout():
     app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1121,6 +1161,7 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_rich_sheets_family_selects_only_the_pinned_slot()
+    test_checked_in_ailagoon_and_instaco_pins_bind_exact_target_slots()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()

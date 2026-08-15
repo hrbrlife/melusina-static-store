@@ -68,6 +68,19 @@ families:
         catalog_repo: DueProcess
         catalog_slug: dueprocess
         role: four-eyes-casework
+      ai-lagoon:
+        appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
+        source_path: ai-lagoon
+        source_commit: db98212817e2393477eae058f6688b2251bb3482
+        publish_slug: ai-lagoon
+        catalog_name: AiLagoon
+        catalog_developer: hrbrlife
+        # This is the existing historical Store target. Its retained metadata
+        # is never source authority; the provider validates/copies metadata
+        # only from the pinned clean ai-lagoon checkout.
+        catalog_repo: AI_Lagoon
+        catalog_slug: ai-lagoon
+        role: ai-provider-routing-and-vision
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
@@ -119,6 +132,7 @@ families:
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
+        source_commit: b13d042cc689de8faa40f46cd04713239b5c6ea8
         publish_slug: instaco
         catalog_name: InstaCo
         catalog_developer: hrbrlife

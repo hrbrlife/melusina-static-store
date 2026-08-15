@@ -17,11 +17,13 @@ import (
 
 // App is one release-family app entry. AppID is the sole identity; Slug/CatalogName
 // /SourcePath are descriptive and may all differ from each other and from AppID.
+// SourceCommit, when set, pins the source checkout that the provider may build.
 type App struct {
 	Family           string
 	Name             string
 	AppID            string
 	SourcePath       string
+	SourceCommit     string
 	PublishSlug      string
 	CatalogName      string
 	CatalogDeveloper string
@@ -176,6 +178,9 @@ func LoadFamily(path string) (*Family, error) {
 		if a.PackProfile != "" && (a.AppID != namedCoinAppID || a.PackProfile != namedCoinMSBDevnetProfile) {
 			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile)
 		}
+		if a.SourceCommit != "" && !isLowerHexCommit(a.SourceCommit) {
+			return nil, fmt.Errorf("app %q has invalid source_commit %q; want a lowercase 40-hex commit", a.AppID, a.SourceCommit)
+		}
 		seen[a.AppID] = true
 	}
 	return fam, nil
@@ -216,6 +221,8 @@ func assignAppField(a *App, key, val string) {
 		a.AppID = val
 	case "source_path":
 		a.SourcePath = val
+	case "source_commit":
+		a.SourceCommit = val
 	case "publish_slug":
 		a.PublishSlug = val
 	case "catalog_name":
@@ -231,6 +238,18 @@ func assignAppField(a *App, key, val string) {
 	case "role":
 		a.Role = val
 	}
+}
+
+func isLowerHexCommit(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func leadingSpaces(s string) int {

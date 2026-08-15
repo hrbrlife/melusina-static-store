@@ -40,6 +40,7 @@ families:
       dueprocess:
         appId:        47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path:  DueProcess
+        source_commit: 0123456789abcdef0123456789abcdef01234567
         publish_slug: dueprocess-v2
         catalog_name: DueProcess
         role:         "KYC / sanctions screening"
@@ -98,7 +99,7 @@ func TestLoadFamilyParsesApps(t *testing.T) {
 
 	// Select by immutable appId.
 	byID, err := fam.Select("47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0")
-	if err != nil || byID.Name != "dueprocess" {
+	if err != nil || byID.Name != "dueprocess" || byID.SourceCommit != "0123456789abcdef0123456789abcdef01234567" {
 		t.Fatalf("select by appId: %+v err=%v", byID, err)
 	}
 
@@ -155,15 +156,15 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	// Keep this assertion coupled to the explicit selectors below.  A new
 	// release-family slot must be deliberately covered here rather than making
 	// the parser test silently accept an arbitrary manifest expansion.
-	if len(fam.Apps) != 17 {
+	if len(fam.Apps) != 18 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 15 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 18 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
-		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
+		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess", "ai-lagoon",
 		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn", "cratelink", "sheets-bureau",
 	} {
 		if _, err := fam.Select(sel); err != nil {
@@ -193,26 +194,27 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	// inferred display name. SourcePath is deliberately relative to the one
 	// MEL_RELEASE_SOURCE_ROOT used by both provider adapters.
 	type want struct {
-		selector, appID, source, developer, repo, slug, profile string
+		selector, appID, source, sourceCommit, developer, repo, slug, profile string
 	}
 	for _, tc := range []want{
-		{"namedcoin", "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh", "namedcoin", "hrbrlife", "melusina-namedcoin-app", "namedcoin", "namedcoin-msb-devnet"},
-		{"namedcoin-admin", "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0", "namedcoin-admin", "hrbrlife", "melusina-namedcoin-admin-app", "namedcoin-admin", ""},
-		{"fineract-setup", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "hrbrlife", "fineract-setup", "fineract-setup", ""},
-		{"dueprocess", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "hrbrlife", "DueProcess", "dueprocess", ""},
-		{"telescreen", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "hrbrlife", "pr_ninja", "telescreen", ""},
-		{"instaco", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "hrbrlife", "instaco-app", "instaco", ""},
-		{"instadao", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
-		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
-		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "hrbrlife", "jinn", "jinn", ""},
-		{"cratelink", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
-		{"sheets-bureau", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
+		{"namedcoin", "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh", "namedcoin", "", "hrbrlife", "melusina-namedcoin-app", "namedcoin", "namedcoin-msb-devnet"},
+		{"namedcoin-admin", "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0", "namedcoin-admin", "", "hrbrlife", "melusina-namedcoin-admin-app", "namedcoin-admin", ""},
+		{"fineract-setup", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "", "hrbrlife", "fineract-setup", "fineract-setup", ""},
+		{"dueprocess", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "", "hrbrlife", "DueProcess", "dueprocess", ""},
+		{"ai-lagoon", "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh", "ai-lagoon", "db98212817e2393477eae058f6688b2251bb3482", "hrbrlife", "AI_Lagoon", "ai-lagoon", ""},
+		{"telescreen", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "", "hrbrlife", "pr_ninja", "telescreen", ""},
+		{"instaco", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8", "hrbrlife", "instaco-app", "instaco", ""},
+		{"instadao", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
+		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "", "hrbrlife", "cyberteller", "cyberteller", ""},
+		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "", "hrbrlife", "jinn", "jinn", ""},
+		{"cratelink", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
+		{"sheets-bureau", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "965766d662771323f770eb9e956f1e8b03bea7a0", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
 	} {
 		app, err := fam.Select(tc.selector)
 		if err != nil {
 			t.Fatalf("Select(%q): %v", tc.selector, err)
 		}
-		if app.AppID != tc.appID || app.SourcePath != tc.source ||
+		if app.AppID != tc.appID || app.SourcePath != tc.source || app.SourceCommit != tc.sourceCommit ||
 			app.CatalogDeveloper != tc.developer || app.CatalogRepo != tc.repo ||
 			app.CatalogSlug != tc.slug || app.PackProfile != tc.profile {
 			t.Fatalf("MSB manifest entry %q drifted: %+v", tc.selector, app)
@@ -257,5 +259,17 @@ func TestLoadFamilyRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
 	}
 	if _, err := LoadFamily(path); err == nil || !strings.Contains(err.Error(), "only NamedCoin") {
 		t.Fatalf("wrong-app namedcoin profile error = %v, want fail-closed NamedCoin refusal", err)
+	}
+}
+
+func TestLoadFamilyRejectsMalformedSourceCommit(t *testing.T) {
+	const m = "schema: s\nfamilies:\n  fam:\n    apps:\n      app:\n        appId: app-id\n        source_commit: not-a-commit\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.yaml")
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFamily(path); err == nil || !strings.Contains(err.Error(), "invalid source_commit") {
+		t.Fatalf("malformed source_commit error = %v, want fail-closed source_commit refusal", err)
 	}
 }

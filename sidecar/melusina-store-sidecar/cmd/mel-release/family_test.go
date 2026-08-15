@@ -180,7 +180,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		"jinn":               {"platform-tools", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "", "hrbrlife", "jinn", "jinn", ""},
 		"cratelink":          {"platform-tools", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
 		"sheets-bureau":      {"bureau-rich-office", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "965766d662771323f770eb9e956f1e8b03bea7a0", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
-		"doc-bureau":         {"bureau-rich-office", "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h", "doc-bureau", "f34c1b8b36b01c2ef2c704fa48e09557e38ad136", "hrbrlife", "melusina-bureau-doc-app", "doc-bureau", ""},
+		"doc-bureau":         {"bureau-rich-office", "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h", "doc-bureau", "86c5d81a07cffc7e05c3227e100a20aa1b20e1ef", "hrbrlife", "melusina-bureau-doc-app", "doc-bureau", ""},
 		"goldkey":            {"productivity-apps", "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh", "GoldKey", "1af7cb09bc59cc1799cc91b22ec17953d18d2bfc", "hrbrlife", "GoldKey", "goldkey", ""},
 		"mermail":            {"productivity-apps", "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "INSTASYS_MAIL-main", "281badf381720cca16b901e036118447e09e9867", "hrbrlife", "INSTASYS_MAIL", "mermail", ""},
 	}

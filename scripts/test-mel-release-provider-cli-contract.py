@@ -926,7 +926,7 @@ def test_checked_in_rich_office_family_selects_only_pinned_slots():
             "family": "bureau-rich-office",
             "name": "doc-bureau",
             "source_path": "doc-bureau",
-            "source_commit": "f34c1b8b36b01c2ef2c704fa48e09557e38ad136",
+            "source_commit": "86c5d81a07cffc7e05c3227e100a20aa1b20e1ef",
             "metadata_path": "metadata.json",
             "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "doc-bureau",

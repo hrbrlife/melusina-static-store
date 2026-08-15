@@ -20,6 +20,9 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(provider)
 
 
+CYBERTELLER_CONFIG_APP_ID = "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10"
+
+
 def with_env(values):
     old = os.environ.copy()
     os.environ.update(values)
@@ -467,14 +470,18 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
         sources = root / "sources"
         app = sources / "namedcoin"
         admin = sources / "namedcoin-admin"
+        cyberteller_config = sources / "cybertellerconfig"
         app.mkdir(parents=True)
         admin.mkdir(parents=True)
+        cyberteller_config.mkdir(parents=True)
         (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
         (admin / "metadata.json").write_text(json.dumps({"appId": admin_app_id}) + "\n")
+        (cyberteller_config / "metadata.json").write_text(json.dumps({"appId": CYBERTELLER_CONFIG_APP_ID}) + "\n")
         config = root / "release-family.yaml"
         write_family_config(config, {
             "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
             "namedcoin-admin": {"appId": admin_app_id, "source_path": "namedcoin-admin"},
+            "cyberteller-config": {"appId": CYBERTELLER_CONFIG_APP_ID, "source_path": "cybertellerconfig"},
         })
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
@@ -483,6 +490,7 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
         try:
             assert provider.source_path(app_id) == app
             assert provider.source_path(admin_app_id) == admin
+            assert provider.source_path(CYBERTELLER_CONFIG_APP_ID) == cyberteller_config
 
             write_family_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": str(app)},
@@ -561,6 +569,10 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "source_path": "cyberteller",
             "catalog_developer": "hrbrlife", "catalog_repo": "cyberteller", "catalog_slug": "cyberteller",
         },
+        "cyberteller-config": {
+            "appId": CYBERTELLER_CONFIG_APP_ID, "source_path": "cybertellerconfig",
+            "catalog_developer": "hrbrlife", "catalog_repo": "melusina_cybertellerconfig_app", "catalog_slug": "cybertellerconfig",
+        },
         "jinn": {
             "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "source_path": "jinn",
             "catalog_developer": "hrbrlife", "catalog_repo": "jinn", "catalog_slug": "jinn",
@@ -607,6 +619,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             assert provider.catalog_slot(apps["cyberteller"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "cyberteller", "slug": "cyberteller",
             }
+            assert provider.catalog_slot(CYBERTELLER_CONFIG_APP_ID) == {
+                "developer": "hrbrlife", "repo": "melusina_cybertellerconfig_app", "slug": "cybertellerconfig",
+            }
             assert provider.catalog_slot(apps["jinn"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "jinn", "slug": "jinn",
             }
@@ -628,12 +643,45 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             assert provider.pack_profile_env(apps["instadao"]["appId"]) == {
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
+            assert provider.pack_profile_env(CYBERTELLER_CONFIG_APP_ID) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+            }
             try:
                 provider.pack_profile_env(apps["wrong-profile"]["appId"])
             except provider.ProviderError as exc:
                 assert "only NamedCoin" in str(exc), exc
             else:
                 raise AssertionError("NamedCoin devnet pack profile was accepted for another app")
+        finally:
+            restore_env(old)
+
+
+def test_actual_cyberteller_config_family_binding_resolves_historical_slot():
+    """The real manifest must retain Config's existing appId-bound slot."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        source = sources / "cybertellerconfig"
+        source.mkdir(parents=True)
+        (source / "metadata.json").write_text(
+            json.dumps({"appId": CYBERTELLER_CONFIG_APP_ID}) + "\n",
+            encoding="utf-8",
+        )
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml"),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        try:
+            assert provider.source_path(CYBERTELLER_CONFIG_APP_ID) == source
+            assert provider.catalog_slot(CYBERTELLER_CONFIG_APP_ID) == {
+                "developer": "hrbrlife",
+                "repo": "melusina_cybertellerconfig_app",
+                "slug": "cybertellerconfig",
+            }
+            assert provider.catalog_package(CYBERTELLER_CONFIG_APP_ID) == (
+                provider.ROOT / "packages" / "hrbrlife" /
+                "melusina_cybertellerconfig_app" / "cybertellerconfig"
+            )
         finally:
             restore_env(old)
 
@@ -875,6 +923,7 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
+    test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     test_build_records_private_bootstrap_without_writing_catalog_tree()

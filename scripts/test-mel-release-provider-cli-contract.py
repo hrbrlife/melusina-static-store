@@ -553,6 +553,10 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "source_path": "instaco",
             "catalog_developer": "hrbrlife", "catalog_repo": "instaco-app", "catalog_slug": "instaco",
         },
+        "instadao": {
+            "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "source_path": "instadao",
+            "catalog_developer": "hrbrlife", "catalog_repo": "MLSNA_token", "catalog_slug": "mlsna-admin",
+        },
         "cyberteller": {
             "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "source_path": "cyberteller",
             "catalog_developer": "hrbrlife", "catalog_repo": "cyberteller", "catalog_slug": "cyberteller",
@@ -597,6 +601,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             assert provider.catalog_slot(apps["instaco"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "instaco-app", "slug": "instaco",
             }
+            assert provider.catalog_slot(apps["instadao"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "MLSNA_token", "slug": "mlsna-admin",
+            }
             assert provider.catalog_slot(apps["cyberteller"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "cyberteller", "slug": "cyberteller",
             }
@@ -616,6 +623,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
             assert provider.pack_profile_env(apps["instaco"]["appId"]) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+            }
+            assert provider.pack_profile_env(apps["instadao"]["appId"]) == {
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
             try:

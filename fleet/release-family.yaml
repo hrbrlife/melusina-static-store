@@ -114,6 +114,18 @@ families:
         catalog_repo: instaco-app
         catalog_slug: instaco
         role: series-llc-formation-and-corporate-registry
+      instadao:
+        appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
+        source_path: instadao
+        publish_slug: instadao
+        catalog_name: InstaDAO
+        # The historical Store package is a submodule with a legacy product
+        # path.  It is the same immutable appId; bind this update there rather
+        # than inventing a parallel package from the current repository name.
+        catalog_developer: hrbrlife
+        catalog_repo: MLSNA_token
+        catalog_slug: mlsna-admin
+        role: dao-formation-governance-and-treasury
   platform-tools:
     apps:
       minigit:

@@ -198,7 +198,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		{"fineract-setup", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "hrbrlife", "fineract-setup", "fineract-setup", ""},
 		{"dueprocess", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "hrbrlife", "DueProcess", "dueprocess", ""},
 		{"telescreen", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "hrbrlife", "pr_ninja", "telescreen", ""},
-		{"instaco", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "hrbrlife", "melusina-instaco-app", "instaco", ""},
+		{"instaco", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "hrbrlife", "instaco-app", "instaco", ""},
 		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
 		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "hrbrlife", "jinn", "jinn", ""},
 	} {

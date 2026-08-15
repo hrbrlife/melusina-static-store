@@ -107,7 +107,11 @@ families:
         publish_slug: instaco
         catalog_name: InstaCo
         catalog_developer: hrbrlife
-        catalog_repo: melusina-instaco-app
+        # The app's GitHub repository uses the melusina- prefix, but its
+        # already-active Store slot predates that rename.  This exact slot is
+        # enforced by the sidecar; naming the GitHub repo would create a
+        # duplicate instead of advancing the existing InstaCo release.
+        catalog_repo: instaco-app
         catalog_slug: instaco
         role: series-llc-formation-and-corporate-registry
   platform-tools:

@@ -551,7 +551,7 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
         },
         "instaco": {
             "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "source_path": "instaco",
-            "catalog_developer": "hrbrlife", "catalog_repo": "melusina-instaco-app", "catalog_slug": "instaco",
+            "catalog_developer": "hrbrlife", "catalog_repo": "instaco-app", "catalog_slug": "instaco",
         },
         "cyberteller": {
             "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "source_path": "cyberteller",
@@ -595,7 +595,7 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
                 "developer": "hrbrlife", "repo": "melusina_teleport2", "slug": "teleport",
             }
             assert provider.catalog_slot(apps["instaco"]["appId"]) == {
-                "developer": "hrbrlife", "repo": "melusina-instaco-app", "slug": "instaco",
+                "developer": "hrbrlife", "repo": "instaco-app", "slug": "instaco",
             }
             assert provider.catalog_slot(apps["cyberteller"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "cyberteller", "slug": "cyberteller",

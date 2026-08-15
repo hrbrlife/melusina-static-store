@@ -729,6 +729,22 @@ def next_index(multisig: str, vault: str) -> int:
     return index
 
 
+def prepared_state_master_nft_mint(state: dict[str, Any]) -> Any:
+    """Read the Pearl ceremony mint without silently accepting ambiguity.
+
+    The released Pearl tool has emitted both spellings over time.  They name
+    the same immutable release-entry seed, so a completed/prepared ceremony
+    must remain resumable across that writer change.  If a state contains both
+    spellings, however, they must bind the same value; accepting a conflict
+    would turn a schema-compatibility path into an authority substitution.
+    """
+    canonical = state.get("masterNftMint")
+    pearl_legacy = state.get("MasterNftMint")
+    if canonical is not None and pearl_legacy is not None and canonical != pearl_legacy:
+        raise ProviderError("persisted ceremony state has conflicting masterNftMint aliases")
+    return canonical if canonical is not None else pearl_legacy
+
+
 def validate_prepared_ceremony_state(
         state: dict[str, Any], *, app_id: str, app_hash: str, release_hash: str,
         version: str, nonce: str, multisig: str, vault: str) -> None:
@@ -749,10 +765,11 @@ def validate_prepared_ceremony_state(
         "releaseNonce": nonce,
         "multisigPda": multisig,
         "licenseSquadsVault": vault,
-        "masterNftMint": env("MEL_RELEASE_MASTER_NFT_MINT", required=True),
         "programId": env("MEL_PROGRAM_ID", required=True),
     }
     mismatches = [name for name, value in expected.items() if state.get(name) != value]
+    if prepared_state_master_nft_mint(state) != env("MEL_RELEASE_MASTER_NFT_MINT", required=True):
+        mismatches.append("masterNftMint")
     if mismatches:
         raise ProviderError("persisted ceremony state does not bind this STAGED WAL: " + ", ".join(mismatches))
     if state.get("$schema") != "melusina-release-ceremony-v1":

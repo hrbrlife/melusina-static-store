@@ -238,6 +238,30 @@ def test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state():
                 multisig="multisig", vault="vault", release_path=release,
             )
             assert got == state_path
+            # Current Pearl output uses this historical title-cased spelling.
+            # It is acceptable only as an exact alias for the immutable mint.
+            state.pop("masterNftMint")
+            state["MasterNftMint"] = "master"
+            state_path.write_text(json.dumps(state) + "\n")
+            got = provider.prepare_or_reuse_ceremony_state(
+                {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                release_hash=release_hash, version="1.2.3", nonce="nonce",
+                multisig="multisig", vault="vault", release_path=release,
+            )
+            assert got == state_path
+            state["masterNftMint"] = "foreign-master"
+            state_path.write_text(json.dumps(state) + "\n")
+            try:
+                provider.prepare_or_reuse_ceremony_state(
+                    {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                    release_hash=release_hash, version="1.2.3", nonce="nonce",
+                    multisig="multisig", vault="vault", release_path=release,
+                )
+            except provider.ProviderError as exc:
+                assert "conflicting masterNftMint aliases" in str(exc), exc
+            else:
+                raise AssertionError("conflicting ceremony aliases were reused")
+            state["masterNftMint"] = "master"
             state["appHash"] = "foreign"
             state_path.write_text(json.dumps(state) + "\n")
             try:

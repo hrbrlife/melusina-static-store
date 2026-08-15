@@ -7,10 +7,11 @@ selection path for the Sheets Bureau identity
 - Canonical source repository: `hrbrlife/CHEESESPREAD`.
 - Required rich-source ancestry: `71b015c168a4ee4a06cc2b3b828bc1f01b4c1563`
   on `origin/main` (the retained Jspreadsheet/jsuites office line).
-- Pinned governed release source: `4ccbb7da62795e9d4d2ad4cd0d094beaabb4e2d1`,
-  a direct descendant that removes the obsolete direct-release instruction and
-  makes the required rich Python runtime package-reproducible without carrying
-  checkout paths or bytecode caches.
+- Pinned governed release source: `c1439508aa122adc7f527af6ad85f0d90d8f3f29`,
+  a direct descendant that removes the obsolete direct-release instruction,
+  packages the retained Jspreadsheet/jsuites frontend with the runtime, and
+  makes that full payload reproducible without checkout paths or bytecode
+  caches.
 - Required app cohort: `2.1.4`, appVersion `26`, and root
   `RUNTIME-CONTRACT.json` with only `PENDING_BUILD` artifact fields.
 - Immutable catalog slot: `packages/hrbrlife/melusina-bureau-sheets-app/sheets-bureau`.

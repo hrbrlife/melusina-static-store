@@ -666,7 +666,7 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
             "family": "bureau-rich-office",
             "name": "sheets-bureau",
             "source_path": "sheets-bureau",
-            "source_commit": "4ccbb7da62795e9d4d2ad4cd0d094beaabb4e2d1",
+            "source_commit": "c1439508aa122adc7f527af6ad85f0d90d8f3f29",
             "publish_slug": "sheets-bureau",
             "catalog_developer": "hrbrlife",
             "catalog_repo": "melusina-bureau-sheets-app",

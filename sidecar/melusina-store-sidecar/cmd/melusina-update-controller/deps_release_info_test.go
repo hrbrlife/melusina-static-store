@@ -72,6 +72,54 @@ func TestRuntimeObserverUsesRegistryPinnedLoopbackAndCA(t *testing.T) {
 	}
 }
 
+func TestRuntimeObserverUsesBoundedLocalCheckerProof(t *testing.T) {
+	const hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	script := filepath.Join(t.TempDir(), "checker-proof")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s\\n' '"+
+		`{"schema":"melusina-runtime-release-info-v1","componentId":"melusina-update-checker","generationId":179,"version":"2.0.0+bootstrap","pid":0,"artifactSha256":"`+hash+`"}`+"'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	install := componentrelease.ComponentInstall{
+		RuntimeProofCommand: []string{script},
+	}
+	got, err := newRuntimeObserver()(context.Background(), componentrelease.ComponentRelease{ComponentID: "melusina-update-checker"}, install)
+	if err != nil {
+		t.Fatalf("command runtime observer: %v", err)
+	}
+	if got.ComponentID != "melusina-update-checker" || got.GenerationID != 179 || got.Version != "2.0.0+bootstrap" || got.PID != 0 || got.ArtifactSHA256 != hash {
+		t.Fatalf("runtime evidence = %#v", got)
+	}
+}
+
+func TestRuntimeObserverRefusesClaimedPIDFromCommandProof(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "checker-proof")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s\\n' '"+
+		`{"schema":"melusina-runtime-release-info-v1","componentId":"melusina-update-checker","generationId":179,"version":"2.0.0+bootstrap","pid":12,"artifactSha256":"`+strings.Repeat("a", 64)+`"}`+"'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := newRuntimeObserver()(context.Background(), componentrelease.ComponentRelease{ComponentID: "melusina-update-checker"}, componentrelease.ComponentInstall{
+		RuntimeProofCommand: []string{script},
+	})
+	if err == nil || !strings.Contains(err.Error(), "must report pid 0") {
+		t.Fatalf("command proof with a claimed pid was not refused: %v", err)
+	}
+}
+
+func TestObserveForRefusesSymlinkAtBinaryReplaceInstallRoot(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "checker")
+	if err := os.WriteFile(target, []byte("signed bytes"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := observeFor(componentrelease.ComponentInstall{InstallRoot: link}); got != "" {
+		t.Fatalf("symlinked install root produced delta hash %s", got)
+	}
+}
+
 func sha256HexForTest(raw []byte) string {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])

@@ -331,6 +331,60 @@ func TestRegistryRejectsMissingHealthCommand(t *testing.T) {
 	}
 }
 
+func TestRegistryCommandRuntimeProofIsNarrowAndLocal(t *testing.T) {
+	reg := sampleRegistry()
+	checker := ComponentInstall{
+		ComponentID:    "melusina-update-checker",
+		ComponentClass: ClassData,
+		ApplyKind:      ApplyBinaryReplace,
+		InstallRoot:    "/opt/melusina/bin/melusina-update-checker.py",
+		StagingDir:     "/var/lib/melusina-update-controller/staging",
+		ServiceUnit:    "melusina-update-checker.timer",
+		HealthCommand:  []string{"/usr/bin/python3", "/opt/melusina/bin/melusina-update-checker.py", "--self-check"},
+		RuntimeEnvFile: "/var/lib/melusina-update-controller/runtime/melusina-update-checker.env",
+		RuntimeProofCommand: []string{
+			"/usr/bin/python3", "/opt/melusina/bin/melusina-update-checker.py",
+			"--self-report", "--runtime-env-file",
+			"/var/lib/melusina-update-controller/runtime/melusina-update-checker.env",
+		},
+	}
+	reg.Components[checker.ComponentID] = checker
+	if err := reg.Validate(); err != nil {
+		t.Fatalf("valid local checker command-proof registry refused: %v", err)
+	}
+	if !checker.UsesCommandRuntimeProof() {
+		t.Fatal("explicit command proof was not recognized")
+	}
+
+	for _, tc := range []struct {
+		name string
+		mut  func(*ComponentInstall)
+	}{
+		{"sidecar-class", func(ci *ComponentInstall) { ci.ComponentClass = ClassSidecar }},
+		{"wrong-apply-kind", func(ci *ComponentInstall) { ci.ApplyKind = ApplyPythonVenv }},
+		{"http-plus-command", func(ci *ComponentInstall) { ci.SelfReportURL = "http://127.0.0.1/release-info" }},
+		{"missing-marker", func(ci *ComponentInstall) { ci.RuntimeEnvFile = "" }},
+		{"relative-interpreter", func(ci *ComponentInstall) { ci.RuntimeProofCommand[0] = "python3" }},
+		{"wrong-marker-argument", func(ci *ComponentInstall) {
+			ci.RuntimeProofCommand[len(ci.RuntimeProofCommand)-1] = "/tmp/not-the-registry.env"
+		}},
+		{"missing-script-argument", func(ci *ComponentInstall) { ci.RuntimeProofCommand[1] = "/tmp/other.py" }},
+		{"wrong-verb", func(ci *ComponentInstall) {
+			ci.RuntimeProofCommand[len(ci.RuntimeProofCommand)-3] = "--not-self-report"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			candidate := checker
+			candidate.RuntimeProofCommand = append([]string(nil), checker.RuntimeProofCommand...)
+			tc.mut(&candidate)
+			reg.Components[checker.ComponentID] = candidate
+			if err := reg.Validate(); err == nil {
+				t.Fatal("registry accepted unsafe command runtime proof")
+			}
+		})
+	}
+}
+
 func TestRegistryRejectsUnsafePinnedSelfReportTransport(t *testing.T) {
 	reg := sampleRegistry()
 	e := reg.Components["melusina-store-sidecar"]

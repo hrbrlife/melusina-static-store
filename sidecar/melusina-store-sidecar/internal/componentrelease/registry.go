@@ -108,6 +108,19 @@ type ComponentInstall struct {
 	// before a rollback restart. A unit that does not consume this file fails the
 	// structured runtime gate rather than minting a receipt for an old process.
 	RuntimeEnvFile string `json:"runtimeEnvFile,omitempty"`
+	// RuntimeProofCommand is an install-local, non-serving component proof for a
+	// timer/oneshot script.  A long-lived sidecar proves its running ELF through
+	// SelfReportURL + systemd MainPID + /proc/<pid>/exe.  A checker script has no
+	// durable MainPID between timer activations, so it instead executes this
+	// root-pinned argv after the atomic replacement and emits one strict runtime
+	// report.  The registry validates the fixed checker protocol below: it must
+	// invoke InstallRoot with "--self-report --runtime-env-file RuntimeEnvFile".
+	//
+	// This is deliberately NOT a fallback for normal services.  It is accepted
+	// only for a data/binary-replace component with a RuntimeEnvFile, and it is
+	// mutually exclusive with SelfReportURL.  The signed generation never names
+	// this command or either path.
+	RuntimeProofCommand []string `json:"runtimeProofCommand,omitempty"`
 
 	// SelfReportDialAddress is an optional root-owned loopback-only target for
 	// the TLS self-report URL. It preserves the URL hostname for certificate
@@ -175,6 +188,20 @@ func (ci ComponentInstall) validate(key string) error {
 	if ci.RuntimeEnvFile != "" && (!filepath.IsAbs(ci.RuntimeEnvFile) || filepath.Clean(ci.RuntimeEnvFile) != ci.RuntimeEnvFile) {
 		return fmt.Errorf("registry %s: runtimeEnvFile must be an absolute clean path", key)
 	}
+	if len(ci.RuntimeProofCommand) > 0 {
+		if ci.ComponentClass != ClassData || ci.ApplyKind != ApplyBinaryReplace {
+			return fmt.Errorf("registry %s: runtimeProofCommand is only valid for a data binary-replace component", key)
+		}
+		if strings.TrimSpace(ci.SelfReportURL) != "" {
+			return fmt.Errorf("registry %s: runtimeProofCommand and selfReportUrl are mutually exclusive", key)
+		}
+		if ci.RuntimeEnvFile == "" {
+			return fmt.Errorf("registry %s: runtimeProofCommand requires runtimeEnvFile", key)
+		}
+		if err := validateRuntimeProofCommand(ci); err != nil {
+			return fmt.Errorf("registry %s: %w", key, err)
+		}
+	}
 	if ci.SelfReportDialAddress != "" {
 		if strings.TrimSpace(ci.SelfReportURL) == "" {
 			return fmt.Errorf("registry %s: selfReportDialAddress requires selfReportUrl", key)
@@ -199,6 +226,44 @@ func (ci ComponentInstall) validate(key string) error {
 	}
 	if ci.KeepOldBuilds < 0 {
 		return fmt.Errorf("registry %s: keepOldBuilds must be non-negative", key)
+	}
+	return nil
+}
+
+// UsesCommandRuntimeProof reports the narrow non-serving runtime-proof mode.
+// Callers must not infer it from an empty SelfReportURL: an empty URL without
+// this explicit local command remains a fail-closed configuration error.
+func (ci ComponentInstall) UsesCommandRuntimeProof() bool {
+	return len(ci.RuntimeProofCommand) != 0
+}
+
+func validateRuntimeProofCommand(ci ComponentInstall) error {
+	argv := ci.RuntimeProofCommand
+	// The controller invokes this exact fixed protocol.  Do not accept a shell,
+	// a relative executable, a remote-selected marker path, or an arbitrary
+	// "health" command that happens to print JSON.
+	if len(argv) < 5 {
+		return errors.New("runtimeProofCommand must invoke checker --self-report with a runtime env file")
+	}
+	for i, arg := range argv {
+		if strings.TrimSpace(arg) == "" || strings.TrimSpace(arg) != arg || strings.ContainsRune(arg, '\x00') {
+			return fmt.Errorf("runtimeProofCommand argument %d is empty or unsafe", i)
+		}
+	}
+	if !validAbsPath(argv[0]) || filepath.Clean(argv[0]) != argv[0] {
+		return errors.New("runtimeProofCommand executable must be an absolute clean path")
+	}
+	if argv[len(argv)-3] != "--self-report" || argv[len(argv)-2] != "--runtime-env-file" || argv[len(argv)-1] != ci.RuntimeEnvFile {
+		return errors.New("runtimeProofCommand must end with --self-report --runtime-env-file RuntimeEnvFile")
+	}
+	seenInstallRoot := 0
+	for _, arg := range argv[:len(argv)-3] {
+		if arg == ci.InstallRoot {
+			seenInstallRoot++
+		}
+	}
+	if seenInstallRoot != 1 {
+		return errors.New("runtimeProofCommand must name installRoot exactly once before --self-report")
 	}
 	return nil
 }

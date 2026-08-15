@@ -76,6 +76,53 @@ host-action allowlist (`componentrelease.ComponentRegistry`, schema
 `melusina-component-registry-v1`); the controller applies nothing it cannot map
 there. Its shape is owned by that package, not this config.
 
+### Timer-script checker component
+
+`melusina-update-checker` is a root timer/oneshot Python script, not a
+continuously serving ELF.  It therefore cannot honestly satisfy the normal
+`SelfReportURL` + `systemd MainPID` + `/proc/<pid>/exe` proof: after a healthy
+timer tick, there is deliberately no durable checker PID.
+
+For that one non-serving shape, a registry may use `RuntimeProofCommand` with
+all of these locally pinned properties:
+
+- `componentClass: "data"` and `applyKind: "binary-replace"` only;
+- an absolute full-file `installRoot` (the checker script), root-owned staging,
+  and a normal `healthCommand` ending in `--self-check`;
+- no `selfReportUrl`;
+- a root-owned `runtimeEnvFile`; and
+- an exact argv ending in
+  `--self-report --runtime-env-file <that same runtimeEnvFile>`, with the
+  `installRoot` occurring exactly once before it.
+
+The controller runs that command after the atomic no-follow replacement.  The
+checker strictly decodes the controller-written runtime tuple, refuses a marker
+whose artifact hash differs from the executing script, emits one bounded JSON
+object with `pid: 0`, and the controller re-hashes the no-follow `installRoot`.
+`pid: 0` is an explicit timer proof mode, not a relaxed process proof.  Normal
+services still require the existing PID/executable binding.
+
+The systemd checker unit must be provisioned by the root-owned bootstrap with an
+`EnvironmentFile=-<runtimeEnvFile>` drop-in.  The remote signed generation never
+chooses the command, unit, marker path, or host paths.
+
+## Initial bootstrap boundary
+
+The controller can deliver a later signed checker component only **after the
+controller itself and its root-owned configuration exist**.  The legacy Python
+checker neither ships nor can atomically install the controller; treating an
+ordinary source copy/restart as if it were a release would defeat the protocol.
+
+The first controller install is therefore an unavoidable, separately authorized
+custody/root-console ceremony.  Before it is allowed to run, that ceremony must
+record and independently verify: the exact controller artifact hash and source
+revision, its active `InstallerReleaseEntry`, the pinned operator/store/origin/
+chain configuration, the root-owned no-symlink registry (including the checker
+entry above), and the checker unit's runtime-marker drop-in.  It must then start
+with `autoApply: false` and prove signed-generation fetch/verify without a host
+mutation before an explicit governed component promotion.  This document does
+not turn that initial authority into an unattended or generic bootstrap path.
+
 ## Runtime invocation
 
 - Timer tick (default): `melusina-update-controller -config <path>` or

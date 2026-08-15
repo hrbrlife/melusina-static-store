@@ -75,7 +75,7 @@ families:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        source_commit: 70f17bb45d6b92cc88f63588cbce6b9bc82e7834
+        source_commit: f23a1d3aa9c23f32f523a8fa16663be95001b923
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
         catalog_developer: hrbrlife
@@ -223,7 +223,7 @@ families:
       goldkey:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
-        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
+        source_commit: 1af7cb09bc59cc1799cc91b22ec17953d18d2bfc
         publish_slug: goldkey
         catalog_name: GoldKey
         # GoldKey has no tracked Store package yet. This is the sole reviewed
@@ -239,7 +239,7 @@ families:
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4
+        source_commit: 281badf381720cca16b901e036118447e09e9867
         publish_slug: mermail
         catalog_name: MerMail
         catalog_developer: hrbrlife

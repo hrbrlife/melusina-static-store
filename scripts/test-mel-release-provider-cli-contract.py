@@ -968,7 +968,7 @@ def test_checked_in_release_pins_bind_exact_target_slots():
 
     cases = {
         "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": (
-            spec("money-path", "ai-lagoon", "ai-lagoon-main", "70f17bb45d6b92cc88f63588cbce6b9bc82e7834",
+            spec("money-path", "ai-lagoon", "ai-lagoon-main", "f23a1d3aa9c23f32f523a8fa16663be95001b923",
                  "ai-lagoon", "hrbrlife", "AI_Lagoon", "ai-lagoon"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
@@ -978,12 +978,12 @@ def test_checked_in_release_pins_bind_exact_target_slots():
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": (
-            spec("productivity-apps", "goldkey", "GoldKey", "10acf09c3d5377d763760b11b912b1053e0cbcce",
+            spec("productivity-apps", "goldkey", "GoldKey", "1af7cb09bc59cc1799cc91b22ec17953d18d2bfc",
                  "goldkey", "hrbrlife", "GoldKey", "goldkey"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": (
-            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4",
+            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "281badf381720cca16b901e036118447e09e9867",
                  "mermail", "hrbrlife", "INSTASYS_MAIL", "mermail"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),

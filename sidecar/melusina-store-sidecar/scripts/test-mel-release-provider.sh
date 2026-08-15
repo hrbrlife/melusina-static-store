@@ -88,6 +88,10 @@ grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/sc
 # reason, and its raw logs must remain safely printable.
 grep -Fq 'wrapConnectionTransactionErrors' "$ROOT/scripts/mel-release-squads-register.mjs"
 grep -Fq 'formatTransactionFailure' "$ROOT/scripts/mel-release-squads-register.mjs"
+# Local operator files are not a quorum oracle. The helper must expose the
+# live policy for the Python rail to verify before it creates a Store stage.
+grep -Fq 'else if (op === "policy" && !statePath) await policy();' "$ROOT/scripts/mel-release-squads-register.mjs"
+grep -Fq 'memberCount:governedMembers.length' "$ROOT/scripts/mel-release-squads-register.mjs"
 node "$ROOT/scripts/test-mel-release-squads-errors.mjs"
 # A process crash between VaultTransactionCreate and ProposalCreate must resume
 # only the latter after binding the already-created transaction to the exact

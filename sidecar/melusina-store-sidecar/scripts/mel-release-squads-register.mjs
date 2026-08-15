@@ -84,6 +84,25 @@ async function nextIndex() {
   process.stdout.write(String(BigInt(account.transactionIndex)+1n)+"\n");
 }
 
+// This is intentionally a read-only command.  The release provider must
+// compare its operator configuration with the live governed authority before
+// it creates a private Store stage or prepares a proposal.  Local threshold
+// files are convenient inputs, but they are never the source of truth.
+async function policy() {
+  const multisigPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
+  const connection=wrapConnectionTransactionErrors(new Connection(need("MEL_RELEASE_RPC_URL"),{commitment:"confirmed"}));
+  const account=await multisig.accounts.Multisig.fromAccountAddress(connection,multisigPda);
+  const threshold=Number(account.threshold);
+  const governedMembers=account.members.map((member)=>String(member.key));
+  if (!Number.isSafeInteger(threshold) || threshold < 1 || threshold > governedMembers.length) {
+    throw new Error("configured Squads multisig has an invalid quorum policy");
+  }
+  process.stdout.write(JSON.stringify({
+    multisig:String(multisigPda), threshold, memberCount:governedMembers.length,
+    members:governedMembers,
+  })+"\n");
+}
+
 function statePDAs(state,multisigPda) {
   const transactionIndex=BigInt(state.transactionIndex);
   const [transactionPda]=multisig.getTransactionPda({multisigPda,index:transactionIndex});
@@ -285,9 +304,10 @@ async function approveExecute(statePath) {
 const [op, statePath] = process.argv.slice(2);
 try {
   if (op === "next-index" && !statePath) await nextIndex();
+  else if (op === "policy" && !statePath) await policy();
   else if (op === "propose" && statePath) await propose(statePath);
   else if (op === "approve-execute" && statePath) await approveExecute(statePath);
-  else throw new Error("usage: mel-release-squads-register.mjs {next-index|propose <state>|approve-execute <state>}");
+  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|approve-execute <state>}");
 } catch (err) {
   console.error(`mel-release-squads-register: ${formatTransactionFailure(err)}`);
   process.exit(1);

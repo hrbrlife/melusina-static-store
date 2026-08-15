@@ -628,11 +628,38 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
 
 
 def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out: Path) -> None:
+    # A Store stage is durable private state. Refuse stale workstation quorum
+    # settings before touching it, rather than discovering the disagreement
+    # only after a candidate has been staged.
+    assert_live_quorum_policy()
     context = require_context(app_id)
     release = rewrite_release(context, app_id, app_hash, release_hash, env("MEL_NEW_VERSION", required=True), nonce)
     context["releasePath"] = str(release)
     write_json(context_path(app_id), context)
     run(submit_args(context, receipt_out, stage_only=True))
+
+
+def configured_threshold() -> int:
+    """Return the declared signing threshold with a controlled error."""
+    try:
+        threshold = int(env("MEL_RELEASE_SQUADS_THRESHOLD", required=True))
+    except ValueError as exc:
+        raise ProviderError("configured Squads threshold must be an integer") from exc
+    if threshold < 1:
+        raise ProviderError("configured Squads threshold is invalid")
+    return threshold
+
+
+def configured_quorum_policy() -> tuple[int, int]:
+    """Return the declared quorum, rejecting malformed policy inputs early."""
+    threshold = configured_threshold()
+    try:
+        member_count = int(env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True))
+    except ValueError as exc:
+        raise ProviderError("configured Squads member count must be an integer") from exc
+    if member_count < threshold:
+        raise ProviderError("configured Squads quorum policy is invalid")
+    return threshold, member_count
 
 
 def member_keypair_paths() -> list[Path]:
@@ -659,14 +686,26 @@ def member_keypair_paths() -> list[Path]:
         if not candidate.is_file() or candidate.is_symlink():
             raise ProviderError(f"Squads member keypair must be a regular non-symlink file: {candidate}")
         result.append(candidate)
-    threshold = int(env("MEL_RELEASE_SQUADS_THRESHOLD", required=True))
+    threshold = configured_threshold()
     if threshold < 1 or len(result) < threshold:
         raise ProviderError(f"Squads threshold is {threshold} but only {len(result)} member keypairs were configured")
     return result
 
 
 def register_executor_env() -> dict[str, str]:
-    result = {
+    result = policy_executor_env()
+    for index, path in enumerate(member_keypair_paths(), start=1):
+        result[f"MEL_RELEASE_MEMBER_KEYPAIR_{index}"] = str(path)
+    return result
+
+
+def policy_executor_env() -> dict[str, str]:
+    """Environment for the helper's read-only on-chain policy query.
+
+    This intentionally does not resolve or expose a member keypair. A stale
+    quorum must be detectable before a workstation attempts any signing work.
+    """
+    return {
         "MEL_RELEASE_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
         "MEL_RELEASE_SQUADS_MULTISIG": env("MEL_RELEASE_SQUADS_MULTISIG", required=True),
         "MEL_RELEASE_NODE_MODULES": env(
@@ -674,9 +713,6 @@ def register_executor_env() -> dict[str, str]:
             default="/home/user/Desktop/Melusina/melusina_solana_dev-license104/frontend-vite/node_modules",
         ),
     }
-    for index, path in enumerate(member_keypair_paths(), start=1):
-        result[f"MEL_RELEASE_MEMBER_KEYPAIR_{index}"] = str(path)
-    return result
 
 
 def generic_executor_env() -> dict[str, str]:
@@ -713,6 +749,59 @@ def last_json(raw: str) -> dict[str, Any]:
             if isinstance(value, dict):
                 return value
     raise ProviderError("Squads executor did not emit a terminal JSON result")
+
+
+def live_quorum_policy() -> dict[str, Any]:
+    """Read and validate the current governed policy without signing."""
+    raw = run(["node", str(register_executor()), "policy"], extra_env=policy_executor_env())
+    result = last_json(raw)
+    multisig = result.get("multisig")
+    threshold = result.get("threshold")
+    member_count = result.get("memberCount")
+    members = result.get("members")
+    if multisig != env("MEL_RELEASE_SQUADS_MULTISIG", required=True):
+        raise ProviderError("live Squads policy multisig does not match configured governed authority")
+    if (isinstance(threshold, bool) or not isinstance(threshold, int) or
+            isinstance(member_count, bool) or not isinstance(member_count, int) or
+            threshold < 1 or member_count < threshold):
+        raise ProviderError("live Squads policy has an invalid threshold/member count")
+    if (not isinstance(members, list) or len(members) != member_count or
+            any(not isinstance(member, str) or not member.strip() for member in members)):
+        raise ProviderError("live Squads policy has an invalid member list")
+    if len(set(members)) != member_count:
+        raise ProviderError("live Squads policy has duplicate members")
+    return {
+        "multisig": multisig,
+        "threshold": threshold,
+        "memberCount": member_count,
+        "members": members,
+    }
+
+
+def assert_live_quorum_policy() -> dict[str, Any]:
+    """Require operator quorum settings to exactly match the live authority.
+
+    The check belongs before Store staging and proposal creation.  A local
+    config is not a safe substitute for a live Squads policy, and allowing it
+    to disagree leaves an otherwise-valid candidate stranded in a private
+    stage when Squads later rejects its ceremony.
+    """
+    configured_threshold, configured_member_count = configured_quorum_policy()
+    policy = live_quorum_policy()
+    if (policy["threshold"] != configured_threshold or
+            policy["memberCount"] != configured_member_count):
+        raise ProviderError(
+            "configured Squads quorum does not match the live on-chain policy "
+            f"(configured {configured_threshold}-of-{configured_member_count}; "
+            f"live {policy['threshold']}-of-{policy['memberCount']}); "
+            "refresh configuration before Store staging or proposal creation"
+        )
+    members = member_keypair_paths()
+    if len(members) < policy["threshold"]:
+        raise ProviderError(
+            f"live Squads threshold is {policy['threshold']} but only {len(members)} member keypairs were configured"
+        )
+    return policy
 
 
 def next_index(multisig: str, vault: str) -> int:
@@ -887,6 +976,10 @@ def finalize_release(context: dict[str, Any]) -> None:
 
 
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
+    # Check before any rewrite, Pearl preparation, or Squads transaction work.
+    # A pre-existing staged candidate can then be resumed only under the live
+    # policy that will actually govern its ReleaseEntry proposal.
+    assert_live_quorum_policy()
     context = require_context(app_id)
     if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig or env("MEL_RELEASE_SQUADS_VAULT", required=True) != vault:
         raise ProviderError("proposal multisig/vault does not match configured governed authority")

@@ -88,6 +88,47 @@ def test_finalize_uses_only_supported_flags():
         assert finalized["runtimeContractSchema"] == "melusina-app-runtime-contract-v1", finalized
 
 
+def test_stage_refuses_stale_live_quorum_before_store_mutation():
+    """A stale workstation policy must fail before staging private Store data."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        executor = root / "executor.mjs"
+        executor.write_text("// test executor\n")
+        captured = []
+        old_run, old_context, old_rewrite = provider.run, provider.require_context, provider.rewrite_release
+        old = with_env({
+            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+            "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
+            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            # This reflects the real failure mode: local configuration says
+            # 2-of-4 while the governed authority is now 3-of-4.
+            "MEL_RELEASE_SQUADS_THRESHOLD": "2",
+            "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
+        })
+        try:
+            def fake_run(args, **_):
+                captured.append(args)
+                return json.dumps({
+                    "multisig": "multisig", "threshold": 3, "memberCount": 4,
+                    "members": ["member-1", "member-2", "member-3", "member-4"],
+                })
+
+            provider.run = fake_run
+            provider.require_context = lambda _: (_ for _ in ()).throw(AssertionError("stage reached provider context"))
+            provider.rewrite_release = lambda *_: (_ for _ in ()).throw(AssertionError("stage rewrote release evidence"))
+            try:
+                provider.stage("app", "a" * 64, "b" * 64, "nonce", root / "stage.json")
+            except provider.ProviderError as exc:
+                assert "does not match the live on-chain policy" in str(exc), exc
+            else:
+                raise AssertionError("stale quorum was allowed to stage")
+        finally:
+            provider.run, provider.require_context, provider.rewrite_release = old_run, old_context, old_rewrite
+            restore_env(old)
+        assert captured == [["node", str(executor), "policy"]], captured
+
+
 def test_propose_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -141,7 +182,7 @@ def test_propose_uses_only_supported_flags():
             "releasePath": str(release),
         }
         captured = []
-        old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
             "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
             "MEL_RELEASE_SQUADS_VAULT": "vault",
@@ -161,6 +202,7 @@ def test_propose_uses_only_supported_flags():
             provider.require_context = lambda _: context
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: 1167
+            provider.assert_live_quorum_policy = lambda: {"threshold": 3, "memberCount": 4}
             def fake_run(args, **_):
                 captured.append(args)
                 if args[1] == "propose-release":
@@ -178,7 +220,7 @@ def test_propose_uses_only_supported_flags():
             provider.run = fake_run
             provider.propose("app", app_hash, "1.2.3", nonce, "multisig", "vault", ix_out, receipt_out)
         finally:
-            provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
         proposal = captured[0]
         assert proposal[1] == "propose-release"
@@ -309,7 +351,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             "statePath": str(state_path), "releasePath": str(release),
         }
         captured = []
-        old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
             "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
@@ -321,6 +363,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             provider.require_context = lambda _: context
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: (_ for _ in ()).throw(AssertionError("resume advanced the Squads index"))
+            provider.assert_live_quorum_policy = lambda: {"threshold": 3, "memberCount": 4}
             provider.run = lambda args, **_: captured.append(args) or json.dumps({
                 "transactionPda": "transaction", "proposalPda": "proposal", "transactionIndex": 1755,
                 "vaultTransactionCreateSignature": "recovered-create", "proposalCreateSignature": "proposal-create",
@@ -329,7 +372,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
             provider.propose(app_id, app_hash, "1.2.3", nonce, "multisig", "vault", out_release, out_receipt)
         finally:
-            provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
         assert captured == [["node", str(executor), "propose", str(state_path)]], captured
         assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
@@ -372,7 +415,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             "statePath": str(state_path), "releasePath": str(release),
         }
         captured = []
-        old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
             "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
@@ -386,6 +429,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             provider.require_context = lambda _: context
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: 1760
+            provider.assert_live_quorum_policy = lambda: {"threshold": 3, "memberCount": 4}
 
             def fake_run(args, **_):
                 captured.append(args)
@@ -408,7 +452,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
             provider.propose(app_id, app_hash, version, nonce, "multisig", "vault", out_release, out_receipt)
         finally:
-            provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
         archived = root / "ceremony-state.foreign-index-1759.json"
         assert json.loads(archived.read_text()) == old_state
@@ -1382,6 +1426,7 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
 
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
+    test_stage_refuses_stale_live_quorum_before_store_mutation()
     test_propose_uses_only_supported_flags()
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()

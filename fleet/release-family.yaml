@@ -6,6 +6,10 @@ schema: melusina-release-family/v1
 # provider rejects an unset, non-canonical, symlinked, or escaping root/path.
 # This prevents a release from silently following a vanished workstation
 # worktree while keeping the manifest portable between clean release hosts.
+# metadata_path and runtime_contract_path are optional, source-relative files
+# for a unified application whose project Makefile lives above its product
+# metadata. pack_target is an optional reviewed Make target for a separately
+# signed variant emitted by the same source tree.
 families:
   money-path:
     apps:
@@ -188,3 +192,48 @@ families:
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
         role: rich-jspreadsheet-formulas-snapshots-xlsx-collaboration
+  productivity-apps:
+    apps:
+      ai-lagoon:
+        appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
+        source_path: ai-lagoon-main
+        source_commit: 2a521107cfe9ab038502a4e00a1fa53651535791
+        publish_slug: ai-lagoon
+        catalog_name: AiLagoon
+        catalog_developer: hrbrlife
+        catalog_repo: AI_Lagoon
+        catalog_slug: ai-lagoon
+        role: governed-ai-model-hub
+      goldkey:
+        appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
+        source_path: GoldKey
+        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
+        publish_slug: goldkey
+        catalog_name: GoldKey
+        catalog_developer: hrbrlife
+        catalog_repo: GoldKey
+        catalog_slug: goldkey
+        role: encrypted-team-vault
+      goldkey-dev:
+        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
+        source_path: GoldKey
+        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
+        metadata_path: metadata.dev.json
+        runtime_contract_path: RUNTIME-CONTRACT.dev.json
+        pack_target: dev-pack-local
+        publish_slug: goldkey-dev
+        catalog_name: GoldKey DEV
+        catalog_developer: hrbrlife
+        catalog_repo: GoldKey
+        catalog_slug: goldkey-dev
+        role: disposable-development-vault
+      mermail:
+        appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
+        source_path: INSTASYS_MAIL-main
+        source_commit: 6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4
+        publish_slug: mermail
+        catalog_name: MerMail
+        catalog_developer: hrbrlife
+        catalog_repo: INSTASYS_MAIL
+        catalog_slug: mermail
+        role: unified-mail-station-and-mailbox

@@ -142,6 +142,12 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
+                    # Most applications keep release metadata at the project
+                    # root. A unified app may keep it below the root that owns
+                    # its Makefile; make that relationship explicit instead of
+                    # duplicating signed product metadata at the root.
+                    "metadata_path": str(spec.get("metadata_path", "metadata.json")),
+                    "runtime_contract_path": str(spec.get("runtime_contract_path", "RUNTIME-CONTRACT.json")),
                     "publish_slug": str(spec.get("publish_slug", "")),
                     # The immutable appId is the authority, but a first
                     # publish into a clean store must also name the one
@@ -152,8 +158,38 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "catalog_repo": str(spec.get("catalog_repo", "")),
                     "catalog_slug": str(spec.get("catalog_slug", "")),
                     "pack_profile": str(spec.get("pack_profile", "")),
+                    # A reviewed family entry may select a project-owned
+                    # package target when one source tree produces separately
+                    # signed app identities (for example, a DEV variant).
+                    "pack_target": str(spec.get("pack_target", "")),
                 }
     raise ProviderError(f"immutable appId {app_id} is not declared in release-family.yaml")
+
+
+def source_file(source: Path, field: str, value: str) -> Path:
+    """Resolve one reviewed source-relative release artifact without escapes."""
+    rel = Path(value)
+    if (not value or str(rel) != value or rel.is_absolute() or "\\" in value or
+            any(part in {"", ".", ".."} for part in rel.parts)):
+        raise ProviderError(f"unsafe {field}: {value!r}")
+    candidate = source.joinpath(*rel.parts)
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ProviderError(f"declared {field} is not a regular source file: {candidate}: {exc}") from exc
+    source_root = source.resolve()
+    if (candidate.is_symlink() or resolved != candidate or
+            source_root not in (resolved, *resolved.parents) or not candidate.is_file()):
+        raise ProviderError(f"declared {field} is not a regular source file: {candidate}")
+    return candidate
+
+
+def source_metadata_path(app_id: str, source: Path) -> Path:
+    return source_file(source, "metadata_path", app_spec(app_id)["metadata_path"])
+
+
+def source_runtime_contract_path(app_id: str, source: Path) -> Path:
+    return source_file(source, "runtime_contract_path", app_spec(app_id)["runtime_contract_path"])
 
 
 def source_path(app_id: str) -> Path:
@@ -171,9 +207,9 @@ def source_path(app_id: str) -> Path:
         raise ProviderError(f"declared source path is not a checked-out app: {path}: {exc}") from exc
     if resolved != path or root not in (resolved, *resolved.parents):
         raise ProviderError(f"declared source path escapes MEL_RELEASE_SOURCE_ROOT: {path}")
-    metadata = path / "metadata.json"
-    if not path.is_dir() or path.is_symlink() or not metadata.is_file() or metadata.is_symlink():
+    if not path.is_dir() or path.is_symlink():
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
+    source_metadata_path(app_id, path)
     expected_commit = spec["source_commit"].strip().lower()
     if expected_commit:
         if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
@@ -196,10 +232,19 @@ def pack_profile_env(app_id: str) -> dict[str, str]:
     inherited environment variable can never make another candidate use the
     NamedCoin devnet recipe.
     """
-    profile = app_spec(app_id)["pack_profile"].strip()
+    spec = app_spec(app_id)
+    profile = spec["pack_profile"].strip()
+    target = spec["pack_target"].strip()
+    if target and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", target):
+        raise ProviderError(f"unsafe pack_target for {app_id}: {target!r}")
     if not profile:
-        return {"MEL_RELEASE_PACK_PROFILE": "standard"}
+        result = {"MEL_RELEASE_PACK_PROFILE": "standard"}
+        if target:
+            result["MEL_RELEASE_PACK_TARGET"] = target
+        return result
     if profile == NAMEDCOIN_MSB_DEVNET_PROFILE and app_id == NAMEDCOIN_APP_ID:
+        if target:
+            raise ProviderError("NamedCoin's reviewed pack profile owns its package target")
         return {"MEL_RELEASE_PACK_PROFILE": NAMEDCOIN_MSB_DEVNET_PROFILE}
     raise ProviderError(
         f"unsupported pack_profile {profile!r} for {app_id}; "
@@ -279,9 +324,7 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
         shutil.copytree(existing, destination, symlinks=False)
         return False
 
-    source_metadata = source / "metadata.json"
-    if source_metadata.is_symlink() or not source_metadata.is_file():
-        raise ProviderError(f"source metadata is not a regular file: {source_metadata}")
+    source_metadata = source_metadata_path(app_id, source)
     metadata = read_json(source_metadata)
     if metadata.get("appId") != app_id:
         raise ProviderError("source metadata appId does not match the release family appId")
@@ -294,6 +337,7 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
         shutil.copyfile(source_metadata, destination / "metadata.json")
         os.chmod(destination / "metadata.json", 0o600)
         source_root = source.resolve()
+        asset_root = source_metadata.parent.resolve()
         for screenshot in screenshots:
             if not isinstance(screenshot, dict):
                 raise ProviderError("source metadata screenshot must be an object")
@@ -305,7 +349,7 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
             relative = Path(url)
             if relative.is_absolute() or any(part in ("", ".", "..") for part in relative.parts):
                 raise ProviderError(f"unsafe source screenshot path: {url}")
-            source_asset = source.joinpath(*relative.parts)
+            source_asset = asset_root.joinpath(*relative.parts)
             resolved_asset = source_asset.resolve()
             if source_root not in resolved_asset.parents or source_asset.is_symlink() or not resolved_asset.is_file():
                 raise ProviderError(f"missing or unsafe source screenshot: {url}")
@@ -392,10 +436,9 @@ def materialize_runtime_contract(source: Path, destination: Path, app_id: str, v
     pack can only know after creating the exact SPK.  The materialized copy is
     private candidate evidence: it never rewrites the committed source file.
     """
-    source_contract = source / "RUNTIME-CONTRACT.json"
-    if source_contract.is_symlink() or not source_contract.is_file():
-        raise ProviderError(f"source runtime contract is not a regular file: {source_contract}")
-    run(["git", "-C", str(source), "ls-files", "--error-unmatch", "RUNTIME-CONTRACT.json"])
+    source_contract = source_runtime_contract_path(app_id, source)
+    contract_rel = str(source_contract.relative_to(source))
+    run(["git", "-C", str(source), "ls-files", "--error-unmatch", contract_rel])
     contract = read_json(source_contract)
     if contract.get("schema") != "melusina-app-runtime-contract-v1":
         raise ProviderError("source runtime contract has the wrong schema")
@@ -411,6 +454,7 @@ def materialize_runtime_contract(source: Path, destination: Path, app_id: str, v
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
     source = source_path(app_id)
+    source_metadata = source_metadata_path(app_id, source)
     slot = catalog_slot(app_id)
     work = state_root(app_id) / "candidate"
     if work.exists():
@@ -422,7 +466,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     built_metadata = work / "metadata.json"
     pack_env = {"MEL_RELEASE_GREENFIELD_PACK": "1", **pack_profile_env(app_id)}
     run(
-        [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
+        [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--metadata", str(source_metadata), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
         extra_env=pack_env,
     )
     built_spk = source / "app.spk"
@@ -433,7 +477,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     catalog_bootstrap = prepare_candidate_catalog(source, app_id, catalog)
     run(
         [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
-        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source / "metadata.json")},
+        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source_metadata)},
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"

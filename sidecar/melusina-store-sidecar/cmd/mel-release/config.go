@@ -21,13 +21,14 @@ const defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 
 // Config is the fully-resolved, validated runtime configuration.
 type Config struct {
-	ConfigPath     string // MEL_RELEASE_CONFIG   — path to release-family.yaml (required)
-	RPCURL         string // MEL_RELEASE_RPC_URL   — Solana RPC (passed through to the signer provider)
-	SquadsMultisig string // MEL_RELEASE_SQUADS_MULTISIG
-	SquadsVault    string // MEL_RELEASE_SQUADS_VAULT
-	SignerProvider string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
-	StoreURL       string // MEL_RELEASE_STORE_URL — bare https origin (required)
-	StorePubkey    string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
+	ConfigPath       string // MEL_RELEASE_CONFIG   — path to release-family.yaml (required)
+	RPCURL           string // MEL_RELEASE_RPC_URL   — Solana RPC (passed through to the signer provider)
+	SquadsMultisig   string // MEL_RELEASE_SQUADS_MULTISIG
+	SquadsVault      string // MEL_RELEASE_SQUADS_VAULT
+	SignerProvider   string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
+	StoreURL         string // MEL_RELEASE_STORE_URL — bare https origin (required)
+	StorePubkey      string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
+	StoreLicenseMint string // MEL_RELEASE_STORE_LICENSE_MINT — Store license authority for signed stage/promote (required)
 
 	// Additional env-only settings. The publisher envelope identity is required
 	// for both halves: private staging is itself a signed store mutation, so
@@ -50,17 +51,18 @@ type Config struct {
 
 func loadConfig() (Config, error) {
 	c := Config{
-		ConfigPath:     os.Getenv("MEL_RELEASE_CONFIG"),
-		RPCURL:         os.Getenv("MEL_RELEASE_RPC_URL"),
-		SquadsMultisig: os.Getenv("MEL_RELEASE_SQUADS_MULTISIG"),
-		SquadsVault:    os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
-		SignerProvider: os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
-		StoreURL:       os.Getenv("MEL_RELEASE_STORE_URL"),
-		StorePubkey:    os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
-		StoreID:        envOr("MEL_RELEASE_STORE_ID", "melusina-os-root-store"),
-		Channel:        envOr("MEL_RELEASE_CHANNEL", "dev"),
-		ProgramID:      envOr("MEL_RELEASE_PROGRAM_ID", defaultProgramID),
-		PublisherKey:   os.Getenv("MEL_RELEASE_PUBLISHER_KEY"),
+		ConfigPath:       os.Getenv("MEL_RELEASE_CONFIG"),
+		RPCURL:           os.Getenv("MEL_RELEASE_RPC_URL"),
+		SquadsMultisig:   os.Getenv("MEL_RELEASE_SQUADS_MULTISIG"),
+		SquadsVault:      os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
+		SignerProvider:   os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
+		StoreURL:         os.Getenv("MEL_RELEASE_STORE_URL"),
+		StorePubkey:      os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
+		StoreLicenseMint: os.Getenv("MEL_RELEASE_STORE_LICENSE_MINT"),
+		StoreID:          envOr("MEL_RELEASE_STORE_ID", "melusina-os-root-store"),
+		Channel:          envOr("MEL_RELEASE_CHANNEL", "dev"),
+		ProgramID:        envOr("MEL_RELEASE_PROGRAM_ID", defaultProgramID),
+		PublisherKey:     os.Getenv("MEL_RELEASE_PUBLISHER_KEY"),
 	}
 	c.BundleOrigin = envOr("MEL_RELEASE_BUNDLE_ORIGIN", strings.TrimRight(c.StoreURL, "/"))
 	c.OpTimeoutSecs = 480
@@ -73,11 +75,12 @@ func loadConfig() (Config, error) {
 
 	var missing []string
 	for name, val := range map[string]string{
-		"MEL_RELEASE_CONFIG":          c.ConfigPath,
-		"MEL_RELEASE_SIGNER_PROVIDER": c.SignerProvider,
-		"MEL_RELEASE_STORE_URL":       c.StoreURL,
-		"MEL_RELEASE_STORE_PUBKEY":    c.StorePubkey,
-		"MEL_RELEASE_PUBLISHER_KEY":   c.PublisherKey,
+		"MEL_RELEASE_CONFIG":             c.ConfigPath,
+		"MEL_RELEASE_SIGNER_PROVIDER":    c.SignerProvider,
+		"MEL_RELEASE_STORE_URL":          c.StoreURL,
+		"MEL_RELEASE_STORE_PUBKEY":       c.StorePubkey,
+		"MEL_RELEASE_STORE_LICENSE_MINT": c.StoreLicenseMint,
+		"MEL_RELEASE_PUBLISHER_KEY":      c.PublisherKey,
 	} {
 		if strings.TrimSpace(val) == "" {
 			missing = append(missing, name)

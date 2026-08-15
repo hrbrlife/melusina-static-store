@@ -2,6 +2,8 @@
 // proposal.  Keep this separate from the RPC helper so the important refusal
 // paths are testable without a devnet account or a member key.
 
+import { createHash } from "node:crypto";
+
 function fail(field, actual, expected) {
   throw new Error(`recovery binding mismatch: ${field} is ${JSON.stringify(actual)}, want ${JSON.stringify(expected)}`);
 }
@@ -43,6 +45,112 @@ function equal(field, actual, expected) {
   const encodedActual = JSON.stringify(actual);
   const encodedExpected = JSON.stringify(expected);
   if (encodedActual !== encodedExpected) fail(field, actual, expected);
+}
+
+function requiredText(value, field) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`recovery binding mismatch: ${field} must be a non-empty string`);
+  }
+  return value;
+}
+
+function canonicalBase64(value, field) {
+  if (typeof value !== "string" || value === "") {
+    throw new Error(`recovery binding mismatch: ${field} must be non-empty base64`);
+  }
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+    throw new Error(`recovery binding mismatch: ${field} is not canonical base64`);
+  }
+  const decoded = Buffer.from(value, "base64");
+  if (decoded.length === 0 || decoded.toString("base64") !== value) {
+    throw new Error(`recovery binding mismatch: ${field} is not canonical base64`);
+  }
+  return decoded;
+}
+
+function discriminator(name) {
+  return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
+}
+
+function validateCascadeInstruction(ix, index, kind, appHash) {
+  if (!ix || typeof ix !== "object" || Array.isArray(ix)) {
+    throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}] is not an instruction object`);
+  }
+  const allowed = new Set(["programId", "accounts", "data"]);
+  for (const field of Object.keys(ix)) {
+    if (!allowed.has(field)) {
+      throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}] has unexpected field ${field}`);
+    }
+  }
+  requiredText(ix.programId, `approvalCascadeInstructions[${index}].programId`);
+  if (!Array.isArray(ix.accounts) || ix.accounts.length === 0) {
+    throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}].accounts is empty`);
+  }
+  for (const [accountIndex, account] of ix.accounts.entries()) {
+    if (!account || typeof account !== "object" || Array.isArray(account)) {
+      throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}].accounts[${accountIndex}] is malformed`);
+    }
+    if (Object.keys(account).some((field) => !["pubkey", "isSigner", "isWritable"].includes(field)) ||
+        typeof account.pubkey !== "string" || account.pubkey === "" ||
+        typeof account.isSigner !== "boolean" || typeof account.isWritable !== "boolean") {
+      throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}].accounts[${accountIndex}] is malformed`);
+    }
+  }
+  const data = canonicalBase64(ix.data, `approvalCascadeInstructions[${index}].data`);
+  const expected = discriminator(kind);
+  if (data.length < 40 || !data.subarray(0, 8).equals(expected)) {
+    throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}] is not ${kind}`);
+  }
+  if (!data.subarray(8, 40).equals(Buffer.from(appHash, "hex"))) {
+    throw new Error(`recovery binding mismatch: approvalCascadeInstructions[${index}] does not bind appHash`);
+  }
+}
+
+// Ceremony state normally holds one register_release_entry instruction.  A
+// published package can, however, be chain-valid yet unlaunchable if its
+// Global -> Reseller -> Local *package* approval cascade was never seated.
+// The recovery rail may create the Global and Reseller records atomically in
+// one vault transaction.  Keep the exact message in the durable state and
+// validate it before deriving/recovering any Squads PDA; this is deliberately
+// not a generic arbitrary-instruction escape hatch.
+export function ceremonyInnerInstructions(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    throw new Error("recovery binding mismatch: ceremony state is not an object");
+  }
+  if (state.ceremonyKind === "app-approval-cascade") {
+    if (state.registerReleaseEntryInstruction != null || state.ed25519Instruction != null) {
+      throw new Error("recovery binding mismatch: app approval cascade must not carry release-register instructions");
+    }
+    const appHash = requiredText(state.appHash, "appHash");
+    if (!/^[0-9a-f]{64}$/.test(appHash)) {
+      throw new Error("recovery binding mismatch: appHash must be lowercase 64-hex for an app approval cascade");
+    }
+    requiredText(state.appId ?? state.appID, "appId");
+    requiredText(state.appName, "appName");
+    requiredText(state.version, "version");
+    requiredText(state.masterNftMint, "masterNftMint");
+    requiredText(state.resellerNftMint, "resellerNftMint");
+    requiredText(state.licenseSquadsVault, "licenseSquadsVault");
+    if (state.approvalCascadeScope !== "global-and-reseller") {
+      throw new Error("recovery binding mismatch: app approval cascade scope must be global-and-reseller");
+    }
+    if (!Array.isArray(state.approvalCascadeInstructions) || state.approvalCascadeInstructions.length !== 2) {
+      throw new Error("recovery binding mismatch: global-and-reseller cascade must contain exactly two instructions");
+    }
+    validateCascadeInstruction(state.approvalCascadeInstructions[0], 0, "approve_global_app", appHash);
+    validateCascadeInstruction(state.approvalCascadeInstructions[1], 1, "approve_reseller_app", appHash);
+    return state.approvalCascadeInstructions;
+  }
+  if (state.ceremonyKind != null && state.ceremonyKind !== "release-register") {
+    throw new Error(`recovery binding mismatch: unsupported ceremonyKind ${JSON.stringify(state.ceremonyKind)}`);
+  }
+  if (state.approvalCascadeInstructions != null) {
+    throw new Error("recovery binding mismatch: approvalCascadeInstructions requires ceremonyKind app-approval-cascade");
+  }
+  if (!state.registerReleaseEntryInstruction || typeof state.registerReleaseEntryInstruction !== "object") {
+    throw new Error("recovery binding mismatch: release-register ceremony lacks registerReleaseEntryInstruction");
+  }
+  return [state.registerReleaseEntryInstruction];
 }
 
 function header(message, accountKeys) {

@@ -15,6 +15,7 @@ import {
 import {
   assertProposalBinding,
   assertVaultTransactionBinding,
+  ceremonyInnerInstructions,
   creationWitnessMatches,
   normalizeCreationWitness,
   proposalCreationWitness,
@@ -101,7 +102,7 @@ function expectedVaultBinding(state,creator,multisigPda) {
   const message=new TransactionMessage({
     payerKey:new PublicKey(state.licenseSquadsVault),
     recentBlockhash:"11111111111111111111111111111111",
-    instructions:[decodeIx(state.registerReleaseEntryInstruction)],
+    instructions:ceremonyInnerInstructions(state).map(decodeIx),
   }).compileToV0Message();
   return {
     multisig:String(multisigPda), creator:String(creator.publicKey),
@@ -197,7 +198,7 @@ async function propose(statePath) {
     const message=new TransactionMessage({
       payerKey:new PublicKey(state.licenseSquadsVault),
       recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,
-      instructions:[decodeIx(state.registerReleaseEntryInstruction)],
+      instructions:ceremonyInnerInstructions(state).map(decodeIx),
     });
     vaultTransactionCreateSignature=await multisig.rpc.vaultTransactionCreate({connection,feePayer:creator,multisigPda,transactionIndex,creator:creator.publicKey,vaultIndex:0,ephemeralSigners:0,transactionMessage:message,memo:`Melusina ReleaseEntry ${appId}`});
     await confirm(connection,vaultTransactionCreateSignature);
@@ -251,10 +252,12 @@ async function approveExecute(statePath) {
     process.stdout.write(JSON.stringify({alreadyExecuted:true,transactionSignatures:[]})+"\n"); return;
   }
   const signatures=[];
+  const appId=typeof state.appId === "string" ? state.appId : state.appID;
+  if (!appId) throw new Error("prepared ceremony state lacks appId");
   if (before === "Active") {
     for (const member of members()) {
       try {
-        const signature=await multisig.rpc.proposalApprove({connection,feePayer:member,member,multisigPda,transactionIndex,memo:`approve ReleaseEntry ${state.appID}`});
+        const signature=await multisig.rpc.proposalApprove({connection,feePayer:member,member,multisigPda,transactionIndex,memo:`approve ${state.ceremonyKind === "app-approval-cascade" ? "app approval cascade" : "ReleaseEntry"} ${appId}`});
         await confirm(connection,signature); signatures.push(signature);
       } catch (err) {
         // Re-running after a process crash can meet quorum between the initial
@@ -268,7 +271,10 @@ async function approveExecute(statePath) {
   if (String(proposal.pretty().status) !== "Approved") throw new Error(`proposal is not executable after approvals: ${String(proposal.pretty().status)}`);
   const payer=members()[0];
   const {instruction: executeIx,lookupTableAccounts}=await multisig.instructions.vaultTransactionExecute({connection,multisigPda,transactionIndex,member:payer.publicKey});
-  const message=new TransactionMessage({payerKey:payer.publicKey,recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,instructions:[decodeIx(state.ed25519Instruction),executeIx]}).compileToV0Message(lookupTableAccounts);
+  const executeInstructions=state.ceremonyKind === "app-approval-cascade"
+    ? [executeIx]
+    : [decodeIx(state.ed25519Instruction),executeIx];
+  const message=new TransactionMessage({payerKey:payer.publicKey,recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,instructions:executeInstructions}).compileToV0Message(lookupTableAccounts);
   const tx=new VersionedTransaction(message); tx.sign([payer]);
   const executeSignature=await sendAndConfirm(connection,tx); signatures.push(executeSignature);
   proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);

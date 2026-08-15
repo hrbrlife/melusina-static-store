@@ -1,14 +1,26 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   assertProposalBinding,
   assertVaultTransactionBinding,
+  ceremonyInnerInstructions,
   creationWitnessMatches,
   normalizeCreationWitness,
   normalizeVaultMessage,
   proposalCreationWitness,
   proposalDisposition,
 } from "./mel-release-squads-recovery.mjs";
+
+function b64(bytes) { return Buffer.from(bytes).toString("base64"); }
+function discriminator(name) { return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8); }
+function cascadeInstruction(name, appHash) {
+  return {
+    programId: "registry",
+    accounts: [{pubkey: "vault", isSigner: true, isWritable: true}],
+    data: b64(Buffer.concat([discriminator(name), Buffer.from(appHash, "hex")])),
+  };
+}
 
 const keys = ["vault", "release", "master", "token", "program"];
 const message = {
@@ -114,4 +126,32 @@ test("web3 v0 witness normalization is exact and refuses an unknown data encodin
 
 test("on-chain and web3 message spellings normalize identically", () => {
   assert.deepEqual(normalizeVaultMessage(message), normalizeVaultMessage(expectedVault.message));
+});
+
+test("approval cascade state admits only the exact Global then Reseller package message", () => {
+  const appHash = "ab".repeat(32);
+  const state = {
+    ceremonyKind: "app-approval-cascade",
+    approvalCascadeScope: "global-and-reseller",
+    appHash,
+    appId: "app-id",
+    appName: "Docs",
+    version: "2.0.31",
+    masterNftMint: "master",
+    resellerNftMint: "reseller",
+    licenseSquadsVault: "vault",
+    approvalCascadeInstructions: [
+      cascadeInstruction("approve_global_app", appHash),
+      cascadeInstruction("approve_reseller_app", appHash),
+    ],
+  };
+  assert.deepEqual(ceremonyInnerInstructions(state), state.approvalCascadeInstructions);
+  assert.throws(() => ceremonyInnerInstructions({...state, approvalCascadeInstructions: state.approvalCascadeInstructions.slice(0, 1)}), /exactly two/);
+  assert.throws(() => ceremonyInnerInstructions({...state, approvalCascadeInstructions: [
+    cascadeInstruction("approve_reseller_app", appHash), cascadeInstruction("approve_global_app", appHash),
+  ]}), /approve_global_app/);
+  assert.throws(() => ceremonyInnerInstructions({...state, approvalCascadeInstructions: [
+    cascadeInstruction("approve_global_app", "cd".repeat(32)), cascadeInstruction("approve_reseller_app", appHash),
+  ]}), /does not bind appHash/);
+  assert.throws(() => ceremonyInnerInstructions({...state, ed25519Instruction: {}}), /must not carry/);
 });

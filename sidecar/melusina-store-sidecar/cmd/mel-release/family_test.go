@@ -152,16 +152,16 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if fam.Schema != "melusina-release-family/v1" {
 		t.Fatalf("real manifest schema = %q", fam.Schema)
 	}
-	if len(fam.Apps) != 14 {
+	if len(fam.Apps) != 15 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 14 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 15 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
 		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
-		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn",
+		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn", "cratelink",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -202,6 +202,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		{"instadao", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
 		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
 		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "hrbrlife", "jinn", "jinn", ""},
+		{"cratelink", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
 	} {
 		app, err := fam.Select(tc.selector)
 		if err != nil {

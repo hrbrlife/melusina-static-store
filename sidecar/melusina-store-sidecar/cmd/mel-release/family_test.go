@@ -174,7 +174,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		"fineract-setup":     {"money-path", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "", "hrbrlife", "fineract-setup", "fineract-setup", ""},
 		"telescreen":         {"money-path", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "", "hrbrlife", "pr_ninja", "telescreen", ""},
 		"teleport":           {"money-path", "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h", "teleport", "", "hrbrlife", "melusina_teleport2", "teleport", ""},
-		"instaco":            {"money-path", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8", "hrbrlife", "instaco-app", "instaco", ""},
+		"instaco":            {"money-path", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "5d9347ce837ec423013bc17bd17ff3a60b7f39eb", "hrbrlife", "instaco-app", "instaco", ""},
 		"instadao":           {"money-path", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
 		"minigit":            {"platform-tools", "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50", "worktrees/minigit-v029-live-20260814", "", "hrbrlife", "MiniGit", "gitpearl", ""},
 		"jinn":               {"platform-tools", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "", "hrbrlife", "jinn", "jinn", ""},

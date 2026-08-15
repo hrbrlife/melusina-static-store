@@ -136,7 +136,7 @@ families:
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
-        source_commit: b13d042cc689de8faa40f46cd04713239b5c6ea8
+        source_commit: 5d9347ce837ec423013bc17bd17ff3a60b7f39eb
         publish_slug: instaco
         catalog_name: InstaCo
         catalog_developer: hrbrlife

@@ -845,7 +845,7 @@ def test_checked_in_release_pins_bind_exact_target_slots():
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": (
-            spec("money-path", "instaco", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8",
+            spec("money-path", "instaco", "instaco", "5d9347ce837ec423013bc17bd17ff3a60b7f39eb",
                  "instaco", "hrbrlife", "instaco-app", "instaco"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),

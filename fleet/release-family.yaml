@@ -181,7 +181,7 @@ families:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: fe4f8c14070f031fc1b43724112447f225c08e14
+        source_commit: 965766d662771323f770eb9e956f1e8b03bea7a0
         publish_slug: sheets-bureau
         catalog_name: Sheets Bureau
         catalog_developer: hrbrlife

@@ -678,8 +678,15 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
         write_family_config(config, apps)
         source = root / "sources" / "namedcoin"
         source.mkdir(parents=True)
-        source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
+        source_metadata = {
+            "appId": app_id,
+            "name": "source-authoritative",
+            "version": "0.1.35",
+            "screenshots": [{"url": "screenshots/source-proof.png"}],
+        }
         (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
+        (source / "screenshots").mkdir()
+        (source / "screenshots" / "source-proof.png").write_bytes(b"source screenshot")
 
         # Preserved stale evidence is deliberately at a different slot. The
         # bootstrap must neither use nor alter it.
@@ -695,8 +702,38 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
             destination.parent.mkdir()
             assert provider.prepare_candidate_catalog(source, app_id, destination) is True
             assert json.loads((destination / "metadata.json").read_text()) == source_metadata
+            assert (destination / "screenshots" / "source-proof.png").read_bytes() == b"source screenshot"
             assert json.loads((legacy / "metadata.json").read_text())["name"] == "legacy"
             assert not (root / "packages" / "hrbrlife" / "melusina-namedcoin-app" / "namedcoin").exists()
+
+            missing_asset = root / "sources" / "missing-screenshot"
+            missing_asset.mkdir()
+            (missing_asset / "metadata.json").write_text(json.dumps({
+                "appId": app_id,
+                "screenshots": [{"url": "screenshots/not-present.png"}],
+            }) + "\n")
+            missing_destination = root / "missing-candidate"
+            try:
+                provider.prepare_candidate_catalog(missing_asset, app_id, missing_destination)
+            except provider.ProviderError as exc:
+                assert "missing or unsafe source screenshot" in str(exc), exc
+            else:
+                raise AssertionError("bootstrap accepted a missing source screenshot")
+            assert not missing_destination.exists()
+
+            escaping_asset = root / "sources" / "escaping-screenshot"
+            escaping_asset.mkdir()
+            (escaping_asset / "metadata.json").write_text(json.dumps({
+                "appId": app_id,
+                "screenshots": [{"url": "../outside.png"}],
+            }) + "\n")
+            try:
+                provider.prepare_candidate_catalog(escaping_asset, app_id, root / "escaping-candidate")
+            except provider.ProviderError as exc:
+                assert "unsafe source screenshot path" in str(exc), exc
+            else:
+                raise AssertionError("bootstrap accepted an escaping source screenshot")
+            assert not (root / "escaping-candidate").exists()
 
             bad_source = root / "sources" / "wrong-app"
             bad_source.mkdir()

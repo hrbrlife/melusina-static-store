@@ -257,9 +257,10 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
     This never writes ``ROOT/packages``. A missing configured slot is a normal
     first-publish condition: the sidecar will create that exact slot only after
     its stage/promotion gate accepts the same appId and supplied slot hint. The
-    private seed contains only the tracked source metadata, which remains
-    authoritative under F-193; no legacy metadata or presentation files can
-    leak into a first-publish candidate.
+    private seed contains the authoritative source metadata and only the
+    presentation assets that metadata names.  A first-publish card must not
+    pass staging while pointing at a screenshot that was never supplied.
+    Nothing is taken from a legacy catalog slot.
     """
     existing = catalog_package(app_id)
     if existing is not None:
@@ -269,13 +270,41 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
     source_metadata = source / "metadata.json"
     if source_metadata.is_symlink() or not source_metadata.is_file():
         raise ProviderError(f"source metadata is not a regular file: {source_metadata}")
-    if read_json(source_metadata).get("appId") != app_id:
+    metadata = read_json(source_metadata)
+    if metadata.get("appId") != app_id:
         raise ProviderError("source metadata appId does not match the release family appId")
+
+    screenshots = metadata.get("screenshots", [])
+    if not isinstance(screenshots, list):
+        raise ProviderError("source metadata screenshots must be an array")
     try:
         destination.mkdir(mode=0o700)
         shutil.copyfile(source_metadata, destination / "metadata.json")
         os.chmod(destination / "metadata.json", 0o600)
-    except OSError as exc:
+        source_root = source.resolve()
+        for screenshot in screenshots:
+            if not isinstance(screenshot, dict):
+                raise ProviderError("source metadata screenshot must be an object")
+            url = screenshot.get("url")
+            if not url:
+                continue
+            if not isinstance(url, str):
+                raise ProviderError("source metadata screenshot url must be a string")
+            relative = Path(url)
+            if relative.is_absolute() or any(part in ("", ".", "..") for part in relative.parts):
+                raise ProviderError(f"unsafe source screenshot path: {url}")
+            source_asset = source.joinpath(*relative.parts)
+            resolved_asset = source_asset.resolve()
+            if source_root not in resolved_asset.parents or source_asset.is_symlink() or not resolved_asset.is_file():
+                raise ProviderError(f"missing or unsafe source screenshot: {url}")
+            target = destination.joinpath(*relative.parts)
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            shutil.copyfile(resolved_asset, target)
+            os.chmod(target, 0o600)
+    except (OSError, ProviderError) as exc:
+        shutil.rmtree(destination, ignore_errors=True)
+        if isinstance(exc, ProviderError):
+            raise
         raise ProviderError(f"bootstrap private catalog candidate: {exc}") from exc
     return True
 

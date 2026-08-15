@@ -11,9 +11,12 @@ families:
     apps:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
-        source_path: /home/user/Desktop/worktrees/governed-dueprocess-0163/welcome-pearl
+        source_path: welcome
         publish_slug: welcome-pearl
         catalog_name: Welcome pearl
+        catalog_developer: hrbrlife
+        catalog_repo: welcome-pearl
+        catalog_slug: welcome-pearl
         role: public-account-opening-entry
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh

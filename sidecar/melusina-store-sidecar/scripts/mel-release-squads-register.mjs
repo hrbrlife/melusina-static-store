@@ -17,6 +17,7 @@ import {
   assertVaultTransactionBinding,
   creationWitnessMatches,
   normalizeCreationWitness,
+  proposalCreationWitness,
   proposalDisposition,
 } from "./mel-release-squads-recovery.mjs";
 
@@ -155,14 +156,6 @@ function vaultCreationWitness(state,creator,multisigPda,transactionPda) {
   };
 }
 
-function proposalCreationWitness(creator,multisigPda,proposalPda) {
-  return {
-    creator:String(creator.publicKey), programId:String(multisig.PROGRAM_ID),
-    discriminator:Array.from(multisig.generated.proposalCreateInstructionDiscriminator),
-    accounts:[String(creator.publicKey),String(creator.publicKey),String(multisigPda),String(proposalPda),"11111111111111111111111111111111"],
-  };
-}
-
 function assertProposal(state,proposal,memberKeys) {
   assertProposalBinding(proposal,{
     multisig:state.multisigPda, transactionIndex:String(state.transactionIndex),
@@ -217,7 +210,10 @@ async function propose(statePath) {
     assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
     assertProposal(state,loadedProposal(proposalInfo),memberKeys);
     vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
-    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness(creator,multisigPda,proposalPda),"Proposal");
+    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness({
+      creator:String(creator.publicKey), multisigPda:String(multisigPda), proposalPda:String(proposalPda),
+      programId:String(multisig.PROGRAM_ID), discriminator:multisig.generated.proposalCreateInstructionDiscriminator,
+    }),"Proposal");
     recoveredVaultTransaction=true;
     alreadyProposed=true;
   }

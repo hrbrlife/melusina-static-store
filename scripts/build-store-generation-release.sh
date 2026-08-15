@@ -49,8 +49,18 @@ SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 # this exact, freshly verified manifest before it is compiled.
 "$ROOT/scripts/build-sidecar-ui.sh" --check
 UI_MANIFEST_SHA="$(sha256sum "$ROOT/sidecar/melusina-store-sidecar/ui/UI-MANIFEST.json" | awk '{print $1}')"
-WORK_BASE="$(dirname "$ROOT")"
+# A release runner may keep its working copy on a deliberately small tmpfs.
+# Let it place the two detached builds and Go linker temporaries on a chosen
+# writable real directory while preserving the historical parent-of-source
+# default. Keeping the worktrees direct children of this root also preserves
+# the module replacement layout used by non-vendored developer builds.
+WORK_BASE="${MELUSINA_STORE_GENERATION_BUILD_ROOT:-$(dirname "$ROOT")}"
+WORK_BASE="$(realpath -e -- "$WORK_BASE" 2>/dev/null || true)"
+[[ -n "$WORK_BASE" && -d "$WORK_BASE" && ! -L "$WORK_BASE" && -w "$WORK_BASE" ]] || {
+  echo "MELUSINA_STORE_GENERATION_BUILD_ROOT must be a writable real directory" >&2; exit 2; }
 TMP="$(mktemp -d "$WORK_BASE/.store-generation-release.XXXXXX")"
+BUILD_TMPDIR="$TMP/tmp"
+mkdir -p "$BUILD_TMPDIR"
 # Go module replacements are intentionally relative to a direct child of the
 # shared worktrees root (../../../Melusina). Do not nest detached worktrees
 # under TMP: that changes the replacement base and makes the supposedly
@@ -81,7 +91,7 @@ build_once() {
     unset GOEXPERIMENT GODEBUG GOROOT
     export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GO111MODULE=on
     export GOFIPS140=off GO_EXTLINK_ENABLED=0 GOCACHEPROG= GOFLAGS= GOENV=off
-    export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
+    export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH" TMPDIR="$BUILD_TMPDIR"
     go build -mod=vendor -trimpath -ldflags "-buildid= -X main.Version=$VERSION" \
       -o "$stage/bin/melusina-store-sidecar" .
     # The first-install deployer must derive the SidecarIdentity register

@@ -74,14 +74,14 @@ families:
         role: four-eyes-casework
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
-        source_path: ai-lagoon
-        source_commit: db98212817e2393477eae058f6688b2251bb3482
+        source_path: ai-lagoon-main
+        source_commit: 2a521107cfe9ab038502a4e00a1fa53651535791
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata
-        # only from the pinned clean ai-lagoon checkout.
+        # only from the pinned clean ai-lagoon-main checkout.
         catalog_repo: AI_Lagoon
         catalog_slug: ai-lagoon
         role: ai-provider-routing-and-vision
@@ -208,16 +208,6 @@ families:
         role: rich-jspreadsheet-formulas-snapshots-xlsx-collaboration
   productivity-apps:
     apps:
-      ai-lagoon:
-        appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
-        source_path: ai-lagoon-main
-        source_commit: 2a521107cfe9ab038502a4e00a1fa53651535791
-        publish_slug: ai-lagoon
-        catalog_name: AiLagoon
-        catalog_developer: hrbrlife
-        catalog_repo: AI_Lagoon
-        catalog_slug: ai-lagoon
-        role: governed-ai-model-hub
       goldkey:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey

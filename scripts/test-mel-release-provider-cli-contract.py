@@ -817,42 +817,63 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
         restore_env(old)
 
 
-def test_checked_in_ailagoon_and_instaco_pins_bind_exact_target_slots():
+def test_checked_in_release_pins_bind_exact_target_slots():
     config = HERE.parent / "fleet" / "release-family.yaml"
+    def spec(family, name, source_path, source_commit, publish_slug, developer, repo, slug,
+             metadata_path="metadata.json", runtime_contract_path="RUNTIME-CONTRACT.json", pack_target=""):
+        return {
+            "family": family,
+            "name": name,
+            "source_path": source_path,
+            "source_commit": source_commit,
+            "metadata_path": metadata_path,
+            "runtime_contract_path": runtime_contract_path,
+            "publish_slug": publish_slug,
+            "catalog_developer": developer,
+            "catalog_repo": repo,
+            "catalog_slug": slug,
+            "pack_profile": "",
+            "pack_target": pack_target,
+        }
+
     cases = {
-        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": {
-            "family": "money-path",
-            "name": "ai-lagoon",
-            "source_path": "ai-lagoon",
-            "source_commit": "db98212817e2393477eae058f6688b2251bb3482",
-            "publish_slug": "ai-lagoon",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "AI_Lagoon",
-            "catalog_slug": "ai-lagoon",
-            "pack_profile": "",
-        },
-        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": {
-            "family": "money-path",
-            "name": "instaco",
-            "source_path": "instaco",
-            "source_commit": "b13d042cc689de8faa40f46cd04713239b5c6ea8",
-            "publish_slug": "instaco",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "instaco-app",
-            "catalog_slug": "instaco",
-            "pack_profile": "",
-        },
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": (
+            spec("money-path", "ai-lagoon", "ai-lagoon-main", "2a521107cfe9ab038502a4e00a1fa53651535791",
+                 "ai-lagoon", "hrbrlife", "AI_Lagoon", "ai-lagoon"),
+            {"MEL_RELEASE_PACK_PROFILE": "standard"},
+        ),
+        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": (
+            spec("money-path", "instaco", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8",
+                 "instaco", "hrbrlife", "instaco-app", "instaco"),
+            {"MEL_RELEASE_PACK_PROFILE": "standard"},
+        ),
+        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": (
+            spec("productivity-apps", "goldkey", "GoldKey", "10acf09c3d5377d763760b11b912b1053e0cbcce",
+                 "goldkey", "hrbrlife", "GoldKey", "goldkey"),
+            {"MEL_RELEASE_PACK_PROFILE": "standard"},
+        ),
+        "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0": (
+            spec("productivity-apps", "goldkey-dev", "GoldKey", "10acf09c3d5377d763760b11b912b1053e0cbcce",
+                 "goldkey-dev", "hrbrlife", "GoldKey", "goldkey-dev",
+                 "metadata.dev.json", "RUNTIME-CONTRACT.dev.json", "dev-pack-local"),
+            {"MEL_RELEASE_PACK_PROFILE": "standard", "MEL_RELEASE_PACK_TARGET": "dev-pack-local"},
+        ),
+        "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": (
+            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4",
+                 "mermail", "hrbrlife", "INSTASYS_MAIL", "mermail"),
+            {"MEL_RELEASE_PACK_PROFILE": "standard"},
+        ),
     }
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
-        for app_id, expected in cases.items():
+        for app_id, (expected, expected_pack_env) in cases.items():
             assert provider.app_spec(app_id) == expected
             assert provider.catalog_slot(app_id) == {
                 "developer": expected["catalog_developer"],
                 "repo": expected["catalog_repo"],
                 "slug": expected["catalog_slug"],
             }
-            assert provider.pack_profile_env(app_id) == {"MEL_RELEASE_PACK_PROFILE": "standard"}
+            assert provider.pack_profile_env(app_id) == expected_pack_env
     finally:
         restore_env(old)
 
@@ -1237,7 +1258,7 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_rich_sheets_family_selects_only_the_pinned_slot()
-    test_checked_in_ailagoon_and_instaco_pins_bind_exact_target_slots()
+    test_checked_in_release_pins_bind_exact_target_slots()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()

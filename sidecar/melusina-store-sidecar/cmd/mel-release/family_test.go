@@ -152,7 +152,10 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if fam.Schema != "melusina-release-family/v1" {
 		t.Fatalf("real manifest schema = %q", fam.Schema)
 	}
-	if len(fam.Apps) != 15 {
+	// Keep this assertion coupled to the explicit selectors below.  A new
+	// release-family slot must be deliberately covered here rather than making
+	// the parser test silently accept an arbitrary manifest expansion.
+	if len(fam.Apps) != 17 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
@@ -161,7 +164,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	}
 	for _, sel := range []string{
 		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
-		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn", "cratelink",
+		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn", "cratelink", "sheets-bureau",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -203,6 +206,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
 		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "hrbrlife", "jinn", "jinn", ""},
 		{"cratelink", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
+		{"sheets-bureau", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
 	} {
 		app, err := fam.Select(tc.selector)
 		if err != nil {

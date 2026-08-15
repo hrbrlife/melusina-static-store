@@ -75,7 +75,7 @@ families:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        source_commit: 2a521107cfe9ab038502a4e00a1fa53651535791
+        source_commit: 70f17bb45d6b92cc88f63588cbce6b9bc82e7834
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
         catalog_developer: hrbrlife
@@ -192,9 +192,8 @@ families:
         catalog_slug: cratelink
         role: controlled-workspace-file-transfer
   bureau-rich-office:
-    # The only governed Sheets source is the full Jspreadsheet/jsuites line.
-    # The older sparse v25 lineage is historical evidence only and must never
-    # be selected by the release provider.
+    # Only the retained rich Office sources are eligible here. Sparse or
+    # stripped historical lines are evidence only and must never be selected.
     apps:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
@@ -206,6 +205,19 @@ families:
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
         role: rich-jspreadsheet-formulas-snapshots-xlsx-collaboration
+      doc-bureau:
+        appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
+        source_path: doc-bureau
+        source_commit: f34c1b8b36b01c2ef2c704fa48e09557e38ad136
+        publish_slug: doc-bureau
+        catalog_name: Doc Bureau
+        # This exact historical slot contains the same immutable appId at an
+        # older rich release. It is a target only; v26 source metadata and
+        # runtime contract come solely from the pinned clean source checkout.
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-doc-app
+        catalog_slug: doc-bureau
+        role: rich-tiptap-yjs-collaboration-snapshots-docx-html-export
   productivity-apps:
     apps:
       goldkey:

@@ -897,12 +897,13 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             restore_env(old)
 
 
-def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
-    app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
+def test_checked_in_rich_office_family_selects_only_pinned_slots():
+    sheets_app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
+    doc_app_id = "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"
     config = HERE.parent / "fleet" / "release-family.yaml"
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
-        assert provider.app_spec(app_id) == {
+        assert provider.app_spec(sheets_app_id) == {
             "family": "bureau-rich-office",
             "name": "sheets-bureau",
             "source_path": "sheets-bureau",
@@ -916,10 +917,29 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
             "pack_profile": "",
             "pack_target": "",
         }
-        assert provider.catalog_slot(app_id) == {
+        assert provider.catalog_slot(sheets_app_id) == {
             "developer": "hrbrlife",
             "repo": "melusina-bureau-sheets-app",
             "slug": "sheets-bureau",
+        }
+        assert provider.app_spec(doc_app_id) == {
+            "family": "bureau-rich-office",
+            "name": "doc-bureau",
+            "source_path": "doc-bureau",
+            "source_commit": "f34c1b8b36b01c2ef2c704fa48e09557e38ad136",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "doc-bureau",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-bureau-doc-app",
+            "catalog_slug": "doc-bureau",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(doc_app_id) == {
+            "developer": "hrbrlife",
+            "repo": "melusina-bureau-doc-app",
+            "slug": "doc-bureau",
         }
     finally:
         restore_env(old)
@@ -948,7 +968,7 @@ def test_checked_in_release_pins_bind_exact_target_slots():
 
     cases = {
         "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": (
-            spec("money-path", "ai-lagoon", "ai-lagoon-main", "2a521107cfe9ab038502a4e00a1fa53651535791",
+            spec("money-path", "ai-lagoon", "ai-lagoon-main", "70f17bb45d6b92cc88f63588cbce6b9bc82e7834",
                  "ai-lagoon", "hrbrlife", "AI_Lagoon", "ai-lagoon"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
@@ -1373,7 +1393,7 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
-    test_checked_in_rich_sheets_family_selects_only_the_pinned_slot()
+    test_checked_in_rich_office_family_selects_only_pinned_slots()
     test_checked_in_release_pins_bind_exact_target_slots()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()

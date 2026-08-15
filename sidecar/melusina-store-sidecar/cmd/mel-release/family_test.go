@@ -168,7 +168,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		"popaye":             {"money-path", "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "worktrees/popaye-session-teardown-20260814", "", "hrbrlife", "ccash_go_htmx", "popaye", ""},
 		"ccashconfig":        {"money-path", "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "/home/user/Desktop/worktrees/ccashconfig-lease-audience-v67", "", "", "", "", ""},
 		"dueprocess":         {"money-path", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "", "hrbrlife", "DueProcess", "dueprocess", ""},
-		"ai-lagoon":          {"money-path", "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh", "ai-lagoon-main", "2a521107cfe9ab038502a4e00a1fa53651535791", "hrbrlife", "AI_Lagoon", "ai-lagoon", ""},
+		"ai-lagoon":          {"money-path", "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh", "ai-lagoon-main", "70f17bb45d6b92cc88f63588cbce6b9bc82e7834", "hrbrlife", "AI_Lagoon", "ai-lagoon", ""},
 		"cyberteller":        {"money-path", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "", "hrbrlife", "cyberteller", "cyberteller", ""},
 		"cyberteller-config": {"money-path", "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10", "cybertellerconfig", "", "hrbrlife", "melusina_cybertellerconfig_app", "cybertellerconfig", ""},
 		"fineract-setup":     {"money-path", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "", "hrbrlife", "fineract-setup", "fineract-setup", ""},
@@ -180,6 +180,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		"jinn":               {"platform-tools", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "", "hrbrlife", "jinn", "jinn", ""},
 		"cratelink":          {"platform-tools", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
 		"sheets-bureau":      {"bureau-rich-office", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "965766d662771323f770eb9e956f1e8b03bea7a0", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
+		"doc-bureau":         {"bureau-rich-office", "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h", "doc-bureau", "f34c1b8b36b01c2ef2c704fa48e09557e38ad136", "hrbrlife", "melusina-bureau-doc-app", "doc-bureau", ""},
 		"goldkey":            {"productivity-apps", "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh", "GoldKey", "10acf09c3d5377d763760b11b912b1053e0cbcce", "hrbrlife", "GoldKey", "goldkey", ""},
 		"mermail":            {"productivity-apps", "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "INSTASYS_MAIL-main", "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4", "hrbrlife", "INSTASYS_MAIL", "mermail", ""},
 	}

@@ -549,6 +549,10 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "source_path": "cyberteller",
             "catalog_developer": "hrbrlife", "catalog_repo": "cyberteller", "catalog_slug": "cyberteller",
         },
+        "jinn": {
+            "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "source_path": "jinn",
+            "catalog_developer": "hrbrlife", "catalog_repo": "jinn", "catalog_slug": "jinn",
+        },
         "wrong-profile": {
             "appId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "source_path": "other",
             "pack_profile": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
@@ -582,6 +586,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             assert provider.catalog_slot(apps["cyberteller"]["appId"]) == {
                 "developer": "hrbrlife", "repo": "cyberteller", "slug": "cyberteller",
             }
+            assert provider.catalog_slot(apps["jinn"]["appId"]) == {
+                "developer": "hrbrlife", "repo": "jinn", "slug": "jinn",
+            }
             assert provider.pack_profile_env(namedcoin) == {
                 "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
             }
@@ -589,6 +596,9 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
             assert provider.pack_profile_env(namedcoin_admin) == {
+                "MEL_RELEASE_PACK_PROFILE": "standard",
+            }
+            assert provider.pack_profile_env(apps["jinn"]["appId"]) == {
                 "MEL_RELEASE_PACK_PROFILE": "standard",
             }
             try:

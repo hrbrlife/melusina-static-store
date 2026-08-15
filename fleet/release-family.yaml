@@ -103,3 +103,12 @@ families:
         catalog_repo: MiniGit
         catalog_slug: gitpearl
         role: private-git-and-static-publishing
+      jinn:
+        appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
+        source_path: jinn
+        publish_slug: jinn
+        catalog_name: Melusina's Jinn
+        catalog_developer: hrbrlife
+        catalog_repo: jinn
+        catalog_slug: jinn
+        role: confined-ai-reporting-and-scheduled-sheets-assistance

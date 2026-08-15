@@ -208,7 +208,7 @@ families:
       doc-bureau:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
-        source_commit: 86c5d81a07cffc7e05c3227e100a20aa1b20e1ef
+        source_commit: ea232d48cc837bdc65b1886ab41ca5109e6c8a69
         publish_slug: doc-bureau
         catalog_name: Doc Bureau
         # This exact historical slot contains the same immutable appId at an

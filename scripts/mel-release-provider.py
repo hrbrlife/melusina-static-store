@@ -685,6 +685,83 @@ def next_index(multisig: str, vault: str) -> int:
     return index
 
 
+def validate_prepared_ceremony_state(
+        state: dict[str, Any], *, app_id: str, app_hash: str, release_hash: str,
+        version: str, nonce: str, multisig: str, vault: str) -> None:
+    """Bind a resumable dry-run ceremony state to this immutable WAL request.
+
+    A STAGED WAL can survive a provider crash after Squads created the
+    VaultTransaction but before ProposalCreate/receipt finalization.  On a
+    resume, asking Squads for a fresh index would strand that account and turn
+    a recoverable partial write into a second ceremony.  Reuse is therefore
+    allowed only for an exact prepared state; every candidate-defining field is
+    checked here and the Node helper separately proves the on-chain payload.
+    """
+    expected = {
+        "appId": app_id,
+        "appHash": app_hash,
+        "releaseHash": release_hash,
+        "version": version,
+        "releaseNonce": nonce,
+        "multisigPda": multisig,
+        "licenseSquadsVault": vault,
+        "masterNftMint": env("MEL_RELEASE_MASTER_NFT_MINT", required=True),
+        "programId": env("MEL_PROGRAM_ID", required=True),
+    }
+    mismatches = [name for name, value in expected.items() if state.get(name) != value]
+    if mismatches:
+        raise ProviderError("persisted ceremony state does not bind this STAGED WAL: " + ", ".join(mismatches))
+    if state.get("$schema") != "melusina-release-ceremony-v1":
+        raise ProviderError("persisted ceremony state has an unexpected schema")
+    if not isinstance(state.get("transactionIndex"), int) or state["transactionIndex"] < 1:
+        raise ProviderError("persisted ceremony state has an invalid transactionIndex")
+    for field in ("transactionPda", "proposalPda", "releaseEntryPda"):
+        if not isinstance(state.get(field), str) or not state[field].strip():
+            raise ProviderError(f"persisted ceremony state lacks {field}")
+    for field in ("registerReleaseEntryInstruction", "ed25519Instruction", "quorumPolicy"):
+        if not isinstance(state.get(field), dict):
+            raise ProviderError(f"persisted ceremony state lacks {field}")
+    policy = state["quorumPolicy"]
+    if (policy.get("multisigPda") != multisig or
+            policy.get("threshold") != int(env("MEL_RELEASE_SQUADS_THRESHOLD", required=True)) or
+            policy.get("memberCount") != int(env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True))):
+        raise ProviderError("persisted ceremony quorum policy does not bind configured authority")
+
+
+def prepare_or_reuse_ceremony_state(
+        context: dict[str, Any], *, app_id: str, app_hash: str, release_hash: str,
+        version: str, nonce: str, multisig: str, vault: str, release_path: Path) -> Path:
+    """Return one exact ceremony state without replacing a recoverable one."""
+    state_path = clean_abs(str(context["statePath"]), "provider statePath")
+    if state_path.exists():
+        if state_path.is_symlink() or not state_path.is_file():
+            raise ProviderError("persisted ceremony state must be a regular non-symlink file")
+        validate_prepared_ceremony_state(
+            read_json(state_path), app_id=app_id, app_hash=app_hash,
+            release_hash=release_hash, version=version, nonce=nonce,
+            multisig=multisig, vault=vault,
+        )
+        return state_path
+
+    transaction_index = next_index(multisig, vault)
+    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
+    run([
+        str(pearl), "propose-release", "--dry-run", "--app-dir", str(pearl_artifact_dir(context)),
+        "--app-id", app_id, "--release-json", str(release_path), "--license-mint", env("MEL_RELEASE_LICENSE_MINT", required=True),
+        "--master-mint", env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "--version", version, "--state-out", str(state_path),
+        "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,
+        "--author-keypair", env("MEL_RELEASE_AUTHOR_KEYPAIR", required=True), "--transaction-index", str(transaction_index),
+        "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
+        "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
+    ])
+    validate_prepared_ceremony_state(
+        read_json(state_path), app_id=app_id, app_hash=app_hash,
+        release_hash=release_hash, version=version, nonce=nonce,
+        multisig=multisig, vault=vault,
+    )
+    return state_path
+
+
 def release_entry_exists(pda: str) -> bool:
     """Read only: decide whether an approved ReleaseEntry is already on-chain.
 
@@ -721,19 +798,23 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     context = require_context(app_id)
     if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig or env("MEL_RELEASE_SQUADS_VAULT", required=True) != vault:
         raise ProviderError("proposal multisig/vault does not match configured governed authority")
-    release_path = rewrite_release(context, app_id, app_hash, hashlib.sha256((app_hash + version + nonce).encode()).hexdigest(), version, nonce)
-    transaction_index = next_index(multisig, vault)
-    state_path = clean_abs(str(context["statePath"]), "provider statePath")
-    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
-    run([
-        str(pearl), "propose-release", "--dry-run", "--app-dir", str(pearl_artifact_dir(context)),
-        "--app-id", app_id, "--release-json", str(release_path), "--license-mint", env("MEL_RELEASE_LICENSE_MINT", required=True),
-        "--master-mint", env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "--version", version, "--state-out", str(state_path),
-        "--program-id", env("MEL_PROGRAM_ID", required=True), "--multisig", multisig, "--vault", vault,
-        "--author-keypair", env("MEL_RELEASE_AUTHOR_KEYPAIR", required=True), "--transaction-index", str(transaction_index),
-        "--quorum-threshold", env("MEL_RELEASE_SQUADS_THRESHOLD", required=True),
-        "--quorum-member-count", env("MEL_RELEASE_SQUADS_MEMBER_COUNT", required=True),
-    ])
+    release_hash = hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+    original_release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
+    # Validate an existing state before rewriting any local ceremony evidence.
+    # A foreign/mismatched state is a refusal, not an opportunity to mutate it
+    # into looking like this candidate.
+    if clean_abs(str(context["statePath"]), "provider statePath").exists():
+        prepare_or_reuse_ceremony_state(
+            context, app_id=app_id, app_hash=app_hash, release_hash=release_hash,
+            version=version, nonce=nonce, multisig=multisig, vault=vault,
+            release_path=original_release_path,
+        )
+    release_path = rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
+    state_path = prepare_or_reuse_ceremony_state(
+        context, app_id=app_id, app_hash=app_hash, release_hash=release_hash,
+        version=version, nonce=nonce, multisig=multisig, vault=vault,
+        release_path=release_path,
+    )
     state = read_json(state_path)
     if state.get("appHash") != app_hash or state.get("releaseHash") != hashlib.sha256((app_hash + version + nonce).encode()).hexdigest():
         raise ProviderError("prepared release ceremony state does not bind the candidate")
@@ -749,7 +830,10 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
             result.get("proposalPda") != state.get("proposalPda") or
             result.get("transactionIndex") != state.get("transactionIndex") or
             not result.get("vaultTransactionCreateSignature") or
-            not result.get("proposalCreateSignature")):
+            not result.get("proposalCreateSignature") or
+            not isinstance(result.get("recoveredVaultTransaction"), bool) or
+            not isinstance(result.get("alreadyProposed"), bool) or
+            (result.get("alreadyProposed") and not result.get("recoveredVaultTransaction"))):
         raise ProviderError("Squads proposal result does not bind prepared ceremony state")
     shutil.copyfile(release_path, release_out)
     write_json(receipt_out, {
@@ -759,6 +843,10 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
         "transactionSignatures": {
             "vaultTransactionCreate": result["vaultTransactionCreateSignature"],
             "proposalCreate": result["proposalCreateSignature"],
+        },
+        "recovery": {
+            "recoveredVaultTransaction": result["recoveredVaultTransaction"],
+            "alreadyProposed": result["alreadyProposed"],
         },
     })
 

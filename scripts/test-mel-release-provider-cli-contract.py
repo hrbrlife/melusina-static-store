@@ -105,15 +105,25 @@ def test_propose_uses_only_supported_flags():
         app_hash = "a" * 64
         nonce = "b" * 64
         release_hash = provider.hashlib.sha256((app_hash + "1.2.3" + nonce).encode()).hexdigest()
-        state.write_text(json.dumps({
+        prepared_state = {
+            "$schema": "melusina-release-ceremony-v1",
+            "appId": "app",
             "appHash": app_hash,
             "releaseHash": release_hash,
+            "version": "1.2.3",
+            "releaseNonce": nonce,
+            "multisigPda": "multisig",
+            "licenseSquadsVault": "vault",
+            "masterNftMint": "master",
+            "programId": "program",
             "releaseEntryPda": "release-pda",
             "transactionPda": transaction_pda,
             "proposalPda": "proposal",
             "transactionIndex": 1167,
             "registerReleaseEntryInstruction": {"programId": "program", "accounts": [], "data": ""},
-        }))
+            "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
+            "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+        }
         executor = root / "executor.js"
         executor.write_text("// test executor\n")
         members = []
@@ -154,6 +164,7 @@ def test_propose_uses_only_supported_flags():
             def fake_run(args, **_):
                 captured.append(args)
                 if args[1] == "propose-release":
+                    state.write_text(json.dumps(prepared_state) + "\n")
                     return ""
                 return json.dumps({
                     "transactionPda": transaction_pda,
@@ -161,6 +172,8 @@ def test_propose_uses_only_supported_flags():
                     "transactionIndex": 1167,
                     "vaultTransactionCreateSignature": "create-signature",
                     "proposalCreateSignature": "proposal-signature",
+                    "recoveredVaultTransaction": True,
+                    "alreadyProposed": False,
                 })
             provider.run = fake_run
             provider.propose("app", app_hash, "1.2.3", nonce, "multisig", "vault", ix_out, receipt_out)
@@ -176,6 +189,125 @@ def test_propose_uses_only_supported_flags():
             assert unsupported not in proposal, proposal
         helper = captured[1]
         assert helper[1:] == [str(executor), "propose", str(state)], helper
+        receipt = json.loads(receipt_out.read_text())
+        assert receipt["recovery"] == {
+            "recoveredVaultTransaction": True,
+            "alreadyProposed": False,
+        }, receipt
+
+
+def test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        state_path = root / "ceremony-state.json"
+        app_id, app_hash, release_hash = "app", "a" * 64, "b" * 64
+        state = {
+            "$schema": "melusina-release-ceremony-v1",
+            "appId": app_id,
+            "appHash": app_hash,
+            "releaseHash": release_hash,
+            "version": "1.2.3",
+            "releaseNonce": "nonce",
+            "multisigPda": "multisig",
+            "licenseSquadsVault": "vault",
+            "masterNftMint": "master",
+            "programId": "program",
+            "transactionIndex": 1755,
+            "transactionPda": "transaction",
+            "proposalPda": "proposal",
+            "releaseEntryPda": "release",
+            "registerReleaseEntryInstruction": {},
+            "ed25519Instruction": {},
+            "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+        }
+        state_path.write_text(json.dumps(state) + "\n")
+        release = root / "RELEASE.json"
+        release.write_text("{}\n")
+        old_run = provider.run
+        old = with_env({
+            "MEL_RELEASE_MASTER_NFT_MINT": "master",
+            "MEL_PROGRAM_ID": "program",
+            "MEL_RELEASE_SQUADS_THRESHOLD": "3",
+            "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
+        })
+        try:
+            provider.run = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("exact persisted state must not call pearl/next-index"))
+            got = provider.prepare_or_reuse_ceremony_state(
+                {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                release_hash=release_hash, version="1.2.3", nonce="nonce",
+                multisig="multisig", vault="vault", release_path=release,
+            )
+            assert got == state_path
+            state["appHash"] = "foreign"
+            state_path.write_text(json.dumps(state) + "\n")
+            try:
+                provider.prepare_or_reuse_ceremony_state(
+                    {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                    release_hash=release_hash, version="1.2.3", nonce="nonce",
+                    multisig="multisig", vault="vault", release_path=release,
+                )
+            except provider.ProviderError as exc:
+                assert "does not bind" in str(exc), exc
+            else:
+                raise AssertionError("foreign persisted ceremony state was reused")
+        finally:
+            provider.run = old_run
+            restore_env(old)
+
+
+def test_propose_register_resumes_the_exact_state_without_advancing_index():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app_id, app_hash, nonce = "app", "a" * 64, "nonce"
+        release_hash = provider.hashlib.sha256((app_hash + "1.2.3" + nonce).encode()).hexdigest()
+        state_path = root / "ceremony-state.json"
+        state_path.write_text(json.dumps({
+            "$schema": "melusina-release-ceremony-v1", "appId": app_id,
+            "appHash": app_hash, "releaseHash": release_hash, "version": "1.2.3", "releaseNonce": nonce,
+            "multisigPda": "multisig", "licenseSquadsVault": "vault", "masterNftMint": "master", "programId": "program",
+            "transactionIndex": 1755, "transactionPda": "transaction", "proposalPda": "proposal", "releaseEntryPda": "release",
+            "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
+            "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+        }) + "\n")
+        release = root / "RELEASE.json"
+        release.write_text("{}\n")
+        executor = root / "executor.mjs"
+        executor.write_text("// test executor\n")
+        members = []
+        for index in range(3):
+            member = root / f"member-{index}.json"
+            member.write_text("[]\n")
+            members.append(str(member))
+        context = {
+            "catalogDir": str(root), "ceremonyDir": str(root), "spkPath": str(root / "app.spk"),
+            "metadataPath": str(root / "metadata.json"), "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json"),
+            "statePath": str(state_path), "releasePath": str(release),
+        }
+        captured = []
+        old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old = with_env({
+            "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
+            "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
+            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor), "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
+            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root), "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        })
+        try:
+            provider.require_context = lambda _: context
+            provider.rewrite_release = lambda *_: release
+            provider.next_index = lambda *_: (_ for _ in ()).throw(AssertionError("resume advanced the Squads index"))
+            provider.run = lambda args, **_: captured.append(args) or json.dumps({
+                "transactionPda": "transaction", "proposalPda": "proposal", "transactionIndex": 1755,
+                "vaultTransactionCreateSignature": "recovered-create", "proposalCreateSignature": "proposal-create",
+                "recoveredVaultTransaction": True, "alreadyProposed": False,
+            })
+            out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
+            provider.propose(app_id, app_hash, "1.2.3", nonce, "multisig", "vault", out_release, out_receipt)
+        finally:
+            provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            restore_env(old)
+        assert captured == [["node", str(executor), "propose", str(state_path)]], captured
+        assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
 
 
 def test_submit_binds_the_immutable_catalog_slot():
@@ -978,6 +1110,8 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
+    test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
+    test_propose_register_resumes_the_exact_state_without_advancing_index()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
     test_release_helper_owns_index_and_atomic_approval_commands()

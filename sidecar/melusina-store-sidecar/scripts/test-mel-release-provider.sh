@@ -89,6 +89,10 @@ grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/sc
 grep -Fq 'wrapConnectionTransactionErrors' "$ROOT/scripts/mel-release-squads-register.mjs"
 grep -Fq 'formatTransactionFailure' "$ROOT/scripts/mel-release-squads-register.mjs"
 node "$ROOT/scripts/test-mel-release-squads-errors.mjs"
+# A process crash between VaultTransactionCreate and ProposalCreate must resume
+# only the latter after binding the already-created transaction to the exact
+# ceremony payload. These are pure/offline mutation controls for that path.
+node --test "$ROOT/scripts/test-mel-release-squads-recovery.mjs"
 # The signer provider must reject an arbitrary node_modules directory before it
 # can create a chain proposal. This caught a real workstation misconfiguration.
 grep -Fq 'MEL_RELEASE_NODE_MODULES must contain @solana/web3.js' "$PROVIDER"

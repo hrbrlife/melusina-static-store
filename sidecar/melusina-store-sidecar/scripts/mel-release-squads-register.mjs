@@ -12,6 +12,13 @@ import {
   formatTransactionFailure,
   wrapConnectionTransactionErrors,
 } from "./mel-release-squads-errors.mjs";
+import {
+  assertProposalBinding,
+  assertVaultTransactionBinding,
+  creationWitnessMatches,
+  normalizeCreationWitness,
+  proposalDisposition,
+} from "./mel-release-squads-recovery.mjs";
 
 function need(name) {
   const value = process.env[name];
@@ -60,6 +67,12 @@ function context(state) {
   const rpc=need("MEL_RELEASE_RPC_URL");
   const connection=wrapConnectionTransactionErrors(new Connection(rpc,{commitment:"confirmed"}));
   const multisigPda=new PublicKey(state.multisigPda);
+  if (need("MEL_RELEASE_SQUADS_MULTISIG") !== String(multisigPda)) {
+    throw new Error("prepared ceremony multisig does not match MEL_RELEASE_SQUADS_MULTISIG");
+  }
+  if (state.squadsProgramId && String(multisig.PROGRAM_ID) !== String(state.squadsProgramId)) {
+    throw new Error("prepared ceremony Squads program does not match the configured SDK");
+  }
   return {connection,multisigPda};
 }
 async function nextIndex() {
@@ -68,18 +81,147 @@ async function nextIndex() {
   const account=await multisig.accounts.Multisig.fromAccountAddress(connection,msPda);
   process.stdout.write(String(BigInt(account.transactionIndex)+1n)+"\n");
 }
+
+function statePDAs(state,multisigPda) {
+  const transactionIndex=BigInt(state.transactionIndex);
+  const [transactionPda]=multisig.getTransactionPda({multisigPda,index:transactionIndex});
+  const [proposalPda]=multisig.getProposalPda({multisigPda,transactionIndex});
+  const [vaultPda]=multisig.getVaultPda({multisigPda,index:0});
+  if (String(transactionPda) !== state.transactionPda) throw new Error("prepared ceremony transaction PDA does not derive from its multisig/index");
+  if (String(proposalPda) !== state.proposalPda) throw new Error("prepared ceremony proposal PDA does not derive from its multisig/index");
+  if (String(vaultPda) !== state.licenseSquadsVault) throw new Error("prepared ceremony vault does not derive from its multisig/index-0");
+  return {transactionIndex,transactionPda,proposalPda,vaultPda};
+}
+
+function expectedVaultBinding(state,creator,multisigPda) {
+  // The inner stored message does not serialize its recent blockhash. A fixed
+  // placeholder lets the compiled account/instruction shape be compared
+  // exactly, rather than treating a transport-only blockhash as authority.
+  const message=new TransactionMessage({
+    payerKey:new PublicKey(state.licenseSquadsVault),
+    recentBlockhash:"11111111111111111111111111111111",
+    instructions:[decodeIx(state.registerReleaseEntryInstruction)],
+  }).compileToV0Message();
+  return {
+    multisig:String(multisigPda), creator:String(creator.publicKey),
+    transactionIndex:String(state.transactionIndex), vaultIndex:0,
+    ephemeralSignerBumps:[], message,
+  };
+}
+
+async function accountOrNull(connection,pda,label) {
+  const info=await connection.getAccountInfo(pda,"confirmed");
+  if (!info) return null;
+  if (!info.owner.equals(multisig.PROGRAM_ID)) {
+    throw new Error(`${label} ${String(pda)} is not owned by the configured Squads program`);
+  }
+  return info;
+}
+
+function loadedVault(info) {
+  return multisig.accounts.VaultTransaction.fromAccountInfo(info)[0];
+}
+
+function loadedProposal(info) {
+  return multisig.accounts.Proposal.fromAccountInfo(info)[0];
+}
+
+async function governedMemberKeys(connection,multisigPda,state) {
+  const info=await accountOrNull(connection,multisigPda,"Multisig");
+  if (!info) throw new Error("configured Squads multisig account is absent");
+  const authority=multisig.accounts.Multisig.fromAccountInfo(info)[0];
+  const policy=state.quorumPolicy;
+  if (!policy || Number(authority.threshold) !== Number(policy.threshold) || authority.members.length !== Number(policy.memberCount)) {
+    throw new Error("on-chain Squads authority does not match the prepared ceremony quorum policy");
+  }
+  return authority.members.map((member) => String(member.key));
+}
+
+async function verifiedCreationSignature(connection,pda,expected,label) {
+  const signatures=await connection.getSignaturesForAddress(pda,{limit:20},"confirmed");
+  for (const entry of signatures) {
+    if (entry.err) continue;
+    const transaction=await connection.getTransaction(entry.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0});
+    if (transaction && creationWitnessMatches(normalizeCreationWitness(transaction),expected)) return entry.signature;
+  }
+  throw new Error(`${label} exists but no exact successful creation transaction signature was found`);
+}
+
+function vaultCreationWitness(state,creator,multisigPda,transactionPda) {
+  return {
+    creator:String(creator.publicKey), programId:String(multisig.PROGRAM_ID),
+    discriminator:Array.from(multisig.generated.vaultTransactionCreateInstructionDiscriminator),
+    accounts:[String(multisigPda),String(transactionPda),String(creator.publicKey),String(creator.publicKey),"11111111111111111111111111111111"],
+  };
+}
+
+function proposalCreationWitness(creator,multisigPda,proposalPda) {
+  return {
+    creator:String(creator.publicKey), programId:String(multisig.PROGRAM_ID),
+    discriminator:Array.from(multisig.generated.proposalCreateInstructionDiscriminator),
+    accounts:[String(creator.publicKey),String(creator.publicKey),String(multisigPda),String(proposalPda),"11111111111111111111111111111111"],
+  };
+}
+
+function assertProposal(state,proposal,memberKeys) {
+  assertProposalBinding(proposal,{
+    multisig:state.multisigPda, transactionIndex:String(state.transactionIndex),
+    members:memberKeys, allowedStatuses:["Active","Approved"],
+  });
+}
+
 async function propose(statePath) {
   const state=readJSON(statePath), {connection,multisigPda}=context(state);
+  const appId=typeof state.appId === "string" ? state.appId : state.appID;
+  if (!appId) throw new Error("prepared ceremony state lacks appId");
   const creator=members()[0];
-  const transactionIndex=BigInt(state.transactionIndex);
-  const registerIx=decodeIx(state.registerReleaseEntryInstruction);
-  const blockhash=await connection.getLatestBlockhash("confirmed");
-  const message=new TransactionMessage({payerKey:new PublicKey(state.licenseSquadsVault),recentBlockhash:blockhash.blockhash,instructions:[registerIx]});
-  const vaultTransactionCreateSignature=await multisig.rpc.vaultTransactionCreate({connection,feePayer:creator,multisigPda,transactionIndex,creator:creator.publicKey,vaultIndex:0,ephemeralSigners:0,transactionMessage:message,memo:`Melusina ReleaseEntry ${state.appID}`});
-  await confirm(connection,vaultTransactionCreateSignature);
-  const proposalCreateSignature=await multisig.rpc.proposalCreate({connection,feePayer:creator,creator,multisigPda,transactionIndex,isDraft:false});
-  await confirm(connection,proposalCreateSignature);
-  process.stdout.write(JSON.stringify({transactionPda:state.transactionPda,proposalPda:state.proposalPda,transactionIndex:state.transactionIndex,vaultTransactionCreateSignature,proposalCreateSignature})+"\n");
+  const memberKeys=await governedMemberKeys(connection,multisigPda,state);
+  if (!memberKeys.includes(String(creator.publicKey))) throw new Error("proposal creator is not an on-chain Squads member");
+  const {transactionIndex,transactionPda,proposalPda}=statePDAs(state,multisigPda);
+  const expectedVault=expectedVaultBinding(state,creator,multisigPda);
+  const vaultInfo=await accountOrNull(connection,transactionPda,"VaultTransaction");
+  const proposalInfo=await accountOrNull(connection,proposalPda,"Proposal");
+  const disposition=proposalDisposition({vaultTransactionPresent:!!vaultInfo,proposalPresent:!!proposalInfo});
+  let vaultTransactionCreateSignature="", proposalCreateSignature="";
+  let recoveredVaultTransaction=false, alreadyProposed=false;
+
+  if (disposition === "create-vault-and-proposal") {
+    const message=new TransactionMessage({
+      payerKey:new PublicKey(state.licenseSquadsVault),
+      recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,
+      instructions:[decodeIx(state.registerReleaseEntryInstruction)],
+    });
+    vaultTransactionCreateSignature=await multisig.rpc.vaultTransactionCreate({connection,feePayer:creator,multisigPda,transactionIndex,creator:creator.publicKey,vaultIndex:0,ephemeralSigners:0,transactionMessage:message,memo:`Melusina ReleaseEntry ${appId}`});
+    await confirm(connection,vaultTransactionCreateSignature);
+    const createdVault=await accountOrNull(connection,transactionPda,"VaultTransaction");
+    if (!createdVault) throw new Error("VaultTransaction create confirmed but its account is absent");
+    assertVaultTransactionBinding(loadedVault(createdVault),expectedVault);
+    proposalCreateSignature=await multisig.rpc.proposalCreate({connection,feePayer:creator,creator,multisigPda,transactionIndex,isDraft:false});
+    await confirm(connection,proposalCreateSignature);
+    const createdProposal=await accountOrNull(connection,proposalPda,"Proposal");
+    if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
+    assertProposal(state,loadedProposal(createdProposal),memberKeys);
+  } else if (disposition === "create-proposal-only") {
+    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
+    recoveredVaultTransaction=true;
+    // The only mutation in this exact partial state. Never recreate the
+    // transaction account merely because the original process crashed before
+    // ProposalCreate or before it wrote a local receipt.
+    proposalCreateSignature=await multisig.rpc.proposalCreate({connection,feePayer:creator,creator,multisigPda,transactionIndex,isDraft:false});
+    await confirm(connection,proposalCreateSignature);
+    const createdProposal=await accountOrNull(connection,proposalPda,"Proposal");
+    if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
+    assertProposal(state,loadedProposal(createdProposal),memberKeys);
+  } else {
+    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    assertProposal(state,loadedProposal(proposalInfo),memberKeys);
+    vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
+    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness(creator,multisigPda,proposalPda),"Proposal");
+    recoveredVaultTransaction=true;
+    alreadyProposed=true;
+  }
+  process.stdout.write(JSON.stringify({transactionPda:state.transactionPda,proposalPda:state.proposalPda,transactionIndex:state.transactionIndex,vaultTransactionCreateSignature,proposalCreateSignature,recoveredVaultTransaction,alreadyProposed})+"\n");
 }
 async function approveExecute(statePath) {
   const state=readJSON(statePath), {connection,multisigPda}=context(state);

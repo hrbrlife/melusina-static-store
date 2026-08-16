@@ -44,10 +44,13 @@ type Policy struct {
 
 type Config struct {
 	LicenseNFTMint string `json:"license_nft_mint"`
-	// StoreAuthority is the public key that owns this store's exact
-	// StoreReleaseListing PDAs. It is deliberately explicit: serve-time must
+	// StoreAuthority opts this Store into the target-scoped StoreReleaseListing
+	// policy. It is deliberately explicit: once configured, serve-time must
 	// never discover a store by scanning arbitrary listings, because that would
-	// allow a different store's projection to authorize this one.
+	// allow a different store's projection to authorize this one. An empty value
+	// preserves the established ReleaseEntry-only serve policy while the
+	// separately governed listing bootstrap has not yet created every exact
+	// StoreReleaseListing record.
 	StoreAuthority  string `json:"store_authority"`
 	ProgramID       string `json:"program_id"`
 	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
@@ -251,11 +254,10 @@ func LoadConfig(path string) (Config, error) {
 		return cfg, err
 	}
 	cfg.StoreAuthority = strings.TrimSpace(cfg.StoreAuthority)
-	if cfg.StoreAuthority == "" {
-		return cfg, fmt.Errorf("config: store_authority is required")
-	}
-	if _, err := primitives.PubkeyFromBase58(cfg.StoreAuthority); err != nil {
-		return cfg, fmt.Errorf("config: store_authority is invalid: %w", err)
+	if cfg.StoreAuthority != "" {
+		if _, err := primitives.PubkeyFromBase58(cfg.StoreAuthority); err != nil {
+			return cfg, fmt.Errorf("config: store_authority is invalid: %w", err)
+		}
 	}
 	cfg.ProgramID = strings.TrimSpace(cfg.ProgramID)
 	if cfg.ProgramID == "" {

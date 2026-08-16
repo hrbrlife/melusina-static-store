@@ -18,10 +18,14 @@ The instruction requires Master-NFT custody and verifies the listing's exact
 sets the listing state to `Delisted`; the global `ReleaseEntry` remains
 unchanged and may stay Active for other stores.
 
-The sidecar verifies that same exact listing for every served package and for
-each catalog row. A `Delisted` listing is the only condition that omits a row.
-Missing records, RPC errors, an unknown status, a wrong PDA, domain, app hash,
-release entry, authorization, or store authority all fail closed.
+After the governed listing bootstrap is complete, operators explicitly set
+`store_authority` and the sidecar verifies that same exact listing for every
+served package and each catalog row. A `Delisted` listing is then the only
+condition that omits a row. Missing records, RPC errors, an unknown status, a
+wrong PDA, domain, app hash, release entry, authorization, or store authority
+all fail closed. Before that explicit configuration, the established global
+`ReleaseEntry` gate remains in force; a partial listing deployment must never
+silently become the active serve policy.
 
 ## Required ceremony order
 

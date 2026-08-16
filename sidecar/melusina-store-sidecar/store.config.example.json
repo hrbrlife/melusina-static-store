@@ -1,6 +1,6 @@
 {
   "license_nft_mint": "<base58 License NFT mint of the operating license>",
-  "store_authority": "<base58 StoreOperatorAuthorization.store_authority public key>",
+  "_comment_store_authority": "OMIT store_authority until the governed StoreReleaseListing bootstrap has created an exact Active listing for every served release. Adding the StoreOperatorAuthorization.store_authority public key enables that target-scoped policy.",
   "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "domain": "store.example.org",
   "store_id": "melusina-store",

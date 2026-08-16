@@ -1,6 +1,6 @@
 {
   "license_nft_mint": "REPLACE_WITH_TARGET_LICENSE_MINT",
-  "store_authority": "REPLACE_WITH_STORE_OPERATOR_AUTHORITY_PUBLIC_KEY",
+  "_comment_store_authority": "OMIT store_authority until every currently served release has an exact Active StoreReleaseListing. Setting it opts serve-time into the target-scoped listing policy; after the governed bootstrap, add the StoreOperatorAuthorization.store_authority public key.",
   "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
   "domain": "REPLACE_WITH_STORE_IDENTITY_DOMAIN",
   "store_id": "REPLACE_WITH_PINNED_STORE_ID",

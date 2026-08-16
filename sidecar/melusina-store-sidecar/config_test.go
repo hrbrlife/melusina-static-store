@@ -98,9 +98,13 @@ func TestLoadConfig_RequiresLicense(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_RequiresValidStoreAuthority(t *testing.T) {
-	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org"}`)); err == nil || !strings.Contains(err.Error(), "store_authority is required") {
-		t.Fatalf("missing store authority error = %v", err)
+func TestLoadConfig_StoreAuthorityIsOptionalUntilListingProjectionIsConfigured(t *testing.T) {
+	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org"}`))
+	if err != nil {
+		t.Fatalf("legacy store without listing projection = %v", err)
+	}
+	if cfg.StoreAuthority != "" {
+		t.Fatalf("legacy store authority = %q, want empty", cfg.StoreAuthority)
 	}
 	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"not a pubkey","domain":"store.example.org"}`)); err == nil || !strings.Contains(err.Error(), "store_authority is invalid") {
 		t.Fatalf("invalid store authority error = %v", err)

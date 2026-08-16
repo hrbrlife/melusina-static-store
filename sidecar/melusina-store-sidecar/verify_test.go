@@ -28,6 +28,27 @@ func TestVerifyPublish_Accept(t *testing.T) {
 	}
 }
 
+func TestVerifyServeHash_LegacyStoreSkipsListingUntilAuthorityConfigured(t *testing.T) {
+	cfg, _ := testConfig(t)
+	configuredAuthority := cfg.StoreAuthority
+	operator := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, operator)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	m := newMockChainReader()
+	f.pinAccept(m, operatorPub)
+	delete(m.storeListing, f.listingPDA)
+
+	cfg.StoreAuthority = ""
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err != nil {
+		t.Fatalf("legacy release gate rejected before listing bootstrap: %v", err)
+	}
+
+	cfg.StoreAuthority = configuredAuthority
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err == nil || !strings.Contains(err.Error(), "check=store_release_listing") {
+		t.Fatalf("explicit listing policy accepted missing listing: %v", err)
+	}
+}
+
 func TestVerifyPublish_Reject(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)

@@ -300,10 +300,13 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 //	(b) an Active on-chain ReleaseEntry (masterNftMint+appHash) pins that appHash
 //	(d) the app's master NFT mint is not blacklisted
 //
-// Unlike the original release-only gate, it also requires an Active exact
-// StoreReleaseListing for *this* configured store. ReleaseEntry authenticity is
-// global; visibility in this store is target-scoped. A Delisted listing refuses
-// the package while leaving ReleaseEntry/history untouched for other stores.
+// When StoreAuthority is explicitly configured, it also requires an Active
+// exact StoreReleaseListing for this store. ReleaseEntry authenticity is
+// global; visibility in an opted-in store is target-scoped. A Delisted listing
+// refuses the package while leaving ReleaseEntry/history untouched for other
+// stores. Before the separate listing bootstrap is governed and complete, an
+// empty StoreAuthority deliberately retains the established ReleaseEntry-only
+// policy rather than manufacturing a partial listing projection.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
 	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
 	if err != nil {
@@ -351,6 +354,9 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 // listing always refuses service. Only an explicitly Delisted exact listing is
 // distinguishable so the catalog projection can omit that one target.
 func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, appHash [32]byte, releasePDA pda.Pubkey) error {
+	if strings.TrimSpace(cfg.StoreAuthority) == "" {
+		return nil
+	}
 	storeAuthority, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.StoreAuthority))
 	if err != nil {
 		return fmt.Errorf("check=store_release_listing: bad cfg.store_authority: %w", err)

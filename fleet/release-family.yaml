@@ -223,7 +223,7 @@ families:
       goldkey:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
-        source_commit: 1af7cb09bc59cc1799cc91b22ec17953d18d2bfc
+        source_commit: b52fce7d2fe7a2e47dce42dc3a1c6bc57e6a37b8
         publish_slug: goldkey
         catalog_name: GoldKey
         # GoldKey has no tracked Store package yet. This is the sole reviewed
@@ -239,7 +239,7 @@ families:
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 281badf381720cca16b901e036118447e09e9867
+        source_commit: 2c6511f3a21d522d3b236cd77c66679938f19e2c
         publish_slug: mermail
         catalog_name: MerMail
         catalog_developer: hrbrlife

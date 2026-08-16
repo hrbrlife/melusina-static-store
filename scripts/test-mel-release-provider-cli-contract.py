@@ -1022,12 +1022,12 @@ def test_checked_in_release_pins_bind_exact_target_slots():
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": (
-            spec("productivity-apps", "goldkey", "GoldKey", "1af7cb09bc59cc1799cc91b22ec17953d18d2bfc",
+            spec("productivity-apps", "goldkey", "GoldKey", "b52fce7d2fe7a2e47dce42dc3a1c6bc57e6a37b8",
                  "goldkey", "hrbrlife", "GoldKey", "goldkey"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": (
-            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "281badf381720cca16b901e036118447e09e9867",
+            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "2c6511f3a21d522d3b236cd77c66679938f19e2c",
                  "mermail", "hrbrlife", "INSTASYS_MAIL", "mermail"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),

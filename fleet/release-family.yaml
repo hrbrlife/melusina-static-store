@@ -218,6 +218,16 @@ families:
         catalog_repo: melusina-bureau-doc-app
         catalog_slug: doc-bureau
         role: rich-tiptap-yjs-collaboration-snapshots-docx-html-export
+      paint-bureau:
+        appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
+        source_path: paint-bureau
+        source_commit: a56625ed55b323d0845293cba3d4dc62d5b7b8d1
+        publish_slug: paint-bureau
+        catalog_name: Paint Bureau
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-paint-app
+        catalog_slug: paint-bureau
+        role: rich-minipaint-layers-filters-snapshots-powerbox-import
   productivity-apps:
     apps:
       goldkey:

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -47,18 +48,20 @@ func (c *storeRPCReader) fetchRawAccount(ctx context.Context, addrB58 string) ([
 	httpReq.Header.Set("Content-Type", "application/json")
 	resp, err := c.RPCClient.HTTPClient.Do(httpReq)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("%w: %v", verify.ErrRPCUnreachable, err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("%w: read getAccountInfo response: %v", verify.ErrRPCUnreachable, err)
 	}
 	if resp.StatusCode >= 400 {
-		return nil, "", fmt.Errorf("getAccountInfo HTTP %d: %s", resp.StatusCode, string(raw))
+		return nil, "", fmt.Errorf("%w: getAccountInfo HTTP %d: %s", verify.ErrRPCUnreachable, resp.StatusCode, string(raw))
 	}
 	var parsed struct {
-		Error  *struct{ Message string `json:"message"` } `json:"error"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
 		Result struct {
 			Value *struct {
 				Data  [2]string `json:"data"`
@@ -231,16 +234,16 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	copy(reseller[:], licData[8+32:8+64])
 	copy(master[:], licData[8+64:8+96])
 	lc := &borshCursor{b: licData, off: 8}
-	lc.skipPubkey()   // license
-	lc.skipPubkey()   // reseller
-	lc.skipPubkey()   // master
-	lc.skipU64()      // edition_number
-	lc.skipString()   // homeserver_domain
-	lc.skipString()   // install_url
-	lc.skip(32)       // tls_cert_fingerprint
-	lc.skip(3)        // threshold + keyholder counters
-	lc.skipPubkey()   // owner
-	lc.skip(1)        // custody_mode
+	lc.skipPubkey()       // license
+	lc.skipPubkey()       // reseller
+	lc.skipPubkey()       // master
+	lc.skipU64()          // edition_number
+	lc.skipString()       // homeserver_domain
+	lc.skipString()       // install_url
+	lc.skip(32)           // tls_cert_fingerprint
+	lc.skip(3)            // threshold + keyholder counters
+	lc.skipPubkey()       // owner
+	lc.skip(1)            // custody_mode
 	lc.skipOptionPubkey() // squads_vault Option<Pubkey>
 	lc.skipOptionPubkey() // squads_multisig Option<Pubkey>
 	licStatus := lc.u8()
@@ -273,12 +276,12 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 		copy(globalHash[:], gc.b[gc.off:gc.off+32])
 		gc.off += 32
 	}
-	gc.skipString()      // version
-	gc.skipVecStrings()  // domains
-	gc.skipU64()         // required_permissions
-	gc.skipPubkey()      // author
-	gc.skipPubkey()      // master
-	gc.skipPubkey()      // approved_by
+	gc.skipString()     // version
+	gc.skipVecStrings() // domains
+	gc.skipU64()        // required_permissions
+	gc.skipPubkey()     // author
+	gc.skipPubkey()     // master
+	gc.skipPubkey()     // approved_by
 	gStatus := gc.u8()
 	if gc.err != nil {
 		return fmt.Errorf("parse GlobalSidecarApproval: %w", gc.err)

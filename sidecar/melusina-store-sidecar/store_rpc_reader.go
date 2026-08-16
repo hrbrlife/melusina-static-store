@@ -38,24 +38,31 @@ func newStoreRPCReader(endpoint string) *storeRPCReader {
 // account is absent, revoked, malformed, or otherwise invalid is returned
 // immediately and remains fail-closed.
 type rpcFailoverChainReader struct {
-	readers  []chainReader
-	attempts int
-	delay    time.Duration
+	readers    []chainReader
+	rawReaders []rawAccountReader
+	attempts   int
+	delay      time.Duration
 }
 
 var _ chainReader = (*rpcFailoverChainReader)(nil)
+var _ rawAccountReader = (*rpcFailoverChainReader)(nil)
 
 func newConfiguredStoreRPCReader(cfg Config) chainReader {
 	readers := make([]chainReader, 0, 1+len(cfg.RPCFallbackURLs))
-	readers = append(readers, newStoreRPCReader(cfg.RPCURL))
+	rawReaders := make([]rawAccountReader, 0, 1+len(cfg.RPCFallbackURLs))
+	primary := newStoreRPCReader(cfg.RPCURL)
+	readers = append(readers, primary)
+	rawReaders = append(rawReaders, primary)
 	for _, endpoint := range cfg.RPCFallbackURLs {
-		readers = append(readers, newStoreRPCReader(endpoint))
+		reader := newStoreRPCReader(endpoint)
+		readers = append(readers, reader)
+		rawReaders = append(rawReaders, reader)
 	}
 	attempts := cfg.RPCAttempts
 	if attempts == 0 {
 		attempts = defaultRPCAttempts
 	}
-	return &rpcFailoverChainReader{readers: readers, attempts: attempts, delay: rpcRetryDelay}
+	return &rpcFailoverChainReader{readers: readers, rawReaders: rawReaders, attempts: attempts, delay: rpcRetryDelay}
 }
 
 func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.Context, chainReader) error) error {
@@ -183,6 +190,38 @@ func (c *rpcFailoverChainReader) FetchSidecarIdentity(ctx context.Context, addr 
 		return err
 	})
 	return identity, err
+}
+
+// fetchRawAccount preserves the raw cascade-reader capability through the
+// retry/failover wrapper. The sidecar component gate needs account owners as
+// well as bytes, so falling back to the higher-level chainReader methods would
+// weaken the on-chain authorization cascade.
+func (c *rpcFailoverChainReader) fetchRawAccount(ctx context.Context, addr string) (data []byte, owner string, err error) {
+	if len(c.rawReaders) != len(c.readers) || len(c.rawReaders) == 0 {
+		return nil, "", errors.New("chain reader does not support the raw cascade reads required by require_active_sidecar_cascade")
+	}
+	var transientFailures int
+	for readerIndex, reader := range c.rawReaders {
+		for attempt := 0; attempt < c.attempts; attempt++ {
+			if err := ctx.Err(); err != nil {
+				return nil, "", err
+			}
+			data, owner, err = reader.fetchRawAccount(ctx, addr)
+			if err == nil {
+				return data, owner, nil
+			}
+			if !errors.Is(err, verify.ErrRPCUnreachable) {
+				return nil, "", err
+			}
+			transientFailures++
+			if attempt+1 < c.attempts || readerIndex+1 < len(c.rawReaders) {
+				if err := waitForRPCRetry(ctx, c.delay); err != nil {
+					return nil, "", err
+				}
+			}
+		}
+	}
+	return nil, "", fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s))", verify.ErrRPCUnreachable, transientFailures)
 }
 
 func (c *storeRPCReader) FetchReleaseEntryMeta(ctx context.Context, addr string) (releaseEntryMeta, error) {

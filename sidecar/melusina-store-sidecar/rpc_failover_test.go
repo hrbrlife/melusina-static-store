@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -21,11 +22,49 @@ func writeRPCAccountResponse(t *testing.T, w http.ResponseWriter, data []byte) {
 		"id":      1,
 		"result": map[string]any{
 			"value": map[string]any{
-				"data": []string{base64.StdEncoding.EncodeToString(data), "base64"},
+				"data":  []string{base64.StdEncoding.EncodeToString(data), "base64"},
+				"owner": defaultLicenseProgramID,
 			},
 		},
 	}); err != nil {
 		t.Fatalf("encode RPC response: %v", err)
+	}
+}
+
+func TestConfiguredRPCReader_RetriesRawCascadeReadThenUsesFallback(t *testing.T) {
+	var primaryCalls atomic.Int32
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		primaryCalls.Add(1)
+		http.Error(w, "temporary upstream failure", http.StatusServiceUnavailable)
+	}))
+	defer primary.Close()
+
+	var fallbackCalls atomic.Int32
+	want := []byte("raw-cascade-account")
+	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fallbackCalls.Add(1)
+		writeRPCAccountResponse(t, w, want)
+	}))
+	defer fallback.Close()
+
+	reader := newConfiguredStoreRPCReader(Config{
+		RPCURL:          primary.URL,
+		RPCFallbackURLs: []string{fallback.URL},
+		RPCAttempts:     2,
+	}).(*rpcFailoverChainReader)
+	reader.delay = 0
+	data, owner, err := reader.fetchRawAccount(context.Background(), "cascade-account")
+	if err != nil {
+		t.Fatalf("fetchRawAccount: %v", err)
+	}
+	if !bytes.Equal(data, want) || owner != defaultLicenseProgramID {
+		t.Fatalf("raw fallback = (%q, %q), want (%q, %q)", data, owner, want, defaultLicenseProgramID)
+	}
+	if calls := primaryCalls.Load(); calls != 2 {
+		t.Fatalf("primary raw calls = %d, want bounded 2", calls)
+	}
+	if calls := fallbackCalls.Load(); calls != 1 {
+		t.Fatalf("fallback raw calls = %d, want 1", calls)
 	}
 }
 

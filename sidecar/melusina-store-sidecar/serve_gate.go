@@ -61,6 +61,12 @@ type serveGate struct {
 	// scans, while a newly published app is still picked up within the window).
 	verifyTTL      time.Duration
 	releaseRefresh time.Duration
+	// catalogVerifyWorkers and catalogVerifyTimeout bound the live chain work
+	// induced by a public catalog request.  The catalog is still fail-closed for
+	// every row; these bounds prevent one slow endpoint from monopolizing the
+	// entire HTTP handler or making every first load exceed the edge timeout.
+	catalogVerifyWorkers int
+	catalogVerifyTimeout time.Duration
 
 	// now is the clock (injectable in tests for deterministic TTL expiry).
 	now func() time.Time
@@ -76,6 +82,14 @@ type serveGate struct {
 	// Test-only barrier after catalog lookup and before opening package bytes.
 	beforePackageOpen func()
 }
+
+const (
+	// A catalog may contain many independently attested releases. Eight workers
+	// keeps the first, uncached catalog response comfortably below the public
+	// edge deadline without turning one request into an unbounded RPC fan-out.
+	catalogGateMaxConcurrent  = 8
+	catalogGateRequestTimeout = 15 * time.Second
+)
 
 // servedApp is the dist-resolved material the gate needs to verify one served
 // SPK: its on-chain-anchored RELEASE.json claim and the EXACT metadata.json bytes
@@ -112,16 +126,18 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators
 		operator = operators[0]
 	}
 	return &serveGate{
-		cfg:            cfg,
-		cr:             cr,
-		operator:       operator,
-		distDir:        cfg.DistDir,
-		fileServer:     fileServer,
-		verifyTTL:      ttl,
-		releaseRefresh: refresh,
-		now:            time.Now,
-		verdict:        make(map[string]time.Time),
-		releaseVerdict: make(map[string]time.Time),
+		cfg:                  cfg,
+		cr:                   cr,
+		operator:             operator,
+		distDir:              cfg.DistDir,
+		fileServer:           fileServer,
+		verifyTTL:            ttl,
+		releaseRefresh:       refresh,
+		catalogVerifyWorkers: catalogGateMaxConcurrent,
+		catalogVerifyTimeout: catalogGateRequestTimeout,
+		now:                  time.Now,
+		verdict:              make(map[string]time.Time),
+		releaseVerdict:       make(map[string]time.Time),
 	}
 }
 
@@ -273,6 +289,12 @@ type storeCatalogProjection struct {
 	changed    bool
 }
 
+type catalogGateCandidate struct {
+	raw   json.RawMessage
+	appID string
+	app   servedApp
+}
+
 // serveCatalogIndex projects the immutable catalog through exact active
 // StoreReleaseListing records. It never writes or repairs the catalog on disk:
 // it returns a request-time view where an explicit target-scoped Delisted record
@@ -333,7 +355,7 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 		source:     raw,
 		visibleApp: make(map[string]struct{}, len(entries)),
 	}
-	projected := make([]json.RawMessage, 0, len(entries))
+	candidates := make([]catalogGateCandidate, 0, len(entries))
 	for _, rawEntry := range entries {
 		var entry catalogIndexApp
 		if err := json.Unmarshal(rawEntry, &entry); err != nil {
@@ -348,15 +370,88 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 		if !ok {
 			return zero, fmt.Errorf("check=release_provenance: no on-chain-anchored app for packageId=%s", packageID)
 		}
-		if err := g.gate(ctx, app.rel.AppHash, app.rel); err != nil {
+		candidates = append(candidates, catalogGateCandidate{raw: rawEntry, appID: appID, app: app})
+	}
+	if len(candidates) == 0 {
+		projection.encoded = raw
+		return projection, nil
+	}
+
+	verifyTimeout := g.catalogVerifyTimeout
+	if verifyTimeout <= 0 {
+		verifyTimeout = catalogGateRequestTimeout
+	}
+	verifyCtx, cancel := context.WithTimeout(ctx, verifyTimeout)
+	defer cancel()
+
+	workers := g.catalogVerifyWorkers
+	if workers <= 0 || workers > catalogGateMaxConcurrent {
+		workers = catalogGateMaxConcurrent
+	}
+	if workers > len(candidates) {
+		workers = len(candidates)
+	}
+	results := make([]error, len(candidates))
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	var firstFailure error
+	var failureOnce sync.Once
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-verifyCtx.Done():
+					return
+				case index, ok := <-jobs:
+					if !ok {
+						return
+					}
+					err := g.gate(verifyCtx, candidates[index].app.rel.AppHash, candidates[index].app.rel)
+					results[index] = err
+					if err != nil && !errors.Is(err, errStoreReleaseListingDelisted) {
+						failureOnce.Do(func() {
+							firstFailure = err
+							cancel()
+						})
+					}
+				}
+			}
+		}()
+	}
+	go func() {
+		defer close(jobs)
+		for index := range candidates {
+			select {
+			case <-verifyCtx.Done():
+				return
+			case jobs <- index:
+			}
+		}
+	}()
+	wg.Wait()
+	if firstFailure != nil {
+		if errors.Is(firstFailure, context.DeadlineExceeded) {
+			return zero, fmt.Errorf("check=catalog: verification deadline: %w", firstFailure)
+		}
+		return zero, firstFailure
+	}
+	if err := verifyCtx.Err(); err != nil {
+		return zero, fmt.Errorf("check=catalog: verification deadline: %w", err)
+	}
+
+	projected := make([]json.RawMessage, 0, len(candidates))
+	for index, candidate := range candidates {
+		if err := results[index]; err != nil {
 			if errors.Is(err, errStoreReleaseListingDelisted) {
 				projection.changed = true
 				continue // The only permitted omission: an explicit exact transition.
 			}
 			return zero, err
 		}
-		projection.visibleApp[appID] = struct{}{}
-		projected = append(projected, rawEntry)
+		projection.visibleApp[candidate.appID] = struct{}{}
+		projected = append(projected, candidate.raw)
 	}
 	if !projection.changed {
 		projection.encoded = raw

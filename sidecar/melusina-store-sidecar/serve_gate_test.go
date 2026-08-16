@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -118,6 +120,105 @@ func serveGet(t *testing.T, h http.Handler, method, target string) *httptest.Res
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	return w
+}
+
+// catalogStartBarrierReader makes the first on-chain check for each catalog row
+// wait until a full bounded worker cohort is in flight. It proves the catalog
+// gate does not turn a catalog of independent releases into one serial chain
+// request without weakening any of the underlying reads.
+type catalogStartBarrierReader struct {
+	chainReader
+	target  int
+	reached chan struct{}
+	release <-chan struct{}
+
+	mu       sync.Mutex
+	started  int
+	reachOne sync.Once
+}
+
+func (r *catalogStartBarrierReader) FetchReleaseEntryMeta(ctx context.Context, addr string) (releaseEntryMeta, error) {
+	r.mu.Lock()
+	r.started++
+	if r.started >= r.target {
+		r.reachOne.Do(func() { close(r.reached) })
+	}
+	r.mu.Unlock()
+	select {
+	case <-r.release:
+	case <-ctx.Done():
+		return releaseEntryMeta{}, ctx.Err()
+	}
+	return r.chainReader.FetchReleaseEntryMeta(ctx, addr)
+}
+
+type catalogBlockingReader struct{ chainReader }
+
+func (r catalogBlockingReader) FetchReleaseEntryMeta(ctx context.Context, _ string) (releaseEntryMeta, error) {
+	<-ctx.Done()
+	return releaseEntryMeta{}, ctx.Err()
+}
+
+func TestServeCatalogIndex_VerifiesEntriesWithBoundedParallelism(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	chain := newMockChainReader()
+	for i := 0; i < catalogGateMaxConcurrent+1; i++ {
+		fixture := variantFixture(t, cfg, randPubkeyB58(t), "catalog-parallel-"+string(rune('a'+i)))
+		if i == 0 {
+			_ = writeServeFixture(t, cfg.DistDir, fixture)
+		} else {
+			_, _ = appendServeFixture(t, cfg.DistDir, fixture)
+		}
+		pinReleaseActive(chain, fixture)
+	}
+
+	release := make(chan struct{})
+	reader := &catalogStartBarrierReader{
+		chainReader: chain,
+		target:      catalogGateMaxConcurrent,
+		reached:     make(chan struct{}),
+		release:     release,
+	}
+	gate := newServeGate(cfg, reader, http.FileServer(http.Dir(cfg.DistDir)))
+	gate.verifyTTL = 0
+	done := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		request := httptest.NewRequest(http.MethodGet, "/apps/index.json", nil)
+		response := httptest.NewRecorder()
+		gate.ServeHTTP(response, request)
+		done <- response
+	}()
+
+	select {
+	case <-reader.reached:
+		close(release)
+	case <-time.After(time.Second):
+		close(release)
+		<-done
+		t.Fatal("catalog verification did not begin a bounded parallel worker cohort")
+	}
+	response := <-done
+	if response.Code != http.StatusOK {
+		t.Fatalf("catalog = %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestServeCatalogIndex_DeadlineRefusesWithoutHanging(t *testing.T) {
+	cfg, chain, fixture, _, _ := serveSetup(t)
+	pinReleaseActive(chain, fixture)
+	gate := newServeGate(cfg, catalogBlockingReader{chainReader: chain}, http.FileServer(http.Dir(cfg.DistDir)))
+	gate.verifyTTL = 0
+	gate.catalogVerifyTimeout = 25 * time.Millisecond
+
+	started := time.Now()
+	response := serveGet(t, gate, http.MethodGet, "/apps/index.json")
+	if response.Code != http.StatusServiceUnavailable || !strings.Contains(response.Body.String(), "verification deadline") {
+		t.Fatalf("blocked catalog = %d: %s", response.Code, response.Body.String())
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("catalog deadline took %s", elapsed)
+	}
 }
 
 // TestServeGate_Active proves a served SPK whose bytes content-match an Active

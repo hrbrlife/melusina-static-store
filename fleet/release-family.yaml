@@ -221,7 +221,7 @@ families:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        source_commit: a56625ed55b323d0845293cba3d4dc62d5b7b8d1
+        source_commit: dfe0a39131b465b89cd4b1453e4f451ff3c4267b
         publish_slug: paint-bureau
         catalog_name: Paint Bureau
         catalog_developer: hrbrlife

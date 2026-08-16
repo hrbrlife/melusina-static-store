@@ -32,6 +32,9 @@ func runPublish(c Config, fam *Family, selector, version string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	if err := requireAppReleasePolicy(c, app); err != nil {
+		return "", err
+	}
 	if version == "" {
 		return "", fmt.Errorf("--version is required")
 	}

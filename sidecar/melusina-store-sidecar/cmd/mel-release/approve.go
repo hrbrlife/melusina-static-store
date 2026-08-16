@@ -40,6 +40,9 @@ func runApprove(c Config, fam *Family, selector string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := requireAppReleasePolicy(c, app); err != nil {
+		return "", err
+	}
 	prov := newExecProvider(c)
 
 	lock, err := acquireAppLock(appLockPath(c.lockDir(), app.AppID))

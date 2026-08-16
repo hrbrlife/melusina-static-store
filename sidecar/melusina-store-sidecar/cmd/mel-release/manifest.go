@@ -37,7 +37,12 @@ func runManifest(c Config, fam *Family, out string) error {
 	if !filepath.IsAbs(out) || filepath.Clean(out) != out {
 		return fmt.Errorf("manifest output path must be absolute and clean")
 	}
-	apps := append([]App(nil), fam.Apps...)
+	apps := make([]App, 0, len(fam.Apps))
+	for _, app := range fam.Apps {
+		if !app.BaseInstallSet || app.BaseInstall {
+			apps = append(apps, app)
+		}
+	}
 	sort.Slice(apps, func(i, j int) bool { return apps[i].AppID < apps[j].AppID })
 	manifest := baseAppsManifest{Schema: baseAppsManifestSchema, Apps: make([]baseAppsManifestItem, 0, len(apps))}
 	for _, app := range apps {

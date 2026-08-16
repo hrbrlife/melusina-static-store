@@ -17,6 +17,7 @@ import {
   assertVaultTransactionBinding,
   creationWitnessMatches,
   normalizeCreationWitness,
+  proposalCreationWitness,
   proposalDisposition,
 } from "./mel-release-squads-recovery.mjs";
 
@@ -155,19 +156,24 @@ function vaultCreationWitness(state,creator,multisigPda,transactionPda) {
   };
 }
 
-function proposalCreationWitness(creator,multisigPda,proposalPda) {
-  return {
-    creator:String(creator.publicKey), programId:String(multisig.PROGRAM_ID),
-    discriminator:Array.from(multisig.generated.proposalCreateInstructionDiscriminator),
-    accounts:[String(creator.publicKey),String(creator.publicKey),String(multisigPda),String(proposalPda),"11111111111111111111111111111111"],
-  };
-}
-
 function assertProposal(state,proposal,memberKeys) {
   assertProposalBinding(proposal,{
     multisig:state.multisigPda, transactionIndex:String(state.transactionIndex),
     members:memberKeys, allowedStatuses:["Active","Approved"],
   });
+}
+
+function foreignTransactionIndex(state,disposition) {
+  // Another governed publisher can consume this prepared Squads index while
+  // the private Store stage is in progress. Report the exact collision so the
+  // provider can preserve the evidence and prepare a fresh index.
+  process.stdout.write(JSON.stringify({
+    status:"ForeignTransactionIndex",
+    transactionPda:state.transactionPda,
+    proposalPda:state.proposalPda,
+    transactionIndex:state.transactionIndex,
+    disposition,
+  })+"\n");
 }
 
 async function propose(statePath) {
@@ -202,7 +208,11 @@ async function propose(statePath) {
     if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
     assertProposal(state,loadedProposal(createdProposal),memberKeys);
   } else if (disposition === "create-proposal-only") {
-    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    try {
+      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    } catch (error) {
+      foreignTransactionIndex(state,disposition); return;
+    }
     vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
     recoveredVaultTransaction=true;
     // The only mutation in this exact partial state. Never recreate the
@@ -214,10 +224,17 @@ async function propose(statePath) {
     if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
     assertProposal(state,loadedProposal(createdProposal),memberKeys);
   } else {
-    assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    try {
+      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
+    } catch (error) {
+      foreignTransactionIndex(state,disposition); return;
+    }
     assertProposal(state,loadedProposal(proposalInfo),memberKeys);
     vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
-    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness(creator,multisigPda,proposalPda),"Proposal");
+    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness({
+      creator:String(creator.publicKey), multisigPda:String(multisigPda), proposalPda:String(proposalPda),
+      programId:String(multisig.PROGRAM_ID), discriminator:multisig.generated.proposalCreateInstructionDiscriminator,
+    }),"Proposal");
     recoveredVaultTransaction=true;
     alreadyProposed=true;
   }

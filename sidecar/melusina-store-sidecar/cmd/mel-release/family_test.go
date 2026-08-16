@@ -136,8 +136,7 @@ func TestSelectUnknownFails(t *testing.T) {
 
 // TestLoadFamilyRealManifest parses the actual fleet manifest (all declared apps)
 // so the fail-closed parser is exercised against every legitimate shape it must
-// still accept: family-level squads: bodies, quoted values with spaces, unknown
-// per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
+// still accept: family-level squads: bodies, quoted values with spaces,
 // trailing-comment stripping, and the folded `out_of_scope_note: >` block scalar.
 func TestLoadFamilyRealManifest(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -155,16 +154,17 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	// Keep this assertion coupled to the explicit selectors below.  A new
 	// release-family slot must be deliberately covered here rather than making
 	// the parser test silently accept an arbitrary manifest expansion.
-	if len(fam.Apps) != 17 {
+	if len(fam.Apps) != 21 {
 		names := make([]string, len(fam.Apps))
 		for i, a := range fam.Apps {
 			names[i] = a.Family + "/" + a.Name
 		}
-		t.Fatalf("want 15 apps, got %d: %v", len(fam.Apps), names)
+		t.Fatalf("want 21 apps, got %d: %v", len(fam.Apps), names)
 	}
 	for _, sel := range []string{
 		"welcome", "popaye", "ccashconfig", "cyberteller", "dueprocess",
 		"namedcoin", "namedcoin-admin", "fineract-setup", "telescreen", "instaco", "instadao", "minigit", "jinn", "cratelink", "sheets-bureau",
+		"ai-lagoon", "goldkey", "goldkey-dev", "mermail",
 	} {
 		if _, err := fam.Select(sel); err != nil {
 			t.Fatalf("Select(%q): %v", sel, err)
@@ -202,7 +202,7 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 		{"dueprocess", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "hrbrlife", "DueProcess", "dueprocess", ""},
 		{"telescreen", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "hrbrlife", "pr_ninja", "telescreen", ""},
 		{"instaco", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "hrbrlife", "instaco-app", "instaco", ""},
-		{"instadao", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
+		{"instadao", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "MLSNA Token", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
 		{"cyberteller", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "hrbrlife", "cyberteller", "cyberteller", ""},
 		{"jinn", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "hrbrlife", "jinn", "jinn", ""},
 		{"cratelink", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
@@ -217,6 +217,50 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 			app.CatalogSlug != tc.slug || app.PackProfile != tc.profile {
 			t.Fatalf("MSB manifest entry %q drifted: %+v", tc.selector, app)
 		}
+	}
+
+	checks := map[string]struct {
+		family, commit, remote, branch, metadata, contract, target, channel string
+		baseInstall, blocked                                                bool
+	}{
+		"ai-lagoon": {
+			family: "productivity-apps", commit: "2a521107cfe9ab038502a4e00a1fa53651535791",
+			remote: "origin", branch: "main", channel: "stable", baseInstall: true,
+		},
+		"goldkey": {
+			family: "productivity-apps", commit: "10acf09c3d5377d763760b11b912b1053e0cbcce",
+			remote: "origin", branch: "master", channel: "stable", baseInstall: true,
+		},
+		"goldkey-dev": {
+			family: "productivity-development", commit: "10acf09c3d5377d763760b11b912b1053e0cbcce",
+			remote: "origin", branch: "master", metadata: "metadata.dev.json",
+			contract: "RUNTIME-CONTRACT.dev.json", target: "dev-pack-local", channel: "dev",
+			baseInstall: false,
+		},
+		"mermail": {
+			family: "productivity-apps", commit: "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4",
+			remote: "origin", branch: "main", channel: "stable", baseInstall: true,
+		},
+	}
+	for selector, want := range checks {
+		app, err := fam.Select(selector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if app.Family != want.family || app.SourceCommit != want.commit || app.SourceRemote != want.remote ||
+			app.SourceBranch != want.branch || app.MetadataPath != want.metadata ||
+			app.RuntimeContractPath != want.contract || app.PackTarget != want.target ||
+			app.ReleaseChannel != want.channel || app.BaseInstall != want.baseInstall ||
+			(selector == "goldkey-dev" && !app.BaseInstallSet) {
+			t.Fatalf("governed productivity entry %q drifted: %+v", selector, app)
+		}
+	}
+	instadao, err := fam.Select("instadao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if instadao.SourceBranch != "main" || instadao.SourceCommit != "" || instadao.ReleaseBlocked == "" {
+		t.Fatalf("InstaDAO must remain fail-closed until a full canonical main commit is pinned: %+v", instadao)
 	}
 }
 
@@ -249,7 +293,7 @@ func TestLoadFamilyFailsClosedOnMisindentedField(t *testing.T) {
 }
 
 func TestLoadFamilyRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
-	const m = "schema: s\nfamilies:\n  fam:\n    apps:\n      not-namedcoin:\n        appId: other-app\n        source_path: other\n        pack_profile: namedcoin-msb-devnet\n"
+	const m = "schema: melusina-release-family/v1\nfamilies:\n  fam:\n    apps:\n      not-namedcoin:\n        appId: other-app\n        source_path: other\n        pack_profile: namedcoin-msb-devnet\n"
 	dir := t.TempDir()
 	path := filepath.Join(dir, "m.yaml")
 	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
@@ -257,5 +301,38 @@ func TestLoadFamilyRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
 	}
 	if _, err := LoadFamily(path); err == nil || !strings.Contains(err.Error(), "only NamedCoin") {
 		t.Fatalf("wrong-app namedcoin profile error = %v, want fail-closed NamedCoin refusal", err)
+	}
+}
+
+func TestLoadFamilyRejectsUnknownAppFieldAndMalformedCanonicalSource(t *testing.T) {
+	for name, manifest := range map[string]string{
+		"unknown":        "schema: melusina-release-family/v1\nfamilies:\n  fam:\n    apps:\n      app:\n        appId: app-id\n        source_path: app\n        source_commmit: typo\n",
+		"bad-commit":     "schema: melusina-release-family/v1\nfamilies:\n  fam:\n    apps:\n      app:\n        appId: app-id\n        source_path: app\n        source_commit: short\n",
+		"feature-branch": "schema: melusina-release-family/v1\nfamilies:\n  fam:\n    apps:\n      app:\n        appId: app-id\n        source_path: app\n        source_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        source_remote: origin\n        source_branch: feature/release\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "manifest.yaml")
+			if err := os.WriteFile(path, []byte(manifest), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadFamily(path); err == nil {
+				t.Fatal("unsafe manifest unexpectedly loaded")
+			}
+		})
+	}
+}
+
+func TestRequireAppReleasePolicySeparatesStableDevAndBlockedApps(t *testing.T) {
+	stable := App{AppID: "stable", ReleaseChannel: "stable"}
+	dev := App{AppID: "dev", ReleaseChannel: "dev"}
+	blocked := App{AppID: "blocked", ReleaseBlocked: "canonical commit required"}
+	if err := requireAppReleasePolicy(Config{Channel: "stable"}, stable); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireAppReleasePolicy(Config{Channel: "stable"}, dev); err == nil {
+		t.Fatal("development identity was accepted on stable channel")
+	}
+	if err := requireAppReleasePolicy(Config{Channel: "stable"}, blocked); err == nil {
+		t.Fatal("blocked identity was accepted")
 	}
 }

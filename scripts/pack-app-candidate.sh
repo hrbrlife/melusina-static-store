@@ -40,14 +40,46 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
-  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
-  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
-  for remote in "${source_remotes[@]}"; do
-    git -C "$source_root" fetch --prune "$remote" || { echo "cannot refresh source remote: $remote" >&2; exit 2; }
-  done
-  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
-    | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
-  [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
+  reviewed_remote="${MEL_RELEASE_SOURCE_REMOTE:-}"
+  reviewed_branch="${MEL_RELEASE_SOURCE_BRANCH:-}"
+  reviewed_commit="${MEL_RELEASE_SOURCE_COMMIT:-}"
+  if [[ -n "$reviewed_remote" || -n "$reviewed_branch" || -n "$reviewed_commit" ]]; then
+    [[ "$reviewed_remote" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || {
+      echo "MEL_RELEASE_SOURCE_REMOTE is invalid" >&2; exit 2;
+    }
+    [[ "$reviewed_branch" == main || "$reviewed_branch" == master ]] || {
+      echo "governed source branch must be exactly main or master" >&2; exit 2;
+    }
+    [[ "$reviewed_commit" =~ ^[0-9a-f]{40}$ ]] || {
+      echo "MEL_RELEASE_SOURCE_COMMIT must be a lowercase 40-hex commit" >&2; exit 2;
+    }
+    current_branch="$(git -C "$source_root" branch --show-current)"
+    [[ "$current_branch" == "$reviewed_branch" ]] || {
+      echo "candidate checkout is on branch ${current_branch:-detached}, want canonical $reviewed_branch" >&2; exit 2;
+    }
+    git -C "$source_root" remote get-url "$reviewed_remote" >/dev/null 2>&1 || {
+      echo "candidate source has no reviewed remote $reviewed_remote" >&2; exit 2;
+    }
+    git -C "$source_root" fetch --prune "$reviewed_remote" \
+      "+refs/heads/$reviewed_branch:refs/remotes/$reviewed_remote/$reviewed_branch" || {
+      echo "cannot refresh canonical source ref $reviewed_remote/$reviewed_branch" >&2; exit 2;
+    }
+    pushed_ref="refs/remotes/$reviewed_remote/$reviewed_branch"
+    remote_revision="$(git -C "$source_root" rev-parse "$pushed_ref")"
+    [[ "$source_revision" == "$reviewed_commit" && "$source_revision" == "$remote_revision" ]] || {
+      echo "candidate revision $source_revision is not the pinned tip $reviewed_commit of $pushed_ref ($remote_revision)" >&2
+      exit 2
+    }
+  else
+    mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
+    [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
+    for remote in "${source_remotes[@]}"; do
+      git -C "$source_root" fetch --prune "$remote" || { echo "cannot refresh source remote: $remote" >&2; exit 2; }
+    done
+    pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
+      | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
+    [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
+  fi
   source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"
 else
   echo "candidate builds require a committed Git source tree" >&2
@@ -247,6 +279,27 @@ dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   printf '%s\n' "$dirty" >&2
   exit 2
 }
+post_build_revision="$(git -C "$source_root" rev-parse HEAD)"
+[[ "$post_build_revision" == "$source_revision" ]] || {
+  echo "candidate source HEAD moved during build: want $source_revision, got $post_build_revision" >&2
+  exit 2
+}
+if [[ -n "$reviewed_branch" ]]; then
+  post_build_branch="$(git -C "$source_root" branch --show-current)"
+  [[ "$post_build_branch" == "$reviewed_branch" ]] || {
+    echo "candidate source branch moved during build: want $reviewed_branch, got ${post_build_branch:-detached}" >&2
+    exit 2
+  }
+  git -C "$source_root" fetch --prune "$reviewed_remote" \
+    "+refs/heads/$reviewed_branch:refs/remotes/$reviewed_remote/$reviewed_branch" || {
+    echo "cannot recheck canonical source ref $reviewed_remote/$reviewed_branch after build" >&2; exit 2;
+  }
+  post_build_remote_revision="$(git -C "$source_root" rev-parse "$pushed_ref")"
+  [[ "$post_build_remote_revision" == "$source_revision" ]] || {
+    echo "canonical source ref $pushed_ref moved during build: want $source_revision, got $post_build_remote_revision" >&2
+    exit 2
+  }
+fi
 
 verify_out="$("$SPK_BIN" verify "$SPK_OUT" 2>&1)" || { echo "$verify_out" >&2; exit 2; }
 app_id="$(printf '%s\n' "$verify_out" | grep -oE '"appId": "[^"]*"' | head -1 | cut -d'"' -f4 || true)"

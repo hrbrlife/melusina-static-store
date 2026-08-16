@@ -273,18 +273,13 @@ submit-build:
 	go build -C $(SIDECAR_DIR) -o "$(CURDIR)/$(SUBMIT_BIN)" ./cmd/submit
 	@test -x "$(CURDIR)/$(SUBMIT_BIN)" || { echo "submit build failed — no $(SUBMIT_BIN)"; exit 1; }
 
-# --- publish-app: sole serialized two-phase app entry point -----------------
-# Default stops after private stage. Set PROMOTE_EXISTING=1 for G2's exact-
-# current, zero-chain-write path. New app-chain releases are finalized by the
-# separate governed ceremony before their exact bytes enter this driver.
+# --- publish-app: retired direct source-directory entry point ----------------
+# The only app release interface is cmd/mel-release.  It freezes a candidate in
+# its durable WAL, creates an unexecuted Squads proposal, and requires a separate
+# approve invocation before the Store may promote the exact staged bytes.
 publish-app:
-	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
-	@test -n "$(KEYS)" || { echo "ERROR: KEYS=<publisher key dir> required"; exit 2; }
-	bash scripts/self-publish.sh "$(SRC)" --keys "$(KEYS)" \
-	  --bump "$(or $(BUMP),none)" \
-	  $(if $(CATALOG_PATH),--catalog-path "$(CATALOG_PATH)") \
-	  $(if $(PROMOTE_EXISTING),--promote-existing-active) \
-	  $(if $(DRY_RUN),--dry-run)
+	@echo "ERROR: direct publish-app is retired; use the governed mel-release publish/approve workflow"
+	exit 2
 
 # --- sync: refresh submodules + rebuild dist-publish (no plan/apply) ---------
 # Cheap "pick up whatever publish branches have moved upstream" target.

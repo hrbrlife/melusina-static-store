@@ -6,6 +6,7 @@ import {
   creationWitnessMatches,
   normalizeCreationWitness,
   normalizeVaultMessage,
+  proposalCreationWitness,
   proposalDisposition,
 } from "./mel-release-squads-recovery.mjs";
 
@@ -82,6 +83,16 @@ test("creation witness requires the exact SQDS instruction and account order", (
   assert.equal(creationWitnessMatches(witness, expected), true);
   assert.equal(creationWitnessMatches({...witness, instructions: [{...witness.instructions[0], accounts: [...expected.accounts].reverse()}]}, expected), false);
   assert.equal(creationWitnessMatches({...witness, feePayer: "attacker"}, expected), false);
+});
+
+test("proposal creation witness uses the SQDS compiled account order", () => {
+  assert.deepEqual(proposalCreationWitness({
+    creator: "creator", multisigPda: "multisig", proposalPda: "proposal", programId: "squads",
+    discriminator: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]),
+  }), {
+    creator: "creator", programId: "squads", discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
+    accounts: ["multisig", "proposal", "creator", "creator", "11111111111111111111111111111111"],
+  });
 });
 
 test("web3 v0 witness normalization is exact and refuses an unknown data encoding", () => {

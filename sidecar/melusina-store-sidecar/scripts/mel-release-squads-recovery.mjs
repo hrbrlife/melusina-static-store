@@ -186,3 +186,15 @@ export function creationWitnessMatches(witness, expected) {
     JSON.stringify(instruction.data.slice(0, 8)) === JSON.stringify(expected.discriminator) &&
     JSON.stringify(instruction.accounts) === JSON.stringify(expected.accounts));
 }
+
+// ProposalCreate's account order is part of the historical transaction
+// binding. Keep the construction beside the exact-match predicate so the
+// provider's recovery value is covered by an offline contract test.
+export function proposalCreationWitness({creator, multisigPda, proposalPda, programId, discriminator}) {
+  return {
+    creator,
+    programId,
+    discriminator: Array.from(discriminator),
+    accounts: [multisigPda, proposalPda, creator, creator, "11111111111111111111111111111111"],
+  };
+}

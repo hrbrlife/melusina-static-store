@@ -27,6 +27,7 @@ pack-local:
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
+	@if [ "$${MUTATE_HEAD:-0}" = 1 ]; then printf 'committed-by-build\n' >> tracked.txt; git add tracked.txt; git commit -qm build-moved-head; fi
 endif
 
 pack-msb-test:
@@ -55,6 +56,7 @@ chmod +x "$BIN/spk"
 git -C "$APP" init -q
 git -C "$APP" config user.email test@example.invalid
 git -C "$APP" config user.name test
+git -C "$APP" branch -M main
 git -C "$APP" add .
 git -C "$APP" commit -qm fixture
 git init --bare -q "$WORK/origin.git"
@@ -77,6 +79,37 @@ assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# The governed provider supplies all three source-policy values. The candidate
+# must be the exact fetched tip of that one canonical main/master branch; being
+# pushed to an arbitrary feature branch is not publication provenance.
+canonical_commit="$(git -C "$APP" rev-parse HEAD)"
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_SOURCE_REMOTE=origin MEL_RELEASE_SOURCE_BRANCH=main \
+  MEL_RELEASE_SOURCE_COMMIT="$canonical_commit" \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/canonical-receipt.json"
+python3 - "$WORK/canonical-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/main"
+PY
+
+git -C "$APP" switch -qc feature/not-for-release
+printf 'feature-only\n' >> "$APP/tracked.txt"
+git -C "$APP" add tracked.txt
+git -C "$APP" commit -qm feature-only
+feature_commit="$(git -C "$APP" rev-parse HEAD)"
+git -C "$APP" push -qu origin HEAD:feature/not-for-release
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_SOURCE_REMOTE=origin MEL_RELEASE_SOURCE_BRANCH=main \
+  MEL_RELEASE_SOURCE_COMMIT="$feature_commit" \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/feature-branch.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'want canonical main' "$WORK/feature-branch.log"
+git -C "$APP" switch -q main
 
 # An explicit caller value remains authoritative over a DueProcess-like `?=`
 # policy, and the receipt distinguishes that input from the app-controlled
@@ -220,4 +253,16 @@ rc=$?
 set -e
 [[ $rc -ne 0 ]]
 grep -q 'mutated committed source' "$WORK/mutate.log"
+git -C "$APP" reset -q --hard refs/remotes/origin/main
+
+# A build that commits its mutation leaves Git porcelain clean. The artifact
+# must still remain bound to the pre-build canonical revision.
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk MUTATE_HEAD=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/moved-head.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source HEAD moved during build' "$WORK/moved-head.log"
+git -C "$APP" reset -q --hard refs/remotes/origin/main
 echo "pack-app-candidate tests passed"

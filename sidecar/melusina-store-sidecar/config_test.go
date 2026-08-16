@@ -42,6 +42,48 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	if cfg.PrivateStageDir != filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage") {
 		t.Errorf("PrivateStageDir default = %q", cfg.PrivateStageDir)
 	}
+	if cfg.RPCAttempts != defaultRPCAttempts {
+		t.Errorf("RPCAttempts default = %d, want %d", cfg.RPCAttempts, defaultRPCAttempts)
+	}
+}
+
+func TestLoadConfig_NormalizesTrustedRPCEndpoints(t *testing.T) {
+	cfg, err := LoadConfig(writeTmpConfig(t, `{
+		"license_nft_mint":"LIC",
+		"store_authority":"`+testStoreAuthority+`",
+		"domain":"store.example.org",
+		"rpc_url":" https://primary.example/rpc?api-key=secret ",
+		"rpc_fallback_urls":["https://fallback.example/rpc"],
+		"rpc_attempts":3
+	}`))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.RPCURL != "https://primary.example/rpc?api-key=secret" {
+		t.Fatalf("primary RPC URL was not normalized: %q", cfg.RPCURL)
+	}
+	if len(cfg.RPCFallbackURLs) != 1 || cfg.RPCFallbackURLs[0] != "https://fallback.example/rpc" {
+		t.Fatalf("fallback URLs = %#v", cfg.RPCFallbackURLs)
+	}
+	if cfg.RPCAttempts != 3 {
+		t.Fatalf("rpc_attempts = %d, want 3", cfg.RPCAttempts)
+	}
+}
+
+func TestLoadConfig_RejectsUnsafeOrAmbiguousRPCEndpoints(t *testing.T) {
+	base := `"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org"`
+	for name, suffix := range map[string]string{
+		"fallback_without_primary": `,"rpc_fallback_urls":["https://fallback.example"]`,
+		"duplicate":                `,"rpc_url":"https://primary.example","rpc_fallback_urls":["https://primary.example"]`,
+		"bad_scheme":               `,"rpc_url":"file:///tmp/not-rpc"`,
+		"unbounded_attempts":       `,"rpc_url":"https://primary.example","rpc_attempts":4`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := LoadConfig(writeTmpConfig(t, `{`+base+suffix+`}`)); err == nil {
+				t.Fatal("unsafe RPC configuration was accepted")
+			}
+		})
+	}
 }
 
 func TestLoadConfig_RequiresDomain(t *testing.T) {

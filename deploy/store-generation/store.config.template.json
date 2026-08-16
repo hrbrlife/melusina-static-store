@@ -12,7 +12,9 @@
     "require_scan_report": true,
     "accept_publishers": ["REPLACE_WITH_AUTHORIZED_PUBLISHER_SIGNING_PUBKEY"]
   },
-  "rpc_url": "REPLACE_WITH_TARGET_SOLANA_RPC_URL",
+  "rpc_url": "REPLACE_WITH_PRIMARY_TRUSTED_SOLANA_RPC_URL",
+  "rpc_fallback_urls": ["REPLACE_WITH_TRUSTED_SAME_CLUSTER_RPC_URL"],
+  "rpc_attempts": 2,
   "listen_addr": ":8443",
   "dist_dir": "/var/lib/melusina-store/dist-publish",
   "private_stage_dir": "/var/lib/melusina-store-private",

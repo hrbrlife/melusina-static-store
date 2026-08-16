@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -17,12 +18,171 @@ import (
 
 const releaseEntryAppIDOffset = verify.AccountDiscriminatorLen + 32 + 32
 
+const (
+	defaultRPCAttempts = 2
+	maxRPCAttempts     = 3
+	rpcRetryDelay      = 100 * time.Millisecond
+)
+
 type storeRPCReader struct {
 	*verify.RPCClient
 }
 
 func newStoreRPCReader(endpoint string) *storeRPCReader {
 	return &storeRPCReader{RPCClient: verify.NewRPCClient(endpoint)}
+}
+
+// rpcFailoverChainReader keeps the existing verification semantics while
+// making the transport underneath them resilient.  It retries only failures
+// explicitly marked ErrRPCUnreachable.  A valid RPC answer that says an
+// account is absent, revoked, malformed, or otherwise invalid is returned
+// immediately and remains fail-closed.
+type rpcFailoverChainReader struct {
+	readers  []chainReader
+	attempts int
+	delay    time.Duration
+}
+
+var _ chainReader = (*rpcFailoverChainReader)(nil)
+
+func newConfiguredStoreRPCReader(cfg Config) chainReader {
+	readers := make([]chainReader, 0, 1+len(cfg.RPCFallbackURLs))
+	readers = append(readers, newStoreRPCReader(cfg.RPCURL))
+	for _, endpoint := range cfg.RPCFallbackURLs {
+		readers = append(readers, newStoreRPCReader(endpoint))
+	}
+	attempts := cfg.RPCAttempts
+	if attempts == 0 {
+		attempts = defaultRPCAttempts
+	}
+	return &rpcFailoverChainReader{readers: readers, attempts: attempts, delay: rpcRetryDelay}
+}
+
+func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.Context, chainReader) error) error {
+	var transientFailures int
+	for readerIndex, reader := range c.readers {
+		for attempt := 0; attempt < c.attempts; attempt++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			err := invoke(ctx, reader)
+			if err == nil {
+				return nil
+			}
+			if !errors.Is(err, verify.ErrRPCUnreachable) {
+				return err
+			}
+			transientFailures++
+			if attempt+1 < c.attempts || readerIndex+1 < len(c.readers) {
+				if err := waitForRPCRetry(ctx, c.delay); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s))", verify.ErrRPCUnreachable, transientFailures)
+}
+
+func waitForRPCRetry(ctx context.Context, delay time.Duration) error {
+	if delay <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (c *rpcFailoverChainReader) FetchReleaseEntry(ctx context.Context, addr string) (appHash [32]byte, status verify.AttestationStatus, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		appHash, status, err = reader.FetchReleaseEntry(ctx, addr)
+		return err
+	})
+	return appHash, status, err
+}
+
+func (c *rpcFailoverChainReader) FetchReleaseEntryMeta(ctx context.Context, addr string) (meta releaseEntryMeta, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		meta, err = reader.FetchReleaseEntryMeta(ctx, addr)
+		return err
+	})
+	return meta, err
+}
+
+func (c *rpcFailoverChainReader) FetchStoreReleaseListingMeta(ctx context.Context, addr string) (meta storeReleaseListingMeta, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		meta, err = reader.FetchStoreReleaseListingMeta(ctx, addr)
+		return err
+	})
+	return meta, err
+}
+
+func (c *rpcFailoverChainReader) FetchActiveReleaseEntriesByAppID(ctx context.Context, appID [32]byte) (entries []releaseEntryMeta, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		entries, err = reader.FetchActiveReleaseEntriesByAppID(ctx, appID)
+		return err
+	})
+	return entries, err
+}
+
+func (c *rpcFailoverChainReader) FetchReleaseEntryAppID(ctx context.Context, addr string) (appID [32]byte, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		appID, err = reader.FetchReleaseEntryAppID(ctx, addr)
+		return err
+	})
+	return appID, err
+}
+
+func (c *rpcFailoverChainReader) FetchStoreOperatorAuthz(ctx context.Context, addr string) (status verify.AuthorizationStatus, authority verify.Pubkey, tierMask uint8, isRoot bool, domainHash [32]byte, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		status, authority, tierMask, isRoot, domainHash, err = reader.FetchStoreOperatorAuthz(ctx, addr)
+		return err
+	})
+	return status, authority, tierMask, isRoot, domainHash, err
+}
+
+func (c *rpcFailoverChainReader) FetchBlacklistEntry(ctx context.Context, addr string) (present bool, entryType verify.BlacklistType, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		present, entryType, err = reader.FetchBlacklistEntry(ctx, addr)
+		return err
+	})
+	return present, entryType, err
+}
+
+func (c *rpcFailoverChainReader) FetchInstallerReleaseEntry(ctx context.Context, addr string) (installerHash [32]byte, status verify.AttestationStatus, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		installerHash, status, err = reader.FetchInstallerReleaseEntry(ctx, addr)
+		return err
+	})
+	return installerHash, status, err
+}
+
+func (c *rpcFailoverChainReader) FetchInstallerReleaseEntryMeta(ctx context.Context, addr string) (meta installerReleaseMeta, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		meta, err = reader.FetchInstallerReleaseEntryMeta(ctx, addr)
+		return err
+	})
+	return meta, err
+}
+
+func (c *rpcFailoverChainReader) FetchFoundationAppEntry(ctx context.Context, addr string) (appID [32]byte, tier uint8, status verify.ApprovalStatus, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		appID, tier, status, err = reader.FetchFoundationAppEntry(ctx, addr)
+		return err
+	})
+	return appID, tier, status, err
+}
+
+func (c *rpcFailoverChainReader) FetchSidecarIdentity(ctx context.Context, addr string) (identity verify.SidecarIdentity, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		identity, err = reader.FetchSidecarIdentity(ctx, addr)
+		return err
+	})
+	return identity, err
 }
 
 func (c *storeRPCReader) FetchReleaseEntryMeta(ctx context.Context, addr string) (releaseEntryMeta, error) {

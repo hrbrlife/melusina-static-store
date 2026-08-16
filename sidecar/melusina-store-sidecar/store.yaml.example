@@ -28,7 +28,11 @@ policy:
     # no business deciding whether to trust the thing that asserted it.
     - "<allowed publisher base58 signing pubkey>"
 
-rpc_url: "<Solana RPC endpoint>"   # e.g. the Helius devnet endpoint (public devnet times out)
+rpc_url: "<primary trusted Solana RPC endpoint>"   # e.g. the Helius devnet endpoint
+# Optional, explicitly trusted endpoints for the SAME cluster. They are tried only
+# after a transport error; an absent/revoked/malformed on-chain record still denies.
+rpc_fallback_urls: ["<independently trusted same-cluster RPC endpoint>"]
+rpc_attempts: 2                    # bounded transport attempts per endpoint (1..3)
 listen_addr: ":8443"
 dist_dir: "dist-publish"           # the build output to serve (relative to CWD or absolute)
 private_stage_dir: "/var/lib/melusina-store/private-app-candidates"  # MUST be outside dist_dir; mode 0700

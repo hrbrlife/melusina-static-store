@@ -74,7 +74,8 @@ func main() {
 	// satisfies the chainReader interface.
 	var cr chainReader
 	if cfg.RPCURL != "" {
-		cr = newStoreRPCReader(cfg.RPCURL)
+		cr = newConfiguredStoreRPCReader(cfg)
+		log.Printf("chain reader: %d trusted endpoint(s), up to %d transport attempt(s) each", 1+len(cfg.RPCFallbackURLs), cfg.RPCAttempts)
 	} else {
 		log.Printf("WARNING: rpc_url not set — /publish stays gated-closed (503) until an on-chain reader is configured")
 	}
@@ -210,7 +211,7 @@ func runGenesisBootstrapSubcommand(args []string) {
 
 	var cr chainReader
 	if cfg.RPCURL != "" {
-		cr = newStoreRPCReader(cfg.RPCURL)
+		cr = newConfiguredStoreRPCReader(cfg)
 	}
 	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)

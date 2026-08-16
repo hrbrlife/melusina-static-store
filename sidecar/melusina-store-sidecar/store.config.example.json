@@ -11,7 +11,9 @@
     "require_scan_report": true,
     "accept_publishers": ["<allowed publisher base58 signing pubkey>"]
   },
-  "rpc_url": "<Solana RPC endpoint>",
+  "rpc_url": "<primary trusted Solana RPC endpoint>",
+  "rpc_fallback_urls": ["<independently trusted endpoint for the same cluster>"],
+  "rpc_attempts": 2,
   "listen_addr": ":8443",
   "dist_dir": "dist-publish",
   "private_stage_dir": "/var/lib/melusina-store/private-app-candidates",

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,9 +73,21 @@ type Config struct {
 	// unless mirror.root_master_nft_mint is set as the legacy/root fallback.
 	ReleaseMasterNftMint string `json:"release_master_nft_mint,omitempty"`
 	Policy               Policy `json:"policy"`
-	RPCURL               string `json:"rpc_url"`
-	ListenAddr           string `json:"listen_addr"`
-	DistDir              string `json:"dist_dir"`
+	// RPCURL is the primary trusted Solana JSON-RPC endpoint.  It is the
+	// chain-read trust input for every serve-time release verification.
+	RPCURL string `json:"rpc_url"`
+	// RPCFallbackURLs are explicitly operator-configured, independently trusted
+	// endpoints for the same cluster.  They are used only after a transport
+	// failure from an earlier endpoint; they never turn a missing, revoked, or
+	// malformed on-chain record into a success.
+	RPCFallbackURLs []string `json:"rpc_fallback_urls,omitempty"`
+	// RPCAttempts is the bounded number of attempts per configured endpoint when
+	// the failure is transport-level.  Zero uses the conservative default of two.
+	// It is deliberately capped so an unavailable chain cannot hold a package
+	// request open without bound.
+	RPCAttempts int    `json:"rpc_attempts,omitempty"`
+	ListenAddr  string `json:"listen_addr"`
+	DistDir     string `json:"dist_dir"`
 	// PrivateStageDir is the non-public, content-addressed candidate store used by
 	// the two-phase app release path. Candidate bytes land here before any chain
 	// mutation and are promoted only after the matching ReleaseEntry is Active.
@@ -214,6 +227,7 @@ func defaultConfig() Config {
 		DistDir:         "dist-publish",
 		CatalogRepoRoot: ".",
 		ProgramID:       defaultLicenseProgramID,
+		RPCAttempts:     defaultRPCAttempts,
 	}
 }
 
@@ -232,6 +246,9 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.LicenseNFTMint == "" {
 		return cfg, fmt.Errorf("config: license_nft_mint is required")
+	}
+	if err := cfg.normalizeRPCEndpoints(); err != nil {
+		return cfg, err
 	}
 	cfg.StoreAuthority = strings.TrimSpace(cfg.StoreAuthority)
 	if cfg.StoreAuthority == "" {
@@ -270,6 +287,66 @@ func LoadConfig(path string) (Config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+// normalizeRPCEndpoints validates the operator's trusted endpoint set before
+// it can become part of the serve-time trust path.  Endpoint URLs may carry an
+// API key in a query string, so validation errors intentionally never echo a
+// configured value.
+func (cfg *Config) normalizeRPCEndpoints() error {
+	cfg.RPCURL = strings.TrimSpace(cfg.RPCURL)
+	if cfg.RPCAttempts == 0 {
+		cfg.RPCAttempts = defaultRPCAttempts
+	}
+	if cfg.RPCAttempts < 1 || cfg.RPCAttempts > maxRPCAttempts {
+		return fmt.Errorf("config: rpc_attempts must be between 1 and %d", maxRPCAttempts)
+	}
+	if cfg.RPCURL == "" {
+		if len(cfg.RPCFallbackURLs) != 0 {
+			return fmt.Errorf("config: rpc_fallback_urls requires rpc_url")
+		}
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(cfg.RPCFallbackURLs)+1)
+	primary, err := normalizeRPCURL(cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("config: rpc_url: %w", err)
+	}
+	cfg.RPCURL = primary
+	seen[primary] = struct{}{}
+	fallBacks := make([]string, 0, len(cfg.RPCFallbackURLs))
+	for _, raw := range cfg.RPCFallbackURLs {
+		normalized, err := normalizeRPCURL(raw)
+		if err != nil {
+			return fmt.Errorf("config: rpc_fallback_urls: %w", err)
+		}
+		if _, duplicate := seen[normalized]; duplicate {
+			return fmt.Errorf("config: rpc_fallback_urls contains a duplicate endpoint")
+		}
+		seen[normalized] = struct{}{}
+		fallBacks = append(fallBacks, normalized)
+	}
+	cfg.RPCFallbackURLs = fallBacks
+	return nil
+}
+
+func normalizeRPCURL(raw string) (string, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", fmt.Errorf("endpoint must not be empty")
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || parsed == nil || parsed.Host == "" {
+		return "", fmt.Errorf("endpoint must be an absolute HTTP(S) URL")
+	}
+	if parsed.Scheme != "https" && parsed.Scheme != "http" {
+		return "", fmt.Errorf("endpoint must use HTTP(S)")
+	}
+	if parsed.User != nil || parsed.Fragment != "" {
+		return "", fmt.Errorf("endpoint must not contain userinfo or a fragment")
+	}
+	return value, nil
 }
 
 // validateCatalogStorageRoots performs lexical containment checks only. The

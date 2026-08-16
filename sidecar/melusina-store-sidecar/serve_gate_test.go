@@ -122,6 +122,46 @@ func serveGet(t *testing.T, h http.Handler, method, target string) *httptest.Res
 	return w
 }
 
+// Before the separately governed StoreReleaseListing bootstrap exists, an empty
+// StoreAuthority deliberately retains the historical static catalog/pointer
+// surface. A catalog fetch must never become a serial (or parallel) full-estate
+// chain scan in that state: package delivery remains independently fail-closed
+// on the ReleaseEntry gate.
+func TestServeCatalogProjectionDisabled_ServesStaticSurfaceWithoutChainReads(t *testing.T) {
+	cfg, _, _, _, base := serveSetup(t)
+	cfg.StoreAuthority = ""
+	index, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	appID := "app-" + base[:8]
+	pointer := []byte("{\"schema\":\"test-static-pointer\"}\n")
+	pointerDir := filepath.Join(cfg.DistDir, "apps", "pointers")
+	if err := os.MkdirAll(pointerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pointerDir, appID+".json"), pointer, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// A reader that rejects every ReleaseEntry call proves neither static route
+	// touches chain state while listing projection is not configured. A reader is
+	// still required at all, so a misconfigured write-capable runtime cannot turn
+	// a catalog request into an unverified source of truth.
+	chain := newMockChainReader()
+	chain.releaseErr = errMockRPC
+	gate := newServeGate(cfg, chain, http.FileServer(http.Dir(cfg.DistDir)))
+	if got := serveGet(t, gate, http.MethodGet, "/apps/index.json"); got.Code != http.StatusOK || !bytes.Equal(got.Body.Bytes(), index) {
+		t.Fatalf("static index = %d %q, want byte-identical 200", got.Code, got.Body.Bytes())
+	}
+	if got := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+appID+".json"); got.Code != http.StatusOK || !bytes.Equal(got.Body.Bytes(), pointer) {
+		t.Fatalf("static pointer = %d %q, want byte-identical 200", got.Code, got.Body.Bytes())
+	}
+	if got := serveGet(t, gate, http.MethodGet, "/packages/"+base); got.Code != http.StatusForbidden || !strings.Contains(got.Body.String(), errMockRPC.Error()) {
+		t.Fatalf("package gate weakened while catalog projection disabled: %d %s", got.Code, got.Body.String())
+	}
+}
+
 // catalogStartBarrierReader makes the first on-chain check for each catalog row
 // wait until a full bounded worker cohort is in flight. It proves the catalog
 // gate does not turn a catalog of independent releases into one serial chain

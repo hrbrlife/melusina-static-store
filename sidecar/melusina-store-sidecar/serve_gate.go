@@ -295,6 +295,16 @@ type catalogGateCandidate struct {
 	app   servedApp
 }
 
+// listingProjectionEnabled reports whether this Store has completed the
+// separately governed StoreReleaseListing bootstrap. Until then, the catalog
+// and its signed pointers remain the immutable public surface they were before
+// target-scoped visibility existed. Package bytes are still independently
+// ReleaseEntry-gated by ServeHTTP below; an index request must not fan out to
+// every app's chain record merely because the optional projection is disabled.
+func (g *serveGate) listingProjectionEnabled() bool {
+	return strings.TrimSpace(g.cfg.StoreAuthority) != ""
+}
+
 // serveCatalogIndex projects the immutable catalog through exact active
 // StoreReleaseListing records. It never writes or repairs the catalog on disk:
 // it returns a request-time view where an explicit target-scoped Delisted record
@@ -304,6 +314,18 @@ type catalogGateCandidate struct {
 func (g *serveGate) serveCatalogIndex(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if g.cr == nil {
+		http.Error(w, "store catalog gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if !g.listingProjectionEnabled() {
+		// Listing projection is an opt-in post-bootstrap policy. Preserve the
+		// exact static catalog while it is absent: packages remain fail-closed
+		// at their own serve-time ReleaseEntry gate, and clients independently
+		// verify the signed per-app pointer they select from this index.
+		g.fileServer.ServeHTTP(w, r)
 		return
 	}
 	projection, err := g.projectCatalog(r.Context(), r)
@@ -513,6 +535,16 @@ func catalogPointerAppID(urlPath string) (string, bool) {
 func (g *serveGate) serveCatalogPointer(w http.ResponseWriter, r *http.Request, appID string) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if g.cr == nil {
+		http.Error(w, "store catalog gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if !g.listingProjectionEnabled() {
+		// See serveCatalogIndex: without a configured StoreAuthority there is
+		// no target-scoped projection to calculate or re-sign.
+		g.fileServer.ServeHTTP(w, r)
 		return
 	}
 	projection, err := g.projectCatalog(r.Context(), r)

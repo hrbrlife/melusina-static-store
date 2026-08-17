@@ -59,9 +59,16 @@ families:
         role: account-opening-and-client-money-ui
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
-        source_path: /home/user/Desktop/worktrees/ccashconfig-lease-audience-v67
+        # v88 is the current upstream-main candidate.  The source root is an
+        # explicit, non-symlinked release input; never bake a developer path
+        # into the immutable release family.
+        source_path: ccashconfig
+        source_commit: fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84
         publish_slug: ccashconfig
-        catalog_name: ccashconfig
+        catalog_name: ccash Config
+        catalog_developer: hrbrlife
+        catalog_repo: melusina_ccashconfig_app
+        catalog_slug: cca-sh-config
         role: central-connection-hub
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0

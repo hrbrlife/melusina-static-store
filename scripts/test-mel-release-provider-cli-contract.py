@@ -1193,6 +1193,38 @@ def test_botmother_release_slot_is_explicit():
         restore_env(old)
 
 
+def test_ccashconfig_release_slot_is_explicit():
+    """ccash Config must select the portable v88 source and historical Store slot."""
+    app_id = "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        assert provider.app_spec(app_id) == {
+            "family": "money-path",
+            "name": "ccashconfig",
+            "source_path": "ccashconfig",
+            "source_commit": "fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "ccashconfig",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina_ccashconfig_app",
+            "catalog_slug": "cca-sh-config",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(app_id) == {
+            "developer": "hrbrlife",
+            "repo": "melusina_ccashconfig_app",
+            "slug": "cca-sh-config",
+        }
+        assert provider.pack_profile_env(app_id) == {
+            "MEL_RELEASE_PACK_PROFILE": "standard",
+        }
+    finally:
+        restore_env(old)
+
+
 def test_jinn_release_slot_is_explicit():
     """Jinn must select its v8 generic cross-pearl source and one Store slot."""
     app_id = "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"
@@ -1686,6 +1718,7 @@ if __name__ == "__main__":
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_rich_office_family_selects_only_pinned_slots()
     test_checked_in_release_pins_bind_exact_target_slots()
+    test_ccashconfig_release_slot_is_explicit()
     test_botmother_release_slot_is_explicit()
     test_jinn_release_slot_is_explicit()
     test_creeper_release_slot_is_explicit()

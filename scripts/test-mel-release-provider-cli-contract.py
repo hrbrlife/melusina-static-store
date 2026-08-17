@@ -1222,6 +1222,7 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
             "name": "source-authoritative",
             "version": "0.1.35",
             "screenshots": [{"url": "screenshots/source-proof.png"}],
+            "versionNumber": 35,
         }
         (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
         (source / "screenshots").mkdir()
@@ -1299,7 +1300,12 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         source.mkdir(parents=True)
         product = source / "product"
         product.mkdir()
-        source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
+        source_metadata = {
+            "appId": app_id,
+            "name": "source-authoritative",
+            "version": "0.1.35",
+            "versionNumber": 35,
+        }
         (product / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
         (product / "RUNTIME-CONTRACT.json").write_text(json.dumps({
             "schema": "melusina-app-runtime-contract-v1",
@@ -1355,17 +1361,13 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                     source.joinpath("app.spk").write_bytes(expected_spk)
                     Path(args[args.index("--metadata-out") + 1]).write_text(json.dumps(staged_metadata) + "\n")
                     return ""
-                if args[0].endswith("stage-into-catalog.sh"):
-                    catalog = Path(args[2])
-                    # This is the exact source metadata bootstrap, before the
-                    # stage script replaces product/release fields from the
-                    # packed candidate under F-193.
-                    assert json.loads((catalog / "metadata.json").read_text()) == source_metadata
-                    assert kwargs["extra_env"] == {"SOURCE_METADATA_PATH": str(catalog.parent / "metadata.json")}
-                    Path(args[2], "app.spk").write_bytes(expected_spk)
-                    Path(args[2], "metadata.json").write_text(json.dumps(staged_metadata) + "\n")
-                    Path(args[2], "RELEASE.json").write_text("{}\n")
-                    return ""
+                if args[:2] == ["spk", "verify"]:
+                    return (
+                        '{ "appId": "' + app_id + '", '
+                        '"packageId": "' + expected_sha[:32] + '", '
+                        '"version": 35, '
+                        '"marketingVersion": {"defaultText": "0.1.35"} }\n'
+                    )
                 if args[0] == "git":
                     return ""
                 if args[0] == str(root / "apphash"):
@@ -1385,7 +1387,11 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         assert stored_receipt["catalogBootstrap"] is True
         assert json.loads((legacy / "metadata.json").read_text())["name"] == "legacy"
         assert not (root / "packages" / "hrbrlife" / "melusina-namedcoin-app" / "namedcoin").exists()
-        assert any(args[0].endswith("stage-into-catalog.sh") for args, _ in calls)
+        assert not any(args[0].endswith("stage-into-catalog.sh") for args, _ in calls)
+        private_release = json.loads(Path(context["releasePath"]).read_text())
+        assert private_release["authorSig"] == ""
+        assert private_release["releaseEntryPda"] == ""
+        assert "offline-" not in json.dumps(private_release)
 
 
 def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():

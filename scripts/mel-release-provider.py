@@ -452,6 +452,91 @@ def materialize_runtime_contract(source: Path, destination: Path, app_id: str, v
     write_json(destination, contract)
 
 
+def verified_spk_manifest(spk: Path) -> dict[str, str]:
+    """Read the identity fields from an SPK without trusting source metadata.
+
+    The provider builds a private candidate before a ReleaseEntry exists.  It
+    must not use the legacy offline RELEASE.json stub to do that: such a stub
+    looks attestable enough to be accidentally promoted.  Instead, derive the
+    catalog tuple from the SPK's own verified manifest and use an explicitly
+    unsigned provisional release only inside the private ceremony directory.
+    """
+    output = run(["spk", "verify", str(spk)])
+    fields = {
+        "appId": r'"appId"\s*:\s*"([^"]+)"',
+        "packageId": r'"packageId"\s*:\s*"([0-9a-f]+)"',
+        "versionNumber": r'"version"\s*:\s*(\d+)',
+        "version": r'"marketingVersion"\s*:\s*\{\s*"defaultText"\s*:\s*"([^"]+)"',
+    }
+    result: dict[str, str] = {}
+    for name, pattern in fields.items():
+        match = re.search(pattern, output, flags=re.DOTALL)
+        if match is None:
+            raise ProviderError(f"spk verify output lacks manifest {name}")
+        result[name] = match.group(1)
+    return result
+
+
+def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path, app_id: str) -> dict[str, str]:
+    """Materialize a private {SPK, metadata} tuple without any fake release.
+
+    ``catalog`` is always inside MEL_RELEASE_STATE_DIR, never ROOT/packages.
+    This deliberately replaces the former stage-into-catalog invocation: that
+    helper's legacy fallback wrote offline-* RELEASE.json values, which are not
+    valid evidence for a governed release and must never enter this ceremony.
+    """
+    manifest = verified_spk_manifest(built_spk)
+    artifact_sha = hex_sha(built_spk)
+    if manifest["appId"] != app_id:
+        raise ProviderError("verified SPK appId does not match the release family appId")
+    if manifest["packageId"] != artifact_sha[:32]:
+        raise ProviderError("verified SPK packageId does not bind the SPK sha256")
+
+    source_metadata = source_metadata_path(app_id, source)
+    metadata = read_json(source_metadata)
+    if metadata.get("appId") != app_id:
+        raise ProviderError("source metadata appId does not match the release family appId")
+    source_version = str(metadata.get("marketingVersion") or metadata.get("version") or "")
+    source_version_number = str(metadata.get("versionNumber", ""))
+    if source_version != manifest["version"] or source_version_number != manifest["versionNumber"]:
+        raise ProviderError("source metadata version does not match the verified SPK manifest")
+
+    # The tracked source document is authoritative for product fields. Only
+    # identity fields derived from the exact SPK are injected into the private
+    # staged copy. Do not reuse a legacy catalog RELEASE.json or runtime
+    # contract from prepare_candidate_catalog().
+    staged_metadata = metadata.copy()
+    staged_metadata.update({
+        "version": manifest["version"],
+        "marketingVersion": manifest["version"],
+        "versionNumber": int(manifest["versionNumber"]),
+        "packageId": manifest["packageId"],
+        "sha256": artifact_sha,
+    })
+    shutil.copyfile(built_spk, catalog / "app.spk")
+    write_json(catalog / "metadata.json", staged_metadata)
+    for stale in (catalog / "RELEASE.json", catalog / "RUNTIME-CONTRACT.json"):
+        stale.unlink(missing_ok=True)
+    return {**manifest, "sha256": artifact_sha}
+
+
+def write_unsigned_provisional_release(path: Path) -> None:
+    """Write private ceremony scaffolding, never a publishable attestation."""
+    write_json(path, {
+        "$schema": "melusina-release-v1",
+        "appHash": "",
+        "releaseHash": "",
+        "version": "",
+        "releaseNonce": "",
+        "masterNftMint": "",
+        "licenseSquadsVault": "",
+        "releaseEntryPda": "",
+        "authorSig": "",
+        "signedAtUnix": 0,
+        "quorumPolicy": {"threshold": 0, "memberCount": 0, "multisigPda": ""},
+    })
+
+
 def build(app_id: str, version: str, receipt_out: Path) -> None:
     source = source_path(app_id)
     source_metadata = source_metadata_path(app_id, source)
@@ -475,10 +560,9 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
 
     catalog = work / "catalog"
     catalog_bootstrap = prepare_candidate_catalog(source, app_id, catalog)
-    run(
-        [str(ROOT / "scripts" / "stage-into-catalog.sh"), str(built_spk), str(catalog)],
-        extra_env={"SOURCE_METADATA_PATH": str(built_metadata if built_metadata.is_file() else source_metadata)},
-    )
+    manifest = stage_private_candidate_catalog(source, built_spk, catalog, app_id)
+    if manifest["version"] != version:
+        raise ProviderError("requested release version does not match the verified SPK manifest")
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"
     # The on-chain ReleaseEntry AppHash is the canonical two-file tree
@@ -492,7 +576,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     shutil.copyfile(spk, ceremony / "app.spk")
     shutil.copyfile(metadata, ceremony / "metadata.json")
     release = ceremony / "RELEASE.json"
-    shutil.copyfile(catalog / "RELEASE.json", release)
+    write_unsigned_provisional_release(release)
     meta = read_json(metadata)
     if meta.get("appId") != app_id:
         raise ProviderError("staged metadata appId drift")

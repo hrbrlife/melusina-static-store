@@ -1131,7 +1131,7 @@ def test_botmother_release_slot_is_explicit():
             "family": "platform-tools",
             "name": "botmother",
             "source_path": "botmother",
-            "source_commit": "f46f86a48fa6f678f9a111201732bcdad6d144d3",
+            "source_commit": "899cddba7d379813a37c391226f75b069895736d",
             "metadata_path": "metadata.json",
             "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "botmother",

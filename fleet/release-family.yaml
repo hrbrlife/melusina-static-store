@@ -196,6 +196,18 @@ families:
         catalog_repo: jinn
         catalog_slug: jinn
         role: confined-ai-reporting-and-scheduled-sheets-assistance
+      creeper:
+        appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
+        source_path: creeper
+        # v25 is the first source-controlled candidate with an explicit
+        # visible runtime contract and a cross-clone reproducibility gate.
+        source_commit: 3127c8fe2f092c26a299f400acb38f336c646686
+        publish_slug: creeper
+        catalog_name: Creeper
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-app-creeper
+        catalog_slug: creeper
+        role: capability-routed-osint-screening-consumer
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink

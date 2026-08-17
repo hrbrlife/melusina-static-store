@@ -1225,6 +1225,38 @@ def test_jinn_release_slot_is_explicit():
         restore_env(old)
 
 
+def test_creeper_release_slot_is_explicit():
+    """Creeper must select only the v25 security/repro source and Store slot."""
+    app_id = "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh"
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        assert provider.app_spec(app_id) == {
+            "family": "platform-tools",
+            "name": "creeper",
+            "source_path": "creeper",
+            "source_commit": "3127c8fe2f092c26a299f400acb38f336c646686",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "creeper",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-app-creeper",
+            "catalog_slug": "creeper",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(app_id) == {
+            "developer": "hrbrlife",
+            "repo": "melusina-app-creeper",
+            "slug": "creeper",
+        }
+        assert provider.pack_profile_env(app_id) == {
+            "MEL_RELEASE_PACK_PROFILE": "standard",
+        }
+    finally:
+        restore_env(old)
+
+
 def test_source_commit_pin_refuses_any_other_clean_checkout():
     app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1656,6 +1688,7 @@ if __name__ == "__main__":
     test_checked_in_release_pins_bind_exact_target_slots()
     test_botmother_release_slot_is_explicit()
     test_jinn_release_slot_is_explicit()
+    test_creeper_release_slot_is_explicit()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()

@@ -1058,6 +1058,38 @@ def test_checked_in_release_pins_bind_exact_target_slots():
         restore_env(old)
 
 
+def test_botmother_release_slot_is_explicit():
+    """BotMother must select only its pinned source and historical Store slot."""
+    app_id = "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        assert provider.app_spec(app_id) == {
+            "family": "platform-tools",
+            "name": "botmother",
+            "source_path": "botmother",
+            "source_commit": "f46f86a48fa6f678f9a111201732bcdad6d144d3",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "botmother",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "MELUSINA_BOTMOTHER",
+            "catalog_slug": "botmother",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(app_id) == {
+            "developer": "hrbrlife",
+            "repo": "MELUSINA_BOTMOTHER",
+            "slug": "botmother",
+        }
+        assert provider.pack_profile_env(app_id) == {
+            "MEL_RELEASE_PACK_PROFILE": "standard",
+        }
+    finally:
+        restore_env(old)
+
+
 def test_source_commit_pin_refuses_any_other_clean_checkout():
     app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1440,6 +1472,7 @@ if __name__ == "__main__":
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_rich_office_family_selects_only_pinned_slots()
     test_checked_in_release_pins_bind_exact_target_slots()
+    test_botmother_release_slot_is_explicit()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()

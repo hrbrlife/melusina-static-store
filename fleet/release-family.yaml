@@ -161,6 +161,16 @@ families:
         role: dao-formation-governance-and-treasury
   platform-tools:
     apps:
+      botmother:
+        appId: xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0
+        source_path: botmother
+        source_commit: f46f86a48fa6f678f9a111201732bcdad6d144d3
+        publish_slug: botmother
+        catalog_name: BotMother
+        catalog_developer: hrbrlife
+        catalog_repo: MELUSINA_BOTMOTHER
+        catalog_slug: botmother
+        role: telegram-bot-management-and-scoped-webhook-ingress
       minigit:
         appId: pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50
         source_path: worktrees/minigit-v029-live-20260814

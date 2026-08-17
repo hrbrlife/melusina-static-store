@@ -35,6 +35,46 @@ def restore_env(old):
     os.environ.update(old)
 
 
+def test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin():
+    # An ignored MODULE/bin executable must never select the release helper.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        module = root / "module"
+        module.mkdir()
+        state = root / "state"
+        stale_dir = module / "bin"
+        stale_dir.mkdir()
+        stale = stale_dir / "submit"
+        stale.write_text("stale executable\n")
+        stale.chmod(0o700)
+        calls = []
+        old_module, old_run = provider.MODULE, provider.run
+        old = with_env({"MEL_RELEASE_STATE_DIR": str(state)})
+        try:
+            provider.MODULE = module
+
+            def fake_run(args, **kwargs):
+                calls.append((args, kwargs))
+                output = Path(args[args.index("-o") + 1])
+                output.write_text("current executable\n")
+                return ""
+
+            provider.run = fake_run
+            got = provider.ensure_bin("submit", "./cmd/submit")
+        finally:
+            provider.MODULE, provider.run = old_module, old_run
+            restore_env(old)
+        assert got == state / "provider-bin" / "submit"
+        assert got.read_text() == "current executable\n"
+        assert stale.read_text() == "stale executable\n"
+        assert len(calls) == 1, calls
+        args, kwargs = calls[0]
+        assert args[:5] == ["go", "build", "-trimpath", "-buildvcs=false", "-o"], args
+        assert Path(args[5]).parent == state / "provider-bin", args
+        assert args[6] == "./cmd/submit", args
+        assert kwargs == {"cwd": module}, kwargs
+
+
 def test_finalize_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -463,6 +503,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
 
 
 def test_submit_binds_the_immutable_catalog_slot():
+    old_bin = provider.ensure_bin
     old = with_env({
         "MEL_RELEASE_STORE_URL": "https://store.example.test",
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
@@ -471,6 +512,7 @@ def test_submit_binds_the_immutable_catalog_slot():
         "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
     })
     try:
+        provider.ensure_bin = lambda *_: Path("/tmp/submit")
         args = provider.submit_args({
             "spkPath": "/tmp/app.spk",
             "metadataPath": "/tmp/metadata.json",
@@ -479,6 +521,7 @@ def test_submit_binds_the_immutable_catalog_slot():
             "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
         }, Path("/tmp/receipt.json"), stage_only=True)
     finally:
+        provider.ensure_bin = old_bin
         restore_env(old)
     assert args[args.index("--developer") + 1] == "hrbrlife", args
     assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
@@ -1483,6 +1526,7 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
 
 
 if __name__ == "__main__":
+    test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
     test_stage_refuses_stale_live_quorum_before_store_mutation()
     test_propose_uses_only_supported_flags()

@@ -21,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -406,10 +407,34 @@ def pearl_artifact_dir(context: dict[str, Any]) -> Path:
 
 
 def ensure_bin(name: str, command: str) -> Path:
-    out = MODULE / "bin" / name
-    if not out.is_file() or not os.access(out, os.X_OK):
-        out.parent.mkdir(parents=True, exist_ok=True)
-        run(["go", "build", "-o", str(out), command], cwd=MODULE)
+    # MODULE/bin is ignored by Git and can contain a stale executable left by
+    # a different source revision. Build each helper into durable release state
+    # so governed operations execute the checked-out provider source.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+        raise ProviderError(f"unsafe provider helper name: {name!r}")
+    base = clean_abs(env("MEL_RELEASE_STATE_DIR", required=True), "MEL_RELEASE_STATE_DIR")
+    if base.exists() and (base.is_symlink() or not base.is_dir()):
+        raise ProviderError("MEL_RELEASE_STATE_DIR must be a real directory")
+    base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if base.is_symlink() or base.resolve() != base:
+        raise ProviderError("MEL_RELEASE_STATE_DIR must be a canonical non-symlink directory")
+    out_dir = base / "provider-bin"
+    out_dir.mkdir(mode=0o700, exist_ok=True)
+    if out_dir.is_symlink() or out_dir.resolve() != out_dir:
+        raise ProviderError("provider helper directory must be a canonical non-symlink directory")
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{name}.", dir=out_dir)
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        run(["go", "build", "-trimpath", "-buildvcs=false", "-o", str(tmp), command], cwd=MODULE)
+        os.chmod(tmp, 0o700)
+        os.replace(tmp, out_dir / name)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+    out = out_dir / name
+    if out.is_symlink() or not out.is_file() or not os.access(out, os.X_OK):
+        raise ProviderError(f"provider helper build did not produce an executable: {out}")
     return out
 
 

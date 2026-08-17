@@ -1153,6 +1153,38 @@ def test_botmother_release_slot_is_explicit():
         restore_env(old)
 
 
+def test_jinn_release_slot_is_explicit():
+    """Jinn must select its v7 cross-pearl source and one Store slot."""
+    app_id = "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        assert provider.app_spec(app_id) == {
+            "family": "platform-tools",
+            "name": "jinn",
+            "source_path": "jinn",
+            "source_commit": "05651fd1048c18285d397780113590d8379d38c2",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "jinn",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "jinn",
+            "catalog_slug": "jinn",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(app_id) == {
+            "developer": "hrbrlife",
+            "repo": "jinn",
+            "slug": "jinn",
+        }
+        assert provider.pack_profile_env(app_id) == {
+            "MEL_RELEASE_PACK_PROFILE": "standard",
+        }
+    finally:
+        restore_env(old)
+
+
 def test_source_commit_pin_refuses_any_other_clean_checkout():
     app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1583,6 +1615,7 @@ if __name__ == "__main__":
     test_checked_in_rich_office_family_selects_only_pinned_slots()
     test_checked_in_release_pins_bind_exact_target_slots()
     test_botmother_release_slot_is_explicit()
+    test_jinn_release_slot_is_explicit()
     test_source_commit_pin_refuses_any_other_clean_checkout()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()

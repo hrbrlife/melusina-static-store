@@ -187,6 +187,9 @@ families:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
+        # v7 repairs PowerBox matching to use GrainContext's generated
+        # interface ID, restoring explicit read-only cross-pearl attachment.
+        source_commit: 05651fd1048c18285d397780113590d8379d38c2
         publish_slug: jinn
         catalog_name: Melusina's Jinn
         catalog_developer: hrbrlife

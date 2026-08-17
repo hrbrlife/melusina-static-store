@@ -212,6 +212,26 @@ families:
     # Only the retained rich Office sources are eligible here. Sparse or
     # stripped historical lines are evidence only and must never be selected.
     apps:
+      bureau-calendar:
+        appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
+        source_path: bureau-cal
+        source_commit: dbd4590c599b2708f7f4c8b5786f951a520a9c99
+        publish_slug: bureau-cal
+        catalog_name: Bureau Calendar
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-cal-app
+        catalog_slug: bureau-cal
+        role: private-visual-calendar-and-local-event-planning
+      bureau-contacts:
+        appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
+        source_path: bureau-contacts
+        source_commit: fc847592758a5772179d31c0015031a2ca2673ef
+        publish_slug: bureau-contacts
+        catalog_name: Bureau Contacts
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-contacts-app
+        catalog_slug: bureau-contacts
+        role: private-address-book-and-local-relationship-reminders
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau

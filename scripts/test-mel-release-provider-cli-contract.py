@@ -1525,6 +1525,46 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
             restore_env(old)
 
 
+def test_staged_metadata_preserves_authored_bytes_while_deriving_package_identity():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "metadata.json"
+        destination = root / "candidate" / "metadata.json"
+        authored = (
+            "{\n"
+            "  \"appId\": \"testappid\",\n"
+            "  \"nested\": {\"packageId\": \"nested-must-not-change\"},\n"
+            "  \"version\": \"1.2.3\",\n"
+            "  \"versionNumber\": 7,\n"
+            "  \"packageId\": \"old-package\",\n"
+            "  \"sha256\": \"old-sha\",\n"
+            "  \"marketingVersion\": \"1.2.3\"\n"
+            "}\n"
+        )
+        source.write_text(authored, encoding="utf-8")
+        staged = json.loads(authored)
+        staged.update({
+            "packageId": "new-package",
+            "sha256": "new-sha",
+        })
+
+        provider.write_staged_metadata(source, destination, staged)
+
+        expected = (
+            "{\n"
+            "  \"appId\": \"testappid\",\n"
+            "  \"nested\": {\"packageId\": \"nested-must-not-change\"},\n"
+            "  \"version\": \"1.2.3\",\n"
+            "  \"versionNumber\": 7,\n"
+            "  \"packageId\": \"new-package\",\n"
+            "  \"sha256\": \"new-sha\",\n"
+            "  \"marketingVersion\": \"1.2.3\"\n"
+            "}\n"
+        )
+        assert destination.read_text(encoding="utf-8") == expected
+        assert json.loads(destination.read_text(encoding="utf-8")) == staged
+
+
 if __name__ == "__main__":
     test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
@@ -1549,4 +1589,5 @@ if __name__ == "__main__":
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     test_build_records_private_bootstrap_without_writing_catalog_tree()
     test_nested_release_artifacts_and_pack_target_are_explicit_and_safe()
+    test_staged_metadata_preserves_authored_bytes_while_deriving_package_identity()
     print("mel-release provider CLI-contract tests passed")

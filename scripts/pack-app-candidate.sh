@@ -157,7 +157,7 @@ effective_source_epoch() {
 
 case "$PACK_PROFILE" in
   standard)
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" build
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" build
     # The historic helper target was only present in the hermetic fixture. Real
     # MSB apps expose the normal spkmodule `pack` target. Prefer an explicit
     # operator override, then retain pack-local compatibility for a repository
@@ -175,7 +175,7 @@ case "$PACK_PROFILE" in
         exit 2
       fi
     fi
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
   namedcoin-msb-devnet)
     # Do NOT run `make build` first: that untagged production target is meant

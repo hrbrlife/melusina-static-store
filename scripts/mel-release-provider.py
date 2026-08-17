@@ -502,6 +502,113 @@ def verified_spk_manifest(spk: Path) -> dict[str, str]:
     return result
 
 
+def top_level_json_value_spans(raw: str) -> dict[str, tuple[int, int]]:
+    """Return source spans for each top-level JSON value without reformatting.
+
+    The AppHash is a tree hash over the exact metadata bytes. Parsing and
+    serializing an otherwise identical source document changes that hash when
+    the source's member order or whitespace is non-canonical. Candidate
+    staging therefore needs the narrow ability to replace derived top-level
+    identity fields while retaining every authored byte around them.
+    """
+    decoder = json.JSONDecoder()
+    length = len(raw)
+
+    def skip_ws(index: int) -> int:
+        while index < length and raw[index] in " \t\r\n":
+            index += 1
+        return index
+
+    index = skip_ws(0)
+    if index >= length or raw[index] != "{":
+        raise ProviderError("source metadata is not a JSON object")
+    index += 1
+    spans: dict[str, tuple[int, int]] = {}
+    while True:
+        index = skip_ws(index)
+        if index >= length:
+            raise ProviderError("source metadata JSON object is truncated")
+        if raw[index] == "}":
+            if skip_ws(index + 1) != length:
+                raise ProviderError("source metadata has trailing non-JSON content")
+            return spans
+        try:
+            key, after_key = decoder.raw_decode(raw, index)
+        except json.JSONDecodeError as exc:
+            raise ProviderError(f"source metadata has an invalid object key: {exc}") from exc
+        if not isinstance(key, str):
+            raise ProviderError("source metadata has a non-string object key")
+        if key in spans:
+            raise ProviderError(f"source metadata has a duplicate top-level key: {key}")
+        index = skip_ws(after_key)
+        if index >= length or raw[index] != ":":
+            raise ProviderError("source metadata is missing a key/value separator")
+        index = skip_ws(index + 1)
+        value_start = index
+        try:
+            _, value_end = decoder.raw_decode(raw, index)
+        except json.JSONDecodeError as exc:
+            raise ProviderError(f"source metadata has an invalid value for {key!r}: {exc}") from exc
+        spans[key] = (value_start, value_end)
+        index = skip_ws(value_end)
+        if index >= length:
+            raise ProviderError("source metadata JSON object is truncated")
+        if raw[index] == ",":
+            index += 1
+            continue
+        if raw[index] == "}":
+            if skip_ws(index + 1) != length:
+                raise ProviderError("source metadata has trailing non-JSON content")
+            return spans
+        raise ProviderError("source metadata is missing an object delimiter")
+
+
+def write_staged_metadata(source_metadata: Path, destination: Path, staged_metadata: dict[str, Any]) -> None:
+    """Write a candidate metadata overlay without changing authored bytes.
+
+    packageId and sha256 are derived from the exact SPK. They are the only
+    ordinary changes needed for existing source documents; replacing their
+    value spans preserves the original key order, indentation, and escaping so
+    a historical candidate remains reproducible. A first-publish source that
+    omits a derived field has no historical tuple to recreate, so it receives a
+    deterministic insertion-order serialization instead.
+    """
+    source = read_json(source_metadata)
+    derived = {"version", "marketingVersion", "versionNumber", "packageId", "sha256"}
+    missing_product_fields = set(source) - set(staged_metadata)
+    changed_product_fields = {
+        key for key, value in source.items()
+        if key not in derived and staged_metadata.get(key) != value
+    }
+    unexpected_new_fields = set(staged_metadata) - set(source) - derived
+    if missing_product_fields or changed_product_fields or unexpected_new_fields:
+        raise ProviderError("candidate staging attempted to alter product-owned metadata fields")
+
+    marker = object()
+    replacements = {
+        key: staged_metadata[key]
+        for key in derived
+        if source.get(key, marker) != staged_metadata.get(key, marker)
+    }
+    raw = source_metadata.read_text(encoding="utf-8")
+    spans = top_level_json_value_spans(raw)
+    if all(key in spans for key in replacements):
+        materialized = raw
+        for key, value in sorted(replacements.items(), key=lambda item: spans[item[0]][0], reverse=True):
+            start, end = spans[key]
+            materialized = materialized[:start] + json.dumps(value, ensure_ascii=True, separators=(",", ":")) + materialized[end:]
+    else:
+        # No prior release could have contained fields absent from the source.
+        # Preserve the parser's insertion order for a deterministic first cut.
+        materialized = json.dumps(staged_metadata, indent=2, ensure_ascii=True) + "\n"
+
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    tmp = destination.with_name(destination.name + ".tmp")
+    tmp.write_text(materialized, encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, destination)
+
+
 def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path, app_id: str) -> dict[str, str]:
     """Materialize a private {SPK, metadata} tuple without any fake release.
 
@@ -539,7 +646,7 @@ def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path
         "sha256": artifact_sha,
     })
     shutil.copyfile(built_spk, catalog / "app.spk")
-    write_json(catalog / "metadata.json", staged_metadata)
+    write_staged_metadata(source_metadata, catalog / "metadata.json", staged_metadata)
     for stale in (catalog / "RELEASE.json", catalog / "RUNTIME-CONTRACT.json"):
         stale.unlink(missing_ok=True)
     return {**manifest, "sha256": artifact_sha}

@@ -14,16 +14,17 @@ cat > "$APP/Makefile" <<'MAKE'
 # with the Git commit timestamp before Make could evaluate the `?=` assignment.
 SOURCE_DATE_EPOCH ?= 1704067200
 export SOURCE_DATE_EPOCH
+SPK_OUT ?= app.spk
 
 build:
 	@if [ -n "$${BUILD_LOG:-}" ]; then printf 'default-build\n' >> "$$BUILD_LOG"; fi
 	@if [ -n "$${EPOCH_LOG:-}" ]; then printf '%s\n' "$$SOURCE_DATE_EPOCH" >> "$$EPOCH_LOG"; fi
 ifeq ($(PACK_MODE),pack)
 pack:
-	@printf 'candidate-bytes-pack' > app.spk
+	@printf 'candidate-bytes-pack' > "$(SPK_OUT)"
 else
 pack-local:
-	@printf 'candidate-bytes' > app.spk
+	@printf 'candidate-bytes' > "$(SPK_OUT)"
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
@@ -31,7 +32,7 @@ endif
 
 pack-msb-test:
 	@printf 'namedcoin-msb-test\n' >> "$${BUILD_LOG:?BUILD_LOG is required for the profile fixture}"
-	@printf 'candidate-bytes-msb-test' > app.spk
+	@printf 'candidate-bytes-msb-test' > "$(SPK_OUT)"
 MAKE
 cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
@@ -43,9 +44,14 @@ cat > "$BIN/spk" <<'SPK'
 set -euo pipefail
 [[ "$1" == verify ]]
 sha="$(sha256sum "$2" | awk '{print $1}')"
-app_id="$(python3 - "$2" <<'PY'
-import json, os, sys
-print(json.load(open(os.path.join(os.path.dirname(sys.argv[1]), "metadata.json"), encoding="utf-8")).get("appId", ""))
+meta="$(dirname "$2")/metadata.json"
+if [[ ! -f "$meta" && -f "$(dirname "$2")/app/metadata.json" ]]; then
+  meta="$(dirname "$2")/app/metadata.json"
+fi
+[[ -f "$meta" ]]
+app_id="$(python3 - "$meta" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1], encoding="utf-8")).get("appId", ""))
 PY
 )"
 printf '{ "appId": "%s", "packageId": "%s" }\n' "$app_id" "${sha:0:32}"
@@ -75,6 +81,22 @@ assert d["source"]["sourceDateEpochOrigin"] == "makefile"
 assert isinstance(d["source"]["sourceCommitEpoch"], int)
 assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
+PY
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# A requested output path must reach the app's Make target. This is important
+# for isolated candidate staging: silently writing APP/app.spk instead makes
+# the caller verify a path that was never built.
+rm -f "$APP/app.spk" "$WORK/candidate-output.spk"
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/candidate-output.spk" --receipt-out "$WORK/custom-output-receipt.json"
+[[ -f "$WORK/candidate-output.spk" ]]
+[[ ! -e "$APP/app.spk" ]]
+python3 - "$WORK/custom-output-receipt.json" "$WORK/candidate-output.spk" <<'PY'
+import hashlib, json, sys
+receipt, artifact = sys.argv[1:]
+d = json.load(open(receipt))
+assert d["artifact"]["sha256"] == hashlib.sha256(open(artifact, "rb").read()).hexdigest()
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

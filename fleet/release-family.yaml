@@ -88,6 +88,7 @@ families:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
+        source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
         publish_slug: cyberteller
         catalog_name: cyberteller
         catalog_developer: hrbrlife

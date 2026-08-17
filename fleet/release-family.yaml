@@ -127,6 +127,7 @@ families:
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
+        source_commit: a943d5a5fb491d5029b67ac157b92379d94e0a60
         publish_slug: teleport
         catalog_name: Teleport
         catalog_developer: hrbrlife

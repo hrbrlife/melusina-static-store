@@ -944,6 +944,7 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
 def test_checked_in_rich_office_family_selects_only_pinned_slots():
     sheets_app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     doc_app_id = "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"
+    paint_app_id = "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"
     config = HERE.parent / "fleet" / "release-family.yaml"
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
@@ -984,6 +985,25 @@ def test_checked_in_rich_office_family_selects_only_pinned_slots():
             "developer": "hrbrlife",
             "repo": "melusina-bureau-doc-app",
             "slug": "doc-bureau",
+        }
+        assert provider.app_spec(paint_app_id) == {
+            "family": "bureau-rich-office",
+            "name": "paint-bureau",
+            "source_path": "paint-bureau",
+            "source_commit": "b7dd188638043e5f8a8d9646d60fe312e572de97",
+            "metadata_path": "metadata.json",
+            "runtime_contract_path": "RUNTIME-CONTRACT.json",
+            "publish_slug": "paint-bureau",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-bureau-paint-app",
+            "catalog_slug": "paint-bureau",
+            "pack_profile": "",
+            "pack_target": "",
+        }
+        assert provider.catalog_slot(paint_app_id) == {
+            "developer": "hrbrlife",
+            "repo": "melusina-bureau-paint-app",
+            "slug": "paint-bureau",
         }
     finally:
         restore_env(old)

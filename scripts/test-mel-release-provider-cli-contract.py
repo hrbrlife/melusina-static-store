@@ -1154,7 +1154,7 @@ def test_botmother_release_slot_is_explicit():
 
 
 def test_jinn_release_slot_is_explicit():
-    """Jinn must select its v7 cross-pearl source and one Store slot."""
+    """Jinn must select its v7 generic cross-pearl source and one Store slot."""
     app_id = "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"
     config = HERE.parent / "fleet" / "release-family.yaml"
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
@@ -1163,7 +1163,7 @@ def test_jinn_release_slot_is_explicit():
             "family": "platform-tools",
             "name": "jinn",
             "source_path": "jinn",
-            "source_commit": "05651fd1048c18285d397780113590d8379d38c2",
+            "source_commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b",
             "metadata_path": "metadata.json",
             "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "jinn",

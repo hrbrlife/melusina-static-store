@@ -207,10 +207,12 @@ groups:
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
-        # The prior release source is no longer reachable from a remote ref.
-        # Hold rather than silently substitute an older local checkout or the
-        # current unreviewed remote head.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current canonical main revision was recovered from a clean
+        # recursive clone on 2026-08-19. Its tracked metadata and pending-build
+        # runtime contract agree with the public 0.1.8 / v15 catalog identity;
+        # it remains release-held until the complete cohort can be built.
+        source_commit: 5d9347ce837ec423013bc17bd17ff3a60b7f39eb
+        reconciliation_state: source-pinned
         publish_slug: instaco
         catalog_name: InstaCo
         live_version: 0.1.8

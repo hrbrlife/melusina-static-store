@@ -1216,6 +1216,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
             ("ccash-domain-template", "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a", "ccash_domain_template", "cca-sh-domain-template"),
+        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
+            ("instaco", "5d9347ce837ec423013bc17bd17ff3a60b7f39eb", "instaco-app", "instaco"),
     }
     for app_id, (source_path, source_commit, repo, slug) in cases.items():
         app = entries[app_id]
@@ -1261,7 +1263,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
-        ("u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "https://github.com/hrbrlife/melusina-instaco-app"),
         ("ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "https://github.com/hrbrlife/melusina_cratelink_app"),
     ):
         app = entries[app_id]

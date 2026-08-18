@@ -1102,6 +1102,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": "melusina-canboard-app",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
+        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "vintage-test-dec",
     }.items():
         app = entries[app_id]
         assert app["source_path"] == source_path, app

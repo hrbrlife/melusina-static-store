@@ -490,12 +490,19 @@ groups:
         role: shell-validation
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
+        source_path: vintage-test-dec
+        # The v1.3.3/version-22 candidate at local commit
+        # bf88344c05ae70d2b791858f1a0a3e506d4e3740 has a tracked runtime
+        # contract, byte-identical clean-source package proof, a CGO-free
+        # desktop binary, and no staged sidecar state or tenant authority.
+        # Do not substitute the older remote v21 source: this exact candidate
+        # must become remotely recoverable before it may be pinned or released.
         publish_slug: vintage
         catalog_name: Vintage Remote Desktop
         live_version: 1.2.4
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec
         catalog_slug: vintage
-        reconciliation_state: runtime-contract-missing
+        reconciliation_state: source-commit-not-remotely-recoverable
         source_repository: https://github.com/hrbrlife/vintage-test-dec
         role: remote-desktop

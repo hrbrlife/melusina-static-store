@@ -446,13 +446,19 @@ groups:
         role: sanctions-screening
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
+        source_path: shell_tester
+        # The v0.1.10/version-13 candidate at local commit
+        # 9852aee2278e59e1411737bbb008c51d809d980a has a tracked runtime
+        # contract and reproducible package proof. Do not replace it with the
+        # older remote source: this exact candidate must be published by its
+        # owner and recovered from a clean clone before it may be pinned.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: shell-tester
         catalog_name: Shell Tester
         live_version: 0.1.8
         catalog_developer: hrbrlife
         catalog_repo: shell_tester
         catalog_slug: shell-tester
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/shell_tester
         role: shell-validation
       vintage:

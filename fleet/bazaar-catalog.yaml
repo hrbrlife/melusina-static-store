@@ -130,10 +130,13 @@ groups:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
         # The remote v31 source remains reproducible but carries a
-        # tenant-specific package license fallback. A clean local repair
-        # removes that fallback, but it is based on the older v30 line and is
-        # not remotely recoverable. Hold until an owner publishes one merged,
-        # current, clean-clone-recoverable source revision.
+        # tenant-specific package license fallback. Local v33
+        # dc4b842a7953eb3721d4a99edf0faa29d7c36853 descends through the
+        # reviewed v32 repair: it removes the package fallback and prevents
+        # an optional grain seed from overriding the shell-owned tenant
+        # binding. It is not remotely recoverable. Hold until an owner
+        # publishes one merged, current, clean-clone-recoverable source
+        # revision.
         reconciliation_state: source-policy-unreconciled
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon

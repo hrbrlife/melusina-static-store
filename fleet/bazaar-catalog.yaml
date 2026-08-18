@@ -271,7 +271,12 @@ groups:
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink
-        source_commit: 95d27ba095eae4589f290b2e3857d6ad92174ddb
+        # The local v15 forward candidate 09ffb91596ace2bfc164117401632584f270f702
+        # removes tenant-bound package configuration and passes current source
+        # tests/vet plus preserved double-pack proof. It is not yet advertised
+        # by a remote source ref, so retain the live slot as a hold rather than
+        # releasing the older, tenant-bound source.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: cratelink
         catalog_name: CrateLink
         live_version: 0.3.3
@@ -281,6 +286,7 @@ groups:
         catalog_developer: hrbrlife
         catalog_repo: melusina-cratelink-app
         catalog_slug: cratelink
+        source_repository: https://github.com/hrbrlife/melusina_cratelink_app
         role: controlled-workspace-file-transfer
   bureau-rich-office:
     # Only the retained rich Office sources are eligible here. Sparse or

@@ -1115,6 +1115,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
         ("ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h", "teleport", "https://github.com/hrbrlife/melusina_teleport2"),
         ("u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "https://github.com/hrbrlife/melusina-instaco-app"),
+        ("ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "https://github.com/hrbrlife/melusina_cratelink_app"),
     ):
         app = entries[app_id]
         assert app["source_path"] == source_path, app
@@ -1147,6 +1148,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
             "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
             "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+            "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
         ):
             try:
                 provider.app_spec(app_id)

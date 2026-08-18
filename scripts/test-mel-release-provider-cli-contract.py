@@ -1071,8 +1071,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     cases = {
         "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh":
             ("ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0", "AI_Lagoon", "ai-lagoon"),
-        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
-            ("instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8", "instaco-app", "instaco"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
@@ -1115,6 +1113,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
+        ("ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h", "teleport", "https://github.com/hrbrlife/melusina_teleport2"),
+        ("u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "https://github.com/hrbrlife/melusina-instaco-app"),
     ):
         app = entries[app_id]
         assert app["source_path"] == source_path, app
@@ -1145,6 +1145,8 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
             "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
             "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
             "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+            "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+            "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
         ):
             try:
                 provider.app_spec(app_id)

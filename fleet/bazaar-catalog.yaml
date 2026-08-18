@@ -176,18 +176,25 @@ groups:
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
-        source_commit: 2654570703310e031a2c5be5dfcec0be66e173c2
+        # The previously pinned revision is not advertised by any current
+        # source-remote ref. Do not allow an object that only survives in a
+        # workstation checkout to stand in for a clean-clone source pin.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: teleport
         catalog_name: Teleport
         live_version: 1.3.4
         catalog_developer: hrbrlife
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
+        source_repository: https://github.com/hrbrlife/melusina_teleport2
         role: private-chat-and-calls
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
-        source_commit: b13d042cc689de8faa40f46cd04713239b5c6ea8
+        # The prior release source is no longer reachable from a remote ref.
+        # Hold rather than silently substitute an older local checkout or the
+        # current unreviewed remote head.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: instaco
         catalog_name: InstaCo
         live_version: 0.1.8
@@ -198,6 +205,7 @@ groups:
         # duplicate instead of advancing the existing InstaCo release.
         catalog_repo: instaco-app
         catalog_slug: instaco
+        source_repository: https://github.com/hrbrlife/melusina-instaco-app
         role: series-llc-formation-and-corporate-registry
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0

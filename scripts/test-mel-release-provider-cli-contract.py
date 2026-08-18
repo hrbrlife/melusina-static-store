@@ -807,13 +807,18 @@ def test_release_status_requires_program_owner():
 
 
 def write_catalog_config(path, apps):
+    fixture_source_repository = "https://github.com/hrbrlife/release-test-fixture"
+    normalized_apps = {
+        name: {**spec, "source_repository": spec.get("source_repository", fixture_source_repository)}
+        for name, spec in apps.items()
+    }
     path.write_text(json.dumps({
         "schema": "melusina-bazaar-catalog/v1",
         "catalog_origin": "https://bazaar.melusina-os.org",
-        "expected_live_app_count": len(apps),
+        "expected_live_app_count": len(normalized_apps),
         "default_release_state": "ready",
         "default_reconciliation_state": "source-pinned",
-        "groups": {"msb": {"apps": apps}},
+        "groups": {"msb": {"apps": normalized_apps}},
     }) + "\n", encoding="utf-8")
 
 
@@ -822,6 +827,7 @@ def commit_source_fixture(path):
         ["git", "init", "-q", str(path)],
         ["git", "-C", str(path), "config", "user.email", "release-test@example.invalid"],
         ["git", "-C", str(path), "config", "user.name", "release-test"],
+        ["git", "-C", str(path), "remote", "add", "origin", "https://github.com/hrbrlife/release-test-fixture"],
         ["git", "-C", str(path), "add", "-A"],
         ["git", "-C", str(path), "commit", "-qm", "source fixture"],
     ):
@@ -867,6 +873,21 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
             assert provider.source_path(admin_app_id) == admin
             assert provider.source_path(CYBERTELLER_CONFIG_APP_ID) == cyberteller_config
 
+            subprocess.run(
+                ["git", "-C", str(app), "remote", "set-url", "origin", "https://github.com/hrbrlife/wrong-fixture"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "wrong origin" in str(exc), exc
+            else:
+                raise AssertionError("source checkout with the wrong origin was accepted")
+            subprocess.run(
+                ["git", "-C", str(app), "remote", "set-url", "origin", "https://github.com/hrbrlife/release-test-fixture"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+
             write_catalog_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": str(app)},
             })
@@ -899,6 +920,39 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
                 assert "canonical non-symlink" in str(exc), exc
             else:
                 raise AssertionError("symlinked source root was accepted")
+        finally:
+            restore_env(old)
+
+
+def test_catalog_requires_a_canonical_source_repository():
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "bazaar-catalog.yaml"
+        base = {
+            "schema": "melusina-bazaar-catalog/v1",
+            "catalog_origin": "https://bazaar.melusina-os.org",
+            "expected_live_app_count": 1,
+            "default_release_state": "hold",
+            "default_reconciliation_state": "source-pinned",
+            "groups": {"msb": {"apps": {"app": {"appId": "app-id"}}}},
+        }
+        config.write_text(json.dumps(base) + "\n", encoding="utf-8")
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "missing source_repository" in str(exc), exc
+            else:
+                raise AssertionError("catalog app without source_repository was accepted")
+
+            base["groups"]["msb"]["apps"]["app"]["source_repository"] = "https://example.invalid/not-canonical"
+            config.write_text(json.dumps(base) + "\n", encoding="utf-8")
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "invalid canonical source_repository" in str(exc), exc
+            else:
+                raise AssertionError("non-canonical source_repository was accepted")
         finally:
             restore_env(old)
 
@@ -1197,6 +1251,7 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
             ["git", "init", "-q", str(app)],
             ["git", "-C", str(app), "config", "user.email", "release-test@example.invalid"],
             ["git", "-C", str(app), "config", "user.name", "release-test"],
+            ["git", "-C", str(app), "remote", "add", "origin", "https://github.com/hrbrlife/release-test-fixture"],
             ["git", "-C", str(app), "add", "metadata.json"],
             ["git", "-C", str(app), "commit", "-qm", "initial source"],
         ):
@@ -1447,6 +1502,9 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                         '"version": 35, '
                         '"marketingVersion": {"defaultText": "0.1.35"} }\n'
                     )
+                if args[:5] == ["git", "-C", str(source), "remote", "get-url"]:
+                    assert args[5] == "origin"
+                    return "https://github.com/hrbrlife/release-test-fixture\n"
                 if args[0] == "git":
                     return "a" * 40
                 if args[0] == str(root / "apphash"):

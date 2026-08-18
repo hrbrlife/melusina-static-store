@@ -49,6 +49,7 @@ groups:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
         source_commit: f82c217f643bdfc217ba8b3ba91a4cbbf521ba55
+        source_repository: https://github.com/hrbrlife/melusina-namedcoin-app
         publish_slug: namedcoin
         catalog_name: NamedCoin
         live_version: 0.1.35
@@ -65,6 +66,7 @@ groups:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
         source_commit: 0dda2a0a89335e12ad86c70792585bc3006445d5
+        source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Admin
         live_version: 0.1.42
@@ -113,6 +115,7 @@ groups:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
         source_commit: 95717c13a9ffb793e61ce910fe4d088fa0db2767
+        source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess
         live_version: 0.1.74
@@ -124,6 +127,7 @@ groups:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
         source_commit: e7f8ab98eb70576993145f725146c0c48974e9c0
+        source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
         live_version: 0.7.23
@@ -138,6 +142,7 @@ groups:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
         source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
+        source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: cyberteller
         live_version: 0.1.93
@@ -149,6 +154,7 @@ groups:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
         source_commit: d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f
+        source_repository: https://github.com/hrbrlife/cca-tc-operator
         metadata_path: metadata.json
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
@@ -172,6 +178,7 @@ groups:
         catalog_developer: hrbrlife
         catalog_repo: pr_ninja
         catalog_slug: telescreen
+        source_repository: https://github.com/hrbrlife/pr_ninja
         role: sanctions-screening-and-review
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
@@ -234,6 +241,7 @@ groups:
         appId: xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0
         source_path: botmother
         source_commit: 899cddba7d379813a37c391226f75b069895736d
+        source_repository: https://github.com/hrbrlife/melusina_botmother
         publish_slug: botmother
         catalog_name: BotMother
         live_version: 1.3.4
@@ -243,8 +251,11 @@ groups:
         role: telegram-bot-management-and-scoped-webhook-ingress
       minigit:
         appId: pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50
-        source_path: worktrees/minigit-v029-live-20260814
+        # A cohort must use a portable product directory, never a preserved
+        # workstation worktree name.
+        source_path: minigit
         source_commit: 610c44614a8b499d1e80795a97daca66a9912f77
+        source_repository: https://github.com/hrbrlife/MiniGit
         publish_slug: minigit
         catalog_name: MiniGit
         live_version: 0.2.14
@@ -267,6 +278,7 @@ groups:
         catalog_developer: hrbrlife
         catalog_repo: jinn
         catalog_slug: jinn
+        source_repository: https://github.com/hrbrlife/jinn
         role: confined-ai-reporting-and-scheduled-sheets-assistance
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
@@ -296,6 +308,7 @@ groups:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
         source_commit: 965766d662771323f770eb9e956f1e8b03bea7a0
+        source_repository: https://github.com/hrbrlife/CHEESESPREAD
         publish_slug: sheets-bureau
         catalog_name: Sheets Bureau
         live_version: 2.1.4
@@ -307,6 +320,7 @@ groups:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
         source_commit: ea232d48cc837bdc65b1886ab41ca5109e6c8a69
+        source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
         catalog_name: Doc Bureau
         live_version: 2.0.32
@@ -341,6 +355,7 @@ groups:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
         source_commit: a46106ded2aab2c7b50465cd561f176de25b4947
+        source_repository: https://github.com/hrbrlife/GoldKey
         publish_slug: goldkey
         catalog_name: GoldKey
         live_version: 0.3.4
@@ -357,6 +372,7 @@ groups:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 55e276e3a5aef4e0f5605c191759c5fdce781fdc
+        source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
         live_version: 0.5.5

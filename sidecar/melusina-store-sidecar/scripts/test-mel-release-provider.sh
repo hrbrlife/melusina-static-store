@@ -117,6 +117,7 @@ printf '{"appId":"%s"}\n' "$ADAPTER_APP" >"$TMP/sources/namedcoin/product/metada
 git -C "$TMP/sources/namedcoin" init -q
 git -C "$TMP/sources/namedcoin" config user.email test@example.invalid
 git -C "$TMP/sources/namedcoin" config user.name test
+git -C "$TMP/sources/namedcoin" remote add origin https://github.com/hrbrlife/melusina-namedcoin-app
 git -C "$TMP/sources/namedcoin" add product/metadata.json
 git -C "$TMP/sources/namedcoin" commit -qm fixture
 ADAPTER_COMMIT="$(git -C "$TMP/sources/namedcoin" rev-parse HEAD)"
@@ -133,6 +134,7 @@ groups:
         appId: $ADAPTER_APP
         source_path: namedcoin
         source_commit: $ADAPTER_COMMIT
+        source_repository: https://github.com/hrbrlife/melusina-namedcoin-app
         metadata_path: product/metadata.json
         publish_slug: namedcoin
         catalog_name: NamedCoin

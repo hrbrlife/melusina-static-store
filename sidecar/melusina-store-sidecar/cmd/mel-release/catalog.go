@@ -27,6 +27,7 @@ type App struct {
 	AppID               string
 	SourcePath          string
 	SourceCommit        string
+	SourceRepository    string
 	PublishSlug         string
 	CatalogName         string
 	CatalogDeveloper    string
@@ -218,8 +219,11 @@ func LoadCatalog(path string) (*Catalog, error) {
 		if strings.TrimSpace(a.AppID) == "" {
 			return nil, fmt.Errorf("catalog app %q/%q has no appId", a.Group, a.Name)
 		}
-		if strings.TrimSpace(a.Name) == "" || strings.TrimSpace(a.Group) == "" || strings.TrimSpace(a.PublishSlug) == "" || strings.TrimSpace(a.CatalogName) == "" || strings.TrimSpace(a.LiveVersion) == "" || strings.TrimSpace(a.CatalogDeveloper) == "" || strings.TrimSpace(a.CatalogRepo) == "" || strings.TrimSpace(a.CatalogSlug) == "" || strings.TrimSpace(a.Role) == "" {
+		if strings.TrimSpace(a.Name) == "" || strings.TrimSpace(a.Group) == "" || strings.TrimSpace(a.PublishSlug) == "" || strings.TrimSpace(a.CatalogName) == "" || strings.TrimSpace(a.LiveVersion) == "" || strings.TrimSpace(a.CatalogDeveloper) == "" || strings.TrimSpace(a.CatalogRepo) == "" || strings.TrimSpace(a.CatalogSlug) == "" || strings.TrimSpace(a.SourceRepository) == "" || strings.TrimSpace(a.Role) == "" {
 			return nil, fmt.Errorf("catalog app %q is missing required catalog identity or live snapshot data", a.AppID)
+		}
+		if !validCanonicalSourceRepository(a.SourceRepository) {
+			return nil, fmt.Errorf("catalog app %q has invalid source_repository %q", a.AppID, a.SourceRepository)
 		}
 		if seen[a.AppID] {
 			return nil, fmt.Errorf("duplicate appId %q in Bazaar catalog", a.AppID)
@@ -296,6 +300,8 @@ func assignAppField(a *App, key, val string) {
 		a.SourcePath = val
 	case "source_commit":
 		a.SourceCommit = val
+	case "source_repository":
+		a.SourceRepository = val
 	case "publish_slug":
 		a.PublishSlug = val
 	case "catalog_name":
@@ -325,6 +331,23 @@ func isLowerHexCommit(value string) bool {
 	}
 	for _, r := range value {
 		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func validCanonicalSourceRepository(value string) bool {
+	const prefix = "https://github.com/hrbrlife/"
+	if !strings.HasPrefix(value, prefix) {
+		return false
+	}
+	name := strings.TrimSuffix(strings.TrimPrefix(value, prefix), ".git")
+	if name == "" || strings.Contains(name, "/") {
+		return false
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '_' || r == '-') {
 			return false
 		}
 	}

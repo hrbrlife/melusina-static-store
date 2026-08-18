@@ -37,6 +37,9 @@ NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
+CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
+    r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
+)
 
 
 class ProviderError(RuntimeError):
@@ -78,6 +81,23 @@ def clean_source_root() -> Path:
     if not root.is_dir() or root.is_symlink() or root.resolve() != root:
         raise ProviderError("MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory")
     return root
+
+
+def canonical_source_repository(value: str) -> str:
+    """Validate and normalize an app's one authoritative Git source URL.
+
+    A commit hash without its repository does not identify a clean-clone
+    source. The release catalog therefore records a canonical GitHub source
+    URL for every app, and a checked-out cohort must retain that URL as its
+    ``origin`` remote. Accept an optional conventional ``.git`` suffix from
+    Git, but retain a single normalized form in provider state and receipts.
+    """
+    normalized = value.strip()
+    if normalized.endswith(".git"):
+        normalized = normalized[:-4]
+    if not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized):
+        raise ProviderError(f"invalid canonical source_repository: {value!r}")
+    return normalized
 
 
 def run(cmd: list[str], *, cwd: Path | None = None, extra_env: dict[str, str] | None = None) -> str:
@@ -154,6 +174,9 @@ def catalog_config() -> dict[str, Any]:
         for spec in apps.values():
             if not isinstance(spec, dict) or not isinstance(spec.get("appId"), str) or not spec["appId"]:
                 raise ProviderError("Bazaar catalog app is missing appId")
+            if not isinstance(spec.get("source_repository"), str):
+                raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing source_repository")
+            canonical_source_repository(spec["source_repository"])
             app_ids.append(spec["appId"])
     if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
@@ -182,6 +205,7 @@ def app_spec(app_id: str) -> dict[str, str]:
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
+                    "source_repository": canonical_source_repository(str(spec.get("source_repository", ""))),
                     # Most applications keep release metadata at the project
                     # root. A unified app may keep it below the root that owns
                     # its Makefile; make that relationship explicit instead of
@@ -272,6 +296,18 @@ def source_path(app_id: str) -> Path:
         raise ProviderError(
             f"declared source path is not at pinned source_commit for {app_id}: "
             f"want {expected_commit}, got {actual_commit}"
+        )
+    actual_repository = run(["git", "-C", str(path), "remote", "get-url", "origin"]).strip()
+    try:
+        actual_repository = canonical_source_repository(actual_repository)
+    except ProviderError as exc:
+        raise ProviderError(
+            f"declared source path has a non-canonical origin for {app_id}: {actual_repository!r}"
+        ) from exc
+    if actual_repository != spec["source_repository"]:
+        raise ProviderError(
+            f"declared source path has the wrong origin for {app_id}: "
+            f"want {spec['source_repository']}, got {actual_repository}"
         )
     return path
 

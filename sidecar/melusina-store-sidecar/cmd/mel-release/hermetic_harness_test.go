@@ -250,6 +250,7 @@ func newHarness(t *testing.T) *harness {
 		"        appId:        " + testAppID + "\n" +
 		"        source_path:  testapp\n" +
 		"        source_commit: 0123456789abcdef0123456789abcdef01234567\n" +
+		"        source_repository: https://github.com/hrbrlife/testapp\n" +
 		"        publish_slug: testapp\n" +
 		"        catalog_name: TestApp\n" +
 		"        live_version: 1.0.1\n" +

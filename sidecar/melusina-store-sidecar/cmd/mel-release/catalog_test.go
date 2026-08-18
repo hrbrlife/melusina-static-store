@@ -22,6 +22,7 @@ groups:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
         source_path: ccash_go_htmx
         source_commit: 0123456789abcdef0123456789abcdef01234567
+        source_repository: https://github.com/hrbrlife/ccash_go_htmx
         publish_slug: ccash
         catalog_name: popaye
         live_version: 0.3.189
@@ -34,6 +35,7 @@ groups:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: DueProcess
         source_commit: 1123456789abcdef0123456789abcdef01234567
+        source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess-v2
         catalog_name: DueProcess
         live_version: 0.1.74
@@ -48,6 +50,7 @@ groups:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-work/melusina-namedcoin-admin-app
         source_commit: 2123456789abcdef0123456789abcdef01234567
+        source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: "NamedCoin Admin"
         live_version: 0.1.42
@@ -86,7 +89,7 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	if popaye.AppID != "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510" {
 		t.Fatalf("popaye appId = %q", popaye.AppID)
 	}
-	if popaye.PublishSlug != "ccash" || popaye.CatalogName != "popaye" || popaye.SourcePath != "ccash_go_htmx" || popaye.CatalogDeveloper != "hrbrlife" || popaye.CatalogRepo != "CCASH" || popaye.CatalogSlug != "popaye" || popaye.LiveVersion != "0.3.189" {
+	if popaye.PublishSlug != "ccash" || popaye.CatalogName != "popaye" || popaye.SourcePath != "ccash_go_htmx" || popaye.SourceRepository != "https://github.com/hrbrlife/ccash_go_htmx" || popaye.CatalogDeveloper != "hrbrlife" || popaye.CatalogRepo != "CCASH" || popaye.CatalogSlug != "popaye" || popaye.LiveVersion != "0.3.189" {
 		t.Fatalf("popaye fields wrong: %+v", popaye)
 	}
 	if popaye.Group != "money" || popaye.ReleaseState != "hold" || popaye.ReconciliationState != "source-pinned" {
@@ -150,13 +153,14 @@ func TestLoadCatalogRealManifestIsCompleteAndHeld(t *testing.T) {
 	seenNames := make(map[string]string, len(catalog.Apps))
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{
-			"group":        app.Group,
-			"name":         app.Name,
-			"appId":        app.AppID,
-			"publish_slug": app.PublishSlug,
-			"catalog_name": app.CatalogName,
-			"live_version": app.LiveVersion,
-			"role":         app.Role,
+			"group":             app.Group,
+			"name":              app.Name,
+			"appId":             app.AppID,
+			"publish_slug":      app.PublishSlug,
+			"catalog_name":      app.CatalogName,
+			"live_version":      app.LiveVersion,
+			"source_repository": app.SourceRepository,
+			"role":              app.Role,
 		} {
 			if strings.TrimSpace(value) == "" {
 				t.Fatalf("catalog app %q has empty %s", app.Name, field)
@@ -215,7 +219,7 @@ func TestLoadCatalogFailsClosedOnMisindentedField(t *testing.T) {
 }
 
 func TestLoadCatalogRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
-	const m = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      not-namedcoin:\n        appId: other-app\n        publish_slug: other\n        catalog_name: Other\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: other\n        catalog_slug: other\n        role: other\n        pack_profile: namedcoin-msb-devnet\n"
+	const m = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      not-namedcoin:\n        appId: other-app\n        publish_slug: other\n        catalog_name: Other\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: other\n        catalog_slug: other\n        source_repository: https://github.com/hrbrlife/other\n        role: other\n        pack_profile: namedcoin-msb-devnet\n"
 	dir := t.TempDir()
 	path := filepath.Join(dir, "m.yaml")
 	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
@@ -227,7 +231,7 @@ func TestLoadCatalogRejectsNamedCoinDevnetProfileForAnyOtherApp(t *testing.T) {
 }
 
 func TestLoadCatalogRejectsMalformedSourceCommit(t *testing.T) {
-	const m = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      app:\n        appId: app-id\n        publish_slug: app\n        catalog_name: App\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: app\n        catalog_slug: app\n        role: app\n        source_commit: not-a-commit\n"
+	const m = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      app:\n        appId: app-id\n        publish_slug: app\n        catalog_name: App\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: app\n        catalog_slug: app\n        source_repository: https://github.com/hrbrlife/app\n        role: app\n        source_commit: not-a-commit\n"
 	dir := t.TempDir()
 	path := filepath.Join(dir, "m.yaml")
 	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
@@ -235,5 +239,20 @@ func TestLoadCatalogRejectsMalformedSourceCommit(t *testing.T) {
 	}
 	if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "invalid source_commit") {
 		t.Fatalf("malformed source_commit error = %v, want fail-closed source_commit refusal", err)
+	}
+}
+
+func TestLoadCatalogRejectsMissingOrNonCanonicalSourceRepository(t *testing.T) {
+	const missing = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      app:\n        appId: app-id\n        publish_slug: app\n        catalog_name: App\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: app\n        catalog_slug: app\n        role: app\n"
+	const invalid = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      app:\n        appId: app-id\n        publish_slug: app\n        catalog_name: App\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: app\n        catalog_slug: app\n        source_repository: https://example.invalid/app\n        role: app\n"
+	for name, manifest := range map[string]string{"missing": missing, "invalid": invalid} {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "m.yaml")
+		if err := os.WriteFile(path, []byte(manifest), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadCatalog(path); err == nil || (name == "missing" && !strings.Contains(err.Error(), "missing required")) || (name == "invalid" && !strings.Contains(err.Error(), "invalid source_repository")) {
+			t.Fatalf("%s source_repository error = %v, want fail-closed rejection", name, err)
+		}
 	}
 }

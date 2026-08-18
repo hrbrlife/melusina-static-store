@@ -1055,11 +1055,15 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     for app_id in (
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
-        "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
     ):
         assert entries[app_id]["group"] == "bureau-rich-office", entries[app_id]
         assert entries[app_id]["source_commit"], entries[app_id]
         assert entries[app_id]["catalog_slug"], entries[app_id]
+    paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
+    assert paint["group"] == "bureau-rich-office", paint
+    assert paint["catalog_slug"] == "paint-bureau", paint
+    assert paint["reconciliation_state"] == "source-commit-not-remotely-recoverable", paint
+    assert not paint.get("source_commit"), paint
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -1101,6 +1105,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert shell_tester["source_path"] == "shell_tester", shell_tester
     assert shell_tester["reconciliation_state"] == "source-commit-not-remotely-recoverable", shell_tester
     assert not shell_tester.get("source_commit"), shell_tester
+    paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
+    assert paint["source_path"] == "paint-bureau", paint
+    assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
+    assert paint["reconciliation_state"] == "source-commit-not-remotely-recoverable", paint
+    assert not paint.get("source_commit"), paint
     for app_id, source_path in {
         "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "melusina-bureau-cal-app",
         "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "melusina-bureau-contacts-app",

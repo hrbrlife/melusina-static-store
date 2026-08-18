@@ -285,13 +285,20 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        source_commit: b7dd188638043e5f8a8d9646d60fe312e572de97
+        # The locally reviewed v21 candidate at c5347931c2ae9ab3579c8eb869edec5a0f7b44ea
+        # adds Paint's native, permission-scoped GrainContext provider for
+        # Jinn's generic peer attachment. The prior remote source lacks that
+        # provider entirely. Hold rather than silently package the obsolete
+        # remote source until the owner publishes this exact candidate and a
+        # clean clone recovers it.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: paint-bureau
         catalog_name: Paint Bureau
         live_version: 2.0.28
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-paint-app
         catalog_slug: paint-bureau
+        source_repository: https://github.com/hrbrlife/melusina-bureau-paint-app
         role: rich-minipaint-layers-filters-snapshots-powerbox-import
   productivity-apps:
     apps:

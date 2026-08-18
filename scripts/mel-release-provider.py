@@ -307,6 +307,56 @@ def require_clean_recursive_source_checkout(app_id: str, path: Path) -> None:
             )
 
 
+def require_source_commit_advertised_by_origin(app_id: str, path: Path, commit: str) -> None:
+    """Require a pinned source commit to be reachable from a live origin ref.
+
+    A clean checkout with a correctly spelled ``origin`` can still contain an
+    unpublished local commit.  The complete-cohort audit is deliberately
+    read-only, so it does not fetch or rewrite the checkout.  Instead it reads
+    the currently advertised heads/tags and proves the pinned commit is an
+    ancestor of at least one of their locally available tips.  A normal full
+    clean clone contains those objects; a partial or stale local-only checkout
+    fails closed rather than becoming release input evidence.
+    """
+    advertised = run([
+        "git", "-C", str(path), "ls-remote", "--heads", "--tags", "origin",
+    ])
+    tips: list[str] = []
+    for line in advertised.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not re.fullmatch(r"[0-9a-f]{40}", fields[0].lower()):
+            continue
+        ref = fields[1]
+        # Branch tips and peeled annotated-tag tips name commits directly. A
+        # lightweight tag also names a commit, but a raw annotated tag object
+        # may not; merge-base below simply skips that non-commit object.
+        if ref.startswith("refs/heads/") or ref.startswith("refs/tags/"):
+            tips.append(fields[0].lower())
+    if not tips:
+        raise ProviderError(f"origin advertises no source heads or tags for {app_id}")
+
+    for tip in sorted(set(tips)):
+        proc = subprocess.run(
+            ["git", "-C", str(path), "merge-base", "--is-ancestor", commit, tip],
+            text=True,
+            capture_output=True,
+        )
+        if proc.returncode == 0:
+            return
+        # Exit 1 means a valid graph query whose answer is "not an ancestor".
+        # Exit 128 is expected for an unpeeled annotated tag object; a peeled
+        # companion line, a branch, or another ref may still establish proof.
+        if proc.returncode in {1, 128}:
+            continue
+        detail = (proc.stderr or proc.stdout).strip()
+        raise ProviderError(
+            f"cannot verify advertised source ancestry for {app_id}: {detail[-3000:]}"
+        )
+    raise ProviderError(
+        f"declared source_commit is not reachable from an advertised origin ref for {app_id}"
+    )
+
+
 def source_path(app_id: str, *, require_release_ready: bool = True) -> Path:
     spec = app_spec(app_id, require_release_ready=require_release_ready)
     rel_text = spec["source_path"]
@@ -404,6 +454,9 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
             app_id = spec["appId"]
             try:
                 source = source_path(app_id, require_release_ready=False)
+                require_source_commit_advertised_by_origin(
+                    app_id, source, spec["source_commit"].strip().lower()
+                )
                 metadata_path = source_metadata_path(app_id, source, require_release_ready=False)
                 contract_path = source_runtime_contract_path(app_id, source, require_release_ready=False)
                 for artifact in (metadata_path, contract_path):

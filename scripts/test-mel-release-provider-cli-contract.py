@@ -868,6 +868,26 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
         second = sources / "second"
         first_commit = write_source_release_fixture(first, first_app_id, "1.2.3", 7)
         second_commit = write_source_release_fixture(second, second_app_id, "2.3.4", 8)
+        # A normal clean clone may check out a pinned ancestor while its
+        # canonical origin currently advertises a newer branch tip. Preserve
+        # that graph shape in the fixture before detaching at the pin.
+        (first / "advertised-descendant.txt").write_text("advertised\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "-C", str(first), "add", "advertised-descendant.txt"],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(first), "commit", "-qm", "advertised fixture descendant"],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        advertised_first_commit = subprocess.run(
+            ["git", "-C", str(first), "rev-parse", "HEAD"],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(first), "checkout", "--quiet", first_commit],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
         config = root / "bazaar-catalog.yaml"
         ready_apps = {
             "first": {"appId": first_app_id, "source_path": "first", "source_commit": first_commit},
@@ -884,7 +904,19 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
             "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_SOURCE_ROOT": str(sources),
         })
+        old_run = provider.run
+        advertised = {str(first): advertised_first_commit, str(second): second_commit}
+
+        def fixture_run(args, **kwargs):
+            if (args[:2] == ["git", "-C"] and args[3:] == ["ls-remote", "--heads", "--tags", "origin"]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected origin reachability source: {args}")
+                return f"{commit}\trefs/heads/main\n"
+            return old_run(args, **kwargs)
+
         try:
+            provider.run = fixture_run
             result = provider.audit_source_cohort(receipt)
             assert result["status"] == "ready", result
             assert result["sourcePinnedCount"] == 2, result
@@ -915,7 +947,37 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
                 "name": "held",
                 "reconciliationState": "source-commit-not-remotely-recoverable",
             }], incomplete
+
+            # A clean local commit with the right origin string is insufficient
+            # when the origin no longer advertises a ref containing it.
+            write_catalog_config(config, ready_apps)
+            document = json.loads(config.read_text(encoding="utf-8"))
+            document["default_release_state"] = "hold"
+            (first / "local-only-proof.txt").write_text("unadvertised\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(first), "add", "local-only-proof.txt"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(first), "commit", "-qm", "local-only fixture commit"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            local_only_commit = subprocess.run(
+                ["git", "-C", str(first), "rev-parse", "HEAD"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            ).stdout.strip()
+            document["groups"]["msb"]["apps"]["first"]["source_commit"] = local_only_commit
+            config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+            rejected = provider.audit_source_cohort(receipt)
+            assert rejected["status"] == "incomplete", rejected
+            assert rejected["verifiedSourceCount"] == 1, rejected
+            assert rejected["failures"] == [{
+                "appId": first_app_id,
+                "name": "first",
+                "reason": "source provenance or release-input validation failed",
+            }], rejected
         finally:
+            provider.run = old_run
             restore_env(old)
 
 

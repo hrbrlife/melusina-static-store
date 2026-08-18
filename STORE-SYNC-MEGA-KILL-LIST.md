@@ -261,7 +261,7 @@ Action badges: `[FIX]` `[KILL]` `[CONSOLIDATE]` `[QUARANTINE]` `[INVESTIGATE]`. 
 
 - **Target:** `build-store.sh:108-123`, `Makefile refresh:86-100`, `scripts/refresh-submodules.sh:18`, `scripts/sync-catalog.sh:56-69` (all `checkout FETCH_HEAD` / `reset --hard`)
 - **Rationale:** Three+ independent implementations of submodule refresh discard locally-regenerated RELEASE.json/metadata that was never pushed upstream — the mechanism that regresses namedcoin/MLSNA to stubs.
-- **Evidence:** Four refresh implementations confirmed; `checkout FETCH_HEAD` with stderr suppressed; detached HEADs on all 23 submodules.
+- **Evidence:** Four refresh implementations confirmed; `checkout FETCH_HEAD` with stderr suppressed; detached HEADs across the catalog submodules.
 - **Remediation:** Collapse to ONE refresh implementation that refuses to discard dirty content (abort if working tree differs from the fetched tip in attest/metadata); delete `scripts/refresh-submodules.sh` (callerless legacy). Pair with K18.
 - **Depends on:** K18
 
@@ -375,7 +375,7 @@ Action badges: `[FIX]` `[KILL]` `[CONSOLIDATE]` `[QUARANTINE]` `[INVESTIGATE]`. 
 
 - **Target:** `/tmp/store-wt` (orphan publish chain), `/tmp/ghp`, 17 stashes, 641 dangling commits, `.publish.lock` (0 bytes Jun 10)
 - **Rationale:** Partial/abandoned publish state accumulates because the pipeline uses worktrees + stash-juggling instead of atomic commits; the stale empty lock gives a false sense of serialization while a write ran on gh-pages today.
-- **Evidence:** 3 worktrees, 17 stashes, `.publish.lock` 0 bytes. Correction: store-wt chain is worktree-pinned (not gc-dangling); 23 submodules not 20; submodules have dirty content not SHA drift.
+- **Evidence:** 3 worktrees, 17 stashes, `.publish.lock` 0 bytes. Correction: store-wt chain is worktree-pinned (not gc-dangling); the full declared submodule set, not an earlier partial inventory, has dirty content rather than SHA drift.
 - **Remediation:** `git worktree remove /tmp/store-wt` + prune after capturing/dropping its chain; stop `/tmp/ghp` out-of-band gh-pages writes (route through K20); triage+clear stashes; gc dangling commits after review; make `.publish.lock` real (K08) or remove it.
 - **Depends on:** K08, K20
 

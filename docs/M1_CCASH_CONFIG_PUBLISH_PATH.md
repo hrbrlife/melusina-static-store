@@ -132,7 +132,7 @@ git push -f origin publish-prev:publish
 ### 2.4 Post-deploy verify
 
 ```bash
-curl -sL https://hrbrlife.github.io/melusina-static_store/apps/index.json \
+curl -sL https://bazaar.melusina-os.org/apps/index.json \
   | python3 -c "import json,sys; d=json.load(sys.stdin); \
                 cfg=[a for a in d['apps'] if a['appId'].startswith('6gdgveud')]; \
                 print('present' if cfg else 'MISSING'); \

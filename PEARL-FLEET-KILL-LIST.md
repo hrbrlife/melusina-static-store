@@ -1,8 +1,14 @@
 # pearl Fleet Kill-List — MVP
 
-Greenfield plan to put the full Melusina app + sidecar fleet through the
-Squads-cosigned ReleaseEntry ceremony, rebuild both stores, and publish
-every artifact with on-chain attestation.
+Greenfield plan to put the Melusina app + sidecar fleet through the
+Squads-cosigned ReleaseEntry ceremony and publish every default-Bazaar
+artifact with on-chain attestation.
+
+> **Current release scope (2026-08-18):** the only Store release target is
+> `https://bazaar.melusina-os.org`. A release family is a governed candidate
+> cohort, never proof of the complete catalog. Before a launch build, reconcile
+> every live listing from that default Bazaar to an explicit retain, retire, or
+> hold decision and a canonical source/contract record.
 
 Authored 2026-04-23. Every fact in the **State Snapshot** below is
 checkable against the working tree and RPC today. When this document is
@@ -28,10 +34,10 @@ invalidates downstream phase gates.
 | `melusina-spkmodule-component` | `main` at `cac4d67`, zero GPG residue, hooks + `mk/pearl.mk` + `bin/spk-verify-strict` all greenfield |
 | `melusina-attest` Go tests | pass |
 | `melusina-attest` Py / TS tests | env not set up (runners present) |
-| Public store apps (`static_store/packages/hrbrlife/`) | 23 shipping, 0 with `RELEASE.json`, 23 carry legacy `metadata.json.asc` |
+| Default Bazaar catalog | The fixed inventory in this historical snapshot is superseded. Derive current scope from the live default Bazaar catalog; do not infer it from a local package count. |
 | Admin store apps (`store-rebuild/melusina-admin-store/packages/hrbrlife/`) | 6 shipping, 0 with `RELEASE.json`, 5 carry legacy `.asc` |
 | Sidecars (`Melusina/sidecar/`) | 8 deployable, 0 with `RELEASE.json`, no `sidecar.mk` exists |
-| Public-store `build-store.sh` | ReleaseEntry-required, rejects `.asc`, delegates to `melusina-pearl-tool verify-release`; `./build-store.sh --dry-run` fails 23/23 until `RELEASE.json` exists and `.asc` is gone |
+| Default-Bazaar `build-store.sh` | ReleaseEntry-required, rejects `.asc`, delegates to `melusina-pearl-tool verify-release`; `./build-store.sh --dry-run` validates every selected release candidate and must not treat a fixed cohort count as catalog scope |
 | Admin-store `build-store.sh` | diverged 654-line fork, `validate_release_attestation` removed, no `.asc` rejection, no tool integration; `./build-store.sh --dry-run` currently passes 6/6 because it does not check ReleaseEntry attestations |
 | `acceptUnattestedSPKs` shell kill-switch | still live — removing it today bricks every currently-installed pearl |
 
@@ -48,7 +54,7 @@ invalidates downstream phase gates.
 - Mint the Core App Team Squads multisig on devnet. Fund all four wallets.
 - Port `melusina-admin-store/build-store.sh` to the greenfield ReleaseEntry-verify path.
 - Take **one pilot app** end-to-end through the ceremony and verify both stores catalog it correctly.
-- Take all **23 public-store** apps through the ceremony and rebuild the public catalog.
+- Take every explicitly retained default-Bazaar listing through the ceremony and rebuild the catalog.
 - Take all **6 admin-store** apps through the ceremony and rebuild the admin catalog.
 - Author `mk/sidecar.mk` in `melusina-spkmodule-component`. Take all **8 sidecars** through the sidecar-flavoured ceremony.
 - Publish both rebuilt stores. Every app in both catalogs must have a finalized `RELEASE.json` referencing a verifiable on-chain `ReleaseEntry`.
@@ -122,11 +128,11 @@ Pick **`cyberteller`** as the pilot (has current Makefile discipline, uses spkmo
 
 **Phase 1 gate:** one app's `RELEASE.json` verifies on-chain; both the local `make verify` and the public-store build's delegated `verify-release` return 0.
 
-### Phase 2 — Public-store fleet (22 remaining)
+### Phase 2 — Default Bazaar release cohort
 
 One pass per app. Each app loops 1.1–1.6 above. Phase-A batch can parallelize (different proposals; non-conflicting nonces). Phase-B must be sequential only if the machine running `make publish` also runs the store-index build — otherwise concurrent.
 
-**Phase 2 gate:** `build-store.sh` on `static_store/` main HEAD runs to completion with zero `validate_release_attestation` failures; catalog JSON lists all 23 apps.
+**Phase 2 gate:** `build-store.sh` runs to completion with zero `validate_release_attestation` failures; the default Bazaar catalog contains every listing explicitly retained by the live-catalog reconciliation.
 
 ### Phase 3 — Admin-store fleet (6 apps)
 
@@ -153,9 +159,9 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 
 | # | Task | Done-when |
 |---|---|---|
-| 5.1 | `make rebuild` on `static_store/` | `dist-publish/` reflects all 23 apps; catalog index schema-validates |
+| 5.1 | `make rebuild` on `static_store/` | `dist-publish/` reflects the reconciled default-Bazaar cohort; catalog index schema-validates |
 | 5.2 | `make rebuild` on `melusina-admin-store/` | admin `dist-publish/` reflects all 6 apps |
-| 5.3 | Deploy public store to GitHub Pages | `https://hrbrlife.github.io/melusina-static_store/` serves new `apps/index.json` with all 23 `attest` blobs |
+| 5.3 | Deploy default Bazaar | `https://bazaar.melusina-os.org/apps/index.json` serves the reconciled catalog and required attestation data |
 | 5.4 | Deploy admin store to private deploy target | admin catalog URL (record in `melusina-admin-store/README.md`) serves new index; reachable under whatever auth the admin panel uses today |
 | 5.5 | e2e spec `all_apps.spec.ts` | Playwright asserts every app's `/attest/<appId>/RELEASE.json` is 200 and its on-chain `releaseEntryPda` resolves |
 
@@ -165,35 +171,14 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 
 ## 4. Component Rosters (enumerated)
 
-### Public store — 23 apps (`static_store/packages/hrbrlife/<repo>/<slug>/`)
+### Default Bazaar catalog
 
-| # | Repo dir | Slug | Has Makefile today? |
-|---|---|---|---|
-| 1 | AI_Lagoon | ai-lagoon | check |
-| 2 | AITX-Procedures | dueprocess | check |
-| 3 | ccash | ccash | Y |
-| 4 | client_collection | clientspace | check |
-| 5 | cyberteller | cyberteller | Y (pilot) |
-| 6 | instaco-app | instaco-app | check |
-| 7 | INSTASYS_MAIL | mermail | check |
-| 8 | MELUSINA_BOTMOTHER | botmother | Y |
-| 9 | melusina-bureau-cal-app | bureau-cal | Y |
-| 10 | melusina-bureau-contacts-app | bureau-contacts | Y |
-| 11 | melusina-bureau-diagram-app | diagram-bureau | Y |
-| 12 | melusina-bureau-doc-app | doc-bureau | Y |
-| 13 | melusina-bureau-notes-app | bureau-notes | Y |
-| 14 | melusina-bureau-paint-app | paint-bureau | Y |
-| 15 | melusina-bureau-sheets-app | sheets-bureau | Y |
-| 16 | melusina-canboard-app | canboard | check |
-| 17 | melusina-ccash-client-app | ccash-client | check |
-| 18 | melusina-ccash-org-member-app | ccash-org-member | check |
-| 19 | melusina-consilium-app | consilium | check |
-| 20 | melusina-cratelink-app | cratelink | check |
-| 21 | melusina-NamedCoin-app | NamedCoin | check |
-| 22 | MiniGit | minigit | check |
-| 23 | openclaw-main | melusina-openclaw | Y |
-
-State audit reported 11/23 with Makefiles; the other 12 need bootstrap. Phase 2 opens with a Makefile-presence sweep.
+The fixed local roster formerly recorded here is retired. The current release
+scope is obtained from `https://bazaar.melusina-os.org/apps/index.json`, then
+reconciled listing-by-listing with a canonical source, immutable source commit,
+runtime contract, and explicit retain/retire/hold decision. The release-family
+manifest is only a governed candidate cohort and cannot substitute for that
+catalog reconciliation.
 
 ### Admin store — 6 apps (`melusina-admin-store/packages/hrbrlife/<repo>/<slug>/`)
 
@@ -235,7 +220,7 @@ Every row is a fact checkable at the moment of ship.
 |---|---|
 | Phase 0 ship | `melusina-pearl-tool version` prints `v0.2.0`; `pearl-tool verify-release` exits 0 on a ReleaseEntry minted during smoke-test; devnet program ID ≠ the pre-patch program ID; multisig PDA + 4 funded balances recorded in `docs/devnet-state.md`. |
 | Phase 1 ship | `cyberteller/publish` branch HEAD contains `app.spk + metadata.json + RELEASE.json`; the `RELEASE.json.releaseEntryPda` resolves on devnet; `pearl-tool verify-release --release-json <...>` exits 0. |
-| Phase 2 ship | `static_store/build-store.sh` completes with 23/23 apps validated; catalog `apps/index.json` lists 23 apps, each with `attest.releaseEntryPda` non-empty. |
+| Phase 2 ship | `static_store/build-store.sh` completes with every reconciled release candidate validated; the default Bazaar catalog contains every retained listing and each has required attestation data. |
 | Phase 3 ship | admin-store `build-store.sh` is a parameterized relative of the public one (diff is path/branding only); completes 6/6; catalog lists 6 apps with non-empty `releaseEntryPda`. |
 | Phase 4 ship | `melusina-spkmodule-component/mk/sidecar.mk` is on `main`; each of 8 sidecars either has a `publish` branch with a finalized sidecar `RELEASE.json` **or** is named in §7 as deferred for a stated reason. |
 | Phase 5 ship | e2e `all_apps.spec.ts` green against both deployed stores; no reference to `metadata.json.asc` in either store's source tree. |
@@ -303,7 +288,7 @@ Anything below is **not** blocked by this plan and will be kept out of these pha
          [Phase 1]  cyberteller pilot
                │
                ▼
-         [Phase 2]  22 remaining public apps
+         [Phase 2]  default Bazaar reconciled cohort
                │        (parallel phase-A, serial phase-B)
                ▼
          [Phase 3]  6 admin apps

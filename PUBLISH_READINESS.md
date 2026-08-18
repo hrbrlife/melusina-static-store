@@ -1,5 +1,10 @@
 # Catalog Publish-Readiness Matrix
 
+> **Status:** historical filesystem snapshot, not a current release input.
+> **Current Store target:** `https://bazaar.melusina-os.org`.
+> **Scope rule:** determine release scope from the live default-Bazaar catalog;
+> a local package scan or release family is never evidence of complete coverage.
+>
 > **Snapshot:** 2026-04-25 (static_store @ main, post-`641556a`).
 > **Source of truth:** filesystem scan of `packages/hrbrlife/` + `.gitmodules` + `src/apps.json`.
 > **Greenfield rule:** the only trust root is `RELEASE.json` checked against
@@ -18,17 +23,17 @@
 | ------------------------------------------ | ----- |
 | Apps with full per-app metadata.json       | 25    |
 | Have RELEASE.json (Solana attest payload)  | 25    |
-| Have legacy `metadata.json.asc` (BLOCKER)  | 23    |
+| Have legacy `metadata.json.asc` (BLOCKER)  | historic subset |
 | Have `app.spk` on disk                     | 25    |
 | Listed in catalog `src/apps.json`          | 25    |
 | **Publishable today** (RELEASE + no .asc)  | **2** |
-| Blocked only by `.asc` removal             | 23    |
+| Blocked only by `.asc` removal             | historic subset |
 | No RELEASE.json                            | 0     |
 | Empty submodule dirs (placeholder)         | 2     |
 | Submodule path NOT in `.gitmodules`        | 4     |
 
-**Bottom line:** every app has finalized attestation; 23 of 25 are one
-`.asc` removal away from publishing.
+**Historical bottom line:** every app in this snapshot had finalized
+attestation; affected entries were one `.asc` removal away from publishing.
 
 ---
 
@@ -84,7 +89,7 @@ Vintage Remote Desktop`. Minor follow-up: register both as submodules in
 
 ---
 
-## Blocked: 23 apps carrying legacy `metadata.json.asc`
+## Blocked: legacy `metadata.json.asc`
 
 The PGP detached signature is an explicit no-go per Captain Janeway
 2026-04-23 (zero PGP surface anywhere in pack/publish; release gating
@@ -96,10 +101,11 @@ branch, `git rm <slug>/metadata.json.asc`, commit, push; then in the
 catalog repo, bump the submodule SHA pointer. Each `.asc` removal is a
 one-line atomic commit in its own submodule repo.
 
-The list of 23 affected apps is the matrix above with `asc=Y`. None
+The affected entries are the matrix rows with `asc=Y`. None
 have other blockers — `RELEASE.json` exists and is valid in every
 case, `app.spk` is on disk, the apps.json catalog already has the
-entry. The single batch-of-23 cleanup unlocks the entire bazaar.
+entry. A coordinated cleanup is required before the affected default-Bazaar
+entries can be released.
 
 This is a destructive cross-repo change. **Do not execute before
 announcing in chat with the full path list per HT5** and obtaining
@@ -161,9 +167,9 @@ contents.
 
 1. **Register the 4 unregistered submodules** (mechanical, low-risk —
    small claim, ~10 min).
-2. **Drop the 23 `.asc` files** as a single coordinated sweep (announced
-   per HT5, executed across 23 submodule repos + 1 catalog SHA bump
-   commit). After this, the bazaar publishes 25/25 with one
+2. **Drop the affected `.asc` files** as a single coordinated sweep (announced
+   per HT5, executed across every impacted submodule repo + one catalog SHA
+   bump commit). Then rebuild the reconciled default-Bazaar cohort with one
    `make refresh && ./build-store.sh` run.
 3. **Decide placeholder dirs** (`Melusina`, `melusina-galactic-council`)
    — Riker call.
@@ -272,4 +278,3 @@ to refresh.
    `README.md` that this app's source lives in `ccash_go_htmx/
    Fineract-sidecar` and the publish artifact is hand-curated into the
    catalog. Submodule registration is NOT applicable.
-

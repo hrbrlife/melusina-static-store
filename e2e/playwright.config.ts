@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  *   - projects per audience (here: store-public + store-mobile + admin)
  *
  * Two layers under test:
- *   STORE_BASE_URL  — the public bazaar (default: live GitHub Pages deployment)
+ *   STORE_BASE_URL  — the default Bazaar (default: bazaar.melusina-os.org)
  *   ADMIN_BASE_URL  — a Melusina/Sandstorm admin app market (optional;
  *                     skipped automatically if unreachable)
  */

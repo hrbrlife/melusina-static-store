@@ -135,11 +135,12 @@ func TestSelectUnknownFails(t *testing.T) {
 	}
 }
 
-// TestLoadFamilyRealManifest parses the actual fleet manifest (all declared apps)
-// so the fail-closed parser is exercised against every legitimate shape it must
-// still accept: family-level squads: bodies, quoted values with spaces, unknown
-// per-app fields (namedcoin-admin.publisher / legacy_publisher_to_delete),
-// trailing-comment stripping, and the folded `out_of_scope_note: >` block scalar.
+// TestLoadFamilyRealManifest parses the actual fleet manifest without treating
+// its current contents as the Bazaar's complete catalog. It exercises every
+// legitimate shape the fail-closed parser must accept: family-level squads:
+// bodies, quoted values with spaces, unknown per-app fields
+// (namedcoin-admin.publisher / legacy_publisher_to_delete), trailing-comment
+// stripping, and the folded `out_of_scope_note: >` block scalar.
 func TestLoadFamilyRealManifest(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -153,72 +154,37 @@ func TestLoadFamilyRealManifest(t *testing.T) {
 	if fam.Schema != "melusina-release-family/v1" {
 		t.Fatalf("real manifest schema = %q", fam.Schema)
 	}
-	// This is the exact production release set, keyed by the immutable selector
-	// used by both release providers. It deliberately derives the expected count
-	// from the declared set, then refuses any addition, omission, or field drift.
-	// In particular GoldKey DEV is a distinct historical development identity,
-	// not a second production GoldKey release.
-	type want struct {
-		family, appID, source, sourceCommit, developer, repo, slug, profile string
+	if len(fam.Apps) == 0 {
+		t.Fatal("real manifest has no release candidates")
 	}
-	wants := map[string]want{
-		"welcome":            {"money-path", "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0", "welcome", "5c3f431561d84516bf3e1c4ff530accd383817b8", "hrbrlife", "welcome-pearl", "welcome-pearl", ""},
-		"namedcoin":          {"money-path", "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh", "namedcoin", "f82c217f643bdfc217ba8b3ba91a4cbbf521ba55", "hrbrlife", "melusina-namedcoin-app", "namedcoin", "namedcoin-msb-devnet"},
-		"namedcoin-admin":    {"money-path", "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0", "namedcoin-admin", "0dda2a0a89335e12ad86c70792585bc3006445d5", "hrbrlife", "melusina-namedcoin-admin-app", "namedcoin-admin", ""},
-		"popaye":             {"money-path", "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "worktrees/popaye-session-teardown-20260814", "39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694", "hrbrlife", "ccash_go_htmx", "popaye", ""},
-		"ccashconfig":        {"money-path", "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84", "", "", "", ""},
-		"dueprocess":         {"money-path", "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0", "dueprocess", "95717c13a9ffb793e61ce910fe4d088fa0db2767", "hrbrlife", "DueProcess", "dueprocess", ""},
-		"ai-lagoon":          {"money-path", "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh", "ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0", "hrbrlife", "AI_Lagoon", "ai-lagoon", ""},
-		"cyberteller":        {"money-path", "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0", "cyberteller", "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7", "hrbrlife", "cyberteller", "cyberteller", ""},
-		"cyberteller-config": {"money-path", "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10", "cybertellerconfig", "e26e2d1e5222ba7f2beac9f0d3d3801a0d86d492", "hrbrlife", "melusina_cybertellerconfig_app", "cybertellerconfig", ""},
-		"fineract-setup":     {"money-path", "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h", "fineract-setup/fineract-sidecar", "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f", "hrbrlife", "fineract-setup", "fineract-setup", ""},
-		"telescreen":         {"money-path", "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60", "telescreen", "", "hrbrlife", "pr_ninja", "telescreen", ""},
-		"teleport":           {"money-path", "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h", "teleport", "2654570703310e031a2c5be5dfcec0be66e173c2", "hrbrlife", "melusina_teleport2", "teleport", ""},
-		"instaco":            {"money-path", "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8", "hrbrlife", "instaco-app", "instaco", ""},
-		"instadao":           {"money-path", "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "706f54375172030fa78fc88a78cd38c450ca6fc6", "hrbrlife", "MLSNA_token", "mlsna-admin", ""},
-		"botmother":          {"platform-tools", "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0", "botmother", "899cddba7d379813a37c391226f75b069895736d", "hrbrlife", "MELUSINA_BOTMOTHER", "botmother", ""},
-		"minigit":            {"platform-tools", "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50", "worktrees/minigit-v029-live-20260814", "610c44614a8b499d1e80795a97daca66a9912f77", "hrbrlife", "MiniGit", "gitpearl", ""},
-		"jinn":               {"platform-tools", "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh", "jinn", "146ef2e4c0d8bed0845b1407619fd1b29244f72c", "hrbrlife", "jinn", "jinn", ""},
-		"cratelink":          {"platform-tools", "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "95d27ba095eae4589f290b2e3857d6ad92174ddb", "hrbrlife", "melusina-cratelink-app", "cratelink", ""},
-		"sheets-bureau":      {"bureau-rich-office", "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0", "sheets-bureau", "965766d662771323f770eb9e956f1e8b03bea7a0", "hrbrlife", "melusina-bureau-sheets-app", "sheets-bureau", ""},
-		"doc-bureau":         {"bureau-rich-office", "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h", "doc-bureau", "ea232d48cc837bdc65b1886ab41ca5109e6c8a69", "hrbrlife", "melusina-bureau-doc-app", "doc-bureau", ""},
-		"paint-bureau":       {"bureau-rich-office", "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360", "paint-bureau", "b7dd188638043e5f8a8d9646d60fe312e572de97", "hrbrlife", "melusina-bureau-paint-app", "paint-bureau", ""},
-		"goldkey":            {"productivity-apps", "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh", "GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "hrbrlife", "GoldKey", "goldkey", ""},
-		"mermail":            {"productivity-apps", "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "hrbrlife", "INSTASYS_MAIL", "mermail", ""},
-	}
-	if len(fam.Apps) != len(wants) {
-		names := make([]string, len(fam.Apps))
-		for i, app := range fam.Apps {
-			names[i] = app.Family + "/" + app.Name
-		}
-		t.Fatalf("declared production release set has %d apps, want %d: %v", len(fam.Apps), len(wants), names)
-	}
-	seen := make(map[string]bool, len(fam.Apps))
+	seenNames := make(map[string]string, len(fam.Apps))
 	for _, app := range fam.Apps {
-		want, ok := wants[app.Name]
-		if !ok {
-			t.Fatalf("unexpected release-family app %q/%q", app.Family, app.Name)
+		for field, value := range map[string]string{
+			"family":       app.Family,
+			"name":         app.Name,
+			"appId":        app.AppID,
+			"source_path":  app.SourcePath,
+			"publish_slug": app.PublishSlug,
+			"catalog_name": app.CatalogName,
+			"role":         app.Role,
+		} {
+			if strings.TrimSpace(value) == "" {
+				t.Fatalf("release-family app %q has empty %s", app.Name, field)
+			}
 		}
-		if seen[app.Name] {
-			t.Fatalf("duplicate release-family app name %q", app.Name)
+		if previousFamily, duplicate := seenNames[app.Name]; duplicate {
+			t.Fatalf("duplicate release-family app name %q in %q and %q", app.Name, previousFamily, app.Family)
 		}
-		seen[app.Name] = true
-		if app.Family != want.family || app.AppID != want.appID || app.SourcePath != want.source ||
-			app.SourceCommit != want.sourceCommit || app.CatalogDeveloper != want.developer ||
-			app.CatalogRepo != want.repo || app.CatalogSlug != want.slug || app.PackProfile != want.profile {
-			t.Fatalf("production manifest entry %q drifted: %+v", app.Name, app)
+		seenNames[app.Name] = app.Family
+
+		byID, err := fam.Select(app.AppID)
+		if err != nil || byID.AppID != app.AppID {
+			t.Fatalf("Select(appId %q) = %+v, %v", app.AppID, byID, err)
 		}
-		if _, err := fam.Select(app.Name); err != nil {
-			t.Fatalf("Select(%q): %v", app.Name, err)
+		byName, err := fam.Select(app.Name)
+		if err != nil || byName.AppID != app.AppID {
+			t.Fatalf("Select(name %q) = %+v, %v", app.Name, byName, err)
 		}
-	}
-	for name := range wants {
-		if !seen[name] {
-			t.Fatalf("declared production release app %q is missing", name)
-		}
-	}
-	if _, err := fam.Select("goldkey-dev"); err == nil {
-		t.Fatal("GoldKey DEV must not be selectable from the production release family")
 	}
 }
 

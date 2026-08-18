@@ -169,7 +169,7 @@ Icons must also be registered in the store's icon pipeline:
 - [ ] Source SVG exists at `icons_split/<AppName>.svg` (in static_store repo)
 - [ ] Corresponding PNG exists at `icons_split/<AppName>.png`
 - [ ] App is listed in the `APPS` array in `generate_icon_sets.py`
-- [ ] `python3 generate_icon_sets.py` successfully generates `app_icons/<AppName>/` with all 23 files:
+- [ ] `python3 generate_icon_sets.py` successfully generates the complete icon set in `app_icons/<AppName>/`:
 
 | File | Size | Purpose |
 |------|------|---------|

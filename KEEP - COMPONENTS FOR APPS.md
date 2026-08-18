@@ -72,7 +72,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
 ✻ Baked for 49m 19s · 1 shell still running                                                                                                            
                                                                              
 ※ recap: Goal was to greenfield the Melusina static_store bazaar and standardize every per-app build pipeline. All 21 apps are now live at               
-  `hrbrlife.github.io/melusina-static_store/`, and every submodule-backed app uses the shared `melusina-spkmodule-component`. Next: you choose what to   
+  `https://bazaar.melusina-os.org/`, and every submodule-backed app uses the shared `melusina-spkmodule-component`. Next: you choose what to
   tackle — bump submodule pointers in static_store, or move on.                                                                                          
                                                                                                                                                          
 ❯ what other melusina components as such should we have to standardize operations or how can we expand the current one from a devops perspective?        
@@ -263,4 +263,4 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
   The second-best extraction is melusina-pearl-runtime-component — it would let us deprecate the hand-built Coming Soon pearl from rebuild_grains.py and 
   all 8 new apps would consume a versioned runtime instead of each shipping their own 9MB bundle.                                                      
                                                                                                                                                          
-  Beyond that, I'd defer. Tier 2+ needs real pain signal before you guess wrong about the shared API shape. 
+  Beyond that, I'd defer. Tier 2+ needs real pain signal before you guess wrong about the shared API shape.

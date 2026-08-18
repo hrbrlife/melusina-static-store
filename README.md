@@ -2,7 +2,7 @@
 
 Static app store and update host for Melusina. Hosted on GitHub Pages from the `publish` branch.
 
-**Live store**: https://hrbrlife.github.io/melusina-static_store/
+**Live store**: https://bazaar.melusina-os.org/
 
 > **This checkout is a development mirror, not the canonical builder.**
 > Two `static_store` checkouts exist on this host with non-overlapping
@@ -149,7 +149,7 @@ The build resolves a few external dependencies via env vars. Set what's relevant
 
 ## Trust model
 
-Every app in this catalog is gated by a Solana on-chain `ReleaseEntry` and a Squads-multisig signature. There are no PGP keys, no detached metadata signatures, no out-of-band approvals. End-user verification recipe is documented at [`verifier/index.html`](verifier/index.html) (deployed to `https://hrbrlife.github.io/melusina-static_store/verifier/`); the per-app published `attest` block in `apps.json` carries everything needed to re-check the chain independently of trusting this static site.
+Every app in this catalog is gated by a Solana on-chain `ReleaseEntry` and a Squads-multisig signature. There are no PGP keys, no detached metadata signatures, no out-of-band approvals. End-user verification recipe is documented at [`verifier/index.html`](verifier/index.html) (deployed to `https://bazaar.melusina-os.org/verifier/`); the per-app published `attest` block in `apps.json` carries everything needed to re-check the chain independently of trusting this static site.
 
 ---
 

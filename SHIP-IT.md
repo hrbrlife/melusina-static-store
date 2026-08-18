@@ -236,7 +236,7 @@ MELUSINA_PUBLISH_AUTHORITATIVE=1 make publish        # refresh + build + plan + 
    and writes a marker. Aborts on catalog shrink unless
    `MELUSINA_PUBLISH_SHRINK_OK=1`.
 4. **apply** — orphan commit on `publish` branch, force-push. gh-pages serves
-   the new tree at `https://hrbrlife.github.io/melusina-static_store/` within
+   the new tree at `https://bazaar.melusina-os.org/` within
    a minute.
 
 ### Env vars

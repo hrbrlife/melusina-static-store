@@ -48,7 +48,7 @@ The kill-list §10.2 closure shipped:
   `packages/hrbrlife/melusina_cybertellerconfig_app/cybertellerconfig/`
   with `{app.spk, metadata.json, RELEASE.json, capabilities.json,
   description.md, icon.svg}`. Live at
-  `https://hrbrlife.github.io/melusina-static_store/` — index.json
+  `https://bazaar.melusina-os.org/` — index.json
   carries the entry; SPK URL `packages/ec0a4ddcc0944c919c662838be9bcd54`
   serves the binary byte-identical to the manifest pin.
 

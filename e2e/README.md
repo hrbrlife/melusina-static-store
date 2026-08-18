@@ -22,7 +22,7 @@ npx playwright test --project=admin
 ## Environment
 
 ```
-STORE_BASE_URL  default: https://hrbrlife.github.io/melusina-static_store/
+STORE_BASE_URL  default: https://bazaar.melusina-os.org/
 ADMIN_BASE_URL  default: https://dev.melusina-os.org/apps
 ```
 

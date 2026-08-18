@@ -7,7 +7,7 @@
 **appId**: `msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh`
 **Version**: v1 (marketing `0.1.0`)
 **Language / runtime**: Go 1.22, Sandstorm pearl (capnp + go-sandstorm bridge)
-**Catalog**: `https://hrbrlife.github.io/melusina-static_store/cca.sh/apps/index.json`
+**Catalog**: `https://bazaar.melusina-os.org/apps/index.json`
 
 ## PSP Role
 

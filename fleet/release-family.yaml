@@ -1,6 +1,11 @@
 schema: melusina-release-family/v1
-# Account-opening proof constellation. appId is authoritative; source paths and
-# catalog names are deliberately descriptive because they historically differ.
+# This is a governed release cohort, not the Bazaar catalog or a declaration of
+# its complete population. The sole Store release target is
+# https://bazaar.melusina-os.org. Before launch, every live listing on that
+# default Bazaar must have an explicit retain, retire, or hold decision.
+#
+# appId is authoritative; source paths and catalog names are deliberately
+# descriptive because they historically differ.
 #
 # Every source_path below is relative to MEL_RELEASE_SOURCE_ROOT.  The release
 # provider rejects an unset, non-canonical, symlinked, or escaping root/path.

@@ -1083,7 +1083,12 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ), app
     dev = entries["130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"]
     assert dev["catalog_name"] == "GoldKey DEV", dev
-    assert dev["reconciliation_state"] == "runtime-contract-missing", dev
+    assert dev["source_path"] == "GoldKey", dev
+    assert dev["reconciliation_state"] == "source-commit-not-remotely-recoverable", dev
+    assert dev["metadata_path"] == "metadata.dev.json", dev
+    assert dev["runtime_contract_path"] == "RUNTIME-CONTRACT.dev.json", dev
+    assert dev["pack_target"] == "dev-pack", dev
+    assert not dev.get("source_commit"), dev
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace

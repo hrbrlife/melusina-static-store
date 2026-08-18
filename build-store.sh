@@ -471,7 +471,14 @@ for f in ['name']:
   [[ -f "$app_dir/icon.svg" ]] && has_icon=true
   [[ -f "$app_dir/icon.png" ]] && has_icon=true
   if ! $has_icon; then
-    if python3 "$SCRIPT_DIR/scripts/make-placeholder-icon.py" "$meta_file" "$app_dir/icon.svg" 2>/dev/null; then
+    # A dry run is the read-only linter surface. It must never materialize a
+    # placeholder into a tracked package checkout merely to prove that a full
+    # assembly could do so. Keep the presentation warning visible, but defer
+    # the deterministic write to a non-dry build.
+    if $DRY_RUN; then
+      warn "$app_dir: no icon supplied — dry run will not write a placeholder"
+      has_icon=true
+    elif python3 "$SCRIPT_DIR/scripts/make-placeholder-icon.py" "$meta_file" "$app_dir/icon.svg" 2>/dev/null; then
       warn "$app_dir: no icon supplied — generated a deterministic placeholder icon.svg"
       has_icon=true
     else

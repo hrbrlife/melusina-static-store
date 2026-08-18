@@ -59,7 +59,10 @@ families:
         role: account-opening-and-client-money-ui
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
-        source_path: /home/user/Desktop/worktrees/ccashconfig-lease-audience-v67
+        # The release provider resolves every source below one clean,
+        # operator-supplied cohort root. Never bind this release to a
+        # workstation-specific worktree path.
+        source_path: ccashconfig
         publish_slug: ccashconfig
         catalog_name: ccashconfig
         role: central-connection-hub

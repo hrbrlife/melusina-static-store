@@ -455,13 +455,20 @@ groups:
         role: dashboard-and-navigation
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
+        source_path: melusina-app-opensanctions
+        # The v0.1.24/version-26 candidate at local commit
+        # 3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6 has a tracked runtime
+        # contract, byte-identical clean-clone pack proof, and no baked tenant
+        # authority. Do not substitute the earlier remote v25 source: the
+        # exact candidate must become remotely recoverable before it may be
+        # pinned or released.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: opensanctions
         catalog_name: OpenSanctions
         live_version: 0.1.22
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-opensanctions
         catalog_slug: opensanctions
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina-app-OpenSanctions
         role: sanctions-screening
       shell-tester:

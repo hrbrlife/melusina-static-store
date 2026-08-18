@@ -1101,6 +1101,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "melusina-bureau-contacts-app",
         "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": "melusina-canboard-app",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
+        "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
     }.items():
         app = entries[app_id]
         assert app["source_path"] == source_path, app

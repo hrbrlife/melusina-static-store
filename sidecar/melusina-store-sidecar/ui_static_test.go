@@ -93,6 +93,27 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	}
 }
 
+func TestRouterServesRuntimeContractSchemaFromDistDir(t *testing.T) {
+	dist := t.TempDir()
+	want := []byte(`{"schema":"melusina-app-runtime-contract-v1"}`)
+	if err := os.MkdirAll(filepath.Join(dist, "schemas"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "schemas", "melusina-app-runtime-contract-v1.schema.json"), want, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	router := newRouter(Config{DistDir: dist}, nil, nil, nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/schemas/melusina-app-runtime-contract-v1.schema.json", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("schema status = %d, want 200; body=%q", rec.Code, rec.Body.String())
+	}
+	if rec.Body.String() != string(want) {
+		t.Fatalf("schema body = %q, want %q", rec.Body.String(), want)
+	}
+}
+
 func TestUIManifestFailsClosedOnHashMutation(t *testing.T) {
 	files := fstest.MapFS{
 		"UI-MANIFEST.json": &fstest.MapFile{Data: []byte(`{"schema":"melusina-store-sidecar-ui-v1","files":[{"path":"index.html","sha256":"0000000000000000000000000000000000000000000000000000000000000000","bytes":5}]}`)},

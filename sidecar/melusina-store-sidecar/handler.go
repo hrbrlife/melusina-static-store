@@ -223,7 +223,7 @@ type installerPublishRequest struct {
 //	READ surface (public, unauthenticated):
 //	  GET /            -> governed UI embedded in this sidecar ELF
 //	  GET /apps/*      -> immutable app-catalog generation
-//	  GET /images/*, /screenshots/*, /releases/*, /update/*, /verifier/* -> DistDir
+//	  GET /images/*, /screenshots/*, /releases/*, /schemas/*, /update/*, /verifier/* -> DistDir
 //	WRITE surface (gated; the sidecar is the SINGLE WRITER):
 //	  POST /publish    -> sealed/signed envelope verify + on-chain re-verification
 //	Ops:

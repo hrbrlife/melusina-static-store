@@ -226,7 +226,12 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        source_commit: 146ef2e4c0d8bed0845b1407619fd1b29244f72c
+        # The last live v0.0.6 source is remotely recoverable, but the latest
+        # reviewed v9 candidate adds the production grain-key bootstrap and is
+        # currently local-only. Do not let a future ready toggle package the
+        # obsolete source: leave source_commit absent until the v9 revision is
+        # published and freshly cloned.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: jinn
         catalog_name: Melusina's Jinn
         live_version: 0.0.6

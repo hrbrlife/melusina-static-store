@@ -1075,12 +1075,12 @@ def test_checked_in_release_pins_bind_exact_target_slots():
 
     cases = {
         "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": (
-            spec("money-path", "ai-lagoon", "ai-lagoon-main", "f23a1d3aa9c23f32f523a8fa16663be95001b923",
+            spec("money-path", "ai-lagoon", "ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0",
                  "ai-lagoon", "hrbrlife", "AI_Lagoon", "ai-lagoon"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": (
-            spec("money-path", "instaco", "instaco", "5d9347ce837ec423013bc17bd17ff3a60b7f39eb",
+            spec("money-path", "instaco", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8",
                  "instaco", "hrbrlife", "instaco-app", "instaco"),
             {"MEL_RELEASE_PACK_PROFILE": "standard"},
         ),
@@ -1135,7 +1135,7 @@ def test_botmother_release_slot_is_explicit():
             "family": "platform-tools",
             "name": "botmother",
             "source_path": "botmother",
-            "source_commit": "f46f86a48fa6f678f9a111201732bcdad6d144d3",
+            "source_commit": "899cddba7d379813a37c391226f75b069895736d",
             "metadata_path": "metadata.json",
             "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "botmother",
@@ -1196,32 +1196,22 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
 
 def test_actual_cyberteller_config_family_binding_resolves_historical_slot():
     """The real manifest must retain Config's existing appId-bound slot."""
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        sources = root / "sources"
-        source = sources / "cybertellerconfig"
-        source.mkdir(parents=True)
-        (source / "metadata.json").write_text(
-            json.dumps({"appId": CYBERTELLER_CONFIG_APP_ID}) + "\n",
-            encoding="utf-8",
+    old = with_env({"MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml")})
+    try:
+        spec = provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
+        assert spec["source_path"] == "cybertellerconfig"
+        assert spec["source_commit"] == "e26e2d1e5222ba7f2beac9f0d3d3801a0d86d492"
+        assert provider.catalog_slot(CYBERTELLER_CONFIG_APP_ID) == {
+            "developer": "hrbrlife",
+            "repo": "melusina_cybertellerconfig_app",
+            "slug": "cybertellerconfig",
+        }
+        assert provider.catalog_package(CYBERTELLER_CONFIG_APP_ID) == (
+            provider.ROOT / "packages" / "hrbrlife" /
+            "melusina_cybertellerconfig_app" / "cybertellerconfig"
         )
-        old = with_env({
-            "MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml"),
-            "MEL_RELEASE_SOURCE_ROOT": str(sources),
-        })
-        try:
-            assert provider.source_path(CYBERTELLER_CONFIG_APP_ID) == source
-            assert provider.catalog_slot(CYBERTELLER_CONFIG_APP_ID) == {
-                "developer": "hrbrlife",
-                "repo": "melusina_cybertellerconfig_app",
-                "slug": "cybertellerconfig",
-            }
-            assert provider.catalog_package(CYBERTELLER_CONFIG_APP_ID) == (
-                provider.ROOT / "packages" / "hrbrlife" /
-                "melusina_cybertellerconfig_app" / "cybertellerconfig"
-            )
-        finally:
-            restore_env(old)
+    finally:
+        restore_env(old)
 
 
 def test_catalog_package_binds_declared_slot_despite_preserved_duplicate():

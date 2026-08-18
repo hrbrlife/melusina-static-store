@@ -32,13 +32,18 @@ groups:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
         source_path: welcome
-        source_commit: 5c3f431561d84516bf3e1c4ff530accd383817b8
+        # The local 7a50e8b123fd7d107b4df1ba9c9db567a7862753 candidate
+        # makes the runtime contract build-bound and aligns the package
+        # metadata/pack inputs. Do not substitute the older source before an
+        # owner publishes this reviewed candidate for clean-clone recovery.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: welcome-pearl
         catalog_name: Welcome pearl
         live_version: 0.1.28
         catalog_developer: hrbrlife
         catalog_repo: welcome-pearl
         catalog_slug: welcome-pearl
+        source_repository: https://github.com/hrbrlife/welcome-pearl
         role: public-account-opening-entry
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
@@ -69,17 +74,22 @@ groups:
         role: issuer-operations
       popaye:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
-        # This checkout is deliberately sibling to the canonical Fineract
-        # sidecar, so Popaye's declared local Go-module dependency resolves
-        # exactly as it does in the production source topology.
-        source_path: worktrees/popaye-session-teardown-20260814
-        source_commit: 39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694
+        # A clean source cohort must place Popaye at this portable path beside
+        # its canonical Fineract dependency. Never bind release provenance to
+        # a historical workstation worktree name.
+        source_path: popaye
+        # The local 75e48c66a691cb2379d32d0599f2cc895b63a7b6 candidate
+        # carries the complete default-Bazaar cleanup and a checksum-pinned
+        # Popaye-owned Fineract overlay. Hold until its source owner publishes
+        # it and the clean cohort recovers the exact revision.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: popaye
         catalog_name: popaye
         live_version: 0.3.189
         catalog_developer: hrbrlife
         catalog_repo: ccash_go_htmx
         catalog_slug: popaye
+        source_repository: https://github.com/hrbrlife/ccash_go_htmx
         role: account-opening-and-client-money-ui
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
@@ -87,13 +97,17 @@ groups:
         # operator-supplied cohort root. Never bind this release to a
         # workstation-specific worktree path.
         source_path: ccashconfig
-        source_commit: fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84
+        # The local 15e64ee261cd2b2ede14e5ce109611bfbf3d277e candidate
+        # makes package-version derivation source-bound and repairs tenant
+        # lease renewal. Hold rather than package the prior source revision.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: ccashconfig
         catalog_name: ccash Config
         live_version: 0.0.77
         catalog_developer: hrbrlife
         catalog_repo: melusina_ccashconfig_app
         catalog_slug: cca-sh-config
+        source_repository: https://github.com/hrbrlife/melusina_ccashconfig_app
         role: central-connection-hub
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
@@ -188,7 +202,13 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        source_commit: 706f54375172030fa78fc88a78cd38c450ca6fc6
+        # The prior source pin is absent from the current canonical checkout.
+        # The local a5a434ae3d36b32d415435df060f7349525dd087 candidate
+        # carries the latest v64 release line but remains local-only. Keep the
+        # catalog held until the source owner publishes a recoverable revision
+        # and a clean clone establishes the exact package layout.
+        reconciliation_state: source-commit-not-remotely-recoverable
+        runtime_contract_path: pkgdef/RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
         live_version: 1.0.12
@@ -198,6 +218,7 @@ groups:
         catalog_developer: hrbrlife
         catalog_repo: MLSNA_token
         catalog_slug: mlsna-admin
+        source_repository: https://github.com/hrbrlife/MLSNA_token
         role: dao-formation-governance-and-treasury
   platform-tools:
     apps:

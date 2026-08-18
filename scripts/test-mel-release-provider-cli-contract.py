@@ -1110,6 +1110,19 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-commit-not-remotely-recoverable", paint
     assert not paint.get("source_commit"), paint
+    for app_id, source_path, source_repo in (
+        ("021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0", "welcome", "https://github.com/hrbrlife/welcome-pearl"),
+        ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
+        ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
+        ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
+    ):
+        app = entries[app_id]
+        assert app["source_path"] == source_path, app
+        assert app["source_repository"] == source_repo, app
+        assert app["reconciliation_state"] == "source-commit-not-remotely-recoverable", app
+        assert not app.get("source_commit"), app
+    instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
+    assert instadao["runtime_contract_path"] == "pkgdef/RUNTIME-CONTRACT.json", instadao
     for app_id, source_path in {
         "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "melusina-bureau-cal-app",
         "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "melusina-bureau-contacts-app",

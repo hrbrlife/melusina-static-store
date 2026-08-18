@@ -126,7 +126,12 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        source_commit: e7f8ab98eb70576993145f725146c0c48974e9c0
+        # The remote v31 source remains reproducible but carries a
+        # tenant-specific package license fallback. A clean local repair
+        # removes that fallback, but it is based on the older v30 line and is
+        # not remotely recoverable. Hold until an owner publishes one merged,
+        # current, clean-clone-recoverable source revision.
+        reconciliation_state: source-policy-unreconciled
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon

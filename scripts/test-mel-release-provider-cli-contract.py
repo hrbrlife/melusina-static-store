@@ -1123,8 +1123,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     _, entries = checked_in_catalog_entries()
     cases = {
-        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh":
-            ("ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0", "AI_Lagoon", "ai-lagoon"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
@@ -1145,6 +1143,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert dev["runtime_contract_path"] == "RUNTIME-CONTRACT.dev.json", dev
     assert dev["pack_target"] == "dev-pack", dev
     assert not dev.get("source_commit"), dev
+    ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
+    assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
+    assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
+    assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
+    assert not ai_lagoon.get("source_commit"), ai_lagoon
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace
@@ -1200,6 +1203,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
             "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
             "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
             "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+            "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
             "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
             "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",

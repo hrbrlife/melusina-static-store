@@ -1263,6 +1263,32 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert not paint.get("source_commit"), paint
 
 
+def test_default_bazaar_scope_has_no_legacy_selector_or_retired_domain():
+    root = HERE.parent
+    assert (root / "fleet" / "bazaar-catalog.yaml").is_file()
+
+    # Build the prohibited strings from components so this guard can scan the
+    # complete tracked source tree without matching its own test source.
+    legacy_manifest = "-".join(("release", "family")) + ".yaml"
+    retired_origin = "https://" + ".".join(("bazaar", "us", "paype", "cc"))
+    assert not (root / "fleet" / legacy_manifest).exists()
+
+    for prohibited, label in (
+        (legacy_manifest.removesuffix(".yaml"), "legacy partial-catalog selector"),
+        (retired_origin, "retired Store domain"),
+    ):
+        result = subprocess.run(
+            ["git", "-C", str(root), "grep", "-I", "-q", "-F", "-e", prohibited],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if result.returncode == 0:
+            raise AssertionError(f"tracked Store source still contains the {label}")
+        if result.returncode != 1:
+            raise AssertionError(f"could not scan tracked Store source for {label}: {result.stderr.strip()}")
+
+
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     _, entries = checked_in_catalog_entries()
     cases = {
@@ -1880,6 +1906,7 @@ if __name__ == "__main__":
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
+    test_default_bazaar_scope_has_no_legacy_selector_or_retired_domain()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()
     test_checked_in_catalog_blocks_all_release_operations_until_reconciled()
     test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage()

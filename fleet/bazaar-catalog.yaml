@@ -399,10 +399,9 @@ groups:
         catalog_slug: mermail
         role: unified-mail-station-and-mailbox
   unreconciled-live-listings:
-    # These are live default-Bazaar listings that were absent from the former
-    # partial input. They are deliberately represented here, but have no
-    # publishable source path or commit until their retain/retire decision and
-    # contract-bearing source evidence are complete.
+    # These live default-Bazaar listings are deliberately represented here,
+    # but have no publishable source path or commit until their retain/retire
+    # decision and contract-bearing source evidence are complete.
     apps:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0

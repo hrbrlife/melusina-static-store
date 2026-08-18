@@ -11,6 +11,10 @@ Type=simple
 User=root
 Group=root
 UMask=0077
+# Controller-owned runtime identity for /release-info. The leading '-' permits a
+# first boot to fail closed until a governed Store-sidecar component apply writes
+# the marker; a missing marker must never be treated as a valid release identity.
+EnvironmentFile=-/var/lib/melusina-store/runtime/melusina-store-sidecar.env
 ExecStart=/opt/melusina-store/current/bin/melusina-store-sidecar -config /etc/melusina/store/store.config.json
 Restart=on-failure
 RestartSec=5s

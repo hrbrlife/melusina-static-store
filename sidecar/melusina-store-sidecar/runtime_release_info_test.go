@@ -4,11 +4,43 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+const storeRuntimeEnvFile = "/var/lib/melusina-store/runtime/melusina-store-sidecar.env"
+
+func TestStoreGenerationUnitConsumesControllerRuntimeMarker(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	unitPath := filepath.Join(root, "deploy", "store-generation", "melusina-store-sidecar.service")
+	unit, err := os.ReadFile(unitPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", unitPath, err)
+	}
+	if !strings.Contains(string(unit), "EnvironmentFile=-"+storeRuntimeEnvFile) {
+		t.Fatalf("%s does not consume the controller runtime marker %q", unitPath, storeRuntimeEnvFile)
+	}
+
+	contractPath := filepath.Join(root, "deploy", "store-generation", "DEPLOYMENT-CONTRACT.md")
+	contract, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", contractPath, err)
+	}
+	for _, required := range []string{storeRuntimeEnvFile, "melusina-store-sidecar", "controller WAL", "GET /release-info"} {
+		if !strings.Contains(string(contract), required) {
+			t.Fatalf("%s omits required Store runtime-marker contract text %q", contractPath, required)
+		}
+	}
+}
 
 func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	valid := map[string]string{

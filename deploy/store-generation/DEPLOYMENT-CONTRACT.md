@@ -49,7 +49,13 @@ paths. Before enabling the unit it must install or create:
 6. A complete catalog source tree and `dist-publish` snapshot before startup.
    The source tree is needed for the existing app publisher slot contract; the
    served snapshot includes `apps/index.json` and immutable artifacts.
-7. The bundled systemd unit, byte-for-byte, at
+7. A root-owned component-registry entry for `melusina-store-sidecar`. Its
+   `runtimeEnvFile` must be exactly
+   `/var/lib/melusina-store/runtime/melusina-store-sidecar.env`, matching the
+   bundled unit's `EnvironmentFile=-` directive. The controller alone writes
+   this marker before a governed component restart and restores it from the
+   WAL before rollback; the deployer must never hand-compose a release tuple.
+8. The bundled systemd unit, byte-for-byte, at
    `/etc/systemd/system/melusina-store-sidecar.service`.
 
 The current deployer phase that builds during deployment, omits
@@ -66,6 +72,9 @@ service listener:
 - `GET /apps/index.json` is `200`;
 - `GET /update/generation.json` is `200`, strict JSON, and verifies under the
   locally pinned operator public key and exact `store_id`;
+- after a signed `melusina-store-sidecar` component apply, `GET /release-info`
+  is `200` and its controller-written component ID, generation ID, version,
+  and artifact hash exactly match the applied release;
 - every component `bundleUrl` has the same origin as `public_base_url`;
 - every referenced artifact returns `200` through the store release gate and
   hashes to the signed `sha256` with the signed byte count.
@@ -73,6 +82,9 @@ service listener:
 The generation endpoint intentionally returns `503` until an authorized
 `POST /publish/generation` has atomically persisted the first signed
 generation. A green health check alone is therefore not a release-rail proof.
+Likewise, a first boot with no runtime marker is permitted only to fail closed
+at `/release-info`; it is not a launch-ready Store runtime until the governed
+Store-sidecar component has been applied through the controller WAL.
 
 ## Rollback
 

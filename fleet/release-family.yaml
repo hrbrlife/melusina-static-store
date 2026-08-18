@@ -113,6 +113,8 @@ families:
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
+        metadata_path: metadata.json
+        runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
         catalog_name: Fineract Setup
         catalog_developer: hrbrlife

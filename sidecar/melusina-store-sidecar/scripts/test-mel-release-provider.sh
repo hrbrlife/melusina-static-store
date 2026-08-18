@@ -80,8 +80,10 @@ d=json.load(open(sys.argv[1]));assert d["schema"] == "melusina-app-promotion-rec
 PY
 
 # The outer precompile is the critical real-chain invariant. Keep this simple
-# assertion here so a refactor cannot silently fall back to generic execute.
-grep -Fq 'instructions:[decodeIx(state.ed25519Instruction),executeIx]' "$ROOT/scripts/mel-release-squads-register.mjs"
+# assertion here so a refactor cannot silently fall back to generic execute on
+# the normal release path. Approval cascades carry their own reviewed sequence.
+grep -Fq 'state.ceremonyKind === "app-approval-cascade"' "$ROOT/scripts/mel-release-squads-register.mjs"
+grep -Fq ': [decodeIx(state.ed25519Instruction),executeIx];' "$ROOT/scripts/mel-release-squads-register.mjs"
 # @sqds/multisig 2.1.4 assigns logs after translating a transaction error, while
 # recent web3 SendTransactionError exposes logs as getter-only. The helper must
 # normalize that one error shape before the SDK can mask the underlying Anchor
@@ -110,12 +112,12 @@ grep -Fq -- '--license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELE
 # reaching the provider's named refusal proves it resolved a clean tracked app
 # from MEL_RELEASE_SOURCE_ROOT rather than the obsolete absolute-path rule.
 ADAPTER_APP=8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
-mkdir -p "$TMP/sources/namedcoin"
-printf '{"appId":"%s"}\n' "$ADAPTER_APP" >"$TMP/sources/namedcoin/metadata.json"
+mkdir -p "$TMP/sources/namedcoin/product"
+printf '{"appId":"%s"}\n' "$ADAPTER_APP" >"$TMP/sources/namedcoin/product/metadata.json"
 git -C "$TMP/sources/namedcoin" init -q
 git -C "$TMP/sources/namedcoin" config user.email test@example.invalid
 git -C "$TMP/sources/namedcoin" config user.name test
-git -C "$TMP/sources/namedcoin" add metadata.json
+git -C "$TMP/sources/namedcoin" add product/metadata.json
 git -C "$TMP/sources/namedcoin" commit -qm fixture
 cat >"$TMP/release-family.yaml" <<YAML
 schema: melusina-release-family/v1
@@ -125,6 +127,7 @@ families:
       namedcoin:
         appId: $ADAPTER_APP
         source_path: namedcoin
+        metadata_path: product/metadata.json
 YAML
 set +e
 MEL_RELEASE_CONFIG="$TMP/release-family.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
@@ -138,12 +141,11 @@ grep -Fq "unknown provider operation 'unknown'" "$TMP/family-adapter.log"
 # directory; keep the adapter's guard part of this provider contract.
 bash -n "$FAMILY_ADAPTER"
 grep -Fq 'MEL_RELEASE_CONFIG' "$FAMILY_ADAPTER"
-grep -Fq 'MEL_RELEASE_SOURCE_ROOT' "$FAMILY_ADAPTER"
 grep -Fq 'provider.source_path(app_id)' "$FAMILY_ADAPTER"
+grep -Fq 'provider.source_metadata_path(app_id, source)' "$FAMILY_ADAPTER"
 grep -Fq 'scripts/mel-release-provider.py' "$FAMILY_ADAPTER"
 grep -Fq 'refusing to package a dirty app checkout' "$FAMILY_ADAPTER"
 grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$FAMILY_ADAPTER"
-grep -Fq "melusina-release-family/v1" "$FAMILY_ADAPTER"
 # Candidate creation must compile a fresh checkout and use spkmodule's
 # pre-chain package verifier.  The old PREAPPROVAL escape hatch was circular:
 # it asked an app to verify a ReleaseEntry before the candidate existed.

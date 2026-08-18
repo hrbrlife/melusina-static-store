@@ -37,7 +37,7 @@ esac
 [[ -f "$MEL_RELEASE_CONFIG" && ! -L "$MEL_RELEASE_CONFIG" ]] || die 'MEL_RELEASE_CONFIG must be a regular file'
 [[ "$MEL_APP_ID" =~ ^[a-z0-9]{52}$ ]] || die 'MEL_APP_ID must be a 52-character immutable appId'
 
-app_dir="$(python3 - "$PROVIDER" "$MEL_APP_ID" <<'PY'
+resolved_paths="$(python3 - "$PROVIDER" "$MEL_APP_ID" <<'PY'
 import importlib.util
 import sys
 
@@ -47,12 +47,21 @@ if spec is None or spec.loader is None:
     raise SystemExit("could not load canonical mel-release provider")
 provider = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(provider)
-print(provider.source_path(app_id))
+source = provider.source_path(app_id)
+print(source)
+print(provider.source_metadata_path(app_id, source))
 PY
 )" || die 'could not resolve the app source from release-family.yaml'
 
+mapfile -t family_paths <<<"$resolved_paths"
+[[ ${#family_paths[@]} -eq 2 && -n "${family_paths[0]}" && -n "${family_paths[1]}" ]] || \
+  die 'could not resolve exactly one source path and metadata path from release-family.yaml'
+app_dir="${family_paths[0]}"
+metadata_path="${family_paths[1]}"
+
 [[ -d "$app_dir" && ! -L "$app_dir" ]] || die "manifest source path is not a real directory: $app_dir"
-[[ -f "$app_dir/metadata.json" && ! -L "$app_dir/metadata.json" ]] || die "manifest source path lacks regular metadata.json: $app_dir"
+[[ "$metadata_path" == "$app_dir"/* && -f "$metadata_path" && ! -L "$metadata_path" ]] || \
+  die "manifest source path lacks regular declared metadata: $app_dir"
 git -C "$app_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "manifest source is not a git checkout: $app_dir"
 [[ -z "$(git -C "$app_dir" status --porcelain --untracked-files=all)" ]] || die "refusing to package a dirty app checkout: $app_dir"
 

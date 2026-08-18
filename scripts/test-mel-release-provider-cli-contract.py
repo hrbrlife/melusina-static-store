@@ -1148,6 +1148,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
     assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
     assert not ai_lagoon.get("source_commit"), ai_lagoon
+    dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
+    assert dueprocess["source_path"] == "dueprocess", dueprocess
+    assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
+    assert dueprocess["reconciliation_state"] == "source-submodule-not-remotely-recoverable", dueprocess
+    assert not dueprocess.get("source_commit"), dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace
@@ -1204,6 +1209,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
             "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
             "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
             "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+            "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
             "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
             "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",

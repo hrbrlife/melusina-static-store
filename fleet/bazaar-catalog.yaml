@@ -114,7 +114,11 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        source_commit: 95717c13a9ffb793e61ce910fe4d088fa0db2767
+        # Both the pinned v76 source and the newer remote v78 source require
+        # shared/grain-crypto-journal at 7fad972be8e415d7099fe742b4ca813098f5d9d2,
+        # which is no longer advertised by its declared source remote. A
+        # top-level commit alone is not a greenfield source proof.
+        reconciliation_state: source-submodule-not-remotely-recoverable
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess

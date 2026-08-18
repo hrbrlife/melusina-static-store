@@ -545,7 +545,7 @@ groups:
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-opensanctions
         catalog_slug: opensanctions
-        source_repository: https://github.com/hrbrlife/melusina-app-OpenSanctions
+        source_repository: https://github.com/hrbrlife/melusina-app-opensanctions
         role: sanctions-screening
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh

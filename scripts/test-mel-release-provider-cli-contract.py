@@ -1073,6 +1073,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
             ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
+        "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
+            ("ccash-domain-template", "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a", "ccash_domain_template", "cca-sh-domain-template"),
     }
     for app_id, (source_path, source_commit, repo, slug) in cases.items():
         app = entries[app_id]

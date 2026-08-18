@@ -363,13 +363,18 @@ groups:
         role: collaborative-canvas
       ccash-domain-template:
         appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
+        # The v109 source/contract candidate was built and validated from this
+        # remotely recoverable revision. The clean release source root must
+        # contain this repository at the named relative path.
+        source_path: ccash-domain-template
+        source_commit: f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a
         publish_slug: cca-sh-domain-template
         catalog_name: ccash Domain Template
         live_version: 0.5.85
         catalog_developer: hrbrlife
         catalog_repo: ccash_domain_template
         catalog_slug: cca-sh-domain-template
-        reconciliation_state: source-contract-pending-build
+        reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/ccash_domain_template
         role: domain-template
       clientspace:

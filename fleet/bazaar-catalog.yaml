@@ -249,7 +249,13 @@ groups:
       botmother:
         appId: xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0
         source_path: botmother
-        source_commit: 899cddba7d379813a37c391226f75b069895736d
+        # The reviewed v28 candidate 899cddba7d379813a37c391226f75b069895736d
+        # passes its source suite and addresses the reported first-launch,
+        # configuration-save, and credential-presentation defects. Its source
+        # remote no longer advertises a ref containing that revision, however,
+        # so a clean clone cannot recover the reviewed candidate. Hold rather
+        # than substituting the divergent current remote line without review.
+        reconciliation_state: source-commit-not-remotely-recoverable
         source_repository: https://github.com/hrbrlife/melusina_botmother
         publish_slug: botmother
         catalog_name: BotMother

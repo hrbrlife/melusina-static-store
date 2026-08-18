@@ -1125,6 +1125,10 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     cases = {
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "899cddba7d379813a37c391226f75b069895736d", "MELUSINA_BOTMOTHER", "botmother"),
+        "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
+            ("dueprocess", "a4f27e9737529c360782458d1ab9ed3563e7544b", "DueProcess", "dueprocess"),
+        "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
+            ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
@@ -1153,8 +1157,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["reconciliation_state"] == "source-submodule-not-remotely-recoverable", dueprocess
-    assert not dueprocess.get("source_commit"), dueprocess
+    assert dueprocess["source_commit"] == "a4f27e9737529c360782458d1ab9ed3563e7544b", dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace
@@ -1177,7 +1180,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
-        ("ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h", "teleport", "https://github.com/hrbrlife/melusina_teleport2"),
         ("u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh", "instaco", "https://github.com/hrbrlife/melusina-instaco-app"),
         ("ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "https://github.com/hrbrlife/melusina_cratelink_app"),
     ):

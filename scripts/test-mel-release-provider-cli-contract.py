@@ -1088,6 +1088,10 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace
     assert not clientspace.get("source_commit"), clientspace
+    dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
+    assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
+    assert dashboard["reconciliation_state"] == "source-commit-not-remotely-recoverable", dashboard
+    assert not dashboard.get("source_commit"), dashboard
 
 
 def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():

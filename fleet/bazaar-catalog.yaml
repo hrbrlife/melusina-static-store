@@ -418,13 +418,19 @@ groups:
         role: separate-development-identity
       melusina-dashboard:
         appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
+        source_path: melusina-dashboard-app
+        # The v0.2.6/version-8 candidate at local commit
+        # f2ff99faed09a9596cfebfa50670671ab6ff1e42 has a tracked runtime
+        # contract and reproducible package proof. Do not replace it with the
+        # older remote source: this exact candidate must be published by its
+        # owner and recovered from a clean clone before it may be pinned.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: melusina-dashboard-app
         catalog_name: Melusina Dashboard
         live_version: 0.2.3
         catalog_developer: hrbrlife
         catalog_repo: melusina-dashboard-app
         catalog_slug: melusina-dashboard-app
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina-dashboard-app
         role: dashboard-and-navigation
       opensanctions:

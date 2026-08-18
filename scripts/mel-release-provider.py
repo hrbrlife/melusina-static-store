@@ -268,6 +268,34 @@ def source_runtime_contract_path(app_id: str, source: Path) -> Path:
     return source_file(source, "runtime_contract_path", app_spec(app_id)["runtime_contract_path"])
 
 
+def require_clean_recursive_source_checkout(app_id: str, path: Path) -> None:
+    """Require the exact source tree, including every declared submodule.
+
+    A top-level Git commit is not a greenfield provenance proof when it carries
+    gitlinks.  In particular, a fresh clone may have the parent commit while
+    its pinned build bindings have never been initialized.  ``git submodule
+    status --recursive`` marks that state with ``-`` (and a wrong checkout
+    with ``+``); reject both before any source artifact is trusted.
+    """
+    status = run([
+        "git", "-C", str(path), "status", "--porcelain=v1",
+        "--untracked-files=all", "--ignore-submodules=none",
+    ])
+    if status.strip():
+        raise ProviderError(f"declared source path is dirty for {app_id}: {path}")
+
+    submodules = run(["git", "-C", str(path), "submodule", "status", "--recursive"])
+    for line in submodules.splitlines():
+        if not line:
+            continue
+        marker = line[0]
+        if marker != " ":
+            detail = line[1:].strip()
+            raise ProviderError(
+                f"declared source submodule is not initialized and pinned for {app_id}: {detail}"
+            )
+
+
 def source_path(app_id: str) -> Path:
     spec = app_spec(app_id)
     rel_text = spec["source_path"]
@@ -309,6 +337,7 @@ def source_path(app_id: str) -> Path:
             f"declared source path has the wrong origin for {app_id}: "
             f"want {spec['source_repository']}, got {actual_repository}"
         )
+    require_clean_recursive_source_checkout(app_id, path)
     return path
 
 

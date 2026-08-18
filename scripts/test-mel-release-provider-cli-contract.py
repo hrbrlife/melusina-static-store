@@ -1123,6 +1123,8 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     _, entries = checked_in_catalog_entries()
     cases = {
+        "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
+            ("botmother", "899cddba7d379813a37c391226f75b069895736d", "MELUSINA_BOTMOTHER", "botmother"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
@@ -1296,6 +1298,65 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
                 assert "not at pinned source_commit" in str(exc), exc
             else:
                 raise AssertionError("a clean but wrong source commit was accepted")
+        finally:
+            restore_env(old)
+
+
+def test_source_pin_requires_clean_initialized_recursive_submodules():
+    app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        child = root / "pinned-child"
+        child.mkdir()
+        (child / "binding.txt").write_text("exact binding\n", encoding="utf-8")
+        commit_source_fixture(child)
+
+        app = root / "sheets-bureau"
+        app.mkdir()
+        (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        commit_source_fixture(app)
+        for args in (
+            ["git", "-C", str(app), "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(child), "bindings/child"],
+            ["git", "-C", str(app), "add", ".gitmodules", "bindings/child"],
+            ["git", "-C", str(app), "commit", "-qm", "add pinned binding"],
+        ):
+            subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        commit = subprocess.run(
+            ["git", "-C", str(app), "rev-parse", "HEAD"], check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        ).stdout.strip()
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau", "source_commit": commit},
+        })
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root)})
+        try:
+            assert provider.source_path(app_id) == app
+
+            subprocess.run(
+                ["git", "-C", str(app), "submodule", "deinit", "-f", "--", "bindings/child"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "submodule is not initialized and pinned" in str(exc), exc
+            else:
+                raise AssertionError("an uninitialized pinned submodule was accepted")
+
+            subprocess.run(
+                ["git", "-C", str(app), "-c", "protocol.file.allow=always", "submodule", "update", "--init", "--recursive"],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            assert provider.source_path(app_id) == app
+
+            (app / "untracked-release-input").write_text("not a clean source tree\n", encoding="utf-8")
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "source path is dirty" in str(exc), exc
+            else:
+                raise AssertionError("a dirty source checkout was accepted")
         finally:
             restore_env(old)
 
@@ -1515,6 +1576,10 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                 if args[:5] == ["git", "-C", str(source), "remote", "get-url"]:
                     assert args[5] == "origin"
                     return "https://github.com/hrbrlife/release-test-fixture\n"
+                if args[:4] == ["git", "-C", str(source), "status"]:
+                    return ""
+                if args[:5] == ["git", "-C", str(source), "submodule", "status"]:
+                    return ""
                 if args[0] == "git":
                     return "a" * 40
                 if args[0] == str(root / "apphash"):
@@ -1672,6 +1737,7 @@ if __name__ == "__main__":
     test_checked_in_catalog_blocks_all_release_operations_until_reconciled()
     test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage()
     test_source_commit_pin_refuses_any_other_clean_checkout()
+    test_source_pin_requires_clean_initialized_recursive_submodules()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     test_build_records_private_bootstrap_without_writing_catalog_tree()

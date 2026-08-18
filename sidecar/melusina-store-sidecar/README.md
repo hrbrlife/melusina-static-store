@@ -9,7 +9,7 @@ only by `store.yaml`/`store.config.json` + three attest shards (never a code for
    source for Sandstorm binary updates. `is_root=true`, no parent.
 2. **RESELLER** — `bazaar.<reseller-domain>` (e.g. `bazaar.paype.cc`). Mirrors ROOT
    (via `root_store_url`) and adds reseller-specific apps.
-3. **INSTALL** — `bazaar.<install-domain>` (e.g. `bazaar.us.paype.cc`). Mirrors its
+3. **INSTALL** — `bazaar.<install-domain>`. Mirrors its
    reseller and adds install-specific apps; this is the per-tenant store the shell
    actually points `appIndexUrl`/`appMarketUrl` at.
 

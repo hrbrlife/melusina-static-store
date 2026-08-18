@@ -157,6 +157,36 @@ func TestProvisionalGenesisVirginEstablishesHonestTrustRoot(t *testing.T) {
 	}
 }
 
+// A copied public catalog cannot become a writable virgin trust root merely by
+// carrying its old pointer files. Every pointer is meaningful only together
+// with the exact durable rollout/staged-release selection that produced it;
+// genesis starts with no such selections. A future governed import may create
+// those records explicitly, but the normal first-install path must reject an
+// orphan pointer rather than silently treating it as initial state.
+func TestProvisionalGenesisRefusesPointerWithoutDurableRollout(t *testing.T) {
+	cfg, opts := newGenesisFixture(t)
+	pointerDir := filepath.Join(cfg.DistDir, "apps", "pointers")
+	if err := os.Mkdir(pointerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pointerDir, "orphan.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := runCatalogGenesisBootstrapWithOptions(cfg, opts)
+	if err == nil || !strings.Contains(err.Error(), "pointer has no rollout state") {
+		t.Fatalf("genesis accepted a copied pointer without durable rollout state: %v", err)
+	}
+
+	state, stateErr := readCatalogGenesisState(filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName), opts.expectedUID)
+	if stateErr != nil {
+		t.Fatalf("read interrupted genesis state: %v", stateErr)
+	}
+	if state.State != "initializing" {
+		t.Fatalf("pointer refusal committed genesis state: %+v", state)
+	}
+}
+
 // (a1): a genesis state file that smuggles a fabricated 1.0.3->1.0.4 migration
 // record is REJECTED by the strict decoder — the honest schema cannot hold it.
 func TestProvisionalGenesisRejectsSmuggledMigrationFields(t *testing.T) {

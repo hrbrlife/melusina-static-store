@@ -212,15 +212,16 @@ def source_path(app_id: str) -> Path:
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
     source_metadata_path(app_id, path)
     expected_commit = spec["source_commit"].strip().lower()
-    if expected_commit:
-        if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
-            raise ProviderError(f"invalid source_commit for {app_id}: {expected_commit!r}")
-        actual_commit = run(["git", "-C", str(path), "rev-parse", "HEAD"]).strip().lower()
-        if actual_commit != expected_commit:
-            raise ProviderError(
-                f"declared source path is not at pinned source_commit for {app_id}: "
-                f"want {expected_commit}, got {actual_commit}"
-            )
+    if not expected_commit:
+        raise ProviderError(f"missing source_commit for {app_id}")
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
+        raise ProviderError(f"invalid source_commit for {app_id}: {expected_commit!r}")
+    actual_commit = run(["git", "-C", str(path), "rev-parse", "HEAD"]).strip().lower()
+    if actual_commit != expected_commit:
+        raise ProviderError(
+            f"declared source path is not at pinned source_commit for {app_id}: "
+            f"want {expected_commit}, got {actual_commit}"
+        )
     return path
 
 

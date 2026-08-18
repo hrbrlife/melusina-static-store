@@ -790,6 +790,21 @@ def write_family_config(path, apps):
     }) + "\n", encoding="utf-8")
 
 
+def commit_source_fixture(path):
+    for args in (
+        ["git", "init", "-q", str(path)],
+        ["git", "-C", str(path), "config", "user.email", "release-test@example.invalid"],
+        ["git", "-C", str(path), "config", "user.name", "release-test"],
+        ["git", "-C", str(path), "add", "-A"],
+        ["git", "-C", str(path), "commit", "-qm", "source fixture"],
+    ):
+        subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "HEAD"], check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    ).stdout.strip()
+
+
 def test_source_root_resolves_only_clean_relative_manifest_paths():
     app_id = provider.NAMEDCOIN_APP_ID
     admin_app_id = "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"
@@ -805,11 +820,16 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
         (app / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
         (admin / "metadata.json").write_text(json.dumps({"appId": admin_app_id}) + "\n")
         (cyberteller_config / "metadata.json").write_text(json.dumps({"appId": CYBERTELLER_CONFIG_APP_ID}) + "\n")
+        commits = {
+            "namedcoin": commit_source_fixture(app),
+            "namedcoin-admin": commit_source_fixture(admin),
+            "cybertellerconfig": commit_source_fixture(cyberteller_config),
+        }
         config = root / "release-family.yaml"
         write_family_config(config, {
-            "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
-            "namedcoin-admin": {"appId": admin_app_id, "source_path": "namedcoin-admin"},
-            "cyberteller-config": {"appId": CYBERTELLER_CONFIG_APP_ID, "source_path": "cybertellerconfig"},
+            "namedcoin": {"appId": app_id, "source_path": "namedcoin", "source_commit": commits["namedcoin"]},
+            "namedcoin-admin": {"appId": admin_app_id, "source_path": "namedcoin-admin", "source_commit": commits["namedcoin-admin"]},
+            "cyberteller-config": {"appId": CYBERTELLER_CONFIG_APP_ID, "source_path": "cybertellerconfig", "source_commit": commits["cybertellerconfig"]},
         })
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
@@ -1157,6 +1177,29 @@ def test_botmother_release_slot_is_explicit():
         restore_env(old)
 
 
+def test_actual_unpinned_telescreen_entry_is_not_releasable():
+    """The unresolved TeleScreen source must fail before packaging begins."""
+    app_id = "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"
+    with tempfile.TemporaryDirectory() as tmp:
+        source_root = Path(tmp)
+        source = source_root / "telescreen"
+        source.mkdir()
+        (source / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml"),
+            "MEL_RELEASE_SOURCE_ROOT": str(source_root),
+        })
+        try:
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "missing source_commit" in str(exc), exc
+            else:
+                raise AssertionError("the unpinned TeleScreen entry was releasable")
+        finally:
+            restore_env(old)
+
+
 def test_source_commit_pin_refuses_any_other_clean_checkout():
     app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1183,7 +1226,19 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
         old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root)})
         try:
             assert provider.source_path(app_id) == app
-            config.write_text(config.read_text().replace(actual, "f" * 40))
+            write_family_config(config, {
+                "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau"},
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "missing source_commit" in str(exc), exc
+            else:
+                raise AssertionError("an unpinned source checkout was accepted")
+
+            write_family_config(config, {
+                "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau", "source_commit": "f" * 40},
+            })
             try:
                 provider.source_path(app_id)
             except provider.ProviderError as exc:
@@ -1378,6 +1433,7 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
             "namedcoin": {
                 "appId": app_id,
                 "source_path": "namedcoin",
+                "source_commit": "a" * 40,
                 "metadata_path": "product/metadata.json",
                 "runtime_contract_path": "product/RUNTIME-CONTRACT.json",
                 "catalog_developer": "hrbrlife",
@@ -1426,7 +1482,7 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                         '"marketingVersion": {"defaultText": "0.1.35"} }\n'
                     )
                 if args[0] == "git":
-                    return ""
+                    return "a" * 40
                 if args[0] == str(root / "apphash"):
                     return "a" * 64
                 raise AssertionError(f"unexpected provider command: {args}")
@@ -1464,11 +1520,13 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
             "schema": "melusina-app-runtime-contract-v1",
             "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
         }) + "\n")
+        source_commit = commit_source_fixture(source)
         config = root / "release-family.yaml"
         write_family_config(config, {
             "unified-mail": {
                 "appId": app_id,
                 "source_path": "unified-mail",
+                "source_commit": source_commit,
                 "metadata_path": "mermail/metadata.json",
                 "runtime_contract_path": "mermail/RUNTIME-CONTRACT.json",
                 "pack_target": "pack-unified",

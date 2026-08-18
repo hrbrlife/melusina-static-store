@@ -119,6 +119,7 @@ git -C "$TMP/sources/namedcoin" config user.email test@example.invalid
 git -C "$TMP/sources/namedcoin" config user.name test
 git -C "$TMP/sources/namedcoin" add product/metadata.json
 git -C "$TMP/sources/namedcoin" commit -qm fixture
+ADAPTER_COMMIT="$(git -C "$TMP/sources/namedcoin" rev-parse HEAD)"
 cat >"$TMP/release-family.yaml" <<YAML
 schema: melusina-release-family/v1
 families:
@@ -127,6 +128,7 @@ families:
       namedcoin:
         appId: $ADAPTER_APP
         source_path: namedcoin
+        source_commit: $ADAPTER_COMMIT
         metadata_path: product/metadata.json
 YAML
 set +e

@@ -838,6 +838,87 @@ def commit_source_fixture(path):
     ).stdout.strip()
 
 
+def write_source_release_fixture(path, app_id, version, version_number):
+    path.mkdir(parents=True)
+    (path / "metadata.json").write_text(json.dumps({
+        "appId": app_id,
+        "version": version,
+        "versionNumber": version_number,
+    }) + "\n", encoding="utf-8")
+    (path / "RUNTIME-CONTRACT.json").write_text(json.dumps({
+        "schema": "melusina-app-runtime-contract-v1",
+        "app": {
+            "appId": app_id,
+            "version": "PENDING_BUILD",
+            "spkSha256": "PENDING_BUILD",
+            "appHash": "PENDING_BUILD",
+        },
+    }) + "\n", encoding="utf-8")
+    return commit_source_fixture(path)
+
+
+def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt():
+    first_app_id = "first-cohort-app"
+    second_app_id = "second-cohort-app"
+    held_app_id = "held-cohort-app"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        first = sources / "first"
+        second = sources / "second"
+        first_commit = write_source_release_fixture(first, first_app_id, "1.2.3", 7)
+        second_commit = write_source_release_fixture(second, second_app_id, "2.3.4", 8)
+        config = root / "bazaar-catalog.yaml"
+        ready_apps = {
+            "first": {"appId": first_app_id, "source_path": "first", "source_commit": first_commit},
+            "second": {"appId": second_app_id, "source_path": "second", "source_commit": second_commit},
+        }
+        write_catalog_config(config, ready_apps)
+        document = json.loads(config.read_text(encoding="utf-8"))
+        # Source provenance can be proven while the independent publishing
+        # state remains held. The audit must not weaken that release hold.
+        document["default_release_state"] = "hold"
+        config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+        receipt = root / "cohort.json"
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        try:
+            result = provider.audit_source_cohort(receipt)
+            assert result["status"] == "ready", result
+            assert result["sourcePinnedCount"] == 2, result
+            assert result["verifiedSourceCount"] == 2, result
+            assert [entry["appId"] for entry in result["sources"]] == [first_app_id, second_app_id], result
+            assert result == json.loads(receipt.read_text(encoding="utf-8")), result
+            assert str(sources) not in receipt.read_text(encoding="utf-8"), receipt.read_text(encoding="utf-8")
+
+            write_catalog_config(config, {
+                **ready_apps,
+                "held": {
+                    "appId": held_app_id,
+                    "source_path": "held",
+                    "reconciliation_state": "source-commit-not-remotely-recoverable",
+                },
+            })
+            document = json.loads(config.read_text(encoding="utf-8"))
+            document["default_release_state"] = "hold"
+            config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+            incomplete = provider.audit_source_cohort(receipt)
+            assert incomplete["status"] == "incomplete", incomplete
+            assert incomplete["sourcePinnedCount"] == 2, incomplete
+            assert incomplete["verifiedSourceCount"] == 0, incomplete
+            assert incomplete["failures"] == [], incomplete
+            assert incomplete["unreconciled"] == [{
+                "appId": held_app_id,
+                "group": "msb",
+                "name": "held",
+                "reconciliationState": "source-commit-not-remotely-recoverable",
+            }], incomplete
+        finally:
+            restore_env(old)
+
+
 def test_source_root_resolves_only_clean_relative_manifest_paths():
     app_id = provider.NAMEDCOIN_APP_ID
     admin_app_id = "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"
@@ -1733,6 +1814,7 @@ if __name__ == "__main__":
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
+    test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()

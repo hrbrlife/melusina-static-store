@@ -183,7 +183,7 @@ def catalog_config() -> dict[str, Any]:
     return value
 
 
-def app_spec(app_id: str) -> dict[str, str]:
+def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, str]:
     doc = catalog_config()
     groups = doc.get("groups")
     if not isinstance(groups, dict):
@@ -196,13 +196,16 @@ def app_spec(app_id: str) -> dict[str, str]:
             if isinstance(spec, dict) and spec.get("appId") == app_id:
                 release_state = str(spec.get("release_state", doc.get("default_release_state", ""))).strip()
                 reconciliation_state = str(spec.get("reconciliation_state", doc.get("default_reconciliation_state", ""))).strip()
-                if release_state != "ready":
+                if require_release_ready and release_state != "ready":
                     raise ProviderError(
                         f"catalog app {app_id} is held for reconciliation ({reconciliation_state or 'unspecified'})"
                     )
                 return {
+                    "appId": app_id,
                     "group": str(group_name),
                     "name": str(name),
+                    "release_state": release_state,
+                    "reconciliation_state": reconciliation_state,
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
                     "source_repository": canonical_source_repository(str(spec.get("source_repository", ""))),
@@ -260,12 +263,20 @@ def source_file(source: Path, field: str, value: str) -> Path:
     return candidate
 
 
-def source_metadata_path(app_id: str, source: Path) -> Path:
-    return source_file(source, "metadata_path", app_spec(app_id)["metadata_path"])
+def source_metadata_path(app_id: str, source: Path, *, require_release_ready: bool = True) -> Path:
+    return source_file(
+        source,
+        "metadata_path",
+        app_spec(app_id, require_release_ready=require_release_ready)["metadata_path"],
+    )
 
 
-def source_runtime_contract_path(app_id: str, source: Path) -> Path:
-    return source_file(source, "runtime_contract_path", app_spec(app_id)["runtime_contract_path"])
+def source_runtime_contract_path(app_id: str, source: Path, *, require_release_ready: bool = True) -> Path:
+    return source_file(
+        source,
+        "runtime_contract_path",
+        app_spec(app_id, require_release_ready=require_release_ready)["runtime_contract_path"],
+    )
 
 
 def require_clean_recursive_source_checkout(app_id: str, path: Path) -> None:
@@ -296,8 +307,8 @@ def require_clean_recursive_source_checkout(app_id: str, path: Path) -> None:
             )
 
 
-def source_path(app_id: str) -> Path:
-    spec = app_spec(app_id)
+def source_path(app_id: str, *, require_release_ready: bool = True) -> Path:
+    spec = app_spec(app_id, require_release_ready=require_release_ready)
     rel_text = spec["source_path"]
     rel = Path(rel_text)
     if (not rel_text or str(rel) != rel_text or rel.is_absolute() or "\\" in rel_text or
@@ -313,7 +324,7 @@ def source_path(app_id: str) -> Path:
         raise ProviderError(f"declared source path escapes MEL_RELEASE_SOURCE_ROOT: {path}")
     if not path.is_dir() or path.is_symlink():
         raise ProviderError(f"declared source path is not a checked-out app: {path}")
-    source_metadata_path(app_id, path)
+    source_metadata_path(app_id, path, require_release_ready=require_release_ready)
     expected_commit = spec["source_commit"].strip().lower()
     if not expected_commit:
         raise ProviderError(f"missing source_commit for {app_id}")
@@ -339,6 +350,117 @@ def source_path(app_id: str) -> Path:
         )
     require_clean_recursive_source_checkout(app_id, path)
     return path
+
+
+def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
+    """Prove that the complete default-Bazaar source cohort is materialized.
+
+    This is deliberately a read-only gate.  A source pin is useful evidence
+    but is not permission to publish; held apps stay held.  The audit refuses
+    to treat a locally available subset as a release cohort, and its portable
+    receipt omits workstation paths so it can be checked from another clean
+    release host.
+    """
+    document = catalog_config()
+    app_ids: list[str] = []
+    groups = document.get("groups")
+    if not isinstance(groups, dict):
+        raise ProviderError("Bazaar catalog config has no groups mapping")
+    for group in groups.values():
+        apps = group.get("apps", {}) if isinstance(group, dict) else {}
+        if not isinstance(apps, dict):
+            raise ProviderError("Bazaar catalog group has no apps mapping")
+        for raw_spec in apps.values():
+            if not isinstance(raw_spec, dict):
+                raise ProviderError("Bazaar catalog app must be a mapping")
+            app_ids.append(str(raw_spec.get("appId", "")))
+
+    specs = [app_spec(app_id, require_release_ready=False) for app_id in sorted(app_ids)]
+    pinned_specs = [spec for spec in specs if spec["reconciliation_state"] == "source-pinned"]
+    unreconciled = [
+        {
+            "appId": spec["appId"],
+            "group": spec["group"],
+            "name": spec["name"],
+            "reconciliationState": spec["reconciliation_state"] or "unspecified",
+        }
+        for spec in specs
+        if spec["reconciliation_state"] != "source-pinned"
+    ]
+    failures: list[dict[str, str]] = []
+    for spec in pinned_specs:
+        if not re.fullmatch(r"[0-9a-f]{40}", spec["source_commit"].strip().lower()):
+            failures.append({
+                "appId": spec["appId"],
+                "name": spec["name"],
+                "reason": "source-pinned entry lacks a valid source_commit",
+            })
+
+    verified_sources: list[dict[str, Any]] = []
+    # Do not validate a convenient subset when any catalog entry is unresolved:
+    # a partial result is not a reproducible release cohort.
+    if not unreconciled and not failures:
+        for spec in specs:
+            app_id = spec["appId"]
+            try:
+                source = source_path(app_id, require_release_ready=False)
+                metadata_path = source_metadata_path(app_id, source, require_release_ready=False)
+                contract_path = source_runtime_contract_path(app_id, source, require_release_ready=False)
+                for artifact in (metadata_path, contract_path):
+                    run([
+                        "git", "-C", str(source), "ls-files", "--error-unmatch",
+                        str(artifact.relative_to(source)),
+                    ])
+                metadata = read_json(metadata_path)
+                if metadata.get("appId") != app_id:
+                    raise ProviderError("source metadata appId does not match the Bazaar catalog appId")
+                version = metadata.get("version")
+                version_number = metadata.get("versionNumber")
+                if not isinstance(version, str) or not version.strip():
+                    raise ProviderError("source metadata must declare a non-empty version")
+                if isinstance(version_number, bool) or not isinstance(version_number, int) or version_number < 0:
+                    raise ProviderError("source metadata must declare a non-negative integer versionNumber")
+                contract = read_json(contract_path)
+                contract_app = contract.get("app")
+                if contract.get("schema") != "melusina-app-runtime-contract-v1":
+                    raise ProviderError("source runtime contract has the wrong schema")
+                if not isinstance(contract_app, dict) or contract_app.get("appId") != app_id:
+                    raise ProviderError("source runtime contract app.appId does not match the Bazaar catalog appId")
+                for field in ("version", "spkSha256", "appHash"):
+                    if contract_app.get(field) != "PENDING_BUILD":
+                        raise ProviderError(f"source runtime contract app.{field} must be exactly PENDING_BUILD")
+                verified_sources.append({
+                    "appId": app_id,
+                    "metadataSha256": hex_sha(metadata_path),
+                    "runtimeContractSha256": hex_sha(contract_path),
+                    "sourceCommit": spec["source_commit"].strip().lower(),
+                    "sourceRepository": spec["source_repository"],
+                    "version": version,
+                    "versionNumber": version_number,
+                })
+            except ProviderError:
+                # Provider errors often carry an absolute checkout path. Keep
+                # the durable receipt portable while making the failed app
+                # explicit; the local command stderr remains diagnostic.
+                failures.append({
+                    "appId": app_id,
+                    "name": spec["name"],
+                    "reason": "source provenance or release-input validation failed",
+                })
+
+    result: dict[str, Any] = {
+        "schema": "melusina-source-cohort-audit-v1",
+        "catalogOrigin": document["catalog_origin"],
+        "expectedLiveAppCount": document["expected_live_app_count"],
+        "sourcePinnedCount": len(pinned_specs),
+        "verifiedSourceCount": len(verified_sources),
+        "status": "ready" if not unreconciled and not failures and len(verified_sources) == len(specs) else "incomplete",
+        "sources": sorted(verified_sources, key=lambda entry: str(entry["appId"])),
+        "unreconciled": sorted(unreconciled, key=lambda entry: str(entry["appId"])),
+        "failures": sorted(failures, key=lambda entry: str(entry["appId"])),
+    }
+    write_json(receipt_out, result)
+    return result
 
 
 def pack_profile_env(app_id: str) -> dict[str, str]:
@@ -1527,13 +1649,18 @@ def revoke(pda: str, receipt_out: Path) -> None:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        raise ProviderError("usage: mel-release-provider.py <build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke>")
+        raise ProviderError("usage: mel-release-provider.py <audit-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke>")
     op = sys.argv[1]
     app_id = env("MEL_APP_ID")
     if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
-    if op == "build":
+    if op == "audit-cohort":
+        result = audit_source_cohort(clean_abs(env("MEL_COHORT_AUDIT_OUT", required=True), "MEL_COHORT_AUDIT_OUT"))
+        print(json.dumps(result, separators=(",", ":"), sort_keys=True))
+        if result["status"] != "ready":
+            raise ProviderError("complete Bazaar source cohort is not reconciled; see MEL_COHORT_AUDIT_OUT")
+    elif op == "build":
         build(app_id, env("MEL_NEW_VERSION", required=True), clean_abs(env("MEL_CANDIDATE_RECEIPT_OUT", required=True), "MEL_CANDIDATE_RECEIPT_OUT"))
     elif op == "active-releases":
         active_releases(app_id)

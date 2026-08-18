@@ -248,9 +248,9 @@ families:
         source_commit: a46106ded2aab2c7b50465cd561f176de25b4947
         publish_slug: goldkey
         catalog_name: GoldKey
-        # GoldKey has no tracked Store package yet. This is the sole reviewed
-        # first-publish coordinate; the provider bootstraps it only from this
-        # pinned source's authoritative metadata, never from a legacy scan.
+        # GoldKey's exact governed Store slot is now tracked. The provider
+        # advances only this appId-bound production coordinate, never a
+        # historical DEV identity or a legacy scan result.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey
         catalog_slug: goldkey

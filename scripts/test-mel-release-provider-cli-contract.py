@@ -1106,10 +1106,14 @@ def test_checked_in_release_pins_bind_exact_target_slots():
             }
             assert provider.pack_profile_env(app_id) == expected_pack_env
 
-        # GoldKey's named coordinate is intentionally a first publish. A
-        # missing package is a bootstrap condition, not permission to select a
-        # similarly named legacy directory.
-        assert provider.catalog_package(goldkey_app_id) is None
+        # GoldKey's production coordinate now has a tracked governed slot.
+        # Keep the resolver bound to that exact slot rather than a similarly
+        # named historical package or the retired DEV identity.
+        goldkey_catalog = provider.catalog_package(goldkey_app_id)
+        assert goldkey_catalog is not None
+        assert goldkey_catalog.relative_to(provider.ROOT) == Path(
+            "packages/hrbrlife/GoldKey/goldkey"
+        )
 
         try:
             provider.app_spec(goldkey_dev_app_id)

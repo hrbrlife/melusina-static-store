@@ -330,35 +330,50 @@ groups:
     apps:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
+        source_path: melusina-bureau-cal-app
+        # The v0.22/version-22 candidate at local commit
+        # 0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc has a tracked runtime
+        # contract and reproducible package proof. Keep it held until this
+        # exact revision is published and recovered from a clean clone.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
         live_version: 0.20.0
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-cal-app
         catalog_slug: bureau-cal
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina_bureau_cal_app
         role: calendar-and-scheduling
       bureau-contacts:
         appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
+        source_path: melusina-bureau-contacts-app
+        # The v0.16/version-16 candidate at local commit
+        # 039d7ea6f977a3fc02e6d96545de0c3d5850db88 has a tracked runtime
+        # contract and reproducible package proof. Keep it held until this
+        # exact revision is published and recovered from a clean clone.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts
         live_version: 0.14.0
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-contacts-app
         catalog_slug: bureau-contacts
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina_bureau_contacts_app
         role: contacts-and-address-book
       canboard:
         appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
+        source_path: melusina-canboard-app
+        # The v0.2.5/version-12 candidate at local commit
+        # 2164058d5ad3cd275ec24d9498786a257e1efb2a has a tracked runtime
+        # contract and reproducible package proof. Keep it held until this
+        # exact revision is published and recovered from a clean clone.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: canboard
         catalog_name: CanBoard
         live_version: 0.2.1
         catalog_developer: hrbrlife
         catalog_repo: melusina-canboard-app
         catalog_slug: canboard
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina_canboard_app
         role: collaborative-canvas
       ccash-domain-template:
@@ -396,13 +411,18 @@ groups:
         role: client-workspace
       creeper:
         appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
+        source_path: melusina-app-creeper
+        # The v0.1.24/version-26 candidate at local commit
+        # d9a282fb50711038f7f456e8d107064f888742ae has a tracked runtime
+        # contract and reproducible package proof. Keep it held until this
+        # exact revision is published and recovered from a clean clone.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: creeper
         catalog_name: Creeper
         live_version: 0.1.20
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-creeper
         catalog_slug: creeper
-        reconciliation_state: runtime-contract-missing
         source_repository: https://github.com/hrbrlife/melusina-app-creeper
         role: monitoring-and-automation
       goldkey-dev:

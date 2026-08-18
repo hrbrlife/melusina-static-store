@@ -1096,6 +1096,16 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert shell_tester["source_path"] == "shell_tester", shell_tester
     assert shell_tester["reconciliation_state"] == "source-commit-not-remotely-recoverable", shell_tester
     assert not shell_tester.get("source_commit"), shell_tester
+    for app_id, source_path in {
+        "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "melusina-bureau-cal-app",
+        "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "melusina-bureau-contacts-app",
+        "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": "melusina-canboard-app",
+        "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
+    }.items():
+        app = entries[app_id]
+        assert app["source_path"] == source_path, app
+        assert app["reconciliation_state"] == "source-commit-not-remotely-recoverable", app
+        assert not app.get("source_commit"), app
 
 
 def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():

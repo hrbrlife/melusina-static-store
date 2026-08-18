@@ -3,7 +3,7 @@
 > **Status:** historical filesystem snapshot, not a current release input.
 > **Current Store target:** `https://bazaar.melusina-os.org`.
 > **Scope rule:** determine release scope from the live default-Bazaar catalog;
-> a local package scan or release family is never evidence of complete coverage.
+> a local package scan or partial release input is never evidence of complete coverage.
 >
 > **Snapshot:** 2026-04-25 (static_store @ main, post-`641556a`).
 > **Source of truth:** filesystem scan of `packages/hrbrlife/` + `.gitmodules` + `src/apps.json`.

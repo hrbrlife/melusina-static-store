@@ -15,7 +15,7 @@ import (
 
 func signedLegacyManifest(t *testing.T, build int64, private ed25519.PrivateKey) legacyManifest {
 	t.Helper()
-	m := legacyManifest{Build: build, BundleURL: "https://bazaar.example/releases/shell/sandstorm.tar.xz", Channel: "dev", SHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Size: 1, Tarball: "sandstorm.tar.xz", Version: "build-84"}
+	m := legacyManifest{Build: build, BundleURL: "https://example.test/releases/shell/sandstorm.tar.xz", Channel: "dev", SHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Size: 1, Tarball: "sandstorm.tar.xz", Version: "build-84"}
 	canonical, err := legacyManifestCanonical(m)
 	if err != nil {
 		t.Fatal(err)

@@ -24,7 +24,7 @@ func TestSignRootUsesSealedOperatorAndCanonicalPayload(t *testing.T) {
 	}
 	configPath := filepath.Join(dir, "config.json")
 	configBody := map[string]any{
-		"domain":           "bazaar.example",
+		"domain":           "example.test",
 		"license_nft_mint": "11111111111111111111111111111111",
 		"program_id":       "11111111111111111111111111111111",
 		"boot_identity": map[string]any{
@@ -94,7 +94,7 @@ func testConfig(t *testing.T) string {
 	}
 	path := filepath.Join(dir, "config.json")
 	body, _ := json.Marshal(map[string]any{
-		"domain": "bazaar.example", "license_nft_mint": "11111111111111111111111111111111",
+		"domain": "example.test", "license_nft_mint": "11111111111111111111111111111111",
 		"program_id":    "11111111111111111111111111111111",
 		"boot_identity": map[string]any{"shards_dir": shards, "sidecar_id": "store", "chain_id": "solana:devnet", "key_version": 1},
 	})

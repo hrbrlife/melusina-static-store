@@ -7,9 +7,9 @@ import (
 
 func TestLoadConfigRequiresStoreLicenseMint(t *testing.T) {
 	for key, value := range map[string]string{
-		"MEL_RELEASE_CONFIG":          "/tmp/release-family.yaml",
+		"MEL_RELEASE_CONFIG":          "/tmp/bazaar-catalog.yaml",
 		"MEL_RELEASE_SIGNER_PROVIDER": "provider",
-		"MEL_RELEASE_STORE_URL":       "https://bazaar.example.test",
+		"MEL_RELEASE_STORE_URL":       defaultBazaarOrigin,
 		"MEL_RELEASE_STORE_PUBKEY":    "/tmp/store-pubkey.json",
 		"MEL_RELEASE_PUBLISHER_KEY":   "/tmp/publisher.key",
 	} {
@@ -28,6 +28,22 @@ func TestLoadConfigRequiresStoreLicenseMint(t *testing.T) {
 	}
 	if config.StoreLicenseMint != "store-license-mint" {
 		t.Fatalf("StoreLicenseMint = %q", config.StoreLicenseMint)
+	}
+}
+
+func TestLoadConfigRejectsAlternateStore(t *testing.T) {
+	for key, value := range map[string]string{
+		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",
+		"MEL_RELEASE_SIGNER_PROVIDER":    "provider",
+		"MEL_RELEASE_STORE_URL":          "https://example.test",
+		"MEL_RELEASE_STORE_PUBKEY":       "/tmp/store-pubkey.json",
+		"MEL_RELEASE_STORE_LICENSE_MINT": "store-license-mint",
+		"MEL_RELEASE_PUBLISHER_KEY":      "/tmp/publisher.key",
+	} {
+		t.Setenv(key, value)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "MEL_RELEASE_STORE_URL must be") {
+		t.Fatalf("loadConfig() alternate Store error = %v", err)
 	}
 }
 

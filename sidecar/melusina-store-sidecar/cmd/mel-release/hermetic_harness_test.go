@@ -91,13 +91,13 @@ type provState struct {
 const (
 	testAppID   = "aw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2599"
 	testStoreID = "melusina-test-store"
-	testBundle  = "https://bazaar.example.test"
+	testBundle  = "https://example.test"
 )
 
 type harness struct {
 	t           *testing.T
 	cfg         Config
-	fam         *Family
+	catalog     *Catalog
 	store       *fakeStore
 	fx          provFixture
 	fixturePath string
@@ -237,24 +237,33 @@ func newHarness(t *testing.T) *harness {
 	store := newFakeStore()
 	t.Cleanup(store.server.Close)
 
-	// Minimal one-app family manifest (selector = immutable appId).
-	manifest := "schema: melusina-release-family/v1\n" +
-		"families:\n" +
-		"  testfam:\n" +
+	// Minimal one-app complete catalog fixture (selector = immutable appId).
+	manifest := "schema: melusina-bazaar-catalog/v1\n" +
+		"catalog_origin: https://bazaar.melusina-os.org\n" +
+		"expected_live_app_count: 1\n" +
+		"default_release_state: ready\n" +
+		"default_reconciliation_state: source-pinned\n" +
+		"groups:\n" +
+		"  test:\n" +
 		"    apps:\n" +
 		"      testapp:\n" +
 		"        appId:        " + testAppID + "\n" +
 		"        source_path:  testapp\n" +
+		"        source_commit: 0123456789abcdef0123456789abcdef01234567\n" +
 		"        publish_slug: testapp\n" +
 		"        catalog_name: TestApp\n" +
+		"        live_version: 1.0.1\n" +
+		"        catalog_developer: test\n" +
+		"        catalog_repo: test\n" +
+		"        catalog_slug: testapp\n" +
 		"        role:         test\n"
-	manifestPath := filepath.Join(base, "release-family.yaml")
+	manifestPath := filepath.Join(base, "bazaar-catalog.yaml")
 	if err := os.WriteFile(manifestPath, []byte(manifest), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fam, err := LoadFamily(manifestPath)
+	catalog, err := LoadCatalog(manifestPath)
 	if err != nil {
-		t.Fatalf("LoadFamily: %v", err)
+		t.Fatalf("LoadCatalog: %v", err)
 	}
 
 	cfg := Config{
@@ -278,17 +287,17 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	return &harness{
-		t: t, cfg: cfg, fam: fam, store: store, fx: fx,
+		t: t, cfg: cfg, catalog: catalog, store: store, fx: fx,
 		fixturePath: fixturePath, statePath: statePath, callLog: callLog, chainLog: chainLog,
 		pdaOld: pdaOld,
 	}
 }
 
 func (h *harness) publish(version string) error {
-	_, err := runPublish(h.cfg, h.fam, testAppID, version)
+	_, err := runPublish(h.cfg, h.catalog, testAppID, version)
 	return err
 }
-func (h *harness) approve() error { _, err := runApprove(h.cfg, h.fam, testAppID); return err }
+func (h *harness) approve() error { _, err := runApprove(h.cfg, h.catalog, testAppID); return err }
 
 func (h *harness) setFaultOp(op string)     { os.Setenv("MEL_FAKE_FAIL_OP", op) }
 func (h *harness) clearFault()              { os.Unsetenv("MEL_FAKE_FAIL_OP") }

@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROVIDER="$ROOT/scripts/mel-release-provider.sh"
-FAMILY_ADAPTER="$ROOT/scripts/mel-release-family-provider.sh"
+CATALOG_ADAPTER="$ROOT/scripts/mel-release-catalog-provider.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -50,7 +50,7 @@ export MEL_RELEASE_NONCE=00112233445566778899aabbccddeeff
 export MEL_RELEASE_MASTER_NFT_MINT=B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe
 export MEL_RELEASE_STORE_LICENSE_MINT=6c1Y2gBQANEA8TX8Hqw9Kcnh7sJsEm6Zr1hZgGy6hUi3
 export MEL_RELEASE_STORE_DOMAIN=bazaar.melusina-os.org
-export MEL_RELEASE_STORE_URL=https://bazaar.example.test
+export MEL_RELEASE_STORE_URL=https://bazaar.melusina-os.org
 export MEL_RELEASE_STORE_PUBKEY="$TMP/store.pub"
 export MEL_RELEASE_RPC_URL=https://rpc.example.test
 export MEL_RELEASE_PUBLISHER_KEY=env:TEST_PUBLISHER
@@ -107,7 +107,7 @@ grep -Fq 'MEL_RELEASE_NODE_MODULES must contain ${requiredPackage}' "$ROOT/scrip
 # master in the license slot creates a proposal that can never truthfully bind
 # the app release. Keep this exact provider contract under test.
 grep -Fq -- '--license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT"' "$PROVIDER"
-# The family adapter must use the exact same root-relative resolver as the
+# The catalog adapter must use the exact same root-relative resolver as the
 # canonical Python provider. Drive it through a non-mutating unknown operation:
 # reaching the provider's named refusal proves it resolved a clean tracked app
 # from MEL_RELEASE_SOURCE_ROOT rather than the obsolete absolute-path rule.
@@ -120,34 +120,45 @@ git -C "$TMP/sources/namedcoin" config user.name test
 git -C "$TMP/sources/namedcoin" add product/metadata.json
 git -C "$TMP/sources/namedcoin" commit -qm fixture
 ADAPTER_COMMIT="$(git -C "$TMP/sources/namedcoin" rev-parse HEAD)"
-cat >"$TMP/release-family.yaml" <<YAML
-schema: melusina-release-family/v1
-families:
-  msb:
+cat >"$TMP/bazaar-catalog.yaml" <<YAML
+schema: melusina-bazaar-catalog/v1
+catalog_origin: https://bazaar.melusina-os.org
+expected_live_app_count: 1
+default_release_state: ready
+default_reconciliation_state: source-pinned
+groups:
+  test:
     apps:
       namedcoin:
         appId: $ADAPTER_APP
         source_path: namedcoin
         source_commit: $ADAPTER_COMMIT
         metadata_path: product/metadata.json
+        publish_slug: namedcoin
+        catalog_name: NamedCoin
+        live_version: 0.1.35
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-namedcoin-app
+        catalog_slug: namedcoin
+        role: test
 YAML
 set +e
-MEL_RELEASE_CONFIG="$TMP/release-family.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
-  "$FAMILY_ADAPTER" unknown >"$TMP/family-adapter.log" 2>&1
+MEL_RELEASE_CONFIG="$TMP/bazaar-catalog.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
+  "$CATALOG_ADAPTER" unknown >"$TMP/catalog-adapter.log" 2>&1
 rc=$?
 set -e
 [[ $rc -ne 0 ]]
-grep -Fq "unknown provider operation 'unknown'" "$TMP/family-adapter.log"
+grep -Fq "unknown provider operation 'unknown'" "$TMP/catalog-adapter.log"
 # The Go CLI has authority only as an immutable appId.  It must resolve that
-# through the reviewed family manifest, never from a caller-controlled source
+# through the reviewed Bazaar catalog, never from a caller-controlled source
 # directory; keep the adapter's guard part of this provider contract.
-bash -n "$FAMILY_ADAPTER"
-grep -Fq 'MEL_RELEASE_CONFIG' "$FAMILY_ADAPTER"
-grep -Fq 'provider.source_path(app_id)' "$FAMILY_ADAPTER"
-grep -Fq 'provider.source_metadata_path(app_id, source)' "$FAMILY_ADAPTER"
-grep -Fq 'scripts/mel-release-provider.py' "$FAMILY_ADAPTER"
-grep -Fq 'refusing to package a dirty app checkout' "$FAMILY_ADAPTER"
-grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$FAMILY_ADAPTER"
+bash -n "$CATALOG_ADAPTER"
+grep -Fq 'MEL_RELEASE_CONFIG' "$CATALOG_ADAPTER"
+grep -Fq 'provider.source_path(app_id)' "$CATALOG_ADAPTER"
+grep -Fq 'provider.source_metadata_path(app_id, source)' "$CATALOG_ADAPTER"
+grep -Fq 'scripts/mel-release-provider.py' "$CATALOG_ADAPTER"
+grep -Fq 'refusing to package a dirty app checkout' "$CATALOG_ADAPTER"
+grep -Fq 'MEL_RELEASE_APP_DIR="$app_dir"' "$CATALOG_ADAPTER"
 # Candidate creation must compile a fresh checkout and use spkmodule's
 # pre-chain package verifier.  The old PREAPPROVAL escape hatch was circular:
 # it asked an app to verify a ReleaseEntry before the candidate existed.

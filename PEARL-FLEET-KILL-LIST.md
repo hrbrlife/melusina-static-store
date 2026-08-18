@@ -5,10 +5,10 @@ Squads-cosigned ReleaseEntry ceremony and publish every default-Bazaar
 artifact with on-chain attestation.
 
 > **Current release scope (2026-08-18):** the only Store release target is
-> `https://bazaar.melusina-os.org`. A release family is a governed candidate
-> cohort, never proof of the complete catalog. Before a launch build, reconcile
-> every live listing from that default Bazaar to an explicit retain, retire, or
-> hold decision and a canonical source/contract record.
+> `https://bazaar.melusina-os.org`. The Bazaar catalog manifest is the complete
+> governed snapshot, not a local package scan or a partial candidate list. Before
+> a launch build, reconcile every live listing from that default Bazaar to an
+> explicit retain, retire, or hold decision and a canonical source/contract record.
 
 Authored 2026-04-23. Every fact in the **State Snapshot** below is
 checkable against the working tree and RPC today. When this document is
@@ -176,9 +176,9 @@ Depends on Phase 0.9 + 0.10. Each sidecar:
 The fixed local roster formerly recorded here is retired. The current release
 scope is obtained from `https://bazaar.melusina-os.org/apps/index.json`, then
 reconciled listing-by-listing with a canonical source, immutable source commit,
-runtime contract, and explicit retain/retire/hold decision. The release-family
-manifest is only a governed candidate cohort and cannot substitute for that
-catalog reconciliation.
+runtime contract, and explicit retain/retire/hold decision. The Bazaar catalog
+manifest is the complete governed snapshot and cannot substitute for the
+required listing-by-listing reconciliation.
 
 ### Admin store — 6 apps (`melusina-admin-store/packages/hrbrlife/<repo>/<slug>/`)
 

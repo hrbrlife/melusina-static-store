@@ -27,9 +27,12 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 )
 
-func runPublish(c Config, fam *Family, selector, version string) (string, error) {
-	app, err := fam.Select(selector)
+func runPublish(c Config, catalog *Catalog, selector, version string) (string, error) {
+	app, err := catalog.Select(selector)
 	if err != nil {
+		return "", err
+	}
+	if err := app.RequireReleaseReady(); err != nil {
 		return "", err
 	}
 	if version == "" {

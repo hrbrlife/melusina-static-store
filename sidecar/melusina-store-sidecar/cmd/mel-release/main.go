@@ -1,5 +1,5 @@
 // Command mel-release is the ONE consolidated app-release CLI for every app
-// explicitly declared in fleet/release-family.yaml, keyed on the IMMUTABLE
+// declared in fleet/bazaar-catalog.yaml, keyed on the IMMUTABLE
 // appId. It replaces the three separate clients —
 // cmd/submit (store stage/publish), cmd/publish-supersede (no-gap register/
 // promote/revoke WAL), and cmd/submit-generation (signed DesiredGeneration) —
@@ -57,7 +57,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	fam, err := LoadFamily(cfg.ConfigPath)
+	catalog, err := LoadCatalog(cfg.ConfigPath)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func run(args []string) error {
 		if err := fs.Parse(rest); err != nil {
 			return err
 		}
-		path, err := runPublish(cfg, fam, *app, *version)
+		path, err := runPublish(cfg, catalog, *app, *version)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func run(args []string) error {
 		if err := fs.Parse(rest); err != nil {
 			return err
 		}
-		path, err := runApprove(cfg, fam, *app)
+		path, err := runApprove(cfg, catalog, *app)
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func run(args []string) error {
 		if *out == "" {
 			return fmt.Errorf("manifest requires --out")
 		}
-		if err := runManifest(cfg, fam, *out); err != nil {
+		if err := runManifest(cfg, catalog, *out); err != nil {
 			return err
 		}
 		fmt.Printf("MANIFEST_OK path=%s\n", *out)
@@ -111,7 +111,7 @@ func run(args []string) error {
 		if err := fs.Parse(rest); err != nil {
 			return err
 		}
-		path, err := runRepairCatalog(cfg, fam, *app)
+		path, err := runRepairCatalog(cfg, catalog, *app)
 		if err != nil {
 			return err
 		}

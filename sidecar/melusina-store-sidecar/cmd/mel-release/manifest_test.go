@@ -10,12 +10,12 @@ import (
 func TestRunManifestUsesOnlyAcceptedTerminalReceipts(t *testing.T) {
 	root := t.TempDir()
 	cfg := Config{StateDir: filepath.Join(root, "state")}
-	apps := []App{{AppID: "app-b"}, {AppID: "app-a"}}
+	apps := []App{{AppID: "app-b", ReleaseState: "ready"}, {AppID: "app-a", ReleaseState: "ready"}}
 	for _, app := range apps {
 		writeAcceptedTerminal(t, cfg, app, []byte("governed-"+app.AppID))
 	}
 	out := filepath.Join(root, "deploy", "base-apps.json")
-	if err := runManifest(cfg, &Family{Apps: apps}, out); err != nil {
+	if err := runManifest(cfg, &Catalog{Apps: apps}, out); err != nil {
 		t.Fatalf("runManifest: %v", err)
 	}
 	raw, err := os.ReadFile(out)
@@ -37,7 +37,7 @@ func TestRunManifestUsesOnlyAcceptedTerminalReceipts(t *testing.T) {
 func TestRunManifestRefusesUnacceptedTerminal(t *testing.T) {
 	root := t.TempDir()
 	cfg := Config{StateDir: filepath.Join(root, "state")}
-	app := App{AppID: "app-a"}
+	app := App{AppID: "app-a", ReleaseState: "ready"}
 	writeAcceptedTerminal(t, cfg, app, []byte("governed-app-a"))
 	termPath := filepath.Join(cfg.appStateDir(app.AppID), "terminal.json")
 	raw, err := os.ReadFile(termPath)
@@ -57,7 +57,7 @@ func TestRunManifestRefusesUnacceptedTerminal(t *testing.T) {
 	if err := writeDurable(termPath, raw); err != nil {
 		t.Fatal(err)
 	}
-	if err := runManifest(cfg, &Family{Apps: []App{app}}, filepath.Join(root, "out.json")); err == nil {
+	if err := runManifest(cfg, &Catalog{Apps: []App{app}}, filepath.Join(root, "out.json")); err == nil {
 		t.Fatal("runManifest accepted a rejected terminal")
 	}
 }

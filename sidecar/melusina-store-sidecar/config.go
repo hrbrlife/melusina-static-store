@@ -58,7 +58,7 @@ type Config struct {
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
 	RootStoreURL    string `json:"root_store_url"`
 	// PublicBaseURL is THIS store's own public origin — the absolute
-	// https://bazaar.<domain> URL the external host update controller fetches
+	// Explicit public Store URL the external host update controller fetches
 	// /update/generation.json from and downloads component bundles from. The
 	// sidecar listens on an INTERNAL container host (cfg.Domain = store.sidecar.host)
 	// behind the bazaar TLS edge, so it cannot derive its public origin from

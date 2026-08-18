@@ -1,8 +1,19 @@
-schema: melusina-release-family/v1
-# This is a governed release cohort, not the Bazaar catalog or a declaration of
-# its complete population. The sole Store release target is
-# https://bazaar.melusina-os.org. Before launch, every live listing on that
-# default Bazaar must have an explicit retain, retire, or hold decision.
+schema: melusina-bazaar-catalog/v1
+# This is the complete catalog ledger for the one default Bazaar:
+# https://bazaar.melusina-os.org. It is derived from the live catalog snapshot,
+# not from a local package scan or a smaller release subset. An entry may not be
+# published until it is individually marked ready, and the whole catalog remains
+# held until every live listing has a reconciled source and runtime contract.
+#
+# The snapshot is evidence, not a release approval. A new snapshot must update
+# this manifest atomically; a changed count or an omitted immutable appId fails
+# the release CLI closed.
+catalog_origin: https://bazaar.melusina-os.org
+catalog_observed_at: 2026-08-18T10:22:21Z
+catalog_index_sha256: 807c6c82ebc0d8a8dc075b26a9669fb609909881b82bc01be6812324a2a990a5
+expected_live_app_count: 33
+default_release_state: hold
+default_reconciliation_state: source-pinned
 #
 # appId is authoritative; source paths and catalog names are deliberately
 # descriptive because they historically differ.
@@ -15,7 +26,7 @@ schema: melusina-release-family/v1
 # for a unified application whose project Makefile lives above its product
 # metadata. pack_target is an optional reviewed Make target for a separately
 # signed variant emitted by the same source tree.
-families:
+groups:
   money-path:
     apps:
       welcome:
@@ -24,6 +35,7 @@ families:
         source_commit: 5c3f431561d84516bf3e1c4ff530accd383817b8
         publish_slug: welcome-pearl
         catalog_name: Welcome pearl
+        live_version: 0.1.28
         catalog_developer: hrbrlife
         catalog_repo: welcome-pearl
         catalog_slug: welcome-pearl
@@ -34,6 +46,7 @@ families:
         source_commit: f82c217f643bdfc217ba8b3ba91a4cbbf521ba55
         publish_slug: namedcoin
         catalog_name: NamedCoin
+        live_version: 0.1.35
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-app
         catalog_slug: namedcoin
@@ -49,6 +62,7 @@ families:
         source_commit: 0dda2a0a89335e12ad86c70792585bc3006445d5
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Admin
+        live_version: 0.1.42
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-admin-app
         catalog_slug: namedcoin-admin
@@ -62,6 +76,7 @@ families:
         source_commit: 39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694
         publish_slug: popaye
         catalog_name: popaye
+        live_version: 0.3.189
         catalog_developer: hrbrlife
         catalog_repo: ccash_go_htmx
         catalog_slug: popaye
@@ -74,7 +89,11 @@ families:
         source_path: ccashconfig
         source_commit: fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84
         publish_slug: ccashconfig
-        catalog_name: ccashconfig
+        catalog_name: ccash Config
+        live_version: 0.0.77
+        catalog_developer: hrbrlife
+        catalog_repo: melusina_ccashconfig_app
+        catalog_slug: cca-sh-config
         role: central-connection-hub
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
@@ -82,6 +101,7 @@ families:
         source_commit: 95717c13a9ffb793e61ce910fe4d088fa0db2767
         publish_slug: dueprocess
         catalog_name: DueProcess
+        live_version: 0.1.74
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess
@@ -92,6 +112,7 @@ families:
         source_commit: e7f8ab98eb70576993145f725146c0c48974e9c0
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
+        live_version: 0.7.23
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata
@@ -105,23 +126,11 @@ families:
         source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
         publish_slug: cyberteller
         catalog_name: cyberteller
+        live_version: 0.1.93
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller
         role: crypto-deposit-and-swap
-      cyberteller-config:
-        appId: 3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10
-        source_path: cybertellerconfig
-        source_commit: e26e2d1e5222ba7f2beac9f0d3d3801a0d86d492
-        publish_slug: cybertellerconfig
-        catalog_name: Cyberteller Config
-        # This Store path predates the source repo's current release layout.
-        # It is the existing appId-bound catalog slot, not a name inferred
-        # from the source directory or a new product identity.
-        catalog_developer: hrbrlife
-        catalog_repo: melusina_cybertellerconfig_app
-        catalog_slug: cybertellerconfig
-        role: install-scoped-configgate
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
@@ -130,6 +139,7 @@ families:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
         catalog_name: Fineract Setup
+        live_version: 0.2.18
         catalog_developer: hrbrlife
         catalog_repo: fineract-setup
         catalog_slug: fineract-setup
@@ -140,9 +150,11 @@ families:
         # The v19 candidate is clean and contract-bearing, but its commit is
         # local-only. Leave it unpinned so the governed provider can refuse it
         # until the reviewed source commit is recoverable from the source
-        # remote and a fresh clone can reproduce the cohort.
+        # remote and a fresh clone can reproduce the catalog.
+        reconciliation_state: source-commit-not-remotely-recoverable
         publish_slug: telescreen
         catalog_name: TeleScreen Hub
+        live_version: 0.0.13
         catalog_developer: hrbrlife
         catalog_repo: pr_ninja
         catalog_slug: telescreen
@@ -153,6 +165,7 @@ families:
         source_commit: 2654570703310e031a2c5be5dfcec0be66e173c2
         publish_slug: teleport
         catalog_name: Teleport
+        live_version: 1.3.4
         catalog_developer: hrbrlife
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
@@ -163,6 +176,7 @@ families:
         source_commit: b13d042cc689de8faa40f46cd04713239b5c6ea8
         publish_slug: instaco
         catalog_name: InstaCo
+        live_version: 0.1.8
         catalog_developer: hrbrlife
         # The app's GitHub repository uses the melusina- prefix, but its
         # already-active Store slot predates that rename.  This exact slot is
@@ -177,6 +191,7 @@ families:
         source_commit: 706f54375172030fa78fc88a78cd38c450ca6fc6
         publish_slug: instadao
         catalog_name: InstaDAO
+        live_version: 1.0.12
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.
@@ -192,6 +207,7 @@ families:
         source_commit: 899cddba7d379813a37c391226f75b069895736d
         publish_slug: botmother
         catalog_name: BotMother
+        live_version: 1.3.4
         catalog_developer: hrbrlife
         catalog_repo: MELUSINA_BOTMOTHER
         catalog_slug: botmother
@@ -202,6 +218,7 @@ families:
         source_commit: 610c44614a8b499d1e80795a97daca66a9912f77
         publish_slug: minigit
         catalog_name: MiniGit
+        live_version: 0.2.14
         catalog_developer: hrbrlife
         catalog_repo: MiniGit
         catalog_slug: gitpearl
@@ -212,6 +229,7 @@ families:
         source_commit: 146ef2e4c0d8bed0845b1407619fd1b29244f72c
         publish_slug: jinn
         catalog_name: Melusina's Jinn
+        live_version: 0.0.6
         catalog_developer: hrbrlife
         catalog_repo: jinn
         catalog_slug: jinn
@@ -222,6 +240,7 @@ families:
         source_commit: 95d27ba095eae4589f290b2e3857d6ad92174ddb
         publish_slug: cratelink
         catalog_name: CrateLink
+        live_version: 0.3.3
         # The canonical GitHub repository uses an underscore while the
         # historical Store slot uses a hyphen. Bind the preserved slot
         # explicitly rather than inventing a second public product.
@@ -239,6 +258,7 @@ families:
         source_commit: 965766d662771323f770eb9e956f1e8b03bea7a0
         publish_slug: sheets-bureau
         catalog_name: Sheets Bureau
+        live_version: 2.1.4
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
@@ -249,6 +269,7 @@ families:
         source_commit: ea232d48cc837bdc65b1886ab41ca5109e6c8a69
         publish_slug: doc-bureau
         catalog_name: Doc Bureau
+        live_version: 2.0.32
         # This exact historical slot contains the same immutable appId at an
         # older rich release. It is a target only; v26 source metadata and
         # runtime contract come solely from the pinned clean source checkout.
@@ -262,6 +283,7 @@ families:
         source_commit: b7dd188638043e5f8a8d9646d60fe312e572de97
         publish_slug: paint-bureau
         catalog_name: Paint Bureau
+        live_version: 2.0.28
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-paint-app
         catalog_slug: paint-bureau
@@ -274,6 +296,7 @@ families:
         source_commit: a46106ded2aab2c7b50465cd561f176de25b4947
         publish_slug: goldkey
         catalog_name: GoldKey
+        live_version: 0.3.4
         # GoldKey's exact governed Store slot is now tracked. The provider
         # advances only this appId-bound production coordinate, never a
         # historical DEV identity or a legacy scan result.
@@ -281,16 +304,143 @@ families:
         catalog_repo: GoldKey
         catalog_slug: goldkey
         role: encrypted-team-vault
-        # The separately signed GoldKey DEV identity is deliberately absent
-        # from this production release family. Its historical state is neither
-        # selected nor changed by the governed GoldKey production rail.
+        # GoldKey DEV is a separate live listing below. It cannot be replaced
+        # with production GoldKey source material during reconciliation.
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 55e276e3a5aef4e0f5605c191759c5fdce781fdc
         publish_slug: mermail
         catalog_name: MerMail
+        live_version: 0.5.5
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail
         role: unified-mail-station-and-mailbox
+  unreconciled-live-listings:
+    # These are live default-Bazaar listings that were absent from the former
+    # partial input. They are deliberately represented here, but have no
+    # publishable source path or commit until their retain/retire decision and
+    # contract-bearing source evidence are complete.
+    apps:
+      bureau-calendar:
+        appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
+        publish_slug: bureau-cal
+        catalog_name: Bureau Calendar
+        live_version: 0.20.0
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-cal-app
+        catalog_slug: bureau-cal
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina_bureau_cal_app
+        role: calendar-and-scheduling
+      bureau-contacts:
+        appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
+        publish_slug: bureau-contacts
+        catalog_name: Bureau Contacts
+        live_version: 0.14.0
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-contacts-app
+        catalog_slug: bureau-contacts
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina_bureau_contacts_app
+        role: contacts-and-address-book
+      canboard:
+        appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
+        publish_slug: canboard
+        catalog_name: CanBoard
+        live_version: 0.2.1
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-canboard-app
+        catalog_slug: canboard
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina_canboard_app
+        role: collaborative-canvas
+      ccash-domain-template:
+        appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
+        publish_slug: cca-sh-domain-template
+        catalog_name: ccash Domain Template
+        live_version: 0.5.85
+        catalog_developer: hrbrlife
+        catalog_repo: ccash_domain_template
+        catalog_slug: cca-sh-domain-template
+        reconciliation_state: source-contract-pending-build
+        source_repository: https://github.com/hrbrlife/ccash_domain_template
+        role: domain-template
+      clientspace:
+        appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
+        publish_slug: clientspace
+        catalog_name: clientspace
+        live_version: 0.1.3
+        catalog_developer: hrbrlife
+        catalog_repo: client_collection
+        catalog_slug: clientspace
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/clientspace
+        role: client-workspace
+      creeper:
+        appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
+        publish_slug: creeper
+        catalog_name: Creeper
+        live_version: 0.1.20
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-app-creeper
+        catalog_slug: creeper
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina-app-creeper
+        role: monitoring-and-automation
+      goldkey-dev:
+        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
+        publish_slug: goldkey-dev
+        catalog_name: GoldKey DEV
+        live_version: 0.1.1
+        catalog_developer: hrbrlife
+        catalog_repo: GoldKey
+        catalog_slug: goldkey-dev
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/GoldKey
+        role: separate-development-identity
+      melusina-dashboard:
+        appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
+        publish_slug: melusina-dashboard-app
+        catalog_name: Melusina Dashboard
+        live_version: 0.2.3
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-dashboard-app
+        catalog_slug: melusina-dashboard-app
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina-dashboard-app
+        role: dashboard-and-navigation
+      opensanctions:
+        appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
+        publish_slug: opensanctions
+        catalog_name: OpenSanctions
+        live_version: 0.1.22
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-app-opensanctions
+        catalog_slug: opensanctions
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/melusina-app-OpenSanctions
+        role: sanctions-screening
+      shell-tester:
+        appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
+        publish_slug: shell-tester
+        catalog_name: Shell Tester
+        live_version: 0.1.8
+        catalog_developer: hrbrlife
+        catalog_repo: shell_tester
+        catalog_slug: shell-tester
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/shell_tester
+        role: shell-validation
+      vintage:
+        appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
+        publish_slug: vintage
+        catalog_name: Vintage Remote Desktop
+        live_version: 1.2.4
+        catalog_developer: hrbrlife
+        catalog_repo: vintage-test-dec
+        catalog_slug: vintage
+        reconciliation_state: runtime-contract-missing
+        source_repository: https://github.com/hrbrlife/vintage-test-dec
+        role: remote-desktop

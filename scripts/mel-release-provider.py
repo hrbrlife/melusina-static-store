@@ -6,7 +6,7 @@ only real-world adapter: it builds an SPK from a committed app tree, creates a
 private store stage, creates an *unexecuted* Squads ReleaseEntry proposal, then
 later approves/executes that proposal, promotes the staged bytes, and revokes
 only declared stale ReleaseEntries.  Signing paths are supplied by environment
-variables; key material is never read from the family manifest or written to a
+variables; key material is never read from the Bazaar catalog manifest or written to a
 receipt.
 """
 
@@ -35,6 +35,8 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
 NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
+DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
+BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
 
 
 class ProviderError(RuntimeError):
@@ -48,6 +50,14 @@ def env(name: str, *, required: bool = False, default: str = "") -> str:
     return value
 
 
+def default_bazaar_origin() -> str:
+    """Return the one authorized Store origin, rejecting any alternate target."""
+    value = env("MEL_RELEASE_STORE_URL", required=True).rstrip("/")
+    if value != DEFAULT_BAZAAR_ORIGIN:
+        raise ProviderError(f"MEL_RELEASE_STORE_URL must be {DEFAULT_BAZAAR_ORIGIN}")
+    return value
+
+
 def clean_abs(value: str, name: str) -> Path:
     p = Path(value)
     if not p.is_absolute() or p != Path(os.path.abspath(value)):
@@ -58,7 +68,7 @@ def clean_abs(value: str, name: str) -> Path:
 def clean_source_root() -> Path:
     """Return the one explicit root for reviewed, clean app checkouts.
 
-    A release-family manifest is source control, not a record of whichever
+    A Bazaar catalog manifest is source control, not a record of whichever
     worktree happened to exist on one developer laptop.  Its source_path values
     are consequently relative names beneath this operator-supplied root.  Both
     the manifest and every filesystem edge are checked so a symlink or `..`
@@ -116,30 +126,59 @@ def context_path(app_id: str) -> Path:
     return state_root(app_id) / "context.json"
 
 
-def release_config() -> dict[str, Any]:
+def catalog_config() -> dict[str, Any]:
     path = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
-        raise ProviderError(f"read release family config: {exc}") from exc
+        raise ProviderError(f"read Bazaar catalog config: {exc}") from exc
     if not isinstance(value, dict):
-        raise ProviderError("release-family.yaml must be a mapping")
+        raise ProviderError("bazaar-catalog.yaml must be a mapping")
+    if value.get("schema") != BAZAAR_CATALOG_SCHEMA:
+        raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
+    if value.get("catalog_origin") != DEFAULT_BAZAAR_ORIGIN:
+        raise ProviderError("bazaar-catalog.yaml must target the default Bazaar")
+    expected_count = value.get("expected_live_app_count")
+    if not isinstance(expected_count, int) or expected_count < 1:
+        raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
+    if value.get("default_release_state") not in {"hold", "ready"}:
+        raise ProviderError("bazaar-catalog.yaml has an invalid default_release_state")
+    groups = value.get("groups")
+    if not isinstance(groups, dict):
+        raise ProviderError("Bazaar catalog config has no groups mapping")
+    app_ids: list[str] = []
+    for group in groups.values():
+        apps = group.get("apps", {}) if isinstance(group, dict) else {}
+        if not isinstance(apps, dict):
+            raise ProviderError("Bazaar catalog group has no apps mapping")
+        for spec in apps.values():
+            if not isinstance(spec, dict) or not isinstance(spec.get("appId"), str) or not spec["appId"]:
+                raise ProviderError("Bazaar catalog app is missing appId")
+            app_ids.append(spec["appId"])
+    if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
+        raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
     return value
 
 
 def app_spec(app_id: str) -> dict[str, str]:
-    doc = release_config()
-    families = doc.get("families")
-    if not isinstance(families, dict):
-        raise ProviderError("release family config has no families mapping")
-    for family_name, family in families.items():
-        apps = family.get("apps", {}) if isinstance(family, dict) else {}
+    doc = catalog_config()
+    groups = doc.get("groups")
+    if not isinstance(groups, dict):
+        raise ProviderError("Bazaar catalog config has no groups mapping")
+    for group_name, group in groups.items():
+        apps = group.get("apps", {}) if isinstance(group, dict) else {}
         if not isinstance(apps, dict):
             continue
         for name, spec in apps.items():
             if isinstance(spec, dict) and spec.get("appId") == app_id:
+                release_state = str(spec.get("release_state", doc.get("default_release_state", ""))).strip()
+                reconciliation_state = str(spec.get("reconciliation_state", doc.get("default_reconciliation_state", ""))).strip()
+                if release_state != "ready":
+                    raise ProviderError(
+                        f"catalog app {app_id} is held for reconciliation ({reconciliation_state or 'unspecified'})"
+                    )
                 return {
-                    "family": str(family_name),
+                    "group": str(group_name),
                     "name": str(name),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
@@ -164,7 +203,19 @@ def app_spec(app_id: str) -> dict[str, str]:
                     # signed app identities (for example, a DEV variant).
                     "pack_target": str(spec.get("pack_target", "")),
                 }
-    raise ProviderError(f"immutable appId {app_id} is not declared in release-family.yaml")
+    raise ProviderError(f"immutable appId {app_id} is not declared in bazaar-catalog.yaml")
+
+
+def require_release_ready(app_id: str) -> None:
+    """Apply the catalog hold at every mutating provider boundary.
+
+    The Go CLI checks the same state before it writes a WAL, but a provider is
+    an executable authority seam and must not rely on a caller having used that
+    CLI. Resolving the app spec here means a later stage, proposal, approval, or
+    promotion cannot bypass a newly applied catalog hold through old local
+    context files.
+    """
+    app_spec(app_id)
 
 
 def source_file(source: Path, field: str, value: str) -> Path:
@@ -263,7 +314,7 @@ def catalog_slot(app_id: str) -> dict[str, str]:
     }
     if not all(slot.values()):
         raise ProviderError(
-            f"release-family.yaml appId {app_id} must declare catalog_developer, "
+            f"bazaar-catalog.yaml appId {app_id} must declare catalog_developer, "
             "catalog_repo, and catalog_slug for a first publish"
         )
     for field, value in slot.items():
@@ -277,7 +328,7 @@ def catalog_package(app_id: str) -> Path | None:
 
     App IDs can occur in preserved legacy catalog directories.  Searching for
     the first (or only) metadata match would allow such a directory to redirect
-    a governed release. The release-family slot is therefore authoritative.
+    a governed release. The Bazaar catalog slot is therefore authoritative.
 
     A declared slot can legitimately be absent on a first publish (including a
     clean checkout whose pinned catalog submodule has not been initialized).
@@ -305,7 +356,7 @@ def catalog_package(app_id: str) -> Path | None:
         raise ProviderError(f"declared catalog package metadata is not a regular file: {metadata}")
     if read_json(metadata).get("appId") != app_id:
         raise ProviderError(
-            f"declared catalog slot appId does not match release-family appId: {declared}"
+            f"declared catalog slot appId does not match Bazaar catalog appId: {declared}"
         )
     return declared
 
@@ -329,7 +380,7 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
     source_metadata = source_metadata_path(app_id, source)
     metadata = read_json(source_metadata)
     if metadata.get("appId") != app_id:
-        raise ProviderError("source metadata appId does not match the release family appId")
+        raise ProviderError("source metadata appId does not match the Bazaar catalog appId")
 
     screenshots = metadata.get("screenshots", [])
     if not isinstance(screenshots, list):
@@ -440,7 +491,7 @@ def ensure_bin(name: str, command: str) -> Path:
 
 
 def current_pointer(app_id: str) -> dict[str, Any] | None:
-    url = env("MEL_RELEASE_STORE_URL", required=True).rstrip("/") + f"/apps/pointers/{app_id}.json"
+    url = default_bazaar_origin() + f"/apps/pointers/{app_id}.json"
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
             value = json.loads(response.read())
@@ -470,7 +521,7 @@ def materialize_runtime_contract(source: Path, destination: Path, app_id: str, v
         raise ProviderError("source runtime contract has the wrong schema")
     app = contract.get("app")
     if not isinstance(app, dict) or app.get("appId") != app_id:
-        raise ProviderError("source runtime contract app.appId does not match the release family appId")
+        raise ProviderError("source runtime contract app.appId does not match the Bazaar catalog appId")
     for field in ("version", "spkSha256", "appHash"):
         if app.get(field) != "PENDING_BUILD":
             raise ProviderError(f"source runtime contract app.{field} must be exactly PENDING_BUILD")
@@ -621,14 +672,14 @@ def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path
     manifest = verified_spk_manifest(built_spk)
     artifact_sha = hex_sha(built_spk)
     if manifest["appId"] != app_id:
-        raise ProviderError("verified SPK appId does not match the release family appId")
+        raise ProviderError("verified SPK appId does not match the Bazaar catalog appId")
     if manifest["packageId"] != artifact_sha[:32]:
         raise ProviderError("verified SPK packageId does not bind the SPK sha256")
 
     source_metadata = source_metadata_path(app_id, source)
     metadata = read_json(source_metadata)
     if metadata.get("appId") != app_id:
-        raise ProviderError("source metadata appId does not match the release family appId")
+        raise ProviderError("source metadata appId does not match the Bazaar catalog appId")
     source_version = str(metadata.get("marketingVersion") or metadata.get("version") or "")
     source_version_number = str(metadata.get("versionNumber", ""))
     if source_version != manifest["version"] or source_version_number != manifest["versionNumber"]:
@@ -823,10 +874,12 @@ def bind_runtime_contract_to_release(context: dict[str, Any]) -> Path:
 
 
 def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool) -> list[str]:
-    store_url = env("MEL_RELEASE_STORE_URL", required=True)
+    store_url = default_bazaar_origin()
     store_license = env("MEL_RELEASE_STORE_LICENSE_MINT", required=True)
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
-    domain = env("MEL_RELEASE_STORE_DOMAIN", default=store_url.split("//", 1)[-1].split("/", 1)[0])
+    domain = env("MEL_RELEASE_STORE_DOMAIN", default="bazaar.melusina-os.org")
+    if domain != "bazaar.melusina-os.org":
+        raise ProviderError("MEL_RELEASE_STORE_DOMAIN must be bazaar.melusina-os.org")
     slot = context.get("catalogSlot")
     if not isinstance(slot, dict) or not all(isinstance(slot.get(k), str) and slot[k].strip() for k in ("developer", "repo", "slug")):
         raise ProviderError("provider context lacks immutable catalogSlot")
@@ -1412,6 +1465,9 @@ def main() -> None:
         raise ProviderError("usage: mel-release-provider.py <build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke>")
     op = sys.argv[1]
     app_id = env("MEL_APP_ID")
+    if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
+        app_id = env("MEL_APP_ID", required=True)
+        require_release_ready(app_id)
     if op == "build":
         build(app_id, env("MEL_NEW_VERSION", required=True), clean_abs(env("MEL_CANDIDATE_RECEIPT_OUT", required=True), "MEL_CANDIDATE_RECEIPT_OUT"))
     elif op == "active-releases":

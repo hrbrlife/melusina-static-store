@@ -28,7 +28,7 @@ func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
 	state.Served = ""
 	mustWriteJSON(t, h.statePath, state)
 
-	repairPath, err := runRepairCatalog(h.cfg, h.fam, testAppID)
+	repairPath, err := runRepairCatalog(h.cfg, h.catalog, testAppID)
 	mustNoErr(t, "repair catalog", err)
 	if got := h.provState().Served; got != v1.AppHash {
 		t.Fatalf("repair served appHash = %q, want %q", got, v1.AppHash)
@@ -79,7 +79,7 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 		h := newHarness(t)
 		mustNoErr(t, "publish", h.publish("1.0.1"))
 		before := h.callOps()
-		if _, err := runRepairCatalog(h.cfg, h.fam, testAppID); err == nil {
+		if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
 			t.Fatal("repair accepted a nonterminal WAL")
 		}
 		if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {
@@ -93,7 +93,7 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 		mustNoErr(t, "approve", h.approve())
 		h.tamperCandidate(func(c *candidateReceipt) { c.Component.ReleaseHash = "not-the-terminal-release" })
 		before := h.callOps()
-		if _, err := runRepairCatalog(h.cfg, h.fam, testAppID); err == nil {
+		if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
 			t.Fatal("repair accepted a candidate that no longer binds the terminal release")
 		}
 		if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {
@@ -117,7 +117,7 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 		terminal.Version = "unbound-terminal-version"
 		mustWriteJSON(t, terminalPath, terminal)
 		before := h.callOps()
-		if _, err := runRepairCatalog(h.cfg, h.fam, testAppID); err == nil {
+		if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
 			t.Fatal("repair accepted a terminal receipt that no longer binds the DONE WAL")
 		}
 		if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {
@@ -135,7 +135,7 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 		state.Active = nil
 		mustWriteJSON(t, h.statePath, state)
 		before := h.callOps()
-		if _, err := runRepairCatalog(h.cfg, h.fam, testAppID); err == nil {
+		if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
 			t.Fatal("repair accepted a terminal release that is no longer live Active")
 		}
 		if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {

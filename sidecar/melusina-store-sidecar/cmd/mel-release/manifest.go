@@ -30,17 +30,20 @@ type baseAppsManifestItem struct {
 	Path      string `json:"path"`
 }
 
-// runManifest creates a complete clean-install input for every declared app.
-// There is intentionally no partial mode: account opening needs its whole
-// declared constellation, all terminally accepted and served.
-func runManifest(c Config, fam *Family, out string) error {
+// runManifest creates a complete clean-install input for every live catalog
+// entry. There is intentionally no partial mode: the default Bazaar must be
+// reconciled, terminally accepted, and served as one auditable population.
+func runManifest(c Config, catalog *Catalog, out string) error {
 	if !filepath.IsAbs(out) || filepath.Clean(out) != out {
 		return fmt.Errorf("manifest output path must be absolute and clean")
 	}
-	apps := append([]App(nil), fam.Apps...)
+	apps := append([]App(nil), catalog.Apps...)
 	sort.Slice(apps, func(i, j int) bool { return apps[i].AppID < apps[j].AppID })
 	manifest := baseAppsManifest{Schema: baseAppsManifestSchema, Apps: make([]baseAppsManifestItem, 0, len(apps))}
 	for _, app := range apps {
+		if err := app.RequireReleaseReady(); err != nil {
+			return err
+		}
 		item, err := manifestItemForTerminal(c, app)
 		if err != nil {
 			return fmt.Errorf("app %s: %w", app.AppID, err)

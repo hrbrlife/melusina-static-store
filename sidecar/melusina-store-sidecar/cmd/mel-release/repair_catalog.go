@@ -43,9 +43,12 @@ type catalogRepairReceipt struct {
 // the current terminal release. It does not accept a version flag, a raw SPK,
 // a hand-authored pointer, or a non-terminal WAL: the only possible input is
 // the app's immutable current terminal receipt plus its frozen candidate.
-func runRepairCatalog(c Config, fam *Family, selector string) (string, error) {
-	app, err := fam.Select(selector)
+func runRepairCatalog(c Config, catalog *Catalog, selector string) (string, error) {
+	app, err := catalog.Select(selector)
 	if err != nil {
+		return "", err
+	}
+	if err := app.RequireReleaseReady(); err != nil {
 		return "", err
 	}
 	lock, err := acquireAppLock(appLockPath(c.lockDir(), app.AppID))

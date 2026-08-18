@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve the immutable appId into the reviewed family manifest before handing
+# Resolve the immutable appId into the reviewed Bazaar catalog manifest before handing
 # the governed operation to the provider.  `mel-release` deliberately passes
 # only appId to its signer-provider seam; this adapter is the one place that
 # turns that authority into a checked-out, clean source tree.  It never infers
@@ -9,15 +9,15 @@ umask 077
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # The Python provider is the canonical source-aware rail used by the released
-# CLI and HOW_TO_PUBLISH.  Keep this family adapter as the appId->clean-source
+# CLI and HOW_TO_PUBLISH. Keep this catalog adapter as the appId->clean-source
 # gate, but never fork its candidate/staging semantics in the older shell
 # provider beside it.
 readonly STORE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
 readonly PROVIDER="$STORE_ROOT/scripts/mel-release-provider.py"
 
-die() { printf 'mel-release-family-provider: %s\n' "$*" >&2; exit 2; }
+die() { printf 'mel-release-catalog-provider: %s\n' "$*" >&2; exit 2; }
 
-[[ $# -eq 1 ]] || die 'usage: mel-release-family-provider.sh <operation>'
+[[ $# -eq 1 ]] || die 'usage: mel-release-catalog-provider.sh <operation>'
 [[ -f "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular file: $PROVIDER"
 
 # Exact-PDA status/revocation has no source-tree input.  Requiring MEL_APP_ID
@@ -51,13 +51,13 @@ source = provider.source_path(app_id)
 print(source)
 print(provider.source_metadata_path(app_id, source))
 PY
-)" || die 'could not resolve the app source from release-family.yaml'
+)" || die 'could not resolve the app source from bazaar-catalog.yaml'
 
-mapfile -t family_paths <<<"$resolved_paths"
-[[ ${#family_paths[@]} -eq 2 && -n "${family_paths[0]}" && -n "${family_paths[1]}" ]] || \
-  die 'could not resolve exactly one source path and metadata path from release-family.yaml'
-app_dir="${family_paths[0]}"
-metadata_path="${family_paths[1]}"
+mapfile -t catalog_paths <<<"$resolved_paths"
+[[ ${#catalog_paths[@]} -eq 2 && -n "${catalog_paths[0]}" && -n "${catalog_paths[1]}" ]] || \
+	die 'could not resolve exactly one source path and metadata path from bazaar-catalog.yaml'
+app_dir="${catalog_paths[0]}"
+metadata_path="${catalog_paths[1]}"
 
 [[ -d "$app_dir" && ! -L "$app_dir" ]] || die "manifest source path is not a real directory: $app_dir"
 [[ "$metadata_path" == "$app_dir"/* && -f "$metadata_path" && ! -L "$metadata_path" ]] || \

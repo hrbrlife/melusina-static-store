@@ -35,9 +35,12 @@ import (
 	"time"
 )
 
-func runApprove(c Config, fam *Family, selector string) (string, error) {
-	app, err := fam.Select(selector)
+func runApprove(c Config, catalog *Catalog, selector string) (string, error) {
+	app, err := catalog.Select(selector)
 	if err != nil {
+		return "", err
+	}
+	if err := app.RequireReleaseReady(); err != nil {
 		return "", err
 	}
 	prov := newExecProvider(c)

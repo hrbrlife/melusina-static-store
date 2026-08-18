@@ -505,7 +505,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
 def test_submit_binds_the_immutable_catalog_slot():
     old_bin = provider.ensure_bin
     old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://store.example.test",
+        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
@@ -532,7 +532,7 @@ def test_submit_binds_the_immutable_catalog_slot():
 
 def test_submit_refuses_missing_catalog_slot():
     old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://store.example.test",
+        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
@@ -545,6 +545,29 @@ def test_submit_refuses_missing_catalog_slot():
             assert "catalogSlot" in str(exc), exc
         else:
             raise AssertionError("missing catalogSlot was accepted")
+    finally:
+        restore_env(old)
+
+
+def test_submit_refuses_an_alternate_store_target():
+    old = with_env({
+        "MEL_RELEASE_STORE_URL": "https://example.test",
+        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+    })
+    try:
+        try:
+            provider.submit_args({
+                "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
+                "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
+                "catalogSlot": {"developer": "hrbrlife", "repo": "repo", "slug": "app"},
+            }, Path("/tmp/receipt.json"), stage_only=True)
+        except provider.ProviderError as exc:
+            assert "MEL_RELEASE_STORE_URL must be" in str(exc), exc
+        else:
+            raise AssertionError("provider accepted an alternate Store target")
     finally:
         restore_env(old)
 
@@ -687,7 +710,7 @@ def test_promote_repairs_registered_resume_runtime_binding():
         old_ensure_bin = provider.ensure_bin
         old_run = provider.run
         old = with_env({
-            "MEL_RELEASE_STORE_URL": "https://store.example.test",
+            "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
             "MEL_RELEASE_STORE_LICENSE_MINT": "license",
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
             "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
@@ -783,10 +806,14 @@ def test_release_status_requires_program_owner():
         restore_env(old)
 
 
-def write_family_config(path, apps):
+def write_catalog_config(path, apps):
     path.write_text(json.dumps({
-        "schema": "melusina-release-family/v1",
-        "families": {"msb": {"apps": apps}},
+        "schema": "melusina-bazaar-catalog/v1",
+        "catalog_origin": "https://bazaar.melusina-os.org",
+        "expected_live_app_count": len(apps),
+        "default_release_state": "ready",
+        "default_reconciliation_state": "source-pinned",
+        "groups": {"msb": {"apps": apps}},
     }) + "\n", encoding="utf-8")
 
 
@@ -825,8 +852,8 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
             "namedcoin-admin": commit_source_fixture(admin),
             "cybertellerconfig": commit_source_fixture(cyberteller_config),
         }
-        config = root / "release-family.yaml"
-        write_family_config(config, {
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
             "namedcoin": {"appId": app_id, "source_path": "namedcoin", "source_commit": commits["namedcoin"]},
             "namedcoin-admin": {"appId": admin_app_id, "source_path": "namedcoin-admin", "source_commit": commits["namedcoin-admin"]},
             "cyberteller-config": {"appId": CYBERTELLER_CONFIG_APP_ID, "source_path": "cybertellerconfig", "source_commit": commits["cybertellerconfig"]},
@@ -840,7 +867,7 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
             assert provider.source_path(admin_app_id) == admin
             assert provider.source_path(CYBERTELLER_CONFIG_APP_ID) == cyberteller_config
 
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": str(app)},
             })
             try:
@@ -850,7 +877,7 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
             else:
                 raise AssertionError("absolute manifest source_path was accepted")
 
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": "../namedcoin"},
             })
             try:
@@ -863,7 +890,7 @@ def test_source_root_resolves_only_clean_relative_manifest_paths():
             link = root / "linked-sources"
             link.symlink_to(sources, target_is_directory=True)
             os.environ["MEL_RELEASE_SOURCE_ROOT"] = str(link)
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "namedcoin": {"appId": app_id, "source_path": "namedcoin"},
             })
             try:
@@ -931,8 +958,8 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
         },
     }
     with tempfile.TemporaryDirectory() as tmp:
-        config = Path(tmp) / "release-family.yaml"
-        write_family_config(config, apps)
+        config = Path(tmp) / "bazaar-catalog.yaml"
+        write_catalog_config(config, apps)
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
             # pack_profile_env must overwrite this inherited global value for
@@ -1004,200 +1031,102 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
             restore_env(old)
 
 
-def test_checked_in_rich_office_family_selects_only_pinned_slots():
-    sheets_app_id = "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0"
-    doc_app_id = "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"
-    paint_app_id = "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"
-    config = HERE.parent / "fleet" / "release-family.yaml"
+def checked_in_catalog_entries():
+    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
-        assert provider.app_spec(sheets_app_id) == {
-            "family": "bureau-rich-office",
-            "name": "sheets-bureau",
-            "source_path": "sheets-bureau",
-            "source_commit": "965766d662771323f770eb9e956f1e8b03bea7a0",
-            "metadata_path": "metadata.json",
-            "runtime_contract_path": "RUNTIME-CONTRACT.json",
-            "publish_slug": "sheets-bureau",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "melusina-bureau-sheets-app",
-            "catalog_slug": "sheets-bureau",
-            "pack_profile": "",
-            "pack_target": "",
-        }
-        assert provider.catalog_slot(sheets_app_id) == {
-            "developer": "hrbrlife",
-            "repo": "melusina-bureau-sheets-app",
-            "slug": "sheets-bureau",
-        }
-        assert provider.app_spec(doc_app_id) == {
-            "family": "bureau-rich-office",
-            "name": "doc-bureau",
-            "source_path": "doc-bureau",
-            "source_commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69",
-            "metadata_path": "metadata.json",
-            "runtime_contract_path": "RUNTIME-CONTRACT.json",
-            "publish_slug": "doc-bureau",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "melusina-bureau-doc-app",
-            "catalog_slug": "doc-bureau",
-            "pack_profile": "",
-            "pack_target": "",
-        }
-        assert provider.catalog_slot(doc_app_id) == {
-            "developer": "hrbrlife",
-            "repo": "melusina-bureau-doc-app",
-            "slug": "doc-bureau",
-        }
-        assert provider.app_spec(paint_app_id) == {
-            "family": "bureau-rich-office",
-            "name": "paint-bureau",
-            "source_path": "paint-bureau",
-            "source_commit": "b7dd188638043e5f8a8d9646d60fe312e572de97",
-            "metadata_path": "metadata.json",
-            "runtime_contract_path": "RUNTIME-CONTRACT.json",
-            "publish_slug": "paint-bureau",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "melusina-bureau-paint-app",
-            "catalog_slug": "paint-bureau",
-            "pack_profile": "",
-            "pack_target": "",
-        }
-        assert provider.catalog_slot(paint_app_id) == {
-            "developer": "hrbrlife",
-            "repo": "melusina-bureau-paint-app",
-            "slug": "paint-bureau",
-        }
+        document = provider.catalog_config()
     finally:
         restore_env(old)
+    entries = {}
+    for group_name, group in document["groups"].items():
+        for name, app in group["apps"].items():
+            entries[app["appId"]] = {"group": group_name, "name": name, **app}
+    return document, entries
 
 
-def test_checked_in_release_pins_bind_exact_target_slots():
-    config = HERE.parent / "fleet" / "release-family.yaml"
-    goldkey_app_id = "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh"
-    goldkey_dev_app_id = "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"
-    def spec(family, name, source_path, source_commit, publish_slug, developer, repo, slug,
-             metadata_path="metadata.json", runtime_contract_path="RUNTIME-CONTRACT.json", pack_target=""):
-        return {
-            "family": family,
-            "name": name,
-            "source_path": source_path,
-            "source_commit": source_commit,
-            "metadata_path": metadata_path,
-            "runtime_contract_path": runtime_contract_path,
-            "publish_slug": publish_slug,
-            "catalog_developer": developer,
-            "catalog_repo": repo,
-            "catalog_slug": slug,
-            "pack_profile": "",
-            "pack_target": pack_target,
-        }
+def test_checked_in_default_bazaar_catalog_is_complete_and_held():
+    document, entries = checked_in_catalog_entries()
+    assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
+    assert document["expected_live_app_count"] == 33, document
+    assert len(entries) == 33, entries
+    assert document["default_release_state"] == "hold", document
+    assert "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10" not in entries, entries
+    for app_id in (
+        "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
+        "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
+        "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+    ):
+        assert entries[app_id]["group"] == "bureau-rich-office", entries[app_id]
+        assert entries[app_id]["source_commit"], entries[app_id]
+        assert entries[app_id]["catalog_slug"], entries[app_id]
 
+
+def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
+    _, entries = checked_in_catalog_entries()
     cases = {
-        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": (
-            spec("money-path", "ai-lagoon", "ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0",
-                 "ai-lagoon", "hrbrlife", "AI_Lagoon", "ai-lagoon"),
-            {"MEL_RELEASE_PACK_PROFILE": "standard"},
-        ),
-        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": (
-            spec("money-path", "instaco", "instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8",
-                 "instaco", "hrbrlife", "instaco-app", "instaco"),
-            {"MEL_RELEASE_PACK_PROFILE": "standard"},
-        ),
-        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": (
-            spec("productivity-apps", "goldkey", "GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947",
-                 "goldkey", "hrbrlife", "GoldKey", "goldkey"),
-            {"MEL_RELEASE_PACK_PROFILE": "standard"},
-        ),
-        "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": (
-            spec("productivity-apps", "mermail", "INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
-                 "mermail", "hrbrlife", "INSTASYS_MAIL", "mermail"),
-            {"MEL_RELEASE_PACK_PROFILE": "standard"},
-        ),
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh":
+            ("ai-lagoon-main", "e7f8ab98eb70576993145f725146c0c48974e9c0", "AI_Lagoon", "ai-lagoon"),
+        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
+            ("instaco", "b13d042cc689de8faa40f46cd04713239b5c6ea8", "instaco-app", "instaco"),
+        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
+            ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
+        "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
+            ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
     }
+    for app_id, (source_path, source_commit, repo, slug) in cases.items():
+        app = entries[app_id]
+        assert (app["source_path"], app["source_commit"], app["catalog_repo"], app["catalog_slug"]) == (
+            source_path, source_commit, repo, slug,
+        ), app
+    dev = entries["130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"]
+    assert dev["catalog_name"] == "GoldKey DEV", dev
+    assert dev["reconciliation_state"] == "runtime-contract-missing", dev
+
+
+def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
+    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
-        for app_id, (expected, expected_pack_env) in cases.items():
-            assert provider.app_spec(app_id) == expected
-            assert provider.catalog_slot(app_id) == {
-                "developer": expected["catalog_developer"],
-                "repo": expected["catalog_repo"],
-                "slug": expected["catalog_slug"],
-            }
-            assert provider.pack_profile_env(app_id) == expected_pack_env
-
-        # GoldKey's production coordinate now has a tracked governed slot.
-        # Keep the resolver bound to that exact slot rather than a similarly
-        # named historical package or the retired DEV identity.
-        goldkey_catalog = provider.catalog_package(goldkey_app_id)
-        assert goldkey_catalog is not None
-        assert goldkey_catalog.relative_to(provider.ROOT) == Path(
-            "packages/hrbrlife/GoldKey/goldkey"
-        )
-
+        for app_id in (
+            "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+            "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
+            "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+        ):
+            try:
+                provider.app_spec(app_id)
+            except provider.ProviderError as exc:
+                assert "held for reconciliation" in str(exc), exc
+            else:
+                raise AssertionError(f"held catalog app {app_id} was releasable")
         try:
-            provider.app_spec(goldkey_dev_app_id)
+            provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
         except provider.ProviderError as exc:
             assert "not declared" in str(exc), exc
         else:
-            raise AssertionError("GoldKey DEV was selectable from the production release family")
+            raise AssertionError("non-live configuration candidate was in the default Bazaar catalog")
     finally:
         restore_env(old)
 
 
-def test_botmother_release_slot_is_explicit():
-    """BotMother must select only its pinned source and historical Store slot."""
-    app_id = "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"
-    config = HERE.parent / "fleet" / "release-family.yaml"
-    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
+    app_id = "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"
+    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
+    old_env, old_argv = with_env({
+        "MEL_RELEASE_CONFIG": str(config),
+        "MEL_APP_ID": app_id,
+    }), provider.sys.argv
     try:
-        assert provider.app_spec(app_id) == {
-            "family": "platform-tools",
-            "name": "botmother",
-            "source_path": "botmother",
-            "source_commit": "899cddba7d379813a37c391226f75b069895736d",
-            "metadata_path": "metadata.json",
-            "runtime_contract_path": "RUNTIME-CONTRACT.json",
-            "publish_slug": "botmother",
-            "catalog_developer": "hrbrlife",
-            "catalog_repo": "MELUSINA_BOTMOTHER",
-            "catalog_slug": "botmother",
-            "pack_profile": "",
-            "pack_target": "",
-        }
-        assert provider.catalog_slot(app_id) == {
-            "developer": "hrbrlife",
-            "repo": "MELUSINA_BOTMOTHER",
-            "slug": "botmother",
-        }
-        assert provider.pack_profile_env(app_id) == {
-            "MEL_RELEASE_PACK_PROFILE": "standard",
-        }
-    finally:
-        restore_env(old)
-
-
-def test_actual_unpinned_telescreen_entry_is_not_releasable():
-    """The unresolved TeleScreen source must fail before packaging begins."""
-    app_id = "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"
-    with tempfile.TemporaryDirectory() as tmp:
-        source_root = Path(tmp)
-        source = source_root / "telescreen"
-        source.mkdir()
-        (source / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
-        old = with_env({
-            "MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml"),
-            "MEL_RELEASE_SOURCE_ROOT": str(source_root),
-        })
+        provider.sys.argv = [str(HERE / "mel-release-provider.py"), "stage"]
         try:
-            try:
-                provider.source_path(app_id)
-            except provider.ProviderError as exc:
-                assert "missing source_commit" in str(exc), exc
-            else:
-                raise AssertionError("the unpinned TeleScreen entry was releasable")
-        finally:
-            restore_env(old)
+            provider.main()
+        except provider.ProviderError as exc:
+            assert "held for reconciliation" in str(exc), exc
+        else:
+            raise AssertionError("a held app reached the provider stage boundary")
+    finally:
+        provider.sys.argv = old_argv
+        restore_env(old_env)
 
 
 def test_source_commit_pin_refuses_any_other_clean_checkout():
@@ -1219,14 +1148,14 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
             ["git", "-C", str(app), "rev-parse", "HEAD"], check=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         ).stdout.strip()
-        config = root / "release-family.yaml"
-        write_family_config(config, {
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
             "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau", "source_commit": actual},
         })
         old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root)})
         try:
             assert provider.source_path(app_id) == app
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau"},
             })
             try:
@@ -1236,7 +1165,7 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
             else:
                 raise AssertionError("an unpinned source checkout was accepted")
 
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "sheets-bureau": {"appId": app_id, "source_path": "sheets-bureau", "source_commit": "f" * 40},
             })
             try:
@@ -1247,26 +1176,6 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
                 raise AssertionError("a clean but wrong source commit was accepted")
         finally:
             restore_env(old)
-
-
-def test_actual_cyberteller_config_family_binding_resolves_historical_slot():
-    """The real manifest must retain Config's existing appId-bound slot."""
-    old = with_env({"MEL_RELEASE_CONFIG": str(provider.ROOT / "fleet" / "release-family.yaml")})
-    try:
-        spec = provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
-        assert spec["source_path"] == "cybertellerconfig"
-        assert spec["source_commit"] == "e26e2d1e5222ba7f2beac9f0d3d3801a0d86d492"
-        assert provider.catalog_slot(CYBERTELLER_CONFIG_APP_ID) == {
-            "developer": "hrbrlife",
-            "repo": "melusina_cybertellerconfig_app",
-            "slug": "cybertellerconfig",
-        }
-        assert provider.catalog_package(CYBERTELLER_CONFIG_APP_ID) == (
-            provider.ROOT / "packages" / "hrbrlife" /
-            "melusina_cybertellerconfig_app" / "cybertellerconfig"
-        )
-    finally:
-        restore_env(old)
 
 
 def test_catalog_package_binds_declared_slot_despite_preserved_duplicate():
@@ -1283,8 +1192,8 @@ def test_catalog_package_binds_declared_slot_despite_preserved_duplicate():
     }
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        config = root / "release-family.yaml"
-        write_family_config(config, apps)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, apps)
         canonical = root / "packages" / "hrbrlife" / "cyberteller" / "cyberteller"
         legacy = root / "packages" / "58c45de8c72c6b6588bb3611c7fe1d1d"
         canonical.mkdir(parents=True)
@@ -1325,8 +1234,8 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     }
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        config = root / "release-family.yaml"
-        write_family_config(config, apps)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, apps)
         source = root / "sources" / "namedcoin"
         source.mkdir(parents=True)
         source_metadata = {
@@ -1428,8 +1337,8 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         legacy = root / "packages" / "legacy" / "namedcoin" / "old"
         legacy.mkdir(parents=True)
         (legacy / "metadata.json").write_text(json.dumps({"appId": app_id, "name": "legacy"}) + "\n")
-        config = root / "release-family.yaml"
-        write_family_config(config, {
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
             "namedcoin": {
                 "appId": app_id,
                 "source_path": "namedcoin",
@@ -1521,8 +1430,8 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
             "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
         }) + "\n")
         source_commit = commit_source_fixture(source)
-        config = root / "release-family.yaml"
-        write_family_config(config, {
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
             "unified-mail": {
                 "appId": app_id,
                 "source_path": "unified-mail",
@@ -1545,7 +1454,7 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
                 "MEL_RELEASE_PACK_TARGET": "pack-unified",
             }
 
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "unified-mail": {
                     "appId": app_id,
                     "source_path": "unified-mail",
@@ -1559,7 +1468,7 @@ def test_nested_release_artifacts_and_pack_target_are_explicit_and_safe():
             else:
                 raise AssertionError("escaping metadata_path was accepted")
 
-            write_family_config(config, {
+            write_catalog_config(config, {
                 "unified-mail": {
                     "appId": app_id,
                     "source_path": "unified-mail",
@@ -1626,17 +1535,18 @@ if __name__ == "__main__":
     test_propose_register_resumes_the_exact_state_without_advancing_index()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
+    test_submit_refuses_an_alternate_store_target()
     test_release_helper_owns_index_and_atomic_approval_commands()
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
-    test_checked_in_rich_office_family_selects_only_pinned_slots()
-    test_checked_in_release_pins_bind_exact_target_slots()
-    test_botmother_release_slot_is_explicit()
+    test_checked_in_default_bazaar_catalog_is_complete_and_held()
+    test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()
+    test_checked_in_catalog_blocks_all_release_operations_until_reconciled()
+    test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage()
     test_source_commit_pin_refuses_any_other_clean_checkout()
-    test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
     test_build_records_private_bootstrap_without_writing_catalog_tree()

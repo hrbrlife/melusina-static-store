@@ -1,6 +1,6 @@
 # Sheets Bureau: canonical rich release source
 
-The governed release family `bureau-rich-office/sheets-bureau` is the only
+The governed default-Bazaar catalog entry `bureau-rich-office/sheets-bureau` is the only
 selection path for the Sheets Bureau identity
 `fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0`.
 

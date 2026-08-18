@@ -1,15 +1,16 @@
 # melusina-store-sidecar
 
 The reusable **verifying store sidecar** for the federated Melusina app store.
-One binary runs all THREE tiers of the `bazaar.<domain>` hierarchy, parameterized
-only by `store.yaml`/`store.config.json` + three attest shards (never a code fork):
+For the current release, the only configured public target is
+`https://bazaar.melusina-os.org`. The binary remains parameterized by
+`store.yaml`/`store.config.json` + three attest shards (never a code fork):
 
 1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (~40
    Squads-signed apps), baked into every shell as the default app source + the
    source for Sandstorm binary updates. `is_root=true`, no parent.
-2. **RESELLER** — `bazaar.<reseller-domain>`. Mirrors ROOT
+2. **RESELLER** — an operator-configured reseller endpoint. Mirrors ROOT
    (via `root_store_url`) and adds reseller-specific apps.
-3. **INSTALL** — `bazaar.<install-domain>`. Mirrors its
+3. **INSTALL** — an operator-configured per-tenant endpoint. Mirrors its
    reseller and adds install-specific apps; this is the per-tenant store the shell
    actually points `appIndexUrl`/`appMarketUrl` at.
 

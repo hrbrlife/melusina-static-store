@@ -7,7 +7,7 @@ only by `store.yaml`/`store.config.json` + three attest shards (never a code for
 1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (~40
    Squads-signed apps), baked into every shell as the default app source + the
    source for Sandstorm binary updates. `is_root=true`, no parent.
-2. **RESELLER** — `bazaar.<reseller-domain>` (e.g. `bazaar.paype.cc`). Mirrors ROOT
+2. **RESELLER** — `bazaar.<reseller-domain>`. Mirrors ROOT
    (via `root_store_url`) and adds reseller-specific apps.
 3. **INSTALL** — `bazaar.<install-domain>`. Mirrors its
    reseller and adds install-specific apps; this is the per-tenant store the shell

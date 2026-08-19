@@ -406,11 +406,13 @@ func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
 	}
 	meta.Version = version
 	offset = next
+	if offset, err = copyFixed(data, offset, meta.PublisherSquadsVault[:], "release_v2", "publisher_squads_vault"); err != nil {
+		return meta, err
+	}
 	for _, step := range []struct {
 		name string
 		n    int
 	}{
-		{"publisher_squads_vault", 32},
 		{"publisher_ed25519_pubkey", 32},
 		{"signature", 64},
 		{"signed_payload_hash", 32},

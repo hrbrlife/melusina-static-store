@@ -299,6 +299,10 @@ func initializeOrValidateRolloutRoot(cfg Config, allowCreate bool, expectedUID u
 }
 
 func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationStore, ledgerRoot, ledgerID string, opts catalogBootstrapOptions) (*publishNonceLedger, error) {
+	authority, err := cfg.sharedSquadsAuthority()
+	if err != nil {
+		return nil, fmt.Errorf("shared publisher Squads authority: %w", err)
+	}
 	classified, err := classifyRolloutStatesAt(cfg, time.Now().UTC())
 	if err != nil {
 		return nil, err
@@ -306,9 +310,9 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 	rollouts := classified.serving
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	servingDomainHash := hex.EncodeToString(domainHash[:])
-	snapshot, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	snapshot, err := store.RecoverCurrent(rollouts, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, authority, opts.expectedUID, opts.expectedGID)
 	if err != nil && len(classified.quarantined) != 0 {
-		snapshot, err = store.RebuildCurrentExcludingQuarantined(rollouts, classified.quarantined, opts.operator, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+		snapshot, err = store.RebuildCurrentExcludingQuarantined(rollouts, classified.quarantined, opts.operator, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, authority, opts.expectedUID, opts.expectedGID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("recover current generation: %w", err)
@@ -323,7 +327,7 @@ func validateCommittedCatalogBootstrap(cfg Config, store AppCatalogGenerationSto
 		appIDs = append(appIDs, appID)
 	}
 	sort.Strings(appIDs)
-	predecessorID, err := selectVerifiedRetentionPredecessor(store, snapshot.ID, appIDs, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, opts.expectedUID, opts.expectedGID)
+	predecessorID, err := selectVerifiedRetentionPredecessor(store, snapshot.ID, appIDs, opts.operatorPublicKey, servingDomainHash, cfg.PrivateStageDir, authority, opts.expectedUID, opts.expectedGID)
 	if err != nil {
 		return nil, fmt.Errorf("select catalog retention predecessor: %w", err)
 	}

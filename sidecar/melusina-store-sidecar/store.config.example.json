@@ -6,6 +6,11 @@
   "store_id": "melusina-store",
   "root_store_url": "https://melusina-os.org",
   "public_base_url": "https://bazaar.melusina-os.org",
+  "release_squads_authority": {
+    "multisig": "<catalog release_squads_authority.multisig>",
+    "vault": "<catalog release_squads_authority.vault>",
+    "program_id": "<catalog release_squads_authority.program_id>"
+  },
   "policy": {
     "allowed_tiers": ["regular"],
     "require_scan_report": true,

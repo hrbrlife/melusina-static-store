@@ -42,6 +42,19 @@ type Policy struct {
 	AcceptPublishers []string `json:"accept_publishers"`
 }
 
+// ReleaseSquadsAuthority is the one catalog-level Squads publisher authority
+// for this Bazaar.  Every app keeps its own SPK signing key; this tuple only
+// binds the shared authority that registered release entries must name.
+//
+// The JSON shape intentionally matches fleet/bazaar-catalog.yaml's
+// release_squads_authority mapping so deployment can carry the reviewed
+// catalog coordinates without translating or inventing per-app overrides.
+type ReleaseSquadsAuthority struct {
+	Multisig  string `json:"multisig"`
+	Vault     string `json:"vault"`
+	ProgramID string `json:"program_id"`
+}
+
 type Config struct {
 	LicenseNFTMint string `json:"license_nft_mint"`
 	// StoreAuthority opts this Store into the target-scoped StoreReleaseListing
@@ -75,7 +88,11 @@ type Config struct {
 	// /releases/<class>/<name>. Empty means the /releases serve gate fails closed
 	// unless mirror.root_master_nft_mint is set as the legacy/root fallback.
 	ReleaseMasterNftMint string `json:"release_master_nft_mint,omitempty"`
-	Policy               Policy `json:"policy"`
+	// ReleaseSquadsAuthority is mandatory for the default Bazaar. The read path
+	// checks the on-chain ReleaseEntry.publisher_squads_vault against Vault and
+	// checks the served RELEASE.json's quorum policy against Multisig.
+	ReleaseSquadsAuthority ReleaseSquadsAuthority `json:"release_squads_authority"`
+	Policy                 Policy                 `json:"policy"`
 	// RPCURL is the primary trusted Solana JSON-RPC endpoint.  It is the
 	// chain-read trust input for every serve-time release verification.
 	RPCURL string `json:"rpc_url"`
@@ -268,6 +285,9 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if _, err := primitives.PubkeyFromBase58(cfg.ProgramID); err != nil {
 		return cfg, fmt.Errorf("config: program_id is invalid: %w", err)
+	}
+	if err := cfg.normalizeReleaseSquadsAuthority(); err != nil {
+		return cfg, err
 	}
 	if cfg.DistDir == "" {
 		cfg.DistDir = "dist-publish"

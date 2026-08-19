@@ -29,7 +29,7 @@ type appCatalogRecoveryCandidate struct {
 // ties), switches to the first fully verified generation using the normal
 // relative-current protocol, and only then removes safe interrupted-write
 // artifacts. No valid generation means startup fails without cleanup.
-func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, authority configuredSquadsAuthority, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
 	if len(operatorKey) != ed25519.PublicKeySize {
 		return AppCatalogSnapshot{}, errors.New("app catalog recovery requires an ed25519 operator public key")
 	}
@@ -66,7 +66,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		if strings.TrimSpace(stagedRoot) == "" {
 			return errors.New("app catalog recovery requires the durable private-stage root")
 		}
-		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
+		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot, authority)
 	}
 
 	current, currentErr := s.ResolveCurrent()
@@ -114,7 +114,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 // records, fabricate a missing RUNTIME-CONTRACT.json, or reclassify a claimed
 // contract as legacy. The quarantined release remains private evidence and can
 // return only through a normal, runtime-contract-bound Store publish.
-func (s AppCatalogGenerationStore) RebuildCurrentExcludingQuarantined(rollouts, quarantined map[string]appRolloutState, operator *identity.Private, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
+func (s AppCatalogGenerationStore) RebuildCurrentExcludingQuarantined(rollouts, quarantined map[string]appRolloutState, operator *identity.Private, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, authority configuredSquadsAuthority, expectedUID, expectedGID uint32) (AppCatalogSnapshot, error) {
 	if len(quarantined) == 0 {
 		return AppCatalogSnapshot{}, errors.New("catalog reconciliation requires a quarantined rollout")
 	}
@@ -155,7 +155,7 @@ func (s AppCatalogGenerationStore) RebuildCurrentExcludingQuarantined(rollouts, 
 		}); err != nil {
 			return err
 		}
-		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
+		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot, authority)
 	}
 	return s.BuildAndSwitch(func(candidateRoot string) error {
 		if err := removeQuarantinedCatalogEntries(candidateRoot, quarantined); err != nil {
@@ -322,7 +322,7 @@ func resignCandidateCatalogPointers(root string, rollouts map[string]appRolloutS
 	return WriteSignedAppCatalogPointersForGeneration(root, appCatalogPointerPlan{pointers: pointers, pointerBodies: bodies, rolloutAppIDs: appIDs})
 }
 
-func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) error {
+func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string, authority configuredSquadsAuthority) error {
 	for appID, rollout := range rollouts {
 		_, stagedSPK, stagedMetadata, stagedRelease, err := loadStagedApp(stagedRoot, rollout.CurrentStageID)
 		if err != nil {
@@ -363,7 +363,7 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 		if err != nil {
 			return fmt.Errorf("read finalized release for %s: %w", appID, err)
 		}
-		if err := validateFinalizedReleaseAgainstStage(stagedRelease, servedRelease); err != nil {
+		if err := validateFinalizedReleaseAgainstStage(stagedRelease, servedRelease, authority); err != nil {
 			return fmt.Errorf("generation release finalization differs from staged immutable intent for %s: %w", appID, err)
 		}
 	}
@@ -375,7 +375,7 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 // deliberately not a generic "same parsed JSON" check: changing any release
 // identity field would make the sealed catalog disagree with the exact staged
 // candidate selected by the signed pointer.
-func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) error {
+func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte, authority configuredSquadsAuthority) error {
 	var staged, finalized ReleaseJSON
 	if err := json.Unmarshal(stagedBytes, &staged); err != nil {
 		return fmt.Errorf("decode staged release: %w", err)
@@ -398,6 +398,9 @@ func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) er
 	if staged.MasterNftMint != finalized.MasterNftMint {
 		return errors.New("masterNftMint changed")
 	}
+	if err := validateFinalizedReleaseSquadsAuthority(finalized, authority); err != nil {
+		return err
+	}
 	// The private stage is written before the ReleaseEntry ceremony has a
 	// publisher-custody vault to record.  Finalization may therefore fill an
 	// initially blank vault, but it must never replace an already selected
@@ -409,6 +412,24 @@ func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) er
 	}
 	if staged.ReleaseNonce != finalized.ReleaseNonce {
 		return errors.New("releaseNonce changed")
+	}
+	return nil
+}
+
+func validateFinalizedReleaseSquadsAuthority(release ReleaseJSON, authority configuredSquadsAuthority) error {
+	vault, err := canonicalSquadsPubkey("release.licenseSquadsVault", release.LicenseSquadsVault)
+	if err != nil {
+		return fmt.Errorf("publisher Squads authority: %w", err)
+	}
+	if vault != authority.Vault {
+		return fmt.Errorf("publisher Squads authority: release licenseSquadsVault %s != configured vault %s", vault.Base58(), authority.Vault.Base58())
+	}
+	multisig, err := canonicalSquadsPubkey("release.quorumPolicy.multisigPda", release.QuorumPolicy.MultisigPda)
+	if err != nil {
+		return fmt.Errorf("publisher Squads authority: %w", err)
+	}
+	if multisig != authority.Multisig {
+		return fmt.Errorf("publisher Squads authority: release quorumPolicy multisigPda %s != configured multisig %s", multisig.Base58(), authority.Multisig.Base58())
 	}
 	return nil
 }

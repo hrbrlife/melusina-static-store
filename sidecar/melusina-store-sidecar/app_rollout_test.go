@@ -56,13 +56,15 @@ func makeRolloutFixture(t *testing.T, masterMint, appID, version, label string, 
 	}
 	releaseHash := sha256.Sum256([]byte("rollout-release::" + label))
 	rel := ReleaseJSON{
-		Schema:          "melusina-release-v1",
-		AppHash:         appHashHex,
-		ReleaseHash:     hex.EncodeToString(releaseHash[:]),
-		Version:         version,
-		SignedAtUnix:    at.Unix(),
-		MasterNftMint:   masterMint,
-		ReleaseEntryPda: releasePDA.Base58(),
+		Schema:             "melusina-release-v1",
+		AppHash:            appHashHex,
+		ReleaseHash:        hex.EncodeToString(releaseHash[:]),
+		Version:            version,
+		SignedAtUnix:       at.Unix(),
+		MasterNftMint:      masterMint,
+		LicenseSquadsVault: testStoreAuthority,
+		ReleaseEntryPda:    releasePDA.Base58(),
+		QuorumPolicy:       QuorumPolicy{MultisigPda: testStoreAuthority},
 	}
 	release := mustJSON(t, rel)
 	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, slotHint{}, at)

@@ -94,7 +94,7 @@ func TestReadStoreReleaseListingMeta_RefusesMalformedStates(t *testing.T) {
 // registered_at anchor of store hygiene proximity check (a) — is exercised DIRECTLY,
 // not only through the test mock. A future field insert/reorder that shifts
 // registered_at (and the status byte immediately after it) must fail this test.
-func buildReleaseEntryBlobForTest(appHash, appID [32]byte, version string, registeredAt int64, status verify.AttestationStatus) []byte {
+func buildReleaseEntryBlobForTest(appHash, appID, publisherVault [32]byte, version string, registeredAt int64, status verify.AttestationStatus) []byte {
 	var b []byte
 	b = append(b, make([]byte, verify.AccountDiscriminatorLen)...) // discriminator
 	b = append(b, make([]byte, 32)...)                             // master_nft_mint
@@ -104,12 +104,12 @@ func buildReleaseEntryBlobForTest(appHash, appID [32]byte, version string, regis
 	vl := make([]byte, 4)
 	binary.LittleEndian.PutUint32(vl, uint32(len(version)))
 	b = append(b, vl...)
-	b = append(b, []byte(version)...)  // version (Borsh String)
-	b = append(b, make([]byte, 32)...) // publisher_squads_vault
-	b = append(b, make([]byte, 32)...) // publisher_ed25519_pubkey
-	b = append(b, make([]byte, 64)...) // signature
-	b = append(b, make([]byte, 32)...) // signed_payload_hash
-	b = append(b, make([]byte, 32)...) // registered_by
+	b = append(b, []byte(version)...)   // version (Borsh String)
+	b = append(b, publisherVault[:]...) // publisher_squads_vault
+	b = append(b, make([]byte, 32)...)  // publisher_ed25519_pubkey
+	b = append(b, make([]byte, 64)...)  // signature
+	b = append(b, make([]byte, 32)...)  // signed_payload_hash
+	b = append(b, make([]byte, 32)...)  // registered_by
 	ra := make([]byte, 8)
 	binary.LittleEndian.PutUint64(ra, uint64(registeredAt))
 	b = append(b, ra...)        // registered_at (i64 LE)
@@ -123,15 +123,16 @@ func buildReleaseEntryBlobForTest(appHash, appID [32]byte, version string, regis
 // asserting the exact registered_at (i64 LE) and the status byte that follows it are
 // decoded at the right position — the guard the mock-only tests could not provide.
 func TestReadReleaseEntryMeta_ByteDecode(t *testing.T) {
-	var appHash, appID [32]byte
+	var appHash, appID, publisherVault [32]byte
 	for i := range appHash {
 		appHash[i] = byte(i + 1)
 		appID[i] = byte(0xA0 + i)
+		publisherVault[i] = byte(0x50 + i)
 	}
 	const version = "2.0.17"
 	const registeredAt int64 = 1781724839
 
-	blob := buildReleaseEntryBlobForTest(appHash, appID, version, registeredAt, verify.AttestationStatusActive)
+	blob := buildReleaseEntryBlobForTest(appHash, appID, publisherVault, version, registeredAt, verify.AttestationStatusActive)
 	meta, err := readReleaseEntryMeta(blob)
 	if err != nil {
 		t.Fatalf("readReleaseEntryMeta: %v", err)
@@ -141,6 +142,9 @@ func TestReadReleaseEntryMeta_ByteDecode(t *testing.T) {
 	}
 	if meta.AppID != appID {
 		t.Errorf("AppID = %x, want %x", meta.AppID, appID)
+	}
+	if meta.PublisherSquadsVault != publisherVault {
+		t.Errorf("PublisherSquadsVault = %x, want %x", meta.PublisherSquadsVault, publisherVault)
 	}
 	if meta.Version != version {
 		t.Errorf("Version = %q, want %q", meta.Version, version)
@@ -157,7 +161,7 @@ func TestReadReleaseEntryMeta_ByteDecode(t *testing.T) {
 // panic) when the buffer is truncated inside registered_at.
 func TestReadReleaseEntryMeta_ShortBuffer(t *testing.T) {
 	var z [32]byte
-	full := buildReleaseEntryBlobForTest(z, z, "v1", 1, verify.AttestationStatusActive)
+	full := buildReleaseEntryBlobForTest(z, z, z, "v1", 1, verify.AttestationStatusActive)
 	short := full[:len(full)-4] // cut into registered_at / status
 	if _, err := readReleaseEntryMeta(short); err == nil {
 		t.Fatal("expected error on truncated buffer, got nil")

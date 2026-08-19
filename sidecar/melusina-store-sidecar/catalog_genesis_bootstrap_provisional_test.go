@@ -36,6 +36,7 @@ func newGenesisFixture(t *testing.T) (Config, catalogBootstrapOptions) {
 		PrivateStageDir:          filepath.Join(root, "private"),
 		CatalogGenerationRoot:    filepath.Join(root, "generations"),
 		CatalogMigrationStateDir: filepath.Join(root, "migrations"),
+		ReleaseSquadsAuthority:   ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority},
 	}
 	cleanupImmutableCatalog(t, cfg.CatalogGenerationRoot)
 	for _, dir := range []string{cfg.DistDir, cfg.PrivateStageDir, cfg.CatalogMigrationStateDir} {

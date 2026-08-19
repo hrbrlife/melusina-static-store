@@ -12,11 +12,31 @@ const testStoreAuthority = "11111111111111111111111111111111"
 
 func writeTmpConfig(t *testing.T, content string) string {
 	t.Helper()
+	trimmed := strings.TrimSpace(content)
+	if !strings.HasSuffix(trimmed, "}") {
+		t.Fatalf("test config is not a JSON object")
+	}
+	// Every existing config-focused test gets a valid shared-authority tuple so
+	// it can continue to isolate the validation rule it names. A dedicated test
+	// below covers the new required field.
+	content = strings.TrimSuffix(trimmed, "}") + `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `"}}`
+	return writeRawTmpConfig(t, content)
+}
+
+func writeRawTmpConfig(t *testing.T, content string) string {
+	t.Helper()
 	p := filepath.Join(t.TempDir(), "store.config.json")
 	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return p
+}
+
+func TestLoadConfig_RequiresSharedReleaseSquadsAuthority(t *testing.T) {
+	_, err := LoadConfig(writeRawTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org"}`))
+	if err == nil || !strings.Contains(err.Error(), "release_squads_authority.multisig") {
+		t.Fatalf("missing shared authority error = %v", err)
+	}
 }
 
 func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {

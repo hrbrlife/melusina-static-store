@@ -84,7 +84,7 @@ func TestConfiguredRPCReader_RetriesTransportFailureThenUsesFallback(t *testing.
 	}
 	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fallbackCalls.Add(1)
-		writeRPCAccountResponse(t, w, buildReleaseEntryBlobForTest(wantHash, wantAppID, "2.0.32", 1, verify.AttestationStatusActive))
+		writeRPCAccountResponse(t, w, buildReleaseEntryBlobForTest(wantHash, wantAppID, [32]byte{}, "2.0.32", 1, verify.AttestationStatusActive))
 	}))
 	defer fallback.Close()
 

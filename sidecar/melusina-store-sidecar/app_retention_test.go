@@ -364,7 +364,7 @@ func TestStartupRetentionSelectsNewestFullyVerifiedPredecessor(t *testing.T) {
 	store := AppCatalogGenerationStore{Root: root, Barrier: &sync.RWMutex{}}
 	predecessor, err := selectVerifiedRetentionPredecessor(
 		store, currentID, []string{"app-one"}, pub, recoveryDomainHash(), stageRoot,
-		uint32(os.Getuid()), uint32(os.Getgid()))
+		recoverySquadsAuthority(), uint32(os.Getuid()), uint32(os.Getgid()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func TestStartupRetentionSelectsNewestFullyVerifiedPredecessor(t *testing.T) {
 
 func newRetentionFixture(t *testing.T) (Config, AppCatalogGenerationStore, string) {
 	t.Helper()
-	cfg := Config{PrivateStageDir: t.TempDir(), CatalogGenerationRoot: t.TempDir()}
+	cfg := Config{PrivateStageDir: t.TempDir(), CatalogGenerationRoot: t.TempDir(), ReleaseSquadsAuthority: ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority}}
 	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

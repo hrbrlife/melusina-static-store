@@ -287,10 +287,10 @@ func TestAppCatalogRecoveryAcceptsCeremonyFinalizedRelease(t *testing.T) {
 	// registered the release.  They must not turn a valid staged candidate into
 	// an unrecoverable cold-start catalog.
 	release.SignedAtUnix = 1_700_000_123
-	release.LicenseSquadsVault = "publisher-custody-vault"
+	release.LicenseSquadsVault = testStoreAuthority
 	release.ReleaseEntryPda = "chain-final-release-entry"
 	release.AuthorSig = "chain-final-author-signature"
-	release.QuorumPolicy = QuorumPolicy{Threshold: 3, MemberCount: 4, MultisigPda: "core-app-team"}
+	release.QuorumPolicy = QuorumPolicy{Threshold: 3, MemberCount: 4, MultisigPda: testStoreAuthority}
 	if err := os.Chmod(path, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -315,14 +315,25 @@ func TestValidateFinalizedReleaseAgainstStageAllowsOnlyBlankVaultFinalization(t 
 		Version: "1.0.0", MasterNftMint: "master-mint", ReleaseNonce: "nonce",
 	}
 	finalized := staged
-	finalized.LicenseSquadsVault = "publisher-custody-vault"
-	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized)); err != nil {
+	finalized.LicenseSquadsVault = testStoreAuthority
+	finalized.QuorumPolicy = QuorumPolicy{MultisigPda: testStoreAuthority}
+	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized), recoverySquadsAuthority()); err != nil {
 		t.Fatalf("blank staged custody vault could not be finalized: %v", err)
 	}
 
-	staged.LicenseSquadsVault = "original-custody-vault"
-	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized)); err == nil || !strings.Contains(err.Error(), "licenseSquadsVault changed") {
+	staged.LicenseSquadsVault = "11111111111111111111111111111112"
+	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized), recoverySquadsAuthority()); err == nil || !strings.Contains(err.Error(), "licenseSquadsVault changed") {
 		t.Fatalf("changed non-empty custody vault accepted: %v", err)
+	}
+
+	// An attacker cannot work around the one-way staged/finalized comparison by
+	// changing both copies to an app-specific authority: recovery rejects the
+	// finalized served representation against the catalog-level tuple itself.
+	staged = finalized
+	staged.LicenseSquadsVault = "11111111111111111111111111111112"
+	finalized = staged
+	if err := validateFinalizedReleaseAgainstStage(mustJSON(t, staged), mustJSON(t, finalized), recoverySquadsAuthority()); err == nil || !strings.Contains(err.Error(), "publisher Squads authority") {
+		t.Fatalf("recovery accepted app-specific vault override: %v", err)
 	}
 }
 
@@ -352,14 +363,14 @@ func TestAppCatalogRecoveryRequiresStageAndExactOwner(t *testing.T) {
 	rollouts := recoveryRollouts("app-one")
 	uid, gid := uint32(os.Getuid()), uint32(os.Getgid())
 	store := AppCatalogGenerationStore{Root: root}
-	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), "", uid, gid); err == nil || !strings.Contains(err.Error(), "private-stage root") {
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), "", recoverySquadsAuthority(), uid, gid); err == nil || !strings.Contains(err.Error(), "private-stage root") {
 		t.Fatalf("missing private-stage root accepted: %v", err)
 	}
 	stageRoot := filepath.Join(root, "stages")
-	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, uid+1, gid); err == nil || !strings.Contains(err.Error(), "owner") {
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, recoverySquadsAuthority(), uid+1, gid); err == nil || !strings.Contains(err.Error(), "owner") {
 		t.Fatalf("wrong generation uid accepted: %v", err)
 	}
-	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, uid, gid+1); err == nil || !strings.Contains(err.Error(), "owner") {
+	if _, err := store.RecoverCurrent(rollouts, pub, recoveryDomainHash(), stageRoot, recoverySquadsAuthority(), uid, gid+1); err == nil || !strings.Contains(err.Error(), "owner") {
 		t.Fatalf("wrong generation gid accepted: %v", err)
 	}
 }
@@ -454,7 +465,7 @@ func recoveryReleaseBytes(appID, version string) ([]byte, []byte, []byte, string
 	if err != nil {
 		panic(err)
 	}
-	release := []byte(fmt.Sprintf(`{"appHash":%q,"releaseHash":%q,"version":%q}`, appHash, strings.Repeat("b", 64), version))
+	release := []byte(fmt.Sprintf(`{"appHash":%q,"releaseHash":%q,"version":%q,"licenseSquadsVault":%q,"quorumPolicy":{"multisigPda":%q}}`, appHash, strings.Repeat("b", 64), version, testStoreAuthority, testStoreAuthority))
 	return spk, metadata, release, appHash
 }
 
@@ -484,7 +495,12 @@ func persistRecoveryStage(t *testing.T, root, appID, version string) {
 
 func recoverTestCurrent(root string, rollouts map[string]appRolloutState, pub ed25519.PublicKey) (AppCatalogSnapshot, error) {
 	return (AppCatalogGenerationStore{Root: root}).RecoverCurrent(
-		rollouts, pub, recoveryDomainHash(), filepath.Join(root, "stages"), uint32(os.Getuid()), uint32(os.Getgid()))
+		rollouts, pub, recoveryDomainHash(), filepath.Join(root, "stages"), recoverySquadsAuthority(), uint32(os.Getuid()), uint32(os.Getgid()))
+}
+
+func recoverySquadsAuthority() configuredSquadsAuthority {
+	key := mustPubkey(testStoreAuthority)
+	return configuredSquadsAuthority{Multisig: key, Vault: key, ProgramID: key}
 }
 
 func recoveryPackageID(appID string) string {

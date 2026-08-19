@@ -48,12 +48,13 @@ type mockChainReader struct {
 }
 
 type mockReleaseEntry struct {
-	appHash      [32]byte
-	appID        [32]byte
-	version      string
-	status       verify.AttestationStatus
-	registeredAt int64 // on-chain witnessed attestation time (ReleaseEntry.registered_at)
-	err          error
+	appHash              [32]byte
+	appID                [32]byte
+	publisherSquadsVault [32]byte
+	version              string
+	status               verify.AttestationStatus
+	registeredAt         int64 // on-chain witnessed attestation time (ReleaseEntry.registered_at)
+	err                  error
 }
 
 type mockSidecarIdentity struct {
@@ -139,12 +140,13 @@ func (m *mockChainReader) FetchReleaseEntryMeta(_ context.Context, addr string) 
 		return releaseEntryMeta{}, e.err
 	}
 	return releaseEntryMeta{
-		PDA:          addr,
-		AppHash:      e.appHash,
-		AppID:        e.appID,
-		Version:      e.version,
-		Status:       e.status,
-		RegisteredAt: e.registeredAt,
+		PDA:                  addr,
+		AppHash:              e.appHash,
+		AppID:                e.appID,
+		PublisherSquadsVault: e.publisherSquadsVault,
+		Version:              e.version,
+		Status:               e.status,
+		RegisteredAt:         e.registeredAt,
 	}, nil
 }
 
@@ -375,8 +377,13 @@ func testConfig(t *testing.T) (Config, string) {
 	t.Helper()
 	licenseMint := randPubkeyB58(t)
 	return Config{
-		LicenseNFTMint:  licenseMint,
-		StoreAuthority:  randPubkeyB58(t),
+		LicenseNFTMint: licenseMint,
+		StoreAuthority: randPubkeyB58(t),
+		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
+			Multisig:  testStoreAuthority,
+			Vault:     testStoreAuthority,
+			ProgramID: testStoreAuthority,
+		},
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",
@@ -390,6 +397,16 @@ func testConfig(t *testing.T) (Config, string) {
 // is the app's master NFT mint (the ReleaseEntry + app-blacklist target).
 func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFixture {
 	t.Helper()
+	// Individual tests often construct only the fields they exercise. Give
+	// fixture-backed release tests a complete shared-authority tuple while
+	// keeping production Config validation fail-closed for an omitted tuple.
+	if _, err := cfg.sharedSquadsAuthority(); err != nil {
+		cfg.ReleaseSquadsAuthority = ReleaseSquadsAuthority{
+			Multisig:  testStoreAuthority,
+			Vault:     testStoreAuthority,
+			ProgramID: testStoreAuthority,
+		}
+	}
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
 	spkSum := sha256.Sum256(spk)
@@ -454,16 +471,17 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	}
 
 	rel := ReleaseJSON{
-		Schema:          "melusina-release-v1",
-		AppHash:         appHashHex,
-		ReleaseHash:     releaseHashHex,
-		Version:         "1.0.0",
-		SignedAtUnix:    1700000000,
-		MasterNftMint:   masterMintB58,
-		ReleaseEntryPda: relPDA.Base58(),
-		AuthorSig:       "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", // placeholder; chain-verified, not re-checked
-		QuorumPolicy:    QuorumPolicy{Threshold: 2, MemberCount: 3, MultisigPda: randPubkeyB58(t)},
-		ReleaseNonce:    "nonce-abc",
+		Schema:             "melusina-release-v1",
+		AppHash:            appHashHex,
+		ReleaseHash:        releaseHashHex,
+		Version:            "1.0.0",
+		SignedAtUnix:       1700000000,
+		MasterNftMint:      masterMintB58,
+		LicenseSquadsVault: cfg.ReleaseSquadsAuthority.Vault,
+		ReleaseEntryPda:    relPDA.Base58(),
+		AuthorSig:          "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", // placeholder; chain-verified, not re-checked
+		QuorumPolicy:       QuorumPolicy{Threshold: 2, MemberCount: 3, MultisigPda: cfg.ReleaseSquadsAuthority.Multisig},
+		ReleaseNonce:       "nonce-abc",
 	}
 	runtimeContract := runtimeContractForTest(t, spk, metadata, rel)
 	runtimeContractSum := sha256.Sum256(runtimeContract)
@@ -548,7 +566,11 @@ func runtimeContractForRelease(t *testing.T, release, spk, metadata []byte) []by
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), no
 // blacklist entries.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
+	publisherVault, err := primitives.PubkeyFromBase58(f.cfg.ReleaseSquadsAuthority.Vault)
+	if err != nil {
+		panic(err)
+	}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, publisherSquadsVault: publisherVault, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
 	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
 		status:     verify.AuthorizationStatusActive,
 		authority:  verify.Pubkey(operatorPub),

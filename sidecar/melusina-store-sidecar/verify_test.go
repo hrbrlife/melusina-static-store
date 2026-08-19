@@ -49,6 +49,72 @@ func TestVerifyServeHash_LegacyStoreSkipsListingUntilAuthorityConfigured(t *test
 	}
 }
 
+func TestVerifyPublish_RejectsAnyPublisherSquadsOverride(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, op)
+
+	cases := []struct {
+		name   string
+		mutate func(*mockChainReader, *publishFixture, *Config)
+	}{
+		{
+			name: "release_vault_override",
+			mutate: func(_ *mockChainReader, f *publishFixture, _ *Config) {
+				f.rel.LicenseSquadsVault = randPubkeyB58(t)
+			},
+		},
+		{
+			name: "release_multisig_override",
+			mutate: func(_ *mockChainReader, f *publishFixture, _ *Config) {
+				f.rel.QuorumPolicy.MultisigPda = randPubkeyB58(t)
+			},
+		},
+		{
+			name: "onchain_vault_override",
+			mutate: func(m *mockChainReader, f *publishFixture, _ *Config) {
+				entry := m.releaseEntry[f.relPDA]
+				entry.publisherSquadsVault = mustPubkey(randPubkeyB58(t))
+				m.releaseEntry[f.relPDA] = entry
+			},
+		},
+		{
+			name: "catalog_authority_override",
+			mutate: func(_ *mockChainReader, _ *publishFixture, c *Config) {
+				c.ReleaseSquadsAuthority.Vault = randPubkeyB58(t)
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidate := cfg
+			f := buildValidFixture(t, candidate, randPubkeyB58(t))
+			m := newMockChainReader()
+			f.pinAccept(m, operatorPub)
+			tc.mutate(m, &f, &candidate)
+			if err := VerifyPublish(context.Background(), m, candidate, f.spk, f.metadata, f.rel, operatorPub); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+				t.Fatalf("publisher Squads override accepted or unnamed: %v", err)
+			}
+		})
+	}
+}
+
+func TestVerifyCurrentStoreReleaseListing_RechecksSharedPublisherAuthority(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	m := newMockChainReader()
+	f.pinAccept(m, operatorSignPub32(t, op))
+	cfg.StoreAuthority = "" // isolate the cache-path publisher check from listing policy.
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err != nil {
+		t.Fatalf("initial serve verification: %v", err)
+	}
+	f.rel.LicenseSquadsVault = randPubkeyB58(t)
+	if err := verifyCurrentStoreReleaseListing(context.Background(), m, cfg, f.rel.AppHash, f.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+		t.Fatalf("cached serve path accepted changed publisher vault: %v", err)
+	}
+}
+
 func TestVerifyPublish_Reject(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)

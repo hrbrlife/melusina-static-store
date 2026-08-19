@@ -163,7 +163,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	if err != nil {
 		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
 	}
-	masterMint, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, appHash, rel)
+	masterMint, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, cfg, appHash, rel)
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // empty StoreAuthority deliberately retains the established ReleaseEntry-only
 // policy rather than manufacturing a partial listing projection.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
-	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHash(ctx, cr, appHashHex, rel)
+	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHash(ctx, cr, cfg, appHashHex, rel)
 	if err != nil {
 		return err
 	}
@@ -342,6 +342,17 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 	releasePDA, _, err := pda.Release(masterMint, appHash, programID)
 	if err != nil {
 		return fmt.Errorf("check=release_entry: derive PDA: %w", err)
+	}
+	// A fresh global verdict is allowed to cache status/blacklist facts for its
+	// bounded revoke window, but never lets a replacement RELEASE.json bypass
+	// the shared publisher-vault check. The vault is immutable chain state, so
+	// re-read and compare it on every cached serve path.
+	meta, err := cr.FetchReleaseEntryMeta(ctx, releasePDA.Base58())
+	if err != nil {
+		return fmt.Errorf("check=release_entry: fetch %s: %w", releasePDA.Base58(), err)
+	}
+	if err := verifySharedSquadsAuthority(cfg, rel, meta); err != nil {
+		return err
 	}
 	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
 }
@@ -472,7 +483,7 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 // and is Active. Returns the app master NFT mint + the 32-byte app_hash for the
 // caller's downstream (blacklist) checks. FAIL-CLOSED. (The author ed25519 sig was
 // verified on-chain at register — §1; we confirm the entry, not the sig.)
-func verifyReleaseEntryHash(ctx context.Context, cr chainReader, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
+func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
 	var zeroPDA pda.Pubkey
@@ -506,10 +517,45 @@ func verifyReleaseEntryHash(ctx context.Context, cr chainReader, appHashHex stri
 	if err := meta.Status.RequireActive(); err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
 	}
+	if err := verifySharedSquadsAuthority(cfg, rel, meta); err != nil {
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, err
+	}
 	if meta.PDA == "" {
 		meta.PDA = relPDA.Base58()
 	}
 	return masterMint, appHashBytes, relPDA, meta, nil
+}
+
+// verifySharedSquadsAuthority binds both representations of publisher custody
+// to the one catalog-level Squads authority. RELEASE.json is a served claim;
+// ReleaseEntry.publisher_squads_vault is the chain-authenticated fact. Both
+// must name the configured vault, and the served quorum claim must name the
+// configured multisig. App SPK keys are intentionally not consulted here: they
+// remain per-app signing keys and are verified by the package path separately.
+func verifySharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryMeta) error {
+	want, err := cfg.sharedSquadsAuthority()
+	if err != nil {
+		return fmt.Errorf("check=publisher_squads_authority: %w", err)
+	}
+	claimedVault, err := canonicalSquadsPubkey("release.licenseSquadsVault", rel.LicenseSquadsVault)
+	if err != nil {
+		return fmt.Errorf("check=publisher_squads_authority: %w", err)
+	}
+	if claimedVault != want.Vault {
+		return fmt.Errorf("check=publisher_squads_authority: release licenseSquadsVault %s != configured vault %s", claimedVault.Base58(), want.Vault.Base58())
+	}
+	claimedMultisig, err := canonicalSquadsPubkey("release.quorumPolicy.multisigPda", rel.QuorumPolicy.MultisigPda)
+	if err != nil {
+		return fmt.Errorf("check=publisher_squads_authority: %w", err)
+	}
+	if claimedMultisig != want.Multisig {
+		return fmt.Errorf("check=publisher_squads_authority: release quorumPolicy multisigPda %s != configured multisig %s", claimedMultisig.Base58(), want.Multisig.Base58())
+	}
+	if meta.PublisherSquadsVault != want.Vault {
+		got := pda.Pubkey(meta.PublisherSquadsVault)
+		return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())
+	}
+	return nil
 }
 
 // verifyNotBlacklisted rejects when target has a BlacklistEntry PDA — its mere

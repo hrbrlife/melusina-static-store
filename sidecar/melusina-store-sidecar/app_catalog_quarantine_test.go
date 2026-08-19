@@ -31,7 +31,7 @@ func TestCatalogRecoveryQuarantinesOnlyMissingClaimedRuntimeContract(t *testing.
 	if err := os.Symlink(oldID, filepath.Join(root, appCatalogCurrentLink)); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{PrivateStageDir: filepath.Join(root, "stages")}
+	cfg := Config{PrivateStageDir: filepath.Join(root, "stages"), ReleaseSquadsAuthority: ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority}}
 	if err := os.MkdirAll(rolloutStateDir(cfg), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestCatalogRecoveryQuarantinesOnlyMissingClaimedRuntimeContract(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	rebuilt, err := store.RebuildCurrentExcludingQuarantined(classified.serving, classified.quarantined, operator, operatorPub, recoveryDomainHash(), cfg.PrivateStageDir, uint32(os.Getuid()), uint32(os.Getgid()))
+	rebuilt, err := store.RebuildCurrentExcludingQuarantined(classified.serving, classified.quarantined, operator, operatorPub, recoveryDomainHash(), cfg.PrivateStageDir, recoverySquadsAuthority(), uint32(os.Getuid()), uint32(os.Getgid()))
 	if err != nil {
 		t.Fatal(err)
 	}

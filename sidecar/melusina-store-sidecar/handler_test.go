@@ -439,7 +439,11 @@ func TestAppPublishEveryPostClaimBoundaryIsRetryableWithFreshEnvelope(t *testing
 				t.Fatal(err)
 			}
 			domainHash := primitives.StoreDomainHash(svc.cfg.Domain)
-			if _, err := svc.catalogGenerations.RecoverCurrent(rollouts, ed25519.PublicKey(operatorKey), hex.EncodeToString(domainHash[:]), svc.cfg.PrivateStageDir, uint32(os.Getuid()), uint32(os.Getgid())); err != nil {
+			authority, err := svc.cfg.sharedSquadsAuthority()
+			if err != nil {
+				t.Fatalf("restart shared publisher authority: %v", err)
+			}
+			if _, err := svc.catalogGenerations.RecoverCurrent(rollouts, ed25519.PublicKey(operatorKey), hex.EncodeToString(domainHash[:]), svc.cfg.PrivateStageDir, authority, uint32(os.Getuid()), uint32(os.Getgid())); err != nil {
 				t.Fatalf("restart generation recovery: %v", err)
 			}
 			restarted := &publishService{

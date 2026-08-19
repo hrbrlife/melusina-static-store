@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func selectVerifiedRetentionPredecessor(store AppCatalogGenerationStore, currentID string, rolloutAppIDs []string, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, expectedUID, expectedGID uint32) (string, error) {
+func selectVerifiedRetentionPredecessor(store AppCatalogGenerationStore, currentID string, rolloutAppIDs []string, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, authority configuredSquadsAuthority, expectedUID, expectedGID uint32) (string, error) {
 	candidates, err := store.recoveryCandidates()
 	if err != nil {
 		return "", err
@@ -44,7 +44,7 @@ func selectVerifiedRetentionPredecessor(store AppCatalogGenerationStore, current
 		if err != nil {
 			continue
 		}
-		if err := validateSnapshotBytesAgainstStaged(candidate.snapshot, selections, stagedRoot); err != nil {
+		if err := validateSnapshotBytesAgainstStaged(candidate.snapshot, selections, stagedRoot, authority); err != nil {
 			continue
 		}
 		return candidate.snapshot.ID, nil

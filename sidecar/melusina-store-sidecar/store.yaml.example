@@ -15,6 +15,10 @@ store_id: "melusina-store"
 # reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
 root_store_url: "https://melusina-os.org"   # base binary + basic apps are MIRRORED from here when this is not the root
 public_base_url: "https://bazaar.melusina-os.org"  # The current release target's public origin. Pins every desired-generation bundleUrl; unset => both /update/generation.json and its legacy /update/manifest.json projection fail closed (503).
+release_squads_authority:                         # exact tuple from fleet/bazaar-catalog.yaml; no app-specific override is accepted
+  multisig: "<catalog release_squads_authority.multisig>"
+  vault: "<catalog release_squads_authority.vault>"
+  program_id: "<catalog release_squads_authority.program_id>"
 
 policy:
   allowed_tiers: ["regular"]       # capability tiers this store may list

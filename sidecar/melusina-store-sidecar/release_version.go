@@ -22,8 +22,12 @@ type releaseEntryMeta struct {
 	PDA     string
 	AppHash [32]byte
 	AppID   [32]byte
-	Version string
-	Status  verify.AttestationStatus
+	// PublisherSquadsVault is retained from the on-chain ReleaseEntry instead
+	// of skipped by the RPC decoder. It is the chain-authenticated publisher
+	// authority fact used to reject releases from any other vault.
+	PublisherSquadsVault [32]byte
+	Version              string
+	Status               verify.AttestationStatus
 	// RegisteredAt is the on-chain-witnessed attestation time (i64 unix, from
 	// ReleaseEntry.registered_at). It is the tamper-proof anchor for the store
 	// hygiene proximity check (a) — the publisher-supplied RELEASE.json signedAtUnix

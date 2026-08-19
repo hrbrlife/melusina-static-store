@@ -22,6 +22,8 @@ SPEC.loader.exec_module(provider)
 
 
 CYBERTELLER_CONFIG_APP_ID = "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10"
+PRODUCTION_GOLDKEY_APP_ID = "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh"
+RETIRED_GOLDKEY_DEV_APP_ID = "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"
 TEST_SQUADS_MULTISIG = "11111111111111111111111111111111"
 TEST_SQUADS_VAULT = "SysvarC1ock11111111111111111111111111111111"
 TEST_SQUADS_PROGRAM_ID = "Stake11111111111111111111111111111111111111"
@@ -1482,7 +1484,13 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert len(entries) == 32, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
-    assert "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10" not in entries, entries
+    assert CYBERTELLER_CONFIG_APP_ID not in entries, entries
+    assert RETIRED_GOLDKEY_DEV_APP_ID not in entries, entries
+    goldkey = entries[PRODUCTION_GOLDKEY_APP_ID]
+    assert (goldkey["name"], goldkey["source_path"], goldkey["catalog_name"], goldkey["catalog_slug"]) == (
+        "goldkey", "GoldKey", "GoldKey", "goldkey",
+    ), goldkey
+    assert "packages/hrbrlife/GoldKey-dev" not in (HERE.parent / ".gitmodules").read_text(encoding="utf-8")
     expected_public_names = {
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "Lobby",
         "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0": "NamedCoin Configurator",
@@ -1629,6 +1637,16 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert ai_lagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
+
+
+def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
+    cohort_path = HERE.parent / "fleet" / "prepublish-candidates" / "2026-08-19-ready-cohort.json"
+    cohort = json.loads(cohort_path.read_text(encoding="utf-8"))
+    app_ids = [app["appId"] for app in cohort["apps"]]
+    assert cohort["catalogOrigin"] == "https://bazaar.melusina-os.org", cohort
+    assert cohort["expectedCatalogAppCount"] == 32, cohort
+    assert RETIRED_GOLDKEY_DEV_APP_ID not in app_ids, app_ids
+    assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -2298,6 +2316,7 @@ if __name__ == "__main__":
     test_direct_source_selection_requires_an_explicit_historical_baseline()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
+    test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()
     test_checked_in_catalog_blocks_all_release_operations_until_reconciled()
     test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage()

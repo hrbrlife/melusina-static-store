@@ -1585,6 +1585,16 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert dashboard["source_selection_receipt"] == (
         "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json"
     ), dashboard
+    domain_template = entries["hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h"]
+    assert domain_template["source_commit"] == "98aa6c7a905364c33c916cf1e64495da41204e3f", domain_template
+    assert domain_template["source_baseline_branch"] == "main", domain_template
+    assert domain_template["runtime_contract_path"] == "RUNTIME-CONTRACT.json", domain_template
+    assert domain_template["reconciliation_state"] == "source-pinned", domain_template
+    assert domain_template["release_state"] == "ready", domain_template
+    assert domain_template["source_selection_state"] == "direct-dev-verified", domain_template
+    assert domain_template["source_selection_receipt"] == (
+        "prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json"
+    ), domain_template
     pending_candidates = {
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
@@ -1635,7 +1645,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
-            ("ccash-domain-template", "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a", "ccash_domain_template", "cca-sh-domain-template"),
+            ("ccash-domain-template", "98aa6c7a905364c33c916cf1e64495da41204e3f", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
             ("instaco", "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c", "instaco-app", "instaco"),
     }

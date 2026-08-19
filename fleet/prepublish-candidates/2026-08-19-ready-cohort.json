@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 24,
+  "releaseReadyAppCount": 25,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -82,6 +82,15 @@
       "version": "2.1.5",
       "spkSha256": "6511eb8cc4558a8c4a4a82615900c0e3fc258e968e397643f3e426f76843561b",
       "appHash": "e5230aea31e05880a2485b11232aa7a0c6a372d3f0abdf9e826b6afdd69110e3"
+    },
+    {
+      "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+      "catalogName": "DomainTemplate",
+      "sourceCommit": "98aa6c7a905364c33c916cf1e64495da41204e3f",
+      "sourceSelectionReceipt": "prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json",
+      "version": "0.5.88",
+      "spkSha256": "9cfbe6b3441413960cf6656c9e6d1c92ba446c23ae8f8bc683a8ab809ac1a7a4",
+      "appHash": "ceeee9f05faba319aa1bbe87643c0ca38a1130683fdc9ab46d1391a1bdaa45a8"
     },
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",

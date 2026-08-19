@@ -3,10 +3,11 @@
 Each release-ready default-Bazaar app has one JSON receipt named
 `<appId>.json` in this directory. The provider accepts two explicit paths:
 
-- `direct-dev`: `dev-publish` is the selected source and `main` is either the
-  same reviewed commit, its stable reviewed ancestor, or an explicitly
-  recorded historical baseline after a ref rewrite. Use this normal fast path
-  when there is no relevant divergent work; do not create a no-op
+- `direct-dev`: `dev-publish` is the selected source and its declared reviewed
+  baseline (normally `main`, but explicitly recorded for established
+  repositories during branch migration) is either the same commit, its stable
+  reviewed ancestor, or an explicitly recorded historical baseline after a ref
+  rewrite. Use this normal fast path when there is no relevant divergent work; do not create a no-op
   `feat1-prepublish` branch merely to make the two refs equal. A rewritten
   baseline requires `"mainBaselineRelation": "historical-divergent"` in the
   receipt; the provider independently checks the relationship at packaging.
@@ -20,6 +21,8 @@ Each release-ready default-Bazaar app has one JSON receipt named
   "sourceRepository": "https://github.com/hrbrlife/repository",
   "sourceCommit": "40-lowercase-hex-commit",
   "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "ancestor",
   "internalControls": {
     "status": "passed",
     "checks": ["clean clone", "relevant tests", "package consistency"]

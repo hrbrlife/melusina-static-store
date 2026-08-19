@@ -409,17 +409,20 @@ groups:
       goldkey:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
-        # Current dev-publish source shared with the distinct DEV identity.
-        # A fresh recursive clone passed the pinned-toolchain build, vet, and
-        # full test suite on 2026-08-19; production metadata remains v0.3.4.
-        source_commit: 4cdde8588370bfb9ae7b4a7d736d623b8ab0536b
+        # This production-only dev-publish cut removes the retired duplicate
+        # development package and passed clean-clone, race, verified-package,
+        # and byte-for-byte reproducibility controls at v0.3.5 / v8.
+        source_commit: 1382d85eefdb016f885ae9b0d0067f6be842663f
+        source_baseline_branch: master
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh.json
         source_repository: https://github.com/hrbrlife/GoldKey
         publish_slug: goldkey
         catalog_name: GoldKey
         live_version: 0.3.4
-        # GoldKey's exact governed Store slot is now tracked. The provider
-        # advances only this appId-bound production coordinate, never a
-        # historical DEV identity or a legacy scan result.
+        # The provider advances only this immutable production coordinate.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey
         catalog_slug: goldkey

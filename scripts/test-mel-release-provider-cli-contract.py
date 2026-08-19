@@ -924,10 +924,10 @@ def test_source_selection_requires_a_current_complete_remote_snapshot():
             restore_env(old)
 
 
-def test_direct_source_selection_requires_an_explicit_historical_main_baseline():
+def test_direct_source_selection_requires_an_explicit_historical_baseline():
     app_id = "source-selection-baseline-app"
     selected_commit = "a" * 40
-    main_commit = "b" * 40
+    baseline_commit = "b" * 40
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         config = root / "bazaar-catalog.yaml"
@@ -936,41 +936,41 @@ def test_direct_source_selection_requires_an_explicit_historical_main_baseline()
         })
         receipt_path = root / "prepublish-selections" / f"{app_id}.json"
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        receipt["reviewedRefs"][1]["commit"] = main_commit
-        receipt["mainBaselineRelation"] = "ancestor"
+        receipt["reviewedRefs"][1]["commit"] = baseline_commit
+        receipt["baselineRelation"] = "ancestor"
         receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
         old = with_env({"MEL_RELEASE_CONFIG": str(config)})
         old_run = provider.run
-        old_relation = provider.direct_main_baseline_relation
+        old_relation = provider.direct_baseline_relation
         try:
             def baseline_run(args, **kwargs):
                 if args == ["git", "-C", str(root), "ls-remote", "--heads", "origin"]:
                     return (f"{selected_commit}\trefs/heads/dev-publish\n"
-                            f"{main_commit}\trefs/heads/main\n")
+                            f"{baseline_commit}\trefs/heads/main\n")
                 return old_run(args, **kwargs)
 
             provider.run = baseline_run
-            provider.direct_main_baseline_relation = lambda *_args: "ancestor"
+            provider.direct_baseline_relation = lambda *_args: "ancestor"
             spec = provider.app_spec(app_id)
             provider.require_release_ready(app_id)
             selected = provider.require_current_source_selection(app_id, root, spec)
-            assert selected["mainBaselineRelation"] == "ancestor", selected
+            assert selected["baselineRelation"] == "ancestor", selected
 
-            provider.direct_main_baseline_relation = lambda *_args: "historical-divergent"
+            provider.direct_baseline_relation = lambda *_args: "historical-divergent"
             try:
                 provider.require_current_source_selection(app_id, root, spec)
             except provider.ProviderError as exc:
                 assert "does not match" in str(exc), exc
             else:
-                raise AssertionError("mislabeled rewritten main baseline was accepted")
+                raise AssertionError("mislabeled rewritten baseline was accepted")
 
-            receipt["mainBaselineRelation"] = "historical-divergent"
+            receipt["baselineRelation"] = "historical-divergent"
             receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
             selected = provider.require_current_source_selection(app_id, root, spec)
-            assert selected["mainBaselineRelation"] == "historical-divergent", selected
+            assert selected["baselineRelation"] == "historical-divergent", selected
         finally:
             provider.run = old_run
-            provider.direct_main_baseline_relation = old_relation
+            provider.direct_baseline_relation = old_relation
             restore_env(old)
 
 
@@ -1503,7 +1503,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
-            ("GoldKey", "4cdde8588370bfb9ae7b4a7d736d623b8ab0536b", "GoldKey", "goldkey"),
+            ("GoldKey", "1382d85eefdb016f885ae9b0d0067f6be842663f", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
@@ -2115,7 +2115,7 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_source_selection_requires_a_current_complete_remote_snapshot()
-    test_direct_source_selection_requires_an_explicit_historical_main_baseline()
+    test_direct_source_selection_requires_an_explicit_historical_baseline()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()

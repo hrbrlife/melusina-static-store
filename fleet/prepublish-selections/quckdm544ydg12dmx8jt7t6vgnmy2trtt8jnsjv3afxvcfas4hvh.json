@@ -1,0 +1,29 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
+  "sourceRepository": "https://github.com/hrbrlife/GoldKey",
+  "sourceCommit": "1382d85eefdb016f885ae9b0d0067f6be842663f",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "master",
+  "baselineRelation": "ancestor",
+  "decisionSummary": "Selected the 2026-08-19 dev-publish production-only GoldKey v0.3.5/v8 cut. It removes the retired duplicate development package and its test-key launcher while retaining the governed provider, release guard, pinned toolchain, and static launch controls. main is the reviewed stable ancestor. Every remote head was compared for app-relevant unique work: the former direct-launch and preserved v0.3.2 lines are superseded by the selected line, and publish is historical artifact evidence rather than source authority.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit",
+      "make ci",
+      "go test -race ./...",
+      "make publish fails closed in favor of the governed Bazaar release provider",
+      "make release-check",
+      "spk verify app.spk",
+      "two independently packed production SPKs matched SHA-256 1c4c39ce45621b1b433f2e78cddb940e14cd1af5078be0ca73197497e799ff32"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/agent/goldkey-direct-launch", "commit": "56bb1e2377dd1e36ca989a263e98bbc5b3038c2f", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "1382d85eefdb016f885ae9b0d0067f6be842663f", "outcome": "selected"},
+    {"ref": "refs/heads/master", "commit": "a46106ded2aab2c7b50465cd561f176de25b4947", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260816/goldkey", "commit": "9cd909b0161cd8fe655631503775575a2d8c0558", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "90eb8b475d596213ad8d99cb449458946f0fb55b", "outcome": "archive"}
+  ]
+}

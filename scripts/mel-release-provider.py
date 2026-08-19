@@ -39,6 +39,7 @@ DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
 DEV_PUBLISH_BRANCH = "dev-publish"
 PREPUBLISH_BRANCH = "feat1-prepublish"
+DEFAULT_SOURCE_BASELINE_BRANCH = "main"
 SOURCE_SELECTION_PENDING = "pending"
 SOURCE_SELECTION_DIRECT = "direct-dev-verified"
 SOURCE_SELECTION_PREPUBLISH = "prepublish-integrated"
@@ -124,6 +125,21 @@ def canonical_source_branch(value: str) -> str:
         raise ProviderError(
             f"default_source_branch must be exactly {DEV_PUBLISH_BRANCH!r}"
         )
+    return normalized
+
+
+def canonical_source_baseline_branch(value: str) -> str:
+    """Accept one safe, explicitly reviewed stable baseline branch.
+
+    Only dev-publish may provide release input.  A baseline is evidence for
+    the direct-dev selection decision, so established repositories can retain
+    a temporary ``master`` or use ``main-publish`` while their default-branch
+    migration is completed without inventing a redundant branch just to pack.
+    """
+    normalized = value.strip()
+    if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", normalized) or
+            ".." in normalized or normalized.endswith("/")):
+        raise ProviderError("source_baseline_branch must be a safe Git branch name")
     return normalized
 
 
@@ -227,6 +243,13 @@ def catalog_config() -> dict[str, Any]:
                 if not isinstance(source_branch, str):
                     raise ProviderError(f"Bazaar catalog app {spec['appId']} has an invalid source_branch")
                 canonical_source_branch(source_branch)
+            if "source_baseline_branch" in spec:
+                source_baseline_branch = spec["source_baseline_branch"]
+                if not isinstance(source_baseline_branch, str):
+                    raise ProviderError(
+                        f"Bazaar catalog app {spec['appId']} has an invalid source_baseline_branch"
+                    )
+                canonical_source_baseline_branch(source_baseline_branch)
             if "candidate_source_commit" in spec:
                 candidate_source_commit = spec["candidate_source_commit"]
                 if not isinstance(candidate_source_commit, str) or not re.fullmatch(
@@ -288,6 +311,9 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     "source_repository": canonical_source_repository(str(spec.get("source_repository", ""))),
                     "source_branch": canonical_source_branch(str(
                         spec.get("source_branch", doc.get("default_source_branch", ""))
+                    )),
+                    "source_baseline_branch": canonical_source_baseline_branch(str(
+                        spec.get("source_baseline_branch", DEFAULT_SOURCE_BASELINE_BRANCH)
                     )),
                     # Most applications keep release metadata at the project
                     # root. A unified app may keep it below the root that owns
@@ -370,10 +396,10 @@ def _selection_reviewed_refs(value: Any) -> dict[str, dict[str, str]]:
 def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
     """Validate the source decision that permits one app release.
 
-    A direct selection is deliberately fast but still provenance-bound:
-    ``main`` is either the selected source, its reviewed stable ancestor, or
-    an explicitly labelled historical baseline, while ``dev-publish`` is the
-    selected current source. Divergent relevant work instead uses
+    A direct selection is deliberately fast but still provenance-bound: its
+    declared stable baseline is either the selected source, its reviewed
+    ancestor, or an explicitly labelled historical baseline, while
+    ``dev-publish`` is the selected current source. Divergent relevant work instead uses
     feat1-prepublish and is promoted only after that branch and dev-publish
     point at the same tested source.
     """
@@ -412,12 +438,17 @@ def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
     if dev is None or dev["commit"] != source_commit or dev["outcome"] != "selected":
         raise ProviderError("source selection receipt does not select the catalog dev-publish commit")
     if state == SOURCE_SELECTION_DIRECT:
-        main = reviewed.get("refs/heads/main")
-        if main is None or main["outcome"] != "baseline":
-            raise ProviderError("direct source selection requires a reviewed main baseline")
-        declared_relation = receipt.get("mainBaselineRelation", "")
+        baseline_branch = spec["source_baseline_branch"]
+        baseline = reviewed.get(f"refs/heads/{baseline_branch}")
+        if baseline is None or baseline["outcome"] != "baseline":
+            raise ProviderError("direct source selection requires its reviewed baseline")
+        declared_branch = receipt.get("baselineBranch", DEFAULT_SOURCE_BASELINE_BRANCH)
+        if (not isinstance(declared_branch, str) or
+                canonical_source_baseline_branch(declared_branch) != baseline_branch):
+            raise ProviderError("direct source selection baselineBranch does not match the Bazaar catalog")
+        declared_relation = receipt.get("baselineRelation", receipt.get("mainBaselineRelation", ""))
         if declared_relation not in {"", "same", "ancestor", "historical-divergent"}:
-            raise ProviderError("direct source selection has an invalid mainBaselineRelation")
+            raise ProviderError("direct source selection has an invalid baselineRelation")
     else:
         prepublish = reviewed.get(f"refs/heads/{PREPUBLISH_BRANCH}")
         if prepublish is None or prepublish["commit"] != source_commit:
@@ -443,8 +474,8 @@ def advertised_source_heads(app_id: str, path: Path) -> dict[str, str]:
     return result
 
 
-def direct_main_baseline_relation(source: Path, main_commit: str, selected_commit: str) -> str:
-    """Classify a reviewed main baseline without requiring a no-op feature ref.
+def direct_baseline_relation(source: Path, baseline_commit: str, selected_commit: str) -> str:
+    """Classify a reviewed baseline without requiring a no-op feature ref.
 
     A rewritten historical main can be a legitimate stable baseline, but it
     must be explicitly declared in the signed-in-source selection receipt.
@@ -452,7 +483,7 @@ def direct_main_baseline_relation(source: Path, main_commit: str, selected_commi
     divergence: it fails closed before packaging.
     """
     proc = subprocess.run(
-        ["git", "-C", str(source), "merge-base", main_commit, selected_commit],
+        ["git", "-C", str(source), "merge-base", baseline_commit, selected_commit],
         text=True,
         capture_output=True,
     )
@@ -463,7 +494,7 @@ def direct_main_baseline_relation(source: Path, main_commit: str, selected_commi
     if merge_base:
         if not re.fullmatch(r"[0-9a-f]{40}", merge_base):
             raise ProviderError("direct source baseline ancestry returned an invalid commit")
-        if merge_base == main_commit:
+        if merge_base == baseline_commit:
             return "ancestor"
         if merge_base == selected_commit:
             raise ProviderError(
@@ -487,22 +518,25 @@ def require_current_source_selection(app_id: str, source: Path, spec: dict[str, 
         )
     baseline_relation = ""
     if canonical_source_selection_state(spec["source_selection_state"]) == SOURCE_SELECTION_DIRECT:
-        main_commit = selection["reviewedRefs"]["refs/heads/main"]["commit"]
+        baseline_branch = spec["source_baseline_branch"]
+        baseline_commit = selection["reviewedRefs"][f"refs/heads/{baseline_branch}"]["commit"]
         selected_commit = spec["source_commit"].strip().lower()
-        if main_commit == selected_commit:
+        if baseline_commit == selected_commit:
             baseline_relation = "same"
         else:
-            baseline_relation = direct_main_baseline_relation(
-                source, main_commit, selected_commit
+            baseline_relation = direct_baseline_relation(
+                source, baseline_commit, selected_commit
             )
-        declared_relation = selection["receipt"].get("mainBaselineRelation", "")
+        declared_relation = selection["receipt"].get(
+            "baselineRelation", selection["receipt"].get("mainBaselineRelation", "")
+        )
         if declared_relation and declared_relation != baseline_relation:
             raise ProviderError(
-                "direct source selection mainBaselineRelation does not match the reviewed Git history"
+                "direct source selection baselineRelation does not match the reviewed Git history"
             )
         if baseline_relation == "historical-divergent" and declared_relation != baseline_relation:
             raise ProviderError(
-                "direct source selection requires mainBaselineRelation historical-divergent for a rewritten main baseline"
+                "direct source selection requires baselineRelation historical-divergent for a rewritten baseline"
             )
     config = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
     result = {
@@ -512,7 +546,8 @@ def require_current_source_selection(app_id: str, source: Path, spec: dict[str, 
         "selectionMethod": str(selection["receipt"]["selectionMethod"]),
     }
     if baseline_relation:
-        result["mainBaselineRelation"] = baseline_relation
+        result["baselineBranch"] = spec["source_baseline_branch"]
+        result["baselineRelation"] = baseline_relation
     return result
 
 

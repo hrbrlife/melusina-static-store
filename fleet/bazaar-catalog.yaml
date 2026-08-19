@@ -51,8 +51,9 @@ groups:
         source_path: welcome
         # v0.1.29/appVersion-30 is the newest dev-publish source. It carries
         # the build-bound runtime contract and default-Bazaar fixture repairs,
-        # while preserving the semantically integrated 0.1.28 release cohort.
-        source_commit: 533d1355231e1cfa85e875b9c4a03a5b9b651755
+        # preserves the semantically integrated 0.1.28 release cohort, and
+        # binds the reproducible package identity in tracked source.
+        source_commit: f91763a6a325eb3b14f1ca2b61bec25fba30b35d
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

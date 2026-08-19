@@ -50,6 +50,8 @@ contract semantic check used for BotMother above.
 | DueProcess | `47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0` | `a4f27e9737529c360782458d1ab9ed3563e7544b` on `main` | `0.1.74` (versionNumber 78) | `0.1.74` | app-ID and boundary tripwires; `make vet test`; clean recursive status and `git diff --check` |
 | Teleport | `ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h` | `a943d5a5fb491d5029b67ac157b92379d94e0a60` on `main` | `1.3.4` (versionNumber 10) | `1.3.4` | `make vet test` (full race suite); clean recursive status and `git diff --check` |
 | MiniGit | `pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50` | `610c44614a8b499d1e80795a97daca66a9912f77` on `main` | `0.2.14` (versionNumber 20) | `0.2.14` | `make vet test`; clean recursive status and `git diff --check` |
+| GoldKey | `quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh` | `a46106ded2aab2c7b50465cd561f176de25b4947` on `master` | `0.3.4` (versionNumber 7) | `0.3.4` | pinned toolchain check; `make vet test`; clean recursive status and `git diff --check` |
+| MerMail | `wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h` | `55e276e3a5aef4e0f5605c191759c5fdce781fdc` on `main` | `0.5.5` (versionNumber 20) | `0.5.5` | tracked release-input validation; both Pearl test suites; both module vet checks; clean recursive status and `git diff --check` |
 
 The domain-template row, like BotMother, is a verified forward source
 candidate rather than a publication claim: metadata is `0.5.87` while the

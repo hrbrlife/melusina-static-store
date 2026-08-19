@@ -49,11 +49,14 @@ groups:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
         source_path: welcome
-        # The current dev-publish candidate makes the runtime contract
-        # build-bound and aligns the package metadata/pack inputs. It remains
-        # held until an independent clean clone proves this exact revision.
-        candidate_source_commit: 7a50e8b123fd7d107b4df1ba9c9db567a7862753
-        reconciliation_state: source-clean-clone-pending
+        # v0.1.29/appVersion-30 is the newest dev-publish source. It carries
+        # the build-bound runtime contract and default-Bazaar fixture repairs,
+        # while preserving the semantically integrated 0.1.28 release cohort.
+        source_commit: 533d1355231e1cfa85e875b9c4a03a5b9b651755
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.json
         publish_slug: welcome-pearl
         catalog_name: Lobby
         live_version: 0.1.28

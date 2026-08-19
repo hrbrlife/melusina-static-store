@@ -1483,6 +1483,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
+    lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
+    assert lobby["source_commit"] == "533d1355231e1cfa85e875b9c4a03a5b9b651755", lobby
+    assert lobby["reconciliation_state"] == "source-pinned", lobby
+    assert lobby["release_state"] == "ready", lobby
+    assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
     assert doc["source_commit"] == "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", doc
@@ -1515,7 +1520,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert shell_tester["release_state"] == "ready", shell_tester
     assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
     pending_candidates = {
-        "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
@@ -1612,8 +1616,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
     assert jinn["reconciliation_state"] == "source-pinned", jinn
     assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
+    lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
+    assert lobby["source_path"] == "welcome", lobby
+    assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
+    assert lobby["source_commit"] == "533d1355231e1cfa85e875b9c4a03a5b9b651755", lobby
+    assert lobby["reconciliation_state"] == "source-pinned", lobby
+    assert lobby["release_state"] == "ready", lobby
+    assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     for app_id, source_path, source_repo in (
-        ("021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0", "welcome", "https://github.com/hrbrlife/welcome-pearl"),
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),

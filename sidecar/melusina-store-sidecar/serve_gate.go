@@ -377,6 +377,14 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 		source:     raw,
 		visibleApp: make(map[string]struct{}, len(entries)),
 	}
+	// Build the immutable generation's current catalog index once.  Calling
+	// lookupApp for every row looks harmless, but snapshot lookups intentionally
+	// rebuild their index to avoid a cross-generation cache race.  A catalog
+	// request therefore used to rebuild the whole index once per row and, while
+	// resolving retained rollback candidates, repeatedly re-read large staged
+	// SPKs.  Besides making the read surface O(n²), that could exhaust the
+	// catalog verification budget before any chain verdict was returned.
+	currentApps := g.buildCurrentCatalogAppIndex(snapshot, hasSnapshot)
 	candidates := make([]catalogGateCandidate, 0, len(entries))
 	for _, rawEntry := range entries {
 		var entry catalogIndexApp
@@ -388,7 +396,7 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 		if packageID == "" || !isSafePathSegment(appID) {
 			return zero, errors.New("check=catalog: app row has unsafe identity")
 		}
-		app, ok := g.lookupApp(packageID, snapshot, hasSnapshot)
+		app, ok := currentApps[packageID]
 		if !ok {
 			return zero, fmt.Errorf("check=release_provenance: no on-chain-anchored app for packageId=%s", packageID)
 		}
@@ -878,6 +886,64 @@ func (g *serveGate) rebuildAppIndex() {
 }
 
 func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool) map[string]servedApp {
+	idx := g.buildCurrentCatalogAppIndex(snapshot, hasSnapshot)
+	// Add only the immediately previous release from each bounded rollout record.
+	// The current public index wins on packageId collision. loadStagedApp verifies
+	// the private bytes against their content-addressed manifest before they enter
+	// the resolver; gate() still requires the previous ReleaseEntry to be Active.
+	rolloutFiles, _ := filepath.Glob(filepath.Join(rolloutStateDir(g.cfg), "*.json"))
+	for _, stateFile := range rolloutFiles {
+		appID := strings.TrimSuffix(filepath.Base(stateFile), ".json")
+		state, err := loadAppRollout(g.cfg, appID)
+		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
+			continue
+		}
+		manifest, spk, meta, releaseBytes, runtimeContract, err := loadStagedAppWithRuntimeContract(g.cfg.PrivateStageDir, state.PreviousStageID)
+		if err != nil || manifest.AppID != appID {
+			continue
+		}
+		pkgID := strings.ToLower(metadataPackageID(meta))
+		if !isSafePathSegment(pkgID) {
+			continue
+		}
+		var rel ReleaseJSON
+		if json.Unmarshal(releaseBytes, &rel) != nil {
+			continue
+		}
+		binding := runtimecontract.Binding{
+			Metadata:              meta,
+			AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
+			Version:               rel.Version,
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}
+		contractStatus := "uncertified"
+		if runtimecontract.RequiresContract(binding) {
+			if _, err := runtimecontract.ValidateClaim(runtimeContract, binding); err != nil {
+				continue
+			}
+			contractStatus = "declared"
+		}
+		if _, exists := idx[pkgID]; exists {
+			continue
+		}
+		_ = spk // loadStagedApp already verified the exact private SPK bytes.
+		idx[pkgID] = servedApp{
+			rel:                   rel,
+			metadata:              meta,
+			spkPath:               filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
+			validUntil:            state.PreviousValidUntil,
+			runtimeContractStatus: contractStatus,
+		}
+	}
+	return idx
+}
+
+// buildCurrentCatalogAppIndex reads only the immutable generation selected for
+// this request.  It deliberately excludes retained rollback candidates: those
+// private candidates are relevant only to package lookup after the current
+// catalog misses, never to listing or pointer projection.
+func (g *serveGate) buildCurrentCatalogAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool) map[string]servedApp {
 	idx := make(map[string]servedApp)
 	b, err := g.readCatalogFile(snapshot, hasSnapshot, "apps/index.json")
 	if err == nil {
@@ -934,55 +1000,6 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 					runtimeContractStatus: contractStatus,
 				}
 			}
-		}
-	}
-	// Add only the immediately previous release from each bounded rollout record.
-	// The current public index wins on packageId collision. loadStagedApp verifies
-	// the private bytes against their content-addressed manifest before they enter
-	// the resolver; gate() still requires the previous ReleaseEntry to be Active.
-	rolloutFiles, _ := filepath.Glob(filepath.Join(rolloutStateDir(g.cfg), "*.json"))
-	for _, stateFile := range rolloutFiles {
-		appID := strings.TrimSuffix(filepath.Base(stateFile), ".json")
-		state, err := loadAppRollout(g.cfg, appID)
-		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
-			continue
-		}
-		manifest, spk, meta, releaseBytes, runtimeContract, err := loadStagedAppWithRuntimeContract(g.cfg.PrivateStageDir, state.PreviousStageID)
-		if err != nil || manifest.AppID != appID {
-			continue
-		}
-		pkgID := strings.ToLower(metadataPackageID(meta))
-		if !isSafePathSegment(pkgID) {
-			continue
-		}
-		var rel ReleaseJSON
-		if json.Unmarshal(releaseBytes, &rel) != nil {
-			continue
-		}
-		binding := runtimecontract.Binding{
-			Metadata:              meta,
-			AppHash:               strings.ToLower(strings.TrimSpace(rel.AppHash)),
-			Version:               rel.Version,
-			ReleaseContractSHA256: rel.RuntimeContractSHA256,
-			ReleaseContractSchema: rel.RuntimeContractSchema,
-		}
-		contractStatus := "uncertified"
-		if runtimecontract.RequiresContract(binding) {
-			if _, err := runtimecontract.ValidateClaim(runtimeContract, binding); err != nil {
-				continue
-			}
-			contractStatus = "declared"
-		}
-		if _, exists := idx[pkgID]; exists {
-			continue
-		}
-		_ = spk // loadStagedApp already verified the exact private SPK bytes.
-		idx[pkgID] = servedApp{
-			rel:                   rel,
-			metadata:              meta,
-			spkPath:               filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
-			validUntil:            state.PreviousValidUntil,
-			runtimeContractStatus: contractStatus,
 		}
 	}
 	return idx

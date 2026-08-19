@@ -45,8 +45,10 @@ proof, and the complete-cohort gate before it can leave its current hold.
 
 DueProcess also advanced its `dev-publish` branch from the catalog base to
 `aff5cc7ce2b793eee34f97e10d27d00bec441941`, the tested forward fix for the
-versioned autonomous-create RPC. Its catalog pin remains intentionally held
-until the source and shell move through the clean-cohort proof together.
+versioned autonomous-create RPC. A fresh filtered recursive clone hydrated
+every declared gitlink at its exact revision and passed Station tests,
+whole-tree vet, and `make check-drift`; it is now a source-pinned catalog
+input. The separate shell integration and the complete cohort remain held.
 
 CrateLink now has `dev-publish` at
 `95d27ba095eae4589f290b2e3857d6ad92174ddb`, the current non-archival v15

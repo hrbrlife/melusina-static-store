@@ -117,10 +117,10 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # The current v78 source was recovered from a fresh recursive clone;
-        # its pinned dependency graph, tests, vet pass, and clean worktree
-        # were independently verified before this source pin was restored.
-        source_commit: a4f27e9737529c360782458d1ab9ed3563e7544b
+        # The current v78 source is the exact current dev-publish tip. Its
+        # pinned dependency graph was freshly cloned recursively and passed
+        # Station tests, whole-tree vet, and check-drift on 2026-08-19.
+        source_commit: aff5cc7ce2b793eee34f97e10d27d00bec441941
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess

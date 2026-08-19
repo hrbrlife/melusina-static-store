@@ -1297,7 +1297,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "899cddba7d379813a37c391226f75b069895736d", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "a4f27e9737529c360782458d1ab9ed3563e7544b", "DueProcess", "dueprocess"),
+            ("dueprocess", "aff5cc7ce2b793eee34f97e10d27d00bec441941", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
@@ -1330,7 +1330,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "a4f27e9737529c360782458d1ab9ed3563e7544b", dueprocess
+    assert dueprocess["source_commit"] == "aff5cc7ce2b793eee34f97e10d27d00bec441941", dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace

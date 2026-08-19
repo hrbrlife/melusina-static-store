@@ -47,7 +47,7 @@ contract semantic check used for BotMother above.
 | App | Immutable app ID | Commit and advertised ref | Metadata version | Catalog `live_version` | Source gates passed |
 | --- | --- | --- | --- | --- | --- |
 | ccash Domain Template | `hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h` | `f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a` on `fix/prelaunch-domain-template-v109-greenfield` | `0.5.87` (versionNumber 109) | `0.5.85` | `make check-greenfield check-release-metadata vet test check-fmt`; clean recursive status and `git diff --check` |
-| DueProcess | `47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0` | `a4f27e9737529c360782458d1ab9ed3563e7544b` on `main` | `0.1.74` (versionNumber 78) | `0.1.74` | app-ID and boundary tripwires; `make vet test`; clean recursive status and `git diff --check` |
+| DueProcess | `47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0` | `aff5cc7ce2b793eee34f97e10d27d00bec441941` on `dev-publish` | `0.1.74` (versionNumber 78) | `0.1.74` | fresh filtered recursive clone; `GOWORK=off go test ./pkg/station`; `GOWORK=off go vet ./...`; `make check-drift`; clean recursive status and `git diff --check` |
 | Teleport | `ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h` | `a943d5a5fb491d5029b67ac157b92379d94e0a60` on `main` | `1.3.4` (versionNumber 10) | `1.3.4` | `make vet test` (full race suite); clean recursive status and `git diff --check` |
 | MiniGit | `pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50` | `610c44614a8b499d1e80795a97daca66a9912f77` on `main` | `0.2.14` (versionNumber 20) | `0.2.14` | `make vet test`; clean recursive status and `git diff --check` |
 | GoldKey | `quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh` | `a46106ded2aab2c7b50465cd561f176de25b4947` on `master` | `0.3.4` (versionNumber 7) | `0.3.4` | pinned toolchain check; `make vet test`; clean recursive status and `git diff --check` |
@@ -89,7 +89,7 @@ removes the buildable application tree. The exact `dev-publish` tip
 `610c44614a8b499d1e80795a97daca66a9912f77` is therefore the newest valid
 source; a fresh recursive clone passed `make vet test` on 2026-08-19.
 
-## Shell–DueProcess autonomous-create versioning — local candidates awaiting publication
+## Shell–DueProcess autonomous-create versioning
 
 On 2026-08-19, the shell ordinal gate exposed that a prior respondent-share
 change had altered `AutonomousGrainCreator.createGrain @0` after the committed
@@ -102,26 +102,24 @@ share rather than creating an unshared grain silently.
   source ratchet for both shapes. Its Cap'n Proto compile, respondent-share
   ratchet, six shell invariant ratchets, and ordinal gate passed; the ordinal
   gate reports the new `@1` method as additive and safe.
-- DueProcess candidate `aff5cc7ce2b793eee34f97e10d27d00bec441941` calls `@0`
+- DueProcess source `aff5cc7ce2b793eee34f97e10d27d00bec441941` calls `@0`
   with its original one-pointer request when no share is wanted, and calls
   `@1` only for a non-negative respondent role. Its focused wire tests prove
   ordinary creation works against an `@0`-only fake shell and a share request
-  fails closed against that same fake; its full Station package test and vet
-  check passed.
-- Fresh bare-repository recovery probes against both canonical origins rejected
-  these exact local commits as `not our ref`. They are therefore not source
-  pins and do not alter `fleet/bazaar-catalog.yaml`; its current DueProcess pin
-  remains `a4f27e9737529c360782458d1ab9ed3563e7544b` pending this forward
-  compatibility update.
+  fails closed against that same fake. It is now published on `dev-publish`;
+  a fresh recursive clone repeated the Station test, whole-tree vet, and
+  drift check before the catalog pin advanced.
+- Initial bare-repository probes rejected both candidates as local-only.
+  DueProcess has since completed its remote-source and clean-clone proof;
+  the shell candidate still requires its own independent publication and
+  integration proof.
 
-The Fineract Setup QA copy of DueProcess was byte-identical to the recovered
-`a4f27e9737529c360782458d1ab9ed3563e7544b` source for these files. After the
-DueProcess owner publishes this candidate or a reviewed successor, that copy
-must consume the same published ref before a clean recursive cohort proof.
-The shell and DueProcess owners must publish their reviewed candidates (or
-explicit successors), then a new clean-clone review must repeat the source
-tests, package/runtime-contract checks, and cross-component fresh-install
-test. Until then the complete default Bazaar remains held.
+The Fineract Setup QA copy of DueProcess was byte-identical to the previously
+pinned source for these files. It must consume this published ref (or a
+validated successor) before the cross-component clean-cohort proof. The shell
+still needs a published, independently verified counterpart before package,
+runtime-contract, and fresh-install integration testing can clear the shared
+blocker. The complete default Bazaar remains held.
 
 ## NamedCoin Admin — portable-gate repair awaiting publication
 

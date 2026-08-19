@@ -38,6 +38,9 @@ paths. Before enabling the unit it must install or create:
 2. `/etc/melusina/store/store.config.json`, rendered from the bundled template,
    mode `0600`, root-owned. `store_id` is the destination pinned by consumers.
    `public_base_url` is the exact public origin used in every signed bundle URL.
+   Its `release_squads_authority` tuple is already pinned in the bundle from
+   the governed Bazaar catalog and must be copied unchanged: every app release
+   uses that one authority while retaining its own SPK signing key.
 3. The three root-owned mode-`0600` attest shards. They derive the operator
    signer; a private operator key is never packaged. The derived signer and
    running ELF hash must match an Active `SidecarIdentityEntry` before startup.

@@ -7,6 +7,12 @@
   "root_store_url": "",
   "public_base_url": "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST",
   "release_master_nft_mint": "REPLACE_WITH_RELEASE_MASTER_NFT_MINT",
+  "_comment_release_squads_authority": "Exact catalog-pinned shared publishing authority. Every app uses this tuple; app-specific SPK keys remain independent.",
+  "release_squads_authority": {
+    "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+    "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+    "program_id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  },
   "policy": {
     "allowed_tiers": ["regular"],
     "require_scan_report": true,

@@ -893,6 +893,23 @@ def test_catalog_pins_one_shared_squads_authority():
             restore_env(old)
 
 
+def test_store_generation_template_pins_catalog_shared_squads_authority():
+    """A first install must not omit or drift from the single release authority."""
+    catalog = HERE.parent / "fleet" / "bazaar-catalog.yaml"
+    template = HERE.parent / "deploy" / "store-generation" / "store.config.template.json"
+    old = with_env({"MEL_RELEASE_CONFIG": str(catalog)})
+    try:
+        expected = provider.require_shared_squads_authority()
+    finally:
+        restore_env(old)
+    rendered = json.loads(template.read_text(encoding="utf-8"))
+    assert rendered["release_squads_authority"] == {
+        "multisig": expected["multisig"],
+        "vault": expected["vault"],
+        "program_id": expected["programId"],
+    }, rendered
+
+
 def commit_source_fixture(path):
     for args in (
         ["git", "init", "-q", str(path)],
@@ -2187,6 +2204,7 @@ if __name__ == "__main__":
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
     test_catalog_pins_one_shared_squads_authority()
+    test_store_generation_template_pins_catalog_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_source_selection_requires_a_current_complete_remote_snapshot()

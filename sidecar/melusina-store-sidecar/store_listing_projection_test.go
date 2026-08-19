@@ -23,8 +23,8 @@ import (
 )
 
 // variantFixture creates a distinct, self-consistent release while retaining
-// the same configured store authority. The production and DEV GoldKey rows are
-// distinct app hashes, so the test must prove target scope using two actual
+// the same configured store authority. The production and retired fixture rows
+// are distinct app hashes, so the test must prove target scope using two actual
 // listing PDAs rather than two labels pointing at one record.
 func variantFixture(t *testing.T, cfg Config, masterMintB58, label string) publishFixture {
 	t.Helper()
@@ -188,28 +188,28 @@ func hasString(values []string, want string) bool {
 	return false
 }
 
-func TestStoreListingProjection_DelistsOnlyExactGoldKeyDEVTarget(t *testing.T) {
+func TestStoreListingProjection_DelistsOnlyExactTarget(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
-	operator := newTestIdentity(t, "goldkey-store", cfg.LicenseNFTMint, cfg.Domain)
+	operator := newTestIdentity(t, "store-listing-projection", cfg.LicenseNFTMint, cfg.Domain)
 	// A dynamic delist projection changes catalog bytes. Its signer must be the
 	// configured store authority, not merely any local identity.
 	cfg.StoreAuthority = operator.Public().SignPubkeyB58
 	prod := variantFixture(t, cfg, randPubkeyB58(t), "production")
-	dev := variantFixture(t, cfg, randPubkeyB58(t), "dev")
+	retired := variantFixture(t, cfg, randPubkeyB58(t), "retired")
 	prodPackage := writeServeFixture(t, cfg.DistDir, prod)
-	devPackage, devAppID := appendServeFixture(t, cfg.DistDir, dev)
+	retiredPackage, retiredAppID := appendServeFixture(t, cfg.DistDir, retired)
 	prodAppID := "app-" + prodPackage[:8]
 	sourceCatalog, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	sourceProdPointer := writeProjectionPointer(t, cfg.DistDir, cfg, operator, prodAppID, prodPackage, prod, sourceCatalog)
-	sourceDevPointer := writeProjectionPointer(t, cfg.DistDir, cfg, operator, devAppID, devPackage, dev, sourceCatalog)
+	sourceRetiredPointer := writeProjectionPointer(t, cfg.DistDir, cfg, operator, retiredAppID, retiredPackage, retired, sourceCatalog)
 
 	mock := newMockChainReader()
 	pinReleaseActive(mock, prod)
-	pinReleaseActive(mock, dev)
+	pinReleaseActive(mock, retired)
 	gate := newServeGate(cfg, mock, http.FileServer(http.Dir(cfg.DistDir)), operator)
 	gate.verifyTTL = 0 // make the transition visible on the very next request.
 
@@ -220,22 +220,22 @@ func TestStoreListingProjection_DelistsOnlyExactGoldKeyDEVTarget(t *testing.T) {
 	if !bytes.Equal(before.Body.Bytes(), sourceCatalog) {
 		t.Fatal("active catalog projection changed signed source bytes")
 	}
-	if ids := catalogAppIDs(t, before.Body.Bytes()); len(ids) != 2 || !hasString(ids, prodAppID) || !hasString(ids, devAppID) {
-		t.Fatalf("active catalog ids = %v, want production + DEV", ids)
+	if ids := catalogAppIDs(t, before.Body.Bytes()); len(ids) != 2 || !hasString(ids, prodAppID) || !hasString(ids, retiredAppID) {
+		t.Fatalf("active catalog ids = %v, want production + retired", ids)
 	}
 	if got := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+prodAppID+".json"); got.Code != http.StatusOK || !bytes.Equal(got.Body.Bytes(), mustJSON(t, sourceProdPointer)) {
 		t.Fatalf("active production pointer must remain source byte-for-byte, got %d: %s", got.Code, got.Body.String())
 	}
 
-	devListing := mock.storeListing[dev.listingPDA]
-	devListing.status = storeListingStatusDelisted
-	mock.storeListing[dev.listingPDA] = devListing
+	retiredListing := mock.storeListing[retired.listingPDA]
+	retiredListing.status = storeListingStatusDelisted
+	mock.storeListing[retired.listingPDA] = retiredListing
 
 	after := serveGet(t, gate, http.MethodGet, "/apps/index.json")
 	if after.Code != http.StatusOK {
 		t.Fatalf("delisted catalog = %d: %s", after.Code, after.Body.String())
 	}
-	if ids := catalogAppIDs(t, after.Body.Bytes()); len(ids) != 1 || !hasString(ids, prodAppID) || hasString(ids, devAppID) {
+	if ids := catalogAppIDs(t, after.Body.Bytes()); len(ids) != 1 || !hasString(ids, prodAppID) || hasString(ids, retiredAppID) {
 		t.Fatalf("projected catalog ids = %v, want only production", ids)
 	}
 	projectedPointerResponse := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+prodAppID+".json")
@@ -260,14 +260,14 @@ func TestStoreListingProjection_DelistsOnlyExactGoldKeyDEVTarget(t *testing.T) {
 	if projectedPointer.OperatorSignature == sourceProdPointer.OperatorSignature {
 		t.Fatal("projected pointer retained a source signature over different catalog bytes")
 	}
-	if got := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+devAppID+".json"); got.Code != http.StatusNotFound {
-		t.Fatalf("delisted DEV pointer must disappear, got %d: %s", got.Code, got.Body.String())
+	if got := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+retiredAppID+".json"); got.Code != http.StatusNotFound {
+		t.Fatalf("delisted target pointer must disappear, got %d: %s", got.Code, got.Body.String())
 	}
 	if got := serveGet(t, gate, http.MethodGet, "/packages/"+prodPackage); got.Code != http.StatusOK {
 		t.Fatalf("production package must remain served, got %d: %s", got.Code, got.Body.String())
 	}
-	if got := serveGet(t, gate, http.MethodGet, "/packages/"+devPackage); got.Code != http.StatusForbidden || !strings.Contains(got.Body.String(), "check=store_release_listing") || !strings.Contains(got.Body.String(), "Delisted") {
-		t.Fatalf("DEV package must be refused as delisted, got %d: %s", got.Code, got.Body.String())
+	if got := serveGet(t, gate, http.MethodGet, "/packages/"+retiredPackage); got.Code != http.StatusForbidden || !strings.Contains(got.Body.String(), "check=store_release_listing") || !strings.Contains(got.Body.String(), "Delisted") {
+		t.Fatalf("delisted target package must be refused, got %d: %s", got.Code, got.Body.String())
 	}
 
 	// The disk catalog is evidence/input, not a mutable side effect of serving.
@@ -275,15 +275,15 @@ func TestStoreListingProjection_DelistsOnlyExactGoldKeyDEVTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ids := catalogAppIDs(t, raw); len(ids) != 2 || !hasString(ids, prodAppID) || !hasString(ids, devAppID) {
+	if ids := catalogAppIDs(t, raw); len(ids) != 2 || !hasString(ids, prodAppID) || !hasString(ids, retiredAppID) {
 		t.Fatalf("serve projection mutated disk catalog: %v", ids)
 	}
-	storedDevPointer, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "pointers", devAppID+".json"))
+	storedRetiredPointer, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "pointers", retiredAppID+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(storedDevPointer, mustJSON(t, sourceDevPointer)) {
-		t.Fatal("serve projection mutated source DEV pointer on disk")
+	if !bytes.Equal(storedRetiredPointer, mustJSON(t, sourceRetiredPointer)) {
+		t.Fatal("serve projection mutated source retired pointer on disk")
 	}
 }
 

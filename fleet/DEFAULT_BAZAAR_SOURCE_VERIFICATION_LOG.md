@@ -135,3 +135,40 @@ commit, not the repair. No catalog pin was changed. The source owner must
 publish that repair or a reviewed successor, determine the appropriate
 forward release version if the resulting package bytes differ, and repeat the
 clean-clone proof before InstaCo can join a release cohort.
+
+## Sheets Bureau — source repairs and Python lock still awaiting publication
+
+The source at catalog commit
+`965766d662771323f770eb9e956f1e8b03bea7a0` was independently shallow-cloned
+from the advertised `main` tip with a clean Git status. Its metadata and
+runtime-contract app ID match the catalog; metadata is `2.1.4`
+(versionNumber 26), matching the catalog's live version. The production npm
+audit reports zero runtime vulnerabilities (`npm audit --omit=dev`), and the
+repaired source passed 202 Python unit tests, 35 Python integration tests, a
+locked frontend build, and the Grainlinkd Go vet, ordinary-test, and race
+suites.
+
+The catalog-base source was not source-gate ready. Grainlinkd's PowerBox JSON
+request and response fields were unexported, so JSON could neither receive nor
+return a capability sturdyref; its frontend test target also suppressed a
+missing test command. Three local, clean commits repair those issues and make
+test-manager shutdown explicit:
+
+- `4093318e27210a69b60c0a477eab0ba5980b566f` exports the PowerBox wire fields
+  while preserving their `sturdyref` JSON name and adds round-trip coverage.
+- `27fe9a6668bf0005a1714e46aa6428bb1bf34c26` replaces unlocked npm install and
+  suppressed frontend testing with a fail-closed `npm ci` plus production
+  build, with a release-recipe regression guard.
+- `0c9401219c7713af5e6e382d4bc39737192af58e` tears down test WebSocket
+  managers through their existing cancellation path, removing orphan-task
+  warnings from the passing suite.
+
+This repair chain is not advertised by the canonical origin; no catalog pin or
+package claim was changed. It also cannot yet become a reproducible release
+candidate: the greenfield Sheets build installs eight Python requirements by
+version only, with zero hashes, no lockfile, and no `pip --require-hashes`
+control. The source owner must publish the reviewed repairs (or a successor),
+add a complete hash-locked Python dependency set enforced by the greenfield
+build, determine the appropriate forward release version if package bytes
+differ, and then repeat the clean-clone proof before Sheets Bureau can join a
+release cohort.

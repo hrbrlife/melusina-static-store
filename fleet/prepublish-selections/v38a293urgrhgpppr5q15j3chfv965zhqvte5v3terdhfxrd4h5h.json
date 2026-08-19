@@ -1,0 +1,37 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
+  "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-doc-app",
+  "sourceCommit": "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f",
+  "selectionMethod": "direct-dev",
+  "mainBaselineRelation": "ancestor",
+  "decisionSummary": "The Aug 19 dev-publish v28/2.0.33 source is canonical. It retains the newer rich TipTap/Yjs document release line and document-type resume repair, and closes the verified candidate-pack gap by binding the byte-writing action to the rich frontend and GrainContext bridge build. Main is the stable immediate ancestor. The divergent historical master, release, publish, metadata, and salvage refs were reviewed and contain an older alternate architecture, historical package evidence, or procedure material rather than newer runnable Document source.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source lineage with the pinned spkmodule revision",
+      "complete current remote-head snapshot reviewed, including divergent historical master, release, publish, and salvage refs",
+      "make release-inputs and make test-release-inputs passed; mutation controls reject stale runtime metadata, Node closure drift, wrong resume command, and candidate packaging without a build",
+      "the full current Python and integration test suite passed before the focused release-control change; the change then passed the release-input mutation suite again",
+      "two clean packages at the selected commit matched SHA-256 0db487f4a0543d221c66ec90e6831f63b9f6331182a8f0edd171fe8699eb5b88 and packageId 0db487f4a0543d221c66ec90e6831f63",
+      "spk verify confirmed appId v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h, version 28, and marketing version 2.0.33",
+      "provider build bound the selected source and exact SPK to candidate appHash 00ee4063d868242b6fd42674c638a22e7e16dad03dbf7fbde6773404cd1af023",
+      "candidate appHash differs from the signed public 2.0.32 pointer appHash 22de786c66f96045d92c6901d46143b7501651054d968f2b1055581119fd0494"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/codex/canonical-release-doc-20260713", "commit": "04e1fe5124ef11b95aa32c128f366e9681badbf9", "outcome": "archive"},
+    {"ref": "refs/heads/cut/doc-bureau-v26-greenfield-20260814", "commit": "70aa484257057efaf5f319fa6f795e84363fd619", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", "outcome": "selected"},
+    {"ref": "refs/heads/fix/bureau-docs-2-0-27", "commit": "355a070ddc06054a6aa376232382cf7209f2c1fa", "outcome": "archive"},
+    {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "f5feff22c7800fb1921177c676d5f9d9ea27baa7", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69", "outcome": "baseline"},
+    {"ref": "refs/heads/master", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-bureau-doc", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "ce6a7991eabae82f66682ef45bb09ba293f94e46", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/golden/mvp-b08-t11-canonical", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/master", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "1bbdb865f3ee858e8c19cbc8c997d07724754f95", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "f6fc254b25bef8ea061c48eaf067aa403d651351", "outcome": "archive"}
+  ]
+}

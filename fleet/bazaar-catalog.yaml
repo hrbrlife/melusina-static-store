@@ -357,11 +357,18 @@ groups:
       doc-bureau:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
-        source_commit: ea232d48cc837bdc65b1886ab41ca5109e6c8a69
+        # v28/2.0.33 closes the candidate-pack path over the current rich
+        # Document build, so neither local nor governed packaging can omit a
+        # GrainContext bridge binary.
+        source_commit: b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f
+        reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
         catalog_name: Doc Bureau
         live_version: 2.0.32
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h.json
         # This exact historical slot contains the same immutable appId at an
         # older rich release. It is a target only; v26 source metadata and
         # runtime contract come solely from the pinned clean source checkout.

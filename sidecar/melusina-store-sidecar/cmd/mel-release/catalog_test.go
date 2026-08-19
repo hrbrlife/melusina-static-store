@@ -158,6 +158,7 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		"canboard":        {},
 		"bureau-contacts": {},
 		"bureau-calendar": {},
+		"doc-bureau":      {},
 		"paint-bureau":    {},
 		"jinn":            {},
 	}

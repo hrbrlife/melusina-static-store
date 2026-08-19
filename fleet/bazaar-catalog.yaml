@@ -623,12 +623,16 @@ groups:
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
         source_path: melusina-app-opensanctions
-        # The current dev-publish v0.1.24/version-26 candidate has a tracked
-        # runtime contract, byte-identical pack proof, and no baked tenant
-        # authority. Do not substitute the earlier v25 source; an independent
-        # clean clone must first prove this exact revision.
-        candidate_source_commit: 3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6
-        reconciliation_state: source-clean-clone-pending
+        # v0.1.25/appVersion-27 is the current dev-publish tip. It integrates
+        # the July screening/privacy forward work, passes recovery from a fresh
+        # clone, and packs byte-identically.
+        source_commit: 2a40dfca3eee0c0c774898b245ccf400731613f1
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh.json
         publish_slug: opensanctions
         catalog_name: OpenSanctions
         live_version: 0.1.22

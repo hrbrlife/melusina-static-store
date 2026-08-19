@@ -1599,7 +1599,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
-        "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
     }
     for app_id, candidate_source_commit in pending_candidates.items():
         app = entries[app_id]
@@ -1721,13 +1720,17 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert canboard["source_path"] == "melusina-canboard-app", canboard
     assert canboard["reconciliation_state"] == "source-pinned", canboard
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
-    for app_id, source_path in {
-        "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
-    }.items():
-        app = entries[app_id]
-        assert app["source_path"] == source_path, app
-        assert app["reconciliation_state"] == "source-clean-clone-pending", app
-        assert not app.get("source_commit"), app
+    opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
+    assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
+    assert opensanctions["source_commit"] == "2a40dfca3eee0c0c774898b245ccf400731613f1", opensanctions
+    assert opensanctions["source_baseline_branch"] == "main", opensanctions
+    assert opensanctions["runtime_contract_path"] == "RUNTIME-CONTRACT.json", opensanctions
+    assert opensanctions["reconciliation_state"] == "source-pinned", opensanctions
+    assert opensanctions["release_state"] == "ready", opensanctions
+    assert opensanctions["source_selection_state"] == "direct-dev-verified", opensanctions
+    assert opensanctions["source_selection_receipt"] == (
+        "prepublish-selections/msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh.json"
+    ), opensanctions
 
 
 def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():

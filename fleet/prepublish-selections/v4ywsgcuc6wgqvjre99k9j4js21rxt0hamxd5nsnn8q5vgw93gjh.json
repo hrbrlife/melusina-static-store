@@ -2,11 +2,11 @@
   "schema": "melusina-source-selection-v1",
   "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
   "sourceRepository": "https://github.com/hrbrlife/ai-lagoon",
-  "sourceCommit": "e3c5efce87e692926f459a9556112716389636fb",
+  "sourceCommit": "90d9e560219b137c26b20a558f8e981e40e3bd3c",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.7.26/appVersion-34 dev-publish tip is the newest valid forward AiLagoon source. It retains the current shell-owned tenant binding, packaging, session lifecycle, provider-validation, and playground controls, then forward-ports durable consumer-bound and revocable AICapBundle grants. The reviewed Qwen and salvage lines are excluded because they reintroduce stale tenant-bound package configuration. Main is an ancestor; all app-relevant selected changes are integrated into dev-publish.",
+  "decisionSummary": "The Aug. 19 v0.7.26/appVersion-34 dev-publish tip is the newest valid forward AiLagoon source. It retains the current shell-owned tenant binding, packaging, session lifecycle, provider-validation, and playground controls, then forward-ports durable consumer-bound and revocable AICapBundle grants. The forward provider-output-path correction makes the governed candidate destination explicit without changing package bytes. The reviewed Qwen and salvage lines are excluded because they reintroduce stale tenant-bound package configuration. Main is an ancestor; all app-relevant selected changes are integrated into dev-publish.",
   "internalControls": {
     "status": "passed",
     "checks": [
@@ -14,6 +14,7 @@
       "go test ./..., go vet ./..., and go test -race ./... passed from the selected source",
       "pinned AiLagoon sidecar go test ./... and go vet ./... passed",
       "two deterministic pack-local builds produced identical bytes and spk verify app.spk passed",
+      "canonical provider candidate pack wrote its supplied output path from the clean committed source",
       "release test proves direct app-side publishing fails closed and no active release input can override the catalog-pinned shared Squads authority"
     ]
   },
@@ -23,7 +24,7 @@
     {"ref": "refs/heads/codex/ailagoon-provider-setup-fix-20260713", "commit": "1c2250b30ebeab70f285a758f14363eff94f6cbb", "outcome": "archive"},
     {"ref": "refs/heads/codex/ailagoon-qwen-provenance-fix-20260713", "commit": "0fad228267f742ea44f1579faacd37119823d979", "outcome": "archive"},
     {"ref": "refs/heads/contrib/ailagoon-kimi-click-proof", "commit": "387ebb939702ae95a494d5335a87ee53ffebd03f", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "e3c5efce87e692926f459a9556112716389636fb", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "90d9e560219b137c26b20a558f8e981e40e3bd3c", "outcome": "selected"},
     {"ref": "refs/heads/fix/ailagoon-0.7.22-openrouter-playground", "commit": "98c0e89332b8785e8731183c151ab3ef41194494", "outcome": "archive"},
     {"ref": "refs/heads/fix/ailagoon-0.7.23-playground-sendmessage", "commit": "c626131f1c28054faff2cbc5fe656ff2dcf0ef49", "outcome": "archive"},
     {"ref": "refs/heads/fix/ailagoon-playground-sendmessage-20260719", "commit": "1e6d7ec8452f87b9d787349a41b1f377ddc92926", "outcome": "archive"},

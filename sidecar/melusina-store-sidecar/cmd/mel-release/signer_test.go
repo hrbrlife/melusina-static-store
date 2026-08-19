@@ -29,7 +29,10 @@ printf '%s|%s|%s|%s|%s\n' "$1" "$MEL_RELEASE_CATALOG_DEVELOPER" "$MEL_RELEASE_CA
 	// execProvider starts from the process environment; its request binding must
 	// override an ambient stale value at every governed operation.
 	t.Setenv("MEL_RELEASE_HASH", "ambient-stale-hash")
-	p := &execProvider{command: script, timeout: time.Second}
+	p := &execProvider{command: script, timeout: time.Second, env: map[string]string{
+		"MEL_RELEASE_SQUADS_MULTISIG": "multisig",
+		"MEL_RELEASE_SQUADS_VAULT":    "vault",
+	}}
 	app := App{AppID: "v4yw4ixrwd4r5pkj2epqgqrg5d0c0j6ii98k58wy3m41tz7tdpv0", CatalogDeveloper: "hrbrlife", CatalogRepo: "AI_Lagoon", CatalogSlug: "ai-lagoon"}
 	if err := p.Stage(app, strings.Repeat("a", 64), strings.Repeat("b", 64), "0.7.23", strings.Repeat("c", 32), filepath.Join(dir, "stage.json")); err != nil {
 		t.Fatalf("Stage: %v", err)
@@ -57,6 +60,45 @@ func TestExecProviderRejectsPartialCatalogSlotBeforeInvocation(t *testing.T) {
 	app := App{AppID: "app", CatalogDeveloper: "hrbrlife"}
 	if err := p.Stage(app, "hash", "release", "1.0.0", "nonce", "/tmp/receipt"); err == nil || !strings.Contains(err.Error(), "catalog slot") {
 		t.Fatalf("Stage partial slot error = %v, want catalog-slot refusal", err)
+	}
+}
+
+func TestExecProviderPinsSharedSquadsAuthorityOverAmbientEnvironment(t *testing.T) {
+	dir := t.TempDir()
+	capture := filepath.Join(dir, "capture")
+	script := filepath.Join(dir, "capture-provider.sh")
+	const body = `#!/bin/sh
+printf '%s|%s|%s\n' "$1" "$MEL_RELEASE_SQUADS_MULTISIG" "$MEL_RELEASE_SQUADS_VAULT" > "$MEL_CAPTURE"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MEL_CAPTURE", capture)
+	t.Setenv("MEL_RELEASE_SQUADS_MULTISIG", "ambient-foreign-multisig")
+	t.Setenv("MEL_RELEASE_SQUADS_VAULT", "ambient-foreign-vault")
+	p := &execProvider{command: script, timeout: time.Second, env: map[string]string{
+		"MEL_RELEASE_SQUADS_MULTISIG": "catalog-multisig",
+		"MEL_RELEASE_SQUADS_VAULT":    "catalog-vault",
+	}}
+	if err := p.Build("app", "1.2.3", filepath.Join(dir, "build.json")); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	got, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "build|catalog-multisig|catalog-vault\n"; string(got) != want {
+		t.Fatalf("provider authority environment = %q, want %q", got, want)
+	}
+}
+
+func TestExecProviderRejectsForeignProposalAuthorityBeforeInvocation(t *testing.T) {
+	p := &execProvider{command: "false", timeout: time.Second, env: map[string]string{
+		"MEL_RELEASE_SQUADS_MULTISIG": "catalog-multisig",
+		"MEL_RELEASE_SQUADS_VAULT":    "catalog-vault",
+	}}
+	if err := p.ProposeRegister("app", strings.Repeat("a", 64), strings.Repeat("b", 64), "1.2.3", strings.Repeat("c", 32), "foreign-multisig", "catalog-vault", "/tmp/release.json", "/tmp/propose.json"); err == nil || !strings.Contains(err.Error(), "catalog-pinned") {
+		t.Fatalf("foreign proposal authority error = %v", err)
 	}
 }
 

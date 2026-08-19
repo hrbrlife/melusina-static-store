@@ -22,6 +22,9 @@ SPEC.loader.exec_module(provider)
 
 
 CYBERTELLER_CONFIG_APP_ID = "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10"
+TEST_SQUADS_MULTISIG = "11111111111111111111111111111111"
+TEST_SQUADS_VAULT = "SysvarC1ock11111111111111111111111111111111"
+TEST_SQUADS_PROGRAM_ID = "Stake11111111111111111111111111111111111111"
 
 
 def with_env(values):
@@ -134,12 +137,14 @@ def test_stage_refuses_stale_live_quorum_before_store_mutation():
         root = Path(tmp)
         executor = root / "executor.mjs"
         executor.write_text("// test executor\n")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
         captured = []
         old_run, old_context, old_rewrite = provider.run, provider.require_context, provider.rewrite_release
         old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-            "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
             "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
             # This reflects the real failure mode: local configuration says
             # 2-of-4 while the governed authority is now 3-of-4.
@@ -150,7 +155,8 @@ def test_stage_refuses_stale_live_quorum_before_store_mutation():
             def fake_run(args, **_):
                 captured.append(args)
                 return json.dumps({
-                    "multisig": "multisig", "threshold": 3, "memberCount": 4,
+                    "multisig": TEST_SQUADS_MULTISIG, "vault": TEST_SQUADS_VAULT,
+                    "programId": TEST_SQUADS_PROGRAM_ID, "threshold": 3, "memberCount": 4,
                     "members": ["member-1", "member-2", "member-3", "member-4"],
                 })
 
@@ -193,8 +199,8 @@ def test_propose_uses_only_supported_flags():
             "releaseHash": release_hash,
             "version": "1.2.3",
             "releaseNonce": nonce,
-            "multisigPda": "multisig",
-            "licenseSquadsVault": "vault",
+            "multisigPda": TEST_SQUADS_MULTISIG,
+            "licenseSquadsVault": TEST_SQUADS_VAULT,
             "masterNftMint": "master",
             "programId": "program",
             "releaseEntryPda": "release-pda",
@@ -203,10 +209,12 @@ def test_propose_uses_only_supported_flags():
             "transactionIndex": 1167,
             "registerReleaseEntryInstruction": {"programId": "program", "accounts": [], "data": ""},
             "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
-            "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+            "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
         }
         executor = root / "executor.js"
         executor.write_text("// test executor\n")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
         members = []
         for index in range(3):
             member = root / f"member-{index + 1}.json"
@@ -224,8 +232,7 @@ def test_propose_uses_only_supported_flags():
         captured = []
         old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
-            "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
-            "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool",
             "MEL_RELEASE_LICENSE_MINT": "license",
             "MEL_RELEASE_MASTER_NFT_MINT": "master",
@@ -258,7 +265,7 @@ def test_propose_uses_only_supported_flags():
                     "alreadyProposed": False,
                 })
             provider.run = fake_run
-            provider.propose("app", app_hash, "1.2.3", nonce, "multisig", "vault", ix_out, receipt_out)
+            provider.propose("app", app_hash, "1.2.3", nonce, TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT, ix_out, receipt_out)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
@@ -371,15 +378,17 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         state_path.write_text(json.dumps({
             "$schema": "melusina-release-ceremony-v1", "appId": app_id,
             "appHash": app_hash, "releaseHash": release_hash, "version": "1.2.3", "releaseNonce": nonce,
-            "multisigPda": "multisig", "licenseSquadsVault": "vault", "masterNftMint": "master", "programId": "program",
+            "multisigPda": TEST_SQUADS_MULTISIG, "licenseSquadsVault": TEST_SQUADS_VAULT, "masterNftMint": "master", "programId": "program",
             "transactionIndex": 1755, "transactionPda": "transaction", "proposalPda": "proposal", "releaseEntryPda": "release",
             "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
-            "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+            "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
         }) + "\n")
         release = root / "RELEASE.json"
         release.write_text("{}\n")
         executor = root / "executor.mjs"
         executor.write_text("// test executor\n")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": app_id, "source_path": "app"}})
         members = []
         for index in range(3):
             member = root / f"member-{index}.json"
@@ -393,7 +402,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         captured = []
         old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
-            "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
             "MEL_RELEASE_REGISTER_EXECUTOR": str(executor), "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
@@ -410,7 +419,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
                 "recoveredVaultTransaction": True, "alreadyProposed": False,
             })
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
-            provider.propose(app_id, app_hash, "1.2.3", nonce, "multisig", "vault", out_release, out_receipt)
+            provider.propose(app_id, app_hash, "1.2.3", nonce, TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT, out_release, out_receipt)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
@@ -429,10 +438,10 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             return {
                 "$schema": "melusina-release-ceremony-v1", "appId": app_id,
                 "appHash": app_hash, "releaseHash": release_hash, "version": version, "releaseNonce": nonce,
-                "multisigPda": "multisig", "licenseSquadsVault": "vault", "masterNftMint": "master", "programId": "program",
+                "multisigPda": TEST_SQUADS_MULTISIG, "licenseSquadsVault": TEST_SQUADS_VAULT, "masterNftMint": "master", "programId": "program",
                 "transactionIndex": index, "transactionPda": transaction, "proposalPda": proposal, "releaseEntryPda": "release",
                 "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
-                "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+                "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
             }
 
         old_state, new_state = state(1759, "old-transaction", "old-proposal"), state(1760, "new-transaction", "new-proposal")
@@ -444,6 +453,8 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             path.write_bytes(content)
         executor = root / "executor.mjs"
         executor.write_text("// test executor\n")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": app_id, "source_path": "app"}})
         members = []
         for index in range(3):
             member = root / f"member-{index}.json"
@@ -457,7 +468,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
         captured = []
         old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
-            "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
             "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool", "MEL_RELEASE_LICENSE_MINT": "license",
@@ -490,7 +501,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
 
             provider.run = fake_run
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
-            provider.propose(app_id, app_hash, version, nonce, "multisig", "vault", out_release, out_receipt)
+            provider.propose(app_id, app_hash, version, nonce, TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT, out_release, out_receipt)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
@@ -577,17 +588,19 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         root = Path(tmp)
         executor = root / "register-executor.mjs"
         executor.write_text("// test executor\n")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
         members = []
         for index in range(3):
             member = root / f"member-{index + 1}.json"
             member.write_text("[]\n")
             members.append(str(member))
         common = {
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
             "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
             "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-            "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3",
         }
 
@@ -596,7 +609,7 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         old = with_env(common)
         try:
             provider.run = lambda args, **_: captured.append(args) or "1724\n"
-            assert provider.next_index("multisig", "vault") == 1724
+            assert provider.next_index(TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT) == 1724
         finally:
             provider.run = old_run
             restore_env(old)
@@ -608,7 +621,9 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             "transactionIndex": 1724,
             "releaseEntryPda": "release-pda",
             "releaseHash": "a" * 64,
+            "licenseSquadsVault": TEST_SQUADS_VAULT,
             "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
+            "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
         }))
         app_hash = "b" * 64
         version = "1.2.3"
@@ -617,6 +632,7 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             "appHash": app_hash,
             "releaseHash": "a" * 64,
             "version": version,
+            "licenseSquadsVault": TEST_SQUADS_VAULT,
         }) + "\n")
         spk = root / "app.spk"
         spk.write_bytes(b"spk")
@@ -682,6 +698,7 @@ def test_promote_repairs_registered_resume_runtime_binding():
             "appHash": app_hash,
             "releaseHash": release_hash,
             "version": version,
+            "licenseSquadsVault": TEST_SQUADS_VAULT,
         }) + "\n")
         runtime_contract = root / "RUNTIME-CONTRACT.json"
         runtime_contract.write_text(json.dumps({
@@ -709,7 +726,10 @@ def test_promote_repairs_registered_resume_runtime_binding():
         old_context = provider.require_context
         old_ensure_bin = provider.ensure_bin
         old_run = provider.run
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
         old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
             "MEL_RELEASE_STORE_LICENSE_MINT": "license",
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
@@ -837,12 +857,40 @@ def write_catalog_config(path, apps):
         "default_release_state": "ready",
         "default_reconciliation_state": "source-pinned",
         "default_source_branch": "dev-publish",
+        "release_squads_authority": {
+            "multisig": TEST_SQUADS_MULTISIG,
+            "vault": TEST_SQUADS_VAULT,
+            "program_id": TEST_SQUADS_PROGRAM_ID,
+        },
         "groups": {"msb": {"apps": normalized_apps}},
     }) + "\n", encoding="utf-8")
     receipt_dir = path.parent / "prepublish-selections"
     receipt_dir.mkdir(exist_ok=True)
     for app_id, receipt in receipts.items():
         (receipt_dir / f"{app_id}.json").write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+
+
+def test_catalog_pins_one_shared_squads_authority():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            assert provider.require_shared_squads_authority() == {
+                "multisig": TEST_SQUADS_MULTISIG,
+                "vault": TEST_SQUADS_VAULT,
+                "programId": TEST_SQUADS_PROGRAM_ID,
+            }
+            os.environ["MEL_RELEASE_SQUADS_VAULT"] = TEST_SQUADS_MULTISIG
+            try:
+                provider.require_shared_squads_authority()
+            except provider.ProviderError as exc:
+                assert "cannot override the catalog-pinned shared Squads authority" in str(exc), exc
+            else:
+                raise AssertionError("caller-selected Squads vault bypassed the catalog pin")
+        finally:
+            restore_env(old)
 
 
 def commit_source_fixture(path):
@@ -2115,6 +2163,7 @@ if __name__ == "__main__":
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
+    test_catalog_pins_one_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_source_selection_requires_a_current_complete_remote_snapshot()

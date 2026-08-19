@@ -88,11 +88,50 @@ catalog_slot_args() {
   SUBMIT_CATALOG_SLOT_ARGS=(--developer "$developer" --repo "$repo" --slug "$slug")
 }
 
+# The catalog is the sole selector of release authority. Every app retains its
+# own SPK key, but none may select a different Squads multisig, vault, or
+# program. Keep this check in the provider as well as the Go CLI so invoking
+# this script directly cannot turn a stale environment file into a publishing
+# bypass.
+require_catalog_shared_squads_authority() {
+  need MEL_RELEASE_CONFIG
+  [[ -f "$MEL_RELEASE_CONFIG" && ! -L "$MEL_RELEASE_CONFIG" ]] || die "MEL_RELEASE_CONFIG must name a regular non-symlink file"
+  local expected actual_multisig actual_vault actual_program
+  expected="$(python3 - "$MEL_RELEASE_CONFIG" <<'PY'
+import re, sys, yaml
+
+path = sys.argv[1]
+try:
+    doc = yaml.safe_load(open(path, encoding="utf-8"))
+except Exception as exc:
+    raise SystemExit("read Bazaar catalog config: " + str(exc))
+if not isinstance(doc, dict) or doc.get("schema") != "melusina-bazaar-catalog/v1":
+    raise SystemExit("Bazaar catalog has an unsupported schema")
+raw = doc.get("release_squads_authority")
+if not isinstance(raw, dict):
+    raise SystemExit("Bazaar catalog lacks release_squads_authority")
+values = [raw.get("multisig"), raw.get("vault"), raw.get("program_id")]
+if any(not isinstance(value, str) or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{32,44}", value) for value in values):
+    raise SystemExit("Bazaar catalog has malformed release_squads_authority")
+print("|".join(values))
+PY
+)" || die "could not read the catalog-pinned shared Squads authority"
+  IFS='|' read -r actual_multisig actual_vault actual_program <<<"$expected"
+  need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT; need MEL_RELEASE_SQUADS_PROGRAM_ID
+  [[ "$MEL_RELEASE_SQUADS_MULTISIG" = "$actual_multisig" ]] || die "MEL_RELEASE_SQUADS_MULTISIG cannot override the catalog-pinned shared Squads authority"
+  [[ "$MEL_RELEASE_SQUADS_VAULT" = "$actual_vault" ]] || die "MEL_RELEASE_SQUADS_VAULT cannot override the catalog-pinned shared Squads authority"
+  [[ "$MEL_RELEASE_SQUADS_PROGRAM_ID" = "$actual_program" ]] || die "MEL_RELEASE_SQUADS_PROGRAM_ID cannot override the catalog-pinned shared Squads authority"
+}
+
 readonly OP="${1:-}"
 [[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke}"
 case "$OP" in
   build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke) ;;
   *) die "unknown operation: $OP" ;;
+esac
+
+case "$OP" in
+  build|stage|propose-register|approve-register|promote|revoke) require_catalog_shared_squads_authority ;;
 esac
 
 need MEL_RELEASE_STATE_DIR

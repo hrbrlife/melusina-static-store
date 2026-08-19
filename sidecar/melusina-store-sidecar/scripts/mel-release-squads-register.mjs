@@ -65,22 +65,38 @@ async function sendAndConfirm(connection, transaction) {
   await confirm(connection,signature);
   return signature;
 }
+function configuredAuthority() {
+  const multisigPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
+  const configuredVault=new PublicKey(need("MEL_RELEASE_SQUADS_VAULT"));
+  const configuredProgram=new PublicKey(need("MEL_RELEASE_SQUADS_PROGRAM_ID"));
+  if (!configuredProgram.equals(multisig.PROGRAM_ID)) {
+    throw new Error("MEL_RELEASE_SQUADS_PROGRAM_ID does not match the configured Squads SDK program");
+  }
+  const [derivedVault]=multisig.getVaultPda({multisigPda,index:0});
+  if (!configuredVault.equals(derivedVault)) {
+    throw new Error("MEL_RELEASE_SQUADS_VAULT does not derive from the configured Squads multisig/index-0");
+  }
+  return {multisigPda,configuredVault,configuredProgram};
+}
 function context(state) {
   const rpc=need("MEL_RELEASE_RPC_URL");
   const connection=wrapConnectionTransactionErrors(new Connection(rpc,{commitment:"confirmed"}));
-  const multisigPda=new PublicKey(state.multisigPda);
-  if (need("MEL_RELEASE_SQUADS_MULTISIG") !== String(multisigPda)) {
+  const {multisigPda,configuredVault,configuredProgram}=configuredAuthority();
+  if (String(multisigPda) !== String(new PublicKey(state.multisigPda))) {
     throw new Error("prepared ceremony multisig does not match MEL_RELEASE_SQUADS_MULTISIG");
   }
-  if (state.squadsProgramId && String(multisig.PROGRAM_ID) !== String(state.squadsProgramId)) {
-    throw new Error("prepared ceremony Squads program does not match the configured SDK");
+  if (String(configuredVault) !== String(new PublicKey(state.licenseSquadsVault))) {
+    throw new Error("prepared ceremony vault does not match MEL_RELEASE_SQUADS_VAULT");
   }
-  return {connection,multisigPda};
+  if (state.squadsProgramId && String(configuredProgram) !== String(new PublicKey(state.squadsProgramId))) {
+    throw new Error("prepared ceremony Squads program does not match MEL_RELEASE_SQUADS_PROGRAM_ID");
+  }
+  return {connection,multisigPda,configuredVault,configuredProgram};
 }
 async function nextIndex() {
-  const msPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
+  const {multisigPda}=configuredAuthority();
   const connection=wrapConnectionTransactionErrors(new Connection(need("MEL_RELEASE_RPC_URL"),{commitment:"confirmed"}));
-  const account=await multisig.accounts.Multisig.fromAccountAddress(connection,msPda);
+  const account=await multisig.accounts.Multisig.fromAccountAddress(connection,multisigPda);
   process.stdout.write(String(BigInt(account.transactionIndex)+1n)+"\n");
 }
 
@@ -89,7 +105,7 @@ async function nextIndex() {
 // it creates a private Store stage or prepares a proposal.  Local threshold
 // files are convenient inputs, but they are never the source of truth.
 async function policy() {
-  const multisigPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
+  const {multisigPda,configuredVault,configuredProgram}=configuredAuthority();
   const connection=wrapConnectionTransactionErrors(new Connection(need("MEL_RELEASE_RPC_URL"),{commitment:"confirmed"}));
   const account=await multisig.accounts.Multisig.fromAccountAddress(connection,multisigPda);
   const threshold=Number(account.threshold);
@@ -99,7 +115,7 @@ async function policy() {
   }
   process.stdout.write(JSON.stringify({
     multisig:String(multisigPda), threshold, memberCount:governedMembers.length,
-    members:governedMembers,
+    members:governedMembers, vault:String(configuredVault), programId:String(configuredProgram),
   })+"\n");
 }
 
@@ -111,6 +127,7 @@ function statePDAs(state,multisigPda) {
   if (String(transactionPda) !== state.transactionPda) throw new Error("prepared ceremony transaction PDA does not derive from its multisig/index");
   if (String(proposalPda) !== state.proposalPda) throw new Error("prepared ceremony proposal PDA does not derive from its multisig/index");
   if (String(vaultPda) !== state.licenseSquadsVault) throw new Error("prepared ceremony vault does not derive from its multisig/index-0");
+  if (String(vaultPda) !== need("MEL_RELEASE_SQUADS_VAULT")) throw new Error("prepared ceremony vault does not match MEL_RELEASE_SQUADS_VAULT");
   return {transactionIndex,transactionPda,proposalPda,vaultPda};
 }
 

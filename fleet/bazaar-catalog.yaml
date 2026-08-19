@@ -21,6 +21,14 @@ default_source_selection_state: pending
 # Every governed build must use the exact current tip of this branch. A Store
 # listing or a reachable historical commit is evidence, never source authority.
 default_source_branch: dev-publish
+# One publisher authority governs every default-Bazaar app. Individual apps
+# retain distinct SPK signing keys and immutable app identities, but no app may
+# select a different Squads multisig, its vault, or its program at release time.
+# These coordinates are corroborated by every recorded active release input.
+release_squads_authority:
+  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
+  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 #
 # appId is authoritative; source paths and catalog names are deliberately
 # descriptive because they historically differ.

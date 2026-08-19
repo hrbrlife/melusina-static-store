@@ -22,10 +22,13 @@ const defaultBazaarStoreID = "melusina-os-root-store"
 
 // Config is the fully-resolved, validated runtime configuration.
 type Config struct {
-	ConfigPath       string // MEL_RELEASE_CONFIG   — path to bazaar-catalog.yaml (required)
-	RPCURL           string // MEL_RELEASE_RPC_URL   — Solana RPC (passed through to the signer provider)
+	ConfigPath string // MEL_RELEASE_CONFIG   — path to bazaar-catalog.yaml (required)
+	RPCURL     string // MEL_RELEASE_RPC_URL   — Solana RPC (passed through to the signer provider)
+	// These are read only to reject a caller override, then replaced by the
+	// catalog-pinned common authority before any provider is constructed.
 	SquadsMultisig   string // MEL_RELEASE_SQUADS_MULTISIG
 	SquadsVault      string // MEL_RELEASE_SQUADS_VAULT
+	SquadsProgramID  string // MEL_RELEASE_SQUADS_PROGRAM_ID
 	SignerProvider   string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
 	StoreURL         string // MEL_RELEASE_STORE_URL — bare https origin (required)
 	StorePubkey      string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
@@ -56,6 +59,7 @@ func loadConfig() (Config, error) {
 		RPCURL:           os.Getenv("MEL_RELEASE_RPC_URL"),
 		SquadsMultisig:   os.Getenv("MEL_RELEASE_SQUADS_MULTISIG"),
 		SquadsVault:      os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
+		SquadsProgramID:  os.Getenv("MEL_RELEASE_SQUADS_PROGRAM_ID"),
 		SignerProvider:   os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
 		StoreURL:         os.Getenv("MEL_RELEASE_STORE_URL"),
 		StorePubkey:      os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
@@ -122,6 +126,31 @@ func loadConfig() (Config, error) {
 	}
 	c.StateDir = dir
 	return c, nil
+}
+
+// bindCatalogSquadsAuthority makes the catalog the sole selector of the
+// publisher authority. Per-app SPK keys still travel with each app's package;
+// this concerns only the common Squads authority that authorizes releases.
+func (c *Config) bindCatalogSquadsAuthority(catalog *Catalog) error {
+	if catalog == nil || !validSquadsAuthority(catalog.ReleaseSquadsAuthority) {
+		return errors.New("Bazaar catalog lacks a valid shared Squads authority")
+	}
+	expected := catalog.ReleaseSquadsAuthority
+	for _, item := range []struct {
+		name, supplied, want string
+	}{
+		{"MEL_RELEASE_SQUADS_MULTISIG", c.SquadsMultisig, expected.Multisig},
+		{"MEL_RELEASE_SQUADS_VAULT", c.SquadsVault, expected.Vault},
+		{"MEL_RELEASE_SQUADS_PROGRAM_ID", c.SquadsProgramID, expected.ProgramID},
+	} {
+		if strings.TrimSpace(item.supplied) != "" && item.supplied != item.want {
+			return fmt.Errorf("%s cannot override the catalog-pinned shared Squads authority", item.name)
+		}
+	}
+	c.SquadsMultisig = expected.Multisig
+	c.SquadsVault = expected.Vault
+	c.SquadsProgramID = expected.ProgramID
+	return nil
 }
 
 // appStateDir returns the per-app durable directory (WAL + immutable receipts),

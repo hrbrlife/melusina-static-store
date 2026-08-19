@@ -53,3 +53,22 @@ func TestExecProviderForwardsStoreLicenseMint(t *testing.T) {
 		t.Fatalf("provider Store license mint = %q", provider.env["MEL_RELEASE_STORE_LICENSE_MINT"])
 	}
 }
+
+func TestConfigBindsOneCatalogPinnedSquadsAuthority(t *testing.T) {
+	authority := SquadsAuthority{
+		Multisig:  "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+		Vault:     "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+		ProgramID: "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+	}
+	catalog := &Catalog{ReleaseSquadsAuthority: authority}
+	var cfg Config
+	if err := cfg.bindCatalogSquadsAuthority(catalog); err != nil {
+		t.Fatalf("bindCatalogSquadsAuthority: %v", err)
+	}
+	if cfg.SquadsMultisig != authority.Multisig || cfg.SquadsVault != authority.Vault || cfg.SquadsProgramID != authority.ProgramID {
+		t.Fatalf("bound authority = %+v, want %+v", cfg, authority)
+	}
+	if err := (&Config{SquadsVault: authority.Multisig}).bindCatalogSquadsAuthority(catalog); err == nil || !strings.Contains(err.Error(), "cannot override") {
+		t.Fatalf("foreign authority override error = %v", err)
+	}
+}

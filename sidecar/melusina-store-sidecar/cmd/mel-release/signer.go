@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -97,6 +98,7 @@ func newExecProvider(c Config) *execProvider {
 	return &execProvider{
 		command: c.SignerProvider,
 		env: map[string]string{
+			"MEL_RELEASE_CONFIG":             c.ConfigPath,
 			"MEL_RELEASE_RPC_URL":            c.RPCURL,
 			"MEL_RELEASE_STATE_DIR":          c.StateDir,
 			"MEL_RELEASE_STORE_URL":          c.StoreURL,
@@ -105,6 +107,7 @@ func newExecProvider(c Config) *execProvider {
 			"MEL_RELEASE_PUBLISHER_KEY":      c.PublisherKey,
 			"MEL_RELEASE_SQUADS_MULTISIG":    c.SquadsMultisig,
 			"MEL_RELEASE_SQUADS_VAULT":       c.SquadsVault,
+			"MEL_RELEASE_SQUADS_PROGRAM_ID":  c.SquadsProgramID,
 			"MEL_PROGRAM_ID":                 c.ProgramID,
 		},
 		timeout: time.Duration(c.OpTimeoutSecs) * time.Second,
@@ -115,13 +118,7 @@ func (e *execProvider) run(op string, env map[string]string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", e.command+" "+op)
-	cmd.Env = os.Environ()
-	for k, v := range e.env {
-		cmd.Env = append(cmd.Env, k+"="+v)
-	}
-	for k, v := range env {
-		cmd.Env = append(cmd.Env, k+"="+v)
-	}
+	cmd.Env = mergedEnvironment(os.Environ(), e.env, env)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -129,6 +126,34 @@ func (e *execProvider) run(op string, env map[string]string) (string, error) {
 		return "", fmt.Errorf("signer-provider %q failed: %w: %s", op, err, strings.TrimSpace(stderr.String()))
 	}
 	return stdout.String(), nil
+}
+
+// mergedEnvironment removes ambient duplicates before adding the governed
+// bindings. Relying on duplicate NAME=value entries is unsafe because a child
+// runtime may resolve the first rather than the last occurrence.
+func mergedEnvironment(base []string, overlays ...map[string]string) []string {
+	merged := make(map[string]string, len(base))
+	for _, item := range base {
+		key, value, ok := strings.Cut(item, "=")
+		if ok {
+			merged[key] = value
+		}
+	}
+	for _, overlay := range overlays {
+		for key, value := range overlay {
+			merged[key] = value
+		}
+	}
+	keys := make([]string, 0, len(merged))
+	for key := range merged {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]string, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, key+"="+merged[key])
+	}
+	return result
 }
 
 func (e *execProvider) Build(appID, version, receiptOut string) error {
@@ -206,6 +231,9 @@ func (e *execProvider) Stage(app App, appHash, releaseHash, version, releaseNonc
 }
 
 func (e *execProvider) ProposeRegister(appID, appHash, releaseHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error {
+	if multisig != e.env["MEL_RELEASE_SQUADS_MULTISIG"] || vault != e.env["MEL_RELEASE_SQUADS_VAULT"] {
+		return errors.New("proposal authority does not match the catalog-pinned shared Squads authority")
+	}
 	_, err := e.run("propose-register", map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_NEW_VERSION": version,
 		"MEL_RELEASE_HASH": releaseHash, "MEL_RELEASE_NONCE": nonce,

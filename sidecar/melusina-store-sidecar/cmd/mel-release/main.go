@@ -61,6 +61,9 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := cfg.bindCatalogSquadsAuthority(catalog); err != nil {
+		return err
+	}
 
 	switch sub {
 	case "publish":

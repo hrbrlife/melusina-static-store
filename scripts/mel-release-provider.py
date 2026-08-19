@@ -54,6 +54,9 @@ CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
 )
 
 
+BASE58_PUBLIC_KEY_RE = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,44}")
+
+
 class ProviderError(RuntimeError):
     pass
 
@@ -110,6 +113,46 @@ def canonical_source_repository(value: str) -> str:
     if not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized):
         raise ProviderError(f"invalid canonical source_repository: {value!r}")
     return normalized
+
+
+def canonical_solana_public_key(value: str, field: str) -> str:
+    """Return one safe base58 public key without accepting a local path."""
+    normalized = value.strip()
+    if not BASE58_PUBLIC_KEY_RE.fullmatch(normalized):
+        raise ProviderError(f"{field} must be a base58 Solana public key")
+    return normalized
+
+
+def parse_shared_squads_authority(doc: dict[str, Any]) -> dict[str, str]:
+    """Read the one catalog-pinned authority every app must share."""
+    raw = doc.get("release_squads_authority")
+    if not isinstance(raw, dict):
+        raise ProviderError("bazaar-catalog.yaml is missing release_squads_authority")
+    return {
+        "multisig": canonical_solana_public_key(str(raw.get("multisig", "")), "release_squads_authority.multisig"),
+        "vault": canonical_solana_public_key(str(raw.get("vault", "")), "release_squads_authority.vault"),
+        "programId": canonical_solana_public_key(str(raw.get("program_id", "")), "release_squads_authority.program_id"),
+    }
+
+
+def shared_squads_authority() -> dict[str, str]:
+    return parse_shared_squads_authority(catalog_config())
+
+
+def require_shared_squads_authority() -> dict[str, str]:
+    """Reject any caller-selected authority before a release operation runs."""
+    authority = shared_squads_authority()
+    for name, expected in (
+        ("MEL_RELEASE_SQUADS_MULTISIG", authority["multisig"]),
+        ("MEL_RELEASE_SQUADS_VAULT", authority["vault"]),
+        ("MEL_RELEASE_SQUADS_PROGRAM_ID", authority["programId"]),
+        ("MEL_SQUADS_MULTISIG", authority["multisig"]),
+        ("MEL_SQUADS_VAULT", authority["vault"]),
+    ):
+        supplied = env(name)
+        if supplied and supplied != expected:
+            raise ProviderError(f"{name} cannot override the catalog-pinned shared Squads authority")
+    return authority
 
 
 def canonical_source_branch(value: str) -> str:
@@ -209,6 +252,7 @@ def catalog_config() -> dict[str, Any]:
         raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
     if value.get("catalog_origin") != DEFAULT_BAZAAR_ORIGIN:
         raise ProviderError("bazaar-catalog.yaml must target the default Bazaar")
+    parse_shared_squads_authority(value)
     expected_count = value.get("expected_live_app_count")
     if not isinstance(expected_count, int) or expected_count < 1:
         raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
@@ -1258,6 +1302,7 @@ def write_unsigned_provisional_release(path: Path) -> None:
 
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
+    authority = require_shared_squads_authority()
     source = source_path(app_id)
     spec = app_spec(app_id)
     require_source_commit_advertised_by_origin(
@@ -1352,6 +1397,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "packageId": package_id,
         "catalogBootstrap": catalog_bootstrap,
         "masterNftMint": master,
+        "squadsAuthority": authority,
         "spkPath": str(spk),
         "metadataPath": str(metadata),
         "runtimeContract": {"sha256": hex_sha(runtime_contract), "size": runtime_contract.stat().st_size, "path": str(runtime_contract)},
@@ -1360,6 +1406,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
 
 
 def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
+    authority = require_shared_squads_authority()
     release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
     release = read_json(release_path)
     contract_path = clean_abs(str(context["runtimeContractPath"]), "provider runtimeContractPath")
@@ -1376,7 +1423,7 @@ def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release
         "version": version,
         "releaseNonce": nonce,
         "masterNftMint": env("MEL_RELEASE_MASTER_NFT_MINT", default=str(release.get("masterNftMint", ""))),
-        "licenseSquadsVault": env("MEL_RELEASE_SQUADS_VAULT", required=True),
+        "licenseSquadsVault": authority["vault"],
         "runtimeContractSha256": hex_sha(contract_path),
         "runtimeContractSchema": str(contract["schema"]),
     })
@@ -1518,9 +1565,12 @@ def policy_executor_env() -> dict[str, str]:
     This intentionally does not resolve or expose a member keypair. A stale
     quorum must be detectable before a workstation attempts any signing work.
     """
+    authority = require_shared_squads_authority()
     return {
         "MEL_RELEASE_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
-        "MEL_RELEASE_SQUADS_MULTISIG": env("MEL_RELEASE_SQUADS_MULTISIG", required=True),
+        "MEL_RELEASE_SQUADS_MULTISIG": authority["multisig"],
+        "MEL_RELEASE_SQUADS_VAULT": authority["vault"],
+        "MEL_RELEASE_SQUADS_PROGRAM_ID": authority["programId"],
         "MEL_RELEASE_NODE_MODULES": env(
             "MEL_RELEASE_SQUADS_NODE_MODULES",
             default="/home/user/Desktop/Melusina/melusina_solana_dev-license104/frontend-vite/node_modules",
@@ -1566,14 +1616,21 @@ def last_json(raw: str) -> dict[str, Any]:
 
 def live_quorum_policy() -> dict[str, Any]:
     """Read and validate the current governed policy without signing."""
+    authority = require_shared_squads_authority()
     raw = run(["node", str(register_executor()), "policy"], extra_env=policy_executor_env())
     result = last_json(raw)
     multisig = result.get("multisig")
+    vault = result.get("vault")
+    program_id = result.get("programId")
     threshold = result.get("threshold")
     member_count = result.get("memberCount")
     members = result.get("members")
-    if multisig != env("MEL_RELEASE_SQUADS_MULTISIG", required=True):
-        raise ProviderError("live Squads policy multisig does not match configured governed authority")
+    if multisig != authority["multisig"]:
+        raise ProviderError("live Squads policy multisig does not match the catalog-pinned shared authority")
+    if vault != authority["vault"]:
+        raise ProviderError("live Squads policy vault does not match the catalog-pinned shared authority")
+    if program_id != authority["programId"]:
+        raise ProviderError("live Squads policy program does not match the catalog-pinned shared authority")
     if (isinstance(threshold, bool) or not isinstance(threshold, int) or
             isinstance(member_count, bool) or not isinstance(member_count, int) or
             threshold < 1 or member_count < threshold):
@@ -1585,6 +1642,8 @@ def live_quorum_policy() -> dict[str, Any]:
         raise ProviderError("live Squads policy has duplicate members")
     return {
         "multisig": multisig,
+        "vault": vault,
+        "programId": program_id,
         "threshold": threshold,
         "memberCount": member_count,
         "members": members,
@@ -1618,9 +1677,9 @@ def assert_live_quorum_policy() -> dict[str, Any]:
 
 
 def next_index(multisig: str, vault: str) -> int:
-    del vault  # the helper reads the configured index-0 vault from ceremony state
-    if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig:
-        raise ProviderError("next-index multisig does not match configured governed authority")
+    authority = require_shared_squads_authority()
+    if multisig != authority["multisig"] or vault != authority["vault"]:
+        raise ProviderError("next-index authority does not match the catalog-pinned shared authority")
     raw = run(["node", str(register_executor()), "next-index"], extra_env=register_executor_env()).strip()
     try:
         index = int(raw)
@@ -1792,10 +1851,11 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     # Check before any rewrite, Pearl preparation, or Squads transaction work.
     # A pre-existing staged candidate can then be resumed only under the live
     # policy that will actually govern its ReleaseEntry proposal.
+    authority = require_shared_squads_authority()
     assert_live_quorum_policy()
     context = require_context(app_id)
-    if env("MEL_RELEASE_SQUADS_MULTISIG", required=True) != multisig or env("MEL_RELEASE_SQUADS_VAULT", required=True) != vault:
-        raise ProviderError("proposal multisig/vault does not match configured governed authority")
+    if multisig != authority["multisig"] or vault != authority["vault"]:
+        raise ProviderError("proposal authority does not match the catalog-pinned shared authority")
     release_hash = hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
     original_release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
     # Validate an existing state before rewriting any local ceremony evidence.
@@ -1859,10 +1919,15 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
 
 
 def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_out: Path) -> None:
+    authority = require_shared_squads_authority()
     context = require_context(app_id)
     state = read_json(clean_abs(str(context["statePath"]), "provider statePath"))
     if state.get("transactionPda") != transaction_pda:
         raise ProviderError("approve transaction PDA does not match the immutable proposal state")
+    policy = state.get("quorumPolicy")
+    if (not isinstance(policy, dict) or policy.get("multisigPda") != authority["multisig"] or
+            state.get("licenseSquadsVault") != authority["vault"]):
+        raise ProviderError("approve ceremony state does not bind the catalog-pinned shared authority")
     ed_ix = state.get("ed25519Instruction")
     if not isinstance(ed_ix, dict):
         raise ProviderError("prepared ceremony state lacks Ed25519 instruction")
@@ -1874,6 +1939,9 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
         if result.get("alreadyExecuted") is not False or not result.get("executeSignature") or not result.get("transactionSignatures"):
             raise ProviderError("Squads did not execute the registered proposal")
     finalize_release(context)
+    final_release = read_json(clean_abs(str(context["releasePath"]), "provider releasePath"))
+    if final_release.get("licenseSquadsVault") != authority["vault"]:
+        raise ProviderError("final release does not bind the catalog-pinned shared Squads vault")
     shutil.copyfile(context["releasePath"], final_release_out)
     signatures = [value for value in result.get("transactionSignatures", []) if isinstance(value, str) and value]
     write_json(receipt_out, {
@@ -1883,6 +1951,7 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
 
 
 def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
+    authority = require_shared_squads_authority()
     context = require_context(app_id)
     # A durable WAL may resume directly from REGISTERED after an older provider
     # finalized the Pearl release but crashed before restoring the Store-only
@@ -1891,6 +1960,8 @@ def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_i
     release = read_json(bind_runtime_contract_to_release(context))
     if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
         raise ProviderError("promotion context no longer binds the staged candidate")
+    if release.get("licenseSquadsVault") != authority["vault"]:
+        raise ProviderError("promotion release does not bind the catalog-pinned shared Squads vault")
     run(submit_args(context, receipt_out, stage_only=False))
 
 
@@ -1962,6 +2033,7 @@ def release_status(pda: str) -> None:
 
 
 def revoke(pda: str, receipt_out: Path) -> None:
+    authority = require_shared_squads_authority()
     status_doc_path = state_root("_revoke") / (hashlib.sha256(pda.encode()).hexdigest() + ".json")
     # Read first; an already revoked entry is a durable idempotent success.
     try:
@@ -1991,13 +2063,13 @@ def revoke(pda: str, receipt_out: Path) -> None:
         "programId": env("MEL_PROGRAM_ID", required=True),
         "accounts": [
             {"pubkey": pda, "isSigner": False, "isWritable": True},
-            {"pubkey": env("MEL_RELEASE_SQUADS_VAULT", required=True), "isSigner": True, "isWritable": True},
+            {"pubkey": authority["vault"], "isSigner": True, "isWritable": True},
             {"pubkey": env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "isSigner": False, "isWritable": False},
             {"pubkey": master_ata, "isSigner": False, "isWritable": False},
             {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
         ], "data": discriminator,
     })
-    result = last_json(run(["node", str(generic_executor()), str(ix_path), "--multisig", env("MEL_RELEASE_SQUADS_MULTISIG", required=True), "--vault", env("MEL_RELEASE_SQUADS_VAULT", required=True)], extra_env=generic_executor_env()))
+    result = last_json(run(["node", str(generic_executor()), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
     if result.get("status") != "executed":
         raise ProviderError("stale ReleaseEntry revoke did not execute")
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})
@@ -2027,7 +2099,8 @@ def main() -> None:
     elif op == "stage":
         stage(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True), env("MEL_RELEASE_NONCE", required=True), clean_abs(env("MEL_STAGE_RECEIPT_OUT", required=True), "MEL_STAGE_RECEIPT_OUT"))
     elif op == "propose-register":
-        propose(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True), env("MEL_SQUADS_MULTISIG", required=True), env("MEL_SQUADS_VAULT", required=True), clean_abs(env("MEL_RELEASE_JSON_OUT", required=True), "MEL_RELEASE_JSON_OUT"), clean_abs(env("MEL_PROPOSE_RECEIPT_OUT", required=True), "MEL_PROPOSE_RECEIPT_OUT"))
+        authority = require_shared_squads_authority()
+        propose(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True), authority["multisig"], authority["vault"], clean_abs(env("MEL_RELEASE_JSON_OUT", required=True), "MEL_RELEASE_JSON_OUT"), clean_abs(env("MEL_PROPOSE_RECEIPT_OUT", required=True), "MEL_PROPOSE_RECEIPT_OUT"))
     elif op == "approve-register":
         approve(app_id, env("MEL_TRANSACTION_PDA", required=True), clean_abs(env("MEL_REGISTER_RECEIPT_OUT", required=True), "MEL_REGISTER_RECEIPT_OUT"), clean_abs(env("MEL_FINAL_RELEASE_JSON_OUT", required=True), "MEL_FINAL_RELEASE_JSON_OUT"))
     elif op == "promote":

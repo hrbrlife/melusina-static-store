@@ -51,7 +51,18 @@ type Catalog struct {
 	DefaultReleaseState         string
 	DefaultReconciliationState  string
 	DefaultSourceSelectionState string
+	ReleaseSquadsAuthority      SquadsAuthority
 	Apps                        []App
+}
+
+// SquadsAuthority is the one publisher authority for the whole default Bazaar.
+// It is deliberately catalog-level: apps retain their own SPK keys, but an app
+// may never choose a different multisig, vault, or Squads program at release
+// time.
+type SquadsAuthority struct {
+	Multisig  string
+	Vault     string
+	ProgramID string
 }
 
 const (
@@ -86,10 +97,11 @@ func LoadCatalog(path string) (*Catalog, error) {
 	)
 	catalog := &Catalog{}
 	var (
-		inGroups bool
-		curGroup string
-		inApps   bool
-		curApp   *App
+		inGroups                 bool
+		inReleaseSquadsAuthority bool
+		curGroup                 string
+		inApps                   bool
+		curApp                   *App
 	)
 	flush := func() {
 		if curApp != nil {
@@ -124,6 +136,19 @@ func LoadCatalog(path string) (*Catalog, error) {
 		if hasVal && isBlockScalarIndicator(val) {
 			blockIndent = indent
 		}
+		if inReleaseSquadsAuthority {
+			if indent == 0 {
+				inReleaseSquadsAuthority = false
+			} else {
+				if indent != groupIndent || !hasVal {
+					return nil, fmt.Errorf("Bazaar catalog manifest %s line %d: malformed release_squads_authority entry %q", path, lineNo, strings.TrimSpace(raw))
+				}
+				if err := assignReleaseSquadsAuthority(&catalog.ReleaseSquadsAuthority, key, unquote(val), path, lineNo); err != nil {
+					return nil, err
+				}
+				continue
+			}
+		}
 
 		// Dedent: a line below the app-field column closes the current app; a
 		// column-0 line closes the group scope entirely.
@@ -153,6 +178,11 @@ func LoadCatalog(path string) (*Catalog, error) {
 			catalog.DefaultReconciliationState = unquote(val)
 		case indent == 0 && key == "default_source_selection_state":
 			catalog.DefaultSourceSelectionState = unquote(val)
+		case indent == 0 && key == "release_squads_authority":
+			if hasVal {
+				return nil, fmt.Errorf("Bazaar catalog manifest %s line %d: release_squads_authority must be a mapping", path, lineNo)
+			}
+			inReleaseSquadsAuthority = true
 		case indent == 0 && key == "groups":
 			inGroups = true
 		case indent == 0:
@@ -268,6 +298,9 @@ func LoadCatalog(path string) (*Catalog, error) {
 		}
 		seen[a.AppID] = true
 	}
+	if !validSquadsAuthority(catalog.ReleaseSquadsAuthority) {
+		return nil, fmt.Errorf("Bazaar catalog manifest %s has an incomplete or malformed release_squads_authority", path)
+	}
 	return catalog, nil
 }
 
@@ -361,6 +394,47 @@ func assignAppField(a *App, key, val string) {
 	case "release_state":
 		a.ReleaseState = val
 	}
+}
+
+func assignReleaseSquadsAuthority(authority *SquadsAuthority, key, value, path string, lineNo int) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("Bazaar catalog manifest %s line %d: release_squads_authority.%s must not be empty", path, lineNo, key)
+	}
+	var field *string
+	switch key {
+	case "multisig":
+		field = &authority.Multisig
+	case "vault":
+		field = &authority.Vault
+	case "program_id":
+		field = &authority.ProgramID
+	default:
+		return fmt.Errorf("Bazaar catalog manifest %s line %d: unknown release_squads_authority field %q", path, lineNo, key)
+	}
+	if *field != "" {
+		return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+	}
+	*field = value
+	return nil
+}
+
+func validSquadsAuthority(authority SquadsAuthority) bool {
+	return validSolanaPublicKey(authority.Multisig) &&
+		validSolanaPublicKey(authority.Vault) &&
+		validSolanaPublicKey(authority.ProgramID)
+}
+
+func validSolanaPublicKey(value string) bool {
+	if len(value) < 32 || len(value) > 44 {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '1' && r <= '9' || r >= 'A' && r <= 'H' || r >= 'J' && r <= 'N' ||
+			r >= 'P' && r <= 'Z' || r >= 'a' && r <= 'k' || r >= 'm' && r <= 'z') {
+			return false
+		}
+	}
+	return true
 }
 
 func isLowerHexCommit(value string) bool {

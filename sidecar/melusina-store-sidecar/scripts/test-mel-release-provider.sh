@@ -6,7 +6,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROVIDER="$ROOT/scripts/mel-release-provider.sh"
 CATALOG_ADAPTER="$ROOT/scripts/mel-release-catalog-provider.sh"
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+cleanup() {
+  rc=$?
+  rm -rf "$TMP"
+  trap - EXIT
+  exit "$rc"
+}
+trap cleanup EXIT
 
 APP=uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
 APPHASH=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
@@ -42,6 +48,17 @@ SH
 chmod +x "$TMP/bin/submit"
 
 export MEL_RELEASE_STATE_DIR="$TMP/state"
+cat >"$TMP/release-catalog.yaml" <<'YAML'
+schema: melusina-bazaar-catalog/v1
+release_squads_authority:
+  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
+  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+YAML
+export MEL_RELEASE_CONFIG="$TMP/release-catalog.yaml"
+export MEL_RELEASE_SQUADS_MULTISIG=4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
+export MEL_RELEASE_SQUADS_VAULT=3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+export MEL_RELEASE_SQUADS_PROGRAM_ID=SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 export MEL_APP_ID="$APP"
 export MEL_NEW_APP_HASH="$APPHASH"
 export MEL_RELEASE_HASH="$RELHASH"
@@ -56,6 +73,13 @@ export MEL_RELEASE_RPC_URL=https://rpc.example.test
 export MEL_RELEASE_PUBLISHER_KEY=env:TEST_PUBLISHER
 export MEL_RELEASE_SUBMIT_BIN="$TMP/bin/submit"
 export MEL_STAGE_RECEIPT_OUT="$TMP/stage.json"
+
+set +e
+MEL_RELEASE_SQUADS_VAULT=11111111111111111111111111111111 "$PROVIDER" stage >"$TMP/foreign-authority.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -Fq 'cannot override the catalog-pinned shared Squads authority' "$TMP/foreign-authority.log"
 
 "$PROVIDER" stage
 python3 - "$TMP/state/apps/$APP/provider/release-stage.json" "$TMP/stage.json" <<'PY'
@@ -127,6 +151,11 @@ catalog_origin: https://bazaar.melusina-os.org
 expected_live_app_count: 1
 default_release_state: ready
 default_reconciliation_state: source-pinned
+default_source_branch: dev-publish
+release_squads_authority:
+  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
+  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 groups:
   test:
     apps:

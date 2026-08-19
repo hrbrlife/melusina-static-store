@@ -243,6 +243,10 @@ func newHarness(t *testing.T) *harness {
 		"expected_live_app_count: 1\n" +
 		"default_release_state: ready\n" +
 		"default_reconciliation_state: source-pinned\n" +
+		"release_squads_authority:\n" +
+		"  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V\n" +
+		"  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n" +
+		"  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf\n" +
 		"groups:\n" +
 		"  test:\n" +
 		"    apps:\n" +
@@ -270,20 +274,21 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	cfg := Config{
-		ConfigPath:     manifestPath,
-		RPCURL:         "https://rpc.example.test",
-		SquadsMultisig: "SquadsMultisigFake111111111111111111111111",
-		SquadsVault:    "SquadsVaultFake1111111111111111111111111111",
-		SignerProvider: bin,
-		StoreURL:       store.server.URL,
-		StorePubkey:    storePubPath,
-		StoreID:        testStoreID,
-		BundleOrigin:   testBundle,
-		Channel:        "dev",
-		ProgramID:      programID,
-		StateDir:       filepath.Join(base, "state"),
-		PublisherKey:   pubKeyPath,
-		OpTimeoutSecs:  60,
+		ConfigPath:      manifestPath,
+		RPCURL:          "https://rpc.example.test",
+		SquadsMultisig:  "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+		SquadsVault:     "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+		SquadsProgramID: "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+		SignerProvider:  bin,
+		StoreURL:        store.server.URL,
+		StorePubkey:     storePubPath,
+		StoreID:         testStoreID,
+		BundleOrigin:    testBundle,
+		Channel:         "dev",
+		ProgramID:       programID,
+		StateDir:        filepath.Join(base, "state"),
+		PublisherKey:    pubKeyPath,
+		OpTimeoutSecs:   60,
 		// Existing supersede fixtures explicitly exercise the separately opted-in
 		// global-retirement path. Production defaults to target-pointer scope.
 		AllowGlobalReleaseRevoke: true,

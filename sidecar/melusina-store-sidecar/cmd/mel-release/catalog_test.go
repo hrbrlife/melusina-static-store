@@ -14,6 +14,10 @@ catalog_origin: https://bazaar.melusina-os.org
 expected_live_app_count: 3
 default_release_state: hold
 default_reconciliation_state: source-pinned
+release_squads_authority:
+  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
+  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 
 groups:
   money:
@@ -80,6 +84,9 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	}
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
+	}
+	if got := catalog.ReleaseSquadsAuthority; got.Multisig != "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V" || got.Vault != "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3" || got.ProgramID != "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf" {
+		t.Fatalf("catalog shared Squads authority = %+v", got)
 	}
 
 	popaye, err := catalog.Select("popaye")
@@ -163,6 +170,9 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		"doc-bureau":      {},
 		"paint-bureau":    {},
 		"jinn":            {},
+		"telescreen":      {},
+		"instaco":         {},
+		"goldkey":         {},
 	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{

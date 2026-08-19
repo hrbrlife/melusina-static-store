@@ -1604,12 +1604,16 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
         "prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json"
     ), domain_template
     pending_candidates = {
-        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
-        "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
+        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": (
+            "source-clean-clone-pending", "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
+        ),
+        "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": (
+            "onchain-program-artifact-mismatch", "ef73663b86134f7417ccf1104fbe273f1cf901cb",
+        ),
     }
-    for app_id, candidate_source_commit in pending_candidates.items():
+    for app_id, (reconciliation_state, candidate_source_commit) in pending_candidates.items():
         app = entries[app_id]
-        assert app["reconciliation_state"] == "source-clean-clone-pending", app
+        assert app["reconciliation_state"] == reconciliation_state, app
         assert not app.get("source_commit"), app
         assert app["candidate_source_commit"] == candidate_source_commit, app
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
@@ -1752,7 +1756,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ), ailagoon
     for app_id, source_path, source_repo in (
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
-        ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
     ):
         app = entries[app_id]
         assert app["source_path"] == source_path, app
@@ -1767,7 +1770,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
+    assert instadao["source_path"] == "instadao", instadao
+    assert instadao["source_repository"] == "https://github.com/hrbrlife/MLSNA_token", instadao
     assert instadao["runtime_contract_path"] == "pkgdef/RUNTIME-CONTRACT.json", instadao
+    assert instadao["candidate_source_ref"] == "feat1-instadao-onchain-reconcile", instadao
+    assert instadao["release_state"] == "hold", instadao
+    assert instadao["hold_receipt"] == (
+        "prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json"
+    ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["source_path"] == "melusina-canboard-app", canboard
     assert canboard["reconciliation_state"] == "source-pinned", canboard

@@ -1,0 +1,40 @@
+{
+  "schema": "melusina-prepublish-hold-v1",
+  "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+  "catalogName": "InstaDAO",
+  "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
+  "candidateSourceRef": "feat1-instadao-onchain-reconcile",
+  "candidateSourceCommit": "ef73663b86134f7417ccf1104fbe273f1cf901cb",
+  "candidateVersion": "1.0.14",
+  "candidateVersionNumber": 66,
+  "candidateSpkSha256": "6dc02a186a12d6d5d014933a7b3187cca8852a3566e463faf2241e03961df8d5",
+  "status": "hold",
+  "reason": "onchain-program-artifact-mismatch",
+  "verifiedAt": "2026-08-19",
+  "controlsPassed": [
+    "11 Node tests, smoke tests, Go vet/tests, and all seven Rust crate checks",
+    "package-config validation, spk verify, and deterministic double-pack",
+    "five of seven required shared-suite program artifacts match devnet exactly",
+    "candidate launch actions fail closed while shared-suite verification remains false"
+  ],
+  "mismatches": [
+    {
+      "program": "dao_securities",
+      "programId": "9AGx5yjw4gu8zsgGARg6BoM1KfSco8U7JwymkdhVZjU2",
+      "candidateArtifactSha256": "4bcf89dcc67b1fba7c07aae52b52415b7e89c4c3b20ca87320c46411aaca3da4",
+      "candidateArtifactBytes": 685072,
+      "devnetProgramDataSha256": "4956312b9610f57af846d4701f076e9809bb31d4c11d485d24ffbcd301e68fdb",
+      "devnetProgramDataBytes": 970144
+    },
+    {
+      "program": "dao_voting",
+      "programId": "B3QuXJNs9pDPMmd8FgkweGTGopMe4Hp3csEDtVQUYYFM",
+      "candidateArtifactSha256": "a43e8b87294ed405dabb38947fa1f3f18a966649b1362e2ab0261f39bf1060e1",
+      "candidateArtifactBytes": 440288,
+      "devnetProgramDataSha256": "77742546a6dcd9416cfd30d5f9ae96dce568b12782197f135c4020562573e69f",
+      "devnetProgramDataBytes": 702208
+    }
+  ],
+  "upgradeAuthority": "ANaEQo267D4QN9jjmxQcUHHScPgdxi2d1PTKh6kuX2tp",
+  "safeNextAction": "The existing upgrade-authority holder(s) must review and authorize controlled devnet upgrades for the two exact candidate ELFs, then rerun shared-suite byte verification. Only a fully matching suite may move this source to dev-publish and release."
+}

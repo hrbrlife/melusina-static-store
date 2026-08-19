@@ -113,6 +113,19 @@ if not isinstance(raw, dict):
 values = [raw.get("multisig"), raw.get("vault"), raw.get("program_id")]
 if any(not isinstance(value, str) or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{32,44}", value) for value in values):
     raise SystemExit("Bazaar catalog has malformed release_squads_authority")
+for group in (doc.get("groups") or {}).values():
+    apps = group.get("apps") if isinstance(group, dict) else None
+    if not isinstance(apps, dict):
+        continue
+    for name, spec in apps.items():
+        if not isinstance(spec, dict):
+            continue
+        for field in ("release_squads_authority", "squads_authority", "squads_multisig",
+                      "squads_vault", "squads_program_id", "publisher_squads_vault"):
+            if field in spec:
+                raise SystemExit(
+                    f"Bazaar catalog app {name!r} may not declare app-specific Squads authority field {field!r}"
+                )
 print("|".join(values))
 PY
 )" || die "could not read the catalog-pinned shared Squads authority"

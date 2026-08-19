@@ -81,6 +81,22 @@ set -e
 [[ $rc -ne 0 ]]
 grep -Fq 'cannot override the catalog-pinned shared Squads authority' "$TMP/foreign-authority.log"
 
+cp "$TMP/release-catalog.yaml" "$TMP/app-override-catalog.yaml"
+cat >>"$TMP/app-override-catalog.yaml" <<'YAML'
+groups:
+  fixture:
+    apps:
+      app:
+        appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
+        squads_vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+YAML
+set +e
+MEL_RELEASE_CONFIG="$TMP/app-override-catalog.yaml" "$PROVIDER" stage >"$TMP/app-authority-override.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -Fq 'app-specific Squads authority' "$TMP/app-authority-override.log"
+
 "$PROVIDER" stage
 python3 - "$TMP/state/apps/$APP/provider/release-stage.json" "$TMP/stage.json" <<'PY'
 import json,sys

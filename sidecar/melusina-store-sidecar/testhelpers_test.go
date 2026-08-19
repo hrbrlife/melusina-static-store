@@ -380,9 +380,11 @@ func testConfig(t *testing.T) (Config, string) {
 		LicenseNFTMint: licenseMint,
 		StoreAuthority: randPubkeyB58(t),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
-			Multisig:  testStoreAuthority,
-			Vault:     testStoreAuthority,
-			ProgramID: testStoreAuthority,
+			Multisig:    testStoreAuthority,
+			Vault:       testStoreAuthority,
+			ProgramID:   testStoreAuthority,
+			Threshold:   defaultBazaarSquadsThreshold,
+			MemberCount: defaultBazaarSquadsMemberCount,
 		},
 		Domain:          "store.example.org",
 		StoreID:         "test-store",
@@ -402,9 +404,11 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 	// keeping production Config validation fail-closed for an omitted tuple.
 	if _, err := cfg.sharedSquadsAuthority(); err != nil {
 		cfg.ReleaseSquadsAuthority = ReleaseSquadsAuthority{
-			Multisig:  testStoreAuthority,
-			Vault:     testStoreAuthority,
-			ProgramID: testStoreAuthority,
+			Multisig:    testStoreAuthority,
+			Vault:       testStoreAuthority,
+			ProgramID:   testStoreAuthority,
+			Threshold:   defaultBazaarSquadsThreshold,
+			MemberCount: defaultBazaarSquadsMemberCount,
 		}
 	}
 
@@ -480,7 +484,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 		LicenseSquadsVault: cfg.ReleaseSquadsAuthority.Vault,
 		ReleaseEntryPda:    relPDA.Base58(),
 		AuthorSig:          "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", // placeholder; chain-verified, not re-checked
-		QuorumPolicy:       QuorumPolicy{Threshold: 2, MemberCount: 3, MultisigPda: cfg.ReleaseSquadsAuthority.Multisig},
+		QuorumPolicy:       QuorumPolicy{Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount, MultisigPda: cfg.ReleaseSquadsAuthority.Multisig},
 		ReleaseNonce:       "nonce-abc",
 	}
 	runtimeContract := runtimeContractForTest(t, spk, metadata, rel)

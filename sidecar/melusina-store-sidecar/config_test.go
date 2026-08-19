@@ -39,6 +39,17 @@ func TestLoadConfig_RequiresSharedReleaseSquadsAuthority(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_DefaultBazaarPinsOneSquadsAuthority(t *testing.T) {
+	base := `{"license_nft_mint":"LIC","domain":"bazaar.melusina-os.org","release_squads_authority":{"multisig":"` + defaultBazaarSquadsMultisig + `","vault":"` + defaultBazaarSquadsVault + `","program_id":"` + defaultBazaarSquadsProgramID + `","threshold":3,"member_count":4}}`
+	if _, err := LoadConfig(writeRawTmpConfig(t, base)); err != nil {
+		t.Fatalf("fixed default Bazaar authority rejected: %v", err)
+	}
+	wrongVault := strings.Replace(base, defaultBazaarSquadsVault, testStoreAuthority, 1)
+	if _, err := LoadConfig(writeRawTmpConfig(t, wrongVault)); err == nil || !strings.Contains(err.Error(), "one fixed Bazaar Squads authority") {
+		t.Fatalf("default Bazaar accepted a different shared authority: %v", err)
+	}
+}
+
 func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org"}`))
 	if err != nil {

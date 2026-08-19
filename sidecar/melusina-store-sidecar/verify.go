@@ -551,6 +551,9 @@ func verifySharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryM
 	if claimedMultisig != want.Multisig {
 		return fmt.Errorf("check=publisher_squads_authority: release quorumPolicy multisigPda %s != configured multisig %s", claimedMultisig.Base58(), want.Multisig.Base58())
 	}
+	if rel.QuorumPolicy.Threshold != want.Threshold || rel.QuorumPolicy.MemberCount != want.MemberCount {
+		return fmt.Errorf("check=publisher_squads_authority: release quorumPolicy %d/%d != configured quorum %d/%d", rel.QuorumPolicy.Threshold, rel.QuorumPolicy.MemberCount, want.Threshold, want.MemberCount)
+	}
 	if meta.PublisherSquadsVault != want.Vault {
 		got := pda.Pubkey(meta.PublisherSquadsVault)
 		return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())

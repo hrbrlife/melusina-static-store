@@ -64,7 +64,11 @@ func makeRolloutFixture(t *testing.T, masterMint, appID, version, label string, 
 		MasterNftMint:      masterMint,
 		LicenseSquadsVault: testStoreAuthority,
 		ReleaseEntryPda:    releasePDA.Base58(),
-		QuorumPolicy:       QuorumPolicy{MultisigPda: testStoreAuthority},
+		QuorumPolicy: QuorumPolicy{
+			MultisigPda: testStoreAuthority,
+			Threshold:   defaultBazaarSquadsThreshold,
+			MemberCount: defaultBazaarSquadsMemberCount,
+		},
 	}
 	release := mustJSON(t, rel)
 	manifest, err := buildStagedAppManifest(spk, metadata, release, rel, slotHint{}, at)

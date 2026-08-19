@@ -18,6 +18,8 @@ release_squads_authority:
   multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
   vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
   program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+  threshold: 3
+  member_count: 4
 
 groups:
   money:
@@ -85,7 +87,7 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
-	if got := catalog.ReleaseSquadsAuthority; got.Multisig != "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V" || got.Vault != "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3" || got.ProgramID != "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf" {
+	if got := catalog.ReleaseSquadsAuthority; got.Multisig != "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V" || got.Vault != "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3" || got.ProgramID != "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf" || got.Threshold != defaultSquadsThreshold || got.MemberCount != defaultSquadsMemberCount {
 		t.Fatalf("catalog shared Squads authority = %+v", got)
 	}
 
@@ -133,6 +135,49 @@ func TestLoadCatalogRejectsAppSpecificSquadsAuthority(t *testing.T) {
 	}
 	if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "app-specific Squads authority") {
 		t.Fatalf("LoadCatalog accepted app-specific Squads authority: %v", err)
+	}
+}
+
+func TestLoadCatalogRejectsAlternateSquadsQuorum(t *testing.T) {
+	for name, change := range map[string]struct{ old, new string }{
+		"threshold":    {"  threshold: 3\n", "  threshold: 2\n"},
+		"member_count": {"  member_count: 4\n", "  member_count: 3\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := writeCatalog(t)
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(strings.Replace(string(content), change.old, change.new, 1)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "release_squads_authority") {
+				t.Fatalf("LoadCatalog accepted alternate shared quorum: %v", err)
+			}
+		})
+	}
+}
+
+func TestLoadCatalogRejectsAlternateSquadsCoordinates(t *testing.T) {
+	for name, change := range map[string]struct{ old, new string }{
+		"multisig":   {"  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V\n", "  multisig: 11111111111111111111111111111111\n"},
+		"vault":      {"  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n", "  vault: 11111111111111111111111111111111\n"},
+		"program_id": {"  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf\n", "  program_id: 11111111111111111111111111111111\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := writeCatalog(t)
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(strings.Replace(string(content), change.old, change.new, 1)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "release_squads_authority") {
+				t.Fatalf("LoadCatalog accepted alternate shared %s: %v", name, err)
+			}
+		})
 	}
 }
 

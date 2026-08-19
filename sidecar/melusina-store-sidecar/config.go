@@ -50,9 +50,11 @@ type Policy struct {
 // release_squads_authority mapping so deployment can carry the reviewed
 // catalog coordinates without translating or inventing per-app overrides.
 type ReleaseSquadsAuthority struct {
-	Multisig  string `json:"multisig"`
-	Vault     string `json:"vault"`
-	ProgramID string `json:"program_id"`
+	Multisig    string `json:"multisig"`
+	Vault       string `json:"vault"`
+	ProgramID   string `json:"program_id"`
+	Threshold   int    `json:"threshold"`
+	MemberCount int    `json:"member_count"`
 }
 
 type Config struct {

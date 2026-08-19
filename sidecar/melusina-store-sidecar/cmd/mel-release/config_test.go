@@ -56,16 +56,18 @@ func TestExecProviderForwardsStoreLicenseMint(t *testing.T) {
 
 func TestConfigBindsOneCatalogPinnedSquadsAuthority(t *testing.T) {
 	authority := SquadsAuthority{
-		Multisig:  "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-		Vault:     "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-		ProgramID: "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+		Multisig:    "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+		Vault:       "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+		ProgramID:   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+		Threshold:   defaultSquadsThreshold,
+		MemberCount: defaultSquadsMemberCount,
 	}
 	catalog := &Catalog{ReleaseSquadsAuthority: authority}
 	var cfg Config
 	if err := cfg.bindCatalogSquadsAuthority(catalog); err != nil {
 		t.Fatalf("bindCatalogSquadsAuthority: %v", err)
 	}
-	if cfg.SquadsMultisig != authority.Multisig || cfg.SquadsVault != authority.Vault || cfg.SquadsProgramID != authority.ProgramID {
+	if cfg.SquadsMultisig != authority.Multisig || cfg.SquadsVault != authority.Vault || cfg.SquadsProgramID != authority.ProgramID || cfg.SquadsThreshold != authority.Threshold || cfg.SquadsMemberCount != authority.MemberCount {
 		t.Fatalf("bound authority = %+v, want %+v", cfg, authority)
 	}
 	if err := (&Config{SquadsVault: authority.Multisig}).bindCatalogSquadsAuthority(catalog); err == nil || !strings.Contains(err.Error(), "cannot override") {

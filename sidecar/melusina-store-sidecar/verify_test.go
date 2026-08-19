@@ -71,6 +71,18 @@ func TestVerifyPublish_RejectsAnyPublisherSquadsOverride(t *testing.T) {
 			},
 		},
 		{
+			name: "release_threshold_override",
+			mutate: func(_ *mockChainReader, f *publishFixture, _ *Config) {
+				f.rel.QuorumPolicy.Threshold = 2
+			},
+		},
+		{
+			name: "release_member_count_override",
+			mutate: func(_ *mockChainReader, f *publishFixture, _ *Config) {
+				f.rel.QuorumPolicy.MemberCount = 3
+			},
+		},
+		{
 			name: "onchain_vault_override",
 			mutate: func(m *mockChainReader, f *publishFixture, _ *Config) {
 				entry := m.releaseEntry[f.relPDA]

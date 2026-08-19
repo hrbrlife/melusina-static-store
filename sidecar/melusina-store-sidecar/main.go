@@ -42,6 +42,14 @@ func main() {
 		runGenesisBootstrapSubcommand(os.Args[2:])
 		return
 	}
+	// Explicit, resumable transition from the legacy global-ReleaseEntry
+	// catalog to the target-scoped StoreReleaseListing policy. It runs only as
+	// a subcommand under the same boot-identity-bound store binary; it never
+	// becomes an HTTP signing oracle.
+	if len(os.Args) > 1 && os.Args[1] == "listing-bootstrap" {
+		runListingBootstrapSubcommand(os.Args[2:])
+		return
+	}
 
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")

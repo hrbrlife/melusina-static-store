@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -26,13 +27,15 @@ type Config struct {
 	RPCURL     string // MEL_RELEASE_RPC_URL   — Solana RPC (passed through to the signer provider)
 	// These are read only to reject a caller override, then replaced by the
 	// catalog-pinned common authority before any provider is constructed.
-	SquadsMultisig   string // MEL_RELEASE_SQUADS_MULTISIG
-	SquadsVault      string // MEL_RELEASE_SQUADS_VAULT
-	SquadsProgramID  string // MEL_RELEASE_SQUADS_PROGRAM_ID
-	SignerProvider   string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
-	StoreURL         string // MEL_RELEASE_STORE_URL — bare https origin (required)
-	StorePubkey      string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
-	StoreLicenseMint string // MEL_RELEASE_STORE_LICENSE_MINT — Store license authority for signed stage/promote (required)
+	SquadsMultisig    string // MEL_RELEASE_SQUADS_MULTISIG
+	SquadsVault       string // MEL_RELEASE_SQUADS_VAULT
+	SquadsProgramID   string // MEL_RELEASE_SQUADS_PROGRAM_ID
+	SquadsThreshold   int    // MEL_RELEASE_SQUADS_THRESHOLD
+	SquadsMemberCount int    // MEL_RELEASE_SQUADS_MEMBER_COUNT
+	SignerProvider    string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
+	StoreURL          string // MEL_RELEASE_STORE_URL — bare https origin (required)
+	StorePubkey       string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
+	StoreLicenseMint  string // MEL_RELEASE_STORE_LICENSE_MINT — Store license authority for signed stage/promote (required)
 
 	// Additional env-only settings. The publisher envelope identity is required
 	// for both halves: private staging is itself a signed store mutation, so
@@ -70,6 +73,21 @@ func loadConfig() (Config, error) {
 		PublisherKey:     os.Getenv("MEL_RELEASE_PUBLISHER_KEY"),
 	}
 	c.BundleOrigin = envOr("MEL_RELEASE_BUNDLE_ORIGIN", strings.TrimRight(c.StoreURL, "/"))
+	for _, item := range []struct {
+		name string
+		dst  *int
+	}{
+		{"MEL_RELEASE_SQUADS_THRESHOLD", &c.SquadsThreshold},
+		{"MEL_RELEASE_SQUADS_MEMBER_COUNT", &c.SquadsMemberCount},
+	} {
+		if raw := strings.TrimSpace(os.Getenv(item.name)); raw != "" {
+			value, err := strconv.Atoi(raw)
+			if err != nil || value < 1 {
+				return Config{}, fmt.Errorf("%s must be a positive integer when set", item.name)
+			}
+			*item.dst = value
+		}
+	}
 	c.OpTimeoutSecs = 480
 	if revoke := strings.TrimSpace(os.Getenv("MEL_RELEASE_ALLOW_GLOBAL_REVOKE")); revoke != "" {
 		if revoke != "yes" {
@@ -147,9 +165,23 @@ func (c *Config) bindCatalogSquadsAuthority(catalog *Catalog) error {
 			return fmt.Errorf("%s cannot override the catalog-pinned shared Squads authority", item.name)
 		}
 	}
+	for _, item := range []struct {
+		name     string
+		supplied int
+		want     int
+	}{
+		{"MEL_RELEASE_SQUADS_THRESHOLD", c.SquadsThreshold, expected.Threshold},
+		{"MEL_RELEASE_SQUADS_MEMBER_COUNT", c.SquadsMemberCount, expected.MemberCount},
+	} {
+		if item.supplied != 0 && item.supplied != item.want {
+			return fmt.Errorf("%s cannot override the catalog-pinned shared Squads authority", item.name)
+		}
+	}
 	c.SquadsMultisig = expected.Multisig
 	c.SquadsVault = expected.Vault
 	c.SquadsProgramID = expected.ProgramID
+	c.SquadsThreshold = expected.Threshold
+	c.SquadsMemberCount = expected.MemberCount
 	return nil
 }
 

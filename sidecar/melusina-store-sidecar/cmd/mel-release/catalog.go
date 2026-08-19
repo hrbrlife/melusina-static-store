@@ -60,9 +60,11 @@ type Catalog struct {
 // may never choose a different multisig, vault, or Squads program at release
 // time.
 type SquadsAuthority struct {
-	Multisig  string
-	Vault     string
-	ProgramID string
+	Multisig    string
+	Vault       string
+	ProgramID   string
+	Threshold   int
+	MemberCount int
 }
 
 const (
@@ -70,6 +72,11 @@ const (
 	namedCoinMSBDevnetProfile = "namedcoin-msb-devnet"
 	defaultBazaarOrigin       = "https://bazaar.melusina-os.org"
 	bazaarCatalogSchema       = "melusina-bazaar-catalog/v1"
+	defaultSquadsMultisig     = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+	defaultSquadsVault        = "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+	defaultSquadsProgramID    = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+	defaultSquadsThreshold    = 3
+	defaultSquadsMemberCount  = 4
 )
 
 // LoadCatalog parses the manifest at path. The manifest has one fixed shape
@@ -252,6 +259,16 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if len(catalog.Apps) != catalog.ExpectedLiveAppCount {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s names %d apps, want expected_live_app_count %d", path, len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
+	// Older already-governed manifests did not spell out quorum fields. Their
+	// only supported meaning is the Bazaar-wide fixed 3-of-4 policy; normalize
+	// that representation before validation. Any explicit alternate value still
+	// fails closed below.
+	if catalog.ReleaseSquadsAuthority.Threshold == 0 {
+		catalog.ReleaseSquadsAuthority.Threshold = defaultSquadsThreshold
+	}
+	if catalog.ReleaseSquadsAuthority.MemberCount == 0 {
+		catalog.ReleaseSquadsAuthority.MemberCount = defaultSquadsMemberCount
+	}
 	// Fail closed on a malformed identity.
 	seen := map[string]bool{}
 	for index := range catalog.Apps {
@@ -405,41 +422,50 @@ func assignReleaseSquadsAuthority(authority *SquadsAuthority, key, value, path s
 	if strings.TrimSpace(value) == "" {
 		return fmt.Errorf("Bazaar catalog manifest %s line %d: release_squads_authority.%s must not be empty", path, lineNo, key)
 	}
-	var field *string
 	switch key {
 	case "multisig":
-		field = &authority.Multisig
+		if authority.Multisig != "" {
+			return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+		}
+		authority.Multisig = value
 	case "vault":
-		field = &authority.Vault
+		if authority.Vault != "" {
+			return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+		}
+		authority.Vault = value
 	case "program_id":
-		field = &authority.ProgramID
+		if authority.ProgramID != "" {
+			return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+		}
+		authority.ProgramID = value
+	case "threshold", "member_count":
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			return fmt.Errorf("Bazaar catalog manifest %s line %d: release_squads_authority.%s must be a positive integer", path, lineNo, key)
+		}
+		if key == "threshold" {
+			if authority.Threshold != 0 {
+				return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+			}
+			authority.Threshold = parsed
+		} else {
+			if authority.MemberCount != 0 {
+				return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
+			}
+			authority.MemberCount = parsed
+		}
 	default:
 		return fmt.Errorf("Bazaar catalog manifest %s line %d: unknown release_squads_authority field %q", path, lineNo, key)
 	}
-	if *field != "" {
-		return fmt.Errorf("Bazaar catalog manifest %s line %d: duplicate release_squads_authority.%s", path, lineNo, key)
-	}
-	*field = value
 	return nil
 }
 
 func validSquadsAuthority(authority SquadsAuthority) bool {
-	return validSolanaPublicKey(authority.Multisig) &&
-		validSolanaPublicKey(authority.Vault) &&
-		validSolanaPublicKey(authority.ProgramID)
-}
-
-func validSolanaPublicKey(value string) bool {
-	if len(value) < 32 || len(value) > 44 {
-		return false
-	}
-	for _, r := range value {
-		if !(r >= '1' && r <= '9' || r >= 'A' && r <= 'H' || r >= 'J' && r <= 'N' ||
-			r >= 'P' && r <= 'Z' || r >= 'a' && r <= 'k' || r >= 'm' && r <= 'z') {
-			return false
-		}
-	}
-	return true
+	return authority.Multisig == defaultSquadsMultisig &&
+		authority.Vault == defaultSquadsVault &&
+		authority.ProgramID == defaultSquadsProgramID &&
+		authority.Threshold == defaultSquadsThreshold &&
+		authority.MemberCount == defaultSquadsMemberCount
 }
 
 func isLowerHexCommit(value string) bool {

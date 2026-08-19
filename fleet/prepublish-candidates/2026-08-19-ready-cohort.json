@@ -95,11 +95,11 @@
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
       "catalogName": "Bureau Sheets",
-      "sourceCommit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+      "sourceCommit": "e6c286d8f3a3310b5f6afc2d3f82a66cbb97e896",
       "sourceSelectionReceipt": "prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json",
       "version": "2.1.5",
-      "spkSha256": "6511eb8cc4558a8c4a4a82615900c0e3fc258e968e397643f3e426f76843561b",
-      "appHash": "e5230aea31e05880a2485b11232aa7a0c6a372d3f0abdf9e826b6afdd69110e3"
+      "spkSha256": "aa7b883edd9e070fd699a8ec7198fae975c4b432825c0644098da80d11215b99",
+      "appHash": "e5a121d492f5672abc5733887c0ab12d74042e4935b988d83df9a8c4ae2f7440"
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",

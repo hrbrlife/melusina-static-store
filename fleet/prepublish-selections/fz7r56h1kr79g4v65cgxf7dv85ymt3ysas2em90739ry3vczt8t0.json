@@ -2,7 +2,7 @@
   "schema": "melusina-source-selection-v1",
   "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
   "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
-  "sourceCommit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+  "sourceCommit": "e6c286d8f3a3310b5f6afc2d3f82a66cbb97e896",
   "selectionMethod": "direct-dev",
   "internalControls": {
     "status": "passed",
@@ -16,7 +16,7 @@
   "reviewedRefs": [
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+      "commit": "e6c286d8f3a3310b5f6afc2d3f82a66cbb97e896",
       "outcome": "selected"
     },
     {

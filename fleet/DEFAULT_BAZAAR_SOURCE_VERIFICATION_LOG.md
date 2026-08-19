@@ -35,3 +35,24 @@ remains `1.3.4`. This record proves a forward source candidate, not that it is
 already published. It remains held until the complete 33-app source cohort,
 deterministic package proof, governed release receipt, served pointer/catalog
 evidence, and fresh-install runtime checks all agree.
+
+## Additional source-level proofs
+
+On 2026-08-19, each source below was independently shallow-cloned from its
+advertised canonical branch with recursive submodules. Each clone reached the
+catalog pin, remained clean before and after its checks, contained tracked
+`metadata.json` and `RUNTIME-CONTRACT.json`, and passed the same source
+contract semantic check used for BotMother above.
+
+| App | Immutable app ID | Commit and advertised ref | Metadata version | Catalog `live_version` | Source gates passed |
+| --- | --- | --- | --- | --- | --- |
+| ccash Domain Template | `hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h` | `f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a` on `fix/prelaunch-domain-template-v109-greenfield` | `0.5.87` (versionNumber 109) | `0.5.85` | `make check-greenfield check-release-metadata vet test check-fmt`; clean recursive status and `git diff --check` |
+| DueProcess | `47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0` | `a4f27e9737529c360782458d1ab9ed3563e7544b` on `main` | `0.1.74` (versionNumber 78) | `0.1.74` | app-ID and boundary tripwires; `make vet test`; clean recursive status and `git diff --check` |
+| Teleport | `ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h` | `a943d5a5fb491d5029b67ac157b92379d94e0a60` on `main` | `1.3.4` (versionNumber 10) | `1.3.4` | `make vet test` (full race suite); clean recursive status and `git diff --check` |
+| MiniGit | `pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50` | `610c44614a8b499d1e80795a97daca66a9912f77` on `main` | `0.2.14` (versionNumber 20) | `0.2.14` | `make vet test`; clean recursive status and `git diff --check` |
+
+The domain-template row, like BotMother, is a verified forward source
+candidate rather than a publication claim: metadata is `0.5.87` while the
+catalog records live `0.5.85`. Every row above remains held pending the full
+33-app source cohort, deterministic package/release proof, served state, and
+fresh-install verification.

@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 26,
+  "releaseReadyAppCount": 27,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -46,6 +46,15 @@
       "version": "0.0.16",
       "spkSha256": "1187284027df0adda4d6e0554f5f4985edce3f4e91f0b96866c56950f3293a02",
       "appHash": "816e2aee862bcfc9ff94651ac5fe0dea07abd8b8b066ba3b55494dff26554c4d"
+    },
+    {
+      "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
+      "catalogName": "CCA.SH Configurator",
+      "sourceCommit": "8528a560b73a2f16b360e6a6a2ba1104d582511d",
+      "sourceSelectionReceipt": "prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json",
+      "version": "0.0.81",
+      "spkSha256": "4c552e8debcbd0bf431984a948f9f58cbc2889485641838c5c0af48cbafe6322",
+      "appHash": "dc610dd69837b62942ff97f269f2f2e2bb7acfe95804be4013c4777528922c6e"
     },
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",

@@ -1597,7 +1597,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     ), domain_template
     pending_candidates = {
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
-        "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
     }
     for app_id, candidate_source_commit in pending_candidates.items():
@@ -1697,9 +1696,20 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
+    ccashconfig = entries["6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"]
+    assert ccashconfig["source_path"] == "ccashconfig", ccashconfig
+    assert ccashconfig["source_repository"] == "https://github.com/hrbrlife/melusina_ccashconfig_app", ccashconfig
+    assert ccashconfig["source_commit"] == "8528a560b73a2f16b360e6a6a2ba1104d582511d", ccashconfig
+    assert ccashconfig["source_baseline_branch"] == "main", ccashconfig
+    assert ccashconfig["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ccashconfig
+    assert ccashconfig["reconciliation_state"] == "source-pinned", ccashconfig
+    assert ccashconfig["release_state"] == "ready", ccashconfig
+    assert ccashconfig["source_selection_state"] == "direct-dev-verified", ccashconfig
+    assert ccashconfig["source_selection_receipt"] == (
+        "prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json"
+    ), ccashconfig
     for app_id, source_path, source_repo in (
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
-        ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
     ):
         app = entries[app_id]

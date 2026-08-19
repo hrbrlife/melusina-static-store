@@ -133,11 +133,16 @@ groups:
         # operator-supplied cohort root. Never bind this release to a
         # workstation-specific worktree path.
         source_path: ccashconfig
-        # The current dev-publish candidate makes package-version derivation
-        # source-bound and repairs tenant lease renewal. Hold rather than
-        # package the prior source revision until clean-clone proof passes.
-        candidate_source_commit: 15e64ee261cd2b2ede14e5ce109611bfbf3d277e
-        reconciliation_state: source-clean-clone-pending
+        # v0.0.81/appVersion-89 is the current dev-publish tip. It includes
+        # the B06 issuer-provenance controls, passes a fresh recursive clone,
+        # and keeps the source and public CCA.SH Configurator identity aligned.
+        source_commit: 8528a560b73a2f16b360e6a6a2ba1104d582511d
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json
         publish_slug: ccashconfig
         catalog_name: CCA.SH Configurator
         live_version: 0.0.77

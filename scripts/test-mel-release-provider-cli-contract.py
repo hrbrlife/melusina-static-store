@@ -1559,12 +1559,20 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert shell_tester["reconciliation_state"] == "source-pinned", shell_tester
     assert shell_tester["release_state"] == "ready", shell_tester
     assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
+    clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
+    assert clientspace["source_commit"] == "c18a2472e526189b491b336ab67a51190069b977", clientspace
+    assert clientspace["reconciliation_state"] == "source-pinned", clientspace
+    assert clientspace["release_state"] == "ready", clientspace
+    assert clientspace["source_selection_state"] == "direct-dev-verified", clientspace
+    creeper = entries["pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh"]
+    assert creeper["source_commit"] == "d9a282fb50711038f7f456e8d107064f888742ae", creeper
+    assert creeper["reconciliation_state"] == "source-pinned", creeper
+    assert creeper["release_state"] == "ready", creeper
+    assert creeper["source_selection_state"] == "direct-dev-verified", creeper
     pending_candidates = {
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
-        "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "cdd1ac07f9c2e93b5b1c06805619e903f990bb35",
-        "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
         "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "bf88344c05ae70d2b791858f1a0a3e506d4e3740",
@@ -1633,8 +1641,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert dueprocess["source_commit"] == "aff5cc7ce2b793eee34f97e10d27d00bec441941", dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
-    assert clientspace["reconciliation_state"] == "source-clean-clone-pending", clientspace
-    assert not clientspace.get("source_commit"), clientspace
+    assert clientspace["reconciliation_state"] == "source-pinned", clientspace
+    assert clientspace["source_commit"] == "c18a2472e526189b491b336ab67a51190069b977", clientspace
     dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
     assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
     assert dashboard["reconciliation_state"] == "source-clean-clone-pending", dashboard
@@ -1687,7 +1695,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert canboard["reconciliation_state"] == "source-pinned", canboard
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
     for app_id, source_path in {
-        "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "vintage-test-dec",
     }.items():
@@ -1699,13 +1706,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
 
 def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
+    _, entries = checked_in_catalog_entries()
+    held_app_ids = [
+        app_id for app_id, app in entries.items()
+        if app.get("release_state", "hold") != "ready"
+    ]
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
-        for app_id in (
-            "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-            "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
-            "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
-        ):
+        for app_id in held_app_ids:
             try:
                 provider.app_spec(app_id)
             except provider.ProviderError as exc:

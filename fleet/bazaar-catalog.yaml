@@ -556,12 +556,16 @@ groups:
       clientspace:
         appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
         source_path: clientspace
-        # The current dev-publish v10 candidate has a tracked runtime
-        # contract, a byte-identical double pack, and a private
-        # contract-binding proof. Do not pin the prior v9 source; an
-        # independent clean clone must first prove this exact revision.
-        candidate_source_commit: cdd1ac07f9c2e93b5b1c06805619e903f990bb35
-        reconciliation_state: source-clean-clone-pending
+        # v0.1.6/appVersion-11 is the current dev-publish tip. It merges the
+        # August reporting-session and sturdyref hardening, passes the full
+        # recovery control, and packs byte-identically from its committed
+        # source. The selected source is not inferred from the older catalog
+        # listing or prior v10 candidate.
+        source_commit: c18a2472e526189b491b336ab67a51190069b977
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.json
         publish_slug: clientspace
         catalog_name: ClientSpace
         live_version: 0.1.3

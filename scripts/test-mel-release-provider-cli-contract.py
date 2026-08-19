@@ -134,7 +134,7 @@ def test_finalize_uses_only_supported_flags():
 
 
 def test_stage_refuses_stale_live_quorum_before_store_mutation():
-    """A stale workstation policy must fail before staging private Store data."""
+    """A stale workstation policy must fail before any release-side action."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         executor = root / "executor.mjs"
@@ -168,13 +168,13 @@ def test_stage_refuses_stale_live_quorum_before_store_mutation():
             try:
                 provider.stage("app", "a" * 64, "b" * 64, "nonce", root / "stage.json")
             except provider.ProviderError as exc:
-                assert "does not match the live on-chain policy" in str(exc), exc
+                assert "cannot override the catalog-pinned shared Squads authority" in str(exc), exc
             else:
                 raise AssertionError("stale quorum was allowed to stage")
         finally:
             provider.run, provider.require_context, provider.rewrite_release = old_run, old_context, old_rewrite
             restore_env(old)
-        assert captured == [["node", str(executor), "policy"]], captured
+        assert captured == [], captured
 
 
 def test_propose_uses_only_supported_flags():
@@ -863,6 +863,8 @@ def write_catalog_config(path, apps):
             "multisig": TEST_SQUADS_MULTISIG,
             "vault": TEST_SQUADS_VAULT,
             "program_id": TEST_SQUADS_PROGRAM_ID,
+            "threshold": 3,
+            "member_count": 4,
         },
         "groups": {"msb": {"apps": normalized_apps}},
     }) + "\n", encoding="utf-8")
@@ -883,6 +885,8 @@ def test_catalog_pins_one_shared_squads_authority():
                 "multisig": TEST_SQUADS_MULTISIG,
                 "vault": TEST_SQUADS_VAULT,
                 "programId": TEST_SQUADS_PROGRAM_ID,
+                "threshold": 3,
+                "memberCount": 4,
             }
             os.environ["MEL_RELEASE_SQUADS_VAULT"] = TEST_SQUADS_MULTISIG
             try:
@@ -891,6 +895,14 @@ def test_catalog_pins_one_shared_squads_authority():
                 assert "cannot override the catalog-pinned shared Squads authority" in str(exc), exc
             else:
                 raise AssertionError("caller-selected Squads vault bypassed the catalog pin")
+            os.environ["MEL_RELEASE_SQUADS_VAULT"] = TEST_SQUADS_VAULT
+            os.environ["MEL_RELEASE_SQUADS_THRESHOLD"] = "2"
+            try:
+                provider.require_shared_squads_authority()
+            except provider.ProviderError as exc:
+                assert "cannot override the catalog-pinned shared Squads authority" in str(exc), exc
+            else:
+                raise AssertionError("caller-selected Squads quorum bypassed the catalog pin")
         finally:
             restore_env(old)
 
@@ -899,23 +911,24 @@ def test_catalog_rejects_app_specific_squads_authority():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         config = root / "bazaar-catalog.yaml"
-        write_catalog_config(config, {
-            "app": {
-                "appId": "app",
-                "source_path": "app",
-                "squads_vault": TEST_SQUADS_VAULT,
-            },
-        })
-        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
-        try:
+        for field, value in (("squads_vault", TEST_SQUADS_VAULT), ("squads_threshold", 3)):
+            write_catalog_config(config, {
+                "app": {
+                    "appId": "app",
+                    "source_path": "app",
+                    field: value,
+                },
+            })
+            old = with_env({"MEL_RELEASE_CONFIG": str(config)})
             try:
-                provider.catalog_config()
-            except provider.ProviderError as exc:
-                assert "app-specific Squads authority" in str(exc), exc
-            else:
-                raise AssertionError("catalog accepted an app-specific Squads authority")
-        finally:
-            restore_env(old)
+                try:
+                    provider.catalog_config()
+                except provider.ProviderError as exc:
+                    assert "app-specific Squads authority" in str(exc), exc
+                else:
+                    raise AssertionError("catalog accepted an app-specific Squads authority")
+            finally:
+                restore_env(old)
 
 
 def test_store_generation_template_pins_catalog_shared_squads_authority():
@@ -932,6 +945,8 @@ def test_store_generation_template_pins_catalog_shared_squads_authority():
         "multisig": expected["multisig"],
         "vault": expected["vault"],
         "program_id": expected["programId"],
+        "threshold": expected["threshold"],
+        "member_count": expected["memberCount"],
     }, rendered
 
 
@@ -1532,7 +1547,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
-    assert lobby["source_commit"] == "533d1355231e1cfa85e875b9c4a03a5b9b651755", lobby
+    assert lobby["source_commit"] == "f91763a6a325eb3b14f1ca2b61bec25fba30b35d", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
@@ -1605,7 +1620,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     ), domain_template
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
-    assert paype["source_commit"] == "102f2f6efa709d62abc70ac7644a6ba830a75300", paype
+    assert paype["source_commit"] == "f11a927745f3a37ce032677c6feadf99d1fda2c9", paype
     assert paype["source_baseline_branch"] == "main", paype
     assert paype["runtime_contract_path"] == "RUNTIME-CONTRACT.json", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
@@ -1646,7 +1661,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
-    assert ai_lagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ai_lagoon
+    assert ai_lagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
 
@@ -1692,7 +1707,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
-            ("GoldKey", "1382d85eefdb016f885ae9b0d0067f6be842663f", "GoldKey", "goldkey"),
+            ("GoldKey", "debeecd1d67c16810574c8176592b0bbf0b3e267", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
@@ -1708,7 +1723,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
-    assert ai_lagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ai_lagoon
+    assert ai_lagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ai_lagoon
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
@@ -1755,7 +1770,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
-    assert lobby["source_commit"] == "533d1355231e1cfa85e875b9c4a03a5b9b651755", lobby
+    assert lobby["source_commit"] == "f91763a6a325eb3b14f1ca2b61bec25fba30b35d", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
@@ -1774,7 +1789,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ailagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ailagoon["source_path"] == "ai-lagoon-main", ailagoon
     assert ailagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ailagoon
-    assert ailagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ailagoon
+    assert ailagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ailagoon
     assert ailagoon["source_baseline_branch"] == "main", ailagoon
     assert ailagoon["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ailagoon
     assert ailagoon["reconciliation_state"] == "source-pinned", ailagoon
@@ -1797,7 +1812,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
     assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
-    assert paype["source_commit"] == "102f2f6efa709d62abc70ac7644a6ba830a75300", paype
+    assert paype["source_commit"] == "f11a927745f3a37ce032677c6feadf99d1fda2c9", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
     assert paype["release_state"] == "ready", paype
     assert paype["source_selection_state"] == "direct-dev-verified", paype

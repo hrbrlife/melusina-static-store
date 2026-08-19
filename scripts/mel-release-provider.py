@@ -123,29 +123,48 @@ def canonical_solana_public_key(value: str, field: str) -> str:
     return normalized
 
 
-def parse_shared_squads_authority(doc: dict[str, Any]) -> dict[str, str]:
-    """Read the one catalog-pinned authority every app must share."""
+def canonical_squads_policy_value(value: Any, field: str) -> int:
+    """Read a positive, non-boolean policy integer from the catalog."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ProviderError(f"{field} must be a positive integer")
+    return value
+
+
+def parse_shared_squads_authority(doc: dict[str, Any]) -> dict[str, Any]:
+    """Read the one catalog-pinned Squads authority and quorum every app shares."""
     raw = doc.get("release_squads_authority")
     if not isinstance(raw, dict):
         raise ProviderError("bazaar-catalog.yaml is missing release_squads_authority")
+    threshold = canonical_squads_policy_value(
+        raw.get("threshold"), "release_squads_authority.threshold"
+    )
+    member_count = canonical_squads_policy_value(
+        raw.get("member_count"), "release_squads_authority.member_count"
+    )
+    if member_count < threshold:
+        raise ProviderError("release_squads_authority member_count is below threshold")
     return {
         "multisig": canonical_solana_public_key(str(raw.get("multisig", "")), "release_squads_authority.multisig"),
         "vault": canonical_solana_public_key(str(raw.get("vault", "")), "release_squads_authority.vault"),
         "programId": canonical_solana_public_key(str(raw.get("program_id", "")), "release_squads_authority.program_id"),
+        "threshold": threshold,
+        "memberCount": member_count,
     }
 
 
-def shared_squads_authority() -> dict[str, str]:
+def shared_squads_authority() -> dict[str, Any]:
     return parse_shared_squads_authority(catalog_config())
 
 
-def require_shared_squads_authority() -> dict[str, str]:
-    """Reject any caller-selected authority before a release operation runs."""
+def require_shared_squads_authority() -> dict[str, Any]:
+    """Reject any caller-selected authority or quorum before a release runs."""
     authority = shared_squads_authority()
     for name, expected in (
         ("MEL_RELEASE_SQUADS_MULTISIG", authority["multisig"]),
         ("MEL_RELEASE_SQUADS_VAULT", authority["vault"]),
         ("MEL_RELEASE_SQUADS_PROGRAM_ID", authority["programId"]),
+        ("MEL_RELEASE_SQUADS_THRESHOLD", str(authority["threshold"])),
+        ("MEL_RELEASE_SQUADS_MEMBER_COUNT", str(authority["memberCount"])),
         ("MEL_SQUADS_MULTISIG", authority["multisig"]),
         ("MEL_SQUADS_VAULT", authority["vault"]),
     ):
@@ -281,7 +300,9 @@ def catalog_config() -> dict[str, Any]:
                 raise ProviderError("Bazaar catalog app is missing appId")
             for field in (
                 "release_squads_authority", "squads_authority", "squads_multisig",
-                "squads_vault", "squads_program_id", "publisher_squads_vault",
+                "squads_vault", "squads_program_id", "squads_threshold",
+                "squads_member_count", "release_squads_threshold",
+                "release_squads_member_count", "publisher_squads_vault",
             ):
                 if field in spec:
                     raise ProviderError(
@@ -1659,20 +1680,28 @@ def live_quorum_policy() -> dict[str, Any]:
 
 
 def assert_live_quorum_policy() -> dict[str, Any]:
-    """Require operator quorum settings to exactly match the live authority.
+    """Require local and live quorum settings to match the catalog authority.
 
     The check belongs before Store staging and proposal creation.  A local
     config is not a safe substitute for a live Squads policy, and allowing it
     to disagree leaves an otherwise-valid candidate stranded in a private
     stage when Squads later rejects its ceremony.
     """
+    authority = require_shared_squads_authority()
     configured_threshold, configured_member_count = configured_quorum_policy()
-    policy = live_quorum_policy()
-    if (policy["threshold"] != configured_threshold or
-            policy["memberCount"] != configured_member_count):
+    if (configured_threshold != authority["threshold"] or
+            configured_member_count != authority["memberCount"]):
         raise ProviderError(
-            "configured Squads quorum does not match the live on-chain policy "
+            "configured Squads quorum does not match the catalog-pinned shared authority "
             f"(configured {configured_threshold}-of-{configured_member_count}; "
+            f"catalog {authority['threshold']}-of-{authority['memberCount']})"
+        )
+    policy = live_quorum_policy()
+    if (policy["threshold"] != authority["threshold"] or
+            policy["memberCount"] != authority["memberCount"]):
+        raise ProviderError(
+            "live Squads quorum does not match the catalog-pinned shared authority "
+            f"(catalog {authority['threshold']}-of-{authority['memberCount']}; "
             f"live {policy['threshold']}-of-{policy['memberCount']}); "
             "refresh configuration before Store staging or proposal creation"
         )

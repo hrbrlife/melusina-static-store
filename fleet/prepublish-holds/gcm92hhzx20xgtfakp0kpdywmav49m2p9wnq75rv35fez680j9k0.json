@@ -10,7 +10,13 @@
   "candidateSpkSha256": "6dc02a186a12d6d5d014933a7b3187cca8852a3566e463faf2241e03961df8d5",
   "status": "hold",
   "reason": "onchain-program-artifact-mismatch",
-  "verifiedAt": "2026-08-19",
+  "verifiedAt": "2026-08-20",
+  "currentDevPublish": {
+    "ref": "dev-publish",
+    "commit": "a5a434ae3d36b32d415435df060f7349525dd087",
+    "relationshipToCandidate": "ancestor",
+    "assessment": "The current dev-publish head predates the held feat1 candidate. It is a docs-only Bazaar-target commit and omits the candidate's governed 1.0.14 functionality, tests, runtime contract, package inputs, and artifact work. It is not a forward release source."
+  },
   "controlsPassed": [
     "11 Node tests, smoke tests, Go vet/tests, and all seven Rust crate checks",
     "package-config validation, spk verify, and deterministic double-pack",
@@ -36,5 +42,5 @@
     }
   ],
   "upgradeAuthority": "ANaEQo267D4QN9jjmxQcUHHScPgdxi2d1PTKh6kuX2tp",
-  "safeNextAction": "The existing upgrade-authority holder(s) must review and authorize controlled devnet upgrades for the two exact candidate ELFs, then rerun shared-suite byte verification. Only a fully matching suite may move this source to dev-publish and release."
+  "safeNextAction": "First retain feat1-instadao-onchain-reconcile as the integration candidate; do not publish the older dev-publish ancestor. The existing upgrade-authority holder(s) must review and authorize controlled devnet upgrades for the two exact candidate ELFs, then rerun shared-suite byte verification. Only a fully matching suite may merge that candidate to dev-publish and release."
 }

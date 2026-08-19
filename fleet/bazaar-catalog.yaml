@@ -205,13 +205,16 @@ groups:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
-        source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
-        # Hold the next candidate until both DueProcess calls use a real,
-        # verifiable service envelope. API-token/capability posture alone is
-        # not release evidence for the sanctions case or rules decision path.
-        reconciliation_state: dueprocess-service-envelope-pending
-        release_state: hold
-        hold_receipt: prepublish-holds/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json
+        # v0.1.96/appVersion-173 is the current valid forward dev-publish
+        # source. It combines the reviewed corridor, signed DueProcess, and
+        # release-health work; the full remote-head snapshot is in its receipt.
+        source_commit: b98b0f525b6a43a5b0eeca05213760df42765834
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller

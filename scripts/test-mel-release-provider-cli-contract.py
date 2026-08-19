@@ -1657,7 +1657,7 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
     app_ids = [app["appId"] for app in cohort["apps"]]
     assert cohort["catalogOrigin"] == "https://bazaar.melusina-os.org", cohort
     assert cohort["expectedCatalogAppCount"] == 32, cohort
-    assert cohort["releaseReadyAppCount"] == len(app_ids) == 30, cohort
+    assert cohort["releaseReadyAppCount"] == len(app_ids) == 31, cohort
     assert RETIRED_GOLDKEY_DEV_APP_ID not in app_ids, app_ids
     assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
     paype = next(app for app in cohort["apps"] if app["appId"] == "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510")
@@ -1670,6 +1670,16 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
         "spkSha256": "f7c08bae5e0a8afcad5ce1751248868d2483be08258b3b124e7667bc35610d70",
         "appHash": "3b1704048025b1e0836391107c4a4d05c525c9bd86ff9a71eb6bc58dc257994a",
     }, paype
+    cyberteller = next(app for app in cohort["apps"] if app["appId"] == "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0")
+    assert cyberteller == {
+        "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+        "catalogName": "CyberTeller",
+        "sourceCommit": "b98b0f525b6a43a5b0eeca05213760df42765834",
+        "sourceSelectionReceipt": "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json",
+        "version": "0.1.96",
+        "spkSha256": "221bda999f59a2d4417aaa4b6c679e5197de499e9bc6149d1ab080db3f97cc8c",
+        "appHash": "ad751c2ee006596b49e159759daeb5a4f14d2954166ffeb4c3af4cbc3e596cce",
+    }, cyberteller
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -1775,11 +1785,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7", cyberteller
-    assert cyberteller["reconciliation_state"] == "dueprocess-service-envelope-pending", cyberteller
-    assert cyberteller["release_state"] == "hold", cyberteller
-    assert cyberteller["hold_receipt"] == (
-        "prepublish-holds/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
+    assert cyberteller["source_commit"] == "b98b0f525b6a43a5b0eeca05213760df42765834", cyberteller
+    assert cyberteller["source_baseline_branch"] == "main", cyberteller
+    assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
+    assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
+    assert cyberteller["release_state"] == "ready", cyberteller
+    assert cyberteller["source_selection_state"] == "direct-dev-verified", cyberteller
+    assert cyberteller["source_selection_receipt"] == (
+        "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
     ), cyberteller
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
@@ -1848,7 +1861,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
+    app_id = "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

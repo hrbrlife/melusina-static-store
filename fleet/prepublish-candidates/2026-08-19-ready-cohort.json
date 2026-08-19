@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 30,
+  "releaseReadyAppCount": 31,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -235,6 +235,15 @@
       "version": "0.0.9",
       "spkSha256": "791eb28e7032061ff40830f02fdd8198554b951b1b9d371f09cd4629b45366df",
       "appHash": "2613e985dcb85baccfa4ca3ed1f21c99302617dfb692d3374f27cbc41a59b10b"
+    },
+    {
+      "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+      "catalogName": "CyberTeller",
+      "sourceCommit": "b98b0f525b6a43a5b0eeca05213760df42765834",
+      "sourceSelectionReceipt": "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json",
+      "version": "0.1.96",
+      "spkSha256": "221bda999f59a2d4417aaa4b6c679e5197de499e9bc6149d1ab080db3f97cc8c",
+      "appHash": "ad751c2ee006596b49e159759daeb5a4f14d2954166ffeb4c3af4cbc3e596cce"
     },
     {
       "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",

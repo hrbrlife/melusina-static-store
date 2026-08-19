@@ -46,10 +46,13 @@ paths. Before enabling the unit it must install or create:
 5. Four disjoint roots named in the config. The migration root must already
    hold the root-owned mode-`0600` `writer.lock` and the governed catalog
    bootstrap record. The private and catalog roots are mode `0700`, root-owned.
-6. A complete catalog source tree and genesis-compatible `dist-publish`
-   snapshot before startup. The source tree is needed for the existing app
-   publisher slot contract; the served snapshot includes `apps/index.json` and
-   immutable artifacts. A copied public catalog with pointer files is **not** a
+6. An independent root-owned writable `catalog_repo_root` and a
+   genesis-compatible `dist-publish` snapshot before startup. The workspace is
+   not the immutable Store source checkout and may be empty on a virgin target:
+   the first governed app promotion supplies its declared
+   `developer/repo/slug` slot and atomically creates it. The initial served
+   snapshot contains the required namespaces and an empty `apps/index.json`,
+   with no pointer files. A copied public catalog with pointers is **not** a
    writable first-install input unless a separately governed import has created
    the exact matching durable rollout/staged-release records: virgin genesis
    deliberately rejects pointers with no rollout state.

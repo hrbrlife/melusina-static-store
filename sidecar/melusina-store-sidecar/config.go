@@ -109,10 +109,13 @@ type Config struct {
 	// lifetime of every write-capable process. Startup never creates this root or
 	// the lock. Required for a write-capable store.
 	CatalogMigrationStateDir string `json:"catalog_migration_state_dir,omitempty"`
-	// CatalogRepoRoot is the static_store working tree from which the in-process
-	// catalog assembler (build-store.sh) runs after a publish passes the on-chain
-	// gate. build-store.sh is a CONVENIENCE assembler, NOT the trust authority —
-	// the Go verify (VerifyPublish) is the gate. Defaults to ".".
+	// CatalogRepoRoot is the operator-owned writable catalog workspace where a
+	// successful governed publish records its exact gate-verified source tuple.
+	// It is deliberately independent of the immutable Store source checkout and
+	// of the served catalog generation: the in-process assembler receives already
+	// verified bytes and does not run build-store.sh. A fresh workspace may be
+	// empty; a first publish supplies its declared developer/repo/slug slot hint.
+	// Defaults to "." only for legacy/read-only compatibility.
 	CatalogRepoRoot string    `json:"catalog_repo_root"`
 	TLS             TLSConfig `json:"tls"`
 

@@ -11,14 +11,16 @@ import (
 // This file closes C3: POST /publish persists the gate-verified bytes itself.
 // The refusing gate (envelope → accept_publishers → on-chain VerifyPublish →
 // timestamp-forward) runs FIRST; only bytes that passed every check are written
-// into the catalog working tree that build-store.sh aggregates. Nothing lands
-// any other way — hand-staging / scp into the serve tree is retired, not
-// merely discouraged.
+// into the operator-owned catalog workspace. The serving generation is assembled
+// from those verified bytes later in the same governed promotion transaction;
+// it does not rely on build-store.sh or a Store source checkout. Nothing lands
+// any other way — hand-staging / scp into the serve tree is retired, not merely
+// discouraged.
 
 // slotHint carries the OPTIONAL explicit catalog-slot coordinates a publish may
-// name (the packages/<developer>/<repo>/<slug> working-tree path the assembler
-// scans). Required only for the FIRST publish of a new app; a re-publish
-// resolves its existing slot by the Sandstorm appId in metadata.json.
+// name (the packages/<developer>/<repo>/<slug> path in that workspace). Required
+// only for the FIRST publish of a new app; a re-publish resolves its existing
+// slot by the Sandstorm appId in metadata.json.
 type slotHint struct {
 	Developer string `json:"developer,omitempty"`
 	Repo      string `json:"repo,omitempty"`

@@ -120,9 +120,12 @@ func TestHandlePublish_FirstPublishRequiresSlotHint(t *testing.T) {
 	}
 }
 
-func TestHandlePublish_FirstPublishWithHintCreatesSlot(t *testing.T) {
+func TestHandlePublish_FirstPublishWithHintCreatesSlotInIndependentWorkspace(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
+	if filepath.Clean(cfg.CatalogRepoRoot) == filepath.Clean(cfg.DistDir) {
+		t.Fatal("fixture did not create an independent catalog workspace")
+	}
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	operatorPub := operatorSignPub32(t, op)
 	master := randPubkeyB58(t)

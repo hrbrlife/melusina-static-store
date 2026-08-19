@@ -20,7 +20,7 @@
   "catalog_generation_root": "/var/lib/melusina-store/app-catalog-generations",
   "catalog_migration_state_dir": "/var/lib/melusina-store/migrations",
   "app_rollback_window_seconds": 86400,
-  "catalog_repo_root": "../..",
+  "catalog_repo_root": "/var/lib/melusina-store/catalog-source",
   "tls": {
     "cert_path": "/etc/melusina/store/tls/cert.pem",
     "key_path": "/etc/melusina/store/tls/key.pem"

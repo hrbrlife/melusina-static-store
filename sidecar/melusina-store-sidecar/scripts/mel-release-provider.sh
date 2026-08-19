@@ -447,7 +447,7 @@ PY
   "$MEL_RELEASE_PEARL_TOOL" propose-release --dry-run --app-dir "$state/material" --release-json "$material_release" \
     --license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT" \
     --version "$MEL_NEW_VERSION" --app-id "$MEL_APP_ID" --state-out "$ceremony" \
-    --program-id "$MEL_PROGRAM_ID" --squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
+    --program-id "$MEL_PROGRAM_ID" -Squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
     --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" \
     --quorum-threshold "$MEL_RELEASE_SQUADS_THRESHOLD" --quorum-member-count "$MEL_RELEASE_SQUADS_MEMBER_COUNT" \
     --author-keypair "$MEL_RELEASE_AUTHOR_KEYPAIR" --transaction-index "$index"

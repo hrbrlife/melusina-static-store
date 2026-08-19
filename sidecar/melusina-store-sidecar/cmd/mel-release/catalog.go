@@ -22,33 +22,36 @@ import (
 // other and from AppID. SourceCommit, when set, pins the source checkout that
 // the provider may build after the entry is explicitly ready.
 type App struct {
-	Group               string
-	Name                string
-	AppID               string
-	SourcePath          string
-	SourceCommit        string
-	SourceRepository    string
-	PublishSlug         string
-	CatalogName         string
-	CatalogDeveloper    string
-	CatalogRepo         string
-	CatalogSlug         string
-	PackProfile         string
-	Role                string
-	LiveVersion         string
-	ReconciliationState string
-	ReleaseState        string
+	Group                  string
+	Name                   string
+	AppID                  string
+	SourcePath             string
+	SourceCommit           string
+	SourceRepository       string
+	PublishSlug            string
+	CatalogName            string
+	CatalogDeveloper       string
+	CatalogRepo            string
+	CatalogSlug            string
+	PackProfile            string
+	Role                   string
+	LiveVersion            string
+	ReconciliationState    string
+	SourceSelectionState   string
+	SourceSelectionReceipt string
+	ReleaseState           string
 }
 
 // Catalog is the closed, complete default-Bazaar snapshot. It is deliberately
 // not a local package scan or a smaller release subset.
 type Catalog struct {
-	Schema                     string
-	Origin                     string
-	ExpectedLiveAppCount       int
-	DefaultReleaseState        string
-	DefaultReconciliationState string
-	Apps                       []App
+	Schema                      string
+	Origin                      string
+	ExpectedLiveAppCount        int
+	DefaultReleaseState         string
+	DefaultReconciliationState  string
+	DefaultSourceSelectionState string
+	Apps                        []App
 }
 
 const (
@@ -148,6 +151,8 @@ func LoadCatalog(path string) (*Catalog, error) {
 			catalog.DefaultReleaseState = unquote(val)
 		case indent == 0 && key == "default_reconciliation_state":
 			catalog.DefaultReconciliationState = unquote(val)
+		case indent == 0 && key == "default_source_selection_state":
+			catalog.DefaultSourceSelectionState = unquote(val)
 		case indent == 0 && key == "groups":
 			inGroups = true
 		case indent == 0:
@@ -203,6 +208,15 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if strings.TrimSpace(catalog.DefaultReconciliationState) == "" {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has no default_reconciliation_state", path)
 	}
+	if catalog.DefaultSourceSelectionState == "" {
+		// An older manifest stays safely non-releasable until it names a reviewed
+		// source decision. This is an additive migration, not a bypass for a
+		// historical ready entry.
+		catalog.DefaultSourceSelectionState = "pending"
+	}
+	if !validSourceSelectionState(catalog.DefaultSourceSelectionState) {
+		return nil, fmt.Errorf("Bazaar catalog manifest %s has invalid default_source_selection_state %q", path, catalog.DefaultSourceSelectionState)
+	}
 	if len(catalog.Apps) != catalog.ExpectedLiveAppCount {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s names %d apps, want expected_live_app_count %d", path, len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
@@ -215,6 +229,9 @@ func LoadCatalog(path string) (*Catalog, error) {
 		}
 		if a.ReconciliationState == "" {
 			a.ReconciliationState = catalog.DefaultReconciliationState
+		}
+		if a.SourceSelectionState == "" {
+			a.SourceSelectionState = catalog.DefaultSourceSelectionState
 		}
 		if strings.TrimSpace(a.AppID) == "" {
 			return nil, fmt.Errorf("catalog app %q/%q has no appId", a.Group, a.Name)
@@ -234,8 +251,14 @@ func LoadCatalog(path string) (*Catalog, error) {
 		if strings.TrimSpace(a.ReconciliationState) == "" {
 			return nil, fmt.Errorf("catalog app %q has no reconciliation_state", a.AppID)
 		}
+		if !validSourceSelectionState(a.SourceSelectionState) {
+			return nil, fmt.Errorf("catalog app %q has invalid source_selection_state %q", a.AppID, a.SourceSelectionState)
+		}
 		if a.ReleaseState == "ready" && (strings.TrimSpace(a.SourcePath) == "" || strings.TrimSpace(a.SourceCommit) == "") {
 			return nil, fmt.Errorf("ready catalog app %q must declare source_path and source_commit", a.AppID)
+		}
+		if a.ReleaseState == "ready" && (!sourceSelectionReady(a.SourceSelectionState) || strings.TrimSpace(a.SourceSelectionReceipt) == "") {
+			return nil, fmt.Errorf("ready catalog app %q must declare a reviewed source selection receipt", a.AppID)
 		}
 		if a.PackProfile != "" && (a.AppID != namedCoinAppID || a.PackProfile != namedCoinMSBDevnetProfile) {
 			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile)
@@ -285,11 +308,22 @@ func (a App) RequireReleaseReady() error {
 	if a.ReleaseState != "ready" {
 		return fmt.Errorf("app %q (%s) is held for reconciliation (%s)", a.Name, a.AppID, a.ReconciliationState)
 	}
+	if !sourceSelectionReady(a.SourceSelectionState) || strings.TrimSpace(a.SourceSelectionReceipt) == "" {
+		return fmt.Errorf("app %q (%s) is held for source selection (%s)", a.Name, a.AppID, a.SourceSelectionState)
+	}
 	return nil
 }
 
 func validReleaseState(value string) bool {
 	return value == "hold" || value == "ready"
+}
+
+func validSourceSelectionState(value string) bool {
+	return value == "pending" || value == "direct-dev-verified" || value == "prepublish-integrated"
+}
+
+func sourceSelectionReady(value string) bool {
+	return value == "direct-dev-verified" || value == "prepublish-integrated"
 }
 
 func assignAppField(a *App, key, val string) {
@@ -320,6 +354,10 @@ func assignAppField(a *App, key, val string) {
 		a.LiveVersion = val
 	case "reconciliation_state":
 		a.ReconciliationState = val
+	case "source_selection_state":
+		a.SourceSelectionState = val
+	case "source_selection_receipt":
+		a.SourceSelectionReceipt = val
 	case "release_state":
 		a.ReleaseState = val
 	}

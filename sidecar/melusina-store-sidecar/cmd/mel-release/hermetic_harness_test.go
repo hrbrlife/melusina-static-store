@@ -250,6 +250,8 @@ func newHarness(t *testing.T) *harness {
 		"        appId:        " + testAppID + "\n" +
 		"        source_path:  testapp\n" +
 		"        source_commit: 0123456789abcdef0123456789abcdef01234567\n" +
+		"        source_selection_state: direct-dev-verified\n" +
+		"        source_selection_receipt: prepublish-selections/" + testAppID + ".json\n" +
 		"        source_repository: https://github.com/hrbrlife/testapp\n" +
 		"        publish_slug: testapp\n" +
 		"        catalog_name: TestApp\n" +

@@ -38,6 +38,16 @@ NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
 DEV_PUBLISH_BRANCH = "dev-publish"
+PREPUBLISH_BRANCH = "feat1-prepublish"
+SOURCE_SELECTION_PENDING = "pending"
+SOURCE_SELECTION_DIRECT = "direct-dev-verified"
+SOURCE_SELECTION_PREPUBLISH = "prepublish-integrated"
+SOURCE_SELECTION_READY_STATES = {
+    SOURCE_SELECTION_DIRECT,
+    SOURCE_SELECTION_PREPUBLISH,
+}
+SOURCE_SELECTION_STATES = SOURCE_SELECTION_READY_STATES | {SOURCE_SELECTION_PENDING}
+SOURCE_SELECTION_RECEIPT_SCHEMA = "melusina-source-selection-v1"
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
 )
@@ -117,6 +127,14 @@ def canonical_source_branch(value: str) -> str:
     return normalized
 
 
+def canonical_source_selection_state(value: str) -> str:
+    """Return one explicit source-selection state for a default-Bazaar app."""
+    normalized = value.strip()
+    if normalized not in SOURCE_SELECTION_STATES:
+        raise ProviderError(f"invalid source_selection_state: {value!r}")
+    return normalized
+
+
 def run(cmd: list[str], *, cwd: Path | None = None, extra_env: dict[str, str] | None = None) -> str:
     run_env = os.environ.copy()
     if extra_env:
@@ -180,6 +198,12 @@ def catalog_config() -> dict[str, Any]:
         raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
     if value.get("default_release_state") not in {"hold", "ready"}:
         raise ProviderError("bazaar-catalog.yaml has an invalid default_release_state")
+    default_source_selection_state = value.get(
+        "default_source_selection_state", SOURCE_SELECTION_PENDING
+    )
+    if not isinstance(default_source_selection_state, str):
+        raise ProviderError("bazaar-catalog.yaml has an invalid default_source_selection_state")
+    canonical_source_selection_state(default_source_selection_state)
     default_source_branch = value.get("default_source_branch")
     if not isinstance(default_source_branch, str):
         raise ProviderError("bazaar-catalog.yaml is missing default_source_branch")
@@ -211,6 +235,19 @@ def catalog_config() -> dict[str, Any]:
                     raise ProviderError(
                         f"Bazaar catalog app {spec['appId']} has an invalid candidate_source_commit"
                     )
+            if "source_selection_state" in spec:
+                source_selection_state = spec["source_selection_state"]
+                if not isinstance(source_selection_state, str):
+                    raise ProviderError(
+                        f"Bazaar catalog app {spec['appId']} has an invalid source_selection_state"
+                    )
+                canonical_source_selection_state(source_selection_state)
+            if "source_selection_receipt" in spec and not isinstance(
+                spec["source_selection_receipt"], str
+            ):
+                raise ProviderError(
+                    f"Bazaar catalog app {spec['appId']} has an invalid source_selection_receipt"
+                )
             app_ids.append(spec["appId"])
     if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
@@ -230,6 +267,9 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
             if isinstance(spec, dict) and spec.get("appId") == app_id:
                 release_state = str(spec.get("release_state", doc.get("default_release_state", ""))).strip()
                 reconciliation_state = str(spec.get("reconciliation_state", doc.get("default_reconciliation_state", ""))).strip()
+                source_selection_state = canonical_source_selection_state(str(
+                    spec.get("source_selection_state", doc.get("default_source_selection_state", SOURCE_SELECTION_PENDING))
+                ))
                 if require_release_ready and release_state != "ready":
                     raise ProviderError(
                         f"catalog app {app_id} is held for reconciliation ({reconciliation_state or 'unspecified'})"
@@ -240,6 +280,8 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     "name": str(name),
                     "release_state": release_state,
                     "reconciliation_state": reconciliation_state,
+                    "source_selection_state": source_selection_state,
+                    "source_selection_receipt": str(spec.get("source_selection_receipt", "")),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
                     "candidate_source_commit": str(spec.get("candidate_source_commit", "")),
@@ -280,7 +322,142 @@ def require_release_ready(app_id: str) -> None:
     promotion cannot bypass a newly applied catalog hold through old local
     context files.
     """
-    app_spec(app_id)
+    spec = app_spec(app_id)
+    require_source_selection_record(spec)
+
+
+def source_selection_receipt_path(spec: dict[str, str]) -> Path:
+    """Resolve the one tracked source-selection record for an app."""
+    expected = f"prepublish-selections/{spec['appId']}.json"
+    if spec["source_selection_receipt"].strip() != expected:
+        raise ProviderError(
+            f"catalog app {spec['appId']} must name source_selection_receipt {expected!r}"
+        )
+    config = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
+    selection_root = config.parent / "prepublish-selections"
+    path = selection_root / f"{spec['appId']}.json"
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise ProviderError(f"missing source selection receipt for {spec['appId']}") from exc
+    if (selection_root.is_symlink() or path.is_symlink() or resolved != path or
+            not path.is_file()):
+        raise ProviderError(f"source selection receipt is not a regular file for {spec['appId']}")
+    return path
+
+
+def _selection_reviewed_refs(value: Any) -> dict[str, dict[str, str]]:
+    if not isinstance(value, list) or not value:
+        raise ProviderError("source selection receipt must declare non-empty reviewedRefs")
+    result: dict[str, dict[str, str]] = {}
+    for entry in value:
+        if not isinstance(entry, dict):
+            raise ProviderError("source selection receipt reviewedRefs entries must be objects")
+        ref = entry.get("ref")
+        commit = entry.get("commit")
+        outcome = entry.get("outcome")
+        if (not isinstance(ref, str) or not re.fullmatch(r"refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*", ref) or
+                ".." in ref or ref.endswith("/") or not isinstance(commit, str) or
+                not re.fullmatch(r"[0-9a-f]{40}", commit.lower()) or
+                outcome not in {"selected", "baseline", "retained", "archive", "hold", "not-app-relevant"}):
+            raise ProviderError("source selection receipt has an invalid reviewedRefs entry")
+        if ref in result:
+            raise ProviderError(f"source selection receipt names {ref!r} more than once")
+        result[ref] = {"commit": commit.lower(), "outcome": outcome}
+    return result
+
+
+def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
+    """Validate the source decision that permits one app release.
+
+    A direct selection is deliberately fast but exact: main and dev-publish
+    must both point at the selected source. Divergent relevant work instead
+    uses feat1-prepublish and is promoted only after that branch and
+    dev-publish point at the same tested source.
+    """
+    state = canonical_source_selection_state(spec["source_selection_state"])
+    if state not in SOURCE_SELECTION_READY_STATES:
+        raise ProviderError(
+            f"catalog app {spec['appId']} is held for source selection ({state})"
+        )
+    path = source_selection_receipt_path(spec)
+    receipt = read_json(path)
+    if receipt.get("schema") != SOURCE_SELECTION_RECEIPT_SCHEMA:
+        raise ProviderError("source selection receipt has an unsupported schema")
+    if receipt.get("appId") != spec["appId"]:
+        raise ProviderError("source selection receipt appId does not match the Bazaar catalog")
+    try:
+        receipt_repository = canonical_source_repository(str(receipt.get("sourceRepository", "")))
+    except ProviderError as exc:
+        raise ProviderError("source selection receipt has an invalid sourceRepository") from exc
+    if receipt_repository != spec["source_repository"]:
+        raise ProviderError("source selection receipt sourceRepository does not match the Bazaar catalog")
+    source_commit = spec["source_commit"].strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{40}", source_commit):
+        raise ProviderError("source selection receipt cannot bind an invalid catalog source_commit")
+    if str(receipt.get("sourceCommit", "")).lower() != source_commit:
+        raise ProviderError("source selection receipt sourceCommit does not match the Bazaar catalog")
+    expected_method = "direct-dev" if state == SOURCE_SELECTION_DIRECT else "feat1-prepublish"
+    if receipt.get("selectionMethod") != expected_method:
+        raise ProviderError("source selection receipt method does not match the catalog selection state")
+    controls = receipt.get("internalControls")
+    if (not isinstance(controls, dict) or controls.get("status") != "passed" or
+            not isinstance(controls.get("checks"), list) or not controls["checks"] or
+            not all(isinstance(check, str) and check.strip() for check in controls["checks"])):
+        raise ProviderError("source selection receipt lacks passed internal controls")
+    reviewed = _selection_reviewed_refs(receipt.get("reviewedRefs"))
+    dev = reviewed.get(f"refs/heads/{DEV_PUBLISH_BRANCH}")
+    if dev is None or dev["commit"] != source_commit or dev["outcome"] != "selected":
+        raise ProviderError("source selection receipt does not select the catalog dev-publish commit")
+    if state == SOURCE_SELECTION_DIRECT:
+        main = reviewed.get("refs/heads/main")
+        if main is None or main["commit"] != source_commit:
+            raise ProviderError("direct source selection requires main and dev-publish at the same commit")
+    else:
+        prepublish = reviewed.get(f"refs/heads/{PREPUBLISH_BRANCH}")
+        if prepublish is None or prepublish["commit"] != source_commit:
+            raise ProviderError("prepublish source selection requires feat1-prepublish at the selected commit")
+    return {"receipt": receipt, "path": path, "reviewedRefs": reviewed}
+
+
+def advertised_source_heads(app_id: str, path: Path) -> dict[str, str]:
+    raw = run(["git", "-C", str(path), "ls-remote", "--heads", "origin"])
+    result: dict[str, str] = {}
+    for line in raw.splitlines():
+        fields = line.split()
+        if len(fields) != 2:
+            continue
+        commit, ref = fields
+        if not re.fullmatch(r"[0-9a-f]{40}", commit.lower()) or not ref.startswith("refs/heads/"):
+            continue
+        if ref in result:
+            raise ProviderError(f"origin advertises ambiguous source ref {ref!r} for {app_id}")
+        result[ref] = commit.lower()
+    if not result:
+        raise ProviderError(f"origin advertises no source heads for {app_id}")
+    return result
+
+
+def require_current_source_selection(app_id: str, source: Path, spec: dict[str, str]) -> dict[str, str]:
+    """Fail packaging when any source ref changed after the recorded decision."""
+    selection = require_source_selection_record(spec)
+    advertised = advertised_source_heads(app_id, source)
+    reviewed = {ref: entry["commit"] for ref, entry in selection["reviewedRefs"].items()}
+    if advertised != reviewed:
+        changed = sorted(
+            ref for ref in set(advertised) | set(reviewed)
+            if advertised.get(ref) != reviewed.get(ref)
+        )
+        raise ProviderError(
+            f"source refs changed after selection for {app_id}: {', '.join(changed[:6])}"
+        )
+    config = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
+    return {
+        "receipt": str(selection["path"].relative_to(config.parent)),
+        "receiptSha256": hex_sha(selection["path"]),
+        "sourceCommit": spec["source_commit"].strip().lower(),
+        "selectionMethod": str(selection["receipt"]["selectionMethod"]),
+    }
 
 
 def source_file(source: Path, field: str, value: str) -> Path:
@@ -995,6 +1172,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     require_source_commit_advertised_by_origin(
         app_id, source, spec["source_commit"].strip().lower(), spec["source_branch"]
     )
+    source_selection = require_current_source_selection(app_id, source, spec)
     source_metadata = source_metadata_path(app_id, source)
     slot = catalog_slot(app_id)
     work = state_root(app_id) / "candidate"
@@ -1070,6 +1248,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "releasePath": str(release),
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
+        "sourceSelection": source_selection,
         "catalogSlot": slot,
         "catalogBootstrap": catalog_bootstrap,
     }
@@ -1085,6 +1264,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "spkPath": str(spk),
         "metadataPath": str(metadata),
         "runtimeContract": {"sha256": hex_sha(runtime_contract), "size": runtime_contract.stat().st_size, "path": str(runtime_contract)},
+        "sourceSelection": source_selection,
     })
 
 

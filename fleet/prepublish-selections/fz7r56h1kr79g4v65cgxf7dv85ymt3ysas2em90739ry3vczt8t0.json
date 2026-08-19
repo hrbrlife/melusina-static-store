@@ -1,0 +1,28 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
+  "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
+  "sourceCommit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+  "selectionMethod": "direct-dev",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh clone at the selected source commit",
+      "MEL_RELEASE_GREENFIELD_PACK=1 make verify-sheets-release-input test-integration (35 passed)",
+      "MEL_RELEASE_GREENFIELD_PACK=1 make pack-sheets verify-sheets-release-package",
+      "package metadata and SPK report marketing version 2.1.5, package version 27"
+    ]
+  },
+  "reviewedRefs": [
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+      "outcome": "baseline"
+    }
+  ]
+}

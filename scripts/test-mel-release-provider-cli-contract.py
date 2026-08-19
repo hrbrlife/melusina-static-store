@@ -808,10 +808,28 @@ def test_release_status_requires_program_owner():
 
 def write_catalog_config(path, apps):
     fixture_source_repository = "https://github.com/hrbrlife/release-test-fixture"
-    normalized_apps = {
-        name: {**spec, "source_repository": spec.get("source_repository", fixture_source_repository)}
-        for name, spec in apps.items()
-    }
+    normalized_apps = {}
+    receipts = {}
+    for name, spec in apps.items():
+        normalized = {**spec, "source_repository": spec.get("source_repository", fixture_source_repository)}
+        source_commit = str(normalized.get("source_commit", "")).lower()
+        if len(source_commit) == 40:
+            app_id = normalized["appId"]
+            normalized.setdefault("source_selection_state", "direct-dev-verified")
+            normalized.setdefault("source_selection_receipt", f"prepublish-selections/{app_id}.json")
+            receipts[app_id] = {
+                "schema": "melusina-source-selection-v1",
+                "appId": app_id,
+                "sourceRepository": normalized["source_repository"],
+                "sourceCommit": source_commit,
+                "selectionMethod": "direct-dev",
+                "internalControls": {"status": "passed", "checks": ["fixture"]},
+                "reviewedRefs": [
+                    {"ref": "refs/heads/dev-publish", "commit": source_commit, "outcome": "selected"},
+                    {"ref": "refs/heads/main", "commit": source_commit, "outcome": "baseline"},
+                ],
+            }
+        normalized_apps[name] = normalized
     path.write_text(json.dumps({
         "schema": "melusina-bazaar-catalog/v1",
         "catalog_origin": "https://bazaar.melusina-os.org",
@@ -821,6 +839,10 @@ def write_catalog_config(path, apps):
         "default_source_branch": "dev-publish",
         "groups": {"msb": {"apps": normalized_apps}},
     }) + "\n", encoding="utf-8")
+    receipt_dir = path.parent / "prepublish-selections"
+    receipt_dir.mkdir(exist_ok=True)
+    for app_id, receipt in receipts.items():
+        (receipt_dir / f"{app_id}.json").write_text(json.dumps(receipt) + "\n", encoding="utf-8")
 
 
 def commit_source_fixture(path):
@@ -856,6 +878,50 @@ def write_source_release_fixture(path, app_id, version, version_number):
         },
     }) + "\n", encoding="utf-8")
     return commit_source_fixture(path)
+
+
+def test_source_selection_requires_a_current_complete_remote_snapshot():
+    app_id = "source-selection-app"
+    commit = "a" * 40
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "app": {"appId": app_id, "source_path": "app", "source_commit": commit},
+        })
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        old_run = provider.run
+        try:
+            def selected_run(args, **kwargs):
+                if args == ["git", "-C", str(root), "ls-remote", "--heads", "origin"]:
+                    return (f"{commit}\trefs/heads/dev-publish\n"
+                            f"{commit}\trefs/heads/main\n")
+                return old_run(args, **kwargs)
+
+            provider.run = selected_run
+            spec = provider.app_spec(app_id)
+            provider.require_release_ready(app_id)
+            selected = provider.require_current_source_selection(app_id, root, spec)
+            assert selected["sourceCommit"] == commit, selected
+            assert selected["selectionMethod"] == "direct-dev", selected
+
+            def changed_run(args, **kwargs):
+                if args == ["git", "-C", str(root), "ls-remote", "--heads", "origin"]:
+                    return (f"{commit}\trefs/heads/dev-publish\n"
+                            f"{commit}\trefs/heads/main\n"
+                            f"{commit}\trefs/heads/feat/unreviewed\n")
+                return old_run(args, **kwargs)
+
+            provider.run = changed_run
+            try:
+                provider.require_current_source_selection(app_id, root, spec)
+            except provider.ProviderError as exc:
+                assert "source refs changed after selection" in str(exc), exc
+            else:
+                raise AssertionError("new unreviewed source head was accepted")
+        finally:
+            provider.run = old_run
+            restore_env(old)
 
 
 def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt():
@@ -1793,8 +1859,11 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                 if args[:5] == ["git", "-C", str(source), "submodule", "status"]:
                     return ""
                 if args[:4] == ["git", "-C", str(source), "ls-remote"]:
-                    assert args[4:] == ["--heads", "origin", "refs/heads/dev-publish"]
-                    return ("a" * 40) + "\trefs/heads/dev-publish\n"
+                    if args[4:] == ["--heads", "origin", "refs/heads/dev-publish"]:
+                        return ("a" * 40) + "\trefs/heads/dev-publish\n"
+                    assert args[4:] == ["--heads", "origin"]
+                    return (("a" * 40) + "\trefs/heads/dev-publish\n" +
+                            ("a" * 40) + "\trefs/heads/main\n")
                 if args[0] == "git":
                     return "a" * 40
                 if args[0] == str(root / "apphash"):
@@ -1947,6 +2016,7 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
+    test_source_selection_requires_a_current_complete_remote_snapshot()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()

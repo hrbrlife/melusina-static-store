@@ -134,7 +134,7 @@ func TestSelectUnknownFails(t *testing.T) {
 	}
 }
 
-func TestLoadCatalogRealManifestIsCompleteAndHeld(t *testing.T) {
+func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
@@ -151,6 +151,9 @@ func TestLoadCatalogRealManifestIsCompleteAndHeld(t *testing.T) {
 		t.Fatalf("real catalog scope = apps %d expected %d, want 33", len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
+	ready := map[string]struct{}{
+		"sheets-bureau": {},
+	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{
 			"group":             app.Group,
@@ -170,8 +173,16 @@ func TestLoadCatalogRealManifestIsCompleteAndHeld(t *testing.T) {
 			t.Fatalf("duplicate catalog app name %q in %q and %q", app.Name, previousGroup, app.Group)
 		}
 		seenNames[app.Name] = app.Group
-		if app.ReleaseState != "hold" {
-			t.Fatalf("prelaunch catalog app %q is unexpectedly publishable", app.Name)
+		_, expectedReady := ready[app.Name]
+		if expectedReady {
+			if err := app.RequireReleaseReady(); err != nil {
+				t.Fatalf("evidenced ready app %q rejected: %v", app.Name, err)
+			}
+			if app.SourceSelectionState != "direct-dev-verified" || app.SourceSelectionReceipt != "prepublish-selections/"+app.AppID+".json" {
+				t.Fatalf("evidenced ready app %q lacks its direct source-selection record", app.Name)
+			}
+		} else if app.ReleaseState != "hold" {
+			t.Fatalf("catalog app %q is publishable without explicit evidence", app.Name)
 		}
 
 		byID, err := catalog.Select(app.AppID)
@@ -189,8 +200,11 @@ func TestAppRequireReleaseReady(t *testing.T) {
 	if err := (App{Name: "held", AppID: "app", ReleaseState: "hold", ReconciliationState: "missing-contract"}).RequireReleaseReady(); err == nil {
 		t.Fatal("held app unexpectedly passed release gate")
 	}
-	if err := (App{Name: "ready", AppID: "app", ReleaseState: "ready"}).RequireReleaseReady(); err != nil {
+	if err := (App{Name: "ready", AppID: "app", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app.json"}).RequireReleaseReady(); err != nil {
 		t.Fatalf("ready app rejected: %v", err)
+	}
+	if err := (App{Name: "unselected", AppID: "app", ReleaseState: "ready", SourceSelectionState: "pending"}).RequireReleaseReady(); err == nil {
+		t.Fatal("ready app without a reviewed source selection unexpectedly passed release gate")
 	}
 }
 

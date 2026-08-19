@@ -10,7 +10,10 @@ import (
 func TestRunManifestUsesOnlyAcceptedTerminalReceipts(t *testing.T) {
 	root := t.TempDir()
 	cfg := Config{StateDir: filepath.Join(root, "state")}
-	apps := []App{{AppID: "app-b", ReleaseState: "ready"}, {AppID: "app-a", ReleaseState: "ready"}}
+	apps := []App{
+		{AppID: "app-b", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app-b.json"},
+		{AppID: "app-a", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app-a.json"},
+	}
 	for _, app := range apps {
 		writeAcceptedTerminal(t, cfg, app, []byte("governed-"+app.AppID))
 	}
@@ -37,7 +40,7 @@ func TestRunManifestUsesOnlyAcceptedTerminalReceipts(t *testing.T) {
 func TestRunManifestRefusesUnacceptedTerminal(t *testing.T) {
 	root := t.TempDir()
 	cfg := Config{StateDir: filepath.Join(root, "state")}
-	app := App{AppID: "app-a", ReleaseState: "ready"}
+	app := App{AppID: "app-a", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app-a.json"}
 	writeAcceptedTerminal(t, cfg, app, []byte("governed-app-a"))
 	termPath := filepath.Join(cfg.appStateDir(app.AppID), "terminal.json")
 	raw, err := os.ReadFile(termPath)

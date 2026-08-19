@@ -1,0 +1,51 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
+  "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-app",
+  "sourceCommit": "8995a7b0f75077f145bcc6e658b3f571096db39f",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "ancestor",
+  "decisionSummary": "The Aug 19 dev-publish v0.1.36/build-38 source is canonical. It keeps the current reproducible v0.1.35 source, its runtime contract, explicit MSB test package profile, applicant-evidence Powerbox gates, and build-vcs suppression. The only newer app-relevant divergence was the authenticated package-bound /_mel/release endpoint from feat/mel-release-health-namedcoin; it was transplanted surgically with a regression test. The rest of that branch and the Codex restore line contain obsolete v0.1.25 packaging or workstation dependency history and were not merged. Every advertised remote head is recorded below so changed source state fails the governed candidate build closed.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "complete current origin remote-head snapshot reviewed",
+      "surgically transplanted commit 98fba12da7aa622c44a2debb73b3e7ab6efa7560 onto the current dev-publish source without taking obsolete packaging history",
+      "full go test ./... -count=1 and go vet ./... passed",
+      "release-health regression test verifies embedded metadata binding and anonymous-session refusal",
+      "two byte-identical make pack-msb-test packages matched SHA-256 7b0c8f4f128977f88670d01b0a4218975bd34e201948afacc089b0848a6833bf and spk verify"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/codex/namedcoin-reproducible-grain-restore-20260719", "commit": "e9247a501252e43304128cfc3243c658e713d3e5", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "8995a7b0f75077f145bcc6e658b3f571096db39f", "outcome": "selected"},
+    {"ref": "refs/heads/feat/greenfield-ready", "commit": "2c1af20ef869c96c5832ed812c14427c4f0ad686", "outcome": "archive"},
+    {"ref": "refs/heads/feat/mel-release-health-namedcoin", "commit": "98fba12da7aa622c44a2debb73b3e7ab6efa7560", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "f82c217f643bdfc217ba8b3ba91a4cbbf521ba55", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/06645cfd5123", "commit": "06645cfd5123b774ee4a9dc1b988b201ab51b4d6", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/3f82bb5dad3f", "commit": "3f82bb5dad3feec698d45aefe8cf4c5821dcf6eb", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/77f458835dda", "commit": "77f458835ddabdf61d671757b4a6e3a4c6bc97f9", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/881ac72d0c31", "commit": "881ac72d0c31e3cc809e10840862059dd1961fa2", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/8bdc6cb04aed", "commit": "8bdc6cb04aeddd24dca27793fa1968c629737865", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/fa762b69da88", "commit": "fa762b69da88f650c49eecbcc00735339b4a56dc", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_stash/36867b697ef4", "commit": "36867b697ef4df55daedd70d327e03a88057b26a", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/_stash/55f58ed884dc", "commit": "55f58ed884dc6d4d24db704758bb113a418dd385", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/namedcoin-reproducible-grain-restore-20260719", "commit": "e9247a501252e43304128cfc3243c658e713d3e5", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/catalog-trust-root-default-2026-05-05", "commit": "5728f7e7385e39fc0b4b0a324745a9599badc7aa", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready", "commit": "2c1af20ef869c96c5832ed812c14427c4f0ad686", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-namedcoin", "commit": "98fba12da7aa622c44a2debb73b3e7ab6efa7560", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/namedcoin-audit", "commit": "dfff41c2de21ab9cd3113474437407b7ea91acbd", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/nc-app-deadcode-history-stream-2026-06-07", "commit": "e5cdeea510002e734827e4028b20294dec165705", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/teama-clientside-fixes-2026-06-26", "commit": "81e8be86f76a10da91d721cd37051fcf98602758", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-bridge-2026-06-26", "commit": "d73bf11e74c33e82c8f247ac132ebb0d277c4fe4", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-hardening-2026-06-26", "commit": "39bccbca3d129c069ec70a1e90eac3176e839684", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/named-migrations-20260804", "commit": "881ac72d0c31e3cc809e10840862059dd1961fa2", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "9be74384bf13dbd97c43eedd462913a300417852", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "0028556bfa87f499451447b92039838d8c34a068", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/polish/identity-ux", "commit": "e1f76dda86041d032fa5374b8518e22fb3227b07", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "06025f3fa6e919ec5b3e5842b895f52bb98d9437", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/wip/namedcoin-respondent-v17-20260727", "commit": "576f87d5543a3f0122291a1134e26d89a3158b30", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "5d8d7a19e1e32496c29292773adea62b4bfe0ab7", "outcome": "archive"}
+  ]
+}

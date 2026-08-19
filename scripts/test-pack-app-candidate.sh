@@ -84,6 +84,28 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# A single-branch source cohort must still prove a just-pushed dev-publish
+# revision. The normal remote fetchspec would only refresh main and make this
+# real remote tip falsely appear local-only.
+NARROW="$WORK/narrow"
+git clone -q --branch main "$WORK/origin.git" "$NARROW"
+git -C "$NARROW" config user.email test@example.invalid
+git -C "$NARROW" config user.name test
+git -C "$NARROW" checkout -qb dev-publish
+printf 'dev-publish-only\n' > "$NARROW/dev-publish-only.txt"
+git -C "$NARROW" add dev-publish-only.txt
+git -C "$NARROW" commit -qm dev-publish-only
+git -C "$NARROW" push -qu origin HEAD:dev-publish
+git -C "$NARROW" config remote.origin.fetch '+refs/heads/main:refs/remotes/origin/main'
+git -C "$NARROW" update-ref -d refs/remotes/origin/dev-publish || true
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$NARROW" --receipt-out "$WORK/narrow-receipt.json"
+python3 - "$WORK/narrow-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/dev-publish", d
+PY
+
 # A requested output path must reach the app's Make target. This is important
 # for isolated candidate staging: silently writing APP/app.spk instead makes
 # the caller verify a path that was never built.

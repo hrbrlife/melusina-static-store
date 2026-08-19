@@ -43,7 +43,15 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
   [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
   for remote in "${source_remotes[@]}"; do
-    git -C "$source_root" fetch --prune "$remote" || { echo "cannot refresh source remote: $remote" >&2; exit 2; }
+    # A source cohort may have been created with --single-branch. Its default
+    # remote fetchspec then omits dev-publish even when that exact committed
+    # revision was pushed moments ago, causing a false "unpushed" refusal.
+    # Refresh remote heads explicitly before the reachability check rather
+    # than trusting a clone-local fetchspec or accepting an unverifiable tip.
+    git -C "$source_root" fetch --prune "$remote" "+refs/heads/*:refs/remotes/$remote/*" || {
+      echo "cannot refresh source remote heads: $remote" >&2
+      exit 2
+    }
   done
   pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"

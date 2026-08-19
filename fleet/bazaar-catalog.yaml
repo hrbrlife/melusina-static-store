@@ -68,7 +68,14 @@ groups:
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
-        source_commit: f82c217f643bdfc217ba8b3ba91a4cbbf521ba55
+        # v0.1.36/build-38 is the current dev-publish tip. It retains the
+        # reproducible v0.1.35 source controls and surgically integrates the
+        # only still-relevant release-health endpoint from the divergent line.
+        source_commit: 8995a7b0f75077f145bcc6e658b3f571096db39f
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh.json
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-app
         publish_slug: namedcoin
         catalog_name: NamedCoin

@@ -189,11 +189,14 @@ groups:
       telescreen:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
-        # The current dev-publish v19 candidate is clean and contract-bearing.
-        # Leave it unpinned until an independent fresh clone reproduces the
-        # catalog and passes its declared source gates.
-        candidate_source_commit: fe6707e0a95409a28b2af5c148d38fc434151847
-        reconciliation_state: source-clean-clone-pending
+        # The current dev-publish v0.0.16 / v20 source is a clean-clone,
+        # contract-bearing governed candidate. Relevant divergent feature work
+        # is retained or held in its selection receipt, never silently lost.
+        source_commit: 69b0c6fadb5298a3e87c1d92ff669ac871a8c514
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60.json
         publish_slug: telescreen
         catalog_name: TeleScreen
         live_version: 0.0.13

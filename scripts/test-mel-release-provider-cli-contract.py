@@ -1450,11 +1450,15 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert cratelink["source_commit"] == "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", cratelink
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
+    telescreen = entries["55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"]
+    assert telescreen["source_commit"] == "69b0c6fadb5298a3e87c1d92ff669ac871a8c514", telescreen
+    assert telescreen["reconciliation_state"] == "source-pinned", telescreen
+    assert telescreen["release_state"] == "ready", telescreen
+    assert telescreen["source_selection_state"] == "direct-dev-verified", telescreen
     pending_candidates = {
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
-        "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "fe6707e0a95409a28b2af5c148d38fc434151847",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
         "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "cdd1ac07f9c2e93b5b1c06805619e903f990bb35",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
@@ -1587,7 +1591,6 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
         for app_id in (
-            "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
             "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
             "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
@@ -1609,7 +1612,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"
+    app_id = "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

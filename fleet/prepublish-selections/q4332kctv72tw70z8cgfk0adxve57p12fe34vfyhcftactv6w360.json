@@ -1,0 +1,37 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
+  "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
+  "sourceCommit": "b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6",
+  "selectionMethod": "direct-dev",
+  "mainBaselineRelation": "ancestor",
+  "decisionSummary": "The Aug 19 dev-publish v22/2.0.29 source is canonical. It retains the full rich miniPaint release line, adds the tested scoped read-only GrainContext integration for Jinn, removes a stale offline release document, and validates candidate-bound catalog metadata. Main is its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are old package or release lines and contain no newer runnable Paint source.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit with the recorded spkmodule revision",
+      "complete current remote-head snapshot reviewed",
+      "make release-inputs mutation-test and make test (234 passed)",
+      "go test ./internal/capabilities ./internal/service in grain/go/grainlinkd",
+      "two independent clean candidate packages matched SHA-256 4b0d3bd8708a8aefe92a5461996f8db06859a8d78cef6f06df90b053c73e51b0 and packageId 4b0d3bd8708a8aefe92a5461996f8db0",
+      "make verify-candidate-metadata verified the generated catalog metadata against the exact SPK",
+      "provider build bound the selected source and exact SPK to candidate appHash 7572602cecc5665cf14d9179d3b680283feee3bb9b31d6e8022223c6b1121e5b",
+      "candidate appHash differs from the signed public 2.0.28 pointer appHash 718fd3d8276291f31f99246960e02438b0b433953e20bc137fed9700ad5e2a10"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/codex/canonical-release-paint-20260713", "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef", "outcome": "archive"},
+    {"ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814", "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6", "outcome": "selected"},
+    {"ref": "refs/heads/feat/greenfield-ready", "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240", "outcome": "archive"},
+    {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-bureau-paint-20260711", "commit": "d062a2f1f5d4820a474b5f15dcd14ed08519dbf3", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "aa213120a03fb996cfdc0ce0fa84583ad816c253", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "78af5b867a68d1373f1ecb91b6ee4c8e4e6f1f92", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "1151b40c3c410e40de14c6efa24e24654e83dd68", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/resign-attest", "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233", "outcome": "archive"}
+  ]
+}

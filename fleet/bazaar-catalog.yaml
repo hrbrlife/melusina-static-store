@@ -369,15 +369,18 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # The current dev-publish v21 source adds Paint's native,
+        # The current dev-publish v22/2.0.29 source adds Paint's native,
         # permission-scoped GrainContext provider for Jinn's generic peer
-        # attachment. A fresh filtered clean clone passed release controls,
-        # 234 Python tests, native capability/service tests, and clean checks.
-        source_commit: c5347931c2ae9ab3579c8eb869edec5a0f7b44ea
+        # attachment, removes stale offline release state, and validates
+        # candidate-bound catalog metadata from the exact SPK.
+        source_commit: b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Paint Bureau
         live_version: 2.0.28
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-paint-app
         catalog_slug: paint-bureau

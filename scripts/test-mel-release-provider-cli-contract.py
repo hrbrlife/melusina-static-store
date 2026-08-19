@@ -1406,7 +1406,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "c5347931c2ae9ab3579c8eb869edec5a0f7b44ea", paint
+    assert paint["source_commit"] == "b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
     assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
@@ -1443,6 +1443,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert calendar["source_commit"] == "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
+    paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
+    assert paint["reconciliation_state"] == "source-pinned", paint
+    assert paint["source_commit"] == "b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6", paint
+    assert paint["release_state"] == "ready", paint
+    assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
     assert ai_lagoon["candidate_source_commit"] == "dc4b842a7953eb3721d4a99edf0faa29d7c36853", ai_lagoon
@@ -1504,7 +1509,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "c5347931c2ae9ab3579c8eb869edec5a0f7b44ea", paint
+    assert paint["source_commit"] == "b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
@@ -1550,7 +1555,6 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
         for app_id in (
             "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
             "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
-            "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
             "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
             "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
@@ -1574,7 +1578,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"
+    app_id = "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

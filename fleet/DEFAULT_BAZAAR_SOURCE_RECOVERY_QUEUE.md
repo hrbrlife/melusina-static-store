@@ -48,11 +48,13 @@ DueProcess also advanced its `dev-publish` branch from the catalog base to
 versioned autonomous-create RPC. Its catalog pin remains intentionally held
 until the source and shell move through the clean-cohort proof together.
 
-CrateLink is the only canonical source repository still missing a
-`dev-publish` branch. Its recorded forward candidate
-`09ffb91596ace2bfc164117401632584f270f702` is absent from the origin and from
-every available source object, so no replacement source may be invented or
-backfilled from an older Store release.
+CrateLink now has `dev-publish` at
+`95d27ba095eae4589f290b2e3857d6ad92174ddb`, the current non-archival v15
+origin tip. A fresh recursive clone of that exact ref passed `make vet test`
+on 2026-08-19, so it is a source-pinned input. Its older recorded
+`09ffb91596ace2bfc164117401632584f270f702` candidate remains absent from the
+origin and from every available source object; it is not source authority and
+must not be reconstructed or backfilled from an older Store release.
 
 On 2026-08-19, every canonical origin below was readable with the release
 workstation's non-interactive Git configuration. For every named candidate in
@@ -118,7 +120,7 @@ No local-only commit is a substitute for that proof.
 | TeleScreen | `source-commit-not-remotely-recoverable` | `fe6707e0a95409a28b2af5c148d38fc434151847` | Fresh bare-repository recovery probe rejected; no advertised head or tag | Owner publishes the reviewed v19 candidate or a validated successor. |
 | InstaDAO | `source-commit-not-remotely-recoverable` | `a5a434ae3d36b32d415435df060f7349525dd087` | Not fetchable | Owner publishes the reviewed InstaDAO candidate or a validated successor. |
 | Jinn | `source-commit-not-remotely-recoverable` | `08daf329d602bccc0d539c4ee7710e52b370fe99` | Local clean candidate; not advertised by the canonical origin on 2026-08-19 | Owner publishes this reviewed v9 candidate or a validated successor, then clean-clone/pin verification may resume. |
-| CrateLink | `source-commit-not-remotely-recoverable` | `09ffb91596ace2bfc164117401632584f270f702` | Not fetchable | Owner publishes the reviewed CrateLink candidate or a validated successor. |
+| CrateLink | `source-pinned` | `95d27ba095eae4589f290b2e3857d6ad92174ddb` | Fresh recursive clone at the exact `dev-publish` tip passed `make vet test` on 2026-08-19. | Preserve the absent historical candidate as non-authoritative evidence; continue through the held complete-cohort/package proof. |
 | Bureau Paint | `source-commit-not-remotely-recoverable` | `c5347931c2ae9ab3579c8eb869edec5a0f7b44ea` | Not fetchable | Owner publishes the reviewed Paint candidate or a validated successor. |
 | Bureau Calendar | `source-commit-not-remotely-recoverable` | `0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc` | Not fetchable | Owner publishes the reviewed Calendar candidate or a validated successor. |
 | Bureau Contacts | `source-commit-not-remotely-recoverable` | `039d7ea6f977a3fc02e6d96545de0c3d5850db88` | Not fetchable | Owner publishes the reviewed Contacts candidate or a validated successor. |

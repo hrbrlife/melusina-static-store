@@ -76,6 +76,12 @@ describe the historical pre-transition state. The recovery queue is the
 current ledger for the published `dev-publish` refs and the remaining
 clean-clone validation work.
 
+CrateLink's current non-archival v15 origin tip
+`95d27ba095eae4589f290b2e3857d6ad92174ddb` was then published as
+`dev-publish`, recursively clean-cloned, and passed `make vet test`. Its
+missing older local-only candidate remains evidence only; the source-pinned
+catalog entry selects the verified current remote tip instead.
+
 ## Shell–DueProcess autonomous-create versioning — local candidates awaiting publication
 
 On 2026-08-19, the shell ordinal gate exposed that a prior respondent-share

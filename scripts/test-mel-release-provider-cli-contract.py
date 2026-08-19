@@ -1353,13 +1353,17 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0", "ccashconfig", "https://github.com/hrbrlife/melusina_ccashconfig_app"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
-        ("ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h", "cratelink", "https://github.com/hrbrlife/melusina_cratelink_app"),
     ):
         app = entries[app_id]
         assert app["source_path"] == source_path, app
         assert app["source_repository"] == source_repo, app
         assert app["reconciliation_state"] == "source-commit-not-remotely-recoverable", app
         assert not app.get("source_commit"), app
+    cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
+    assert cratelink["source_path"] == "cratelink", cratelink
+    assert cratelink["source_repository"] == "https://github.com/hrbrlife/melusina_cratelink_app", cratelink
+    assert cratelink["source_commit"] == "95d27ba095eae4589f290b2e3857d6ad92174ddb", cratelink
+    assert cratelink["reconciliation_state"] == "source-pinned", cratelink
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
     assert instadao["runtime_contract_path"] == "pkgdef/RUNTIME-CONTRACT.json", instadao
     for app_id, source_path in {

@@ -72,8 +72,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		fs := flag.NewFlagSet("store-pubkey", flag.ContinueOnError)
 		// The production Bazaar operator is the v2 boot identity under the
 		// melusina-os.org license. Keep these defaults aligned with the active
-		// on-chain SidecarIdentityEntry so a normal publish cannot seal to the
-		// retired dev.paype.cc identity.
+		// on-chain SidecarIdentityEntry so a normal publish cannot seal to a
+		// legacy sidecar identity.
 		signPubkeyB58 := fs.String("sign-pubkey-b58", "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV", "store operator signing_pubkey_b58 (from the active on-chain SidecarIdentityEntry)")
 		boxPubkeyB58 := fs.String("box-pubkey-b58", "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5", "store operator encryption_pubkey_b58")
 		licenseMint := fs.String("license-mint", "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J", "store operator license_nft_mint")

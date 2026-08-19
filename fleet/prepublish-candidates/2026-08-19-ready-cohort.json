@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 20,
+  "releaseReadyAppCount": 21,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -163,6 +163,15 @@
       "version": "0.0.9",
       "spkSha256": "791eb28e7032061ff40830f02fdd8198554b951b1b9d371f09cd4629b45366df",
       "appHash": "2613e985dcb85baccfa4ca3ed1f21c99302617dfb692d3374f27cbc41a59b10b"
+    },
+    {
+      "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
+      "catalogName": "MerMail",
+      "sourceCommit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+      "sourceSelectionReceipt": "prepublish-selections/wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h.json",
+      "version": "0.5.5",
+      "spkSha256": "dc15249077e927919d4c3902f51fc3c954f473ec68a8e281c95b05829e69a132",
+      "appHash": "34e3fbf91f667905413b560b3afce1e831cc4ffbebea413b8bdb768a4efba66b"
     },
     {
       "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",

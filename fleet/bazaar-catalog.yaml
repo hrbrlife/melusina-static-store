@@ -82,7 +82,14 @@ groups:
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
-        source_commit: 0dda2a0a89335e12ad86c70792585bc3006445d5
+        # v0.1.43/build-46 is the newest clean, source-bound dev-publish
+        # candidate. It vendors its former workstation-only dependencies and
+        # delegates promotion exclusively to the shared catalog authority.
+        source_commit: 0a8ffcfbcde934ab1e02b3439bc945d4a93738d7
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0.json
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Configurator

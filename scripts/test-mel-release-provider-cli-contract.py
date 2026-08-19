@@ -1478,6 +1478,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
     assert jinn["release_state"] == "ready", jinn
     assert jinn["source_selection_state"] == "direct-dev-verified", jinn
+    namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
+    assert namedcoin_admin["source_commit"] == "0a8ffcfbcde934ab1e02b3439bc945d4a93738d7", namedcoin_admin
+    assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
+    assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
+    assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
     assert doc["source_commit"] == "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", doc

@@ -1,0 +1,38 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+  "sourceRepository": "https://github.com/hrbrlife/cca-tc-operator",
+  "sourceCommit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f",
+  "selectionMethod": "direct-dev",
+  "decisionSummary": "The Aug 15 direct source is canonical and adds the current lease-only setup release controls. The divergent July authority/lease lines and Aug salvage were inspected; their older or stripped layouts are superseded by the current source's tested lease, recipient-identity, runtime-contract, and release-portability controls.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit",
+      "make release-cohort-check release-cohort-mutation-test vet test sidecar-vet sidecar-test",
+      "MEL_RELEASE_PACK_APP_CANDIDATE=pack-app-candidate.sh MEL_RELEASE_GREENFIELD_PACK=1 make provider-pack-contract-test",
+      "provider-pack contract candidate SHA-256 1703a2343ab3a821d3cf14b5aee54061d8c4346e34350852e6a18ec340521cdb",
+      "provider candidate appHash a3580f7c78b21364a1f7069a674ebd87714ad31b07887ad436a1456aba3b1468 is distinct from the signed public 0.2.18 pointer"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/codex/fineract-credential-lease-recipient-20260721", "commit": "f6a1a06947f5525892a89ee4d9e70e34a23fe5a1", "outcome": "archive"},
+    {"ref": "refs/heads/codex/fineract-sidecar-canonical-fixtures-20260719", "commit": "5a0d8019beeebd47f10d0ce8cb7b22d20e51d7be", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f", "outcome": "selected"},
+    {"ref": "refs/heads/main", "commit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/_detached/3495e9a5c5b4", "commit": "3495e9a5c5b483c4914afb237184d06517bebc66", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/fineract-credential-lease-recipient-20260721", "commit": "f6a1a06947f5525892a89ee4d9e70e34a23fe5a1", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/fineract-push-receiver-v2-20260721", "commit": "139751751fd18b01422a2a10dd0eaf8d8a5f7705", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/fineract-push-v2-bootwire-20260721", "commit": "8258d55b2b2cbff58a4226234ed59f960dbba9f2", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/fineract-sidecar-canonical-fixtures-20260719", "commit": "5a0d8019beeebd47f10d0ce8cb7b22d20e51d7be", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/fineract-tenant-lease-v2-reconcile-20260721", "commit": "33ca8eb3240a1619cfbe9152c749f2aceee2daed", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15", "commit": "f3518078e3f225aeffb48bdd2ed4c4aa0a601fd6", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/spkmodule-init", "commit": "bca32890d5147a37da8343328d8915126a33a662", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/fineract-module-case-20260719", "commit": "b253385827b6d9ee67c2712af4efcb6a22615866", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/fineract-setup-portable-lifecycle-20260814", "commit": "e288428472698fb016fc4fb3024b80d88cc3107a", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/fineract-sidecar-build-path-20260813", "commit": "09dbfc0e1b8220cfc8a1697d200feccbb73acce3", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "1cfa6488b3497bc1f26251cea9c66e19336bbb9e", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "e6cf79a733b0794046fbcafd149088c41427de5d", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "5d238b5a51dd97a036d01f6c76d6de76a084f631", "outcome": "archive"}
+  ]
+}

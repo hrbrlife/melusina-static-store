@@ -152,8 +152,9 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
 	ready := map[string]struct{}{
-		"sheets-bureau": {},
-		"minigit":       {},
+		"sheets-bureau":  {},
+		"minigit":        {},
+		"fineract-setup": {},
 	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{

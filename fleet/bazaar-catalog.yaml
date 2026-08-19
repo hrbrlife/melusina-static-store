@@ -477,8 +477,9 @@ groups:
         source_path: GoldKey
         # This production-only dev-publish cut removes the retired duplicate
         # development package and passed clean-clone, race, verified-package,
-        # and byte-for-byte reproducibility controls at v0.3.5 / v8.
-        source_commit: 1382d85eefdb016f885ae9b0d0067f6be842663f
+        # and byte-for-byte reproducibility controls at v0.3.5 / v8. The
+        # forward source revision also binds the governed candidate output path.
+        source_commit: debeecd1d67c16810574c8176592b0bbf0b3e267
         source_baseline_branch: master
         reconciliation_state: source-pinned
         release_state: ready

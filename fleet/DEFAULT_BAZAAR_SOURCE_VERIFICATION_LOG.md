@@ -52,9 +52,29 @@ contract semantic check used for BotMother above.
 | MiniGit | `pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50` | `610c44614a8b499d1e80795a97daca66a9912f77` on `main` | `0.2.14` (versionNumber 20) | `0.2.14` | `make vet test`; clean recursive status and `git diff --check` |
 | GoldKey | `quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh` | `a46106ded2aab2c7b50465cd561f176de25b4947` on `master` | `0.3.4` (versionNumber 7) | `0.3.4` | pinned toolchain check; `make vet test`; clean recursive status and `git diff --check` |
 | MerMail | `wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h` | `55e276e3a5aef4e0f5605c191759c5fdce781fdc` on `main` | `0.5.5` (versionNumber 20) | `0.5.5` | tracked release-input validation; both Pearl test suites; both module vet checks; clean recursive status and `git diff --check` |
+| NamedCoin | `8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh` | `f82c217f643bdfc217ba8b3ba91a4cbbf521ba55` on `main` | `0.1.35` (versionNumber 37) | `0.1.35` | `GOWORK=off go vet ./...` and uncached `go test ./...`; clean recursive status and `git diff --check` |
 
 The domain-template row, like BotMother, is a verified forward source
 candidate rather than a publication claim: metadata is `0.5.87` while the
 catalog records live `0.5.85`. Every row above remains held pending the full
 33-app source cohort, deterministic package/release proof, served state, and
 fresh-install verification.
+
+## NamedCoin Admin — portable-gate repair awaiting publication
+
+The source at catalog commit
+`0dda2a0a89335e12ad86c70792585bc3006445d5` was independently cloned from
+the advertised `main` tip with its submodule pinned and clean. Its metadata
+and runtime-contract app ID match the catalog; metadata is `0.1.42`
+(versionNumber 45), matching the catalog's live version. Its `GOWORK=off`
+vet/test suite, app-ID check, encoder check, envelope check, and ordinal check
+all pass when the ordinal checker receives the actual repository root.
+
+The checked-in `make check-capnp-ordinal` target instead named an unrelated
+workstation path, so it could not reliably validate this source. A one-line,
+repository-relative fix was tested through `GOWORK=off make check-drift` and
+committed locally as `38cdf76202719776abcf5781877c5b3d72833b6e`. As of
+2026-08-19 that corrective commit is not advertised by the canonical origin.
+No catalog pin was changed: the source owner must publish that fix or a
+reviewed successor, after which the clean-clone proof must be repeated before
+this app can join a release cohort.

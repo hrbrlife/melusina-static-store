@@ -13,29 +13,28 @@ approval and must not be used to promote a local checkout.
   - 1 is marked `source-policy-unreconciled`.
 
 On 2026-08-19, every canonical origin below was readable with the release
-workstation's non-interactive Git configuration. For each app with a named
-candidate, a fresh temporary bare repository ran:
+workstation's non-interactive Git configuration. For every named candidate in
+the current table, a fresh temporary bare repository ran:
 
 ```sh
 GIT_TERMINAL_PROMPT=0 git fetch --dry-run --no-tags <canonical-origin> <candidate-commit>
 ```
 
-All 17 candidates named at the start of that recovery pass failed the probe.
-None therefore has the clean-source proof required to become a release pin in
-this audit. This does not claim that an object never existed; the source owner
-must make it recoverable from the canonical origin and the normal
+All 19 named candidates failed the probe with the remote rejecting the object
+as `not our ref`; none was the target of an advertised head or tag. None
+therefore has the clean-source proof required to become a release pin in this
+audit. This does not claim that an object never existed; the source owner must
+make it recoverable from the canonical origin and the normal
 clean-clone/advertised-ancestry check must then pass. An entry without a
 current named candidate cannot be made reproducible until its owner identifies
 one.
 
 ### Focused recovery re-probe
 
-On 2026-08-19, fresh temporary bare repositories re-ran the same
-`fetch --dry-run` probe for the launch-critical TeleScreen, Jinn, and Bureau
-Paint candidates. All three were rejected by their canonical origins as
-`not our ref`, and none was the target of an advertised head or tag. The
-TeleScreen v19 candidate is now recorded in the table below; it remains held
-with the same source-owner publication requirement as Jinn and Paint.
+The complete current re-probe includes the launch-critical TeleScreen, Jinn,
+and Bureau Paint candidates. TeleScreen's v19 candidate is recorded in the
+table below; it remains held with the same source-owner publication
+requirement as Jinn and Paint.
 
 ### Source-level Jinn–Paint compatibility
 

@@ -116,9 +116,9 @@ groups:
         # a historical workstation worktree name.
         source_path: popaye
         # v0.3.190/appVersion-182 is the current dev-publish tip. It
-        # integrates the selected KYB and conditional-procedure work and has
-        # passed independent clean deterministic-package controls.
-        source_commit: 102f2f6efa709d62abc70ac7644a6ba830a75300
+        # retains the selected KYB and conditional-procedure work, and its
+        # bounded lossless advice-PNG export path passes the complete race suite.
+        source_commit: f11a927745f3a37ce032677c6feadf99d1fda2c9
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

@@ -1,0 +1,29 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
+  "sourceRepository": "https://github.com/hrbrlife/melusina_cratelink_app",
+  "sourceCommit": "ed57ba014cb9d44a81ee58e0dc831afb0e925e77",
+  "selectionMethod": "direct-dev",
+  "mainBaselineRelation": "ancestor",
+  "decisionSummary": "The Aug. 19 v16 dev-publish tip is the newest valid forward CrateLink source. It moves packaging into governed candidate mode, builds before creating package bytes, and updates the shared module to the current mount-lifecycle implementation. Main is its reviewed ancestor. The divergent archive and publish refs contain superseded scaffold, historic attestation, packaging, or release evidence rather than a newer valid application source.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive checkout resolved the selected source and declared submodule gitlinks",
+      "complete current remote-head snapshot reviewed, including every divergent archive and publish ref",
+      "make vet test passed at the selected source",
+      "two independent greenfield package runs matched SHA-256 8e70bed0c7bcfcde42d3aaa9afed3fa24acaee18b671ae28860aa6720bf59037 and packageId 8e70bed0c7bcfcde42d3aaa9afed3fa2",
+      "spk verify confirmed appId ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h, version 16, and marketing version 0.3.4",
+      "the selected source refuses direct local publish targets and exposes only governed candidate packaging",
+      "provider build bound the selected source and exact SPK to candidate appHash a6359f294381e1aa4198a52f31f68872cccf9d061fa789b61fec048015ae2ef8",
+      "candidate appHash differs from the signed public pointer appHash a779a551908bba6372ce522899ad45563a319b65c8c1722d6d01cdc6de077ce3"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/archive/backup-standalone-root-20260814", "commit": "edceb44c9c31d7123b114d9e91cb266497e74a0b", "outcome": "archive"},
+    {"ref": "refs/heads/archive/resign-attest-20260814", "commit": "61882b133d1ba52ef3d057d4d48a5822fbcc1b2c", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", "outcome": "selected"},
+    {"ref": "refs/heads/main", "commit": "95d27ba095eae4589f290b2e3857d6ad92174ddb", "outcome": "baseline"},
+    {"ref": "refs/heads/publish", "commit": "df253a9239669ecb85baa34d6eeea460d0e38234", "outcome": "archive"}
+  ]
+}

@@ -152,10 +152,12 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
 	ready := map[string]struct{}{
+		"botmother":       {},
 		"sheets-bureau":   {},
 		"minigit":         {},
 		"fineract-setup":  {},
 		"canboard":        {},
+		"cratelink":       {},
 		"bureau-contacts": {},
 		"bureau-calendar": {},
 		"doc-bureau":      {},

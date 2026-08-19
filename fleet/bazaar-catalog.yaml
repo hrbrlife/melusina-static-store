@@ -268,7 +268,11 @@ groups:
         # clone of the advertised canonical branch. Its three declared
         # submodules resolved at their exact gitlinks and its Go test/tagged
         # grain/vet gates passed before this source pin was restored.
-        source_commit: 899cddba7d379813a37c391226f75b069895736d
+        source_commit: 0f224b9d0de09b93eb257bf21788f6f4636d123d
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0.json
         source_repository: https://github.com/hrbrlife/melusina_botmother
         publish_slug: botmother
         catalog_name: BotMother
@@ -317,13 +321,14 @@ groups:
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink
-        # The recorded local-only 09ff candidate is not canonical source
-        # evidence: it is absent from every remote ref. The current v15
-        # dev-publish tip below is the newest non-archival origin ref, has no
-        # tenant-bound package configuration, and passed vet/test in a fresh
-        # recursive clean clone on 2026-08-19.
-        source_commit: 95d27ba095eae4589f290b2e3857d6ad92174ddb
+        # The current v16 dev-publish tip is the newest valid forward source.
+        # It was built, package-verified, and reproduced from a fresh
+        # recursive checkout on 2026-08-19.
+        source_commit: ed57ba014cb9d44a81ee58e0dc831afb0e925e77
         reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h.json
         publish_slug: cratelink
         catalog_name: CrateLink
         live_version: 0.3.3

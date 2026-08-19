@@ -1417,6 +1417,16 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert doc["source_commit"] == "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
+    botmother = entries["xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"]
+    assert botmother["reconciliation_state"] == "source-pinned", botmother
+    assert botmother["source_commit"] == "0f224b9d0de09b93eb257bf21788f6f4636d123d", botmother
+    assert botmother["release_state"] == "ready", botmother
+    assert botmother["source_selection_state"] == "direct-dev-verified", botmother
+    cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
+    assert cratelink["reconciliation_state"] == "source-pinned", cratelink
+    assert cratelink["source_commit"] == "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", cratelink
+    assert cratelink["release_state"] == "ready", cratelink
+    assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     pending_candidates = {
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
@@ -1464,7 +1474,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     _, entries = checked_in_catalog_entries()
     cases = {
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
-            ("botmother", "899cddba7d379813a37c391226f75b069895736d", "MELUSINA_BOTMOTHER", "botmother"),
+            ("botmother", "0f224b9d0de09b93eb257bf21788f6f4636d123d", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
             ("dueprocess", "aff5cc7ce2b793eee34f97e10d27d00bec441941", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
@@ -1536,8 +1546,10 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["source_path"] == "cratelink", cratelink
     assert cratelink["source_repository"] == "https://github.com/hrbrlife/melusina_cratelink_app", cratelink
-    assert cratelink["source_commit"] == "95d27ba095eae4589f290b2e3857d6ad92174ddb", cratelink
+    assert cratelink["source_commit"] == "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", cratelink
     assert cratelink["reconciliation_state"] == "source-pinned", cratelink
+    assert cratelink["release_state"] == "ready", cratelink
+    assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
     assert instadao["runtime_contract_path"] == "pkgdef/RUNTIME-CONTRACT.json", instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
@@ -1560,13 +1572,11 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
     old = with_env({"MEL_RELEASE_CONFIG": str(config)})
     try:
         for app_id in (
-            "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
             "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
             "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
             "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
             "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
-            "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
         ):
             try:
                 provider.app_spec(app_id)
@@ -1585,7 +1595,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"
+    app_id = "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

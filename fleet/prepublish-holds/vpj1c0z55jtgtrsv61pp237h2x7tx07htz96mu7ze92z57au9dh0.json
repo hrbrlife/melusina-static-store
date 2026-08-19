@@ -1,0 +1,28 @@
+{
+  "schema": "melusina-prepublish-hold-v1",
+  "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+  "catalogName": "CyberTeller",
+  "sourceRepository": "https://github.com/hrbrlife/cyberteller",
+  "sourceBaselineCommit": "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7",
+  "status": "hold",
+  "reason": "dueprocess-service-envelope-pending",
+  "verifiedAt": "2026-08-19",
+  "blockedCalls": [
+    {
+      "current": "POST /api/sanctions/case",
+      "problem": "The existing CyberTeller client uses API-token/capability posture without a verifiable request and response envelope.",
+      "required": "A backwards-compatible signed JSON body envelope that binds method, path, body hash, key ID, expiry, fresh nonce/replay protection, and a signed response."
+    },
+    {
+      "current": "GET /api/process-rules/{processType}",
+      "problem": "DueProcess WebSession dispatch does not expose inbound headers, so a header-only signature cannot be verified.",
+      "required": "A new POST /api/process-rules/query signed-body endpoint with request and response verification."
+    }
+  ],
+  "evidence": [
+    "CyberTeller egress coverage sees 34 HTTP call sites and fails exactly the four request/response calls in dueprocessclient and riskconfig.",
+    "Narrow exemptions for in-process dispatch, public price/RPC peers, and the named sanctions capability do not cover these DueProcess business-control calls.",
+    "No app-specific Bazaar publishing authority override is permitted; CyberTeller retains its app-specific SPK identity while releases use the shared catalog authority."
+  ],
+  "safeNextAction": "Implement and independently test the paired DueProcess signed-body protocol, update CyberTeller to use and verify it for both calls, rerun the full egress, source, deterministic-package, and governed candidate gates, then advance the resulting dev-publish tip."
+}

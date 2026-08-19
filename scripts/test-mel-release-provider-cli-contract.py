@@ -1754,6 +1754,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert ailagoon["source_selection_receipt"] == (
         "prepublish-selections/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.json"
     ), ailagoon
+    cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
+    assert cyberteller["source_path"] == "cyberteller", cyberteller
+    assert cyberteller["source_commit"] == "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7", cyberteller
+    assert cyberteller["reconciliation_state"] == "dueprocess-service-envelope-pending", cyberteller
+    assert cyberteller["release_state"] == "hold", cyberteller
+    assert cyberteller["hold_receipt"] == (
+        "prepublish-holds/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
+    ), cyberteller
     for app_id, source_path, source_repo in (
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
     ):

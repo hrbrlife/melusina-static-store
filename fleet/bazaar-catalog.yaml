@@ -201,6 +201,12 @@ groups:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
         source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
+        # Hold the next candidate until both DueProcess calls use a real,
+        # verifiable service envelope. API-token/capability posture alone is
+        # not release evidence for the sanctions case or rules decision path.
+        reconciliation_state: dueprocess-service-envelope-pending
+        release_state: hold
+        hold_receipt: prepublish-holds/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller

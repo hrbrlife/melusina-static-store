@@ -61,6 +61,40 @@ ahead of the catalog's recorded live version. Every row above remains held
 pending the full 33-app source cohort, deterministic package/release proof,
 served state, and fresh-install verification.
 
+## Shell–DueProcess autonomous-create versioning — local candidates awaiting publication
+
+On 2026-08-19, the shell ordinal gate exposed that a prior respondent-share
+change had altered `AutonomousGrainCreator.createGrain @0` after the committed
+baseline. The repair preserves the original no-share method at `@0` and
+appends `createGrainWithShare @1`; an older shell therefore rejects a requested
+share rather than creating an unshared grain silently.
+
+- Shell candidate `5663e3838486292d9c4f6984714a459545083518` restores the
+  frozen `@0` signature, implements the share-aware `@1` method, and adds a
+  source ratchet for both shapes. Its Cap'n Proto compile, respondent-share
+  ratchet, six shell invariant ratchets, and ordinal gate passed; the ordinal
+  gate reports the new `@1` method as additive and safe.
+- DueProcess candidate `aff5cc7ce2b793eee34f97e10d27d00bec441941` calls `@0`
+  with its original one-pointer request when no share is wanted, and calls
+  `@1` only for a non-negative respondent role. Its focused wire tests prove
+  ordinary creation works against an `@0`-only fake shell and a share request
+  fails closed against that same fake; its full Station package test and vet
+  check passed.
+- Fresh bare-repository recovery probes against both canonical origins rejected
+  these exact local commits as `not our ref`. They are therefore not source
+  pins and do not alter `fleet/bazaar-catalog.yaml`; its current DueProcess pin
+  remains `a4f27e9737529c360782458d1ab9ed3563e7544b` pending this forward
+  compatibility update.
+
+The Fineract Setup QA copy of DueProcess was byte-identical to the recovered
+`a4f27e9737529c360782458d1ab9ed3563e7544b` source for these files. After the
+DueProcess owner publishes this candidate or a reviewed successor, that copy
+must consume the same published ref before a clean recursive cohort proof.
+The shell and DueProcess owners must publish their reviewed candidates (or
+explicit successors), then a new clean-clone review must repeat the source
+tests, package/runtime-contract checks, and cross-component fresh-install
+test. Until then the complete default Bazaar remains held.
+
 ## NamedCoin Admin — portable-gate repair awaiting publication
 
 The source at catalog commit

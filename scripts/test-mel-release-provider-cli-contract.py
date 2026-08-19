@@ -1410,6 +1410,8 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
     assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
+    assert jinn["release_state"] == "ready", jinn
+    assert jinn["source_selection_state"] == "direct-dev-verified", jinn
     pending_candidates = {
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",

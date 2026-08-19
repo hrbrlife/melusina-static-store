@@ -298,14 +298,17 @@ groups:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
         # The current dev-publish v9 source adds production grain-key bootstrap
-        # and generic, read-only peer attachment. A fresh filtered clean clone
-        # passed focused integration tests and a production build; actual
-        # tenant capability and rendered-picker checks remain release-held.
+        # and generic, read-only peer attachment. Its clean-clone recovery and
+        # reproducibility gates passed; tenant capability and rendered-picker
+        # checks run immediately after its governed signed publish.
         source_commit: 08daf329d602bccc0d539c4ee7710e52b370fe99
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Melusina's Jinn
         live_version: 0.0.6
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh.json
         catalog_developer: hrbrlife
         catalog_repo: jinn
         catalog_slug: jinn

@@ -20,12 +20,22 @@ candidate, a fresh temporary bare repository ran:
 GIT_TERMINAL_PROMPT=0 git fetch --dry-run --no-tags <canonical-origin> <candidate-commit>
 ```
 
-All 17 named candidates failed that recovery probe. None therefore has the
-clean-source proof required to become a release pin in this audit. This does
-not claim that an object never existed; the source owner must make it
-recoverable from the canonical origin and the normal clean-clone/advertised
-ancestry check must then pass. The two entries without a candidate cannot be
-made reproducible until their owners identify one.
+All 17 candidates named at the start of that recovery pass failed the probe.
+None therefore has the clean-source proof required to become a release pin in
+this audit. This does not claim that an object never existed; the source owner
+must make it recoverable from the canonical origin and the normal
+clean-clone/advertised-ancestry check must then pass. An entry without a
+current named candidate cannot be made reproducible until its owner identifies
+one.
+
+### Focused recovery re-probe
+
+On 2026-08-19, fresh temporary bare repositories re-ran the same
+`fetch --dry-run` probe for the launch-critical TeleScreen, Jinn, and Bureau
+Paint candidates. All three were rejected by their canonical origins as
+`not our ref`, and none was the target of an advertised head or tag. The
+TeleScreen v19 candidate is now recorded in the table below; it remains held
+with the same source-owner publication requirement as Jinn and Paint.
 
 ## Required recovery action
 
@@ -46,7 +56,7 @@ No local-only commit is a substitute for that proof.
 | Popaye | `source-commit-not-remotely-recoverable` | `75e48c66a691cb2379d32d0599f2cc895b63a7b6` | Not fetchable | Owner publishes the reviewed Popaye candidate or a validated successor. |
 | Cyberteller Config | `source-commit-not-remotely-recoverable` | `15e64ee261cd2b2ede14e5ce109611bfbf3d277e` | Not fetchable | Owner publishes the reviewed Config candidate or a validated successor. |
 | AI Lagoon | `source-policy-unreconciled` | `dc4b842a7953eb3721d4a99edf0faa29d7c36853` | Not fetchable | Owner first resolves the source policy, then publishes the chosen reviewed revision. |
-| TeleScreen | `source-commit-not-remotely-recoverable` | _No candidate recorded_ | Not recoverable | Owner identifies, reviews, and publishes a canonical candidate. |
+| TeleScreen | `source-commit-not-remotely-recoverable` | `fe6707e0a95409a28b2af5c148d38fc434151847` | Fresh bare-repository recovery probe rejected; no advertised head or tag | Owner publishes the reviewed v19 candidate or a validated successor. |
 | InstaDAO | `source-commit-not-remotely-recoverable` | `a5a434ae3d36b32d415435df060f7349525dd087` | Not fetchable | Owner publishes the reviewed InstaDAO candidate or a validated successor. |
 | Jinn | `source-commit-not-remotely-recoverable` | `08daf329d602bccc0d539c4ee7710e52b370fe99` | Local clean candidate; not advertised by the canonical origin on 2026-08-19 | Owner publishes this reviewed v9 candidate or a validated successor, then clean-clone/pin verification may resume. |
 | CrateLink | `source-commit-not-remotely-recoverable` | `09ffb91596ace2bfc164117401632584f270f702` | Not fetchable | Owner publishes the reviewed CrateLink candidate or a validated successor. |

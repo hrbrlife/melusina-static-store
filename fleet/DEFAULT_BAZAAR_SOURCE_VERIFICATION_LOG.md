@@ -50,7 +50,7 @@ contract semantic check used for BotMother above.
 | DueProcess | `47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0` | `aff5cc7ce2b793eee34f97e10d27d00bec441941` on `dev-publish` | `0.1.74` (versionNumber 78) | `0.1.74` | fresh filtered recursive clone; `GOWORK=off go test ./pkg/station`; `GOWORK=off go vet ./...`; `make check-drift`; clean recursive status and `git diff --check` |
 | Teleport | `ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h` | `a943d5a5fb491d5029b67ac157b92379d94e0a60` on `main` | `1.3.4` (versionNumber 10) | `1.3.4` | `make vet test` (full race suite); clean recursive status and `git diff --check` |
 | MiniGit | `pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50` | `610c44614a8b499d1e80795a97daca66a9912f77` on `main` | `0.2.14` (versionNumber 20) | `0.2.14` | `make vet test`; clean recursive status and `git diff --check` |
-| GoldKey | `quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh` | `a46106ded2aab2c7b50465cd561f176de25b4947` on `master` | `0.3.4` (versionNumber 7) | `0.3.4` | pinned toolchain check; `make vet test`; clean recursive status and `git diff --check` |
+| GoldKey | `quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh` | `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` on `dev-publish` | `0.3.4` (versionNumber 7) | `0.3.4` | fresh recursive clone; pinned-toolchain `make ci`; clean recursive status and `git diff --check` |
 | Fineract Setup | `7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h` | `d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f` on `main` | `0.2.19` (versionNumber 19) | `0.2.18` | release-cohort and source-portability checks with mutation controls; grain and sidecar vet/test/race suites; clean recursive status and `git diff --check` |
 | MerMail | `wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h` | `55e276e3a5aef4e0f5605c191759c5fdce781fdc` on `main` | `0.5.5` (versionNumber 20) | `0.5.5` | tracked release-input validation; both Pearl test suites; both module vet checks; clean recursive status and `git diff --check` |
 | NamedCoin | `8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh` | `f82c217f643bdfc217ba8b3ba91a4cbbf521ba55` on `main` | `0.1.35` (versionNumber 37) | `0.1.35` | `GOWORK=off go vet ./...` and uncached `go test ./...`; clean recursive status and `git diff --check` |
@@ -88,6 +88,13 @@ rejected as source input: it is a divergent release-artifact archive that
 removes the buildable application tree. The exact `dev-publish` tip
 `610c44614a8b499d1e80795a97daca66a9912f77` is therefore the newest valid
 source; a fresh recursive clone passed `make vet test` on 2026-08-19.
+
+GoldKey's current `dev-publish` tip
+`4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` is a direct forward descendant of
+the prior production source. A fresh recursive clone hydrated both declared
+submodules and passed the pinned-toolchain `make ci`. The production v0.3.4
+and separate DEV v0.1.3/version-4 identities retain their distinct metadata,
+runtime contracts, and package targets while sharing this one verified source.
 
 ## Shell–DueProcess autonomous-create versioning
 

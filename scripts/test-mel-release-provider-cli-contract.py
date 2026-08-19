@@ -1301,7 +1301,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
-            ("GoldKey", "a46106ded2aab2c7b50465cd561f176de25b4947", "GoldKey", "goldkey"),
+            ("GoldKey", "4cdde8588370bfb9ae7b4a7d736d623b8ab0536b", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
@@ -1317,11 +1317,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     dev = entries["130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"]
     assert dev["catalog_name"] == "GoldKey DEV", dev
     assert dev["source_path"] == "GoldKey", dev
-    assert dev["reconciliation_state"] == "source-commit-not-remotely-recoverable", dev
+    assert dev["reconciliation_state"] == "source-pinned", dev
+    assert dev["source_commit"] == "4cdde8588370bfb9ae7b4a7d736d623b8ab0536b", dev
     assert dev["metadata_path"] == "metadata.dev.json", dev
     assert dev["runtime_contract_path"] == "RUNTIME-CONTRACT.dev.json", dev
     assert dev["pack_target"] == "dev-pack", dev
-    assert not dev.get("source_commit"), dev
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon

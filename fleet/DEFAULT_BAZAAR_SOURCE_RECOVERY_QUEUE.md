@@ -48,7 +48,7 @@ No local-only commit is a substitute for that proof.
 | AI Lagoon | `source-policy-unreconciled` | `dc4b842a7953eb3721d4a99edf0faa29d7c36853` | Not fetchable | Owner first resolves the source policy, then publishes the chosen reviewed revision. |
 | TeleScreen | `source-commit-not-remotely-recoverable` | _No candidate recorded_ | Not recoverable | Owner identifies, reviews, and publishes a canonical candidate. |
 | InstaDAO | `source-commit-not-remotely-recoverable` | `a5a434ae3d36b32d415435df060f7349525dd087` | Not fetchable | Owner publishes the reviewed InstaDAO candidate or a validated successor. |
-| Jinn | `source-commit-not-remotely-recoverable` | _No candidate recorded_ | Not recoverable | Owner identifies, reviews, and publishes a canonical candidate after its bootstrap/peer work is complete. |
+| Jinn | `source-commit-not-remotely-recoverable` | `08daf329d602bccc0d539c4ee7710e52b370fe99` | Local clean candidate; not advertised by the canonical origin on 2026-08-19 | Owner publishes this reviewed v9 candidate or a validated successor, then clean-clone/pin verification may resume. |
 | CrateLink | `source-commit-not-remotely-recoverable` | `09ffb91596ace2bfc164117401632584f270f702` | Not fetchable | Owner publishes the reviewed CrateLink candidate or a validated successor. |
 | Bureau Paint | `source-commit-not-remotely-recoverable` | `c5347931c2ae9ab3579c8eb869edec5a0f7b44ea` | Not fetchable | Owner publishes the reviewed Paint candidate or a validated successor. |
 | Bureau Calendar | `source-commit-not-remotely-recoverable` | `0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc` | Not fetchable | Owner publishes the reviewed Calendar candidate or a validated successor. |

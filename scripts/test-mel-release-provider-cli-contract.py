@@ -1563,7 +1563,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
     assert calendar["reconciliation_state"] == "source-pinned", calendar
-    assert calendar["source_commit"] == "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc", calendar
+    assert calendar["source_commit"] == "3ec2f484ea7e9d7931443e665d497eb841c93c84", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]

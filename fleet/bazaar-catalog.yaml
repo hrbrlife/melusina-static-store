@@ -468,11 +468,10 @@ groups:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
         source_path: melusina-bureau-cal-app
-        # The current dev-publish v0.22/version-22 source passed a fresh
-        # recursive-clone proof, source controls, and deterministic candidate
-        # packages. The historical main tree is explicitly reviewed rather
-        # than used as a release source.
-        source_commit: 0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc
+        # The current dev-publish v0.22.1/version-23 source adds a permanent
+        # cross-file Calendar identity guard while retaining the verified
+        # runtime-contract and deterministic package controls.
+        source_commit: 3ec2f484ea7e9d7931443e665d497eb841c93c84
         reconciliation_state: source-pinned
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar

@@ -109,3 +109,29 @@ reviewed policy reason only for proven capability or public-read paths; teach
 the checker about the existing signed webhook wrapper; then remove the mask
 and publish a commit whose clean-clone gate passes. Repeat the full source
 proof only after that remotely recoverable successor exists.
+
+## InstaCo — client toolchain pin repair awaiting publication
+
+The source at catalog commit
+`5d9347ce837ec423013bc17bd17ff3a60b7f39eb` was independently shallow-cloned
+from the advertised `main` tip with both declared submodules initialized and a
+clean recursive Git status. Its metadata and runtime-contract app ID match the
+catalog; metadata is `0.1.8` (versionNumber 15), matching the catalog's live
+version. Its frozen-lockfile client install, typecheck, Vite build, Go vet,
+ordinary Go tests, and race suite all passed.
+
+The source did not declare an exact `packageManager` in
+`client/package.json`. A lockfile fixes dependency resolutions but does not
+identify the pnpm implementation that materializes the client build inputs,
+so that source is not sufficient for deterministic candidate construction.
+A local repair commit,
+`58216f58ade895d9842682f0c1f61f05a71fdf65`, pins `pnpm@9.15.5` and adds a
+release-candidate regression test tying that pin to the existing pnpm v9
+lockfile. The full client and Go gate suite passed again from that repaired,
+clean recursive checkout.
+
+As of 2026-08-19 the canonical origin advertises only the catalog base
+commit, not the repair. No catalog pin was changed. The source owner must
+publish that repair or a reviewed successor, determine the appropriate
+forward release version if the resulting package bytes differ, and repeat the
+clean-clone proof before InstaCo can join a release cohort.

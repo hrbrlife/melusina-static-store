@@ -43,6 +43,14 @@ VERIFIER_SRC="verifier"
 BASE_URL="https://bazaar.melusina-os.org"
 RUNTIME_CONTRACT_VALIDATOR="$SCRIPT_DIR/scripts/validate-runtime-contract.py"
 RUNTIME_CONTRACT_SCHEMA="$SCRIPT_DIR/schemas/melusina-app-runtime-contract-v1.schema.json"
+RELEASE_ATTESTATION_SCHEMA="$SCRIPT_DIR/schemas/melusina-release-v1.schema.json"
+
+# The catalog admits releases only from this one Core App Team authority. These
+# are catalog governance coordinates, not app content: appHash/releaseHash
+# remain release-specific evidence and are intentionally not shared here.
+CATALOG_AUTHORITY_MULTISIG="4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+CATALOG_AUTHORITY_VAULT="3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+CATALOG_AUTHORITY_PROGRAM="SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
 
 # --- Attestation integrity gates (kill-list K03/K13/K14/K16) -----------------
 # Fail-closed by default: the store refuses to publish forged/offline-stub
@@ -289,6 +297,35 @@ else:
         ((errors++))
       elif [[ "$quorum_ok" == "incomplete" ]]; then
         warn "$app_dir: on-chain RELEASE.json quorumPolicy incomplete"
+      fi
+
+      # A release is governed only when every part of its catalog authority
+      # triple is the exact canonical value. Presence alone is not authority:
+      # a different multisig, vault, or Squads program must never be assembled
+      # into the static catalog, including under the test-only offline flag.
+      local authority_mismatch
+      authority_mismatch="$(python3 - "$rel_file" "$CATALOG_AUTHORITY_MULTISIG" "$CATALOG_AUTHORITY_VAULT" "$CATALOG_AUTHORITY_PROGRAM" <<'PY'
+import json
+import sys
+
+release_path, expected_multisig, expected_vault, expected_program = sys.argv[1:]
+release = json.load(open(release_path))
+quorum = release.get('quorumPolicy')
+if not isinstance(quorum, dict):
+    quorum = {}
+
+for field, actual, expected in (
+    ('quorumPolicy.multisigPda', quorum.get('multisigPda'), expected_multisig),
+    ('licenseSquadsVault', release.get('licenseSquadsVault'), expected_vault),
+    ('programId', release.get('programId'), expected_program),
+):
+    if actual != expected:
+        print(f'{field}={actual!r} (expected {expected!r})')
+PY
+)"
+      if [[ -n "$authority_mismatch" ]]; then
+        fail "$app_dir: RELEASE.json catalog authority mismatch: $authority_mismatch"
+        ((errors++))
       fi
 
       # K03: reject 1-of-1 (stub-grade) quorum and offline-*/empty releaseEntryPda
@@ -651,6 +688,7 @@ m['attest'] = {
     'releaseEntryPda': release.get('releaseEntryPda', ''),
     'masterNftMint': release.get('masterNftMint') or release.get('MasterNftMint') or '',
     'licenseSquadsVault': release.get('licenseSquadsVault', ''),
+    'programId': release.get('programId', ''),
     'signedAtUnix': release.get('signedAtUnix', 0),
     'authorSig': release.get('authorSig', ''),
     'quorumPolicy': release.get('quorumPolicy', {}),
@@ -829,6 +867,13 @@ else
   exit 1
 fi
 
+if [[ -f "$RELEASE_ATTESTATION_SCHEMA" ]]; then
+  cp "$RELEASE_ATTESTATION_SCHEMA" "$OUTPUT_DIR/schemas/"
+else
+  fail "Release-attestation schema missing at $RELEASE_ATTESTATION_SCHEMA"
+  exit 1
+fi
+
 # .nojekyll
 touch "$OUTPUT_DIR/.nojekyll"
 
@@ -986,7 +1031,7 @@ index_path, attest_root = sys.argv[1], sys.argv[2]
 index = json.load(open(index_path))
 apps = index.get('apps', [])
 EMBEDDED_KEYS = ['appHash', 'releaseHash', 'releaseNonce', 'releaseEntryPda',
-                 'masterNftMint', 'licenseSquadsVault', 'signedAtUnix',
+                 'masterNftMint', 'licenseSquadsVault', 'programId', 'signedAtUnix',
                  'authorSig', 'quorumPolicy']
 
 # Pre-pass: find duplicate appIds (warn-only).

@@ -41,11 +41,11 @@
     {
       "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
       "catalogName": "DueProcess",
-      "sourceCommit": "739f915f8589efa00586de890b1b35e3929bce3e",
+      "sourceCommit": "fe8f0b076b4ec996ca0a6be1de366e39343a7315",
       "sourceSelectionReceipt": "prepublish-selections/47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0.json",
-      "version": "0.1.75",
-      "spkSha256": "a7a6f23dcc228fb8d8fdd7367d4a57b0fcaeff5ad0b791b49061578dcf544025",
-      "appHash": "6aef1dbaff881bbb57bd3b11ec1afb4cc899a5bc086e079eeddd24404cec23c5"
+      "version": "0.1.76",
+      "spkSha256": "6a065e43163cf1455d45c5a0bb9e5842c531258028b2426ee145219537cfbc5e",
+      "appHash": "d4eae5626e25d1cd2a1a3b5115bed517a256aa42eb9066e3093ec4b1b266ff05"
     },
     {
       "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",

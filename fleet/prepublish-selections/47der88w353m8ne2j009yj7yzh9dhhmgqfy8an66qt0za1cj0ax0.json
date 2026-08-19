@@ -2,18 +2,18 @@
   "schema": "melusina-source-selection-v1",
   "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
   "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-  "sourceCommit": "739f915f8589efa00586de890b1b35e3929bce3e",
+  "sourceCommit": "fe8f0b076b4ec996ca0a6be1de366e39343a7315",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.1.75/appVersion-79 dev-publish tip is the newest valid forward DueProcess source. It retains the current versioned autonomous-share RPC baseline and selectively ports the missing release-health work; older divergent lines were reviewed without blindly merging them. The selected source locks the shared Bazaar release authority while retaining DueProcess\u2019s distinct SPK identity. Main is an ancestor and all selected app-relevant work is integrated in dev-publish.",
+  "decisionSummary": "The Aug. 19 v0.1.76/appVersion-80 dev-publish tip is the newest valid forward DueProcess source. It retains the versioned autonomous-share baseline and adds the receiver-bound, idempotent signed service path required by CyberTeller; older divergent lines remain reviewed evidence rather than release authority. The selected source locks the shared Bazaar release authority while retaining DueProcess\u2019s distinct SPK identity. Main is an ancestor and all selected app-relevant work is integrated in dev-publish.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "exact-head make ci passed",
-      "make check-drift passed",
-      "clean-start make pack-local produced SHA-256 a7a6f23dcc228fb8d8fdd7367d4a57b0fcaeff5ad0b791b49061578dcf544025",
-      "independent clean checkout reproduced the identical SPK bytes",
+      "exact-head make ci passed for v0.1.76/appVersion-80",
+      "clean-start make pack-local produced SHA-256 6a065e43163cf1455d45c5a0bb9e5842c531258028b2426ee145219537cfbc5e twice",
+      "fresh recursive dev-publish clone reproduced the identical SPK bytes and metadata packageId",
+      "two governed provider builds bound that SPK to appHash d4eae5626e25d1cd2a1a3b5115bed517a256aa42eb9066e3093ec4b1b266ff05",
       "shared-authority regression tests reject a substituted development Squads authority while preserving the app-specific SPK identity"
     ]
   },
@@ -100,7 +100,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "739f915f8589efa00586de890b1b35e3929bce3e",
+      "commit": "fe8f0b076b4ec996ca0a6be1de366e39343a7315",
       "outcome": "selected"
     },
     {

@@ -1,5 +1,6 @@
 {
   "$schema": "melusina-release-v1",
+  "programId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
   "appHash": "736af129da4512aa579c35672eb786f02a01995c111800013aef932faef536e0",
   "releaseHash": "d9e39918254c2bcf2254fe858e59d431841374c42f03ba403c1991dd89b55595",
   "version": "0.1.36",

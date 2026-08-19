@@ -1,5 +1,6 @@
 {
   "$schema": "melusina-release-v1",
+  "programId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
   "appHash": "b456896456d52f06e5d11cd1943f861a8ef3e8caddb8ebe525fde7e1ca2d8628",
   "authorSig": "Lra935/hoj7YEmT8w8qZgcV4a5MuKnOC9PBGiA2m7XxN3HMlzquSsvjfZHcXZNoNMvzyruFzacpeJ05xDon1Cw==",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",

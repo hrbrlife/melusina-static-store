@@ -172,3 +172,49 @@ add a complete hash-locked Python dependency set enforced by the greenfield
 build, determine the appropriate forward release version if package bytes
 differ, and then repeat the clean-clone proof before Sheets Bureau can join a
 release cohort.
+
+## Doc Bureau — source repair awaiting publication and Python-input hold
+
+The source at catalog commit
+`ea232d48cc837bdc65b1886ab41ca5109e6c8a69` was independently shallow-cloned
+from the advertised `main` tip with its declared submodule initialized and a
+clean Git status. Its metadata and runtime-contract app ID match the catalog
+identity; metadata is `2.0.32` (versionNumber 27), matching the catalog's
+`live_version`. Production dependency audits report zero runtime
+vulnerabilities for the root client, Document backend, and Document client
+(`npm audit --omit=dev`).
+
+The repaired clean checkout passed all of the following:
+
+- `make release-inputs test-release-inputs`, including mutations that reject
+  floating frontend installs and an unisolated Document build output;
+- `make test`: 204 Python unit tests, 23 integration tests, the locked root
+  frontend build, and the locked Document client build into a disposable
+  output directory;
+- `make build-source`, including the built-rich-frontend verification and
+  Grainlinkd binary build; and
+- `GOWORK=off go vet ./...`, uncached Go tests, and the Go race suite in
+  `grain/go/grainlinkd`.
+
+The catalog-base source was not source-gate ready: its Document client helper
+used a floating `npm install`, while the top-level test target suppressed a
+missing frontend command. Invoking the Document helper also made Vite empty
+the tracked frontend directory, deleting separately managed shared assets
+until a later full build restored them. Local commit
+`e1d0627671ebe4d191d8057eb64172aab9ce4a1d` changes every checked build path
+to `npm ci`, makes the test build the Document frontend in an explicit
+temporary output directory, verifies that output, and adds fail-closed source
+and mutation controls for that routing. The full source gate passed again
+after the repair and left no generated tracked-file changes.
+
+This repair is not advertised by the canonical origin: on 2026-08-19 remote
+`main` remains the catalog-base commit and no remote head contains
+`e1d0627671ebe4d191d8057eb64172aab9ce4a1d`. No catalog pin or package claim
+was changed. It is also not yet a deterministic release candidate: under
+`grains/document`, the tracked Python requirements file has seven
+version-only entries, zero hashes, no Python lockfile, and no checked-in
+hash-enforcement control for a greenfield install. The source owner must
+publish the reviewed repair (or successor), either prove that this input is
+not a release dependency or add a complete enforced hash lock, determine any
+needed forward version, and repeat the clean-clone proof before Doc Bureau can
+join a release cohort.

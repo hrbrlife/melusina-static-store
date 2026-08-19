@@ -82,6 +82,13 @@ CrateLink's current non-archival v15 origin tip
 missing older local-only candidate remains evidence only; the source-pinned
 catalog entry selects the verified current remote tip instead.
 
+MiniGit's sole timestamp-newer remote head,
+`0e9adc2abc87d229a04f5166beec633ecc3df644` on `publish`, was independently
+rejected as source input: it is a divergent release-artifact archive that
+removes the buildable application tree. The exact `dev-publish` tip
+`610c44614a8b499d1e80795a97daca66a9912f77` is therefore the newest valid
+source; a fresh recursive clone passed `make vet test` on 2026-08-19.
+
 ## Shell–DueProcess autonomous-create versioning — local candidates awaiting publication
 
 On 2026-08-19, the shell ordinal gate exposed that a prior respondent-share

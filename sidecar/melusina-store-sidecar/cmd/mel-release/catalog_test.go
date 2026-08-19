@@ -175,26 +175,6 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		t.Fatalf("real catalog scope = apps %d expected %d, want 32", len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
-	ready := map[string]struct{}{
-		"welcome":         {},
-		"namedcoin":       {},
-		"namedcoin-admin": {},
-		"botmother":       {},
-		"sheets-bureau":   {},
-		"minigit":         {},
-		"fineract-setup":  {},
-		"canboard":        {},
-		"cratelink":       {},
-		"bureau-contacts": {},
-		"bureau-calendar": {},
-		"doc-bureau":      {},
-		"paint-bureau":    {},
-		"jinn":            {},
-		"telescreen":      {},
-		"instaco":         {},
-		"goldkey":         {},
-		"shell-tester":    {},
-	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{
 			"group":             app.Group,
@@ -214,13 +194,15 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 			t.Fatalf("duplicate catalog app name %q in %q and %q", app.Name, previousGroup, app.Group)
 		}
 		seenNames[app.Name] = app.Group
-		_, expectedReady := ready[app.Name]
-		if expectedReady {
+		if app.ReleaseState == "ready" {
 			if err := app.RequireReleaseReady(); err != nil {
 				t.Fatalf("evidenced ready app %q rejected: %v", app.Name, err)
 			}
 			if app.SourceSelectionState != "direct-dev-verified" || app.SourceSelectionReceipt != "prepublish-selections/"+app.AppID+".json" {
 				t.Fatalf("evidenced ready app %q lacks its direct source-selection record", app.Name)
+			}
+			if info, err := os.Stat(filepath.Join(filepath.Dir(realPath), filepath.FromSlash(app.SourceSelectionReceipt))); err != nil || info.IsDir() {
+				t.Fatalf("evidenced ready app %q lacks a readable source-selection receipt: %v", app.Name, err)
 			}
 		} else if app.ReleaseState != "hold" {
 			t.Fatalf("catalog app %q is publishable without explicit evidence", app.Name)

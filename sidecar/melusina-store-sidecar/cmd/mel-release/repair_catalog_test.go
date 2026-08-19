@@ -74,6 +74,122 @@ func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
 	}
 }
 
+func TestRepairCatalogReprojectsLegacyTerminalWithVerifiedCandidateFinalRelease(t *testing.T) {
+	h := newHarness(t)
+	v1 := h.fx.Versions["1.0.1"]
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	mustNoErr(t, "approve", h.approve())
+
+	// Model a terminal written before final-release.json existed: its immutable
+	// record still names the proposal-time receipt, which has since drifted, but
+	// the candidate retains the exact final release that binds the same WAL.
+	rec := h.wal()
+	finalRaw, err := os.ReadFile(rec.ReleaseJSON.Path)
+	if err != nil {
+		t.Fatalf("read final release: %v", err)
+	}
+	legacyPath := h.cfg.receiptPath(testAppID, "release.json")
+	if err := os.WriteFile(legacyPath, finalRaw, 0o600); err != nil {
+		t.Fatalf("write legacy release: %v", err)
+	}
+	_, legacyRef, err := readFinalReleaseJSON(legacyPath, rec.NewAppHash, rec.Version, rec.ReleaseNonce)
+	if err != nil {
+		t.Fatalf("read legacy release: %v", err)
+	}
+	rec.ReleaseJSON = legacyRef
+	mustNoErr(t, "journal legacy WAL", journalWAL(h.cfg.walPath(testAppID), &rec))
+
+	terminalPath := filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")
+	var terminal terminalReceipt
+	rawTerminal, err := os.ReadFile(terminalPath)
+	if err != nil || json.Unmarshal(rawTerminal, &terminal) != nil {
+		t.Fatalf("read terminal: %v", err)
+	}
+	terminal.NativeReceipts["releaseJson"] = legacyRef
+	mustWriteJSON(t, terminalPath, terminal)
+
+	candidateRelease := filepath.Join(h.cfg.appStateDir(testAppID), "provider", "candidate", "ceremony", "RELEASE.json")
+	if err := os.MkdirAll(filepath.Dir(candidateRelease), 0o700); err != nil {
+		t.Fatalf("create candidate release dir: %v", err)
+	}
+	if err := os.WriteFile(candidateRelease, finalRaw, 0o600); err != nil {
+		t.Fatalf("write candidate final release: %v", err)
+	}
+	if err := os.Remove(h.cfg.receiptPath(testAppID, "final-release.json")); err != nil {
+		t.Fatalf("remove modern final receipt: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte(`{"drift":true}\n`), 0o600); err != nil {
+		t.Fatalf("tamper legacy release: %v", err)
+	}
+
+	state := h.provState()
+	state.Served = ""
+	mustWriteJSON(t, h.statePath, state)
+	before := h.callOps()
+	repairPath, err := runRepairCatalog(h.cfg, h.catalog, testAppID)
+	mustNoErr(t, "repair legacy terminal", err)
+	if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote")+1; got != want {
+		t.Fatalf("legacy repair promote calls = %d, want %d", got, want)
+	}
+
+	var receipt catalogRepairReceipt
+	rawRepair, err := os.ReadFile(repairPath)
+	if err != nil || json.Unmarshal(rawRepair, &receipt) != nil {
+		t.Fatalf("read repair receipt: %v", err)
+	}
+	if receipt.AppHash != v1.AppHash || receipt.ReleaseJSON.Path != candidateRelease {
+		t.Fatalf("repair did not bind the verified candidate final release: %+v", receipt)
+	}
+	if err := verifyArtifactRef(receipt.ReleaseJSON); err != nil {
+		t.Fatalf("repair final release artifact: %v", err)
+	}
+}
+
+func TestRepairCatalogRefusesLegacyReleaseDriftWithoutVerifiedCandidateFinalRelease(t *testing.T) {
+	h := newHarness(t)
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	mustNoErr(t, "approve", h.approve())
+
+	rec := h.wal()
+	finalRaw, err := os.ReadFile(rec.ReleaseJSON.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyPath := h.cfg.receiptPath(testAppID, "release.json")
+	if err := os.WriteFile(legacyPath, finalRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, legacyRef, err := readFinalReleaseJSON(legacyPath, rec.NewAppHash, rec.Version, rec.ReleaseNonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec.ReleaseJSON = legacyRef
+	mustNoErr(t, "journal legacy WAL", journalWAL(h.cfg.walPath(testAppID), &rec))
+
+	terminalPath := filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")
+	var terminal terminalReceipt
+	rawTerminal, err := os.ReadFile(terminalPath)
+	if err != nil || json.Unmarshal(rawTerminal, &terminal) != nil {
+		t.Fatalf("read terminal: %v", err)
+	}
+	terminal.NativeReceipts["releaseJson"] = legacyRef
+	mustWriteJSON(t, terminalPath, terminal)
+	if err := os.Remove(h.cfg.receiptPath(testAppID, "final-release.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPath, []byte(`{"drift":true}\n`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	before := h.callOps()
+	if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
+		t.Fatal("repair accepted legacy release drift without a verified final candidate")
+	}
+	if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {
+		t.Fatalf("invalid legacy repair issued promote: got %d, want %d", got, want)
+	}
+}
+
 func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 	t.Run("nonterminal WAL", func(t *testing.T) {
 		h := newHarness(t)

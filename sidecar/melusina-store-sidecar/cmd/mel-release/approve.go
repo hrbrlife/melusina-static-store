@@ -81,6 +81,19 @@ func runApprove(c Config, catalog *Catalog, selector string) (string, error) {
 				return "", err
 			}
 		case stateRegistered:
+			// Older WALs recorded the proposal-time RELEASE.json and then let the
+			// provider overwrite that path during finalization. Refresh the final
+			// release artifact before promotion so a terminal receipt never binds a
+			// file whose bytes have already changed.
+			before := rec.ReleaseJSON
+			if err := refreshFinalReleaseRef(c, &rec); err != nil {
+				return "", fmt.Errorf("final release artifact: %w", err)
+			}
+			if before != rec.ReleaseJSON {
+				if err := journalWAL(walPath, &rec); err != nil {
+					return "", fmt.Errorf("journal final release artifact: %w", err)
+				}
+			}
 			if err := ensurePromoted(c, prov, app, &rec); err != nil {
 				return "", fmt.Errorf("promote: %w", err)
 			}
@@ -158,10 +171,14 @@ func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
 		if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
 			return err
 		}
+		if err := refreshFinalReleaseRef(c, rec); err != nil {
+			return err
+		}
 		return verifyRegisteredLive(prov, rec)
 	}
 	registerPath := c.receiptPath(rec.AppID, "register.json")
-	if err := prov.ApproveRegister(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, rec.TransactionPDA, registerPath, rec.ReleaseJSON.Path); err != nil {
+	finalReleasePath := c.receiptPath(rec.AppID, "final-release.json")
+	if err := prov.ApproveRegister(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, rec.TransactionPDA, registerPath, finalReleasePath); err != nil {
 		return err
 	}
 	ref, err := readRegisterReceipt(registerPath, rec.NewReleasePDA, rec.ReleaseHash)
@@ -169,7 +186,35 @@ func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
 		return err
 	}
 	rec.RegisterReceipt = ref
+	if _, finalRef, err := readFinalReleaseJSON(finalReleasePath, rec.NewAppHash, rec.Version, rec.ReleaseNonce); err != nil {
+		return fmt.Errorf("read finalized release: %w", err)
+	} else {
+		rec.ReleaseJSON = finalRef
+	}
 	return verifyRegisteredLive(prov, rec)
+}
+
+// refreshFinalReleaseRef resolves the immutable final RELEASE.json produced
+// after the Squads transaction becomes Active. New releases write it to a
+// separate receipt path; the candidate ceremony path is retained only to
+// recover legacy WALs that overwrote their proposal-time release.json.
+func refreshFinalReleaseRef(c Config, rec *walReceipt) error {
+	paths := []string{
+		c.receiptPath(rec.AppID, "final-release.json"),
+		filepath.Join(c.appStateDir(rec.AppID), "provider", "candidate", "ceremony", "RELEASE.json"),
+	}
+	var firstErr error
+	for _, path := range paths {
+		_, ref, err := readFinalReleaseJSON(path, rec.NewAppHash, rec.Version, rec.ReleaseNonce)
+		if err == nil {
+			rec.ReleaseJSON = ref
+			return nil
+		}
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	return fmt.Errorf("no verified finalized RELEASE.json for app %s: %w", rec.AppID, firstErr)
 }
 
 func verifyRegisteredLive(prov SignerProvider, rec *walReceipt) error {

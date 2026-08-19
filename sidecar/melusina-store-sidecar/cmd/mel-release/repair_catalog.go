@@ -35,6 +35,7 @@ type catalogRepairReceipt struct {
 	Terminal        artifactRef `json:"terminal"`
 	Candidate       artifactRef `json:"candidate"`
 	StageReceipt    artifactRef `json:"stageReceipt"`
+	ReleaseJSON     artifactRef `json:"releaseJson"`
 	PromoteReceipt  artifactRef `json:"promoteReceipt"`
 	CompletedAtUnix int64       `json:"completedAtUnix"`
 }
@@ -86,7 +87,8 @@ func runRepairCatalog(c Config, catalog *Catalog, selector string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	if err := verifyCatalogRepairInputs(app, rec, candidate, terminal); err != nil {
+	finalReleaseRef, err := verifyCatalogRepairInputs(c, app, rec, candidate, terminal)
+	if err != nil {
 		return "", err
 	}
 
@@ -141,6 +143,7 @@ func runRepairCatalog(c Config, catalog *Catalog, selector string) (string, erro
 		Terminal:        terminalRef,
 		Candidate:       candidateRef,
 		StageReceipt:    rec.StageReceiptRef,
+		ReleaseJSON:     finalReleaseRef,
 		PromoteReceipt:  promoteRef,
 		CompletedAtUnix: time.Now().UTC().Unix(),
 	}
@@ -173,16 +176,16 @@ func readTerminalReceipt(path string) (terminalReceipt, artifactRef, error) {
 	return terminal, artifactRef{Path: path, SHA256: sha256Hex(raw), Size: int64(len(raw))}, nil
 }
 
-func verifyCatalogRepairInputs(app App, rec walReceipt, candidate candidateReceipt, terminal terminalReceipt) error {
+func verifyCatalogRepairInputs(c Config, app App, rec walReceipt, candidate candidateReceipt, terminal terminalReceipt) (artifactRef, error) {
 	if terminal.Schema != "melusina-mel-release-terminal-receipt-v1" || terminal.Outcome != "accepted" || terminal.CompletedAtUnix <= 0 {
-		return errors.New("terminal receipt is not an accepted completed release")
+		return artifactRef{}, errors.New("terminal receipt is not an accepted completed release")
 	}
 	if terminal.AppID != app.AppID || terminal.AppID != rec.AppID ||
 		terminal.AppHash != rec.NewAppHash || terminal.Version != rec.Version ||
 		terminal.ReleaseHash != rec.ReleaseHash || terminal.ReleaseEntryPDA != rec.NewReleasePDA ||
 		terminal.StageID != rec.StageID || terminal.GenerationID != rec.GenerationID ||
 		terminal.GenerationHash != rec.GenerationHash {
-		return errors.New("terminal receipt does not bind the current DONE WAL")
+		return artifactRef{}, errors.New("terminal receipt does not bind the current DONE WAL")
 	}
 	if candidate.AppID != rec.AppID || candidate.Version != rec.Version ||
 		candidate.Component.ComponentID != rec.AppID || candidate.Component.ComponentClass != "app" ||
@@ -190,54 +193,62 @@ func verifyCatalogRepairInputs(app App, rec walReceipt, candidate candidateRecei
 		candidate.Component.SizeBytes != rec.ArtifactSize || candidate.Component.ReleaseHash != rec.ReleaseHash ||
 		candidate.Component.StageID != rec.StageID || candidate.Component.Chain.ReleasePDA != rec.NewReleasePDA ||
 		candidate.ReleaseNonce != rec.ReleaseNonce || candidate.SquadsProposal.TransactionPDA != rec.TransactionPDA {
-		return errors.New("immutable candidate does not bind the current terminal release")
+		return artifactRef{}, errors.New("immutable candidate does not bind the current terminal release")
 	}
 	if !sameArtifactRef(candidate.StageReceipt, rec.StageReceiptRef) {
-		return errors.New("candidate stage receipt does not bind the current terminal stage")
+		return artifactRef{}, errors.New("candidate stage receipt does not bind the current terminal stage")
 	}
 	if !sameStringSlice(terminal.StalePDAs, rec.StalePDAs) {
-		return errors.New("terminal stale release set does not bind the current DONE WAL")
+		return artifactRef{}, errors.New("terminal stale release set does not bind the current DONE WAL")
 	}
 	for name, want := range map[string]artifactRef{
-		"build":       rec.BuildReceipt,
-		"stage":       rec.StageReceiptRef,
-		"releaseJson": rec.ReleaseJSON,
-		"proposal":    rec.ProposalReceipt,
-		"register":    rec.RegisterReceipt,
-		"promote":     rec.PromoteReceipt,
+		"build":    rec.BuildReceipt,
+		"stage":    rec.StageReceiptRef,
+		"proposal": rec.ProposalReceipt,
+		"register": rec.RegisterReceipt,
+		"promote":  rec.PromoteReceipt,
 	} {
 		got, ok := terminal.NativeReceipts[name]
 		if !ok || !sameArtifactRef(got, want) {
-			return fmt.Errorf("terminal receipt %s artifact does not bind the current DONE WAL", name)
+			return artifactRef{}, fmt.Errorf("terminal receipt %s artifact does not bind the current DONE WAL", name)
 		}
 		if err := verifyArtifactRef(got); err != nil {
-			return fmt.Errorf("terminal %s artifact drift: %w", name, err)
+			return artifactRef{}, fmt.Errorf("terminal %s artifact drift: %w", name, err)
 		}
 	}
+	if got, ok := terminal.NativeReceipts["releaseJson"]; !ok || !sameArtifactRef(got, rec.ReleaseJSON) {
+		return artifactRef{}, errors.New("terminal releaseJson artifact does not bind the current DONE WAL")
+	}
+	// A release prior to the final-receipt split could overwrite its
+	// proposal-time release.json after the terminal recorded it. Never accept
+	// arbitrary replacement bytes: resolve only the independently binding final
+	// release from the protected receipt/candidate locations.
+	finalReleaseRef := rec.ReleaseJSON
+	if err := refreshFinalReleaseRef(c, &rec); err != nil {
+		return artifactRef{}, fmt.Errorf("verified final release artifact: %w", err)
+	}
+	finalReleaseRef = rec.ReleaseJSON
 	if _, _, err := readStageReceipt(rec.StageReceiptRef.Path, rec.AppID, rec.NewAppHash, rec.ReleaseHash); err != nil {
-		return fmt.Errorf("terminal stage receipt: %w", err)
+		return artifactRef{}, fmt.Errorf("terminal stage receipt: %w", err)
 	}
 	if _, _, err := readProposalReceipt(rec.ProposalReceipt.Path, rec.NewReleasePDA); err != nil {
-		return fmt.Errorf("terminal proposal receipt: %w", err)
+		return artifactRef{}, fmt.Errorf("terminal proposal receipt: %w", err)
 	}
 	if _, err := readRegisterReceipt(rec.RegisterReceipt.Path, rec.NewReleasePDA, rec.ReleaseHash); err != nil {
-		return fmt.Errorf("terminal register receipt: %w", err)
+		return artifactRef{}, fmt.Errorf("terminal register receipt: %w", err)
 	}
 	if _, err := readPromoteReceipt(rec.PromoteReceipt.Path, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version); err != nil {
-		return fmt.Errorf("terminal promote receipt: %w", err)
-	}
-	if _, _, err := readFinalReleaseJSON(rec.ReleaseJSON.Path, rec.NewAppHash, rec.Version, rec.ReleaseNonce); err != nil {
-		return fmt.Errorf("terminal final release: %w", err)
+		return artifactRef{}, fmt.Errorf("terminal promote receipt: %w", err)
 	}
 	if terminal.ServedAppHash != rec.NewAppHash {
-		return errors.New("terminal receipt did not record the candidate as served")
+		return artifactRef{}, errors.New("terminal receipt did not record the candidate as served")
 	}
 	for _, active := range terminal.ActiveAfter {
 		if active.PDA == rec.NewReleasePDA && active.AppHash == rec.NewAppHash && active.Version == rec.Version {
-			return nil
+			return finalReleaseRef, nil
 		}
 	}
-	return errors.New("terminal receipt has no matching Active ReleaseEntry")
+	return artifactRef{}, errors.New("terminal receipt has no matching Active ReleaseEntry")
 }
 
 func verifyCatalogRepairLiveActive(provider SignerProvider, rec walReceipt) error {

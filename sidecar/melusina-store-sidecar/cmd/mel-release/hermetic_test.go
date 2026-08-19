@@ -270,6 +270,10 @@ func main() {
 			snapshot()
 			rec["transactionSignatures"] = []string{"regsig-" + inf.PdaNew}
 		}
+		writeJSON(env("MEL_FINAL_RELEASE_JSON_OUT"), map[string]any{
+			"$schema": "melusina-release-v1", "appHash": inf.AppHash, "releaseHash": inf.ReleaseHash,
+			"version": inf.Version, "releaseNonce": env("MEL_RELEASE_NONCE"), "releaseEntryPda": inf.PdaNew,
+		})
 		writeJSON(env("MEL_REGISTER_RECEIPT_OUT"), rec)
 
 	case "promote":

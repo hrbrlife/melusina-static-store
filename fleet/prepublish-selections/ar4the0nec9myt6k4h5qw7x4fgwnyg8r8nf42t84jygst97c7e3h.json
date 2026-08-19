@@ -1,0 +1,52 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+  "sourceRepository": "https://github.com/hrbrlife/melusina_teleport2",
+  "sourceCommit": "a943d5a5fb491d5029b67ac157b92379d94e0a60",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "same",
+  "decisionSummary": "Selected the current Teleport dev-publish v1.3.4/version-10 source after a complete remote-head inventory. The Aug 14 session-teardown line is an ancestor of this source, which also contains later release binding, dependency lock, and fail-closed shell-permission work. The divergent publish line is the historical v1.0.0 delivery branch, retained as evidence rather than release input.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "clean exact checkout at the selected commit",
+      "origin dev-publish and main both advertise the selected commit",
+      "all advertised remote heads recorded and reviewed for current source selection",
+      "make vet test verify-build",
+      "runtime contract matches immutable app identity and declares the greenfield visible UI probe"
+    ]
+  },
+  "reviewedRefs": [
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "a943d5a5fb491d5029b67ac157b92379d94e0a60",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "a943d5a5fb491d5029b67ac157b92379d94e0a60",
+      "outcome": "baseline"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+      "commit": "765e1e39a3e1f516586fa687ee1f45d3d873ff95",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/main",
+      "commit": "560d8f61803a971aec4bb800263acb8a6c1ed949",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/publish",
+      "commit": "0d05c47159ca4221ca0397e09f37d109ae90fdb8",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/publish",
+      "commit": "0d05c47159ca4221ca0397e09f37d109ae90fdb8",
+      "outcome": "archive"
+    }
+  ]
+}

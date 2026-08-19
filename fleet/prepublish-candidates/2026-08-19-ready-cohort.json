@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 19,
+  "releaseReadyAppCount": 20,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -55,6 +55,15 @@
       "version": "0.1.36",
       "spkSha256": "7b0c8f4f128977f88670d01b0a4218975bd34e201948afacc089b0848a6833bf",
       "appHash": "b66803da901564254f409e3ba13b80e3358c6cb3a30e7335f1b34ff7920bfb41"
+    },
+    {
+      "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+      "catalogName": "Teleport",
+      "sourceCommit": "a943d5a5fb491d5029b67ac157b92379d94e0a60",
+      "sourceSelectionReceipt": "prepublish-selections/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.json",
+      "version": "1.3.4",
+      "spkSha256": "8e5b7c2d88c651d4a856d9c3b7b4010ef2658d86a5947486b76b7b1fd79163e4",
+      "appHash": "287ec17fd51d2e8e8b1acdddfefe2f08a2ec7c08fa8bec3eed82fef37cf7407e"
     },
     {
       "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",

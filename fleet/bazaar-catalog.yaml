@@ -238,6 +238,10 @@ groups:
         # worktree were independently verified before this source pin was
         # restored.
         source_commit: a943d5a5fb491d5029b67ac157b92379d94e0a60
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.json
         publish_slug: teleport
         catalog_name: Teleport
         live_version: 1.3.4

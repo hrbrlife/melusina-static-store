@@ -119,6 +119,23 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	}
 }
 
+func TestLoadCatalogRejectsAppSpecificSquadsAuthority(t *testing.T) {
+	path := writeCatalog(t)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content),
+		"        source_path: ccash_go_htmx\n",
+		"        source_path: ccash_go_htmx\n        squads_vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n", 1)
+	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "app-specific Squads authority") {
+		t.Fatalf("LoadCatalog accepted app-specific Squads authority: %v", err)
+	}
+}
+
 func TestRequireCompleteCatalogSlot(t *testing.T) {
 	if err := requireCompleteCatalogSlot(App{AppID: "app"}); err != nil {
 		t.Fatalf("empty optional slot: %v", err)
@@ -159,6 +176,8 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
 	ready := map[string]struct{}{
+		"welcome":         {},
+		"namedcoin-admin": {},
 		"botmother":       {},
 		"sheets-bureau":   {},
 		"minigit":         {},
@@ -173,6 +192,7 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		"telescreen":      {},
 		"instaco":         {},
 		"goldkey":         {},
+		"shell-tester":    {},
 	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{

@@ -279,6 +279,14 @@ def catalog_config() -> dict[str, Any]:
         for spec in apps.values():
             if not isinstance(spec, dict) or not isinstance(spec.get("appId"), str) or not spec["appId"]:
                 raise ProviderError("Bazaar catalog app is missing appId")
+            for field in (
+                "release_squads_authority", "squads_authority", "squads_multisig",
+                "squads_vault", "squads_program_id", "publisher_squads_vault",
+            ):
+                if field in spec:
+                    raise ProviderError(
+                        f"Bazaar catalog app {spec['appId']} may not declare app-specific Squads authority field {field!r}"
+                    )
             if not isinstance(spec.get("source_repository"), str):
                 raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing source_repository")
             canonical_source_repository(spec["source_repository"])

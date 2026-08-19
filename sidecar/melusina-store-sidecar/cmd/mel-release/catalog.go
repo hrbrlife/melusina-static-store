@@ -210,7 +210,9 @@ func LoadCatalog(path string) (*Catalog, error) {
 			flush()
 			curApp = &App{Group: curGroup, Name: key}
 		case indent == fieldIndent && curApp != nil && hasVal:
-			assignAppField(curApp, key, unquote(val))
+			if err := assignAppField(curApp, key, unquote(val)); err != nil {
+				return nil, fmt.Errorf("Bazaar catalog manifest %s line %d: %w", path, lineNo, err)
+			}
 		default:
 			// Inside an apps: block but matching no expected production: a
 			// mis-indented or reshaped line that would otherwise silently drop an
@@ -359,7 +361,7 @@ func sourceSelectionReady(value string) bool {
 	return value == "direct-dev-verified" || value == "prepublish-integrated"
 }
 
-func assignAppField(a *App, key, val string) {
+func assignAppField(a *App, key, val string) error {
 	switch key {
 	case "appId":
 		a.AppID = val
@@ -393,7 +395,10 @@ func assignAppField(a *App, key, val string) {
 		a.SourceSelectionReceipt = val
 	case "release_state":
 		a.ReleaseState = val
+	case "release_squads_authority", "squads_authority", "squads_multisig", "squads_vault", "squads_program_id", "publisher_squads_vault":
+		return fmt.Errorf("app %q may not declare app-specific Squads authority field %q", a.Name, key)
 	}
+	return nil
 }
 
 func assignReleaseSquadsAuthority(authority *SquadsAuthority, key, value, path string, lineNo int) error {

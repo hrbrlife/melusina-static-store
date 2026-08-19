@@ -893,6 +893,29 @@ def test_catalog_pins_one_shared_squads_authority():
             restore_env(old)
 
 
+def test_catalog_rejects_app_specific_squads_authority():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "app": {
+                "appId": "app",
+                "source_path": "app",
+                "squads_vault": TEST_SQUADS_VAULT,
+            },
+        })
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "app-specific Squads authority" in str(exc), exc
+            else:
+                raise AssertionError("catalog accepted an app-specific Squads authority")
+        finally:
+            restore_env(old)
+
+
 def test_store_generation_template_pins_catalog_shared_squads_authority():
     """A first install must not omit or drift from the single release authority."""
     catalog = HERE.parent / "fleet" / "bazaar-catalog.yaml"
@@ -2204,6 +2227,7 @@ if __name__ == "__main__":
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
     test_catalog_pins_one_shared_squads_authority()
+    test_catalog_rejects_app_specific_squads_authority()
     test_store_generation_template_pins_catalog_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()

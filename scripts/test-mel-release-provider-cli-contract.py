@@ -1655,7 +1655,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "0f224b9d0de09b93eb257bf21788f6f4636d123d", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "aff5cc7ce2b793eee34f97e10d27d00bec441941", "DueProcess", "dueprocess"),
+            ("dueprocess", "739f915f8589efa00586de890b1b35e3929bce3e", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
@@ -1682,7 +1682,15 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "aff5cc7ce2b793eee34f97e10d27d00bec441941", dueprocess
+    assert dueprocess["source_commit"] == "739f915f8589efa00586de890b1b35e3929bce3e", dueprocess
+    assert dueprocess["source_baseline_branch"] == "main", dueprocess
+    assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
+    assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
+    assert dueprocess["release_state"] == "ready", dueprocess
+    assert dueprocess["source_selection_state"] == "direct-dev-verified", dueprocess
+    assert dueprocess["source_selection_receipt"] == (
+        "prepublish-selections/47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0.json"
+    ), dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-pinned", clientspace

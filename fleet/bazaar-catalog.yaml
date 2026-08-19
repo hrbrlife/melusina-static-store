@@ -154,10 +154,17 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # The current v78 source is the exact current dev-publish tip. Its
-        # pinned dependency graph was freshly cloned recursively and passed
-        # Station tests, whole-tree vet, and check-drift on 2026-08-19.
-        source_commit: aff5cc7ce2b793eee34f97e10d27d00bec441941
+        # v0.1.75/appVersion-79 retains the current autonomous-share source
+        # and selectively adds its release-health controls. Its fresh clone,
+        # test suite, drift gate, deterministic package, and shared-authority
+        # controls have all passed.
+        source_commit: 739f915f8589efa00586de890b1b35e3929bce3e
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0.json
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess

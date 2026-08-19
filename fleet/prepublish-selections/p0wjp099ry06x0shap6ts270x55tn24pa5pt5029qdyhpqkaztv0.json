@@ -1,0 +1,33 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
+  "sourceRepository": "https://github.com/hrbrlife/melusina_bureau_cal_app",
+  "sourceCommit": "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc",
+  "selectionMethod": "direct-dev",
+  "mainBaselineRelation": "historical-divergent",
+  "decisionSummary": "The Aug 18 dev-publish v0.22 source is canonical: it carries the current runtime contract, v22 package identity binding, and reproducible package controls. The preserved v19 connection snapshot was compared function-by-function: the selected source retains every prior connection-capability function and adds newer event/contact behavior. Main and develop are an April pre-greenfield tree; remaining heads are merged predecessors or historical artifact/release lines.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit with the recorded spkmodule revision",
+      "complete current remote-head snapshot reviewed, including the preserved v19 connection source",
+      "make vet test lint-vocab",
+      "MEL_RELEASE_GREENFIELD_PACK=1 make package-reproducibility and spk verify",
+      "two candidate package runs matched SHA-256 66dbac1ffee123775e5002d91c4f5f042eab7162135dd8cae26bb2f19db9c084 and packageId 66dbac1ffee123775e5002d91c4f5f04",
+      "provider candidate appHash aa3dd5ded43b546e9467a24d0601153f9279ab2c89b0a14071a0402d9402dc5f is distinct from the signed public 0.20.0 pointer appHash d95582395ec790e54f423ce675be8a5633fb89b88acbfc694fb100b9b8655753"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/build/wave0-scaffold", "commit": "4e311b5a1678afc793c2b8fcbdfc01e440448f00", "outcome": "archive"},
+    {"ref": "refs/heads/codex/canonical-release-cal-20260713", "commit": "9f77f79f87345d10a0177ce3cd421cee667b0fee", "outcome": "archive"},
+    {"ref": "refs/heads/develop", "commit": "037623b707098e4bdaa538971f9dfe30934c90fc", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc", "outcome": "selected"},
+    {"ref": "refs/heads/fix/prelaunch-calendar-v21", "commit": "dbd4590c599b2708f7f4c8b5786f951a520a9c99", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "037623b707098e4bdaa538971f9dfe30934c90fc", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/build/wave0-scaffold", "commit": "4e311b5a1678afc793c2b8fcbdfc01e440448f00", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-bureau-cal", "commit": "abe3ff92316da0b1270d9939c000b8819de4928c", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/golden/b07-calendar-release-20260804", "commit": "4e311b5a1678afc793c2b8fcbdfc01e440448f00", "outcome": "archive"},
+    {"ref": "refs/heads/preserve/msb-prelaunch-calendar-v19-source-20260817", "commit": "0bf121efc31480ae23c7176a14076cb917505447", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "40182bc78cb0db0eb5ee77123a85cc87f1842e3d", "outcome": "archive"}
+  ]
+}

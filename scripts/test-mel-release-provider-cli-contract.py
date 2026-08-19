@@ -1416,7 +1416,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "fe6707e0a95409a28b2af5c148d38fc434151847",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
-        "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc",
         "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "cdd1ac07f9c2e93b5b1c06805619e903f990bb35",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
         "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
@@ -1439,6 +1438,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert contacts["source_commit"] == "039d7ea6f977a3fc02e6d96545de0c3d5850db88", contacts
     assert contacts["release_state"] == "ready", contacts
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
+    calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
+    assert calendar["reconciliation_state"] == "source-pinned", calendar
+    assert calendar["source_commit"] == "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc", calendar
+    assert calendar["release_state"] == "ready", calendar
+    assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
     assert ai_lagoon["candidate_source_commit"] == "dc4b842a7953eb3721d4a99edf0faa29d7c36853", ai_lagoon
@@ -1529,7 +1533,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert canboard["reconciliation_state"] == "source-pinned", canboard
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
     for app_id, source_path in {
-        "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "melusina-bureau-cal-app",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "vintage-test-dec",

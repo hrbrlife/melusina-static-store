@@ -169,13 +169,16 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        # The current dev-publish v33 candidate removes the tenant-specific
-        # package fallback and prevents an optional grain seed from overriding
-        # the shell-owned tenant binding. It is remotely recoverable, but its
-        # source policy still needs reconciliation before a clean proof can
-        # make it a release input.
-        candidate_source_commit: dc4b842a7953eb3721d4a99edf0faa29d7c36853
-        reconciliation_state: source-policy-unreconciled
+        # v0.7.26/appVersion-34 is the newest validated dev-publish source.
+        # It keeps tenant binding shell-owned and forward-ports consumer-bound,
+        # revocable AI capability grants without changing the shared publisher.
+        source_commit: e3c5efce87e692926f459a9556112716389636fb
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.json
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon

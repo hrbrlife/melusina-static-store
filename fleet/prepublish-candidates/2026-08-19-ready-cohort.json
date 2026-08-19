@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 27,
+  "releaseReadyAppCount": 28,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -199,6 +199,15 @@
       "version": "2.0.33",
       "spkSha256": "8efdaf64fb67c9e25e04a404c3aacb9b60e26210304c9429dfe52ab36e08c3f4",
       "appHash": "8687eeabbf656e40de38978cb9b5b2c3e9885436106af44fa6c29380ae791be2"
+    },
+    {
+      "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+      "catalogName": "AiLagoon",
+      "sourceCommit": "e3c5efce87e692926f459a9556112716389636fb",
+      "sourceSelectionReceipt": "prepublish-selections/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.json",
+      "version": "0.7.26",
+      "spkSha256": "9d62fff4716724a76386202ad37251139843044e0c4d6793e1df1c9a271ad2d4",
+      "appHash": "ebbe82fbf64270e5e7deaba232f77ef6dbc5cb3e1b163b4aa4dcf8b90af839b0"
     },
     {
       "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",

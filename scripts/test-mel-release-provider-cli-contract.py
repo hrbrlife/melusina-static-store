@@ -1625,8 +1625,10 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert paint["release_state"] == "ready", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
-    assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
-    assert ai_lagoon["candidate_source_commit"] == "dc4b842a7953eb3721d4a99edf0faa29d7c36853", ai_lagoon
+    assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
+    assert ai_lagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ai_lagoon
+    assert ai_lagoon["release_state"] == "ready", ai_lagoon
+    assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -1655,8 +1657,10 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
-    assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
-    assert not ai_lagoon.get("source_commit"), ai_lagoon
+    assert ai_lagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ai_lagoon
+    assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
+    assert ai_lagoon["release_state"] == "ready", ai_lagoon
+    assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
@@ -1708,6 +1712,18 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert ccashconfig["source_selection_receipt"] == (
         "prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json"
     ), ccashconfig
+    ailagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
+    assert ailagoon["source_path"] == "ai-lagoon-main", ailagoon
+    assert ailagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ailagoon
+    assert ailagoon["source_commit"] == "e3c5efce87e692926f459a9556112716389636fb", ailagoon
+    assert ailagoon["source_baseline_branch"] == "main", ailagoon
+    assert ailagoon["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ailagoon
+    assert ailagoon["reconciliation_state"] == "source-pinned", ailagoon
+    assert ailagoon["release_state"] == "ready", ailagoon
+    assert ailagoon["source_selection_state"] == "direct-dev-verified", ailagoon
+    assert ailagoon["source_selection_receipt"] == (
+        "prepublish-selections/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.json"
+    ), ailagoon
     for app_id, source_path, source_repo in (
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
         ("gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0", "instadao", "https://github.com/hrbrlife/MLSNA_token"),
@@ -1770,7 +1786,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"
+    app_id = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

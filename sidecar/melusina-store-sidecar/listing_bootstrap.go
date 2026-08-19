@@ -35,7 +35,10 @@ import (
 )
 
 const (
-	listingBootstrapStateName   = "store-release-listing-bootstrap-v1.json"
+	// A bootstrap WAL is bound to one immutable catalog index. Reusing a WAL
+	// across catalog generations can falsely carry an old app's "active" bit
+	// into a changed cohort, so the index digest is part of its durable name.
+	listingBootstrapStatePrefix = "store-release-listing-bootstrap-v1-"
 	listingBootstrapStateSchema = "melusina-store-release-listing-bootstrap-v1"
 	listingAccountSpace         = 251
 	listingFeeReserveLamports   = uint64(10_000)
@@ -226,7 +229,10 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 		StoreCertFingerprint: hex.EncodeToString(certFingerprint[:]),
 		Items:                items,
 	}
-	statePath := filepath.Join(cfg.CatalogMigrationStateDir, listingBootstrapStateName)
+	statePath, err := listingBootstrapStatePath(cfg.CatalogMigrationStateDir, indexSHAHex)
+	if err != nil {
+		return report, err
+	}
 	if existing, exists, err := readListingBootstrapState(statePath); err != nil {
 		return report, err
 	} else if exists {
@@ -597,6 +603,13 @@ func prepareListingBootstrapTransaction(ctx context.Context, rpc *listingBootstr
 	prepared.Signature = signature
 	prepared.RecentBlockhash = primitives.EncodeBase58(blockhash[:])
 	return prepared, nil
+}
+
+func listingBootstrapStatePath(migrationDir, indexSHA256 string) (string, error) {
+	if _, err := listingHex32(indexSHA256); err != nil {
+		return "", fmt.Errorf("listing bootstrap index SHA-256: %w", err)
+	}
+	return filepath.Join(migrationDir, listingBootstrapStatePrefix+strings.ToLower(indexSHA256)+".json"), nil
 }
 
 func mergeListingBootstrapState(current *listingBootstrapState, existing listingBootstrapState) error {

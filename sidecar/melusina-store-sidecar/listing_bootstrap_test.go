@@ -65,6 +65,23 @@ func TestMergeListingBootstrapStatePreservesPreparedTransaction(t *testing.T) {
 	}
 }
 
+func TestListingBootstrapStatePathIsBoundToImmutableCatalogGeneration(t *testing.T) {
+	first, err := listingBootstrapStatePath("/state", strings.Repeat("a", 64))
+	if err != nil {
+		t.Fatalf("first generation path: %v", err)
+	}
+	second, err := listingBootstrapStatePath("/state", strings.Repeat("b", 64))
+	if err != nil {
+		t.Fatalf("second generation path: %v", err)
+	}
+	if first == second || !strings.Contains(first, strings.Repeat("a", 64)) || !strings.Contains(second, strings.Repeat("b", 64)) {
+		t.Fatalf("generation-specific WAL paths = %q, %q", first, second)
+	}
+	if _, err := listingBootstrapStatePath("/state", "not-a-digest"); err == nil {
+		t.Fatal("invalid catalog digest produced a WAL path")
+	}
+}
+
 func TestValidateListingBootstrapStateRejectsIncompleteTerminalState(t *testing.T) {
 	state := listingTestState(t, "pending")
 	state.State = "registered"

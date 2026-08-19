@@ -37,6 +37,24 @@ Paint candidates. All three were rejected by their canonical origins as
 TeleScreen v19 candidate is now recorded in the table below; it remains held
 with the same source-owner publication requirement as Jinn and Paint.
 
+### Source-level Jinn–Paint compatibility
+
+The reviewed local Jinn v9 and Bureau Paint v21 candidates are compatible at
+the source-contract level. Both carry the same GrainContext schema file ID and
+universal interface ID. Jinn's focused tests prove that a generic peer is
+visible and claimable through the browser-driven PowerBox route, that its
+declared read-only tool can be discovered and dispatched, and that Paint's
+native `canvas.*` reads are admitted while `canvas.save` is excluded. Paint's
+focused GrainContext tests prove descriptor recognition, its native scoped
+provider, and persistent grant restoration. Jinn's bootstrap captures the
+Sandstorm API and supplies it to the resolver used by this user-initiated
+claim path.
+
+This is deliberately only source-level evidence. It does not prove a real
+shell picker interaction, a tenant capability grant, a governed release, or a
+fresh installed runtime. Those checks remain blocked by the two unrecoverable
+source commits and must follow their owner publication and clean-clone review.
+
 ## Required recovery action
 
 For each entry, the canonical source owner must do one of the following:

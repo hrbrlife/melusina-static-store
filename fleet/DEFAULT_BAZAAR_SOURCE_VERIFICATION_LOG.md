@@ -61,6 +61,21 @@ ahead of the catalog's recorded live version. Every row above remains held
 pending the full 33-app source cohort, deterministic package/release proof,
 served state, and fresh-install verification.
 
+## 2026-08-19 `dev-publish` source transition
+
+The source candidates recorded in the recovery queue have been published on
+their canonical origins' `dev-publish` branches, and DueProcess now points at
+its tested forward RPC-compatibility commit
+`aff5cc7ce2b793eee34f97e10d27d00bec441941`. This is a source-recovery event,
+not a release claim: it makes the exact commits remotely recoverable, but does
+not supersede the fresh-clone, source-gate, deterministic-package, catalog,
+tenant, or fresh-install requirements documented here.
+
+In particular, later references in this log to an unadvertised local candidate
+describe the historical pre-transition state. The recovery queue is the
+current ledger for the published `dev-publish` refs and the remaining
+clean-clone validation work.
+
 ## Shell–DueProcess autonomous-create versioning — local candidates awaiting publication
 
 On 2026-08-19, the shell ordinal gate exposed that a prior respondent-share

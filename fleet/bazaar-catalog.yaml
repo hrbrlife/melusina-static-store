@@ -14,6 +14,9 @@ catalog_index_sha256: 807c6c82ebc0d8a8dc075b26a9669fb609909881b82bc01be6812324a2
 expected_live_app_count: 33
 default_release_state: hold
 default_reconciliation_state: source-pinned
+# Every governed build must use the exact current tip of this branch. A Store
+# listing or a reachable historical commit is evidence, never source authority.
+default_source_branch: dev-publish
 #
 # appId is authoritative; source paths and catalog names are deliberately
 # descriptive because they historically differ.

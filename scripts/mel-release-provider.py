@@ -37,6 +37,7 @@ NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
+DEV_PUBLISH_BRANCH = "dev-publish"
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
 )
@@ -97,6 +98,22 @@ def canonical_source_repository(value: str) -> str:
         normalized = normalized[:-4]
     if not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized):
         raise ProviderError(f"invalid canonical source_repository: {value!r}")
+    return normalized
+
+
+def canonical_source_branch(value: str) -> str:
+    """Require the one governed branch used to build default-Bazaar apps.
+
+    A historical Store version or a reachable ancestor is not source-selection
+    authority.  A release input must name the exact tip of ``dev-publish`` so
+    the source, catalog, package, and public listing can agree on the newest
+    validated forward revision.
+    """
+    normalized = value.strip()
+    if normalized != DEV_PUBLISH_BRANCH:
+        raise ProviderError(
+            f"default_source_branch must be exactly {DEV_PUBLISH_BRANCH!r}"
+        )
     return normalized
 
 
@@ -163,6 +180,10 @@ def catalog_config() -> dict[str, Any]:
         raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
     if value.get("default_release_state") not in {"hold", "ready"}:
         raise ProviderError("bazaar-catalog.yaml has an invalid default_release_state")
+    default_source_branch = value.get("default_source_branch")
+    if not isinstance(default_source_branch, str):
+        raise ProviderError("bazaar-catalog.yaml is missing default_source_branch")
+    canonical_source_branch(default_source_branch)
     groups = value.get("groups")
     if not isinstance(groups, dict):
         raise ProviderError("Bazaar catalog config has no groups mapping")
@@ -177,6 +198,11 @@ def catalog_config() -> dict[str, Any]:
             if not isinstance(spec.get("source_repository"), str):
                 raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing source_repository")
             canonical_source_repository(spec["source_repository"])
+            if "source_branch" in spec:
+                source_branch = spec["source_branch"]
+                if not isinstance(source_branch, str):
+                    raise ProviderError(f"Bazaar catalog app {spec['appId']} has an invalid source_branch")
+                canonical_source_branch(source_branch)
             app_ids.append(spec["appId"])
     if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
@@ -209,6 +235,9 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
                     "source_repository": canonical_source_repository(str(spec.get("source_repository", ""))),
+                    "source_branch": canonical_source_branch(str(
+                        spec.get("source_branch", doc.get("default_source_branch", ""))
+                    )),
                     # Most applications keep release metadata at the project
                     # root. A unified app may keep it below the root that owns
                     # its Makefile; make that relationship explicit instead of
@@ -307,54 +336,39 @@ def require_clean_recursive_source_checkout(app_id: str, path: Path) -> None:
             )
 
 
-def require_source_commit_advertised_by_origin(app_id: str, path: Path, commit: str) -> None:
-    """Require a pinned source commit to be reachable from a live origin ref.
+def require_source_commit_advertised_by_origin(
+    app_id: str, path: Path, commit: str, source_branch: str
+) -> None:
+    """Require a source pin to equal the current governed remote branch tip.
 
-    A clean checkout with a correctly spelled ``origin`` can still contain an
-    unpublished local commit.  The complete-cohort audit is deliberately
-    read-only, so it does not fetch or rewrite the checkout.  Instead it reads
-    the currently advertised heads/tags and proves the pinned commit is an
-    ancestor of at least one of their locally available tips.  A normal full
-    clean clone contains those objects; a partial or stale local-only checkout
-    fails closed rather than becoming release input evidence.
+    A locally available commit, a Store version, or ancestry from some other
+    remote ref cannot select release input.  The declared pin must be exactly
+    the current ``origin/dev-publish`` tip.  This read-only check deliberately
+    does not fetch or rewrite a checkout; a stale or partial clone fails
+    closed rather than becoming evidence for a governed build.
     """
+    branch = canonical_source_branch(source_branch)
+    ref = f"refs/heads/{branch}"
     advertised = run([
-        "git", "-C", str(path), "ls-remote", "--heads", "--tags", "origin",
+        "git", "-C", str(path), "ls-remote", "--heads", "origin", ref,
     ])
-    tips: list[str] = []
-    for line in advertised.splitlines():
-        fields = line.split()
-        if len(fields) != 2 or not re.fullmatch(r"[0-9a-f]{40}", fields[0].lower()):
-            continue
-        ref = fields[1]
-        # Branch tips and peeled annotated-tag tips name commits directly. A
-        # lightweight tag also names a commit, but a raw annotated tag object
-        # may not; merge-base below simply skips that non-commit object.
-        if ref.startswith("refs/heads/") or ref.startswith("refs/tags/"):
-            tips.append(fields[0].lower())
+    tips = [
+        fields[0].lower()
+        for line in advertised.splitlines()
+        if len(fields := line.split()) == 2
+        and re.fullmatch(r"[0-9a-f]{40}", fields[0].lower())
+        and fields[1] == ref
+    ]
     if not tips:
-        raise ProviderError(f"origin advertises no source heads or tags for {app_id}")
-
-    for tip in sorted(set(tips)):
-        proc = subprocess.run(
-            ["git", "-C", str(path), "merge-base", "--is-ancestor", commit, tip],
-            text=True,
-            capture_output=True,
-        )
-        if proc.returncode == 0:
-            return
-        # Exit 1 means a valid graph query whose answer is "not an ancestor".
-        # Exit 128 is expected for an unpeeled annotated tag object; a peeled
-        # companion line, a branch, or another ref may still establish proof.
-        if proc.returncode in {1, 128}:
-            continue
-        detail = (proc.stderr or proc.stdout).strip()
+        raise ProviderError(f"origin does not advertise {branch} for {app_id}")
+    if len(set(tips)) != 1:
+        raise ProviderError(f"origin advertises ambiguous {branch} tips for {app_id}")
+    tip = tips[0]
+    if tip != commit.lower():
         raise ProviderError(
-            f"cannot verify advertised source ancestry for {app_id}: {detail[-3000:]}"
+            f"declared source_commit is not the current {branch} tip for {app_id}: "
+            f"want {tip}, got {commit.lower()}"
         )
-    raise ProviderError(
-        f"declared source_commit is not reachable from an advertised origin ref for {app_id}"
-    )
 
 
 def source_path(app_id: str, *, require_release_ready: bool = True) -> Path:
@@ -455,7 +469,7 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
             try:
                 source = source_path(app_id, require_release_ready=False)
                 require_source_commit_advertised_by_origin(
-                    app_id, source, spec["source_commit"].strip().lower()
+                    app_id, source, spec["source_commit"].strip().lower(), spec["source_branch"]
                 )
                 metadata_path = source_metadata_path(app_id, source, require_release_ready=False)
                 contract_path = source_runtime_contract_path(app_id, source, require_release_ready=False)
@@ -488,6 +502,7 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
                     "runtimeContractSha256": hex_sha(contract_path),
                     "sourceCommit": spec["source_commit"].strip().lower(),
                     "sourceRepository": spec["source_repository"],
+                    "sourceBranch": spec["source_branch"],
                     "version": version,
                     "versionNumber": version_number,
                 })
@@ -963,6 +978,10 @@ def write_unsigned_provisional_release(path: Path) -> None:
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
     source = source_path(app_id)
+    spec = app_spec(app_id)
+    require_source_commit_advertised_by_origin(
+        app_id, source, spec["source_commit"].strip().lower(), spec["source_branch"]
+    )
     source_metadata = source_metadata_path(app_id, source)
     slot = catalog_slot(app_id)
     work = state_root(app_id) / "candidate"

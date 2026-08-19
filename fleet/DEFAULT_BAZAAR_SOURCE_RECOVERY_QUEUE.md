@@ -12,6 +12,48 @@ approval and must not be used to promote a local checkout.
   - 18 are marked `source-commit-not-remotely-recoverable`.
   - 1 is marked `source-policy-unreconciled`.
 
+## 2026-08-19 remote `dev-publish` transition
+
+The recovery result below records the state before this controlled source
+transition. The following reviewed candidate commits have now been published
+to their canonical origin's `dev-publish` branch. This makes the source
+objects remotely recoverable; it does **not** by itself change a catalog pin,
+approve a package, or authorize a Bazaar release. Each still requires a fresh
+clean-clone provenance check, its declared source gates, deterministic package
+proof, and the complete-cohort gate before it can leave its current hold.
+
+| App | `dev-publish` commit |
+| --- | --- |
+| Welcome | `7a50e8b123fd7d107b4df1ba9c9db567a7862753` |
+| Popaye | `75e48c66a691cb2379d32d0599f2cc895b63a7b6` |
+| Cyberteller Config | `15e64ee261cd2b2ede14e5ce109611bfbf3d277e` |
+| AI Lagoon | `dc4b842a7953eb3721d4a99edf0faa29d7c36853` |
+| TeleScreen | `fe6707e0a95409a28b2af5c148d38fc434151847` |
+| InstaDAO | `a5a434ae3d36b32d415435df060f7349525dd087` |
+| Jinn | `08daf329d602bccc0d539c4ee7710e52b370fe99` |
+| Bureau Paint | `c5347931c2ae9ab3579c8eb869edec5a0f7b44ea` |
+| Bureau Calendar | `0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc` |
+| Bureau Contacts | `039d7ea6f977a3fc02e6d96545de0c3d5850db88` |
+| CanBoard | `2164058d5ad3cd275ec24d9498786a257e1efb2a` |
+| clientspace | `cdd1ac07f9c2e93b5b1c06805619e903f990bb35` |
+| Creeper | `d9a282fb50711038f7f456e8d107064f888742ae` |
+| GoldKey DEV | `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` |
+| Melusina Dashboard | `f2ff99faed09a9596cfebfa50670671ab6ff1e42` |
+| OpenSanctions | `3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6` |
+| Shell Tester | `9852aee2278e59e1411737bbb008c51d809d980a` |
+| Vintage | `bf88344c05ae70d2b791858f1a0a3e506d4e3740` |
+
+DueProcess also advanced its `dev-publish` branch from the catalog base to
+`aff5cc7ce2b793eee34f97e10d27d00bec441941`, the tested forward fix for the
+versioned autonomous-create RPC. Its catalog pin remains intentionally held
+until the source and shell move through the clean-cohort proof together.
+
+CrateLink is the only canonical source repository still missing a
+`dev-publish` branch. Its recorded forward candidate
+`09ffb91596ace2bfc164117401632584f270f702` is absent from the origin and from
+every available source object, so no replacement source may be invented or
+backfilled from an older Store release.
+
 On 2026-08-19, every canonical origin below was readable with the release
 workstation's non-interactive Git configuration. For every named candidate in
 the current table, a fresh temporary bare repository ran:
@@ -85,7 +127,7 @@ No local-only commit is a substitute for that proof.
 | Creeper | `source-commit-not-remotely-recoverable` | `d9a282fb50711038f7f456e8d107064f888742ae` | Not fetchable | Owner publishes the reviewed Creeper candidate or a validated successor. |
 | GoldKey Dev | `source-commit-not-remotely-recoverable` | `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` | Not fetchable | Owner publishes the reviewed GoldKey Dev candidate or a validated successor. |
 | Dashboard | `source-commit-not-remotely-recoverable` | `f2ff99faed09a9596cfebfa50670671ab6ff1e42` | Not fetchable | Owner publishes the reviewed Dashboard candidate or a validated successor. |
-| OpenSanctions | `source-commit-not-remotely-recoverable` | `3fb91a0cd37fe40a3e1341c8a0d9ac5851004ee6` | Not fetchable | Owner publishes the reviewed OpenSanctions candidate or a validated successor. |
+| OpenSanctions | `source-commit-not-remotely-recoverable` | `3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6` | Historical pre-transition probe rejected the candidate; it is now published on `dev-publish` and awaits fresh-clone validation. | Run fresh-clone validation before pinning the published candidate. |
 | Shell Tester | `source-commit-not-remotely-recoverable` | `9852aee2278e59e1411737bbb008c51d809d980a` | Not fetchable | Owner publishes the reviewed Shell Tester candidate or a validated successor. |
 | Vintage | `source-commit-not-remotely-recoverable` | `bf88344c05ae70d2b791858f1a0a3e506d4e3740` | Not fetchable | Owner publishes the reviewed Vintage candidate or a validated successor. |
 

@@ -818,6 +818,7 @@ def write_catalog_config(path, apps):
         "expected_live_app_count": len(normalized_apps),
         "default_release_state": "ready",
         "default_reconciliation_state": "source-pinned",
+        "default_source_branch": "dev-publish",
         "groups": {"msb": {"apps": normalized_apps}},
     }) + "\n", encoding="utf-8")
 
@@ -868,9 +869,8 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
         second = sources / "second"
         first_commit = write_source_release_fixture(first, first_app_id, "1.2.3", 7)
         second_commit = write_source_release_fixture(second, second_app_id, "2.3.4", 8)
-        # A normal clean clone may check out a pinned ancestor while its
-        # canonical origin currently advertises a newer branch tip. Preserve
-        # that graph shape in the fixture before detaching at the pin.
+        # The governed branch advances after the first commit. A release may
+        # only use its exact current tip, never an older reachable ancestor.
         (first / "advertised-descendant.txt").write_text("advertised\n", encoding="utf-8")
         subprocess.run(
             ["git", "-C", str(first), "add", "advertised-descendant.txt"],
@@ -884,13 +884,9 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
             ["git", "-C", str(first), "rev-parse", "HEAD"],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         ).stdout.strip()
-        subprocess.run(
-            ["git", "-C", str(first), "checkout", "--quiet", first_commit],
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        )
         config = root / "bazaar-catalog.yaml"
         ready_apps = {
-            "first": {"appId": first_app_id, "source_path": "first", "source_commit": first_commit},
+            "first": {"appId": first_app_id, "source_path": "first", "source_commit": advertised_first_commit},
             "second": {"appId": second_app_id, "source_path": "second", "source_commit": second_commit},
         }
         write_catalog_config(config, ready_apps)
@@ -908,11 +904,13 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
         advertised = {str(first): advertised_first_commit, str(second): second_commit}
 
         def fixture_run(args, **kwargs):
-            if (args[:2] == ["git", "-C"] and args[3:] == ["ls-remote", "--heads", "--tags", "origin"]):
+            if (args[:2] == ["git", "-C"] and args[3:] == [
+                "ls-remote", "--heads", "origin", "refs/heads/dev-publish",
+            ]):
                 commit = advertised.get(args[2])
                 if commit is None:
                     raise AssertionError(f"unexpected origin reachability source: {args}")
-                return f"{commit}\trefs/heads/main\n"
+                return f"{commit}\trefs/heads/dev-publish\n"
             return old_run(args, **kwargs)
 
         try:
@@ -922,8 +920,26 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
             assert result["sourcePinnedCount"] == 2, result
             assert result["verifiedSourceCount"] == 2, result
             assert [entry["appId"] for entry in result["sources"]] == [first_app_id, second_app_id], result
+            assert {entry["sourceBranch"] for entry in result["sources"]} == {"dev-publish"}, result
             assert result == json.loads(receipt.read_text(encoding="utf-8")), result
             assert str(sources) not in receipt.read_text(encoding="utf-8"), receipt.read_text(encoding="utf-8")
+
+            # A predecessor that remains reachable from dev-publish cannot
+            # become release input after the branch has advanced.
+            document = json.loads(config.read_text(encoding="utf-8"))
+            document["groups"]["msb"]["apps"]["first"]["source_commit"] = first_commit
+            config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+            stale = provider.audit_source_cohort(receipt)
+            assert stale["status"] == "incomplete", stale
+            assert stale["verifiedSourceCount"] == 1, stale
+            assert stale["failures"] == [{
+                "appId": first_app_id,
+                "name": "first",
+                "reason": "source provenance or release-input validation failed",
+            }], stale
+
+            document["groups"]["msb"]["apps"]["first"]["source_commit"] = advertised_first_commit
+            config.write_text(json.dumps(document) + "\n", encoding="utf-8")
 
             write_catalog_config(config, {
                 **ready_apps,
@@ -1076,6 +1092,7 @@ def test_catalog_requires_a_canonical_source_repository():
             "expected_live_app_count": 1,
             "default_release_state": "hold",
             "default_reconciliation_state": "source-pinned",
+            "default_source_branch": "dev-publish",
             "groups": {"msb": {"apps": {"app": {"appId": "app-id"}}}},
         }
         config.write_text(json.dumps(base) + "\n", encoding="utf-8")
@@ -1096,6 +1113,16 @@ def test_catalog_requires_a_canonical_source_repository():
                 assert "invalid canonical source_repository" in str(exc), exc
             else:
                 raise AssertionError("non-canonical source_repository was accepted")
+
+            base["groups"]["msb"]["apps"]["app"]["source_repository"] = "https://github.com/hrbrlife/release-test-fixture"
+            base["default_source_branch"] = "main"
+            config.write_text(json.dumps(base) + "\n", encoding="utf-8")
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "default_source_branch must be exactly 'dev-publish'" in str(exc), exc
+            else:
+                raise AssertionError("non-governed source branch was accepted")
         finally:
             restore_env(old)
 
@@ -1248,6 +1275,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert document["expected_live_app_count"] == 33, document
     assert len(entries) == 33, entries
     assert document["default_release_state"] == "hold", document
+    assert document["default_source_branch"] == "dev-publish", document
     assert "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10" not in entries, entries
     for app_id in (
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
@@ -1726,6 +1754,9 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                     return ""
                 if args[:5] == ["git", "-C", str(source), "submodule", "status"]:
                     return ""
+                if args[:4] == ["git", "-C", str(source), "ls-remote"]:
+                    assert args[4:] == ["--heads", "origin", "refs/heads/dev-publish"]
+                    return ("a" * 40) + "\trefs/heads/dev-publish\n"
                 if args[0] == "git":
                     return "a" * 40
                 if args[0] == str(root / "apphash"):

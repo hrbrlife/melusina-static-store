@@ -598,13 +598,16 @@ groups:
         role: sanctions-screening
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
-        source_path: shell_tester
-        # The current dev-publish v0.1.10/version-13 candidate has a tracked
-        # runtime contract and reproducible package proof. Do not replace it
-        # with the older source; an independent clean clone must first prove
-        # this exact revision.
-        candidate_source_commit: 9852aee2278e59e1411737bbb008c51d809d980a
-        reconciliation_state: source-clean-clone-pending
+        source_path: shell-tester
+        # v0.1.11/version-14 is the clean-clone-proven dev-publish source. It
+        # retains v13's source-bound packaging/runtime controls and integrates
+        # the app-relevant wallet credential E2E coverage from the only recent
+        # divergent feature line.
+        source_commit: a6e23c3480bd97fde24cdaeaa6bed9418ad280f0
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh.json
         publish_slug: shell-tester
         catalog_name: Shell Tester
         live_version: 0.1.8

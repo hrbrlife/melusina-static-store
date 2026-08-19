@@ -1,0 +1,30 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+  "sourceRepository": "https://github.com/hrbrlife/shell_tester",
+  "sourceCommit": "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "historical-divergent",
+  "decisionSummary": "The Aug 19 dev-publish v0.1.11/version-14 source is canonical. It retains the v13 source-bound package and runtime-contract controls, and integrates the four wallet-credential E2E endpoints from the only app-relevant part of feat/admin-auth-harmonize. That branch's separate static UI split and the preserved May WIP remain explicitly held for browser validation rather than being merged blindly. The Aug 14 main source is a historical-divergent baseline: it removes the current runtime contract and source-owned package controls, so it must not replace the selected dev-publish source. The remaining release/archive heads are predecessors or preservation evidence only.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit with both recorded submodules",
+      "complete current remote-head snapshot reviewed, with the app-relevant credential E2E commit integrated into dev-publish",
+      "go vet ./... and go test -count=1 ./...",
+      "make verify-recovery",
+      "two independent candidate packs matched SHA-256 839b7e27c12af0e03f9bf6946df25de482904fbb7584858892f61b8f1b19ff0c and packageId 839b7e27c12af0e03f9bf6946df25de4"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/codex/shell-tester-store-release-20260729", "commit": "4a255a6e6112eb17097cc85755a3297a1681efa7", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0", "outcome": "selected"},
+    {"ref": "refs/heads/feat/admin-auth-harmonize", "commit": "603d515acd06c002f84256a15a3e071544d00532", "outcome": "hold"},
+    {"ref": "refs/heads/main", "commit": "ff4068087a49b6efc3e8473cdd342dfa368082b1", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/_stash/5f1676b28538", "commit": "5f1676b285381fe5909f43b8759971de60bb819a", "outcome": "hold"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/shell-tester-store-release-20260729", "commit": "4a255a6e6112eb17097cc85755a3297a1681efa7", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "53c528f17f2e848a60d4a2838de2d16921baaa00", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "8e2f0a3c257e3ff57588c813e32d89030215fbce", "outcome": "archive"}
+  ]
+}

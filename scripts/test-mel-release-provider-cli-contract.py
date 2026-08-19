@@ -1503,6 +1503,12 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert telescreen["reconciliation_state"] == "source-pinned", telescreen
     assert telescreen["release_state"] == "ready", telescreen
     assert telescreen["source_selection_state"] == "direct-dev-verified", telescreen
+    shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
+    assert shell_tester["source_path"] == "shell-tester", shell_tester
+    assert shell_tester["source_commit"] == "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0", shell_tester
+    assert shell_tester["reconciliation_state"] == "source-pinned", shell_tester
+    assert shell_tester["release_state"] == "ready", shell_tester
+    assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
     pending_candidates = {
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
@@ -1512,7 +1518,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
         "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
-        "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh": "9852aee2278e59e1411737bbb008c51d809d980a",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "bf88344c05ae70d2b791858f1a0a3e506d4e3740",
     }
     for app_id, candidate_source_commit in pending_candidates.items():
@@ -1586,9 +1591,12 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert dashboard["reconciliation_state"] == "source-clean-clone-pending", dashboard
     assert not dashboard.get("source_commit"), dashboard
     shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
-    assert shell_tester["source_path"] == "shell_tester", shell_tester
-    assert shell_tester["reconciliation_state"] == "source-clean-clone-pending", shell_tester
-    assert not shell_tester.get("source_commit"), shell_tester
+    assert shell_tester["source_path"] == "shell-tester", shell_tester
+    assert shell_tester["source_repository"] == "https://github.com/hrbrlife/shell_tester", shell_tester
+    assert shell_tester["source_commit"] == "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0", shell_tester
+    assert shell_tester["reconciliation_state"] == "source-pinned", shell_tester
+    assert shell_tester["release_state"] == "ready", shell_tester
+    assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint

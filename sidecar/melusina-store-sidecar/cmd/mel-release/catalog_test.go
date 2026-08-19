@@ -155,6 +155,7 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		"sheets-bureau":  {},
 		"minigit":        {},
 		"fineract-setup": {},
+		"canboard":       {},
 	}
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{

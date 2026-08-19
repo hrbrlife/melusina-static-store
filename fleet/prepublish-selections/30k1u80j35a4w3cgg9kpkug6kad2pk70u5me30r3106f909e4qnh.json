@@ -1,0 +1,28 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
+  "sourceRepository": "https://github.com/hrbrlife/melusina_canboard_app",
+  "sourceCommit": "2164058d5ad3cd275ec24d9498786a257e1efb2a",
+  "selectionMethod": "direct-dev",
+  "decisionSummary": "The Aug 17–18 dev-publish source is canonical: it carries the current v12 runtime controls, install-neutral behavior, and package identity synchronization. The Aug 1 salvage is an older v8 layout that removes the current runtime contract; the remaining heads are merged baselines or historical release/archive lines.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit",
+      "make vet test",
+      "MEL_RELEASE_GREENFIELD_PACK=1 make build pack-local and spk verify",
+      "two independent candidate packs matched SHA-256 c8e9507f5fc102735cb48f024d16fe24617597d1e6bbe6e1b72db6eaca4ba978",
+      "provider candidate appHash c4ef9a20e2f50e2c663e15447b748b39e078d7883915b5cab6f529fba83e8372 is distinct from the signed public 0.2.1 pointer"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/dev-publish", "commit": "2164058d5ad3cd275ec24d9498786a257e1efb2a", "outcome": "selected"},
+    {"ref": "refs/heads/fix/prelaunch-canboard-v11-runtime-contract", "commit": "f61f8c20d9ebabf4c8cec478d382b1d8cf5ee462", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "1767fc3cdee3d08d2910d8564336baf5381f74e8", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/canboard-session-teardown-20260814", "commit": "02b29798c641a1ae186438951669bcbc6598e6c7", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "d0259e55dac2404160f402b2698b59b28c245a75", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "4a752f1ef28f040101d11110a8bef59dc0337704", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "ffe6859b7c2ce45620ee3eee80e6fb1ed84ac6b2", "outcome": "archive"},
+    {"ref": "refs/heads/resign-attest", "commit": "6ac30465c0b3702d1ac78105d5dbf37d43f981c3", "outcome": "archive"}
+  ]
+}

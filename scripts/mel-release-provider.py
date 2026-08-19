@@ -370,10 +370,11 @@ def _selection_reviewed_refs(value: Any) -> dict[str, dict[str, str]]:
 def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
     """Validate the source decision that permits one app release.
 
-    A direct selection is deliberately fast but exact: main and dev-publish
-    must both point at the selected source. Divergent relevant work instead
-    uses feat1-prepublish and is promoted only after that branch and
-    dev-publish point at the same tested source.
+    A direct selection is deliberately fast but still provenance-bound:
+    ``main`` is either the selected source or its reviewed stable ancestor,
+    while ``dev-publish`` is the selected current source. Divergent relevant
+    work instead uses feat1-prepublish and is promoted only after that branch
+    and dev-publish point at the same tested source.
     """
     state = canonical_source_selection_state(spec["source_selection_state"])
     if state not in SOURCE_SELECTION_READY_STATES:
@@ -411,8 +412,8 @@ def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
         raise ProviderError("source selection receipt does not select the catalog dev-publish commit")
     if state == SOURCE_SELECTION_DIRECT:
         main = reviewed.get("refs/heads/main")
-        if main is None or main["commit"] != source_commit:
-            raise ProviderError("direct source selection requires main and dev-publish at the same commit")
+        if main is None or main["outcome"] != "baseline":
+            raise ProviderError("direct source selection requires a reviewed main baseline")
     else:
         prepublish = reviewed.get(f"refs/heads/{PREPUBLISH_BRANCH}")
         if prepublish is None or prepublish["commit"] != source_commit:
@@ -451,13 +452,33 @@ def require_current_source_selection(app_id: str, source: Path, spec: dict[str, 
         raise ProviderError(
             f"source refs changed after selection for {app_id}: {', '.join(changed[:6])}"
         )
+    baseline_relation = ""
+    if canonical_source_selection_state(spec["source_selection_state"]) == SOURCE_SELECTION_DIRECT:
+        main_commit = selection["reviewedRefs"]["refs/heads/main"]["commit"]
+        selected_commit = spec["source_commit"].strip().lower()
+        if main_commit == selected_commit:
+            baseline_relation = "same"
+        else:
+            try:
+                run([
+                    "git", "-C", str(source), "merge-base", "--is-ancestor",
+                    main_commit, selected_commit,
+                ])
+            except ProviderError as exc:
+                raise ProviderError(
+                    "direct source selection requires main to be an ancestor of the selected dev-publish commit"
+                ) from exc
+            baseline_relation = "ancestor"
     config = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
-    return {
+    result = {
         "receipt": str(selection["path"].relative_to(config.parent)),
         "receiptSha256": hex_sha(selection["path"]),
         "sourceCommit": spec["source_commit"].strip().lower(),
         "selectionMethod": str(selection["receipt"]["selectionMethod"]),
     }
+    if baseline_relation:
+        result["mainBaselineRelation"] = baseline_relation
+    return result
 
 
 def source_file(source: Path, field: str, value: str) -> Path:

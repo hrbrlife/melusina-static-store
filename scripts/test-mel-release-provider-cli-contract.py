@@ -1603,10 +1603,18 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert domain_template["source_selection_receipt"] == (
         "prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json"
     ), domain_template
+    paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
+    assert paype["source_path"] == "popaye", paype
+    assert paype["source_commit"] == "102f2f6efa709d62abc70ac7644a6ba830a75300", paype
+    assert paype["source_baseline_branch"] == "main", paype
+    assert paype["runtime_contract_path"] == "RUNTIME-CONTRACT.json", paype
+    assert paype["reconciliation_state"] == "source-pinned", paype
+    assert paype["release_state"] == "ready", paype
+    assert paype["source_selection_state"] == "direct-dev-verified", paype
+    assert paype["source_selection_receipt"] == (
+        "prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json"
+    ), paype
     pending_candidates = {
-        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": (
-            "source-clean-clone-pending", "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
-        ),
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": (
             "onchain-program-artifact-mismatch", "ef73663b86134f7417ccf1104fbe273f1cf901cb",
         ),
@@ -1649,8 +1657,19 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
     app_ids = [app["appId"] for app in cohort["apps"]]
     assert cohort["catalogOrigin"] == "https://bazaar.melusina-os.org", cohort
     assert cohort["expectedCatalogAppCount"] == 32, cohort
+    assert cohort["releaseReadyAppCount"] == len(app_ids) == 30, cohort
     assert RETIRED_GOLDKEY_DEV_APP_ID not in app_ids, app_ids
     assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
+    paype = next(app for app in cohort["apps"] if app["appId"] == "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510")
+    assert paype == {
+        "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+        "catalogName": "paype.cc",
+        "sourceCommit": "102f2f6efa709d62abc70ac7644a6ba830a75300",
+        "sourceSelectionReceipt": "prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json",
+        "version": "0.3.190",
+        "spkSha256": "f7c08bae5e0a8afcad5ce1751248868d2483be08258b3b124e7667bc35610d70",
+        "appHash": "3b1704048025b1e0836391107c4a4d05c525c9bd86ff9a71eb6bc58dc257994a",
+    }, paype
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -1762,14 +1781,13 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert cyberteller["hold_receipt"] == (
         "prepublish-holds/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
     ), cyberteller
-    for app_id, source_path, source_repo in (
-        ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
-    ):
-        app = entries[app_id]
-        assert app["source_path"] == source_path, app
-        assert app["source_repository"] == source_repo, app
-        assert app["reconciliation_state"] == "source-clean-clone-pending", app
-        assert not app.get("source_commit"), app
+    paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
+    assert paype["source_path"] == "popaye", paype
+    assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
+    assert paype["source_commit"] == "102f2f6efa709d62abc70ac7644a6ba830a75300", paype
+    assert paype["reconciliation_state"] == "source-pinned", paype
+    assert paype["release_state"] == "ready", paype
+    assert paype["source_selection_state"] == "direct-dev-verified", paype
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["source_path"] == "cratelink", cratelink
     assert cratelink["source_repository"] == "https://github.com/hrbrlife/melusina_cratelink_app", cratelink
@@ -1830,7 +1848,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
-    app_id = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+    app_id = "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     old_env, old_argv = with_env({
         "MEL_RELEASE_CONFIG": str(config),

@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 29,
+  "releaseReadyAppCount": 30,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -199,6 +199,15 @@
       "version": "0.1.9",
       "spkSha256": "0905aa6eafc28ddd2c24730b11a88664a10819b95fded362ca40a711b9f7de7e",
       "appHash": "6b903eaefec9c5312ce6254bdd61d12eb46900f9d4379470e8394f1830143ee8"
+    },
+    {
+      "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "catalogName": "paype.cc",
+      "sourceCommit": "102f2f6efa709d62abc70ac7644a6ba830a75300",
+      "sourceSelectionReceipt": "prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json",
+      "version": "0.3.190",
+      "spkSha256": "f7c08bae5e0a8afcad5ce1751248868d2483be08258b3b124e7667bc35610d70",
+      "appHash": "3b1704048025b1e0836391107c4a4d05c525c9bd86ff9a71eb6bc58dc257994a"
     },
     {
       "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",

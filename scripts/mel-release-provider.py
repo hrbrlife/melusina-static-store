@@ -49,6 +49,7 @@ SOURCE_SELECTION_READY_STATES = {
 }
 SOURCE_SELECTION_STATES = SOURCE_SELECTION_READY_STATES | {SOURCE_SELECTION_PENDING}
 SOURCE_SELECTION_RECEIPT_SCHEMA = "melusina-source-selection-v1"
+STORE_READ_TIMEOUT_SECONDS = 180
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
 )
@@ -1100,9 +1101,10 @@ def ensure_bin(name: str, command: str) -> Path:
 
 
 def current_pointer(app_id: str) -> dict[str, Any] | None:
+    """Read a served pointer with the catalog rail's bounded acceptance window."""
     url = default_bazaar_origin() + f"/apps/pointers/{app_id}.json"
     try:
-        with urllib.request.urlopen(url, timeout=30) as response:
+        with urllib.request.urlopen(url, timeout=STORE_READ_TIMEOUT_SECONDS) as response:
             value = json.loads(response.read())
     except urllib.error.HTTPError as exc:
         if exc.code == 404:

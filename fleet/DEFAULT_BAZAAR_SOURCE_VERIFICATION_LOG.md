@@ -78,3 +78,33 @@ committed locally as `38cdf76202719776abcf5781877c5b3d72833b6e`. As of
 No catalog pin was changed: the source owner must publish that fix or a
 reviewed successor, after which the clean-clone proof must be repeated before
 this app can join a release cohort.
+
+## Cyberteller — recovered source pin, egress-policy gate unresolved
+
+The canonical source at catalog commit
+`8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7` was independently shallow-cloned
+from the advertised `main` tip with its declared submodule initialized and a
+clean recursive Git status. Its metadata and runtime-contract app ID match the
+catalog identity; metadata is `0.1.93`, matching the catalog's live version.
+`GOWORK=off go vet ./...`, `GOWORK=off make test`, and the app-ID and Cap'n
+Proto ordinal checks passed from that clean clone.
+
+It is **not** source-gate ready. The raw, source-owned
+`go run ./cmd/check-e2e-envelope-coverage/` gate exits nonzero with 15
+uncovered outbound HTTP call sites. They span the capability bridge,
+DueProcess case and risk-rule clients, the optional price feed, the sanctions
+sidecar client, webhook delivery, and Chainwatch's upstream RPC pool. The
+finding does not assert that every one is unsigned: for example, the webhook
+paths wrap their bodies with the existing signer, but that operation is not
+recognized by the policy checker. It does prove that the checked-in policy
+gate cannot yet establish the required coverage.
+
+The checked-in `make check-e2e-envelope` target currently masks this failure
+with `|| true`, which means `make check-drift` is not a release gate for this
+source. No local waiver, source-pin change, or package claim was made here.
+The source owner must make each path independently auditable: retain or add
+real peer-verifiable signing where the receiver supports it; use a narrow,
+reviewed policy reason only for proven capability or public-read paths; teach
+the checker about the existing signed webhook wrapper; then remove the mask
+and publish a commit whose clean-clone gate passes. Repeat the full source
+proof only after that remotely recoverable successor exists.

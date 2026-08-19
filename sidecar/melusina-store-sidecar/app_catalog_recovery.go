@@ -551,7 +551,9 @@ func validateRemovableCatalogTree(root string) error {
 // historical releases which claim a runtime contract but omitted its bytes.
 // The latter are unservable by definition: they stay on disk for ordinary
 // Store-UI republish, but are excluded from the served catalog rather than
-// making every unrelated valid package unavailable.
+// making every unrelated valid package unavailable. Explicit catalog
+// retirements are also omitted, but only when their signed receipt still binds
+// the exact durable rollout selection.
 type rolloutClassification struct {
 	serving     map[string]appRolloutState
 	quarantined map[string]appRolloutState
@@ -577,11 +579,16 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 		serving:     make(map[string]appRolloutState),
 		quarantined: make(map[string]appRolloutState),
 	}
+	retirements, err := readCatalogRetirements(cfg)
+	if err != nil {
+		return rolloutClassification{}, fmt.Errorf("read catalog retirements: %w", err)
+	}
 	root := rolloutStateDir(cfg)
 	entries, err := readDirBounded(root, maxRetentionRootEntries)
 	if err != nil {
 		return rolloutClassification{}, fmt.Errorf("read exact rollout set: %w", err)
 	}
+	seenRetirements := make(map[string]struct{}, len(retirements))
 	for _, entry := range entries {
 		name := entry.Name()
 		path := filepath.Join(root, name)
@@ -600,6 +607,13 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 		if err != nil {
 			return rolloutClassification{}, fmt.Errorf("validate rollout %s: %w", appID, err)
 		}
+		if retirement, retired := retirements[appID]; retired {
+			if err := retirement.matchesRollout(rollout); err != nil {
+				return rolloutClassification{}, fmt.Errorf("validate retired rollout %s: %w", appID, err)
+			}
+			seenRetirements[appID] = struct{}{}
+			continue
+		}
 		if err := validateRolloutStagedSelectionsAt(cfg, rollout, now); err != nil {
 			if errors.Is(err, runtimecontract.ErrEmpty) {
 				classified.quarantined[appID] = rollout
@@ -608,6 +622,11 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 			return rolloutClassification{}, fmt.Errorf("validate rollout %s staged selection: %w", appID, err)
 		}
 		classified.serving[appID] = rollout
+	}
+	for appID := range retirements {
+		if _, seen := seenRetirements[appID]; !seen {
+			return rolloutClassification{}, fmt.Errorf("catalog retirement %s has no durable rollout", appID)
+		}
 	}
 	return classified, nil
 }

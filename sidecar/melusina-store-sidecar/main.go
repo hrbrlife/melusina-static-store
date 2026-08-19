@@ -50,6 +50,13 @@ func main() {
 		runListingBootstrapSubcommand(os.Args[2:])
 		return
 	}
+	// A catalog retirement is a Store-governed visibility transition, not an
+	// app republish. It creates a fresh sealed generation and leaves the
+	// retired release's immutable chain history intact.
+	if len(os.Args) > 1 && os.Args[1] == "catalog-retire" {
+		runCatalogRetireSubcommand(os.Args[2:])
+		return
+	}
 
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")

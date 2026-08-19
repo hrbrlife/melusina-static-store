@@ -924,7 +924,7 @@ def test_source_selection_requires_a_current_complete_remote_snapshot():
             restore_env(old)
 
 
-def test_direct_source_selection_accepts_a_reviewed_main_ancestor():
+def test_direct_source_selection_requires_an_explicit_historical_main_baseline():
     app_id = "source-selection-baseline-app"
     selected_commit = "a" * 40
     main_commit = "b" * 40
@@ -937,44 +937,40 @@ def test_direct_source_selection_accepts_a_reviewed_main_ancestor():
         receipt_path = root / "prepublish-selections" / f"{app_id}.json"
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         receipt["reviewedRefs"][1]["commit"] = main_commit
+        receipt["mainBaselineRelation"] = "ancestor"
         receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
         old = with_env({"MEL_RELEASE_CONFIG": str(config)})
         old_run = provider.run
+        old_relation = provider.direct_main_baseline_relation
         try:
             def baseline_run(args, **kwargs):
                 if args == ["git", "-C", str(root), "ls-remote", "--heads", "origin"]:
                     return (f"{selected_commit}\trefs/heads/dev-publish\n"
                             f"{main_commit}\trefs/heads/main\n")
-                if args == [
-                    "git", "-C", str(root), "merge-base", "--is-ancestor",
-                    main_commit, selected_commit,
-                ]:
-                    return ""
                 return old_run(args, **kwargs)
 
             provider.run = baseline_run
+            provider.direct_main_baseline_relation = lambda *_args: "ancestor"
             spec = provider.app_spec(app_id)
             provider.require_release_ready(app_id)
             selected = provider.require_current_source_selection(app_id, root, spec)
             assert selected["mainBaselineRelation"] == "ancestor", selected
 
-            def unrelated_main_run(args, **kwargs):
-                if args == [
-                    "git", "-C", str(root), "merge-base", "--is-ancestor",
-                    main_commit, selected_commit,
-                ]:
-                    raise provider.ProviderError("not an ancestor")
-                return baseline_run(args, **kwargs)
-
-            provider.run = unrelated_main_run
+            provider.direct_main_baseline_relation = lambda *_args: "historical-divergent"
             try:
                 provider.require_current_source_selection(app_id, root, spec)
             except provider.ProviderError as exc:
-                assert "main to be an ancestor" in str(exc), exc
+                assert "does not match" in str(exc), exc
             else:
-                raise AssertionError("unrelated main baseline was accepted")
+                raise AssertionError("mislabeled rewritten main baseline was accepted")
+
+            receipt["mainBaselineRelation"] = "historical-divergent"
+            receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+            selected = provider.require_current_source_selection(app_id, root, spec)
+            assert selected["mainBaselineRelation"] == "historical-divergent", selected
         finally:
             provider.run = old_run
+            provider.direct_main_baseline_relation = old_relation
             restore_env(old)
 
 
@@ -1421,7 +1417,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
         "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "fe6707e0a95409a28b2af5c148d38fc434151847",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
         "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc",
-        "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "039d7ea6f977a3fc02e6d96545de0c3d5850db88",
         "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "cdd1ac07f9c2e93b5b1c06805619e903f990bb35",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
         "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
@@ -1439,6 +1434,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
     assert canboard["release_state"] == "ready", canboard
     assert canboard["source_selection_state"] == "direct-dev-verified", canboard
+    contacts = entries["trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh"]
+    assert contacts["reconciliation_state"] == "source-pinned", contacts
+    assert contacts["source_commit"] == "039d7ea6f977a3fc02e6d96545de0c3d5850db88", contacts
+    assert contacts["release_state"] == "ready", contacts
+    assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
     assert ai_lagoon["candidate_source_commit"] == "dc4b842a7953eb3721d4a99edf0faa29d7c36853", ai_lagoon
@@ -1530,7 +1530,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
     for app_id, source_path in {
         "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "melusina-bureau-cal-app",
-        "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "melusina-bureau-contacts-app",
         "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "melusina-app-creeper",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "vintage-test-dec",
@@ -2078,7 +2077,7 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_source_selection_requires_a_current_complete_remote_snapshot()
-    test_direct_source_selection_accepts_a_reviewed_main_ancestor()
+    test_direct_source_selection_requires_an_explicit_historical_main_baseline()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_default_bazaar_catalog_is_complete_and_held()
     test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()

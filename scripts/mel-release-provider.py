@@ -371,10 +371,11 @@ def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
     """Validate the source decision that permits one app release.
 
     A direct selection is deliberately fast but still provenance-bound:
-    ``main`` is either the selected source or its reviewed stable ancestor,
-    while ``dev-publish`` is the selected current source. Divergent relevant
-    work instead uses feat1-prepublish and is promoted only after that branch
-    and dev-publish point at the same tested source.
+    ``main`` is either the selected source, its reviewed stable ancestor, or
+    an explicitly labelled historical baseline, while ``dev-publish`` is the
+    selected current source. Divergent relevant work instead uses
+    feat1-prepublish and is promoted only after that branch and dev-publish
+    point at the same tested source.
     """
     state = canonical_source_selection_state(spec["source_selection_state"])
     if state not in SOURCE_SELECTION_READY_STATES:
@@ -414,6 +415,9 @@ def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
         main = reviewed.get("refs/heads/main")
         if main is None or main["outcome"] != "baseline":
             raise ProviderError("direct source selection requires a reviewed main baseline")
+        declared_relation = receipt.get("mainBaselineRelation", "")
+        if declared_relation not in {"", "same", "ancestor", "historical-divergent"}:
+            raise ProviderError("direct source selection has an invalid mainBaselineRelation")
     else:
         prepublish = reviewed.get(f"refs/heads/{PREPUBLISH_BRANCH}")
         if prepublish is None or prepublish["commit"] != source_commit:
@@ -439,6 +443,35 @@ def advertised_source_heads(app_id: str, path: Path) -> dict[str, str]:
     return result
 
 
+def direct_main_baseline_relation(source: Path, main_commit: str, selected_commit: str) -> str:
+    """Classify a reviewed main baseline without requiring a no-op feature ref.
+
+    A rewritten historical main can be a legitimate stable baseline, but it
+    must be explicitly declared in the signed-in-source selection receipt.
+    A missing Git object or another Git failure is not treated as history
+    divergence: it fails closed before packaging.
+    """
+    proc = subprocess.run(
+        ["git", "-C", str(source), "merge-base", main_commit, selected_commit],
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode not in {0, 1}:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise ProviderError(f"cannot inspect direct source baseline ancestry: {detail[-3000:]}")
+    merge_base = proc.stdout.strip().lower()
+    if merge_base:
+        if not re.fullmatch(r"[0-9a-f]{40}", merge_base):
+            raise ProviderError("direct source baseline ancestry returned an invalid commit")
+        if merge_base == main_commit:
+            return "ancestor"
+        if merge_base == selected_commit:
+            raise ProviderError(
+                "direct source selection dev-publish source is behind the reviewed main baseline"
+            )
+    return "historical-divergent"
+
+
 def require_current_source_selection(app_id: str, source: Path, spec: dict[str, str]) -> dict[str, str]:
     """Fail packaging when any source ref changed after the recorded decision."""
     selection = require_source_selection_record(spec)
@@ -459,16 +492,18 @@ def require_current_source_selection(app_id: str, source: Path, spec: dict[str, 
         if main_commit == selected_commit:
             baseline_relation = "same"
         else:
-            try:
-                run([
-                    "git", "-C", str(source), "merge-base", "--is-ancestor",
-                    main_commit, selected_commit,
-                ])
-            except ProviderError as exc:
-                raise ProviderError(
-                    "direct source selection requires main to be an ancestor of the selected dev-publish commit"
-                ) from exc
-            baseline_relation = "ancestor"
+            baseline_relation = direct_main_baseline_relation(
+                source, main_commit, selected_commit
+            )
+        declared_relation = selection["receipt"].get("mainBaselineRelation", "")
+        if declared_relation and declared_relation != baseline_relation:
+            raise ProviderError(
+                "direct source selection mainBaselineRelation does not match the reviewed Git history"
+            )
+        if baseline_relation == "historical-divergent" and declared_relation != baseline_relation:
+            raise ProviderError(
+                "direct source selection requires mainBaselineRelation historical-divergent for a rewritten main baseline"
+            )
     config = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
     result = {
         "receipt": str(selection["path"].relative_to(config.parent)),

@@ -441,14 +441,18 @@ groups:
       bureau-contacts:
         appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
         source_path: melusina-bureau-contacts-app
-        # The current dev-publish v0.16/version-16 candidate has a tracked
-        # runtime contract and reproducible package proof. Keep it held until
-        # an independent clean clone proves this exact revision.
-        candidate_source_commit: 039d7ea6f977a3fc02e6d96545de0c3d5850db88
-        reconciliation_state: source-clean-clone-pending
+        # The current dev-publish v0.16/version-16 source passed a fresh
+        # recursive-clone proof, source controls, and deterministic candidate
+        # packages. The separately recorded historical main baseline is not a
+        # substitute for this selected source.
+        source_commit: 039d7ea6f977a3fc02e6d96545de0c3d5850db88
+        reconciliation_state: source-pinned
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts
         live_version: 0.14.0
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh.json
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-contacts-app
         catalog_slug: bureau-contacts

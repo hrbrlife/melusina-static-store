@@ -1,0 +1,32 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
+  "sourceRepository": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
+  "sourceCommit": "039d7ea6f977a3fc02e6d96545de0c3d5850db88",
+  "selectionMethod": "direct-dev",
+  "mainBaselineRelation": "historical-divergent",
+  "decisionSummary": "The Aug 18 dev-publish v0.16 source is canonical: it carries the current tracked runtime contract, v16 package identity binding, and reproducible package controls. Its only recent divergent salvage snapshot adds obsolete publishing instructions, which the selected source deliberately replaces. The historical main scaffold is recorded as a baseline only; later v15 release work is integrated into the selected source.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive clone at the selected source commit with the recorded spkmodule revision",
+      "complete current remote-head snapshot reviewed, including the Aug 1 salvage",
+      "make vet test lint-vocab",
+      "MEL_RELEASE_GREENFIELD_PACK=1 make package-reproducibility and spk verify",
+      "two candidate package runs matched SHA-256 1401bba02fe59a7c42c30e335a209c4c8a7c2e6e77a075fb566929a6e0352678 and packageId 1401bba02fe59a7c42c30e335a209c4c",
+      "provider candidate appHash 049ea2df20df7ee8754e4a4d46c2d8f95dff47b81cde9da6009155d7158eb8f3 is distinct from the signed public 0.14.0 pointer appHash 9bf7c9180104a252218490d0d28c3de0086705d3fb02c7e701f3e0eda17dc1ab"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/build/wave0-scaffold", "commit": "eb67b8cfc1b027dd730ef9ba8ccf8d11528b4110", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "039d7ea6f977a3fc02e6d96545de0c3d5850db88", "outcome": "selected"},
+    {"ref": "refs/heads/fix/prelaunch-contacts-v15", "commit": "fc847592758a5772179d31c0015031a2ca2673ef", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "591c1d6cc126a78b478ac11ef99350ce3bd27e43", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/build/wave0-scaffold", "commit": "eb67b8cfc1b027dd730ef9ba8ccf8d11528b4110", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-bureau-contacts", "commit": "f3d5721ab6f1bedd5c5083d0dd63b102bc62e056", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/golden/b07-contacts-release-20260804", "commit": "eb67b8cfc1b027dd730ef9ba8ccf8d11528b4110", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "e2c1376cab64e770e7a3eed3d4b1854d9808d936", "outcome": "not-app-relevant"},
+    {"ref": "refs/heads/publish", "commit": "91bfc8197b7a31842199cf34e0dccd866bfa7b66", "outcome": "archive"},
+    {"ref": "refs/heads/resign-attest", "commit": "b47f3418ad30d36ddf4cfb918ba8f6c48ba01835", "outcome": "archive"}
+  ]
+}

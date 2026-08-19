@@ -1705,7 +1705,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
             ("dueprocess", "fe8f0b076b4ec996ca0a6be1de366e39343a7315", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
-            ("teleport", "a943d5a5fb491d5029b67ac157b92379d94e0a60", "melusina_teleport2", "teleport"),
+            ("teleport", "5253c92e7b12ef83afadceb24dc384645d048460", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "debeecd1d67c16810574c8176592b0bbf0b3e267", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":

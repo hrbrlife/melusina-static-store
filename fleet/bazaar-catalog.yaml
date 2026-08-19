@@ -266,11 +266,10 @@ groups:
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
-        # The current remote main source was recovered from a fresh recursive
-        # clone; its pinned dependency graph, tests, vet pass, and clean
-        # worktree were independently verified before this source pin was
-        # restored.
-        source_commit: a943d5a5fb491d5029b67ac157b92379d94e0a60
+        # The clean dev-publish tip cuts the fail-closed Shell-permission fix
+        # as v1.3.5/version-11, avoiding the already-consumed v1.3.4 release
+        # identity while retaining main as its reviewed ancestor.
+        source_commit: 5253c92e7b12ef83afadceb24dc384645d048460
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

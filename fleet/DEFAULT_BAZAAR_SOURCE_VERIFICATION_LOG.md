@@ -285,3 +285,42 @@ publish the reviewed repair (or successor), either prove that this input is
 not a release dependency or add a complete enforced hash lock, determine any
 needed forward version, and repeat the clean-clone proof before Doc Bureau can
 join a release cohort.
+
+## Jinn v9 — current generic-peer source proof
+
+The canonical `dev-publish` tip
+`08daf329d602bccc0d539c4ee7710e52b370fe99` was independently cloned with its
+declared submodules and remained clean before and after verification. It
+declares Jinn metadata `0.0.9` (versionNumber 9), ahead of the current catalog
+listing `0.0.6`.
+
+The fresh source passed Jinn's focused integration checks for generic peer
+discovery/dispatch and the matching GrainContext binding, plus `make build`.
+Those checks establish source-level compatibility with a universal,
+permission-scoped provider: a user-initiated peer is discoverable and
+claimable, declared read-only tools dispatch, Paint native `canvas.*` reads
+are admitted, and mutation tools such as `canvas.save` are excluded. A clean
+status and `git diff --check` completed after the proof.
+
+This source pin does not claim that a real shell picker, tenant capability
+grant, governed package release, or newly installed runtime has passed. Those
+remain cohort-level launch gates.
+
+## Bureau Paint v21 — current peer-provider source proof
+
+The canonical `dev-publish` tip
+`c5347931c2ae9ab3579c8eb869edec5a0f7b44ea` was independently filtered-cloned
+with its declared `spkmodule` gitlink hydrated at the recorded revision. It
+declares Paint metadata `2.0.28` (versionNumber 21), matching the current
+catalog version while still being the current valid source tip.
+
+The clean source passed `make release-inputs mutation-test test` (including
+234 Python tests), `go test -count=1 ./internal/capabilities ./internal/service`
+under `grain/go/grainlinkd`, `git diff --check`, and clean recursive status.
+The native tests cover GrainContext descriptor recognition, the scoped
+read-only provider, and persistent grant restoration needed by Jinn's generic
+peer flow.
+
+This source pin does not claim a governed package, public catalog update, or
+fresh tenant installation. Those remain held until the full source cohort and
+release evidence are complete.

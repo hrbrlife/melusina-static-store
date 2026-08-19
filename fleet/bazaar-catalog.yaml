@@ -28,18 +28,20 @@ default_source_branch: dev-publish
 # metadata_path and runtime_contract_path are optional, source-relative files
 # for a unified application whose project Makefile lives above its product
 # metadata. pack_target is an optional reviewed Make target for a separately
-# signed variant emitted by the same source tree.
+# signed variant emitted by the same source tree. candidate_source_commit names
+# the current dev-publish tip while its independent clean proof is pending;
+# source_commit is reserved for a source-pinned, independently verified tip.
 groups:
   money-path:
     apps:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
         source_path: welcome
-        # The local 7a50e8b123fd7d107b4df1ba9c9db567a7862753 candidate
-        # makes the runtime contract build-bound and aligns the package
-        # metadata/pack inputs. Do not substitute the older source before an
-        # owner publishes this reviewed candidate for clean-clone recovery.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish candidate makes the runtime contract
+        # build-bound and aligns the package metadata/pack inputs. It remains
+        # held until an independent clean clone proves this exact revision.
+        candidate_source_commit: 7a50e8b123fd7d107b4df1ba9c9db567a7862753
+        reconciliation_state: source-clean-clone-pending
         publish_slug: welcome-pearl
         catalog_name: Welcome pearl
         live_version: 0.1.28
@@ -83,11 +85,11 @@ groups:
         # its canonical Fineract dependency. Never bind release provenance to
         # a historical workstation worktree name.
         source_path: popaye
-        # The local 75e48c66a691cb2379d32d0599f2cc895b63a7b6 candidate
-        # carries the complete default-Bazaar cleanup and a checksum-pinned
-        # Popaye-owned Fineract overlay. Hold until its source owner publishes
-        # it and the clean cohort recovers the exact revision.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish candidate carries the complete default-
+        # Bazaar cleanup and a checksum-pinned Popaye-owned Fineract overlay.
+        # Hold until an independent clean clone proves this exact revision.
+        candidate_source_commit: 75e48c66a691cb2379d32d0599f2cc895b63a7b6
+        reconciliation_state: source-clean-clone-pending
         publish_slug: popaye
         catalog_name: popaye
         live_version: 0.3.189
@@ -102,10 +104,11 @@ groups:
         # operator-supplied cohort root. Never bind this release to a
         # workstation-specific worktree path.
         source_path: ccashconfig
-        # The local 15e64ee261cd2b2ede14e5ce109611bfbf3d277e candidate
-        # makes package-version derivation source-bound and repairs tenant
-        # lease renewal. Hold rather than package the prior source revision.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish candidate makes package-version derivation
+        # source-bound and repairs tenant lease renewal. Hold rather than
+        # package the prior source revision until clean-clone proof passes.
+        candidate_source_commit: 15e64ee261cd2b2ede14e5ce109611bfbf3d277e
+        reconciliation_state: source-clean-clone-pending
         publish_slug: ccashconfig
         catalog_name: ccash Config
         live_version: 0.0.77
@@ -132,14 +135,12 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        # The remote v31 source remains reproducible but carries a
-        # tenant-specific package license fallback. Local v33
-        # dc4b842a7953eb3721d4a99edf0faa29d7c36853 descends through the
-        # reviewed v32 repair: it removes the package fallback and prevents
-        # an optional grain seed from overriding the shell-owned tenant
-        # binding. It is not remotely recoverable. Hold until an owner
-        # publishes one merged, current, clean-clone-recoverable source
-        # revision.
+        # The current dev-publish v33 candidate removes the tenant-specific
+        # package fallback and prevents an optional grain seed from overriding
+        # the shell-owned tenant binding. It is remotely recoverable, but its
+        # source policy still needs reconciliation before a clean proof can
+        # make it a release input.
+        candidate_source_commit: dc4b842a7953eb3721d4a99edf0faa29d7c36853
         reconciliation_state: source-policy-unreconciled
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
@@ -181,11 +182,11 @@ groups:
       telescreen:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
-        # The v19 candidate is clean and contract-bearing, but its commit is
-        # local-only. Leave it unpinned so the governed provider can refuse it
-        # until the reviewed source commit is recoverable from the source
-        # remote and a fresh clone can reproduce the catalog.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v19 candidate is clean and contract-bearing.
+        # Leave it unpinned until an independent fresh clone reproduces the
+        # catalog and passes its declared source gates.
+        candidate_source_commit: fe6707e0a95409a28b2af5c148d38fc434151847
+        reconciliation_state: source-clean-clone-pending
         publish_slug: telescreen
         catalog_name: TeleScreen Hub
         live_version: 0.0.13
@@ -234,12 +235,11 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The prior source pin is absent from the current canonical checkout.
-        # The local a5a434ae3d36b32d415435df060f7349525dd087 candidate
-        # carries the latest v64 release line but remains local-only. Keep the
-        # catalog held until the source owner publishes a recoverable revision
-        # and a clean clone establishes the exact package layout.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish candidate carries the latest v64 release
+        # line. Keep the catalog held until a clean clone establishes the
+        # exact package layout and source gates.
+        candidate_source_commit: a5a434ae3d36b32d415435df060f7349525dd087
+        reconciliation_state: source-clean-clone-pending
         runtime_contract_path: pkgdef/RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
@@ -287,12 +287,12 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        # The last live v0.0.6 source is remotely recoverable, but the latest
-        # reviewed v9 candidate adds the production grain-key bootstrap and is
-        # currently local-only. Do not let a future ready toggle package the
-        # obsolete source: leave source_commit absent until the v9 revision is
-        # published and freshly cloned.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v9 source adds production grain-key bootstrap
+        # and generic, read-only peer attachment. A fresh filtered clean clone
+        # passed focused integration tests and a production build; actual
+        # tenant capability and rendered-picker checks remain release-held.
+        source_commit: 08daf329d602bccc0d539c4ee7710e52b370fe99
+        reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Melusina's Jinn
         live_version: 0.0.6
@@ -356,13 +356,12 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # The locally reviewed v21 candidate at c5347931c2ae9ab3579c8eb869edec5a0f7b44ea
-        # adds Paint's native, permission-scoped GrainContext provider for
-        # Jinn's generic peer attachment. The prior remote source lacks that
-        # provider entirely. Hold rather than silently package the obsolete
-        # remote source until the owner publishes this exact candidate and a
-        # clean clone recovers it.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v21 source adds Paint's native,
+        # permission-scoped GrainContext provider for Jinn's generic peer
+        # attachment. A fresh filtered clean clone passed release controls,
+        # 234 Python tests, native capability/service tests, and clean checks.
+        source_commit: c5347931c2ae9ab3579c8eb869edec5a0f7b44ea
+        reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Paint Bureau
         live_version: 2.0.28
@@ -413,11 +412,11 @@ groups:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
         source_path: melusina-bureau-cal-app
-        # The v0.22/version-22 candidate at local commit
-        # 0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc has a tracked runtime
-        # contract and reproducible package proof. Keep it held until this
-        # exact revision is published and recovered from a clean clone.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.22/version-22 candidate has a tracked
+        # runtime contract and reproducible package proof. Keep it held until
+        # an independent clean clone proves this exact revision.
+        candidate_source_commit: 0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc
+        reconciliation_state: source-clean-clone-pending
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
         live_version: 0.20.0
@@ -429,11 +428,11 @@ groups:
       bureau-contacts:
         appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
         source_path: melusina-bureau-contacts-app
-        # The v0.16/version-16 candidate at local commit
-        # 039d7ea6f977a3fc02e6d96545de0c3d5850db88 has a tracked runtime
-        # contract and reproducible package proof. Keep it held until this
-        # exact revision is published and recovered from a clean clone.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.16/version-16 candidate has a tracked
+        # runtime contract and reproducible package proof. Keep it held until
+        # an independent clean clone proves this exact revision.
+        candidate_source_commit: 039d7ea6f977a3fc02e6d96545de0c3d5850db88
+        reconciliation_state: source-clean-clone-pending
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts
         live_version: 0.14.0
@@ -445,11 +444,11 @@ groups:
       canboard:
         appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
         source_path: melusina-canboard-app
-        # The v0.2.5/version-12 candidate at local commit
-        # 2164058d5ad3cd275ec24d9498786a257e1efb2a has a tracked runtime
-        # contract and reproducible package proof. Keep it held until this
-        # exact revision is published and recovered from a clean clone.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.2.5/version-12 candidate has a tracked
+        # runtime contract and reproducible package proof. Keep it held until
+        # an independent clean clone proves this exact revision.
+        candidate_source_commit: 2164058d5ad3cd275ec24d9498786a257e1efb2a
+        reconciliation_state: source-clean-clone-pending
         publish_slug: canboard
         catalog_name: CanBoard
         live_version: 0.2.1
@@ -477,12 +476,12 @@ groups:
       clientspace:
         appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
         source_path: clientspace
-        # The v10 candidate at local commit cdd1ac07f9c2e93b5b1c06805619e903f990bb35
-        # has a tracked runtime contract, a byte-identical double pack, and a
-        # private contract-binding proof. Do not pin the prior remote v9
-        # source in its place: this exact candidate must first be published
-        # by its source owner and recovered from a clean clone.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v10 candidate has a tracked runtime
+        # contract, a byte-identical double pack, and a private
+        # contract-binding proof. Do not pin the prior v9 source; an
+        # independent clean clone must first prove this exact revision.
+        candidate_source_commit: cdd1ac07f9c2e93b5b1c06805619e903f990bb35
+        reconciliation_state: source-clean-clone-pending
         publish_slug: clientspace
         catalog_name: clientspace
         live_version: 0.1.3
@@ -494,11 +493,11 @@ groups:
       creeper:
         appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
         source_path: melusina-app-creeper
-        # The v0.1.24/version-26 candidate at local commit
-        # d9a282fb50711038f7f456e8d107064f888742ae has a tracked runtime
-        # contract and reproducible package proof. Keep it held until this
-        # exact revision is published and recovered from a clean clone.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.1.24/version-26 candidate has a tracked
+        # runtime contract and reproducible package proof. Keep it held until
+        # an independent clean clone proves this exact revision.
+        candidate_source_commit: d9a282fb50711038f7f456e8d107064f888742ae
+        reconciliation_state: source-clean-clone-pending
         publish_slug: creeper
         catalog_name: Creeper
         live_version: 0.1.20
@@ -530,12 +529,12 @@ groups:
       melusina-dashboard:
         appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
         source_path: melusina-dashboard-app
-        # The v0.2.6/version-8 candidate at local commit
-        # f2ff99faed09a9596cfebfa50670671ab6ff1e42 has a tracked runtime
-        # contract and reproducible package proof. Do not replace it with the
-        # older remote source: this exact candidate must be published by its
-        # owner and recovered from a clean clone before it may be pinned.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.2.6/version-8 candidate has a tracked
+        # runtime contract and reproducible package proof. Do not replace it
+        # with the older source; an independent clean clone must first prove
+        # this exact revision.
+        candidate_source_commit: f2ff99faed09a9596cfebfa50670671ab6ff1e42
+        reconciliation_state: source-clean-clone-pending
         publish_slug: melusina-dashboard-app
         catalog_name: Melusina Dashboard
         live_version: 0.2.3
@@ -547,13 +546,12 @@ groups:
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
         source_path: melusina-app-opensanctions
-        # The v0.1.24/version-26 candidate at local commit
-        # 3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6 has a tracked runtime
-        # contract, byte-identical clean-clone pack proof, and no baked tenant
-        # authority. Do not substitute the earlier remote v25 source: the
-        # exact candidate must become remotely recoverable before it may be
-        # pinned or released.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.1.24/version-26 candidate has a tracked
+        # runtime contract, byte-identical pack proof, and no baked tenant
+        # authority. Do not substitute the earlier v25 source; an independent
+        # clean clone must first prove this exact revision.
+        candidate_source_commit: 3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6
+        reconciliation_state: source-clean-clone-pending
         publish_slug: opensanctions
         catalog_name: OpenSanctions
         live_version: 0.1.22
@@ -565,12 +563,12 @@ groups:
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
         source_path: shell_tester
-        # The v0.1.10/version-13 candidate at local commit
-        # 9852aee2278e59e1411737bbb008c51d809d980a has a tracked runtime
-        # contract and reproducible package proof. Do not replace it with the
-        # older remote source: this exact candidate must be published by its
-        # owner and recovered from a clean clone before it may be pinned.
-        reconciliation_state: source-commit-not-remotely-recoverable
+        # The current dev-publish v0.1.10/version-13 candidate has a tracked
+        # runtime contract and reproducible package proof. Do not replace it
+        # with the older source; an independent clean clone must first prove
+        # this exact revision.
+        candidate_source_commit: 9852aee2278e59e1411737bbb008c51d809d980a
+        reconciliation_state: source-clean-clone-pending
         publish_slug: shell-tester
         catalog_name: Shell Tester
         live_version: 0.1.8
@@ -582,18 +580,17 @@ groups:
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
         source_path: vintage-test-dec
-        # The v1.3.3/version-22 candidate at local commit
-        # bf88344c05ae70d2b791858f1a0a3e506d4e3740 has a tracked runtime
-        # contract, byte-identical clean-source package proof, a CGO-free
-        # desktop binary, and no staged sidecar state or tenant authority.
-        # Do not substitute the older remote v21 source: this exact candidate
-        # must become remotely recoverable before it may be pinned or released.
+        # The current dev-publish v1.3.3/version-22 candidate has a tracked
+        # runtime contract, byte-identical clean-source package proof, a
+        # CGO-free desktop binary, and no staged sidecar state or tenant
+        # authority. An independent clean clone must first prove it.
+        candidate_source_commit: bf88344c05ae70d2b791858f1a0a3e506d4e3740
         publish_slug: vintage
         catalog_name: Vintage Remote Desktop
         live_version: 1.2.4
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec
         catalog_slug: vintage
-        reconciliation_state: source-commit-not-remotely-recoverable
+        reconciliation_state: source-clean-clone-pending
         source_repository: https://github.com/hrbrlife/vintage-test-dec
         role: remote-desktop

@@ -946,7 +946,8 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
                 "held": {
                     "appId": held_app_id,
                     "source_path": "held",
-                    "reconciliation_state": "source-commit-not-remotely-recoverable",
+                    "candidate_source_commit": "a" * 40,
+                    "reconciliation_state": "source-clean-clone-pending",
                 },
             })
             document = json.loads(config.read_text(encoding="utf-8"))
@@ -959,9 +960,10 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
             assert incomplete["failures"] == [], incomplete
             assert incomplete["unreconciled"] == [{
                 "appId": held_app_id,
+                "candidateSourceCommit": "a" * 40,
                 "group": "msb",
                 "name": "held",
-                "reconciliationState": "source-commit-not-remotely-recoverable",
+                "reconciliationState": "source-clean-clone-pending",
             }], incomplete
 
             # A clean local commit with the right origin string is insufficient
@@ -1287,8 +1289,35 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
-    assert paint["reconciliation_state"] == "source-commit-not-remotely-recoverable", paint
-    assert not paint.get("source_commit"), paint
+    assert paint["reconciliation_state"] == "source-pinned", paint
+    assert paint["source_commit"] == "c5347931c2ae9ab3579c8eb869edec5a0f7b44ea", paint
+    jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
+    assert jinn["reconciliation_state"] == "source-pinned", jinn
+    assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
+    pending_candidates = {
+        "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "7a50e8b123fd7d107b4df1ba9c9db567a7862753",
+        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
+        "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
+        "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "fe6707e0a95409a28b2af5c148d38fc434151847",
+        "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
+        "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": "0e1be5ff0782f8a3999d5b5dc6f0cbbf5c600cbc",
+        "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": "039d7ea6f977a3fc02e6d96545de0c3d5850db88",
+        "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": "2164058d5ad3cd275ec24d9498786a257e1efb2a",
+        "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "cdd1ac07f9c2e93b5b1c06805619e903f990bb35",
+        "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": "d9a282fb50711038f7f456e8d107064f888742ae",
+        "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
+        "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
+        "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh": "9852aee2278e59e1411737bbb008c51d809d980a",
+        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "bf88344c05ae70d2b791858f1a0a3e506d4e3740",
+    }
+    for app_id, candidate_source_commit in pending_candidates.items():
+        app = entries[app_id]
+        assert app["reconciliation_state"] == "source-clean-clone-pending", app
+        assert not app.get("source_commit"), app
+        assert app["candidate_source_commit"] == candidate_source_commit, app
+    ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
+    assert ai_lagoon["reconciliation_state"] == "source-policy-unreconciled", ai_lagoon
+    assert ai_lagoon["candidate_source_commit"] == "dc4b842a7953eb3721d4a99edf0faa29d7c36853", ai_lagoon
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
@@ -1333,21 +1362,26 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert dueprocess["source_commit"] == "aff5cc7ce2b793eee34f97e10d27d00bec441941", dueprocess
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
-    assert clientspace["reconciliation_state"] == "source-commit-not-remotely-recoverable", clientspace
+    assert clientspace["reconciliation_state"] == "source-clean-clone-pending", clientspace
     assert not clientspace.get("source_commit"), clientspace
     dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
     assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
-    assert dashboard["reconciliation_state"] == "source-commit-not-remotely-recoverable", dashboard
+    assert dashboard["reconciliation_state"] == "source-clean-clone-pending", dashboard
     assert not dashboard.get("source_commit"), dashboard
     shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
     assert shell_tester["source_path"] == "shell_tester", shell_tester
-    assert shell_tester["reconciliation_state"] == "source-commit-not-remotely-recoverable", shell_tester
+    assert shell_tester["reconciliation_state"] == "source-clean-clone-pending", shell_tester
     assert not shell_tester.get("source_commit"), shell_tester
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
-    assert paint["reconciliation_state"] == "source-commit-not-remotely-recoverable", paint
-    assert not paint.get("source_commit"), paint
+    assert paint["reconciliation_state"] == "source-pinned", paint
+    assert paint["source_commit"] == "c5347931c2ae9ab3579c8eb869edec5a0f7b44ea", paint
+    jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
+    assert jinn["source_path"] == "jinn", jinn
+    assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
+    assert jinn["reconciliation_state"] == "source-pinned", jinn
+    assert jinn["source_commit"] == "08daf329d602bccc0d539c4ee7710e52b370fe99", jinn
     for app_id, source_path, source_repo in (
         ("021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0", "welcome", "https://github.com/hrbrlife/welcome-pearl"),
         ("uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "popaye", "https://github.com/hrbrlife/ccash_go_htmx"),
@@ -1357,7 +1391,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         app = entries[app_id]
         assert app["source_path"] == source_path, app
         assert app["source_repository"] == source_repo, app
-        assert app["reconciliation_state"] == "source-commit-not-remotely-recoverable", app
+        assert app["reconciliation_state"] == "source-clean-clone-pending", app
         assert not app.get("source_commit"), app
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["source_path"] == "cratelink", cratelink
@@ -1376,7 +1410,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     }.items():
         app = entries[app_id]
         assert app["source_path"] == source_path, app
-        assert app["reconciliation_state"] == "source-commit-not-remotely-recoverable", app
+        assert app["reconciliation_state"] == "source-clean-clone-pending", app
         assert not app.get("source_commit"), app
 
 

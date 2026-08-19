@@ -203,6 +203,14 @@ def catalog_config() -> dict[str, Any]:
                 if not isinstance(source_branch, str):
                     raise ProviderError(f"Bazaar catalog app {spec['appId']} has an invalid source_branch")
                 canonical_source_branch(source_branch)
+            if "candidate_source_commit" in spec:
+                candidate_source_commit = spec["candidate_source_commit"]
+                if not isinstance(candidate_source_commit, str) or not re.fullmatch(
+                    r"[0-9a-f]{40}", candidate_source_commit.strip().lower()
+                ):
+                    raise ProviderError(
+                        f"Bazaar catalog app {spec['appId']} has an invalid candidate_source_commit"
+                    )
             app_ids.append(spec["appId"])
     if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
@@ -234,6 +242,7 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     "reconciliation_state": reconciliation_state,
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
+                    "candidate_source_commit": str(spec.get("candidate_source_commit", "")),
                     "source_repository": canonical_source_repository(str(spec.get("source_repository", ""))),
                     "source_branch": canonical_source_branch(str(
                         spec.get("source_branch", doc.get("default_source_branch", ""))
@@ -441,16 +450,20 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
 
     specs = [app_spec(app_id, require_release_ready=False) for app_id in sorted(app_ids)]
     pinned_specs = [spec for spec in specs if spec["reconciliation_state"] == "source-pinned"]
-    unreconciled = [
-        {
+    unreconciled = []
+    for spec in specs:
+        if spec["reconciliation_state"] == "source-pinned":
+            continue
+        entry = {
             "appId": spec["appId"],
             "group": spec["group"],
             "name": spec["name"],
             "reconciliationState": spec["reconciliation_state"] or "unspecified",
         }
-        for spec in specs
-        if spec["reconciliation_state"] != "source-pinned"
-    ]
+        candidate_source_commit = spec["candidate_source_commit"].strip().lower()
+        if candidate_source_commit:
+            entry["candidateSourceCommit"] = candidate_source_commit
+        unreconciled.append(entry)
     failures: list[dict[str, str]] = []
     for spec in pinned_specs:
         if not re.fullmatch(r"[0-9a-f]{40}", spec["source_commit"].strip().lower()):

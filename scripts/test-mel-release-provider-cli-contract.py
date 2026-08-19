@@ -1569,13 +1569,18 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert creeper["reconciliation_state"] == "source-pinned", creeper
     assert creeper["release_state"] == "ready", creeper
     assert creeper["source_selection_state"] == "direct-dev-verified", creeper
+    vintage = entries["yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh"]
+    assert vintage["source_path"] == "vintage-test-dec", vintage
+    assert vintage["source_commit"] == "bf88344c05ae70d2b791858f1a0a3e506d4e3740", vintage
+    assert vintage["reconciliation_state"] == "source-pinned", vintage
+    assert vintage["release_state"] == "ready", vintage
+    assert vintage["source_selection_state"] == "direct-dev-verified", vintage
     pending_candidates = {
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
         "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
-        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "bf88344c05ae70d2b791858f1a0a3e506d4e3740",
     }
     for app_id, candidate_source_commit in pending_candidates.items():
         app = entries[app_id]
@@ -1696,7 +1701,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
     for app_id, source_path in {
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "melusina-app-opensanctions",
-        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "vintage-test-dec",
     }.items():
         app = entries[app_id]
         assert app["source_path"] == source_path, app

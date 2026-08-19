@@ -649,17 +649,21 @@ groups:
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
         source_path: vintage-test-dec
-        # The current dev-publish v1.3.3/version-22 candidate has a tracked
-        # runtime contract, byte-identical clean-source package proof, a
+        # The current dev-publish v1.3.3/version-22 source has a tracked
+        # runtime contract, byte-identical clean-checkout package proof, a
         # CGO-free desktop binary, and no staged sidecar state or tenant
-        # authority. An independent clean clone must first prove it.
-        candidate_source_commit: bf88344c05ae70d2b791858f1a0a3e506d4e3740
+        # authority. The current public catalog is still v1.2.4/version-19,
+        # so this remains a valid forward candidate without an artificial bump.
+        source_commit: bf88344c05ae70d2b791858f1a0a3e506d4e3740
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh.json
         publish_slug: vintage
         catalog_name: Vintage
         live_version: 1.2.4
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec
         catalog_slug: vintage
-        reconciliation_state: source-clean-clone-pending
         source_repository: https://github.com/hrbrlife/vintage-test-dec
         role: remote-desktop

@@ -107,7 +107,15 @@ const installUrl = (host, app) => {
 // sidecar probes recorded before anyone may call them launch-ready.
 const runtimeContractInfo = (app) => {
   const rc = app?.runtimeContract;
-  if (rc?.status === "declared") {
+  // The immutable signed catalog carries the binding under attest.  Some
+  // catalog generations deliberately omit the optional convenience projection
+  // (`runtimeContract`), so use the signed claim as the canonical fallback.
+  // Both fields are required: a partial claim remains uncertified.
+  const signedContract = app?.attest;
+  const signedDeclaration =
+    signedContract?.runtimeContractSchema === "melusina-app-runtime-contract-v1" &&
+    /^[0-9a-f]{64}$/.test(signedContract?.runtimeContractSha256 || "");
+  if (rc?.status === "declared" || signedDeclaration) {
     return {
       label: "runtime proof pending",
       detail: "This release declares its visible launch and sidecar checks; the real post-install proof is still required.",

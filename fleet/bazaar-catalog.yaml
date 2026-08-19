@@ -565,11 +565,13 @@ groups:
       creeper:
         appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
         source_path: melusina-app-creeper
-        # The current dev-publish v0.1.24/version-26 candidate has a tracked
-        # runtime contract and reproducible package proof. Keep it held until
-        # an independent clean clone proves this exact revision.
-        candidate_source_commit: d9a282fb50711038f7f456e8d107064f888742ae
-        reconciliation_state: source-clean-clone-pending
+        # Selected after a complete remote-head inventory and clean package
+        # proof. The governed provider still rechecks this exact dev head.
+        source_commit: d9a282fb50711038f7f456e8d107064f888742ae
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh.json
         publish_slug: creeper
         catalog_name: Creeper
         live_version: 0.1.20

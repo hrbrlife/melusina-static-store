@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 18,
+  "releaseReadyAppCount": 19,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -91,6 +91,15 @@
       "version": "0.2.14",
       "spkSha256": "91d7f7c1f0b21b54b24fa89cd8386d40abeea3bc444f0ab2112a6619865a69e8",
       "appHash": "6ebfd29116459f95e1c8a98249ee89abed34cd785140399b15ced98851c89b53"
+    },
+    {
+      "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
+      "catalogName": "Creeper",
+      "sourceCommit": "d9a282fb50711038f7f456e8d107064f888742ae",
+      "sourceSelectionReceipt": "prepublish-selections/pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh.json",
+      "version": "0.1.24",
+      "spkSha256": "ab1a4ecf00c489e89f224744da7d0c0d5eacafd74d42fb29a85619234c6e2731",
+      "appHash": "854f943ba16ea31dc24a3503ce557c6633ef9742d9c8e21599290c2c8ea14b30"
     },
     {
       "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",

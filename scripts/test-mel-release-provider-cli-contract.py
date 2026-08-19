@@ -1435,6 +1435,11 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert doc["source_commit"] == "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
+    instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]
+    assert instaco["reconciliation_state"] == "source-pinned", instaco
+    assert instaco["source_commit"] == "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c", instaco
+    assert instaco["release_state"] == "ready", instaco
+    assert instaco["source_selection_state"] == "direct-dev-verified", instaco
     botmother = entries["xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"]
     assert botmother["reconciliation_state"] == "source-pinned", botmother
     assert botmother["source_commit"] == "0f224b9d0de09b93eb257bf21788f6f4636d123d", botmother
@@ -1504,7 +1509,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
             ("ccash-domain-template", "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
-            ("instaco", "5d9347ce837ec423013bc17bd17ff3a60b7f39eb", "instaco-app", "instaco"),
+            ("instaco", "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c", "instaco-app", "instaco"),
     }
     for app_id, (source_path, source_commit, repo, slug) in cases.items():
         app = entries[app_id]
@@ -1586,7 +1591,6 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
             "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
             "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
             "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
-            "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
         ):
             try:
                 provider.app_spec(app_id)

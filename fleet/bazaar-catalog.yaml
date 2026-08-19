@@ -221,12 +221,15 @@ groups:
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
-        # The current canonical main revision was recovered from a clean
-        # recursive clone on 2026-08-19. Its tracked metadata and pending-build
-        # runtime contract agree with the public 0.1.8 / v15 catalog identity;
-        # it remains release-held until the complete cohort can be built.
-        source_commit: 5d9347ce837ec423013bc17bd17ff3a60b7f39eb
+        # The current dev-publish source is a clean-clone, deterministic
+        # v0.1.9 / v16 governed candidate. The prior main is its reviewed
+        # ancestor; older divergent preservation refs remain recorded in its
+        # selection receipt instead of becoming an accidental source choice.
+        source_commit: 7724681d45bfa5724e4d7fbb645aa5222fd9fe7c
         reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.json
         publish_slug: instaco
         catalog_name: InstaCo
         live_version: 0.1.8

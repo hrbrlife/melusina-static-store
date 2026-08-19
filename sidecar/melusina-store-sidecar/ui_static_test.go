@@ -93,13 +93,13 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	}
 }
 
-func TestRouterServesRuntimeContractSchemaFromDistDir(t *testing.T) {
+func TestRouterServesRuntimeContractSchemaFromGovernedRelease(t *testing.T) {
 	dist := t.TempDir()
-	want := []byte(`{"schema":"melusina-app-runtime-contract-v1"}`)
+	shadow := []byte(`{"schema":"mutable-shadow"}`)
 	if err := os.MkdirAll(filepath.Join(dist, "schemas"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dist, "schemas", "melusina-app-runtime-contract-v1.schema.json"), want, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dist, "schemas", "melusina-app-runtime-contract-v1.schema.json"), shadow, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,8 +109,23 @@ func TestRouterServesRuntimeContractSchemaFromDistDir(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("schema status = %d, want 200; body=%q", rec.Code, rec.Body.String())
 	}
-	if rec.Body.String() != string(want) {
-		t.Fatalf("schema body = %q, want %q", rec.Body.String(), want)
+	if rec.Body.String() != embeddedRuntimeContractSchema {
+		t.Fatalf("schema body did not come from the governed release")
+	}
+	if rec.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+		t.Fatalf("schema Cache-Control = %q", rec.Header().Get("Cache-Control"))
+	}
+
+	head := httptest.NewRecorder()
+	router.ServeHTTP(head, httptest.NewRequest(http.MethodHead, runtimeContractSchemaPath, nil))
+	if head.Code != http.StatusOK || head.Body.Len() != 0 {
+		t.Fatalf("schema HEAD = HTTP %d body=%q", head.Code, head.Body.String())
+	}
+
+	post := httptest.NewRecorder()
+	router.ServeHTTP(post, httptest.NewRequest(http.MethodPost, runtimeContractSchemaPath, nil))
+	if post.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("schema POST = HTTP %d, want 405", post.Code)
 	}
 }
 

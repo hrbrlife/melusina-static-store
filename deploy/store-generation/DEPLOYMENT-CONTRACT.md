@@ -52,10 +52,12 @@ paths. Before enabling the unit it must install or create:
    the first governed app promotion supplies its declared
    `developer/repo/slug` slot and atomically creates it. The initial served
    snapshot contains the required namespaces and an empty `apps/index.json`,
-   with no pointer files. A copied public catalog with pointers is **not** a
-   writable first-install input unless a separately governed import has created
-   the exact matching durable rollout/staged-release records: virgin genesis
-   deliberately rejects pointers with no rollout state.
+   with no pointer files. The versioned runtime-contract schema is served from
+   the governed sidecar ELF, not copied from this mutable snapshot. A copied
+   public catalog with pointers is **not** a writable first-install input unless
+   a separately governed import has created the exact matching durable
+   rollout/staged-release records: virgin genesis deliberately rejects pointers
+   with no rollout state.
 7. A root-owned component-registry entry for `melusina-store-sidecar`. Its
    `runtimeEnvFile` must be exactly
    `/var/lib/melusina-store/runtime/melusina-store-sidecar.env`, matching the

@@ -90,6 +90,10 @@ func (h requestScopedStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 		return
 	}
+	if isEmbeddedRuntimeContractSchemaPath(r.URL.Path) {
+		serveEmbeddedRuntimeContractSchema(w, r)
+		return
+	}
 	if isUIPath(r.URL.Path) {
 		if h.ui == nil {
 			http.Error(w, "governed UI unavailable", http.StatusServiceUnavailable)

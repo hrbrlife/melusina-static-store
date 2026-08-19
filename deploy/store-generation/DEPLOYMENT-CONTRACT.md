@@ -74,11 +74,34 @@ archive and prepare all state before its single enable/start action.
 
 ## Start and acceptance
 
-After the unit starts, the deployer checks all of the following through the
-service listener:
+First install has two deliberately separate acceptance gates. The deployer must
+not manufacture a signed generation or runtime marker merely to make the
+second gate look green.
 
-- `GET /healthz` is `200`;
-- `GET /apps/index.json` is `200`;
+### 1. Pre-generation Store activation
+
+Immediately after the explicit `genesis-bootstrap` and the one unit
+enable/start, the deployer proves all of the following through the service
+listener:
+
+- `GET /healthz` is `200` and binds the configured `store_id` and domain;
+- `GET /apps/index.json` is `200` and is the exact empty canonical index;
+- `GET /schemas/melusina-app-runtime-contract-v1.schema.json` is `200` from
+  the release-bound sidecar ELF, not the mutable snapshot;
+- `GET /update/generation.json` is the expected fail-closed `503` with the
+  generation check diagnostic, because no signed DesiredGeneration exists yet;
+- `GET /release-info` is the expected fail-closed `503`, because the controller
+  has not written a runtime tuple yet.
+
+This proves a virgin Store is correctly staged and serving its governed empty
+surface. It is not a launch-ready Store runtime and must never be reported as
+one.
+
+### 2. Governed signed-generation and runtime proof
+
+Only after an authorized `POST /publish/generation` has atomically persisted
+the first signed DesiredGeneration may the following stronger gate pass:
+
 - `GET /update/generation.json` is `200`, strict JSON, and verifies under the
   locally pinned operator public key and exact `store_id`;
 - after a signed `melusina-store-sidecar` component apply, `GET /release-info`
@@ -88,12 +111,9 @@ service listener:
 - every referenced artifact returns `200` through the store release gate and
   hashes to the signed `sha256` with the signed byte count.
 
-The generation endpoint intentionally returns `503` until an authorized
-`POST /publish/generation` has atomically persisted the first signed
-generation. A green health check alone is therefore not a release-rail proof.
-Likewise, a first boot with no runtime marker is permitted only to fail closed
-at `/release-info`; it is not a launch-ready Store runtime until the governed
-Store-sidecar component has been applied through the controller WAL.
+The controller WAL alone writes and restores the runtime marker. A first boot
+with no marker must fail closed at `/release-info`; neither the deployer nor a
+manual restart may substitute one.
 
 ## Rollback
 

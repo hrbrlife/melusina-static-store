@@ -4,7 +4,7 @@
   "createdAt": "2026-08-19",
   "status": "candidate-ready-not-published",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 23,
+  "releaseReadyAppCount": 24,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -28,6 +28,15 @@
       "version": "0.2.5",
       "spkSha256": "c8e9507f5fc102735cb48f024d16fe24617597d1e6bbe6e1b72db6eaca4ba978",
       "appHash": "c4ef9a20e2f50e2c663e15447b748b39e078d7883915b5cab6f529fba83e8372"
+    },
+    {
+      "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
+      "catalogName": "Melusina Dashboard",
+      "sourceCommit": "c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed",
+      "sourceSelectionReceipt": "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json",
+      "version": "0.2.10",
+      "spkSha256": "a5e5b6fdeee4f0a45c4fdfe903fbebd1b3af07ce6897297efbd779b5c36d0e57",
+      "appHash": "1e8d52dfa17dcb385ec0e2eb63722c975d60a746dda1dd27f3a078e59db7862c"
     },
     {
       "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",

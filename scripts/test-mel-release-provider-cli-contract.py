@@ -1575,11 +1575,20 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert vintage["reconciliation_state"] == "source-pinned", vintage
     assert vintage["release_state"] == "ready", vintage
     assert vintage["source_selection_state"] == "direct-dev-verified", vintage
+    dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
+    assert dashboard["source_commit"] == "c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed", dashboard
+    assert dashboard["source_baseline_branch"] == "main", dashboard
+    assert dashboard["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dashboard
+    assert dashboard["reconciliation_state"] == "source-pinned", dashboard
+    assert dashboard["release_state"] == "ready", dashboard
+    assert dashboard["source_selection_state"] == "direct-dev-verified", dashboard
+    assert dashboard["source_selection_receipt"] == (
+        "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json"
+    ), dashboard
     pending_candidates = {
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "75e48c66a691cb2379d32d0599f2cc895b63a7b6",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "15e64ee261cd2b2ede14e5ce109611bfbf3d277e",
         "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": "a5a434ae3d36b32d415435df060f7349525dd087",
-        "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "f2ff99faed09a9596cfebfa50670671ab6ff1e42",
         "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": "3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6",
     }
     for app_id, candidate_source_commit in pending_candidates.items():
@@ -1650,8 +1659,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert clientspace["source_commit"] == "c18a2472e526189b491b336ab67a51190069b977", clientspace
     dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
     assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
-    assert dashboard["reconciliation_state"] == "source-clean-clone-pending", dashboard
-    assert not dashboard.get("source_commit"), dashboard
+    assert dashboard["source_repository"] == "https://github.com/hrbrlife/melusina-dashboard-app", dashboard
+    assert dashboard["source_commit"] == "c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed", dashboard
+    assert dashboard["reconciliation_state"] == "source-pinned", dashboard
+    assert dashboard["release_state"] == "ready", dashboard
+    assert dashboard["source_selection_state"] == "direct-dev-verified", dashboard
     shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
     assert shell_tester["source_path"] == "shell-tester", shell_tester
     assert shell_tester["source_repository"] == "https://github.com/hrbrlife/shell_tester", shell_tester

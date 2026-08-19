@@ -1,0 +1,103 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0",
+  "sourceRepository": "https://github.com/hrbrlife/melusina-dashboard-app",
+  "sourceCommit": "c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "ancestor",
+  "decisionSummary": "Selected the current remote dev-publish v0.2.10/version-12 Dashboard source after a complete advertised-head inventory. The selected source merges the current main reproducibility line and the relevant B35 capability-custody controls while retaining the newer per-tab session handling and durable revocation retry semantics. It also exposes the shared governed `build` module interface without changing the underlying Dashboard build recipe. Demo-only, obsolete release-harness, and documentation-only lines remain Git evidence rather than current app input.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "clean checkout at the selected remote dev-publish commit",
+      "every advertised remote head recorded and classified before selection",
+      "reviewed main baseline is an ancestor of the selected dev-publish source",
+      "go vet ./..., go test ./..., and go test -race ./... passed",
+      "make verify-recovery produced two matching v0.2.10/version-12 SPKs with SHA-256 a5e5b6fdeee4f0a45c4fdfe903fbebd1b3af07ce6897297efbd779b5c36d0e57",
+      "metadata, immutable app identity, and tracked runtime contract agree"
+    ]
+  },
+  "reviewedRefs": [
+    {
+      "ref": "refs/heads/dev-demo/20260726-dashboard",
+      "commit": "f5a2f711f75a67193756d1a771b9b8ba34010676",
+      "outcome": "not-app-relevant"
+    },
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/feat/teamb-banking-2026-06-26",
+      "commit": "3e7d519140cd9e0dda030dd9955a780881b17eb2",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "fc3c0156b71b7d6a594e9822953cf0219d8937cb",
+      "outcome": "baseline"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/codex/a02-dashboard-portability-20260804",
+      "commit": "ee50000cdb6daa3c28387ed4fb26969d3aa3f8ae",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-dashboard",
+      "commit": "f5a2f711f75a67193756d1a771b9b8ba34010676",
+      "outcome": "not-app-relevant"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/feat/dashboard-grain-2026-06-08",
+      "commit": "0a6310de657eb908e435e8c34b844172c38b893a",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
+      "commit": "3e7d519140cd9e0dda030dd9955a780881b17eb2",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/dashboard-session-teardown-20260814",
+      "commit": "f5b8c828e4be81fc5d01283f38baebcc8029892e",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/t2-b35-20260804",
+      "commit": "4dbe8073efe8d1ae4c72741151d1fddceb2785c4",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/main",
+      "commit": "3666f3d8d081e285c1e0396153d032b394df2952",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/riker/b35-fresh-20260804",
+      "commit": "a70c5f09b313342fa7e5a16bd0473711f9863b73",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/riker/b35-release-hardening-20260804",
+      "commit": "b2b6b318d63c6bd9a55ab61ab5e35c8a98323202",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+      "commit": "34d8349a67a66642ec3ce74a5ad58e03248ec225",
+      "outcome": "not-app-relevant"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/team1/dashboard-revocation-tombstone",
+      "commit": "3f566cf9df9a4048cc309e8ead8976b3fc00ba10",
+      "outcome": "retained"
+    },
+    {
+      "ref": "refs/heads/team1/dashboard-revocation-tombstone",
+      "commit": "3f566cf9df9a4048cc309e8ead8976b3fc00ba10",
+      "outcome": "retained"
+    }
+  ]
+}

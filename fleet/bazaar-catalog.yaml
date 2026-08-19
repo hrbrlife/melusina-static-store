@@ -595,12 +595,16 @@ groups:
       melusina-dashboard:
         appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
         source_path: melusina-dashboard-app
-        # The current dev-publish v0.2.6/version-8 candidate has a tracked
-        # runtime contract and reproducible package proof. Do not replace it
-        # with the older source; an independent clean clone must first prove
-        # this exact revision.
-        candidate_source_commit: f2ff99faed09a9596cfebfa50670671ab6ff1e42
-        reconciliation_state: source-clean-clone-pending
+        # The current remote dev-publish v0.2.10/version-12 source was selected
+        # only after all advertised heads were classified, its merged security
+        # controls were proved in a clean clone, and its package double-packed.
+        source_commit: c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json
         publish_slug: melusina-dashboard-app
         catalog_name: Melusina Dashboard
         live_version: 0.2.3

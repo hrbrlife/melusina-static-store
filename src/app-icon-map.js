@@ -4,7 +4,6 @@ export const BAZAAR_MARK_ICON_PATH = "/icons/melulogo-cyan.svg";
 
 export const APP_ICON_PATHS = Object.freeze({
   "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "/icons/apps/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.svg",
-  "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0": "/icons/apps/130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0.svg",
   "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": "/icons/apps/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.svg",
   "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": "/icons/apps/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.png",
   "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0": "/icons/apps/47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0.png",

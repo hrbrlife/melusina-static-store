@@ -147,8 +147,8 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("real catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
-	if len(catalog.Apps) != 33 || catalog.ExpectedLiveAppCount != 33 {
-		t.Fatalf("real catalog scope = apps %d expected %d, want 33", len(catalog.Apps), catalog.ExpectedLiveAppCount)
+	if len(catalog.Apps) != 32 || catalog.ExpectedLiveAppCount != 32 {
+		t.Fatalf("real catalog scope = apps %d expected %d, want 32", len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
 	seenNames := make(map[string]string, len(catalog.Apps))
 	ready := map[string]struct{}{

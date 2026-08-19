@@ -37,7 +37,6 @@ proof, and the complete-cohort gate before it can leave its current hold.
 | CanBoard | `2164058d5ad3cd275ec24d9498786a257e1efb2a` |
 | clientspace | `cdd1ac07f9c2e93b5b1c06805619e903f990bb35` |
 | Creeper | `d9a282fb50711038f7f456e8d107064f888742ae` |
-| GoldKey DEV | `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` |
 | Melusina Dashboard | `f2ff99faed09a9596cfebfa50670671ab6ff1e42` |
 | OpenSanctions | `3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6` |
 | Shell Tester | `9852aee2278e59e1411737bbb008c51d809d980a` |
@@ -126,7 +125,6 @@ newest valid forward tip instead of backfilling an older release.
 | CanBoard | `source-clean-clone-pending` | `2164058d5ad3cd275ec24d9498786a257e1efb2a` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |
 | clientspace | `source-clean-clone-pending` | `cdd1ac07f9c2e93b5b1c06805619e903f990bb35` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |
 | Creeper | `source-clean-clone-pending` | `d9a282fb50711038f7f456e8d107064f888742ae` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |
-| GoldKey Dev | `source-pinned` | `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` | Fresh recursive clone at the exact shared `dev-publish` tip passed the pinned-toolchain build, vet, and full test suite on 2026-08-19. | Keep production and DEV package identities separate through deterministic package and release proof. |
 | Dashboard | `source-clean-clone-pending` | `f2ff99faed09a9596cfebfa50670671ab6ff1e42` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |
 | OpenSanctions | `source-clean-clone-pending` | `3fb91a0cd37fe40a3d1341c8a0d9ac5851004ee6` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |
 | Shell Tester | `source-clean-clone-pending` | `9852aee2278e59e1411737bbb008c51d809d980a` | Current `dev-publish` tip; clean proof has not run | Run fresh-clone source gates against this exact tip. |

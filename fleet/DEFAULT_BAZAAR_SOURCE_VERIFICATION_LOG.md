@@ -32,7 +32,7 @@ publication, served catalog state, tenant pins, or fresh-install behavior.
 
 The verified source metadata is version `1.3.5`; the catalog's `live_version`
 remains `1.3.4`. This record proves a forward source candidate, not that it is
-already published. It remains held until the complete 33-app source cohort,
+already published. It remains held until the complete 32-app source cohort,
 deterministic package proof, governed release receipt, served pointer/catalog
 evidence, and fresh-install runtime checks all agree.
 
@@ -58,7 +58,7 @@ contract semantic check used for BotMother above.
 The domain-template and Fineract Setup rows, like BotMother, are verified
 forward source candidates rather than publication claims: their metadata is
 ahead of the catalog's recorded live version. Every row above remains held
-pending the full 33-app source cohort, deterministic package/release proof,
+pending the full 32-app source cohort, deterministic package/release proof,
 served state, and fresh-install verification.
 
 ## 2026-08-19 `dev-publish` source transition

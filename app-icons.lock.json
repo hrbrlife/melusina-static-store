@@ -17,22 +17,6 @@
       }
     },
     {
-      "appId": "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0",
-      "assetSha256": "d2ff9d797d04a1c8637c18a0cff9b726c0cf4b4861203256a794a19856d0dd9b",
-      "path": "icons/apps/130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0.svg",
-      "source": {
-        "appHash": "be0b35bf29c80fd5879f0b735423cf0b0879752348f118c9d275cbfd4ca43f4c",
-        "format": "svg",
-        "packageId": "119c207ed41a53fb0c2b4d169c6a9035",
-        "packageSha256": "119c207ed41a53fb0c2b4d169c6a9035ebd7a2f8ed0c8b45e9822a841bf1dc65",
-        "quality": "native",
-        "releaseEntryPda": "Bad4xN37dDgd6h1A7w8pLVoNVgafawBSUWZcoBYf4Tsb",
-        "releaseHash": "1bf780c31eb33b422fc88a34a977f36a23ebd7ca96e7bd63038cf15c6db01046",
-        "slot": "appGrid",
-        "variant": "svg"
-      }
-    },
-    {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
       "assetSha256": "3b21079abff5f14c4e7b773f0ceff9785f8e51460ffd39cfe485ed52ac9f531c",
       "path": "icons/apps/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.svg",

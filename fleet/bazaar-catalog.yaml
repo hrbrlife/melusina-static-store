@@ -11,7 +11,7 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-18T10:22:21Z
 catalog_index_sha256: 807c6c82ebc0d8a8dc075b26a9669fb609909881b82bc01be6812324a2a990a5
-expected_live_app_count: 33
+expected_live_app_count: 32
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -47,7 +47,7 @@ groups:
         candidate_source_commit: 7a50e8b123fd7d107b4df1ba9c9db567a7862753
         reconciliation_state: source-clean-clone-pending
         publish_slug: welcome-pearl
-        catalog_name: Welcome pearl
+        catalog_name: Lobby
         live_version: 0.1.28
         catalog_developer: hrbrlife
         catalog_repo: welcome-pearl
@@ -77,7 +77,7 @@ groups:
         source_commit: 0dda2a0a89335e12ad86c70792585bc3006445d5
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
-        catalog_name: NamedCoin Admin
+        catalog_name: NamedCoin Configurator
         live_version: 0.1.42
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-admin-app
@@ -95,7 +95,7 @@ groups:
         candidate_source_commit: 75e48c66a691cb2379d32d0599f2cc895b63a7b6
         reconciliation_state: source-clean-clone-pending
         publish_slug: popaye
-        catalog_name: popaye
+        catalog_name: paype.cc
         live_version: 0.3.189
         catalog_developer: hrbrlife
         catalog_repo: ccash_go_htmx
@@ -114,7 +114,7 @@ groups:
         candidate_source_commit: 15e64ee261cd2b2ede14e5ce109611bfbf3d277e
         reconciliation_state: source-clean-clone-pending
         publish_slug: ccashconfig
-        catalog_name: ccash Config
+        catalog_name: CCA.SH Configurator
         live_version: 0.0.77
         catalog_developer: hrbrlife
         catalog_repo: melusina_ccashconfig_app
@@ -163,7 +163,7 @@ groups:
         source_commit: 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
-        catalog_name: cyberteller
+        catalog_name: CyberTeller
         live_version: 0.1.93
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
@@ -180,7 +180,7 @@ groups:
         metadata_path: metadata.json
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
-        catalog_name: Fineract Setup
+        catalog_name: Fineract Configurator
         live_version: 0.2.18
         catalog_developer: hrbrlife
         catalog_repo: fineract-setup
@@ -195,7 +195,7 @@ groups:
         candidate_source_commit: fe6707e0a95409a28b2af5c148d38fc434151847
         reconciliation_state: source-clean-clone-pending
         publish_slug: telescreen
-        catalog_name: TeleScreen Hub
+        catalog_name: TeleScreen
         live_version: 0.0.13
         catalog_developer: hrbrlife
         catalog_repo: pr_ninja
@@ -308,7 +308,7 @@ groups:
         source_commit: 08daf329d602bccc0d539c4ee7710e52b370fe99
         reconciliation_state: source-pinned
         publish_slug: jinn
-        catalog_name: Melusina's Jinn
+        catalog_name: Jinn
         live_version: 0.0.6
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -353,7 +353,7 @@ groups:
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json
         publish_slug: sheets-bureau
-        catalog_name: Sheets Bureau
+        catalog_name: Bureau Sheets
         live_version: 2.1.4
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
@@ -369,7 +369,7 @@ groups:
         reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
-        catalog_name: Doc Bureau
+        catalog_name: Bureau Doc
         live_version: 2.0.32
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -391,7 +391,7 @@ groups:
         source_commit: b0f2ec108c5a8f74c2f5e0c6e0ffb25b130ba8e6
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
-        catalog_name: Paint Bureau
+        catalog_name: Bureau Paint
         live_version: 2.0.28
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -421,8 +421,6 @@ groups:
         catalog_repo: GoldKey
         catalog_slug: goldkey
         role: encrypted-team-vault
-        # GoldKey DEV is a separate live listing below. It cannot be replaced
-        # with production GoldKey source material during reconciliation.
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
@@ -506,7 +504,7 @@ groups:
         source_path: ccash-domain-template
         source_commit: f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a
         publish_slug: cca-sh-domain-template
-        catalog_name: ccash Domain Template
+        catalog_name: DomainTemplate
         live_version: 0.5.85
         catalog_developer: hrbrlife
         catalog_repo: ccash_domain_template
@@ -524,7 +522,7 @@ groups:
         candidate_source_commit: cdd1ac07f9c2e93b5b1c06805619e903f990bb35
         reconciliation_state: source-clean-clone-pending
         publish_slug: clientspace
-        catalog_name: clientspace
+        catalog_name: ClientSpace
         live_version: 0.1.3
         catalog_developer: hrbrlife
         catalog_repo: client_collection
@@ -547,26 +545,6 @@ groups:
         catalog_slug: creeper
         source_repository: https://github.com/hrbrlife/melusina-app-creeper
         role: monitoring-and-automation
-      goldkey-dev:
-        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
-        source_path: GoldKey
-        # This separate v0.1.3/version-4 DEV identity has its own metadata,
-        # package target, and runtime contract, but shares the freshly cloned
-        # current dev-publish source with production GoldKey. It remains held
-        # for package/release proof; source provenance is complete.
-        source_commit: 4cdde8588370bfb9ae7b4a7d736d623b8ab0536b
-        reconciliation_state: source-pinned
-        metadata_path: metadata.dev.json
-        runtime_contract_path: RUNTIME-CONTRACT.dev.json
-        pack_target: dev-pack
-        publish_slug: goldkey-dev
-        catalog_name: GoldKey DEV
-        live_version: 0.1.1
-        catalog_developer: hrbrlife
-        catalog_repo: GoldKey
-        catalog_slug: goldkey-dev
-        source_repository: https://github.com/hrbrlife/GoldKey
-        role: separate-development-identity
       melusina-dashboard:
         appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
         source_path: melusina-dashboard-app
@@ -627,7 +605,7 @@ groups:
         # authority. An independent clean clone must first prove it.
         candidate_source_commit: bf88344c05ae70d2b791858f1a0a3e506d4e3740
         publish_slug: vintage
-        catalog_name: Vintage Remote Desktop
+        catalog_name: Vintage
         live_version: 1.2.4
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec

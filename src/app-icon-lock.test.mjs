@@ -36,12 +36,12 @@ function assertedSource(source, appId) {
   assert.ok(source.releaseEntryPda.length > 20, `${appId}: signed releaseEntryPda is required`);
 }
 
-test("the icon lock is an exact 31-app signed-package projection", () => {
+test("the icon lock is an exact 30-app signed-package projection", () => {
   assert.equal(lock.schema, "melusina-bazaar-app-icons-v1");
   assert.match(lock.catalogSha256, SHA256, "lock must bind the exact served catalog input");
   assert.ok(Array.isArray(lock.assets));
   assert.ok(Array.isArray(lock.iconless));
-  assert.equal(lock.assets.length + lock.iconless.length, 31,
+  assert.equal(lock.assets.length + lock.iconless.length, 30,
     "catalog growth requires a deliberate signed-icon lock regeneration");
 
   const ids = new Set();

@@ -1390,11 +1390,29 @@ def checked_in_catalog_entries():
 def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 33, document
-    assert len(entries) == 33, entries
+    assert document["expected_live_app_count"] == 32, document
+    assert len(entries) == 32, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10" not in entries, entries
+    expected_public_names = {
+        "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": "Lobby",
+        "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0": "NamedCoin Configurator",
+        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "paype.cc",
+        "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "CCA.SH Configurator",
+        "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0": "CyberTeller",
+        "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": "Fineract Configurator",
+        "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "TeleScreen",
+        "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh": "Jinn",
+        "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": "Bureau Sheets",
+        "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": "Bureau Doc",
+        "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": "Bureau Paint",
+        "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h": "DomainTemplate",
+        "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "ClientSpace",
+        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "Vintage",
+    }
+    for app_id, expected_name in expected_public_names.items():
+        assert entries[app_id]["catalog_name"] == expected_name, entries[app_id]
     for app_id in (
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
@@ -1493,14 +1511,6 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
         assert (app["source_path"], app["source_commit"], app["catalog_repo"], app["catalog_slug"]) == (
             source_path, source_commit, repo, slug,
         ), app
-    dev = entries["130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0"]
-    assert dev["catalog_name"] == "GoldKey DEV", dev
-    assert dev["source_path"] == "GoldKey", dev
-    assert dev["reconciliation_state"] == "source-pinned", dev
-    assert dev["source_commit"] == "4cdde8588370bfb9ae7b4a7d736d623b8ab0536b", dev
-    assert dev["metadata_path"] == "metadata.dev.json", dev
-    assert dev["runtime_contract_path"] == "RUNTIME-CONTRACT.dev.json", dev
-    assert dev["pack_target"] == "dev-pack", dev
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon

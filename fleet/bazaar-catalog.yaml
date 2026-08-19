@@ -62,7 +62,7 @@ groups:
         source_selection_receipt: prepublish-selections/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.json
         publish_slug: welcome-pearl
         catalog_name: Lobby
-        live_version: 0.1.28
+        live_version: 0.1.29
         catalog_developer: hrbrlife
         catalog_repo: welcome-pearl
         catalog_slug: welcome-pearl
@@ -82,7 +82,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-app
         publish_slug: namedcoin
         catalog_name: NamedCoin
-        live_version: 0.1.35
+        live_version: 0.1.36
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-app
         catalog_slug: namedcoin
@@ -106,7 +106,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Configurator
-        live_version: 0.1.42
+        live_version: 0.1.43
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-admin-app
         catalog_slug: namedcoin-admin
@@ -129,7 +129,7 @@ groups:
         source_selection_receipt: prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json
         publish_slug: popaye
         catalog_name: paype.cc
-        live_version: 0.3.189
+        live_version: 0.3.190
         catalog_developer: hrbrlife
         catalog_repo: ccash_go_htmx
         catalog_slug: popaye
@@ -153,7 +153,7 @@ groups:
         source_selection_receipt: prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json
         publish_slug: ccashconfig
         catalog_name: CCA.SH Configurator
-        live_version: 0.0.77
+        live_version: 0.0.81
         catalog_developer: hrbrlife
         catalog_repo: melusina_ccashconfig_app
         catalog_slug: cca-sh-config
@@ -176,7 +176,7 @@ groups:
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess
-        live_version: 0.1.74
+        live_version: 0.1.76
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess
@@ -198,7 +198,7 @@ groups:
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
-        live_version: 0.7.23
+        live_version: 0.7.26
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata
@@ -222,7 +222,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: 0.1.93
+        live_version: 0.1.96
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller
@@ -239,7 +239,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
         catalog_name: Fineract Configurator
-        live_version: 0.2.18
+        live_version: 0.2.19
         catalog_developer: hrbrlife
         catalog_repo: fineract-setup
         catalog_slug: fineract-setup
@@ -257,7 +257,7 @@ groups:
         source_selection_receipt: prepublish-selections/55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60.json
         publish_slug: telescreen
         catalog_name: TeleScreen
-        live_version: 0.0.13
+        live_version: 0.0.16
         catalog_developer: hrbrlife
         catalog_repo: pr_ninja
         catalog_slug: telescreen
@@ -276,7 +276,7 @@ groups:
         source_selection_receipt: prepublish-selections/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.json
         publish_slug: teleport
         catalog_name: Teleport
-        live_version: 1.3.4
+        live_version: 1.3.5
         catalog_developer: hrbrlife
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
@@ -296,7 +296,7 @@ groups:
         source_selection_receipt: prepublish-selections/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.json
         publish_slug: instaco
         catalog_name: InstaCo
-        live_version: 0.1.8
+        live_version: 0.1.9
         catalog_developer: hrbrlife
         # The app's GitHub repository uses the melusina- prefix, but its
         # already-active Store slot predates that rename.  This exact slot is
@@ -347,7 +347,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina_botmother
         publish_slug: botmother
         catalog_name: BotMother
-        live_version: 1.3.4
+        live_version: 1.3.6
         catalog_developer: hrbrlife
         catalog_repo: MELUSINA_BOTMOTHER
         catalog_slug: botmother
@@ -380,7 +380,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
-        live_version: 0.0.6
+        live_version: 0.0.9
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh.json
@@ -402,7 +402,7 @@ groups:
         source_selection_receipt: prepublish-selections/ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h.json
         publish_slug: cratelink
         catalog_name: CrateLink
-        live_version: 0.3.3
+        live_version: 0.3.4
         # The canonical GitHub repository uses an underscore while the
         # historical Store slot uses a hyphen. Bind the preserved slot
         # explicitly rather than inventing a second public product.
@@ -425,7 +425,7 @@ groups:
         source_selection_receipt: prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json
         publish_slug: sheets-bureau
         catalog_name: Bureau Sheets
-        live_version: 2.1.4
+        live_version: 2.1.5
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
@@ -441,7 +441,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
         catalog_name: Bureau Doc
-        live_version: 2.0.32
+        live_version: 2.0.33
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h.json
@@ -463,7 +463,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
-        live_version: 2.0.28
+        live_version: 2.0.29
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json
@@ -490,7 +490,7 @@ groups:
         source_repository: https://github.com/hrbrlife/GoldKey
         publish_slug: goldkey
         catalog_name: GoldKey
-        live_version: 0.3.4
+        live_version: 0.3.5
         # The provider advances only this immutable production coordinate.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey
@@ -527,7 +527,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
-        live_version: 0.20.0
+        live_version: 0.22.1
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0.json
@@ -547,7 +547,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts
-        live_version: 0.14.0
+        live_version: 0.16.0
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh.json
@@ -565,7 +565,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: canboard
         catalog_name: CanBoard
-        live_version: 0.2.1
+        live_version: 0.2.5
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.json
@@ -591,7 +591,7 @@ groups:
         source_selection_receipt: prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json
         publish_slug: cca-sh-domain-template
         catalog_name: DomainTemplate
-        live_version: 0.5.85
+        live_version: 0.5.88
         catalog_developer: hrbrlife
         catalog_repo: ccash_domain_template
         catalog_slug: cca-sh-domain-template
@@ -612,7 +612,7 @@ groups:
         source_selection_receipt: prepublish-selections/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.json
         publish_slug: clientspace
         catalog_name: ClientSpace
-        live_version: 0.1.3
+        live_version: 0.1.6
         catalog_developer: hrbrlife
         catalog_repo: client_collection
         catalog_slug: clientspace
@@ -630,7 +630,7 @@ groups:
         source_selection_receipt: prepublish-selections/pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh.json
         publish_slug: creeper
         catalog_name: Creeper
-        live_version: 0.1.20
+        live_version: 0.1.24
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-creeper
         catalog_slug: creeper
@@ -651,7 +651,7 @@ groups:
         source_selection_receipt: prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json
         publish_slug: melusina-dashboard-app
         catalog_name: Melusina Dashboard
-        live_version: 0.2.3
+        live_version: 0.2.10
         catalog_developer: hrbrlife
         catalog_repo: melusina-dashboard-app
         catalog_slug: melusina-dashboard-app
@@ -672,7 +672,7 @@ groups:
         source_selection_receipt: prepublish-selections/msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh.json
         publish_slug: opensanctions
         catalog_name: OpenSanctions
-        live_version: 0.1.22
+        live_version: 0.1.25
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-opensanctions
         catalog_slug: opensanctions
@@ -692,7 +692,7 @@ groups:
         source_selection_receipt: prepublish-selections/nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh.json
         publish_slug: shell-tester
         catalog_name: Shell Tester
-        live_version: 0.1.8
+        live_version: 0.1.11
         catalog_developer: hrbrlife
         catalog_repo: shell_tester
         catalog_slug: shell-tester
@@ -713,7 +713,7 @@ groups:
         source_selection_receipt: prepublish-selections/yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh.json
         publish_slug: vintage
         catalog_name: Vintage
-        live_version: 1.2.4
+        live_version: 1.3.3
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec
         catalog_slug: vintage

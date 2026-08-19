@@ -281,6 +281,9 @@ groups:
         source_path: minigit
         source_commit: 610c44614a8b499d1e80795a97daca66a9912f77
         source_repository: https://github.com/hrbrlife/MiniGit
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50.json
         publish_slug: minigit
         catalog_name: MiniGit
         live_version: 0.2.14

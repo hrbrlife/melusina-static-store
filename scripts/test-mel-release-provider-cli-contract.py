@@ -1537,7 +1537,7 @@ def checked_in_catalog_entries():
     return document, entries
 
 
-def test_checked_in_default_bazaar_catalog_is_complete_and_held():
+def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
     assert document["expected_live_app_count"] == 32, document
@@ -1714,16 +1714,14 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert paype["source_selection_receipt"] == (
         "prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json"
     ), paype
-    pending_candidates = {
-        "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": (
-            "onchain-program-artifact-mismatch", "ef73663b86134f7417ccf1104fbe273f1cf901cb",
-        ),
-    }
-    for app_id, (reconciliation_state, candidate_source_commit) in pending_candidates.items():
-        app = entries[app_id]
-        assert app["reconciliation_state"] == reconciliation_state, app
-        assert not app.get("source_commit"), app
-        assert app["candidate_source_commit"] == candidate_source_commit, app
+    instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
+    assert instadao["reconciliation_state"] == "source-pinned", instadao
+    assert instadao["source_commit"] == "b32df2d42af962e80947f863f15f0161c5899c7b", instadao
+    assert instadao["release_state"] == "ready", instadao
+    assert instadao["source_selection_state"] == "direct-dev-verified", instadao
+    assert instadao["source_selection_receipt"] == (
+        "prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json"
+    ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["reconciliation_state"] == "source-pinned", canboard
     assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
@@ -1798,7 +1796,7 @@ def test_ready_cohort_has_exactly_one_production_goldkey():
     }, cyberteller
 
 
-def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
+def test_checked_in_catalog_preserves_source_and_slot_evidence():
     _, entries = checked_in_catalog_entries()
     cases = {
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
@@ -1928,10 +1926,12 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     assert instadao["source_path"] == "instadao", instadao
     assert instadao["source_repository"] == "https://github.com/hrbrlife/MLSNA_token", instadao
     assert instadao["runtime_contract_path"] == "RUNTIME-CONTRACT.json", instadao
-    assert instadao["candidate_source_ref"] == "dev-publish", instadao
-    assert instadao["release_state"] == "hold", instadao
-    assert instadao["hold_receipt"] == (
-        "prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json"
+    assert instadao["source_commit"] == "b32df2d42af962e80947f863f15f0161c5899c7b", instadao
+    assert instadao["reconciliation_state"] == "source-pinned", instadao
+    assert instadao["release_state"] == "ready", instadao
+    assert instadao["source_selection_state"] == "direct-dev-verified", instadao
+    assert instadao["source_selection_receipt"] == (
+        "prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json"
     ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["source_path"] == "melusina-canboard-app", canboard
@@ -1978,22 +1978,32 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
     app_id = "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"
-    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
-    old_env, old_argv = with_env({
-        "MEL_RELEASE_CONFIG": str(config),
-        "MEL_APP_ID": app_id,
-    }), provider.sys.argv
-    try:
-        provider.sys.argv = [str(HERE / "mel-release-provider.py"), "stage"]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "held": {
+                "appId": app_id,
+                "source_path": "held-app",
+                "release_state": "hold",
+                "reconciliation_state": "fixture-hold",
+            },
+        })
+        old_env, old_argv = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_APP_ID": app_id,
+        }), provider.sys.argv
         try:
-            provider.main()
-        except provider.ProviderError as exc:
-            assert "held for reconciliation" in str(exc), exc
-        else:
-            raise AssertionError("a held app reached the provider stage boundary")
-    finally:
-        provider.sys.argv = old_argv
-        restore_env(old_env)
+            provider.sys.argv = [str(HERE / "mel-release-provider.py"), "stage"]
+            try:
+                provider.main()
+            except provider.ProviderError as exc:
+                assert "held for reconciliation" in str(exc), exc
+            else:
+                raise AssertionError("a held app reached the provider stage boundary")
+        finally:
+            provider.sys.argv = old_argv
+            restore_env(old_env)
 
 
 def test_source_commit_pin_refuses_any_other_clean_checkout():
@@ -2543,9 +2553,9 @@ if __name__ == "__main__":
     test_source_selection_requires_a_current_complete_remote_snapshot()
     test_direct_source_selection_requires_an_explicit_historical_baseline()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
-    test_checked_in_default_bazaar_catalog_is_complete_and_held()
+    test_checked_in_default_bazaar_catalog_is_complete_and_release_gated()
     test_ready_cohort_has_exactly_one_production_goldkey()
-    test_checked_in_catalog_preserves_source_and_slot_evidence_while_held()
+    test_checked_in_catalog_preserves_source_and_slot_evidence()
     test_checked_in_catalog_blocks_all_release_operations_until_reconciled()
     test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage()
     test_source_commit_pin_refuses_any_other_clean_checkout()

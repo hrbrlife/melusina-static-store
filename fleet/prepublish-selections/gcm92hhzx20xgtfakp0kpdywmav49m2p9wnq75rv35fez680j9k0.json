@@ -1,0 +1,45 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+  "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
+  "sourceCommit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "ancestor",
+  "decisionSummary": "The Aug. 20 appVersion-66 dev-publish tip is the newest valid forward InstaDAO source. It contains main's Aug. 16 landing of the preserved v65 securities, browser-RPC, and acceptance-harness work, then records the controlled devnet reconciliation of dao_securities and dao_voting. The full seven-program verifier, release controls, deterministic package builds, SPK verification, and fresh launch simulation passed at this source. The preserved v65 snapshot remains historical evidence but carries an older 683824-byte dao_securities artifact; it is superseded by main's landed source and cannot be merged without regressing the verified 685072-byte artifact. DAO and historic publish lines are superseded or incompatible prior release histories, not newer valid application sources.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "fresh recursive source checkout resolved dev-publish b32df2d42af962e80947f863f15f0161c5899c7b cleanly",
+      "complete current remote-head snapshot reviewed, including preserved v65, DAO, feature, codex, and historic publish refs",
+      "the Aug. 16 main landing contains the preserved v65 acceptance/RPC/security surfaces and is an ancestor of the selected dev-publish source",
+      "scripts/check-shared-suite.mjs confirmed all seven devnet program accounts are executable upgradeable programs",
+      "scripts/verify-onchain.mjs --no-build --artifact-dir=app/so returned ok=true for all seven reviewed source artifacts after controlled upgrades of dao_securities and dao_voting",
+      "npm test, package-config-check, and the bwrap launch simulation passed with all launch actions stamped INSTADAO_SHARED_SUITE_VERIFIED=1",
+      "two independent clean package runs matched SHA-256 7beb775145c768e0b3181e5b905090822df72ffa93ce52196ab5b08ac7644913 and packageId 7beb775145c768e0b3181e5b90509082",
+      "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 66, and marketing version 1.0.14"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/DAO", "commit": "7e3c8ee3fd503472deacb4810c8dae20c2d55f0d", "outcome": "archive"},
+    {"ref": "refs/heads/codex/instadao-release-adapter-20260815", "commit": "995b5b9c561b66dbde4af7b90506e7f2e2a51089", "outcome": "archive"},
+    {"ref": "refs/heads/dev-publish", "commit": "b32df2d42af962e80947f863f15f0161c5899c7b", "outcome": "selected"},
+    {"ref": "refs/heads/feat1-instadao-onchain-reconcile", "commit": "ef73663b86134f7417ccf1104fbe273f1cf901cb", "outcome": "archive"},
+    {"ref": "refs/heads/main", "commit": "706f54375172030fa78fc88a78cd38c450ca6fc6", "outcome": "baseline"},
+    {"ref": "refs/heads/preserve-local-20260814/_stash/955e92534d13", "commit": "955e92534d138c30b6c698f9446efa554fcc0548", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/codex/instadao-1.0.11-namedcoin-v2", "commit": "05c681c3a7c74797cf2ecaae6508521de3210601", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/capnp-streaming-2026-06-08", "commit": "59c096b635a1248ac8401e3c0843ddf7904eb8f9", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/feat/dao-securities-port-2026-06-26", "commit": "6cfa5aba692fd5dff773e2dca81f5b7ebc6d311f", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/riker-instadao-reviewed-20260804", "commit": "0339b94424f02874deb86002e2f5789caa9b1fec", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "dab027dbd41084b62563b9b2f50a73e8b1c39bbf", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "29b8012e7f8dfe0fbaf3607d0249dfd619fefec0", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "c136bd96318f00c9adb922595292cbd0532d2047", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/publish-instadao-1.0.7-2026-06-08", "commit": "0a40d067956915405cc2b753e3a6245061943ba9", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/series-llc", "commit": "b6519497e3c361521784fb9eafd508d169d7a169", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260814/tests/e2e-flows-coverage", "commit": "b3aaefc828b187d984d95f620744cac0f517545c", "outcome": "archive"},
+    {"ref": "refs/heads/preserve-local-20260816/mlsna-instadao-v65", "commit": "a48c5c7666d4f2f8699ea3dc5c9ca5689ee969d0", "outcome": "archive"},
+    {"ref": "refs/heads/publish", "commit": "5695f2d0caab4596bc5b09e5919fd606cffadc96", "outcome": "archive"},
+    {"ref": "refs/heads/publish-instadao-1.0.7-2026-06-08", "commit": "0a40d067956915405cc2b753e3a6245061943ba9", "outcome": "archive"},
+    {"ref": "refs/heads/team3-claude/instadao-governance-fixes-20260804", "commit": "05c681c3a7c74797cf2ecaae6508521de3210601", "outcome": "archive"}
+  ]
+}

@@ -379,16 +379,15 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.14/appVersion-66 candidate is now the current dev-publish
-        # source. Its app build is clean, but direct devnet byte verification
-        # still finds two shared program images that do not match the proven
-        # source ELFs, so it remains held until that controlled reconciliation
-        # is verified.
-        candidate_source_commit: ef73663b86134f7417ccf1104fbe273f1cf901cb
-        candidate_source_ref: dev-publish
-        reconciliation_state: onchain-program-artifact-mismatch
-        release_state: hold
-        hold_receipt: prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json
+        # The v1.0.14/appVersion-66 dev-publish tip carries the full
+        # shared-suite byte proof.  The two previously mismatched programs
+        # were upgraded under their recorded authority and all seven current
+        # source artifacts now match devnet ProgramData exactly.
+        source_commit: b32df2d42af962e80947f863f15f0161c5899c7b
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO

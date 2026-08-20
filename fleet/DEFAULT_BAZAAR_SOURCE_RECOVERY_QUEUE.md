@@ -6,12 +6,12 @@ catalog scans, old Store rows, and preserved branches are evidence only.
 
 ## Current queue
 
-- 31 apps have a source-pinned, `direct-dev-verified` selection receipt and
-  are eligible for their individual package and governed-release controls.
-- InstaDAO is the sole source-selection hold. Its record is
-  `fleet/prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json`;
-  its on-chain program/artifact mismatch must be repaired before a source pin
-  or publish attempt.
+- All 32 apps have a source-pinned, `direct-dev-verified` selection receipt
+  and are eligible for their individual package and governed-release controls.
+- InstaDAO's historical hold record remains retained as evidence; the verified
+  v1.0.14/appVersion-66 `dev-publish` source selection supersedes it and is
+  recorded in
+  `fleet/prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json`.
 
 Do not restore retired identities from this document. Each current app's
 selection receipt is the complete branch-review record, and every release must

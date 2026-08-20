@@ -275,11 +275,11 @@
     {
       "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
       "catalogName": "NamedCoin Configurator",
-      "sourceCommit": "0a8ffcfbcde934ab1e02b3439bc945d4a93738d7",
+      "sourceCommit": "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8",
       "sourceSelectionReceipt": "prepublish-selections/zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0.json",
-      "version": "0.1.43",
-      "spkSha256": "f8e3b46f818a59e970ba3c30409599c5c048bcd64999028d3811a247786e0d5a",
-      "appHash": "2a1df862ffcf850b35b066900e86054851887b02a429f4592f8dd6d986c253b8"
+      "version": "0.1.44",
+      "spkSha256": "34a9cc9b0790c66da5471be2bd504b049d843a3ec6ab3c903e25fdb1b5ea8b77",
+      "appHash": "7da329a6f754b7394cdbd0e157a1b6757fe77999ec35fff3f1d6746ad58cfe49"
     },
     {
       "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",

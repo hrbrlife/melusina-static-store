@@ -57,6 +57,14 @@ func main() {
 		runCatalogRetireSubcommand(os.Args[2:])
 		return
 	}
+	// A bounded, operator-signed recovery rail for a Store whose historical
+	// private candidates no longer match their already-attested release bytes.
+	// It is explicit and exits after rebuilding a fresh immutable generation;
+	// it never weakens normal server startup validation.
+	if len(os.Args) > 1 && os.Args[1] == "catalog-rehydrate" {
+		runCatalogRehydrateSubcommand(os.Args[2:])
+		return
+	}
 
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")

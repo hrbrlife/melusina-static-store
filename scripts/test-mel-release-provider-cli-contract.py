@@ -1721,6 +1721,13 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
     assert cohort["releaseReadyAppCount"] == len(app_ids) == 31, cohort
     assert RETIRED_GOLDKEY_DEV_APP_ID not in app_ids, app_ids
     assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
+    for app_id, source_commit in {
+        "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50": "825963ebdefc07efc8258e153116a1b80b1e3745",
+        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": "debeecd1d67c16810574c8176592b0bbf0b3e267",
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": "90d9e560219b137c26b20a558f8e981e40e3bd3c",
+    }.items():
+        selected = next(app for app in cohort["apps"] if app["appId"] == app_id)
+        assert selected["sourceCommit"] == source_commit, selected
     botmother = next(app for app in cohort["apps"] if app["appId"] == "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0")
     assert botmother == {
         "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",

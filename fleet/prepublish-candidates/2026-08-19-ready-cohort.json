@@ -149,7 +149,7 @@
     {
       "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
       "catalogName": "MiniGit",
-      "sourceCommit": "610c44614a8b499d1e80795a97daca66a9912f77",
+      "sourceCommit": "825963ebdefc07efc8258e153116a1b80b1e3745",
       "sourceSelectionReceipt": "prepublish-selections/pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50.json",
       "version": "0.2.14",
       "spkSha256": "91d7f7c1f0b21b54b24fa89cd8386d40abeea3bc444f0ab2112a6619865a69e8",
@@ -176,7 +176,7 @@
     {
       "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
       "catalogName": "GoldKey",
-      "sourceCommit": "1382d85eefdb016f885ae9b0d0067f6be842663f",
+      "sourceCommit": "debeecd1d67c16810574c8176592b0bbf0b3e267",
       "sourceSelectionReceipt": "prepublish-selections/quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh.json",
       "version": "0.3.5",
       "spkSha256": "1c4c39ce45621b1b433f2e78cddb940e14cd1af5078be0ca73197497e799ff32",
@@ -221,7 +221,7 @@
     {
       "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
       "catalogName": "AiLagoon",
-      "sourceCommit": "e3c5efce87e692926f459a9556112716389636fb",
+      "sourceCommit": "90d9e560219b137c26b20a558f8e981e40e3bd3c",
       "sourceSelectionReceipt": "prepublish-selections/v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh.json",
       "version": "0.7.26",
       "spkSha256": "9d62fff4716724a76386202ad37251139843044e0c4d6793e1df1c9a271ad2d4",

@@ -95,7 +95,7 @@ func ApplyGeneration(ctx context.Context, gen componentrelease.DesiredGeneration
 		if deps.Observe != nil {
 			installed = deps.Observe(c.ComponentID)
 		}
-		if installed == c.SHA256 {
+		if installed == c.SHA256 && !deps.ForceReapply {
 			outcomes[c.ComponentID].Status = ApplyStatusSkipped
 			continue
 		}
@@ -319,6 +319,14 @@ type ApplyDeps struct {
 	RuntimeMarkerBackupDir string
 	// Observe returns a component's currently-installed artifact hash (for delta).
 	Observe func(componentID string) (installedHash string)
+	// ForceReapply is an emergency-recovery control for a component which is
+	// already at the signed target bytes but whose controller WAL/runtime marker
+	// was lost or is stale. It deliberately bypasses only the local delta-skip:
+	// Stage, byte verification, both chain gates, runtime binding, WAL, restart,
+	// probe, and deep-stable completion are all still mandatory. Normal polling
+	// must leave this false; RecoverStalledSuccessor sets it only after proving an
+	// immediate signed successor is blocked behind one non-terminal predecessor.
+	ForceReapply bool
 	// ChainGate runs the per-class on-chain Active + hash gate BEFORE any mutation
 	// (the controller's authority gate; the adapter never touches the chain). A
 	// non-nil error refuses the whole generation fail-closed.

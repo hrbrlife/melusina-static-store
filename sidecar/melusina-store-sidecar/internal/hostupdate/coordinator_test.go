@@ -492,6 +492,42 @@ func TestApplyGenerationTwoComponentsSucceed(t *testing.T) {
 	}
 }
 
+func TestApplyGenerationForceReapplyUsesNormalWALForAlreadyCurrentBytes(t *testing.T) {
+	deps, fa, gen := coordSetup(t, "fake-coord-force-reapply", nil)
+	// A normal controller would delta-skip both components here. The narrowly
+	// scoped recovery mode must instead run the ordinary stage/verify/restart/
+	// runtime-gate path so it can repair a lost runtime marker and mint a real
+	// terminal receipt after the deep-stable window.
+	fa.installed["store-sidecar"] = strings.Repeat("1", 64)
+	fa.installed["sandstorm-shell"] = strings.Repeat("2", 64)
+	deps.ForceReapply = true
+	chainCalls := 0
+	deps.ChainGate = func(context.Context, componentrelease.ComponentRelease, componentrelease.ComponentInstall) error {
+		chainCalls++
+		return nil
+	}
+
+	outcomes, err := ApplyGeneration(context.Background(), gen, deps)
+	if err != nil {
+		t.Fatalf("force re-apply: %v", err)
+	}
+	for _, outcome := range outcomes {
+		if outcome.Status != ApplyStatusApplied {
+			t.Fatalf("%s status = %s, want applied", outcome.ComponentID, outcome.Status)
+		}
+	}
+	if chainCalls != len(gen.Components)*2 { // batch preflight + mutation-time gate
+		t.Fatalf("chain calls = %d, want %d; force re-apply bypassed a chain gate", chainCalls, len(gen.Components)*2)
+	}
+	entry, ok, err := deps.WAL.Load("store-sidecar")
+	if err != nil || !ok {
+		t.Fatalf("load force re-apply WAL: ok=%v err=%v", ok, err)
+	}
+	if entry.FromHash != entry.ToHash || entry.ToHash != strings.Repeat("1", 64) {
+		t.Fatalf("force re-apply did not retain the current byte floor: %+v", entry)
+	}
+}
+
 func TestApplyGenerationLaterFailureRollsBackWholeGeneration(t *testing.T) {
 	// The shell (applied SECOND, after the sidecar) fails its probe -> the whole
 	// generation must roll back: the sidecar returns to its prior hash.

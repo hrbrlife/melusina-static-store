@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/hostupdate"
@@ -33,6 +34,7 @@ const controllerStateUID = 0
 func main() {
 	configPath := flag.String("config", "/etc/melusina/update-controller/config.json", "path to the root-owned controller config (JSON)")
 	trigger := flag.String("trigger", "timer", "poll trigger: timer (default, cadence-gated) | bell | manual")
+	recoverStalledSuccessor := flag.Bool("recover-stalled-successor", false, "one-time governed re-apply of an immediate signed successor blocked behind a pre-mutation refusal")
 	flag.Parse()
 
 	pollTrigger, err := parseTrigger(*trigger)
@@ -79,6 +81,22 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if *recoverStalledSuccessor {
+		state, err := deps.State.Load(ctx)
+		if err != nil {
+			log.Fatalf("controller stalled-successor recovery state: %v", err)
+		}
+		vg, err := deps.FetchVerified(ctx)
+		if err != nil {
+			log.Fatalf("controller stalled-successor recovery fetch+verify: %v", err)
+		}
+		outcomes, err := hostupdate.RecoverStalledSuccessor(ctx, vg, state, deps, time.Now().Unix())
+		if err != nil {
+			log.Fatalf("controller stalled-successor recovery: %v", err)
+		}
+		log.Printf("controller: re-applied stalled successor generation %d through governed WAL: %+v; awaiting normal deep-stable completion", vg.Doc.GenerationID, outcomes)
+		return
+	}
 
 	if err := hostupdate.PollOnce(ctx, pollTrigger, deps); err != nil {
 		log.Fatalf("poll (%s): %v", pollTrigger, err)

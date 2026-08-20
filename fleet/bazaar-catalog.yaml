@@ -713,7 +713,7 @@ groups:
         source_selection_receipt: prepublish-selections/yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh.json
         publish_slug: vintage
         catalog_name: Vintage
-        live_version: 1.3.3
+        live_version: 1.3.4
         catalog_developer: hrbrlife
         catalog_repo: vintage-test-dec
         catalog_slug: vintage

@@ -240,51 +240,36 @@ build, determine the appropriate forward release version if package bytes
 differ, and then repeat the clean-clone proof before Sheets Bureau can join a
 release cohort.
 
-## Doc Bureau — source repair awaiting publication and Python-input hold
+## Bureau Doc — current published release
 
-The source at catalog commit
-`ea232d48cc837bdc65b1886ab41ca5109e6c8a69` was independently shallow-cloned
-from the advertised `main` tip with its declared submodule initialized and a
-clean Git status. Its metadata and runtime-contract app ID match the catalog
-identity; metadata is `2.0.32` (versionNumber 27), matching the catalog's
-`live_version`. Production dependency audits report zero runtime
-vulnerabilities for the root client, Document backend, and Document client
-(`npm audit --omit=dev`).
+The selected canonical source is remote `dev-publish`
+`08634ecd652d18f756aeb3c1efb12b9afaf17e9b`. It declares the immutable Bureau
+Doc app identity at `2.0.35` (versionNumber 30), with matching package title
+and runtime-contract language. It is a forward continuation of the reviewed
+rich TipTap/Yjs document line; `main` is its ancestor rather than a competing
+newer release source.
 
-The repaired clean checkout passed all of the following:
+The clean source passed `make release-inputs`, `make test-release-inputs`, and
+the full `make test` suite (204 Python unit tests and 23 integration tests).
+Two independently built packages matched exactly and
+`spkmodule/bin/spk-verify-package` accepted the result. The published package
+SHA-256 is
+`3998cc06b3461a86b5c7a5e264fc3a721567bcca611ef3ac34d0c2c5357b8f2e` with
+package ID `3998cc06b3461a86b5c7a5e264fc3a72`.
 
-- `make release-inputs test-release-inputs`, including mutations that reject
-  floating frontend installs and an unisolated Document build output;
-- `make test`: 204 Python unit tests, 23 integration tests, the locked root
-  frontend build, and the locked Document client build into a disposable
-  output directory;
-- `make build-source`, including the built-rich-frontend verification and
-  Grainlinkd binary build; and
-- `GOWORK=off go vet ./...`, uncached Go tests, and the Go race suite in
-  `grain/go/grainlinkd`.
+On 2026-08-20 the governed Bazaar rail registered and promoted that package
+through the catalog-pinned shared 3-of-4 Squads authority. The public
+32-app catalog serves Bureau Doc `2.0.35` with AppHash
+`aa70fe248627923f38ed5e8902fa1529635fa06c490b14e31b108ecd2d579045` and
+release hash
+`dd860d0a72c6f01963e9cf933220004aa34973d00985db6f376ec3ecd7ecc993`.
 
-The catalog-base source was not source-gate ready: its Document client helper
-used a floating `npm install`, while the top-level test target suppressed a
-missing frontend command. Invoking the Document helper also made Vite empty
-the tracked frontend directory, deleting separately managed shared assets
-until a later full build restored them. Local commit
-`e1d0627671ebe4d191d8057eb64172aab9ce4a1d` changes every checked build path
-to `npm ci`, makes the test build the Document frontend in an explicit
-temporary output directory, verifies that output, and adds fail-closed source
-and mutation controls for that routing. The full source gate passed again
-after the repair and left no generated tracked-file changes.
-
-This repair is not advertised by the canonical origin: on 2026-08-19 remote
-`main` remains the catalog-base commit and no remote head contains
-`e1d0627671ebe4d191d8057eb64172aab9ce4a1d`. No catalog pin or package claim
-was changed. It is also not yet a deterministic release candidate: under
-`grains/document`, the tracked Python requirements file has seven
-version-only entries, zero hashes, no Python lockfile, and no checked-in
-hash-enforcement control for a greenfield install. The source owner must
-publish the reviewed repair (or successor), either prove that this input is
-not a release dependency or add a complete enforced hash lock, determine any
-needed forward version, and repeat the clean-clone proof before Doc Bureau can
-join a release cohort.
+The Store gallery declaration is intentionally empty until the governed
+release transport carries screenshot bytes, so the public card no longer
+advertises broken image URLs. This release does not claim a fresh tenant
+installation: that remains a separate runtime-proof gate. The source audit
+also reported one moderate and one high npm dependency finding that need
+follow-up; they did not prevent the completed source test and package proof.
 
 ## Jinn v9 — current generic-peer source proof
 

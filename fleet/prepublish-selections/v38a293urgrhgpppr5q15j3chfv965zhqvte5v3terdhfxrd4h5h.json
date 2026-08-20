@@ -11,9 +11,9 @@
     "checks": [
       "the selected remote dev-publish tip 08634ecd652d18f756aeb3c1efb12b9afaf17e9b is a direct forward continuation of the previously reviewed rich document source",
       "complete current remote-head snapshot reviewed, including divergent historical master, release, publish, and salvage refs",
-      "make release-inputs and make test-release-inputs passed on the selected 2.0.34 source; mutation controls reject stale runtime metadata, Node closure drift, wrong resume command, and candidate packaging without a build",
+      "make release-inputs and make test-release-inputs passed on the selected 2.0.35 source; mutation controls reject stale runtime metadata, Node closure drift, wrong resume command, and candidate packaging without a build",
       "the selected source makes the metadata name, package title, and runtime-contract wording agree on Bureau Doc, and intentionally declares no Store-gallery screenshots until their bytes are transportable",
-      "the predecessor rich-document source had clean-clone, integration, deterministic-pack, SPK, and governed AppHash evidence; this forward package requires its own fresh reproducibility proof before publish"
+      "the selected 2.0.35 source passed its fresh full test suite, deterministic double packaging, and SPK verification; the published package SHA-256 is 3998cc06b3461a86b5c7a5e264fc3a721567bcca611ef3ac34d0c2c5357b8f2e"
     ]
   },
   "reviewedRefs": [

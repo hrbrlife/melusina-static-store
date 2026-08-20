@@ -2,21 +2,20 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
   "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "08daf329d602bccc0d539c4ee7710e52b370fe99",
+  "sourceCommit": "4e41f7e78ca3a51609eafcb0989e3382f0ec8c90",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 19 dev-publish v9 source is canonical. It contains the recent generic GrainContext peer connector, production fresh-grain bootstrap, namespaced read controls, and the Paint peer-acceptance coverage. Main and the recent v7/v8 peer branches are reviewed ancestors. Divergent archive, publish, salvage, and old launcher lines were reviewed; they contain historical packaging, release evidence, dependency, icon, or superseded runtime work rather than a newer valid Jinn source.",
+  "decisionSummary": "The Aug 20 dev-publish v10 source is canonical. It is the direct forward release-identity cut from the reviewed v9 generic GrainContext peer line: it retains the production fresh-grain bootstrap, namespaced read controls, and Paint peer-acceptance coverage while making the signed metadata, package manifest, and catalog name agree on Jinn. Main and the recent v7/v8 peer branches are reviewed ancestors. Divergent archive, publish, salvage, and old launcher lines were reviewed; they contain historical packaging, release evidence, dependency, icon, or superseded runtime work rather than a newer valid Jinn source.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "fresh recursive clone at the selected source commit with recorded LICENSE, grain-crypto-journal, and spkmodule revisions",
+      "the selected 0.0.10 dev-publish tip is the direct descendant of the clean, recursively initialized reviewed v9 source, with only its release identity advanced",
       "complete current remote-head snapshot reviewed, including all divergent archive, publish, and salvage refs",
       "make verify-recovery passed: generated Cap'n Proto bindings, go vet, integration tests, production build, and package reproducibility",
       "the full test suite includes native Paint GrainContext reader catalog acceptance and denies Paint mutation tools",
-      "two independent clean package runs matched SHA-256 791eb28e7032061ff40830f02fdd8198554b951b1b9d371f09cd4629b45366df and packageId 791eb28e7032061ff40830f02fdd8198",
-      "spk verify confirmed appId vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh, version 9, and marketing version 0.0.9",
-      "provider build bound the selected source and exact SPK to candidate appHash 2613e985dcb85baccfa4ca3ed1f21c99302617dfb692d3374f27cbc41a59b10b",
-      "candidate appHash differs from the signed public 0.0.6 pointer appHash 7d51938ca94748934d3e6102a3c76fbc229889ad70f627802dc3369f1f237441"
+      "two independent package runs from the selected 0.0.10 source matched SHA-256 b31f0416015ed8c539a3e38e0330364ac1567e724e9c3f249fd917c104824fc8 and packageId b31f0416015ed8c539a3e38e0330364a",
+      "spk verify confirmed appId vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh, version 10, and marketing version 0.0.10",
+      "the selected metadata, package manifest, and catalog all use the requested public name Jinn"
     ]
   },
   "reviewedRefs": [
@@ -32,7 +31,7 @@
     {"ref": "refs/heads/archive/feat/iter-33-drop-before-delete-2026-05-15", "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045", "outcome": "archive"},
     {"ref": "refs/heads/archive/fix/launcher-mkdir-2026-05-05", "commit": "70f85bb7efdff70a5307942ea6ba07a083136421", "outcome": "archive"},
     {"ref": "refs/heads/archive/jinn", "commit": "86ffa509ce697e57d5a05514959ca75fbeb3b670", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "08daf329d602bccc0d539c4ee7710e52b370fe99", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "4e41f7e78ca3a51609eafcb0989e3382f0ec8c90", "outcome": "selected"},
     {"ref": "refs/heads/feat/generic-graincontext-peer-v7", "commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b", "outcome": "archive"},
     {"ref": "refs/heads/fix/cross-pearl-graincontext-v7", "commit": "05651fd1048c18285d397780113590d8379d38c2", "outcome": "archive"},
     {"ref": "refs/heads/fix/prelaunch-jinn-v8-generic-peer-setup", "commit": "146ef2e4c0d8bed0845b1407619fd1b29244f72c", "outcome": "archive"},

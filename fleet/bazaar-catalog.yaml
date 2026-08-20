@@ -372,15 +372,15 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        # The current dev-publish v9 source adds production grain-key bootstrap
+        # The current dev-publish v10 source adds production grain-key bootstrap
         # and generic, read-only peer attachment. Its clean-clone recovery and
         # reproducibility gates passed; tenant capability and rendered-picker
         # checks run immediately after its governed signed publish.
-        source_commit: 08daf329d602bccc0d539c4ee7710e52b370fe99
+        source_commit: 4e41f7e78ca3a51609eafcb0989e3382f0ec8c90
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
-        live_version: 0.0.9
+        live_version: 0.0.10
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh.json

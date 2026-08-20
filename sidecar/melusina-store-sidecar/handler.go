@@ -17,6 +17,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -759,17 +760,25 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
-	if err := VerifyInstallerReleaseHash(r.Context(), s.cr, s.cfg, artifactHash); err != nil {
-		code := http.StatusForbidden
-		if errors.Is(err, errReleaseMasterMintRequired) {
-			code = http.StatusServiceUnavailable
+	if class != componentrelease.ClassSidecar {
+		// Whole-file installer artifacts are immediately pinned by an active
+		// InstallerReleaseEntry.  A sidecar is intentionally different: it is
+		// staged here, then the signed DesiredGeneration promotion re-hashes the
+		// staged bytes and proves its SidecarIdentity cascade before it can ever
+		// be served.  Applying the installer gate to that path makes the staged
+		// sidecar protocol impossible to complete.
+		if err := VerifyInstallerReleaseHash(r.Context(), s.cr, s.cfg, artifactHash); err != nil {
+			code := http.StatusForbidden
+			if errors.Is(err, errReleaseMasterMintRequired) {
+				code = http.StatusServiceUnavailable
+			}
+			http.Error(w, err.Error(), code)
+			return
 		}
-		http.Error(w, err.Error(), code)
-		return
-	}
-	if err := s.verifyInstallerPublishForward(r.Context(), class, name, artifactHash); err != nil {
-		http.Error(w, err.Error(), publishErrorStatus(err))
-		return
+		if err := s.verifyInstallerPublishForward(r.Context(), class, name, artifactHash); err != nil {
+			http.Error(w, err.Error(), publishErrorStatus(err))
+			return
+		}
 	}
 	if err := writePublishedReleaseArtifact(s.cfg.DistDir, class, name, artifact); err != nil {
 		http.Error(w, "check=write_release: "+err.Error(), http.StatusInternalServerError)

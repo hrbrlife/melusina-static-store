@@ -1382,6 +1382,33 @@ func TestHandlePublishInstaller_Accept(t *testing.T) {
 	}
 }
 
+func TestHandlePublishInstaller_StagesSidecarWithoutInstallerRelease(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	m := newMockChainReader()
+	pinRootStoreOperator(t, cfg, m, op)
+
+	artifact := []byte("pre-generation sidecar bytes")
+	svc := newTestService(t, cfg, m, op)
+	pub := newTestIdentity(t, "sidecar-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	sig := signInstallerPublish(t, pub, op.Public(), artifact)
+
+	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "sidecar", "store-sidecar.bin", artifact))
+	if w.Code != http.StatusOK {
+		t.Fatalf("sidecar staging expected 200 without InstallerReleaseEntry, got %d: %s", w.Code, w.Body.String())
+	}
+	got, err := os.ReadFile(filepath.Join(cfg.DistDir, "releases", "sidecar", "store-sidecar.bin"))
+	if err != nil {
+		t.Fatalf("staged sidecar missing: %v", err)
+	}
+	if !bytes.Equal(got, artifact) {
+		t.Fatal("staged sidecar bytes changed")
+	}
+}
+
 func TestHandlePublishInstaller_Rejects(t *testing.T) {
 	cases := []struct {
 		name     string

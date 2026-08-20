@@ -2,19 +2,19 @@
   "schema": "melusina-source-selection-v1",
   "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
   "sourceRepository": "https://github.com/hrbrlife/ccash_go_htmx",
-  "sourceCommit": "f11a927745f3a37ce032677c6feadf99d1fda2c9",
+  "sourceCommit": "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.3.190/appVersion-182 dev-publish tip is the newest valid forward paype.cc source. It fast-forwards the prior default-Bazaar baseline with the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and a bounded lossless advice-PNG export path proven by the full race suite. The relevant divergent work is integrated in the selected tip; every other advertised ref is retained remotely as an archived review input rather than release authority.",
+  "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip is the newest valid forward paype.cc source. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to paype.cc without changing the immutable app identity or technical popaye release selector. Main is an ancestor. The relevant divergent work is integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "full go test ./... passed from the selected source",
-      "full make ci passed, including vet, self-contained proof, no-CDN control, tests, and Linux build",
-      "two clean detached make pack-local builds produced identical bytes, and spk verify plus metadata/package-ID consistency passed on both",
-      "clean-checkout pack-local now builds before packaging",
-      "release inputs resolve to the catalog-pinned shared Squads program, multisig, and vault; app SPK-key files remain app-specific"
+      "current main is an ancestor of selected dev-publish",
+      "full make ci passed, including vet, self-contained proof, no-CDN control, tests, and Linux build; make check-capnp-ordinal also passed",
+      "two clean make pack-local runs produced identical SHA-256 b22d9b2062116308eb79f5881d36c890154888af1ebc175132eda0e76c7ac692; spk verify and metadata/package-ID consistency passed on both",
+      "clean-checkout pack-local builds before packaging and derives its catalog package binding through the post-pack hook",
+      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority; app SPK-key files remain package identity only"
     ]
   },
   "reviewedRefs": [
@@ -70,7 +70,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "f11a927745f3a37ce032677c6feadf99d1fda2c9",
+      "commit": "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8",
       "outcome": "selected"
     },
     {

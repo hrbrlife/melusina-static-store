@@ -120,7 +120,7 @@ groups:
         # v0.3.190/appVersion-182 is the current dev-publish tip. It
         # retains the selected KYB and conditional-procedure work, and its
         # bounded lossless advice-PNG export path passes the complete race suite.
-        source_commit: f11a927745f3a37ce032677c6feadf99d1fda2c9
+        source_commit: c7ca5a3f06684d50e8665cc3ea83883665eaa4d8
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -129,7 +129,7 @@ groups:
         source_selection_receipt: prepublish-selections/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json
         publish_slug: popaye
         catalog_name: paype.cc
-        live_version: 0.3.190
+        live_version: 0.3.191
         catalog_developer: hrbrlife
         catalog_repo: ccash_go_htmx
         catalog_slug: popaye

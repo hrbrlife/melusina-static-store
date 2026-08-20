@@ -183,7 +183,9 @@ func newHarness(t *testing.T) *harness {
 
 	mkVersion := func(ver, tag, prevSha, prevVer string) provVersion {
 		spk := []byte("fake-spk-" + ver + "-" + strings.Repeat(tag, 8))
-		meta := []byte("{\"name\":\"testapp\",\"version\":\"" + ver + "\"}")
+		artSum := sha256.Sum256(spk)
+		packageID := hex.EncodeToString(artSum[:])[:32]
+		meta := []byte("{\"appId\":\"" + testAppID + "\",\"name\":\"testapp\",\"version\":\"" + ver + "\",\"packageId\":\"" + packageID + "\",\"sha256\":\"" + hex.EncodeToString(artSum[:]) + "\"}")
 		spkPath := filepath.Join(filesDir, "app-"+ver+".spk")
 		metaPath := filepath.Join(filesDir, "metadata-"+ver+".json")
 		if err := os.WriteFile(spkPath, spk, 0o600); err != nil {
@@ -196,13 +198,12 @@ func newHarness(t *testing.T) *harness {
 		if err != nil {
 			t.Fatalf("apphash %s: %v", ver, err)
 		}
-		artSum := sha256.Sum256(spk)
 		pdaNew, err := deriveReleasePDA(masterMint, ah, programID)
 		if err != nil {
 			t.Fatalf("derive pda %s: %v", ver, err)
 		}
 		return provVersion{
-			AppHash: ah, PkgID: "testapp-" + ver + ".spk", MasterMint: masterMint,
+			AppHash: ah, PkgID: packageID, MasterMint: masterMint,
 			SpkPath: spkPath, MetadataPath: metaPath,
 			ArtifactSha: hex.EncodeToString(artSum[:]), ArtifactSize: int64(len(spk)),
 			PdaNew: pdaNew, PreviousSha256: prevSha, PreviousVersion: prevVer,

@@ -20,13 +20,14 @@ die() { printf 'mel-release-catalog-provider: %s\n' "$*" >&2; exit 2; }
 [[ $# -eq 1 ]] || die 'usage: mel-release-catalog-provider.sh <operation>'
 [[ -f "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular file: $PROVIDER"
 
-# Exact-PDA status/revocation has no source-tree input.  Requiring MEL_APP_ID
-# here would make the cleanup half of a completed candidate impossible: the Go
-# signer interface intentionally supplies only the stale ReleaseEntry PDA.
-# These operations remain governed by the provider's RPC owner/PDA checks and
-# the caller's already-validated Squads authority.
+# Read-only release/store queries and exact-PDA status/revocation have no
+# source-tree input. Requiring a clean checkout for those operations would make
+# durable history recovery depend on an unrelated worktree. The Go CLI already
+# resolves MEL_APP_ID against the closed catalog before invoking this adapter;
+# the provider still performs its RPC/store checks, and revoke remains governed
+# by the caller's catalog-pinned Squads authority.
 case "$1" in
-  release-status|revoke)
+  active-releases|served-app-hash|release-status|revoke)
     exec python3 "$PROVIDER" "$1"
     ;;
 esac

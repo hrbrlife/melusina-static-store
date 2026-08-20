@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,9 @@ func runManifest(c Config, catalog *Catalog, out string) error {
 func manifestItemForTerminal(c Config, app App) (baseAppsManifestItem, error) {
 	path := filepath.Join(c.appStateDir(app.AppID), "terminal.json")
 	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return manifestItemForLiveRecovery(c, app)
+	}
 	if err != nil {
 		return baseAppsManifestItem{}, fmt.Errorf("read terminal receipt: %w", err)
 	}
@@ -131,6 +135,29 @@ func manifestItemForTerminal(c Config, app App) (baseAppsManifestItem, error) {
 		return baseAppsManifestItem{}, fmt.Errorf("governed SPK bytes drift from build receipt")
 	}
 	return baseAppsManifestItem{AppID: app.AppID, PackageID: build.PackageID, SHA256: sha, Path: build.SpkPath}, nil
+}
+
+// manifestItemForLiveRecovery is the narrow fallback for a historically live
+// app whose original terminal receipt did not land in this state root. The
+// recovery receipt is re-hashed and its live chain/store bindings are re-read
+// on every manifest emission; a stale local claim can therefore never become a
+// clean-install input.
+func manifestItemForLiveRecovery(c Config, app App) (baseAppsManifestItem, error) {
+	path := c.receiptPath(app.AppID, "live-recovery.json")
+	recovery, _, err := readLiveRecoveryReceipt(path)
+	if err != nil {
+		return baseAppsManifestItem{}, fmt.Errorf("read live recovery receipt: %w", err)
+	}
+	material, err := validateLiveRecovery(c, app, newExecProvider(c), recovery)
+	if err != nil {
+		return baseAppsManifestItem{}, fmt.Errorf("validate live recovery receipt: %w", err)
+	}
+	return baseAppsManifestItem{
+		AppID:     app.AppID,
+		PackageID: material.PackageID,
+		SHA256:    material.Artifact.SHA256,
+		Path:      material.Artifact.Path,
+	}, nil
 }
 
 func validManifestPackageID(id string) bool {

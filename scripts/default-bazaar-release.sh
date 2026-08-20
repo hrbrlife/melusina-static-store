@@ -6,8 +6,8 @@
 #     scripts/default-bazaar-release.sh publish --app <appId|slug> --version <version>
 #   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
 #     scripts/default-bazaar-release.sh approve --app <appId|slug>
-#   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
-#     scripts/default-bazaar-release.sh abandon-init --app <appId|slug>
+#   scripts/default-bazaar-release.sh recover-live --app <appId|slug> --spk <absolute-path> --metadata <absolute-path>
+#   scripts/default-bazaar-release.sh abandon-init --app <appId|slug>
 #
 # The runtime module contains only workstation paths to existing identity files;
 # it never copies a private key. App SPK keys remain package identity only. The
@@ -65,10 +65,8 @@ export MEL_RELEASE_SQUADS_NODE_MODULES="${MEL_RELEASE_SQUADS_NODE_MODULES:-$DEFA
 export MEL_RELEASE_SQUADS_EXECUTOR="${MEL_RELEASE_SQUADS_EXECUTOR:-/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js}"
 export MEL_RELEASE_PEARL_TOOL="${MEL_RELEASE_PEARL_TOOL:-/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool}"
 
-: "${MEL_RELEASE_SOURCE_ROOT:?MEL_RELEASE_SOURCE_ROOT is required}"
 : "${MEL_RELEASE_STORE_PUBKEY:?runtime module must set MEL_RELEASE_STORE_PUBKEY}"
 : "${MEL_RELEASE_PUBLISHER_KEY:?runtime module must set MEL_RELEASE_PUBLISHER_KEY}"
-[[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
 for required in "$MEL_RELEASE_STORE_PUBKEY" "$MEL_RELEASE_PUBLISHER_KEY" "$MEL_RELEASE_AUTHOR_KEYPAIR" "$MEL_RELEASE_SQUADS_EXECUTOR" "$MEL_RELEASE_PEARL_TOOL"; do
   [[ -f "$required" && ! -L "$required" ]] || die "required release input is not a regular file: $required"
 done
@@ -103,6 +101,7 @@ for member in "${members[@]}"; do
   [[ "$member" = /* && -f "$member" && ! -L "$member" ]] || die "shared-Squads member is not an absolute regular file: $member"
 done
 
+need_source_root=no
 case "${1:-}" in
   --print-config)
     printf 'store=%s\nstore_identity=%s\nshared_multisig=%s\nshared_vault=%s\nshared_program=%s\nthreshold=%s/%s\nchannel=%s\n' \
@@ -110,9 +109,17 @@ case "${1:-}" in
       "$MEL_RELEASE_SQUADS_PROGRAM_ID" "$MEL_RELEASE_SQUADS_THRESHOLD" "$MEL_RELEASE_SQUADS_MEMBER_COUNT" "$MEL_RELEASE_CHANNEL"
     exit 0
     ;;
-  publish|approve|manifest|repair-catalog|abandon-init) ;;
-  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|abandon-init] ...' ;;
+  publish|approve|repair-catalog)
+    need_source_root=yes
+    ;;
+  manifest|recover-live|abandon-init) ;;
+  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|recover-live|abandon-init] ...' ;;
 esac
+
+if [[ "$need_source_root" = yes ]]; then
+  : "${MEL_RELEASE_SOURCE_ROOT:?MEL_RELEASE_SOURCE_ROOT is required}"
+  [[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
+fi
 
 cd "$ROOT/sidecar/melusina-store-sidecar"
 exec go run ./cmd/mel-release "$@"

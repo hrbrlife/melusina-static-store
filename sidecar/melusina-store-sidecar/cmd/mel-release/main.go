@@ -28,6 +28,12 @@
 //	    stage, and the live Active ReleaseEntry first; it never signs, registers,
 //	    revokes, or mutates chain state.
 //
+//	mel-release recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path>
+//	    Record a missing local release history only after re-hashing selected
+//	    source material and proving its exact active ReleaseEntry and served
+//	    Bazaar pointer. It is read-only: no stage, approval, promotion, or chain
+//	    mutation is possible.
+//
 //	mel-release abandon-init --app <appId|slug|name>
 //	    Archive a stale INIT-only local preflight attempt. It refuses anything
 //	    that reached staging, a Squads proposal, or any other mutable boundary.
@@ -125,6 +131,24 @@ func run(args []string) error {
 		fmt.Printf("REPAIR_CATALOG_OK receipt=%s\n", path)
 		return nil
 
+	case "recover-live":
+		fs := flag.NewFlagSet("recover-live", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		spk := fs.String("spk", "", "absolute clean path to the selected SPK (required)")
+		metadata := fs.String("metadata", "", "absolute clean path to the metadata paired with --spk (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		if *spk == "" || *metadata == "" {
+			return fmt.Errorf("recover-live requires --spk and --metadata")
+		}
+		path, err := runRecoverLive(cfg, catalog, *app, *spk, *metadata)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("RECOVER_LIVE_OK receipt=%s\n", path)
+		return nil
+
 	case "abandon-init":
 		fs := flag.NewFlagSet("abandon-init", flag.ContinueOnError)
 		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
@@ -141,10 +165,10 @@ func run(args []string) error {
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|abandon-init)", sub)
+		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|recover-live|abandon-init)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init --app <appId|slug|name> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

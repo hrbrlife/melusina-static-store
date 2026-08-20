@@ -1009,11 +1009,6 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
     pass staging while pointing at a screenshot that was never supplied.
     Nothing is taken from a legacy catalog slot.
     """
-    existing = catalog_package(app_id)
-    if existing is not None:
-        shutil.copytree(existing, destination, symlinks=False)
-        return False
-
     source_metadata = source_metadata_path(app_id, source)
     metadata = read_json(source_metadata)
     if metadata.get("appId") != app_id:
@@ -1022,8 +1017,17 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
     screenshots = metadata.get("screenshots", [])
     if not isinstance(screenshots, list):
         raise ProviderError("source metadata screenshots must be an array")
+    existing = catalog_package(app_id)
+    bootstrap = existing is None
     try:
-        destination.mkdir(mode=0o700)
+        if existing is None:
+            destination.mkdir(mode=0o700)
+        else:
+            # A declared slot is a durable Store record, not presentation
+            # authority.  Retain its non-product assets privately, then
+            # replace the product-owned metadata and every declared screenshot
+            # from the selected source before computing the candidate AppHash.
+            shutil.copytree(existing, destination, symlinks=False)
         shutil.copyfile(source_metadata, destination / "metadata.json")
         os.chmod(destination / "metadata.json", 0o600)
         source_root = source.resolve()
@@ -1052,7 +1056,7 @@ def prepare_candidate_catalog(source: Path, app_id: str, destination: Path) -> b
         if isinstance(exc, ProviderError):
             raise
         raise ProviderError(f"bootstrap private catalog candidate: {exc}") from exc
-    return True
+    return bootstrap
 
 
 def require_context(app_id: str) -> dict[str, Any]:

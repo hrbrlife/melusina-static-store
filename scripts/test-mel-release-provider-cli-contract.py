@@ -2183,6 +2183,59 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
             restore_env(old)
 
 
+def test_existing_declared_slot_refreshes_private_catalog_from_source_metadata():
+    """A live slot preserves no stale product metadata or screenshot asset."""
+    app_id = provider.NAMEDCOIN_APP_ID
+    apps = {
+        "namedcoin": {
+            "appId": app_id,
+            "source_path": "namedcoin",
+            "catalog_developer": "hrbrlife",
+            "catalog_repo": "melusina-namedcoin-app",
+            "catalog_slug": "namedcoin",
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, apps)
+        source = root / "sources" / "namedcoin"
+        source.mkdir(parents=True)
+        source_metadata = {
+            "appId": app_id,
+            "name": "source-authoritative",
+            "version": "0.1.35",
+            "versionNumber": 35,
+            "screenshots": [{"url": ".sandstorm/current.png"}],
+        }
+        (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
+        (source / ".sandstorm").mkdir()
+        (source / ".sandstorm" / "current.png").write_bytes(b"current screenshot")
+
+        existing = root / "packages" / "hrbrlife" / "melusina-namedcoin-app" / "namedcoin"
+        existing.mkdir(parents=True)
+        (existing / "metadata.json").write_text(json.dumps({
+            "appId": app_id,
+            "name": "stale-catalog-name",
+            "screenshots": [{"url": "screenshots/stale.png"}],
+        }) + "\n")
+        (existing / "screenshots").mkdir()
+        (existing / "screenshots" / "stale.png").write_bytes(b"stale screenshot")
+
+        old_root, old = provider.ROOT, with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            provider.ROOT = root
+            destination = root / "private-candidate" / "catalog"
+            destination.parent.mkdir()
+            assert provider.prepare_candidate_catalog(source, app_id, destination) is False
+            assert json.loads((destination / "metadata.json").read_text()) == source_metadata
+            assert (destination / ".sandstorm" / "current.png").read_bytes() == b"current screenshot"
+            assert (destination / "screenshots" / "stale.png").read_bytes() == b"stale screenshot"
+        finally:
+            provider.ROOT = old_root
+            restore_env(old)
+
+
 def test_build_records_private_bootstrap_without_writing_catalog_tree():
     """Exercise the provider build path for a missing configured NamedCoin slot."""
     app_id = provider.NAMEDCOIN_APP_ID

@@ -51,6 +51,8 @@ RELEASE_ATTESTATION_SCHEMA="$SCRIPT_DIR/schemas/melusina-release-v1.schema.json"
 CATALOG_AUTHORITY_MULTISIG="4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
 CATALOG_AUTHORITY_VAULT="3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
 CATALOG_AUTHORITY_PROGRAM="SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+CATALOG_AUTHORITY_THRESHOLD=3
+CATALOG_AUTHORITY_MEMBER_COUNT=4
 
 # --- Attestation integrity gates (kill-list K03/K13/K14/K16) -----------------
 # Fail-closed by default: the store refuses to publish forged/offline-stub
@@ -299,16 +301,17 @@ else:
         warn "$app_dir: on-chain RELEASE.json quorumPolicy incomplete"
       fi
 
-      # A release is governed only when every part of its catalog authority
-      # triple is the exact canonical value. Presence alone is not authority:
-      # a different multisig, vault, or Squads program must never be assembled
-      # into the static catalog, including under the test-only offline flag.
+      # A release is governed only when every part of its catalog authority is
+      # the exact canonical value. Presence alone is not authority: a different
+      # multisig, vault, program, threshold, or member count must never be
+      # assembled into the static catalog, including under the test-only offline
+      # flag. App-specific SPK signatures are intentionally outside this check.
       local authority_mismatch
-      authority_mismatch="$(python3 - "$rel_file" "$CATALOG_AUTHORITY_MULTISIG" "$CATALOG_AUTHORITY_VAULT" "$CATALOG_AUTHORITY_PROGRAM" <<'PY'
+      authority_mismatch="$(python3 - "$rel_file" "$CATALOG_AUTHORITY_MULTISIG" "$CATALOG_AUTHORITY_VAULT" "$CATALOG_AUTHORITY_PROGRAM" "$CATALOG_AUTHORITY_THRESHOLD" "$CATALOG_AUTHORITY_MEMBER_COUNT" <<'PY'
 import json
 import sys
 
-release_path, expected_multisig, expected_vault, expected_program = sys.argv[1:]
+release_path, expected_multisig, expected_vault, expected_program, expected_threshold, expected_member_count = sys.argv[1:]
 release = json.load(open(release_path))
 quorum = release.get('quorumPolicy')
 if not isinstance(quorum, dict):
@@ -316,6 +319,8 @@ if not isinstance(quorum, dict):
 
 for field, actual, expected in (
     ('quorumPolicy.multisigPda', quorum.get('multisigPda'), expected_multisig),
+    ('quorumPolicy.threshold', quorum.get('threshold'), int(expected_threshold)),
+    ('quorumPolicy.memberCount', quorum.get('memberCount'), int(expected_member_count)),
     ('licenseSquadsVault', release.get('licenseSquadsVault'), expected_vault),
     ('programId', release.get('programId'), expected_program),
 ):

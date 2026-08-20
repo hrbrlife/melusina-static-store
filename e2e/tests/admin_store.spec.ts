@@ -1,32 +1,18 @@
 import { test, expect, request } from '@playwright/test';
-import { TOTAL_APPS } from '../fixtures/expected_apps';
 
-/* Admin store / Sandstorm app market view — optional.
- *
- * If the configured ADMIN_BASE_URL isn't reachable (no Melusina dev server,
- * no auth, etc.), every test in this file SKIPS rather than fails. This
- * keeps CI green when the only thing under test is the public store.
- */
+/* Admin app-market view. ADMIN_BASE_URL is mandatory and supplied only by
+ * the governed clean-tenant test environment. */
 
-const ADMIN = process.env.ADMIN_BASE_URL ?? 'https://dev.melusina-os.org/apps';
-
-let adminReachable = false;
+const ADMIN = process.env.ADMIN_BASE_URL!;
+const STORE = process.env.STORE_BASE_URL ?? 'https://bazaar.melusina-os.org';
 
 test.beforeAll(async () => {
-  try {
-    const ctx = await request.newContext({ timeout: 5000, ignoreHTTPSErrors: true });
-    const res = await ctx.get(ADMIN, { timeout: 5000 });
-    adminReachable = res.ok() || res.status() === 401 || res.status() === 302;
-  } catch {
-    adminReachable = false;
-  }
+  const ctx = await request.newContext({ timeout: 10_000, ignoreHTTPSErrors: true });
+  const res = await ctx.get(ADMIN, { timeout: 10_000 });
+  expect(res.status(), `governed tenant must respond at ${ADMIN}`).toBeLessThan(500);
 });
 
 test.describe('Admin app market', () => {
-  test.beforeEach(async () => {
-    test.skip(!adminReachable, `admin store not reachable at ${ADMIN}`);
-  });
-
   test('Admin page responds', async ({ page }) => {
     const resp = await page.goto(ADMIN);
     expect(resp).not.toBeNull();
@@ -47,10 +33,10 @@ test.describe('Admin app market', () => {
     // Pick the first app's packageId from the public catalog and check the
     // admin "install by URL" flow accepts it (just resolves status, no real install).
     const ctx = await request.newContext();
-    const cat = await (await ctx.get('https://bazaar.melusina-os.org/apps/index.json')).json();
+    const cat = await (await ctx.get(`${STORE.replace(/\/+$/, '')}/apps/index.json`)).json();
     const app = cat.apps[0];
     const installUrl = new URL(`/install/${app.packageId}`, ADMIN);
-    installUrl.searchParams.set('url', `https://bazaar.melusina-os.org/packages/${app.packageId}`);
+    installUrl.searchParams.set('url', `${STORE.replace(/\/+$/, '')}/packages/${app.packageId}`);
     const resp = await page.goto(installUrl.toString(), { waitUntil: 'domcontentloaded' });
     expect(resp).not.toBeNull();
     expect(resp!.status()).toBeLessThan(500);

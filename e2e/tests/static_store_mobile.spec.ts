@@ -18,10 +18,14 @@ test.describe('Static store — mobile viewport', () => {
 
   test('Sticky install bar appears on detail page', async ({ page }) => {
     await page.goto('');
-    await page.getByRole('heading').filter({ hasText: /^[A-Z]/ }).first().click();
-    // The mobile install bar is fixed at bottom under 768px viewport.
-    // Look for an INSTALL button visible on viewport.
-    const installBtn = page.getByRole('button', { name: /↓\s*INSTALL/i }).first();
-    await expect(installBtn).toBeVisible();
+    // h3 headings are the catalog cards; do not accidentally select the Bazaar
+    // title, which would leave us on the catalog page.
+    await page.locator('h3').first().click();
+
+    // The mobile install bar is fixed at the viewport bottom under 768px.
+    const mobileInstallBar = page.locator('.mobile-sticky-install');
+    await expect(mobileInstallBar).toBeVisible();
+    await expect(mobileInstallBar.getByRole('button', { name: /↓\s*INSTALL/i }))
+      .toBeVisible();
   });
 });

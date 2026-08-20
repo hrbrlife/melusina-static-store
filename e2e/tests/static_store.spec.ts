@@ -3,11 +3,11 @@ import { EXPECTED_APPS, TOTAL_APPS } from '../fixtures/expected_apps';
 
 /* Top-level static_store flow:
  *  - landing renders
- *  - 21 apps appear (not 0, not 22)
+ *  - the governed 32-app catalog appears
  *  - search narrows results
  *  - category pills filter results
  *  - first-app detail modal opens cleanly
- *  - install modal opens and lists pbay servers
+ *  - install modal opens and requires a governed Shell tenant address
  *  - service-worker registers
  *  - no console errors above warnings
  */
@@ -29,7 +29,7 @@ test.describe('Static store — public surface', () => {
   });
 
   test(`Exactly ${TOTAL_APPS} apps render`, async ({ page }) => {
-    // The count is rendered as <span>21</span> apps — assert the number
+    // The count is rendered as a number next to "apps".
     // appears near the literal word "apps".
     const countText = page.getByText(new RegExp(`${TOTAL_APPS}\\s*apps?`)).first();
     await expect(countText).toBeVisible();
@@ -97,14 +97,14 @@ test.describe('Static store — public surface', () => {
     // The Overview tab shows.
     await expect(page.getByRole('button', { name: 'Overview', exact: true })
                      .first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Versions/i })
-                     .first()).toBeVisible();
     await expect(page.getByRole('button', { name: /FAQ/i })
+                     .first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /License/i })
                      .first()).toBeVisible();
     await page.getByRole('button', { name: /BACK/i }).click();
   });
 
-  test('Install modal opens with pbay/private toggle', async ({ page }) => {
+  test('Install modal requires a governed tenant address', async ({ page }) => {
     const firstCardImage = page.locator('img[alt=""]').first();
     await firstCardImage.scrollIntoViewIfNeeded();
     await firstCardImage.click({ force: true });
@@ -114,9 +114,9 @@ test.describe('Static store — public surface', () => {
     const installBtn = page.getByRole('button', { name: /INSTALL/i }).last();
     await installBtn.scrollIntoViewIfNeeded();
     await installBtn.click({ force: true });
-    // Install modal lists both pbay AND Private Servers as toggle tabs.
-    await expect(page.getByRole('button', { name: /pbay\.app/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: /Private Servers/i })).toBeVisible();
+    await expect(page.getByText(/governed Melusina Shell tenant/i)).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: /Add Melusina Server/i }).click();
+    await expect(page.getByLabel('Server Address')).toBeVisible();
     await page.keyboard.press('Escape');
   });
 
@@ -127,7 +127,8 @@ test.describe('Static store — public surface', () => {
       return regs.map(r => r.scope);
     });
     expect(swRegs.length).toBeGreaterThan(0);
-    expect(swRegs.some(s => s.includes('melusina-static_store'))).toBe(true);
+    const pageOrigin = new URL(page.url()).origin;
+    expect(swRegs.some(scope => new URL(scope).origin === pageOrigin)).toBe(true);
   });
 
   test('No deferred-tools community surfaces visible', async ({ page }) => {

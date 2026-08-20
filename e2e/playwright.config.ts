@@ -19,6 +19,7 @@ const ADMIN_BASE_URL = process.env.ADMIN_BASE_URL;
 if (!ADMIN_BASE_URL) {
   throw new Error('ADMIN_BASE_URL is required. Set it to a Sandstorm admin app market URL.');
 }
+const CHROMIUM_EXECUTABLE = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
 
 export default defineConfig({
   testDir: './tests',
@@ -31,9 +32,12 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     ignoreHTTPSErrors: true,
+    ...(CHROMIUM_EXECUTABLE
+      ? { launchOptions: { executablePath: CHROMIUM_EXECUTABLE } }
+      : {}),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.PLAYWRIGHT_CAPTURE_VIDEO === '1' ? 'retain-on-failure' : 'off',
   },
   projects: [
     {
@@ -51,6 +55,7 @@ export default defineConfig({
       use: {
         baseURL: STORE_BASE_URL,
         ...devices['iPhone 14'],
+        browserName: 'chromium',
       },
     },
     {

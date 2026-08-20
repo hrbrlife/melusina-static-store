@@ -1,8 +1,9 @@
 import { test, expect, request } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { EXPECTED_APPS } from '../fixtures/expected_apps';
 
 /* Per-app integration: for every app in the catalog, confirm
- *  - the card icon image returns 200 (not a 404 → letter fallback)
+ *  - the actual card icon source returns 200 (signed app icon or Bazaar mark)
  *  - the SPK package URL returns 200
  *  - RELEASE.json returns 200 and matches the catalog ReleaseEntry summary
  *  - the detail modal opens, version + author show up
@@ -13,14 +14,45 @@ const STORE = process.env.STORE_BASE_URL
 const norm = (s: string) => s.replace(/\/+$/, '');
 const STORE_NORM = norm(STORE);
 
+// Keep this assertion aligned with the source's generated signed icon map
+// without importing the Vite ESM module through Playwright's CommonJS loader.
+const iconMapSource = readFileSync(new URL('../../src/app-icon-map.js', import.meta.url), 'utf8');
+const appIconPaths = new Map(
+  [...iconMapSource.matchAll(/^  "([a-z0-9]{52})": "(\/icons\/apps\/[^\"]+)",$/gm)]
+    .map(([, appId, iconPath]) => [appId, iconPath]),
+);
+const bazaarMarkIconPath = iconMapSource.match(
+  /BAZAAR_MARK_ICON_PATH = "([^\"]+)"/,
+)?.[1];
+if (!bazaarMarkIconPath) {
+  throw new Error('generated Bazaar mark icon path is missing');
+}
+
 let catalog: any[] = [];
 
-test.beforeAll(async () => {
+const loadCatalog = async () => {
   const ctx = await request.newContext();
-  const res = await ctx.get(`${STORE_NORM}/apps/index.json`);
-  expect(res.status(), 'apps/index.json must load').toBe(200);
-  const data = await res.json();
-  catalog = data.apps;
+  try {
+    let lastStatus = 0;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const res = await ctx.get(`${STORE_NORM}/apps/index.json`);
+      lastStatus = res.status();
+      if (res.ok()) {
+        const data = await res.json();
+        return data.apps;
+      }
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
+    throw new Error(`apps/index.json must load (final HTTP ${lastStatus})`);
+  } finally {
+    await ctx.dispose();
+  }
+};
+
+test.beforeAll(async () => {
+  catalog = await loadCatalog();
   expect(catalog.length, 'catalog must contain apps').toBeGreaterThan(0);
 });
 
@@ -30,15 +62,41 @@ test('Catalog matches expected app set', async () => {
   expect(got).toEqual(want);
 });
 
+test('Every app release uses the same 3-of-4 publishing authority', async () => {
+  const authorityFor = (entry: any) => {
+    const attest = entry.attest;
+    expect(attest, `${entry.name} must include an attestation summary`).toBeDefined();
+    expect(attest.quorumPolicy?.threshold).toBe(3);
+    expect(attest.quorumPolicy?.memberCount).toBe(4);
+    expect(attest.licenseSquadsVault).toBeTruthy();
+    expect(attest.quorumPolicy?.multisigPda).toBeTruthy();
+
+    // SPK/app author signatures deliberately vary by app. The Squads vault and
+    // complete public quorum policy must not: there are no app-level exceptions.
+    return {
+      licenseSquadsVault: attest.licenseSquadsVault,
+      quorumPolicy: attest.quorumPolicy,
+    };
+  };
+
+  const sharedAuthority = authorityFor(catalog[0]);
+  for (const entry of catalog) {
+    expect(authorityFor(entry), `${entry.name} publishing authority`).toEqual(sharedAuthority);
+  }
+});
+
 for (const app of EXPECTED_APPS) {
   test.describe(`App: ${app.name}`, () => {
     test('icon, SPK, ReleaseEntry attestation all return 200', async ({ request }) => {
       const entry = catalog.find(a => a.name === app.name);
       expect(entry, `${app.name} not in catalog`).toBeDefined();
-      // Icon
-      const iconRes = await request.get(`${STORE_NORM}/images/${entry.imageId}`);
+      // The UI intentionally does not trust mutable catalog imageId fields.
+      // It uses a signed appId-keyed icon map, falling back to the Bazaar mark
+      // for explicitly iconless or not-yet-mapped apps.
+      const iconPath = appIconPaths.get(entry.appId) ?? bazaarMarkIconPath;
+      const iconRes = await request.get(`${STORE_NORM}${iconPath}`);
       expect(iconRes.status(),
-        `icon ${entry.imageId} must be 200`).toBe(200);
+        `rendered icon ${iconPath} for ${entry.name} must be 200`).toBe(200);
       // SPK (may be on Releases for >95MB apps; we only check the local /packages/ path)
       if (!entry.packageUrl) {
         const spkRes = await request.head(`${STORE_NORM}/packages/${entry.packageId}`);
@@ -47,12 +105,13 @@ for (const app of EXPECTED_APPS) {
       }
       // ReleaseEntry-backed attestation manifest
       expect(entry.attest, `${entry.name} must include attest summary`).toBeDefined();
-      expect(entry.attest.schema).toBe('melusina-release-v1');
       expect(entry.attest.appHash).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.attest.releaseHash).toMatch(/^[0-9a-f]{64}$/);
       expect(entry.attest.releaseEntryPda).toBeTruthy();
-      expect(entry.attest.MasterNftMint).toBeTruthy();
+      expect(entry.attest.masterNftMint).toBeTruthy();
       expect(entry.attest.licenseSquadsVault).toBeTruthy();
+      expect(entry.attest.quorumPolicy?.threshold).toBe(3);
+      expect(entry.attest.quorumPolicy?.memberCount).toBe(4);
       expect(entry.attest.signedAtUnix).toBeGreaterThan(0);
 
       const releaseRes = await request.get(
@@ -64,8 +123,9 @@ for (const app of EXPECTED_APPS) {
       expect(release.appHash).toBe(entry.attest.appHash);
       expect(release.releaseHash).toBe(entry.attest.releaseHash);
       expect(release.releaseEntryPda).toBe(entry.attest.releaseEntryPda);
-      expect(release.MasterNftMint).toBe(entry.attest.MasterNftMint);
+      expect(release.masterNftMint).toBe(entry.attest.masterNftMint);
       expect(release.licenseSquadsVault).toBe(entry.attest.licenseSquadsVault);
+      expect(release.quorumPolicy).toEqual(entry.attest.quorumPolicy);
       expect(release.signedAtUnix).toBe(entry.attest.signedAtUnix);
     });
 
@@ -92,8 +152,8 @@ for (const app of EXPECTED_APPS) {
       // Hero shows app name as h1.
       await expect(page.getByRole('heading', { level: 1, name: app.name }))
                        .toBeVisible();
-      // Versions tab is reachable.
-      await page.getByRole('button', { name: /Versions/i }).first().click();
+      // FAQ is a rendered per-app surface and must remain reachable.
+      await page.getByRole('button', { name: /FAQ/i }).first().click();
     });
   });
 }

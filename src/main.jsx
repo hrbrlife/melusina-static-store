@@ -129,59 +129,21 @@ const runtimeContractInfo = (app) => {
   };
 };
 
-/* ─── pbay.app jurisdiction servers ──────────────────────────────────────────────── */
+/* ─── user-selected governed tenant storage ─────────────────────────────────────── */
 
-const PBAY_SERVERS = [
-  { code: 'LU', flag: '🇱🇺', name: 'Luxembourg', domain: 'lu.pbay.app', region: 'Europe' },
-  { code: 'CH', flag: '🇨🇭', name: 'Switzerland', domain: 'ch.pbay.app', region: 'Europe' },
-  { code: 'DE', flag: '🇩🇪', name: 'Germany', domain: 'de.pbay.app', region: 'Europe' },
-  { code: 'FR', flag: '🇫🇷', name: 'France', domain: 'fr.pbay.app', region: 'Europe' },
-  { code: 'NL', flag: '🇳🇱', name: 'Netherlands', domain: 'nl.pbay.app', region: 'Europe' },
-  { code: 'FI', flag: '🇫🇮', name: 'Finland', domain: 'fi.pbay.app', region: 'Europe' },
-  { code: 'IS', flag: '🇮🇸', name: 'Iceland', domain: 'is.pbay.app', region: 'Europe' },
-  { code: 'US', flag: '🇺🇸', name: 'United States', domain: 'us.pbay.app', region: 'Americas' },
-  { code: 'CA', flag: '🇨🇦', name: 'Canada', domain: 'ca.pbay.app', region: 'Americas' },
-  { code: 'SG', flag: '🇸🇬', name: 'Singapore', domain: 'sg.pbay.app', region: 'Asia-Pacific' },
-  { code: 'JP', flag: '🇯🇵', name: 'Japan', domain: 'jp.pbay.app', region: 'Asia-Pacific' },
-];
+const BAZAAR_SERVER_KEY = 'melusina_bazaar_servers';
 
-/* pbay / private server localStorage helpers */
-const PBAY_KEY = 'melusina_pbay_servers';
-const PRIV_KEY = 'melusina_private_servers';
-
-const getPbayServers = () => {
-  try {
-    const raw = localStorage.getItem(PBAY_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) || [];
-  } catch { return []; }
+const getBazaarServers = () => {
+  try { return JSON.parse(localStorage.getItem(BAZAAR_SERVER_KEY) || '[]'); } catch { return []; }
 };
-const addPbayServer = (srv) => {
-  const list = getPbayServers().filter((s) => s.code !== srv.code);
-  list.unshift(srv);
-  localStorage.setItem(PBAY_KEY, JSON.stringify(list.slice(0, 20)));
-};
-const removePbayServer = (code) => {
-  const list = getPbayServers().filter((s) => s.code !== code);
-  localStorage.setItem(PBAY_KEY, JSON.stringify(list));
-};
-const setPbayServer = (srv) => { addPbayServer(srv); };
-
-const getPrivateServers = () => {
-  try { return JSON.parse(localStorage.getItem(PRIV_KEY) || '[]'); } catch { return []; }
-};
-const addPrivateServer = (url) => {
-  const list = getPrivateServers().filter((s) => s !== url);
+const addBazaarServer = (url) => {
+  const list = getBazaarServers().filter((server) => server !== url);
   list.unshift(url);
-  localStorage.setItem(PRIV_KEY, JSON.stringify(list.slice(0, 20)));
+  localStorage.setItem(BAZAAR_SERVER_KEY, JSON.stringify(list.slice(0, 20)));
 };
-const removePrivateServer = (url) => {
-  const list = getPrivateServers().filter((s) => s !== url);
-  localStorage.setItem(PRIV_KEY, JSON.stringify(list));
-};
-const isPbayHost = (host) => {
-  const domain = sanitizeHost(host).replace(/^https?:\/\//i, '').toLowerCase();
-  return PBAY_SERVERS.find((s) => domain === s.domain || domain.endsWith('.' + s.domain));
+const removeBazaarServer = (url) => {
+  const list = getBazaarServers().filter((server) => server !== url);
+  localStorage.setItem(BAZAAR_SERVER_KEY, JSON.stringify(list));
 };
 
 /* ─── Get Melusina Modal ───────────────────────────────────────────────────────── */
@@ -220,12 +182,12 @@ function GetMelusinaModal({ onClose }) {
             }}>×</button>
           </div>
           <div style={{ fontSize: 12, color: T.textSec, marginTop: 6, lineHeight: 1.6 }}>
-            Two ways to run Melusina apps — choose what fits your needs.
+            Connect this Bazaar to the governed Melusina Shell tenant you control.
           </div>
         </div>
 
         <div style={{ padding: '24px 28px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* pbay.app option */}
+          {/* governed tenant requirement */}
           <div style={{
             padding: 24, background: T.surface, borderRadius: T.radius,
             border: `1px solid ${T.cyan}33`,
@@ -237,40 +199,23 @@ function GetMelusinaModal({ onClose }) {
                   fontSize: 15, fontWeight: 800, color: T.cyan,
                   fontFamily: "'Orbitron', sans-serif",
                   textShadow: `0 0 8px ${T.accentGlow}`,
-                }}>pbay.app</div>
+                }}>Governed Shell tenant</div>
                 <div style={{
                   fontSize: 10, fontWeight: 700, color: T.green,
                   fontFamily: "'JetBrains Mono', monospace",
                   letterSpacing: '.08em', textTransform: 'uppercase',
-                }}>MANAGED HOSTING</div>
+                }}>REQUIRED FOR INSTALL</div>
               </div>
             </div>
             <div style={{ fontSize: 13, color: T.textSec, lineHeight: 1.8, marginBottom: 16 }}>
-              Fully managed hosting — sign up, pick a jurisdiction, and start using apps immediately.
-              Your data stays in the country you choose. Each server is <strong style={{ color: T.text }}>legally,
-              physically, and operationally isolated</strong>.
+              Apps install only through an authenticated Melusina Shell tenant. Use the Install action
+              on an app to enter the canonical HTTPS address of that tenant.
             </div>
             <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 12, color: T.textSec, lineHeight: 2 }}>
-              <li>No server setup required</li>
-              <li>Jurisdiction-isolated — pick your country</li>
-              <li>Automatic updates and backups</li>
-              <li>Export your Pearls anytime — no lock-in</li>
+              <li>Install through the tenant's standard app-install route</li>
+              <li>Keep your tenant identity and authorization under your control</li>
+              <li>Verify the installed app in the rendered Shell</li>
             </ul>
-            <a href="https://pbay.app" target="_blank" rel="noopener noreferrer" style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '14px 20px', marginTop: 18,
-              background: `linear-gradient(135deg, ${T.cyan}18, ${T.magenta}12)`,
-              border: `1px solid ${T.cyan}55`,
-              borderRadius: T.radiusSm, cursor: 'pointer',
-              color: T.cyan, fontSize: 12, fontWeight: 700,
-              fontFamily: "'Orbitron', sans-serif",
-              letterSpacing: '.08em', textTransform: 'uppercase',
-              textShadow: `0 0 8px ${T.accentGlow}`,
-              textDecoration: 'none', transition: 'all .2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 25px ${T.accentGlow}`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-            >Go to pbay.app ↗</a>
           </div>
 
           {/* Self-hosted option */}
@@ -303,148 +248,15 @@ function GetMelusinaModal({ onClose }) {
               <li>No third-party dependencies</li>
               <li>Community and commercial support available</li>
             </ul>
-            <a href="https://melusina-os.org/install" target="_blank" rel="noopener noreferrer" style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '14px 20px', marginTop: 18,
-              background: `linear-gradient(135deg, ${T.magenta}18, ${T.purple}12)`,
-              border: `1px solid ${T.magenta}55`,
-              borderRadius: T.radiusSm, cursor: 'pointer',
-              color: T.magenta, fontSize: 12, fontWeight: 700,
-              fontFamily: "'Orbitron', sans-serif",
-              letterSpacing: '.08em', textTransform: 'uppercase',
-              textShadow: `0 0 8px ${T.magentaGlow}`,
-              textDecoration: 'none', transition: 'all .2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 25px ${T.magentaGlow}`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-            >Install Guide on melusina-os.org ↗</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Jurisdiction Picker Modal ────────────────────────────────────────────────── */
-
-function JurisdictionModal({ onSelect, onClose }) {
-  const regions = useMemo(() => {
-    const map = {};
-    PBAY_SERVERS.forEach((s) => {
-      if (!map[s.region]) map[s.region] = [];
-      map[s.region].push(s);
-    });
-    return Object.entries(map);
-  }, []);
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(8,6,20,0.85)',
-      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-    }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: 560, maxWidth: '92vw', maxHeight: '82dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        background: 'linear-gradient(160deg, rgba(22,16,48,0.98), rgba(14,10,32,0.98))',
-        border: `1px solid ${T.cyan}33`,
-        borderRadius: T.radius,
-        boxShadow: `0 0 60px ${T.accentGlow}, 0 30px 80px rgba(0,0,0,.5)`,
-        padding: 0,
-        animation: 'pop .2s ease-out',
-      }}>
-        {/* header */}
-        <div style={{
-          padding: '28px 32px 20px', borderBottom: `1px solid ${T.purple}22`,
-          background: `linear-gradient(135deg, ${T.cyan}08, ${T.magenta}06)`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{
-                fontSize: 18, fontWeight: 800, color: T.cyan,
-                fontFamily: "'Orbitron', sans-serif",
-                textShadow: `0 0 12px ${T.accentGlow}`,
-                marginBottom: 4,
-              }}>Pick Your Jurisdiction</div>
-              <div style={{
-                fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '.04em',
-              }}>Professionally hosted by the team behind melusina-os.org</div>
+            <div style={{
+              marginTop: 18, padding: '12px 14px',
+              background: T.magenta + '0d', border: `1px solid ${T.magenta}33`,
+              borderRadius: T.radiusSm, color: T.textSec, fontSize: 12, lineHeight: 1.7,
+            }}>
+              Use your organization’s approved Shell installation process, then return here and
+              enter that tenant’s HTTPS address from an app’s Install action.
             </div>
-            <button onClick={onClose} style={{
-              background: 'none', border: 'none', color: T.textDim, fontSize: 22,
-              cursor: 'pointer', padding: 4, lineHeight: 1,
-            }}>×</button>
           </div>
-        </div>
-
-        {/* explanation */}
-        <div style={{
-          padding: '20px 32px', borderBottom: `1px solid ${T.purple}15`,
-          background: T.yellow + '06',
-        }}>
-          <div style={{
-            fontSize: 12, color: T.textSec, lineHeight: 1.8,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}>
-            <strong style={{ color: T.yellow }}>Each pbay.app server is legally, physically, and operationally
-            isolated to a single jurisdiction.</strong> Your data, compute, and legal agreements stay
-            within the borders of the jurisdiction you choose. No cross-border replication, no
-            shared infrastructure between regions.
-          </div>
-          <div style={{
-            fontSize: 11, color: T.textDim, lineHeight: 1.7, marginTop: 10,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}>
-            This is for SaaS pbay hosting only. You can export and move your Pearls to a private
-            Melusina installation at any time — no lock-in.
-          </div>
-        </div>
-
-        {/* server grid by region */}
-        <div style={{ padding: '24px 32px 32px' }}>
-          {regions.map(([region, servers]) => (
-            <div key={region} style={{ marginBottom: 20 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '.12em', textTransform: 'uppercase',
-              }}>{region}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-                {servers.map((srv) => (
-                  <button key={srv.code} onClick={() => onSelect(srv)} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '14px 18px', background: T.surface,
-                    border: `1px solid ${T.cyan}22`,
-                    borderRadius: T.radiusSm, cursor: 'pointer',
-                    transition: 'all .2s', textAlign: 'left',
-                  }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = T.cyan + '66';
-                      e.currentTarget.style.boxShadow = `0 0 18px ${T.accentGlow}`;
-                      e.currentTarget.style.background = T.cyan + '11';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = T.cyan + '22';
-                      e.currentTarget.style.boxShadow = 'none';
-                      e.currentTarget.style.background = T.surface;
-                    }}
-                  >
-                    <span style={{ fontSize: 24 }}>{srv.flag}</span>
-                    <div>
-                      <div style={{
-                        fontSize: 13, fontWeight: 700, color: T.text,
-                        fontFamily: "'Orbitron', sans-serif",
-                      }}>{srv.code} — {srv.domain}</div>
-                      <div style={{
-                        fontSize: 11, color: T.cyan, fontFamily: "'JetBrains Mono', monospace",
-                      }}>{srv.name}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
@@ -454,13 +266,10 @@ function JurisdictionModal({ onSelect, onClose }) {
 /* ─── Install Destination Modal ────────────────────────────────────────────────── */
 
 function InstallModal({ app, onClose }) {
-  const [section, setSection] = useState('pbay');
-  const [showJurisdiction, setShowJurisdiction] = useState(false);
-  const [pbayServers, setPbayServersState] = useState(() => getPbayServers());
-  const [privateServers, setPrivateServers] = useState(() => getPrivateServers());
-  const [newPrivate, setNewPrivate] = useState('');
-  const [addingPrivate, setAddingPrivate] = useState(false);
-  const [privateError, setPrivateError] = useState('');
+  const [servers, setServers] = useState(() => getBazaarServers());
+  const [newServer, setNewServer] = useState('');
+  const [addingServer, setAddingServer] = useState(false);
+  const [serverError, setServerError] = useState('');
   const [installError, setInstallError] = useState('');
 
   const doInstall = useCallback((host) => {
@@ -479,39 +288,16 @@ function InstallModal({ app, onClose }) {
     onClose();
   }, [app, onClose]);
 
-  const selectPbay = useCallback((srv) => {
-    addPbayServer(srv);
-    setPbayServersState(getPbayServers());
-    setShowJurisdiction(false);
-    doInstall(`https://${srv.domain}`);
-  }, [doInstall]);
-
-  const addAndInstallPrivate = useCallback(() => {
-    const err = hostValidationError(newPrivate);
-    if (err) { setPrivateError(err); return; }
-    const h = sanitizeHost(newPrivate);
-    addPrivateServer(h);
-    setPrivateServers(getPrivateServers());
-    setNewPrivate('');
-    setPrivateError('');
-    setAddingPrivate(false);
+  const addAndInstallServer = useCallback(() => {
+    const err = hostValidationError(newServer);
+    if (err) { setServerError(err); return; }
+    const h = sanitizeHost(newServer);
+    addBazaarServer(h);
+    setServers(getBazaarServers());
+    setNewServer('');
+    setServerError('');
     doInstall(h);
-  }, [newPrivate, doInstall]);
-
-  if (showJurisdiction) {
-    return <JurisdictionModal onSelect={selectPbay} onClose={() => setShowJurisdiction(false)} />;
-  }
-
-  const sectionTabStyle = (active) => ({
-    flex: 1, padding: '14px 12px', border: 'none',
-    background: active ? T.cyan + '15' : 'transparent',
-    color: active ? T.cyan : T.textDim,
-    fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    fontFamily: "'Orbitron', sans-serif",
-    letterSpacing: '.06em', textTransform: 'uppercase',
-    borderBottom: active ? `2px solid ${T.cyan}` : `2px solid transparent`,
-    transition: 'all .2s',
-  });
+  }, [newServer, doInstall]);
 
   return (
     <div style={{
@@ -553,14 +339,11 @@ function InstallModal({ app, onClose }) {
           </div>
         </div>
 
-        {/* section tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${T.purple}22` }}>
-          <button style={sectionTabStyle(section === 'pbay')} onClick={() => { setSection('pbay'); setInstallError(''); }}>
-            🌐 pbay.app
-          </button>
-          <button style={sectionTabStyle(section === 'private')} onClick={() => { setSection('private'); setInstallError(''); }}>
-            🖥️ Private Servers
-          </button>
+        <div style={{
+          padding: '14px 28px', borderBottom: `1px solid ${T.purple}22`,
+          color: T.textSec, fontSize: 12, lineHeight: 1.6,
+        }}>
+          Enter the HTTPS address of your governed Melusina Shell tenant.
         </div>
 
         {installError && (
@@ -582,103 +365,9 @@ function InstallModal({ app, onClose }) {
           </div>
         )}
 
-        {/* ─── pbay.app section ─── */}
-        {section === 'pbay' && (
-          <div style={{ padding: '24px 28px 28px' }}>
-            {pbayServers.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '.1em', textTransform: 'uppercase',
-                }}>YOUR PBAY SERVERS</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {pbayServers.map((srv) => (
-                    <div key={srv.code} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '12px 16px', background: T.surface,
-                      border: `1px solid ${T.cyan}22`,
-                      borderRadius: T.radiusSm, transition: 'all .2s',
-                    }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.cyan + '44'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.cyan + '22'; }}
-                    >
-                      <span style={{ fontSize: 22, flexShrink: 0 }}>{srv.flag}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontSize: 13, fontWeight: 700, color: T.text,
-                          fontFamily: "'Orbitron', sans-serif",
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>{srv.code} — {srv.domain}</div>
-                        <div style={{
-                          fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace",
-                        }}>{srv.name}</div>
-                      </div>
-                      <button onClick={() => doInstall(`https://${srv.domain}`)} style={{
-                        padding: '6px 16px', borderRadius: 3,
-                        background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}15)`,
-                        border: `1px solid ${T.cyan}44`,
-                        color: T.cyan, fontSize: 10, fontWeight: 700,
-                        fontFamily: "'Orbitron', sans-serif",
-                        letterSpacing: '.06em', cursor: 'pointer',
-                        textShadow: `0 0 6px ${T.accentGlow}`,
-                        transition: 'all .2s', flexShrink: 0,
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-                      >↓ INSTALL</button>
-                      <button onClick={() => { removePbayServer(srv.code); setPbayServersState(getPbayServers()); }} style={{
-                        background: 'none', border: 'none', color: T.textDim, fontSize: 14,
-                        cursor: 'pointer', padding: '2px 6px', lineHeight: 1,
-                        transition: 'color .2s', flexShrink: 0,
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = T.magenta; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = T.textDim; }}
-                      >×</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{
-              padding: 20, background: T.yellow + '08', borderRadius: T.radiusSm,
-              border: `1px solid ${T.yellow}33`, marginBottom: 16,
-            }}>
-              <div style={{
-                fontSize: 12, fontWeight: 700, color: T.yellow, marginBottom: 6,
-                fontFamily: "'Orbitron', sans-serif",
-              }}>Jurisdiction-Isolated Hosting</div>
-              <div style={{
-                fontSize: 11, color: T.textSec, lineHeight: 1.7,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>
-                Each pbay.app server is <strong style={{ color: T.text }}>legally, physically, and
-                operationally isolated</strong> to a single jurisdiction.
-              </div>
-            </div>
-            <button onClick={() => setShowJurisdiction(true)} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              width: '100%', padding: '14px 20px',
-              background: `linear-gradient(135deg, ${T.cyan}18, ${T.magenta}12)`,
-              border: `1px solid ${T.cyan}55`,
-              borderRadius: T.radiusSm, cursor: 'pointer',
-              color: T.cyan, fontSize: 12, fontWeight: 700,
-              fontFamily: "'Orbitron', sans-serif",
-              letterSpacing: '.08em', textTransform: 'uppercase',
-              textShadow: `0 0 8px ${T.accentGlow}`,
-              boxShadow: `0 0 15px ${T.accentGlow}`,
-              transition: 'all .2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 30px ${T.accentGlow}`; e.currentTarget.style.transform = 'scale(1.02)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`; e.currentTarget.style.transform = 'none'; }}
-            >🌐 {pbayServers.length > 0 ? 'Add Another Jurisdiction' : 'Choose Jurisdiction'}</button>
-          </div>
-        )}
-
-        {/* ─── Private Servers section ─── */}
-        {section === 'private' && (
-          <div style={{ padding: '24px 28px 28px' }}>
-            {privateServers.length > 0 && (
+        {/* ─── governed tenant section ─── */}
+        <div style={{ padding: '24px 28px 28px' }}>
+            {servers.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{
                   fontSize: 10, fontWeight: 700, color: T.textDim, marginBottom: 10,
@@ -686,7 +375,7 @@ function InstallModal({ app, onClose }) {
                   letterSpacing: '.1em', textTransform: 'uppercase',
                 }}>RECENT SERVERS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {privateServers.map((srv) => (
+                  {servers.map((srv) => (
                     <div key={srv} style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 16px', background: T.surface,
@@ -722,7 +411,7 @@ function InstallModal({ app, onClose }) {
                         onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`; }}
                         onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
                       >INSTALL</button>
-                      <button onClick={() => { removePrivateServer(srv); setPrivateServers(getPrivateServers()); }} style={{
+                      <button onClick={() => { removeBazaarServer(srv); setServers(getBazaarServers()); }} style={{
                         background: 'none', border: 'none', color: T.textDim, fontSize: 14,
                         cursor: 'pointer', padding: '2px 6px', lineHeight: 1,
                         transition: 'color .2s',
@@ -736,7 +425,7 @@ function InstallModal({ app, onClose }) {
               </div>
             )}
 
-            {addingPrivate ? (
+            {addingServer ? (
               <div style={{
                 padding: 18, background: T.surface, borderRadius: T.radiusSm,
                 border: `1px solid ${T.cyan}33`,
@@ -746,39 +435,39 @@ function InstallModal({ app, onClose }) {
                   letterSpacing: '.1em', color: T.cyan, marginBottom: 8,
                   fontFamily: "'Orbitron', sans-serif",
                   textShadow: `0 0 6px ${T.accentGlow}`,
-                }}>Server Address</label>
-                <input type="url" placeholder="https://example.melusina-os.org" value={newPrivate}
-                  onChange={(e) => { setNewPrivate(e.target.value); if (privateError) setPrivateError(''); }} autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && addAndInstallPrivate()}
-                  aria-invalid={!!privateError}
-                  aria-describedby={privateError ? 'private-server-error' : undefined}
+                }} htmlFor="tenant-server-address">Server Address</label>
+                <input id="tenant-server-address" type="url" placeholder="https://example.melusina-os.org" value={newServer}
+                  onChange={(e) => { setNewServer(e.target.value); if (serverError) setServerError(''); }} autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && addAndInstallServer()}
+                  aria-invalid={!!serverError}
+                  aria-describedby={serverError ? 'server-error' : undefined}
                   style={{
                     width: '100%', padding: '12px 14px',
                     background: 'rgba(192,132,252,0.06)',
-                    border: `1px solid ${privateError ? T.magenta + '99' : T.purple + '33'}`,
+                    border: `1px solid ${serverError ? T.magenta + '99' : T.purple + '33'}`,
                     borderRadius: T.radiusSm, color: T.text,
                     fontSize: 13, outline: 'none',
                     fontFamily: "'JetBrains Mono', monospace",
                     transition: 'border-color .2s, box-shadow .2s',
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = privateError ? T.magenta + 'cc' : T.cyan + '88';
-                    e.target.style.boxShadow = privateError ? `0 0 15px ${T.magentaGlow}` : `0 0 15px ${T.accentGlow}`;
+                    e.target.style.borderColor = serverError ? T.magenta + 'cc' : T.cyan + '88';
+                    e.target.style.boxShadow = serverError ? `0 0 15px ${T.magentaGlow}` : `0 0 15px ${T.accentGlow}`;
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = privateError ? T.magenta + '99' : T.purple + '33';
+                    e.target.style.borderColor = serverError ? T.magenta + '99' : T.purple + '33';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
-                {privateError && (
-                  <div id="private-server-error" role="alert" style={{
+                {serverError && (
+                  <div id="server-error" role="alert" style={{
                     marginTop: 8, fontSize: 11, color: T.magenta,
                     fontFamily: "'JetBrains Mono', monospace",
                     textShadow: `0 0 4px ${T.magentaGlow}`,
-                  }}>{privateError}</div>
+                  }}>{serverError}</div>
                 )}
                 <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                  <button onClick={addAndInstallPrivate} style={{
+                  <button onClick={addAndInstallServer} style={{
                     flex: 1, padding: '10px 16px', borderRadius: 3,
                     background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}15)`,
                     border: `1px solid ${T.cyan}55`,
@@ -791,7 +480,7 @@ function InstallModal({ app, onClose }) {
                     onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.accentGlow}`; }}
                     onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
                   >↓ CONNECT & INSTALL</button>
-                  <button onClick={() => { setAddingPrivate(false); setNewPrivate(''); }} style={{
+                  <button onClick={() => { setAddingServer(false); setNewServer(''); }} style={{
                     padding: '10px 16px', borderRadius: 3,
                     background: 'transparent',
                     border: `1px solid ${T.border}`,
@@ -802,7 +491,7 @@ function InstallModal({ app, onClose }) {
                 </div>
               </div>
             ) : (
-              <button onClick={() => setAddingPrivate(true)} style={{
+              <button onClick={() => setAddingServer(true)} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '14px 20px',
                 background: T.surface, border: `1px dashed ${T.cyan}33`,
@@ -819,10 +508,9 @@ function InstallModal({ app, onClose }) {
                   e.currentTarget.style.borderColor = T.cyan + '33';
                   e.currentTarget.style.background = T.surface;
                 }}
-              >+ Add Private Server</button>
+              >+ Add Melusina Server</button>
             )}
           </div>
-        )}
       </div>
     </div>
   );
@@ -1516,7 +1204,7 @@ Every version converts to the GNU Affero General Public License version 3 (AGPLv
 All data created, stored, or processed by the Software on your infrastructure is owned entirely by you. The Software includes no telemetry, analytics, or data collection mechanisms. Your server, your data.
 
 6. BRAND
-The Melusina, NamedCoin, and pBay names and marks remain proprietary in perpetuity and never convert to AGPLv3.
+The Melusina and NamedCoin names and marks remain proprietary in perpetuity and never convert to AGPLv3.
 
 7. WARRANTY DISCLAIMER
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
@@ -2571,12 +2259,7 @@ function App() {
       const h = sanitizeHost(hostParam);
       if (!h) return;
 
-      const pbayMatch = isPbayHost(h);
-      if (pbayMatch) {
-        setPbayServer(pbayMatch);
-      } else {
-        addPrivateServer(h);
-      }
+      addBazaarServer(h);
 
       // Clean the URL without reloading
       const url = new URL(window.location);

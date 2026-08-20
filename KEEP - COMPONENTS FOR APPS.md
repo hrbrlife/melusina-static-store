@@ -125,7 +125,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
   ├──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────┼────────────┤
   │ docs/runbook-release.md                          │ Canonical release runbook (what humans do)                                      │            │    
   ├──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────┼────────────┤    
-  │ docs/runbook-incident.md                         │ "App is broken on pbay — what do I do"                                          │            │  
+  │ docs/runbook-incident.md                         │ "App install incident — what do I do"                                           │            │
   └──────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────┴────────────┘    
                                                                                                                                                        
   This is where most of the near-term win is. No new repos, no coordination, apps pick up improvements via a single submodule bump.                      
@@ -206,7 +206,7 @@ Retrofit complete — all 21 apps on the spkmodule pattern.
                                                                                                                                                        
   melusina-e2e-harness-component                                                                                                                         
   
-  I just wrote playwright tests for the static store. Every app under pbay would want similar: "does the install flow from bazaar → pbay → pearl actually
+  I just wrote Playwright tests for the static store. Every app would want similar: "does the install flow from Bazaar → governed Shell → pearl actually
    work?" Shared fixtures for: Sandstorm shell login, pearl creation, pearl URL resolution. Deferred until you have ≥2 apps with real grains (so the   
   abstractions reflect reality, not aspirations).                                                                                                        
                                                                                                                                                        

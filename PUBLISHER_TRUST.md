@@ -26,7 +26,7 @@ Fixed prices above — no "contact sales," no negotiations.
 │  ENTERPRISE   ($20M – $50M) →  $75,000 in SOL / 3yr       │
 │  GLOBAL       (> $50M)      →  $200,000 in SOL / 3yr       │
 ├─────────────────────────────────────────────────────────────┤
-│  PBAY.APP (managed hosting — any revenue)                   │
+│  MANAGED HOSTING (any revenue)                              │
 │  Monthly fiat subscription → all apps included.             │
 │  Shell-gated. No per-app purchase. No wallet needed.        │
 └─────────────────────────────────────────────────────────────┘
@@ -109,7 +109,7 @@ keyholder review) or `Full` (auto-approved with 1 keyholder).
 | License check in `newGrain()` | Hard gate at pearl creation |
 | License banner in shell chrome | Soft warning for expired/missing licenses |
 | Wallet connection in store | Purchase flow |
-| pbay subscription gate | Managed hosting all-apps access |
+| managed-hosting subscription gate | Managed hosting all-apps access |
 
 ---
 
@@ -361,17 +361,17 @@ on-chain `AppStoreListing.price_lamports` to track USD ±10%.
 
 ---
 
-## 5. Pbay.app: Subscription — All Apps Included
+## 5. Managed Hosting: Subscription — All Apps Included
 
 ### 5.1 How It Works
 
-Pbay.app is managed hosting. The Foundation controls the shell.
+Managed hosting is operated by the Foundation, which controls the shell.
 Users pay a monthly subscription. While subscribed, all apps are
 available — no per-app purchase needed.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  PBAY.APP USER                                             │
+│  MANAGED-HOSTING USER                                      │
 │                                                            │
 │  Monthly subscription → Foundation                         │
 │       ↓                                                    │
@@ -389,26 +389,26 @@ available — no per-app purchase needed.
 
 ### 5.2 Shell-Gated Enforcement
 
-On pbay.app, the shell (Melusina server binary) is controlled by the
+On managed hosting, the shell (Melusina server binary) is controlled by the
 Foundation. The subscription check is at the shell level, not on-chain:
 
 ```javascript
-// pbay-subscription.js (server-side, pbay.app only)
+// managed-subscription.js (server-side, managed-hosting only)
 
-function checkPbaySubscription(userId) {
-  // pbay.app manages subscriptions via Stripe/payments API
-  const sub = PbaySubscriptions.findOne({ userId, status: 'active' });
+function checkManagedSubscription(userId) {
+  // Managed hosting handles subscriptions through its payments API.
+  const sub = ManagedSubscriptions.findOne({ userId, status: 'active' });
   if (!sub) return 'inactive';
   if (sub.expiresAt < new Date()) return 'expired';
   return 'active';
 }
 
-// In newGrain() — pbay.app mode:
-if (isPbayServer()) {
-  const subStatus = checkPbaySubscription(this.userId);
+// In newGrain() — managed-hosting mode:
+if (isManagedHostingServer()) {
+  const subStatus = checkManagedSubscription(this.userId);
   if (subStatus !== 'active' && appPricing.priceLamports > 0) {
     throw new Meteor.Error(402, "Subscription Required",
-      "Upgrade your pbay.app plan to use paid apps.");
+      "Upgrade your managed-hosting plan to use paid apps.");
   }
 } else {
   // Self-hosted: check on-chain receipt (§3.5)
@@ -418,7 +418,7 @@ if (isPbayServer()) {
 
 ### 4.3 What "Shell-Gated" Means
 
-On pbay.app, Foundation controls:
+On managed hosting, the Foundation controls:
 - The server binary (can enforce subscription at code level)
 - The update channel (can push enforcement updates)
 - DNS/routing (can gate access if subscription lapses)
@@ -427,9 +427,9 @@ This is NOT on-chain. It's a traditional SaaS subscription enforced
 by the hosting platform. The on-chain PerServer licensing is for
 self-hosted servers where the Foundation has no shell control.
 
-### 5.4 Publisher Revenue from Pbay (Price-Weighted Share)
+### 5.4 Publisher Revenue from Managed Hosting (Price-Weighted Share)
 
-Pbay subscription revenue is shared with publishers. The problem with
+Managed-hosting subscription revenue is shared with publishers. The problem with
 raw usage-hours: a radio stream pearl runs 24/7 but isn't more valuable
 than an encrypted password vault opened twice a month. Hours punish
 high-value low-usage apps and reward idle background grains.
@@ -453,7 +453,7 @@ publishers get a share, but a smaller one.
 Remaining 50% goes to the publisher pool.
 
 ```
-MONTHLY PBAY PAYOUT
+MONTHLY MANAGED-HOSTING PAYOUT
 
   Total subscription revenue:  $10,000
   Foundation ops (50%):        $5,000
@@ -494,12 +494,12 @@ MONTHLY PBAY PAYOUT
 This is the complete formula. All three dimensions matter.
 
 **Off-chain accounting.** Foundation runs the calculation monthly,
-publishes transparent reports, pays publishers. Not on-chain — pbay
+publishes transparent reports, pays publishers. Not on-chain — managed hosting
 is a managed service and this is operational accounting.
 
 ### 5.5 Why Two Models
 
-| | Self-Hosted (Community) | Self-Hosted (Starter–Global) | Pbay.app |
+| | Self-Hosted (Community) | Self-Hosted (Starter–Global) | Managed Hosting |
 |-|------------------------|------------------------------|----------|
 | **Who controls the server** | Admin | Admin | Foundation |
 | **Enforcement** | Legal only | Legal + on-chain receipt | Shell subscription |
@@ -510,7 +510,7 @@ is a managed service and this is operational accounting.
 
 Self-hosted Community users get full access for free — the revenue gate
 is legal, not technical. Paid-band admins pay a one-time SOL bundle.
-Pbay users want convenience — one subscription, everything works.
+Managed-hosting users want convenience — one subscription, everything works.
 
 ---
 
@@ -849,12 +849,12 @@ Everything needed already exists on-chain. This phase connects it.
 8. Store: revenue band selector → shows correct price → purchase flow
 9. Test full cycle: list → purchase (with/without referrer) → receipt → verify splits
 
-### Phase 3: Pbay Subscription Gate (Week 4-6, parallel)
+### Phase 3: Managed-Hosting Subscription Gate (Week 4-6, parallel)
 
-1. Implement `pbay-subscription.js` (subscription check)
-2. Add `isPbayServer()` detection (env flag or domain check)
-3. Wire subscription check into `newGrain()` (pbay path)
-4. Set up Stripe integration for pbay.app billing
+1. Implement `managed-subscription.js` (subscription check)
+2. Add `isManagedHostingServer()` detection (env flag or domain check)
+3. Wire subscription check into `newGrain()` (managed-hosting path)
+4. Set up Stripe integration for managed-hosting billing
 5. Implement active-pearl tracking per app per billing period
 6. Implement price-weighted payout calculation
 7. Test: active sub → all apps, expired sub → block new Pearls (paid)
@@ -862,7 +862,7 @@ Everything needed already exists on-chain. This phase connects it.
 ### Phase 4: Mainnet + Enforce (Week 7-9)
 
 1. Review warn-mode logs from Phase 1 (false positive analysis)
-2. Switch `newGrain` from warn → hard block (pbay only)
+2. Switch `newGrain` from warn → hard block (managed-hosting only)
 3. Add `spk verify` to `build-store.sh`
 4. Deploy to mainnet (devnet → mainnet, same program)
 5. First real Starter-tier bundle purchase on mainnet
@@ -884,7 +884,7 @@ Everything needed already exists on-chain. This phase connects it.
 | **Publisher payout** | Instant, non-custodial, 85% to publisher |
 | **License proof** | AppPurchaseReceipt PDA — deterministic, immutable |
 | **Offline resilience** | 7-day grace cache, banner, never hard-lock data |
-| **Pbay convenience** | Shell-gated subscription, no wallet needed |
+| **Managed-hosting convenience** | Shell-gated subscription, no wallet needed |
 
 ### What This Does NOT Protect Against
 
@@ -920,7 +920,7 @@ Everything needed already exists on-chain. This phase connects it.
 | hack-session.js patch | ~15 | Hard gate in `createGrain()` |
 | backend.js patch | ~10 | Soft tag in `continueGrain()` |
 | grainview.js patch | ~20 | Yellow banner for license issues |
-| pbay-subscription.js | ~60 | Pbay.app subscription check |
+| managed-subscription.js | ~60 | Managed-hosting subscription check |
 | store wallet + referral UI | ~50 | Connect wallet + purchase tx + ?ref= handling |
 
 **On-chain changes — ~200 lines:**

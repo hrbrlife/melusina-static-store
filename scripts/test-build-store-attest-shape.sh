@@ -59,6 +59,21 @@ printf '%s\n' \
   '{"$schema":"melusina-release-v1","programId":"SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf","version":"1.0.0","appHash":"'"$CONTRACT_APP_HASH"'","releaseHash":"declared-releasehash","releaseNonce":"declared-nonce","authorSig":"declared-signature","masterNftMint":"declared-master","licenseSquadsVault":"3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3","releaseEntryPda":"offline-declared-fixture","signedAtUnix":1,"runtimeContractSchema":"melusina-app-runtime-contract-v1","runtimeContractSha256":"'"$CONTRACT_SHA"'","quorumPolicy":{"threshold":1,"memberCount":1,"multisigPda":"4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"}}' \
   > "$CONTRACT_APP/RELEASE.json"
 
+# Offline mode relaxes signature/PDA verification only. Its fixtures must still
+# name the canonical shared 3-of-4 authority so the normal aggregate succeeds.
+python3 - "$APP/RELEASE.json" "$CONTRACT_APP/RELEASE.json" <<'PY'
+import json
+import sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding='utf-8') as f:
+        release = json.load(f)
+    release['quorumPolicy']['threshold'] = 3
+    release['quorumPolicy']['memberCount'] = 4
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(release, f)
+PY
+
 (
   cd "$TMP"
   MELUSINA_ATTEST_OFFLINE=1 bash ./build-store.sh --aggregate --no-refresh > "$TMP/build.log" 2>&1
@@ -110,8 +125,8 @@ PY
 
 # The offline flag only relaxes the Pearl-signature/stub gate. It must not
 # permit an otherwise governed record to name a different member of the
-# catalog authority triple.
-for authority_field in programId licenseSquadsVault quorumPolicy.multisigPda; do
+# complete catalog authority.
+for authority_field in programId licenseSquadsVault quorumPolicy.multisigPda quorumPolicy.threshold quorumPolicy.memberCount; do
   cp "$APP/RELEASE.json" "$TMP/release.before-mismatch.json"
   python3 - "$APP/RELEASE.json" "$authority_field" <<'PY'
 import json
@@ -121,6 +136,10 @@ path, field = sys.argv[1:]
 release = json.load(open(path))
 if field == 'quorumPolicy.multisigPda':
     release['quorumPolicy']['multisigPda'] = 'wrong-multisig'
+elif field == 'quorumPolicy.threshold':
+    release['quorumPolicy']['threshold'] = 2
+elif field == 'quorumPolicy.memberCount':
+    release['quorumPolicy']['memberCount'] = 3
 else:
     release[field] = 'wrong-authority'
 with open(path, 'w', encoding='utf-8') as f:

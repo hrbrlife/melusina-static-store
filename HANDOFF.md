@@ -141,7 +141,7 @@ Resigned + repacked + published via the catalog plan/apply lane:
 - `cca7e31` pkgdef adds `MELUSINA_INSTALL_TRUST_ROOT` + `MELUSINA_OPERATOR_WALLET_PUBKEY` deterministic dev-defaults. Per kill-list §10.1 fix-shape A. Production deployers MUST override.
 - `170c8c0` registers `modernc.org/sqlite` as `sqlite3` driver alias so `melusina-pearl-restore`'s `sql.Open("sqlite3", ...)` works without CGO. Avoids the CGO×Sandstorm signal-handler crash that hit at `os/signal.Notify` right after `Cap'n Proto RPC server started on FD 3`.
 - Both audited by two critical-auditor agents (PASS verdicts), shipped to ccash_go_htmx publish branch, then to static_store gh-pages.
-- **VERIFIED LIVE on dev.pbay.app**: ccash v0.3.2 pearl boots all the way through "Cap'n Proto RPC server started on FD 3" + "SandstormApi captured" + admin-role session → "system_down: admin gate hello failed" soft-fault (correct for catalog install with no admin pearl wired).
+- **Historical staging verification**: ccash v0.3.2 pearl booted all the way through "Cap'n Proto RPC server started on FD 3" + "SandstormApi captured" + admin-role session → "system_down: admin gate hello failed" soft-fault (correct for catalog install with no admin pearl wired).
 
 ### openclaw-main (uncommitted, but staged)
 - Project-root `sandstorm-pkgdef.capnp` + `.sandstorm/sandstorm-pkgdef.capnp` both updated: `bundled-node/bin/node` added to `alwaysInclude` + sourceMap `packagePath="bundled-node" sourcePath="bundled-node"`. Discovered mid-session that `spk pack` reads the project-root pkgdef, NOT the `.sandstorm/` one — the two were drifted, now in sync.
@@ -361,10 +361,10 @@ User asked: every app must have a) the same icon in store and as installed, b) a
 
 
 ### Live verification (round 3, 2026-05-06 ~07:30 GST)
-Verified end-to-end via Chrome at https://dev.pbay.app:
+Historically verified end-to-end via Chrome:
 - **Vintage Remote Desktop** (was BLANK in user screenshot): upgrade install via catalog → app page renders canonical retro-PC icon ✓
 - **Melusina OpenClaw** (user explicitly called out wrong icon): upgrade install via catalog → app page renders Jinn lobster character ✓
-- **Sandstorm /install flow**: catalog URL `dev.pbay.app/install/<pkgId>?url=<gh-pages>/packages/<pkgId>` correctly downloads new SPK and offers upgrade for existing appId ✓
+- **Sandstorm /install flow**: a catalog install URL correctly downloaded a new SPK and offered an upgrade for an existing appId ✓
 - **Existing grains** (pre-refresh): keep their cached icon until user clicks "Upgrade Pearls" in the app's page — the upgrade button is offered automatically once the new packageId installs.
 - **Catalog UI** (https://hrbrlife.github.io/melusina-static_store): 33/34 cards render canonical icons; cca.sh Domain Template fell back to "C" placeholder once during fast navigation (img.onerror fired transiently, but the SVG itself loads cleanly when fetched directly — likely a React-state race during catalog refresh, not a real broken icon).
 
@@ -445,8 +445,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 
 **Next pass** (via /loop iterations once Pages serves new index.json):
 1. Verify catalog UI shows new icons at `https://hrbrlife.github.io/melusina-static_store/`
-2. Bulk-upgrade installed grains in Sandstorm shell:
-   `dev.pbay.app/install/<NEW_PKG>?url=https://hrbrlife.github.io/melusina-static_store/packages/<NEW_PKG>`
+2. Bulk-upgrade installed grains through the governed Shell install route.
 3. Verify pearl dashboard shows correct icons after each upgrade
 4. **TeleScreen Hub still blocked** — cannot ship new icon SPK due to 1 GiB limit
 
@@ -465,7 +464,7 @@ Detail-poor icons (BotMother solid pink, popaye green dollar) survived.
 ## 2026-05-06 12:35 — ICON FIX VERIFIED LIVE
 
 After the 832M push completed and GH Pages rebuilt, the apps grid at
-`https://dev.pbay.app/apps` now renders **all 34 catalog icons at full
+The historical staging app grid rendered **all 34 catalog icons at full
 resolution and detail**. Verified end-to-end via Chrome MCP screenshots:
 
 - Row 1: popaye, AiLagoon, BotMother, Bureau Cal, Bureau Contacts, Bureau Notes
@@ -498,7 +497,7 @@ Pearl opens cleanly — title bar shows "Untitled Shell Tester test
 (6.14kB)" and body returns "didn't send any data" at root path
 (expected for a shell-extension app that only handles UI hooks).
 
-Also verified the **Pearls Desktop view** at `dev.pbay.app/grain` —
+Also verified the historical **Pearls Desktop view** —
 opening one popaye pearl triggered Sandstorm to refresh icon caches
 across most existing grains. Now the grid shows proper icons for
 ChainWatch, MiniGit, popaye, Doc Bureau, OpenClaw, Teleport, Vintage
@@ -673,7 +672,7 @@ spec — Sandstorm's standard /apps page uses appGrid, but Melusina's
 custom shell `.al-card` extension uses grain. So the 48px PNG got
 upscaled 5× to 264px → blurry.
 
-Verified by fetching `https://static.dev.pbay.app/<id>` for CanBoard:
+Verified by fetching the historical staging asset endpoint for CanBoard:
 returned 5KB 48×48 PNG (matches pearl dpi2x).
 
 **Fix shipped**:
@@ -694,7 +693,7 @@ returned 5KB 48×48 PNG (matches pearl dpi2x).
 24956 bytes is the 128×128 PNG; 78138 is the 256×256. Was previously
 1657/5072 bytes (24×24/48×48).
 
-To verify visually: open https://dev.pbay.app/apps after Sandstorm refreshes
+To verify visually: open the governed Shell app grid after it refreshes
 (or force a refresh by installing one of the upgraded SPK URLs). The al-card
 icons for the 6 listed apps should now be sharp at 132×132 / 264×264.
 

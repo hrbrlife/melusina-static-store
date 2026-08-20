@@ -386,9 +386,13 @@ func TestRecoverGenerationsWaitsWhenWindowOpen(t *testing.T) {
 // shared installed-hash map and returns a rollback closure that restores the
 // prior hash; Probe can be made to fail for a chosen component.
 type fakeAdapter struct {
-	kind         string
-	installed    map[string]string // componentID -> current hash
-	failProbeFor map[string]bool
+	kind                string
+	installed           map[string]string // componentID -> current hash
+	failProbeFor        map[string]bool
+	verifyCalls         int
+	applyCalls          int
+	verifyCurrentCalls  int
+	reapplyCurrentCalls int
 }
 
 func (f *fakeAdapter) Kind() string { return f.kind }
@@ -396,13 +400,29 @@ func (f *fakeAdapter) Stage(_ context.Context, desired componentrelease.Componen
 	return componentrelease.Staged{ComponentID: desired.ComponentID, Path: workDir, SHA256: desired.SHA256, SizeBytes: desired.SizeBytes}, nil
 }
 func (f *fakeAdapter) Verify(_ context.Context, _ componentrelease.Staged, _ componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
+	f.verifyCalls++
 	return nil
 }
 func (f *fakeAdapter) Apply(_ context.Context, _ componentrelease.Staged, desired componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) (componentrelease.Rollback, error) {
+	f.applyCalls++
 	prior := f.installed[desired.ComponentID]
 	f.installed[desired.ComponentID] = desired.SHA256
 	id := desired.ComponentID
 	return func(_ context.Context) error { f.installed[id] = prior; return nil }, nil
+}
+func (f *fakeAdapter) VerifyCurrent(_ context.Context, _ componentrelease.Staged, desired componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
+	f.verifyCurrentCalls++
+	if f.installed[desired.ComponentID] != desired.SHA256 {
+		return fmt.Errorf("%s is not already at target", desired.ComponentID)
+	}
+	return nil
+}
+func (f *fakeAdapter) ReapplyCurrent(_ context.Context, _ componentrelease.Staged, desired componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) (componentrelease.Rollback, error) {
+	f.reapplyCurrentCalls++
+	if f.installed[desired.ComponentID] != desired.SHA256 {
+		return nil, fmt.Errorf("%s changed before current reapply", desired.ComponentID)
+	}
+	return func(context.Context) error { return nil }, nil
 }
 func (f *fakeAdapter) Probe(_ context.Context, desired componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
 	if f.failProbeFor[desired.ComponentID] {
@@ -525,6 +545,15 @@ func TestApplyGenerationForceReapplyUsesNormalWALForAlreadyCurrentBytes(t *testi
 	}
 	if entry.FromHash != entry.ToHash || entry.ToHash != strings.Repeat("1", 64) {
 		t.Fatalf("force re-apply did not retain the current byte floor: %+v", entry)
+	}
+	if !entry.ReapplyCurrent || entry.PriorPath != "" {
+		t.Fatalf("force re-apply WAL did not record a no-byte-mutation recovery: %+v", entry)
+	}
+	if fa.verifyCurrentCalls != len(gen.Components) || fa.reapplyCurrentCalls != len(gen.Components) {
+		t.Fatalf("already-current adapter path calls verify=%d reapply=%d, want %d each", fa.verifyCurrentCalls, fa.reapplyCurrentCalls, len(gen.Components))
+	}
+	if fa.verifyCalls != 0 || fa.applyCalls != 0 {
+		t.Fatalf("ordinary replacement path ran during current reapply: verify=%d apply=%d", fa.verifyCalls, fa.applyCalls)
 	}
 }
 

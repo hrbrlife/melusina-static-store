@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
@@ -172,9 +173,25 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if !ok {
 		return nil, fmt.Errorf("no adapter registered for applyKind %q", install.ApplyKind)
 	}
+	reapplyCurrent := deps.ForceReapply && strings.EqualFold(installedHash, c.SHA256)
+	var currentAdapter componentrelease.CurrentReapplyAdapter
+	if reapplyCurrent {
+		var supportsCurrent bool
+		currentAdapter, supportsCurrent = adapter.(componentrelease.CurrentReapplyAdapter)
+		if !supportsCurrent {
+			return nil, fmt.Errorf("adapter %q does not support an already-current recovery reapply", install.ApplyKind)
+		}
+	}
 	marker, err := planRuntimeMarker(deps.RuntimeMarkerBackupDir, generationID, c, install)
 	if err != nil {
 		return nil, fmt.Errorf("plan runtime marker: %w", err)
+	}
+	priorPath := priorBackupPath(install.InstallRoot, installedHash)
+	if reapplyCurrent {
+		// No artifact bytes will be replaced, so a retained prior binary would be
+		// fictional. The WAL records this explicitly and crash recovery restores
+		// only the runtime-marker floor before restarting the proved target.
+		priorPath = ""
 	}
 	entry := WALEntry{
 		ComponentID:              c.ComponentID,
@@ -188,7 +205,8 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		ContentHash:              c.ContentSHA256,
 		Chain:                    c.Chain,
 		StagedPath:               filepath.Join(deps.StagingRoot, c.ComponentID),
-		PriorPath:                priorBackupPath(install.InstallRoot, installedHash),
+		PriorPath:                priorPath,
+		ReapplyCurrent:           reapplyCurrent,
 		DeepStableSeconds:        deps.Policy.DeepStableSeconds,
 		OpenedAtUnix:             deps.now(),
 		RuntimeMarkerPath:        marker.Path,
@@ -223,7 +241,12 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if err != nil {
 		return fail(fmt.Errorf("stage: %w", err), nil)
 	}
-	if err := adapter.Verify(ctx, staged, c, install); err != nil {
+	if reapplyCurrent {
+		err = currentAdapter.VerifyCurrent(ctx, staged, c, install)
+	} else {
+		err = adapter.Verify(ctx, staged, c, install)
+	}
+	if err != nil {
 		return fail(fmt.Errorf("verify: %w", err), nil)
 	}
 	// SEAM 2: re-read the shell-writable policy IMMEDIATELY before mutation. If the
@@ -268,7 +291,12 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if err := WriteRuntimeMarker(marker, generationID, c); err != nil {
 		return fail(fmt.Errorf("write runtime marker: %w", err), nil)
 	}
-	rb, err := adapter.Apply(ctx, staged, c, install)
+	var rb componentrelease.Rollback
+	if reapplyCurrent {
+		rb, err = currentAdapter.ReapplyCurrent(ctx, staged, c, install)
+	} else {
+		rb, err = adapter.Apply(ctx, staged, c, install)
+	}
 	if rb != nil {
 		adapterRollback := rb
 		rb = func(rbctx context.Context) error {

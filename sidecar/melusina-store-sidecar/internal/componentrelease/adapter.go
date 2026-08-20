@@ -54,6 +54,32 @@ type Adapter interface {
 	Probe(ctx context.Context, desired ComponentRelease, install ComponentInstall) error
 }
 
+// CurrentReapplyAdapter is an intentionally narrow extension for controller
+// recovery when the installed artifact is already byte-identical to the signed
+// target, but its runtime marker/WAL proof was lost or stalled. It is NOT a
+// generic downgrade or force-install interface: the controller calls it only
+// after its own recovery predicate proves that equality, and implementations
+// must prove it again immediately before restart.
+//
+// The normal Adapter lifecycle remains authoritative for ordinary updates.
+// CurrentReapplyAdapter lets an adapter attest a fresh staged copy of the
+// signed target, restart the unchanged target under the newly written runtime
+// marker, and return a rollback that restores only the prior runtime state.
+type CurrentReapplyAdapter interface {
+	Adapter
+
+	// VerifyCurrent verifies the staged signed target and independently proves
+	// that InstallRoot is already exactly that target. It deliberately does not
+	// require the signed previousSha256 floor: that floor is unavailable in this
+	// recovery shape because the target had already been installed out of band.
+	VerifyCurrent(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) error
+
+	// ReapplyCurrent re-proves the installed target immediately before restarting
+	// it. It must not replace artifact bytes; its rollback returns the service to
+	// the same bytes after the controller restores the prior runtime marker.
+	ReapplyCurrent(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) (Rollback, error)
+}
+
 // Staged is an opaque handle to a locally-staged, not-yet-applied artifact. Path
 // points at verified bytes (or an unpacked tree root) under the controller's
 // staging area; SHA256/SizeBytes are the measured values Verify checks against

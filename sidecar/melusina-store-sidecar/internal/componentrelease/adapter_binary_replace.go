@@ -177,6 +177,32 @@ func (a *binaryReplaceAdapter) Stage(ctx context.Context, desired ComponentRelea
 // the rollback floor. Ordering authority (is this a forward generation?) is the
 // controller's; Verify does only exact size+hash and floor EQUALITY checks.
 func (a *binaryReplaceAdapter) Verify(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) error {
+	if err := verifyBinaryReplaceStaged(staged, desired); err != nil {
+		return err
+	}
+	// Floor equality: refuse re-applying the exact prior artifact (replay / no-op).
+	if desired.PreviousSHA256 != "" && strings.EqualFold(desired.SHA256, desired.PreviousSHA256) {
+		return fmt.Errorf("binary-replace verify %s: desired sha256 equals previousSha256 (replay refused)", desired.ComponentID)
+	}
+	// A non-genesis update is permitted to replace only the exact signed rollback
+	// floor. Refuse drift before the controller opens its mutation window.
+	if desired.PreviousSHA256 != "" {
+		priorSHA, _, err := measureRegularFileNoFollow(install.InstallRoot)
+		if err != nil {
+			return fmt.Errorf("binary-replace verify %s: measure installed rollback floor: %w", desired.ComponentID, err)
+		}
+		if !strings.EqualFold(priorSHA, desired.PreviousSHA256) {
+			return fmt.Errorf("binary-replace verify %s: installed sha256 %s != signed previousSha256 %s", desired.ComponentID, priorSHA, strings.ToLower(desired.PreviousSHA256))
+		}
+	}
+	return nil
+}
+
+// verifyBinaryReplaceStaged proves the controller's staged file is exactly the
+// signed artifact. Both ordinary Apply and the narrow already-current recovery
+// use it so recovery never converts a local byte observation into a substitute
+// for fetching and checking the signed public artifact.
+func verifyBinaryReplaceStaged(staged Staged, desired ComponentRelease) error {
 	if staged.SizeBytes != desired.SizeBytes {
 		return fmt.Errorf("binary-replace verify %s: size %d != desired %d", desired.ComponentID, staged.SizeBytes, desired.SizeBytes)
 	}
@@ -195,22 +221,45 @@ func (a *binaryReplaceAdapter) Verify(ctx context.Context, staged Staged, desire
 	if !strings.EqualFold(got, desired.SHA256) {
 		return fmt.Errorf("binary-replace verify %s: on-disk sha256 %s != desired %s", desired.ComponentID, got, strings.ToLower(desired.SHA256))
 	}
-	// Floor equality: refuse re-applying the exact prior artifact (replay / no-op).
-	if desired.PreviousSHA256 != "" && strings.EqualFold(desired.SHA256, desired.PreviousSHA256) {
-		return fmt.Errorf("binary-replace verify %s: desired sha256 equals previousSha256 (replay refused)", desired.ComponentID)
+	return nil
+}
+
+// VerifyCurrent is used only by the controller's stalled-successor recovery.
+// It proves the signed staged bytes AND the installed target bytes exactly
+// match. Unlike Verify it intentionally cannot require the signed historical
+// previousSha256 floor, because the current target is already installed.
+func (a *binaryReplaceAdapter) VerifyCurrent(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) error {
+	if err := verifyBinaryReplaceStaged(staged, desired); err != nil {
+		return err
 	}
-	// A non-genesis update is permitted to replace only the exact signed rollback
-	// floor. Refuse drift before the controller opens its mutation window.
-	if desired.PreviousSHA256 != "" {
-		priorSHA, _, err := measureRegularFileNoFollow(install.InstallRoot)
-		if err != nil {
-			return fmt.Errorf("binary-replace verify %s: measure installed rollback floor: %w", desired.ComponentID, err)
-		}
-		if !strings.EqualFold(priorSHA, desired.PreviousSHA256) {
-			return fmt.Errorf("binary-replace verify %s: installed sha256 %s != signed previousSha256 %s", desired.ComponentID, priorSHA, strings.ToLower(desired.PreviousSHA256))
-		}
+	if desired.PreviousSHA256 != "" && strings.EqualFold(desired.SHA256, desired.PreviousSHA256) {
+		return fmt.Errorf("binary-replace current verify %s: desired sha256 equals previousSha256 (replay refused)", desired.ComponentID)
+	}
+	installedSHA, installedSize, err := measureRegularFileNoFollow(install.InstallRoot)
+	if err != nil {
+		return fmt.Errorf("binary-replace current verify %s: measure installed target: %w", desired.ComponentID, err)
+	}
+	if installedSize != desired.SizeBytes || !strings.EqualFold(installedSHA, desired.SHA256) {
+		return fmt.Errorf("binary-replace current verify %s: installed bytes size=%d sha256=%s are not signed target size=%d sha256=%s", desired.ComponentID, installedSize, installedSHA, desired.SizeBytes, strings.ToLower(desired.SHA256))
 	}
 	return nil
+}
+
+// ReapplyCurrent restarts unchanged, already-target bytes under a fresh
+// controller-owned runtime marker. It re-proves both staged and installed bytes
+// immediately before restart and returns a rollback that restarts the same
+// artifact after the controller restores the marker floor from the WAL.
+func (a *binaryReplaceAdapter) ReapplyCurrent(ctx context.Context, staged Staged, desired ComponentRelease, install ComponentInstall) (Rollback, error) {
+	if err := a.VerifyCurrent(ctx, staged, desired, install); err != nil {
+		return nil, fmt.Errorf("binary-replace current reapply %s: %w", desired.ComponentID, err)
+	}
+	rollback := func(rbctx context.Context) error {
+		return restart(rbctx, install)
+	}
+	if err := restart(ctx, install); err != nil {
+		return rollback, fmt.Errorf("binary-replace current reapply %s: restart %s: %w", desired.ComponentID, install.ServiceUnit, err)
+	}
+	return rollback, nil
 }
 
 // Apply retains the exact prior binary, atomically replaces the executable, and

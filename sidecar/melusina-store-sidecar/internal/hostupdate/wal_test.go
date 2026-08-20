@@ -91,6 +91,25 @@ func TestWALOpenIsExclusivePerComponentLock(t *testing.T) {
 	}
 }
 
+func TestWALReapplyCurrentRequiresEqualByteFloorAndNoPriorPath(t *testing.T) {
+	w, err := NewWALStore(secureWALRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := sampleEntry()
+	bad.ReapplyCurrent = true
+	if err := w.Open(bad); err == nil {
+		t.Fatal("reapplyCurrent accepted a different from/to hash")
+	}
+	valid := sampleEntry()
+	valid.ReapplyCurrent = true
+	valid.FromHash = valid.ToHash
+	valid.PriorPath = ""
+	if err := w.Open(valid); err != nil {
+		t.Fatalf("valid already-current WAL refused: %v", err)
+	}
+}
+
 func TestWALAdvanceAndComplete(t *testing.T) {
 	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {

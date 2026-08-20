@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
@@ -72,6 +73,21 @@ func rollbackBinaryReplace(ctx context.Context, entry WALEntry, install componen
 	// falsely pass an application-level self-report.
 	if err := RestoreRuntimeMarkerFromWAL(entry, install); err != nil {
 		return fmt.Errorf("restore runtime marker: %w", err)
+	}
+	// A constrained stalled-successor recovery never replaced artifact bytes:
+	// its valid rollback is restoring the prior runtime marker and restarting the
+	// already-proved target. Do not fabricate a binary rollback floor. Re-measure
+	// through O_NOFOLLOW so a substituted executable cannot be restarted under an
+	// old marker and silently accepted as recovery.
+	if entry.ReapplyCurrent {
+		got, err := sha256RegularFileNoFollow(install.InstallRoot)
+		if err != nil {
+			return fmt.Errorf("measure already-current target: %w", err)
+		}
+		if got != entry.ToHash {
+			return fmt.Errorf("already-current target hashes %s != recorded toHash %s; refusing restart", got, entry.ToHash)
+		}
+		return runner.Run(ctx, restartArgv(install))
 	}
 	// Brand-new component (no prior artifact): the exact-old-state restore is to
 	// UNINSTALL the just-swapped binary and stop the unit.
@@ -181,6 +197,29 @@ func sha256File(path string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// sha256RegularFileNoFollow hashes a concrete regular-file inode without
+// following a substituted symlink. Recovery uses it when no binary replacement
+// occurred and therefore no retained prior artifact exists to restore.
+func sha256RegularFileNoFollow(path string) (string, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("%s is not a regular file", path)
+	}
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err

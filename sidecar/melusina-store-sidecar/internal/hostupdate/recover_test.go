@@ -118,6 +118,56 @@ func TestRollbackRefusesTamperedPrior(t *testing.T) {
 	}
 }
 
+func TestRollbackAlreadyCurrentReapplyRestoresMarkerWithoutInventingPriorBinary(t *testing.T) {
+	dir := t.TempDir()
+	installRoot := filepath.Join(dir, "store")
+	targetBytes := []byte("already-signed-target-bytes")
+	targetHash := hashBytes(targetBytes)
+	runtimeMarkerPath := filepath.Join(dir, "runtime", "store.env")
+	priorRuntimeMarker := []byte("RRS_GENERATION_ID=183\nRRS_SIDECAR_VERSION=1.0.39\n")
+	priorRuntimePath := filepath.Join(dir, "runtime-backups", "store", "gen185-before.env")
+	if err := os.MkdirAll(filepath.Dir(runtimeMarkerPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(priorRuntimePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installRoot, targetBytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(runtimeMarkerPath, []byte("RRS_GENERATION_ID=185\nRRS_SIDECAR_VERSION=1.0.43\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(priorRuntimePath, priorRuntimeMarker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	entry := WALEntry{
+		ComponentID: "store", GenerationID: 185, ApplyKind: componentrelease.ApplyBinaryReplace,
+		FromHash: targetHash, ToHash: targetHash, ToVersion: "1.0.43", ReapplyCurrent: true,
+		RuntimeMarkerPath: runtimeMarkerPath, RuntimeMarkerPriorPath: priorRuntimePath,
+		RuntimeMarkerPriorSHA256: hashBytes(priorRuntimeMarker),
+	}
+	install := componentrelease.ComponentInstall{
+		ComponentID: "store", ComponentClass: componentrelease.ClassSidecar,
+		ApplyKind: componentrelease.ApplyBinaryReplace, InstallRoot: installRoot,
+		ServiceUnit: "store.service", HealthCommand: []string{"/bin/true"}, RuntimeEnvFile: runtimeMarkerPath,
+	}
+	runner := &fakeRunner{}
+	if err := RollbackFromWAL(context.Background(), entry, install, runner); err != nil {
+		t.Fatalf("RollbackFromWAL current reapply: %v", err)
+	}
+	if got, err := os.ReadFile(installRoot); err != nil || string(got) != string(targetBytes) {
+		t.Fatalf("already-current target changed during rollback: bytes=%q err=%v", got, err)
+	}
+	if marker, err := os.ReadFile(runtimeMarkerPath); err != nil || string(marker) != string(priorRuntimeMarker) {
+		t.Fatalf("runtime marker not restored: marker=%q err=%v", marker, err)
+	}
+	if len(runner.calls) != 1 || runner.calls[0][0] != "systemctl" || runner.calls[0][2] != "store.service" {
+		t.Fatalf("unchanged target was not restarted once: %v", runner.calls)
+	}
+}
+
 func TestRecoverAllDrivesDecisions(t *testing.T) {
 	dir := t.TempDir()
 	ws, err := NewWALStore(filepath.Join(dir, "wal"))

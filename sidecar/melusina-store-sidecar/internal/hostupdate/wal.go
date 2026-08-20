@@ -78,11 +78,16 @@ type WALEntry struct {
 	// Chain is the on-chain authority reference, persisted so a later poll tick or a
 	// fresh post-crash process can re-run the chain gate (pre-Complete) entirely from
 	// the WAL — the running host never trusts the remote document to re-verify.
-	Chain        componentrelease.ChainAuthority `json:"chain,omitempty"`
-	StagedPath   string                          `json:"stagedPath"`          // verified staged artifact (pre-apply)
-	PriorPath    string                          `json:"priorPath,omitempty"` // RETAINED prior artifact — kept until terminal (retention invariant)
-	State        WALState                        `json:"state"`
-	OpenedAtUnix int64                           `json:"openedAtUnix"`
+	Chain      componentrelease.ChainAuthority `json:"chain,omitempty"`
+	StagedPath string                          `json:"stagedPath"`          // verified staged artifact (pre-apply)
+	PriorPath  string                          `json:"priorPath,omitempty"` // RETAINED prior artifact — kept until terminal (retention invariant)
+	// ReapplyCurrent means the controller proved FromHash == ToHash and did not
+	// replace artifact bytes. It exists only for the constrained stalled-successor
+	// recovery path; rollback restores the runtime marker and restarts that same
+	// already-proved target rather than inventing a historical binary floor.
+	ReapplyCurrent bool     `json:"reapplyCurrent,omitempty"`
+	State          WALState `json:"state"`
+	OpenedAtUnix   int64    `json:"openedAtUnix"`
 	// AppliedAtUnix marks when the component first became target+healthy — the
 	// start of the deep-stable window.
 	AppliedAtUnix     int64  `json:"appliedAtUnix,omitempty"`
@@ -119,6 +124,14 @@ func (e WALEntry) validate() error {
 	}
 	if e.FromHash != "" && !isLowerHex64(e.FromHash) {
 		return errors.New("fromHash must be 64 lowercase hex chars")
+	}
+	if e.ReapplyCurrent {
+		if e.FromHash == "" || !strings.EqualFold(e.FromHash, e.ToHash) {
+			return errors.New("reapplyCurrent requires fromHash equal to toHash")
+		}
+		if e.PriorPath != "" {
+			return errors.New("reapplyCurrent must not claim a retained prior artifact")
+		}
 	}
 	if e.DeepStableSeconds < 0 {
 		return errors.New("deepStableSeconds must be non-negative")

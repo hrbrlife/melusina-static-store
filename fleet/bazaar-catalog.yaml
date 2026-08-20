@@ -98,7 +98,7 @@ groups:
         # v0.1.43/build-46 is the newest clean, source-bound dev-publish
         # candidate. It vendors its former workstation-only dependencies and
         # delegates promotion exclusively to the shared catalog authority.
-        source_commit: 0a8ffcfbcde934ab1e02b3439bc945d4a93738d7
+        source_commit: df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -106,7 +106,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Configurator
-        live_version: 0.1.43
+        live_version: 0.1.44
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-admin-app
         catalog_slug: namedcoin-admin

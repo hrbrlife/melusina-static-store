@@ -2,25 +2,25 @@
   "schema": "melusina-source-selection-v1",
   "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
   "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-  "sourceCommit": "0a8ffcfbcde934ab1e02b3439bc945d4a93738d7",
+  "sourceCommit": "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug 19 dev-publish v0.1.43/build-46 source is canonical and directly forward of main. It removes workstation-only build dependencies by vendoring the required modules, keeps the immutable namedcoin-admin identity, makes direct publication fail closed, and synchronizes the Configurator's metadata, runtime contract, tests, and package inputs. The product-path, case-workflow, release-health, and team-identity divergent lines remain explicitly held for deliberate integration review; their preserved aliases and older detached/release lines are evidence only and cannot become an accidental release source.",
+  "decisionSummary": "The Aug 20 dev-publish v0.1.44/build-47 source is the newest valid forward NamedCoin Configurator source. It preserves the selected hermetic build, immutable namedcoin-admin identity, governed-only publish path, and synchronized metadata/runtime-contract/test cohort while advancing above the prior same-version byte divergence. Main is an ancestor. The product-path, case-workflow, release-health, and team-identity divergent lines remain preserved for deliberate later integration review; their aliases and detached/release history are evidence only and cannot silently become a release source. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "clean exact-tip source worktree with current origin heads",
-      "make test-release-source-guard",
-      "go test ./... -count=1, go vet ./..., and go test -race ./... -count=1",
-      "make check-drift",
-      "two byte-identical SPK packs matched SHA-256 f8e3b46f818a59e970ba3c30409599c5c048bcd64999028d3811a247786e0d5a and spk verify"
+      "clean full-history source checkout; current main is an ancestor of selected dev-publish",
+      "make test-release-source-guard, go test ./... -count=1, go vet ./..., make verify-version-sync, make check-app-id, make check-anchor-encoder, and make check-e2e-envelope passed",
+      "the prior selected source's race and cross-repository capnp-drift checks remain recorded; this cut changes only the release cohort and declared visible version",
+      "two byte-identical SPK packs matched SHA-256 34a9cc9b0790c66da5471be2bd504b049d843a3ec6ab3c903e25fdb1b5ea8b77 and spk verify",
+      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/product-path-readiness-20260713", "commit": "032a11ab7504a100cc082cd69a6d1cc1d87d9f75", "outcome": "hold"},
     {"ref": "refs/heads/codex/wp2-issue-from-case-20260715", "commit": "ac6f7277bcdf53b93cb51a86b929da4f65fe6a21", "outcome": "hold"},
-    {"ref": "refs/heads/dev-publish", "commit": "0a8ffcfbcde934ab1e02b3439bc945d4a93738d7", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8", "outcome": "selected"},
     {"ref": "refs/heads/feat/mel-release-health-namedcoin-admin", "commit": "3150f61a7da2a85578e8637381dc7bfc43d452ac", "outcome": "hold"},
     {"ref": "refs/heads/feat/teama-identity-2026-06-26", "commit": "2285e8f94293a8ac33416ad8f3915699be18468d", "outcome": "hold"},
     {"ref": "refs/heads/main", "commit": "0dda2a0a89335e12ad86c70792585bc3006445d5", "outcome": "baseline"},

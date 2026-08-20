@@ -22,7 +22,7 @@ export const EXPECTED_APPS = [
   { name: 'Fineract Configurator',    version: '0.2.20',  categories: ['Productivity', 'Office'] },
   { name: 'GoldKey',                  version: '0.3.5',   categories: ['Productivity'] },
   { name: 'InstaCo',                  version: '0.1.10',  categories: ['Productivity', 'Office'] },
-  { name: 'InstaDAO',                 version: '1.0.12',  categories: ['Productivity', 'Office'] },
+  { name: 'InstaDAO',                 version: '1.0.14',  categories: ['Productivity', 'Office'] },
   { name: 'Jinn',                     version: '0.0.10',  categories: ['Productivity'] },
   { name: 'Lobby',                    version: '0.1.30',  categories: ['Productivity'] },
   { name: 'Melusina Dashboard',       version: '0.2.10',  categories: ['Productivity'] },

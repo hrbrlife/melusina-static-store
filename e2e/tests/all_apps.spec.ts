@@ -6,7 +6,11 @@ import { EXPECTED_APPS } from '../fixtures/expected_apps';
  *  - the actual card icon source returns 200 (signed app icon or Bazaar mark)
  *  - the SPK package URL returns 200
  *  - RELEASE.json returns 200 and matches the catalog ReleaseEntry summary
- *  - the detail modal opens, version + author show up
+ *  - every public-facing app's detail modal opens, version + author show up
+ *
+ * Foundation, operator, and engineering pearls remain release-verifiable but
+ * deliberately do not have normal Bazaar cards. Their absence is an explicit
+ * safety property, not a missing catalog row.
  */
 
 const STORE = process.env.STORE_BASE_URL
@@ -29,6 +33,19 @@ if (!bazaarMarkIconPath) {
 }
 
 let catalog: any[] = [];
+type InstallationPolicy = {
+  audience: string;
+  install_mode: string;
+  pearl_role: string;
+  client_access: string;
+  admin_surface: string;
+};
+
+const checkedInInstallationPolicy = JSON.parse(readFileSync(
+  new URL('../../sidecar/melusina-store-sidecar/ui/installation-policy.json', import.meta.url),
+  'utf8',
+)) as Record<string, InstallationPolicy>;
+let installationPolicy: Record<string, InstallationPolicy> = {};
 
 const loadCatalog = async () => {
   const ctx = await request.newContext();
@@ -51,9 +68,27 @@ const loadCatalog = async () => {
   }
 };
 
+const loadInstallationPolicy = async () => {
+  const ctx = await request.newContext();
+  try {
+    const res = await ctx.get(`${STORE_NORM}/installation-policy.json`);
+    expect(res.status(), 'installation policy must load').toBe(200);
+    return await res.json() as Record<string, InstallationPolicy>;
+  } finally {
+    await ctx.dispose();
+  }
+};
+
+const isVisibleInPublicBazaar = (entry: any) => {
+  const audience = installationPolicy[entry.appId]?.audience;
+  return audience === 'client' || audience === 'workspace';
+};
+
 test.beforeAll(async () => {
-  catalog = await loadCatalog();
+  [catalog, installationPolicy] = await Promise.all([loadCatalog(), loadInstallationPolicy()]);
   expect(catalog.length, 'catalog must contain apps').toBeGreaterThan(0);
+  expect(Object.keys(installationPolicy).sort(), 'policy must cover every catalog app')
+    .toEqual(catalog.map((app) => app.appId).sort());
 });
 
 test('Catalog matches expected app set', async () => {
@@ -82,6 +117,22 @@ test('Every app release uses the same 3-of-4 publishing authority', async () => 
   const sharedAuthority = authorityFor(catalog[0]);
   for (const entry of catalog) {
     expect(authorityFor(entry), `${entry.name} publishing authority`).toEqual(sharedAuthority);
+  }
+});
+
+test('Live installation policy matches the checked-in signed policy', async () => {
+  expect(installationPolicy).toEqual(checkedInInstallationPolicy);
+});
+
+test('Public Bazaar exposes exactly the policy-visible app cards', async ({ page }) => {
+  await page.goto('');
+  const visibleApps = catalog.filter(isVisibleInPublicBazaar);
+  await expect(page.getByText(`${visibleApps.length} apps`, { exact: true })).toBeVisible();
+
+  for (const entry of catalog) {
+    const heading = page.locator(`h3:text-is("${entry.name}")`);
+    await expect(heading, `${entry.name} public card visibility`)
+      .toHaveCount(isVisibleInPublicBazaar(entry) ? 1 : 0);
   }
 });
 
@@ -142,6 +193,10 @@ for (const app of EXPECTED_APPS) {
     });
 
     test('detail modal opens', async ({ page }) => {
+      const entry = catalog.find(a => a.name === app.name);
+      expect(entry, `${app.name} not in catalog`).toBeDefined();
+      test.skip(!isVisibleInPublicBazaar(entry),
+        'Foundation, operator, and engineering pearls intentionally have no public Bazaar card.');
       await page.goto('');
       await expect(page.getByText(/\d+\s*apps?/).first()).toBeVisible();
       // Find the h3 for this app, walk to the parent card image, click.

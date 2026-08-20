@@ -2,24 +2,24 @@
   "schema": "melusina-source-selection-v1",
   "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-doc-app",
-  "sourceCommit": "410d8654fa6a80a4efbad016a2f0b7dab1238ad8",
+  "sourceCommit": "08634ecd652d18f756aeb3c1efb12b9afaf17e9b",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v29/2.0.34 source is the newest valid forward Bureau Doc source. It is the direct continuation of the reviewed rich TipTap/Yjs document line and its candidate-pack/GrainContext controls, while making the signed product identity, package title, runtime contract language, and non-hidden screenshot sources agree with the requested public Bureau Doc name. Main remains the reviewed ancestor. The divergent historical master, release, publish, metadata, and salvage refs remain older alternate architecture, historical package evidence, or procedure material rather than newer runnable Document source.",
+  "decisionSummary": "The Aug 20 dev-publish v30/2.0.35 source is the newest valid forward Bureau Doc source. It is the direct continuation of the reviewed rich TipTap/Yjs document line and its candidate-pack/GrainContext controls, while making the signed product identity, package title, and runtime contract language agree with the requested public Bureau Doc name. It intentionally removes Store-gallery image declarations until the governed transport can carry their bytes, preventing a signed card from advertising broken URLs. Main remains the reviewed ancestor. The divergent historical master, release, publish, metadata, and salvage refs remain older alternate architecture, historical package evidence, or procedure material rather than newer runnable Document source.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "the selected remote dev-publish tip 410d8654fa6a80a4efbad016a2f0b7dab1238ad8 is a direct forward continuation of the previously reviewed rich document source",
+      "the selected remote dev-publish tip 08634ecd652d18f756aeb3c1efb12b9afaf17e9b is a direct forward continuation of the previously reviewed rich document source",
       "complete current remote-head snapshot reviewed, including divergent historical master, release, publish, and salvage refs",
       "make release-inputs and make test-release-inputs passed on the selected 2.0.34 source; mutation controls reject stale runtime metadata, Node closure drift, wrong resume command, and candidate packaging without a build",
-      "the selected source makes the metadata name, package title, runtime-contract wording, and tracked non-hidden catalog screenshots agree on Bureau Doc",
+      "the selected source makes the metadata name, package title, and runtime-contract wording agree on Bureau Doc, and intentionally declares no Store-gallery screenshots until their bytes are transportable",
       "the predecessor rich-document source had clean-clone, integration, deterministic-pack, SPK, and governed AppHash evidence; this forward package requires its own fresh reproducibility proof before publish"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/canonical-release-doc-20260713", "commit": "04e1fe5124ef11b95aa32c128f366e9681badbf9", "outcome": "archive"},
     {"ref": "refs/heads/cut/doc-bureau-v26-greenfield-20260814", "commit": "70aa484257057efaf5f319fa6f795e84363fd619", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "410d8654fa6a80a4efbad016a2f0b7dab1238ad8", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "08634ecd652d18f756aeb3c1efb12b9afaf17e9b", "outcome": "selected"},
     {"ref": "refs/heads/fix/bureau-docs-2-0-27", "commit": "355a070ddc06054a6aa376232382cf7209f2c1fa", "outcome": "archive"},
     {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "f5feff22c7800fb1921177c676d5f9d9ea27baa7", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69", "outcome": "baseline"},

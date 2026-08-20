@@ -287,17 +287,17 @@ groups:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
         # The current dev-publish source is a clean-clone, deterministic
-        # v0.1.9 / v16 governed candidate. The prior main is its reviewed
+        # v0.1.10 / v17 governed candidate. The prior main is its reviewed
         # ancestor; older divergent preservation refs remain recorded in its
         # selection receipt instead of becoming an accidental source choice.
-        source_commit: 7724681d45bfa5724e4d7fbb645aa5222fd9fe7c
+        source_commit: f1a0afea1defcfe756c89865ca9ebdeda84335a5
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.json
         publish_slug: instaco
         catalog_name: InstaCo
-        live_version: 0.1.9
+        live_version: 0.1.10
         catalog_developer: hrbrlife
         # The app's GitHub repository uses the melusina- prefix, but its
         # already-active Store slot predates that rename.  This exact slot is

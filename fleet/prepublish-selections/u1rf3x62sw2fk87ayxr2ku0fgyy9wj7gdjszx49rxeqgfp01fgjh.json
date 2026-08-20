@@ -2,22 +2,22 @@
   "schema": "melusina-source-selection-v1",
   "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
   "sourceRepository": "https://github.com/hrbrlife/melusina-instaco-app",
-  "sourceCommit": "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c",
+  "sourceCommit": "f1a0afea1defcfe756c89865ca9ebdeda84335a5",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The 2026-08-19 dev-publish source carries the current owner-role fixes and governed candidate packaging at v0.1.9/v16. main is its reviewed direct ancestor. Every advertised source head was snapshotted: the divergent August 4 B03/clienthub/schema preservation lines remain retained for a separate merge decision, while older integrated and historical ceremony lines are archived rather than selected by name or timestamp.",
+  "decisionSummary": "The 2026-08-20 dev-publish source retains the current owner-role fixes and governed candidate packaging, and advances the canonical public InstaCo identity to v0.1.10/v17. main is its reviewed direct ancestor. Every advertised source head remains recorded: the divergent August 4 B03/clienthub/schema preservation lines are retained for a separate merge decision, while older integrated and historical ceremony lines are archived rather than selected by name or timestamp.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "fresh recursive clone at the selected source commit",
-      "make PNPM='npx --yes pnpm@9.15.4' vet test",
+      "make ci passed with pinned pnpm, client build, Go vet, Go tests, and the static grain build",
       "all direct local release entry points refuse in favor of the governed Store release provider",
-      "MEL_RELEASE_GREENFIELD_PACK=1 make pack-local and spk verify",
-      "two independent governed provider candidate builds matched SHA-256 0905aa6eafc28ddd2c24730b11a88664a10819b95fded362ca40a711b9f7de7e and appHash 6b903eaefec9c5312ce6254bdd61d12eb46900f9d4379470e8394f1830143ee8, distinct from the signed public pointer"
+      "make pack-local and spk verify",
+      "two independent committed-source package builds matched SHA-256 54fa2178468feaa0278f8994b1faea24acdda09c3ebecb0d3f08ded18f321964"
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "f1a0afea1defcfe756c89865ca9ebdeda84335a5", "outcome": "selected"},
     {"ref": "refs/heads/fix/instaco-hacksession-abi-20260815", "commit": "9de1441c563fbb590402c9aee8001667a985bac0", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "5d9347ce837ec423013bc17bd17ff3a60b7f39eb", "outcome": "baseline"},
     {"ref": "refs/heads/preserve-local-20260814/_detached/049e469a1332", "commit": "049e469a1332c44c2f83ada88a0df790d235b66a", "outcome": "archive"},

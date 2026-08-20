@@ -345,6 +345,11 @@ func TestHermeticVersionBumpRotation(t *testing.T) {
 	mustNoErr(t, "publish v1", h.publish("1.0.1"))
 	mustNoErr(t, "approve v1", h.approve())
 	mustState(h, stateDone)
+	v1ReleaseHash := h.wal().ReleaseHash
+	v1Receipt := filepath.Join(h.cfg.appStateDir(testAppID), "promote-"+h.fx.StageID[:16]+"-"+v1.AppHash[:16]+".json")
+	if _, err := readPromoteReceipt(v1Receipt, testAppID, v1.AppHash, v1ReleaseHash, h.fx.StageID, "1.0.1"); err != nil {
+		t.Fatalf("v1 candidate-bound promotion receipt: %v", err)
+	}
 
 	historyGlob := filepath.Join(h.cfg.appStateDir(testAppID), "history", "*")
 	if hits, _ := filepath.Glob(historyGlob); len(hits) != 0 {
@@ -374,6 +379,16 @@ func TestHermeticVersionBumpRotation(t *testing.T) {
 	// lived; no generation is minted for it.
 	mustNoErr(t, "approve v2", h.approve())
 	mustState(h, stateDone)
+	v2ReleaseHash := h.wal().ReleaseHash
+	v2Receipt := filepath.Join(h.cfg.appStateDir(testAppID), "promote-"+h.fx.StageID[:16]+"-"+v2.AppHash[:16]+".json")
+	if _, err := readPromoteReceipt(v2Receipt, testAppID, v2.AppHash, v2ReleaseHash, h.fx.StageID, "1.0.2"); err != nil {
+		t.Fatalf("v2 candidate-bound promotion receipt: %v", err)
+	}
+	// The original v1 evidence remains readable after the v2 approval; a new
+	// version must not overwrite it through an appId-only promote.json path.
+	if _, err := readPromoteReceipt(v1Receipt, testAppID, v1.AppHash, v1ReleaseHash, h.fx.StageID, "1.0.1"); err != nil {
+		t.Fatalf("v1 promotion evidence was not retained: %v", err)
+	}
 	if got := h.store.touched(); len(got) != 0 {
 		t.Fatalf("version bump contacted the store generation rail: %v", got)
 	}

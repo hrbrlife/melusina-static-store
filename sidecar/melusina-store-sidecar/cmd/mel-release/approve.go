@@ -232,7 +232,16 @@ func verifyRegisteredLive(prov SignerProvider, rec *walReceipt) error {
 
 func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) error {
 	if rec.PromoteReceipt.SHA256 == "" {
-		promotePath := c.receiptPath(rec.AppID, "promote.json")
+		promoteName, err := promotionReceiptName(rec)
+		if err != nil {
+			return err
+		}
+		// Receipt names must bind the immutable candidate, rather than the
+		// appId alone. A completed version leaves its promotion evidence in
+		// place for audit; reusing promote.json for a later version either
+		// overwrites that evidence or makes the provider mistake the old
+		// receipt for the new candidate.
+		promotePath := c.receiptPath(rec.AppID, promoteName)
 		if err := prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
 			return err
 		}
@@ -253,6 +262,17 @@ func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) err
 	}
 	rec.ServedAppHash = served
 	return nil
+}
+
+// promotionReceiptName derives a durable, candidate-bound receipt name. The
+// full stage ID already binds the release intent; the appHash suffix also keeps
+// legacy/test fixtures with a reused stage ID from colliding. Both are checked
+// before they are used as path components.
+func promotionReceiptName(rec *walReceipt) (string, error) {
+	if !isLowerHex(rec.StageID, 64) || !isLowerHex(rec.NewAppHash, 64) {
+		return "", fmt.Errorf("promotion receipt requires 64-character lowercase stageId and appHash")
+	}
+	return "promote-" + rec.StageID[:16] + "-" + rec.NewAppHash[:16] + ".json", nil
 }
 
 // ensureOldRevoked only performs global ReleaseEntry retirement when the caller

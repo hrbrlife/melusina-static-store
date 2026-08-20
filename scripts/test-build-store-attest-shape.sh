@@ -40,6 +40,7 @@ printf '%s\n' \
   '    apps:' \
   '      legacy:' \
   "        appId: $APP_ID" \
+  '        source_repository: https://github.com/hrbrlife/legacy-fixture' \
   '        audience: workspace' \
   '        install_mode: self-service' \
   '        pearl_role: workspace' \
@@ -47,6 +48,7 @@ printf '%s\n' \
   '        admin_surface: same-pearl' \
   '      declared:' \
   "        appId: $CONTRACT_APP_ID" \
+  '        source_repository: https://github.com/hrbrlife/declared-fixture' \
   '        audience: client' \
   '        install_mode: owner-provisions' \
   '        pearl_role: workflow' \

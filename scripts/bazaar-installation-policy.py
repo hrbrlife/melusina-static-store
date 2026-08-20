@@ -34,7 +34,7 @@ def fail(message: str) -> None:
     raise SystemExit(f"bazaar-installation-policy: {message}")
 
 
-def load(path: Path) -> dict[str, dict[str, str]]:
+def load(path: Path, *, source_repositories: bool = False) -> dict[str, Any]:
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
@@ -71,7 +71,13 @@ def load(path: Path) -> dict[str, dict[str, str]]:
                 if not isinstance(value, str) or value not in allowed:
                     fail(f"app {app_id} has invalid {field!r}")
                 policy[field] = value
-            result[app_id] = policy
+            if source_repositories:
+                source = spec.get("source_repository")
+                if not isinstance(source, str) or not source.startswith("https://"):
+                    fail(f"app {app_id} has invalid source_repository")
+                result[app_id] = source
+            else:
+                result[app_id] = policy
     if len(result) != expected:
         fail(f"found {len(result)} policy entries, want {expected}")
     return result
@@ -80,8 +86,9 @@ def load(path: Path) -> dict[str, dict[str, str]]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", required=True, type=Path)
+    parser.add_argument("--source-repositories", action="store_true", help="emit immutable appId-to-source URL map")
     args = parser.parse_args()
-    json.dump(load(args.catalog), sys.stdout, sort_keys=True, separators=(",", ":"))
+    json.dump(load(args.catalog, source_repositories=args.source_repositories), sys.stdout, sort_keys=True, separators=(",", ":"))
     sys.stdout.write("\n")
 
 

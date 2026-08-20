@@ -63,6 +63,12 @@ CATALOG_AUTHORITY_MEMBER_COUNT=4
 # hatch (e.g. before the real core-app-team ceremony is wired for an app).
 MELUSINA_ATTEST_OFFLINE="${MELUSINA_ATTEST_OFFLINE:-0}"
 MELUSINA_ALLOW_PACKAGEID_DRIFT="${MELUSINA_ALLOW_PACKAGEID_DRIFT:-0}"
+# An optional, immutable release-evidence cohort. When set, this is the only
+# package population eligible for the default Bazaar build; raw packages/ stay
+# source evidence and are not refreshed or silently mixed into the release.
+MEL_BAZAAR_COHORT_DIR="${MEL_BAZAAR_COHORT_DIR:-}"
+MEL_BAZAAR_RELEASE_MANIFEST="${MEL_BAZAAR_RELEASE_MANIFEST:-}"
+COHORT_MODE=false
 
 # Melusina binary update hosting
 SANDSTORM_SRC="${SANDSTORM_SRC:-../sandstorm}"
@@ -114,18 +120,50 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
 
+# A governed build may be assembled from the exact 32-app artifact cohort
+# emitted by mel-release. Verify it before scanning so a stale, partial, or
+# manually edited package tree cannot impersonate the signed release set.
+if [[ -n "$MEL_BAZAAR_COHORT_DIR" || -n "$MEL_BAZAAR_RELEASE_MANIFEST" ]]; then
+  if [[ -z "$MEL_BAZAAR_COHORT_DIR" || -z "$MEL_BAZAAR_RELEASE_MANIFEST" ]]; then
+    fail "MEL_BAZAAR_COHORT_DIR and MEL_BAZAAR_RELEASE_MANIFEST must be set together"
+    exit 1
+  fi
+  if [[ "$MEL_BAZAAR_COHORT_DIR" != /* || "$MEL_BAZAAR_RELEASE_MANIFEST" != /* ]]; then
+    fail "governed cohort paths must be absolute"
+    exit 1
+  fi
+  COHORT_TOOL="$SCRIPT_DIR/scripts/materialize-governed-cohort.py"
+  if [[ ! -f "$COHORT_TOOL" ]]; then
+    fail "governed cohort verifier missing at $COHORT_TOOL"
+    exit 1
+  fi
+  if ! python3 "$COHORT_TOOL" --manifest "$MEL_BAZAAR_RELEASE_MANIFEST" --out "$MEL_BAZAAR_COHORT_DIR" --verify; then
+    fail "governed cohort verification failed"
+    exit 1
+  fi
+  PACKAGES_DIR="$MEL_BAZAAR_COHORT_DIR/packages"
+  COHORT_MODE=true
+  info "Using verified governed cohort: $MEL_BAZAAR_COHORT_DIR"
+fi
+
 # Installation audience and installability are Store-governed catalog facts,
 # never values a package's metadata may choose. A real Store checkout always
 # has this manifest; isolated build fixtures intentionally omit fleet/ and
 # therefore exercise only the generic assembler path.
 BAZAAR_INSTALLATION_POLICY_JSON=""
+BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON=""
 if [[ -f "$INSTALLATION_POLICY_CATALOG" ]]; then
   [[ -f "$INSTALLATION_POLICY_RENDERER" ]] || { fail "installation-policy renderer missing at $INSTALLATION_POLICY_RENDERER"; exit 1; }
   BAZAAR_INSTALLATION_POLICY_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG")" || {
     fail "invalid governed installation policy at $INSTALLATION_POLICY_CATALOG"
     exit 1
   }
+  BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG" --source-repositories)" || {
+    fail "invalid governed source repository map at $INSTALLATION_POLICY_CATALOG"
+    exit 1
+  }
   export BAZAAR_INSTALLATION_POLICY_JSON
+  export BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON
 fi
 
 # A raw packages/ tree is evidence, not Store scope. Legacy package directories
@@ -180,13 +218,19 @@ print(f"governed catalog coverage: {len(policy)} appIds exactly once")
 PY
 }
 
-# A materialized tree (git-archive export, no .git) CANNOT refresh submodules;
-# route it to the guarded --no-refresh branch instead of aborting under
-# `set -euo pipefail` in the else-branch's unguarded update pipeline (:123).
-[[ -e .git ]] || { NO_REFRESH=true; info "No .git — materialized tree; forcing --no-refresh"; }
+# A governed cohort and a materialized tree (git-archive export, no .git) must
+# never refresh source submodules. Their package population is already fixed.
+if $COHORT_MODE; then
+  NO_REFRESH=true
+elif [[ ! -e .git ]]; then
+  NO_REFRESH=true
+  info "No .git — materialized tree; forcing --no-refresh"
+fi
 
 # --- Step 0: Refresh submodules -----------------------------------------------
-if $DRY_RUN; then
+if $COHORT_MODE; then
+  info "Verified governed cohort: skipping submodule refresh"
+elif $DRY_RUN; then
   info "Dry run: skipping submodule refresh and staging"
 elif $NO_REFRESH; then
   info "Skipping submodule refresh (--no-refresh)"
@@ -246,7 +290,10 @@ fi
 # --- Step 1: Validate and collect metadata ------------------------------------
 info "Scanning $PACKAGES_DIR/ for app bundles..."
 
-REQUIRED_FIELDS=(appId name version versionNumber packageId shortDescription categories isOpenSource webLink codeLink upstreamAuthor createdAt)
+# codeLink and createdAt are display fields. A historical signed package may
+# lack one, but the governed catalog can project a deterministic source URL or
+# signed release timestamp without modifying the released metadata bytes.
+REQUIRED_FIELDS=(appId name version versionNumber packageId shortDescription categories isOpenSource webLink upstreamAuthor)
 
 TOTAL=0
 VALID=0
@@ -376,6 +423,10 @@ else:
       # assembled into the static catalog, including under the test-only offline
       # flag. App-specific SPK signatures are intentionally outside this check.
       local authority_mismatch
+      # melusina-release-v1 carries the Squads authority tuple, while the
+      # release-program identity is pinned by the Store verifier config and
+      # re-derived from chain. Do not require a non-schema programId field in
+      # the public envelope; do require every actual publisher coordinate.
       authority_mismatch="$(python3 - "$rel_file" "$CATALOG_AUTHORITY_MULTISIG" "$CATALOG_AUTHORITY_VAULT" "$CATALOG_AUTHORITY_PROGRAM" "$CATALOG_AUTHORITY_THRESHOLD" "$CATALOG_AUTHORITY_MEMBER_COUNT" <<'PY'
 import json
 import sys
@@ -391,10 +442,14 @@ for field, actual, expected in (
     ('quorumPolicy.threshold', quorum.get('threshold'), int(expected_threshold)),
     ('quorumPolicy.memberCount', quorum.get('memberCount'), int(expected_member_count)),
     ('licenseSquadsVault', release.get('licenseSquadsVault'), expected_vault),
-    ('programId', release.get('programId'), expected_program),
 ):
     if actual != expected:
         print(f'{field}={actual!r} (expected {expected!r})')
+# programId is not a melusina-release-v1 claim, so current public envelopes
+# omit it. When a legacy envelope does carry the optional field, it must still
+# agree with the Store's pinned release program.
+if 'programId' in release and release.get('programId') not in (None, '', expected_program):
+    print(f'programId={release.get("programId")!r} (expected {expected_program!r})')
 PY
 )"
       if [[ -n "$authority_mismatch" ]]; then
@@ -551,6 +606,17 @@ if isinstance(d['$field'], str) and d['$field'].strip() == '' and '$field' not i
     fi
   done
 
+  for field in codeLink createdAt; do
+    if ! python3 -c "
+import json, sys
+d = json.load(open('$meta_file'))
+if '$field' not in d:
+    sys.exit(1)
+" 2>/dev/null; then
+      warn "$app_dir: missing display field '$field' — Store catalog will project its governed fallback"
+    fi
+  done
+
   # Check author object
   if ! python3 -c "
 import json, sys
@@ -628,7 +694,7 @@ for f in ['name']:
 #            ^^^^^^^^^ ^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^^^^
 #            pkg_dir   dev     repo/submod  app folder
 if [[ ! -d "$PACKAGES_DIR" ]]; then
-  if $DRY_RUN; then
+  if $DRY_RUN || $COHORT_MODE; then
     fail "No $PACKAGES_DIR/ directory found."
     exit 1
   else
@@ -741,12 +807,19 @@ m['author'] = author
 if not isinstance(m.get('categories'), list):
     m['categories'] = []
 
+# Package metadata cannot choose source identity for the default Bazaar. If a
+# historical package omitted its display-only codeLink, project the canonical
+# repository named in the governed catalog instead of mutating signed bytes.
+if not isinstance(m.get('codeLink'), str) or not m['codeLink'].strip():
+    try:
+        source_repositories = json.loads(os.environ.get('BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON', '{}'))
+        source = source_repositories.get(m.get('appId', ''))
+    except (TypeError, json.JSONDecodeError):
+        source = None
+    m['codeLink'] = source if isinstance(source, str) and source.startswith('https://') else ''
+
 # Set imageId from icon hash
 m['imageId'] = image_id
-
-# Ensure createdAt is an int
-if isinstance(m.get('createdAt'), float):
-    m['createdAt'] = int(m['createdAt'])
 
 # updatedAt: the authoritative release timestamp. Prefer RELEASE.json's
 # signedAtUnix (the multisig-signed release time, in seconds) because it is
@@ -756,13 +829,25 @@ if isinstance(m.get('createdAt'), float):
 # Fall back to SPK mtime, then the publish-branch commit time, then
 # createdAt. Recorded in ms (UTC) to match createdAt's units.
 import subprocess
-updated_ms = None
+signed_at_ms = None
 signed_at = release.get('signedAtUnix')
 try:
     if signed_at is not None and int(signed_at) > 0:
-        updated_ms = int(signed_at) * 1000
+        signed_at_ms = int(signed_at) * 1000
 except (TypeError, ValueError):
     pass
+created_at = m.get('createdAt')
+if isinstance(created_at, float):
+    created_at = int(created_at)
+if isinstance(created_at, bool) or not isinstance(created_at, int) or created_at < 0:
+    # This is a catalog-only presentation fallback. The original signed
+    # metadata remains under /signatures; the deterministic timestamp derives
+    # from the release's governed signing evidence.
+    m['createdAt'] = signed_at_ms or 0
+else:
+    m['createdAt'] = created_at
+
+updated_ms = signed_at_ms
 spk_path_for_mtime = os.path.join(os.path.dirname(meta_file), 'app.spk')
 if updated_ms is None and os.path.isfile(spk_path_for_mtime):
     try:
@@ -1295,13 +1380,13 @@ PY
 # the bazaar). The right fix lives upstream in spkmodule's
 # publish-to-branch helper.
 info "Asserting metadata.packageId matches sha256(app.spk)[:32] across catalog..."
-python3 - "$SCRIPT_DIR/$PACKAGES_DIR/hrbrlife" "$MELUSINA_ALLOW_PACKAGEID_DRIFT" <<'PY'
+python3 - "$PACKAGES_DIR" "$MELUSINA_ALLOW_PACKAGEID_DRIFT" <<'PY'
 import os, json, hashlib, sys, glob
 root = sys.argv[1]
 allow_drift = (len(sys.argv) > 2 and sys.argv[2] == '1')
 checked = 0
 mismatches = []
-for app_dir in glob.glob(f'{root}/*/*/'):
+for app_dir in glob.glob(os.path.join(root, '*', '*', '*/')):
     spk = os.path.join(app_dir, 'app.spk')
     meta = os.path.join(app_dir, 'metadata.json')
     if not (os.path.isfile(spk) and os.path.isfile(meta)):

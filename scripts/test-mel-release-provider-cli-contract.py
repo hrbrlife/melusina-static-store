@@ -1872,8 +1872,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
     assert instadao["source_path"] == "instadao", instadao
     assert instadao["source_repository"] == "https://github.com/hrbrlife/MLSNA_token", instadao
-    assert instadao["runtime_contract_path"] == "pkgdef/RUNTIME-CONTRACT.json", instadao
-    assert instadao["candidate_source_ref"] == "feat1-instadao-onchain-reconcile", instadao
+    assert instadao["runtime_contract_path"] == "RUNTIME-CONTRACT.json", instadao
+    assert instadao["candidate_source_ref"] == "dev-publish", instadao
     assert instadao["release_state"] == "hold", instadao
     assert instadao["hold_receipt"] == (
         "prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json"

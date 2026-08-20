@@ -309,16 +309,17 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.14/appVersion-66 candidate is preserved on feat1 because
-        # two shared devnet program images do not yet match the proven source
-        # ELFs. Its app build is clean, but it must not advance to dev-publish
-        # or release until the controlled on-chain upgrade is verified.
+        # The v1.0.14/appVersion-66 candidate is now the current dev-publish
+        # source. Its app build is clean, but direct devnet byte verification
+        # still finds two shared program images that do not match the proven
+        # source ELFs, so it remains held until that controlled reconciliation
+        # is verified.
         candidate_source_commit: ef73663b86134f7417ccf1104fbe273f1cf901cb
-        candidate_source_ref: feat1-instadao-onchain-reconcile
+        candidate_source_ref: dev-publish
         reconciliation_state: onchain-program-artifact-mismatch
         release_state: hold
         hold_receipt: prepublish-holds/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json
-        runtime_contract_path: pkgdef/RUNTIME-CONTRACT.json
+        runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
         live_version: 1.0.12

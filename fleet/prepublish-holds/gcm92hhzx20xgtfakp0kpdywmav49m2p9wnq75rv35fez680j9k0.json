@@ -3,7 +3,7 @@
   "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
   "catalogName": "InstaDAO",
   "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-  "candidateSourceRef": "feat1-instadao-onchain-reconcile",
+  "candidateSourceRef": "dev-publish",
   "candidateSourceCommit": "ef73663b86134f7417ccf1104fbe273f1cf901cb",
   "candidateVersion": "1.0.14",
   "candidateVersionNumber": 66,
@@ -13,9 +13,9 @@
   "verifiedAt": "2026-08-20",
   "currentDevPublish": {
     "ref": "dev-publish",
-    "commit": "a5a434ae3d36b32d415435df060f7349525dd087",
-    "relationshipToCandidate": "ancestor",
-    "assessment": "The current dev-publish head predates the held feat1 candidate. It is a docs-only Bazaar-target commit and omits the candidate's governed 1.0.14 functionality, tests, runtime contract, package inputs, and artifact work. It is not a forward release source."
+    "commit": "ef73663b86134f7417ccf1104fbe273f1cf901cb",
+    "relationshipToCandidate": "equal",
+    "assessment": "The tested 1.0.14 candidate is the current dev-publish tip. It remains a release hold solely because direct devnet byte verification finds two deployed shared-program images that differ from the source-controlled artifacts."
   },
   "controlsPassed": [
     "11 Node tests, smoke tests, Go vet/tests, and all seven Rust crate checks",
@@ -42,5 +42,28 @@
     }
   ],
   "upgradeAuthority": "ANaEQo267D4QN9jjmxQcUHHScPgdxi2d1PTKh6kuX2tp",
-  "safeNextAction": "First retain feat1-instadao-onchain-reconcile as the integration candidate; do not publish the older dev-publish ancestor. The existing upgrade-authority holder(s) must review and authorize controlled devnet upgrades for the two exact candidate ELFs, then rerun shared-suite byte verification. Only a fully matching suite may merge that candidate to dev-publish and release."
+  "latestVerification": {
+    "verifiedAt": "2026-08-20",
+    "sourceControls": [
+      "npm test passed the source smoke, shared-suite stamping, pre-license, release guard, and release-adapter suites at ef73663b86134f7417ccf1104fbe273f1cf901cb",
+      "spk verify confirmed the tracked candidate SPK has immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, packageId 6dc02a186a12d6d5d014933a7b3187cc, appVersion 66, and marketing version 1.0.14"
+    ],
+    "onchainByteVerification": {
+      "cluster": "devnet",
+      "matchingPrograms": ["dao_kyc_gate", "dao_process", "dao_registry", "dao_token", "dao_treasury"],
+      "mismatchedPrograms": [
+        {
+          "program": "dao_securities",
+          "candidateArtifactSha256": "4bcf89dcc67b1fba7c07aae52b52415b7e89c4c3b20ca87320c46411aaca3da4",
+          "devnetProgramDataSha256": "4956312b9610f57af846d4701f076e9809bb31d4c11d485d24ffbcd301e68fdb"
+        },
+        {
+          "program": "dao_voting",
+          "candidateArtifactSha256": "a43e8b87294ed405dabb38947fa1f3f18a966649b1362e2ab0261f39bf1060e1",
+          "devnetProgramDataSha256": "77742546a6dcd9416cfd30d5f9ae96dce568b12782197f135c4020562573e69f"
+        }
+      ]
+    }
+  },
+  "safeNextAction": "The existing upgrade-authority holder(s) must review and authorize controlled devnet upgrades for the two exact candidate ELFs, then rerun shared-suite byte verification. Only a fully matching suite may change this dev-publish source from hold to ready and release it through the shared Bazaar authority."
 }

@@ -28,7 +28,19 @@ const (
 	maxCatalogAppIDBytes  = 255 - len(".json")
 )
 
-var appStageReceiptDomain = []byte("melusina-app-stage-receipt-v1\x00")
+var (
+	appStageReceiptDomain           = []byte("melusina-app-stage-receipt-v1\x00")
+	errStagedReleaseAppHashMismatch = errors.New("staged app bytes do not match claimed release app hash")
+)
+
+// isQuarantinableStagedCandidateError identifies retained private candidates
+// that are cryptographically unusable but can safely be superseded. The public
+// catalog is re-read and fully validated before it is retained as the rollback
+// source; no corrupt private bytes are ever served or promoted.
+func isQuarantinableStagedCandidateError(err error) bool {
+	return errors.Is(err, runtimecontract.ErrEmpty) ||
+		errors.Is(err, errStagedReleaseAppHashMismatch)
+}
 
 // stagedAppManifest is the immutable descriptor stored beside private candidate
 // bytes. StageID binds the exact SPK+metadata plus release intent. RELEASE.json
@@ -90,7 +102,8 @@ func buildStagedAppManifestWithRuntimeContract(spk, metadata, release, runtimeCo
 		return zero, fmt.Errorf("compute app hash: %w", err)
 	}
 	if !strings.EqualFold(computedAppHash, strings.TrimSpace(rel.AppHash)) {
-		return zero, fmt.Errorf("apphash(spk,metadata)=%s != release.appHash=%s", computedAppHash, rel.AppHash)
+		return zero, fmt.Errorf("%w: apphash(spk,metadata)=%s != release.appHash=%s",
+			errStagedReleaseAppHashMismatch, computedAppHash, rel.AppHash)
 	}
 	if _, err := hash32FromHex(strings.TrimSpace(rel.ReleaseHash)); err != nil {
 		return zero, fmt.Errorf("releaseHash: %w", err)

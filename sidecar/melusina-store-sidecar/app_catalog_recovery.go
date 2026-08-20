@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 type appCatalogRecoveryCandidate struct {
@@ -615,7 +614,7 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 			continue
 		}
 		if err := validateRolloutStagedSelectionsAt(cfg, rollout, now); err != nil {
-			if errors.Is(err, runtimecontract.ErrEmpty) {
+			if isQuarantinableStagedCandidateError(err) {
 				classified.quarantined[appID] = rollout
 				continue
 			}

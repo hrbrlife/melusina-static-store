@@ -224,6 +224,58 @@ func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {
 	}
 }
 
+func TestPrepareAppRollout_QuarantinesMismatchedRetainedStageAndRecapturesPublic(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cfg.AppRollbackWindowSeconds = 300
+	master := randPubkeyB58(t)
+	served := makeRolloutFixture(t, master, "quarantine-app", "1.0.0", "served", now.Add(-time.Hour))
+	current := makeRolloutFixture(t, master, "quarantine-app", "2.0.0", "current", now)
+	writeRolloutDist(t, cfg, served)
+	if err := persistStagedApp(cfg.PrivateStageDir, served.manifest, served.spk, served.metadata, served.release); err != nil {
+		t.Fatal(err)
+	}
+	badHash := strings.Repeat("f", len(served.rel.AppHash))
+	if badHash == served.rel.AppHash {
+		badHash = strings.Repeat("e", len(served.rel.AppHash))
+	}
+	badRelease := bytes.Replace(served.release, []byte(served.rel.AppHash), []byte(badHash), 1)
+	if len(badRelease) != len(served.release) || bytes.Contains(badRelease, []byte(served.rel.AppHash)) {
+		t.Fatal("failed to create an equal-length staged release hash mismatch")
+	}
+	if err := os.WriteFile(filepath.Join(cfg.PrivateStageDir, served.manifest.StageID, "RELEASE.json"), badRelease, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	prior := appRolloutState{
+		Schema: appRolloutSchema, AppID: served.manifest.AppID,
+		CurrentStageID: served.manifest.StageID, CurrentAppHash: served.manifest.AppHash,
+		CurrentVersion: served.manifest.Version,
+	}
+	if err := writeAppRollout(cfg, prior); err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := prepareAppRollout(cfg, current.manifest, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.CurrentStageID != current.manifest.StageID || state.PreviousAppHash != served.manifest.AppHash ||
+		state.PreviousStageID == "" || state.PreviousVersion != served.manifest.Version {
+		t.Fatalf("mismatched retained stage was not replaced from the valid public release: %+v", state)
+	}
+	if _, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, served.manifest.StageID); !errors.Is(err, errStagedReleaseAppHashMismatch) {
+		t.Fatalf("corrupt retained stage was not preserved as evidence: %v", err)
+	}
+}
+
 func TestPrepareAppRollout_RefusesToReplacePendingFailedPromotion(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)

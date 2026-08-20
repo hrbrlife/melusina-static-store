@@ -260,7 +260,7 @@ func prepareAppRollout(cfg Config, current stagedAppManifest, now time.Time) (ap
 
 func rolloutCurrentStageIsQuarantined(cfg Config, state appRolloutState, now time.Time) (bool, error) {
 	err := validateRolloutStagedSelectionsAt(cfg, state, now)
-	if errors.Is(err, runtimecontract.ErrEmpty) {
+	if isQuarantinableStagedCandidateError(err) {
 		return true, nil
 	}
 	if err != nil {

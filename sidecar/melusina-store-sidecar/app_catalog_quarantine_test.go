@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -109,6 +110,36 @@ func TestCatalogRecoveryDoesNotQuarantineMalformedRuntimeContract(t *testing.T) 
 	}
 }
 
+func TestCatalogRecoveryQuarantinesStagedAppHashMismatch(t *testing.T) {
+	root := t.TempDir()
+	cfg := Config{PrivateStageDir: filepath.Join(root, "stages")}
+	if err := os.MkdirAll(rolloutStateDir(cfg), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(rolloutStateDir(cfg), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	state := recoveryRollouts("app-one")["app-one"]
+	writeStagedAppHashMismatch(t, cfg.PrivateStageDir, state)
+	if err := writeAppRollout(cfg, state); err != nil {
+		t.Fatal(err)
+	}
+
+	classified, err := classifyRolloutStatesAt(cfg, time.Unix(2, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(classified.serving) != 0 {
+		t.Fatalf("serving rollouts = %#v", classified.serving)
+	}
+	if len(classified.quarantined) != 1 || classified.quarantined["app-one"].AppID != "app-one" {
+		t.Fatalf("quarantined rollouts = %#v", classified.quarantined)
+	}
+	if _, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, state.CurrentStageID); !errors.Is(err, errStagedReleaseAppHashMismatch) {
+		t.Fatalf("staged app-hash mismatch was not preserved as the exact refusal: %v", err)
+	}
+}
+
 func writeClaimedRuntimeContractStage(t *testing.T, root string, state appRolloutState, rawContract []byte) {
 	t.Helper()
 	spk, metadata, release, _ := recoveryReleaseBytes(state.AppID, state.CurrentVersion)
@@ -158,6 +189,40 @@ func writeClaimedRuntimeContractStage(t *testing.T, root string, state appRollou
 	}
 	if len(rawContract) != 0 {
 		if err := os.WriteFile(filepath.Join(dir, "RUNTIME-CONTRACT.json"), rawContract, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func writeStagedAppHashMismatch(t *testing.T, root string, state appRolloutState) {
+	t.Helper()
+	spk, metadata, release, appHash := recoveryReleaseBytes(state.AppID, state.CurrentVersion)
+	badHash := strings.Repeat("f", len(appHash))
+	if badHash == appHash {
+		badHash = strings.Repeat("e", len(appHash))
+	}
+	release = bytes.Replace(release, []byte(appHash), []byte(badHash), 1)
+	if bytes.Contains(release, []byte(appHash)) || !bytes.Contains(release, []byte(badHash)) {
+		t.Fatal("failed to replace staged release appHash")
+	}
+	manifest := recoveryManifest(state.AppID, state.CurrentVersion)
+	manifest.StageID = state.CurrentStageID
+	manifest.ReleaseSize = len(release)
+	dir := filepath.Join(root, state.CurrentStageID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	stage, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string][]byte{
+		"app.spk":       spk,
+		"metadata.json": metadata,
+		"RELEASE.json":  release,
+		"stage.json":    append(stage, '\n'),
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

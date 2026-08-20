@@ -194,11 +194,11 @@
     {
       "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
       "catalogName": "InstaCo",
-      "sourceCommit": "7724681d45bfa5724e4d7fbb645aa5222fd9fe7c",
+      "sourceCommit": "f1a0afea1defcfe756c89865ca9ebdeda84335a5",
       "sourceSelectionReceipt": "prepublish-selections/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.json",
-      "version": "0.1.9",
-      "spkSha256": "0905aa6eafc28ddd2c24730b11a88664a10819b95fded362ca40a711b9f7de7e",
-      "appHash": "6b903eaefec9c5312ce6254bdd61d12eb46900f9d4379470e8394f1830143ee8"
+      "version": "0.1.10",
+      "spkSha256": "54fa2178468feaa0278f8994b1faea24acdda09c3ebecb0d3f08ded18f321964",
+      "appHash": "2955ee91adf14456b4fce7e7d335bf362d46986ac87111f69101ebdb41957796"
     },
     {
       "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",

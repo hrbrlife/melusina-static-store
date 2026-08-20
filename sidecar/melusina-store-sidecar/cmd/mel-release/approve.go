@@ -31,6 +31,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -242,14 +243,30 @@ func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) err
 		// overwrites that evidence or makes the provider mistake the old
 		// receipt for the new candidate.
 		promotePath := c.receiptPath(rec.AppID, promoteName)
-		if err := prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
-			return err
+		if _, statErr := os.Lstat(promotePath); statErr == nil {
+			// A prior promotion may have committed at the Store immediately before
+			// a caller lost its post-promotion served-hash read (for example while
+			// the listing gate was being initialized). The candidate-bound receipt
+			// is sufficient durable evidence to resume: re-verify it and then prove
+			// the live pointer below. Never overwrite it or submit the same release
+			// again merely because the WAL journal was not reached.
+			ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)
+			if err != nil {
+				return fmt.Errorf("existing candidate promotion receipt: %w", err)
+			}
+			rec.PromoteReceipt = ref
+		} else if !os.IsNotExist(statErr) {
+			return fmt.Errorf("stat candidate promotion receipt: %w", statErr)
+		} else {
+			if err := prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
+				return err
+			}
+			ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)
+			if err != nil {
+				return err
+			}
+			rec.PromoteReceipt = ref
 		}
-		ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)
-		if err != nil {
-			return err
-		}
-		rec.PromoteReceipt = ref
 	} else if err := verifyArtifactRef(rec.PromoteReceipt); err != nil {
 		return err
 	}

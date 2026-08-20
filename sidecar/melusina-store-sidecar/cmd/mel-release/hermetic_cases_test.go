@@ -283,6 +283,48 @@ func TestHermeticInterruptResume(t *testing.T) {
 	}
 }
 
+// A Store promotion can commit before the caller's immediate served-pointer
+// read succeeds (for example while the listing gate is initialized). The
+// candidate-bound receipt is durable proof of that committed promotion, so a
+// resume must reuse it rather than submit the identical release again.
+func TestHermeticResumeFromUnjournaledCandidatePromotionReceipt(t *testing.T) {
+	h := newHarness(t)
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+
+	// Stop the normal approval after registration, before its promote call.
+	h.setFaultOp("promote")
+	mustErr(t, "approve interrupted before promote", h.approve())
+	h.clearFault()
+	mustState(h, stateRegistered)
+
+	rec := h.wal()
+	app, err := h.catalog.Select(testAppID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, err := promotionReceiptName(&rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := h.cfg.receiptPath(testAppID, name)
+	if err := newExecProvider(h.cfg).Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, path); err != nil {
+		t.Fatalf("simulate committed promotion: %v", err)
+	}
+	if _, err := readPromoteReceipt(path, testAppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version); err != nil {
+		t.Fatalf("read simulated promotion receipt: %v", err)
+	}
+	before := countOp(h.callOps(), "promote")
+
+	mustNoErr(t, "resume from unjournaled promotion", h.approve())
+	mustState(h, stateDone)
+	if got := countOp(h.callOps(), "promote"); got != before {
+		t.Fatalf("resume called promote %d times, want %d", got, before)
+	}
+	if h.wal().PromoteReceipt.Path != path {
+		t.Fatalf("WAL promotion receipt path = %q, want %q", h.wal().PromoteReceipt.Path, path)
+	}
+}
+
 // ── CASE 2 (guard): the app path never advances a generation ────────────────────
 //
 // This replaces three cases that existed only to exercise the retired GENERATED

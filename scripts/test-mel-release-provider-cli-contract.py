@@ -1599,7 +1599,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
-    assert doc["source_commit"] == "b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f", doc
+    assert doc["source_commit"] == "410d8654fa6a80a4efbad016a2f0b7dab1238ad8", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]

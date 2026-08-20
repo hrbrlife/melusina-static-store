@@ -435,8 +435,10 @@ groups:
         source_path: doc-bureau
         # v28/2.0.33 closes the candidate-pack path over the current rich
         # Document build, so neither local nor governed packaging can omit a
-        # GrainContext bridge binary.
-        source_commit: b1ea85d91fa6e93806fadebe69eb39d9f3c33a5f
+        # GrainContext bridge binary. The direct v29/2.0.34 forward cut also
+        # makes the signed Bureau Doc identity and catalog screenshots match
+        # the public Store contract.
+        source_commit: 410d8654fa6a80a4efbad016a2f0b7dab1238ad8
         reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau

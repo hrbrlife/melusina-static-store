@@ -15,7 +15,9 @@
       "the full test suite includes native Paint GrainContext reader catalog acceptance and denies Paint mutation tools",
       "two independent package runs from the selected 0.0.10 source matched SHA-256 b31f0416015ed8c539a3e38e0330364ac1567e724e9c3f249fd917c104824fc8 and packageId b31f0416015ed8c539a3e38e0330364a",
       "spk verify confirmed appId vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh, version 10, and marketing version 0.0.10",
-      "the selected metadata, package manifest, and catalog all use the requested public name Jinn"
+      "the selected metadata, package manifest, and catalog all use the requested public name Jinn",
+      "the governed candidate bound that exact SPK to AppHash 6ff20b9e2eb89c7a03ab6a5f1890bff3b89c5ea2c83753a0fe459ec38398a540 and release hash dbdaf6bb0a7dd2218a79cbfca325a07acb4a5b9ffc5b813ae1069003c0cdacf7",
+      "the shared 3-of-4 Squads authority approved the candidate; the public 32-app catalog and Chromium-rendered Bazaar card serve Jinn 0.0.10 with packageId b31f0416015ed8c539a3e38e0330364a"
     ]
   },
   "reviewedRefs": [

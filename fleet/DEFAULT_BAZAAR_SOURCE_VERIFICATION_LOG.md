@@ -271,25 +271,37 @@ installation: that remains a separate runtime-proof gate. The source audit
 also reported one moderate and one high npm dependency finding that need
 follow-up; they did not prevent the completed source test and package proof.
 
-## Jinn v9 — current generic-peer source proof
+## Jinn 0.0.10 — current published release
 
-The canonical `dev-publish` tip
-`08daf329d602bccc0d539c4ee7710e52b370fe99` was independently cloned with its
-declared submodules and remained clean before and after verification. It
-declares Jinn metadata `0.0.9` (versionNumber 9), ahead of the current catalog
-listing `0.0.6`.
+The canonical remote `dev-publish` tip is
+`4e41f7e78ca3a51609eafcb0989e3382f0ec8c90`. It is the forward
+release-identity cut from the reviewed generic GrainContext peer line and
+declares the immutable Jinn identity at `0.0.10` (versionNumber 10), with
+matching package manifest and Bazaar metadata.
 
-The fresh source passed Jinn's focused integration checks for generic peer
-discovery/dispatch and the matching GrainContext binding, plus `make build`.
-Those checks establish source-level compatibility with a universal,
-permission-scoped provider: a user-initiated peer is discoverable and
-claimable, declared read-only tools dispatch, Paint native `canvas.*` reads
-are admitted, and mutation tools such as `canvas.save` are excluded. A clean
-status and `git diff --check` completed after the proof.
+The source passed `make verify-recovery`: generated Cap'n Proto bindings,
+`go vet`, integration tests, production build, and deterministic double
+packing. The two packages matched SHA-256
+`b31f0416015ed8c539a3e38e0330364ac1567e724e9c3f249fd917c104824fc8`,
+whose package ID is `b31f0416015ed8c539a3e38e0330364a`. The integration
+coverage admits a user-granted compatible peer's declared read-only tools,
+including Paint `canvas.*` reads, and excludes mutations such as
+`canvas.save`.
 
-This source pin does not claim that a real shell picker, tenant capability
-grant, governed package release, or newly installed runtime has passed. Those
-remain cohort-level launch gates.
+On 2026-08-20 the governed Bazaar rail registered and promoted that exact
+package through the catalog-pinned shared 3-of-4 Squads authority. The
+terminal evidence records AppHash
+`6ff20b9e2eb89c7a03ab6a5f1890bff3b89c5ea2c83753a0fe459ec38398a540` and
+release hash
+`dbdaf6bb0a7dd2218a79cbfca325a07acb4a5b9ffc5b813ae1069003c0cdacf7`.
+The public 32-app catalog and Chromium-rendered Bazaar card both serve Jinn
+`0.0.10`.
+
+This release does not claim a fresh tenant picker/grant or a live
+cross-pearl read transaction. Those are the next app-level runtime checks:
+create clean Jinn and compatible Paint/Sheets grains, grant the bounded viewer
+capability through the rendered PowerBox flow, then verify the read-only
+result and restart persistence.
 
 ## Bureau Paint v21 — current peer-provider source proof
 

@@ -231,7 +231,7 @@ groups:
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
-        source_commit: d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f
+        source_commit: 5787262ec25a47a9aecdbb98493f5bbc61bc53a9
         source_repository: https://github.com/hrbrlife/cca-tc-operator
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -240,7 +240,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
         catalog_name: Fineract Configurator
-        live_version: 0.2.19
+        live_version: 0.2.20
         catalog_developer: hrbrlife
         catalog_repo: fineract-setup
         catalog_slug: fineract-setup

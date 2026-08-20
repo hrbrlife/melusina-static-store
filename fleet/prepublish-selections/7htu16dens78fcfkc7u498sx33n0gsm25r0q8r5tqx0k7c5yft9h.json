@@ -2,23 +2,23 @@
   "schema": "melusina-source-selection-v1",
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
   "sourceRepository": "https://github.com/hrbrlife/cca-tc-operator",
-  "sourceCommit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f",
+  "sourceCommit": "5787262ec25a47a9aecdbb98493f5bbc61bc53a9",
   "selectionMethod": "direct-dev",
-  "decisionSummary": "The Aug 15 direct source is canonical and adds the current lease-only setup release controls. The divergent July authority/lease lines and Aug salvage were inspected; their older or stripped layouts are superseded by the current source's tested lease, recipient-identity, runtime-contract, and release-portability controls.",
+  "decisionSummary": "The Aug 20 dev-publish tip is canonical: it retains the tested lease-only setup controls and advances the governed public identity to Fineract Configurator v0.2.20. The divergent July authority/lease lines and Aug salvage were inspected; their older or stripped layouts are superseded by the current source's tested lease, recipient-identity, runtime-contract, and release-portability controls.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "fresh recursive clone at the selected source commit",
       "make release-cohort-check release-cohort-mutation-test vet test sidecar-vet sidecar-test",
       "MEL_RELEASE_PACK_APP_CANDIDATE=pack-app-candidate.sh MEL_RELEASE_GREENFIELD_PACK=1 make provider-pack-contract-test",
-      "provider-pack contract candidate SHA-256 1703a2343ab3a821d3cf14b5aee54061d8c4346e34350852e6a18ec340521cdb",
-      "provider candidate appHash a3580f7c78b21364a1f7069a674ebd87714ad31b07887ad436a1456aba3b1468 is distinct from the signed public 0.2.18 pointer"
+      "provider-pack contract candidate SHA-256 3e3ed58a3ebb151fb569658e32ab67d24e279014b04695cdc12bc20f2e7f7c2c",
+      "a second committed-source package build produced the same SHA-256"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/fineract-credential-lease-recipient-20260721", "commit": "f6a1a06947f5525892a89ee4d9e70e34a23fe5a1", "outcome": "archive"},
     {"ref": "refs/heads/codex/fineract-sidecar-canonical-fixtures-20260719", "commit": "5a0d8019beeebd47f10d0ce8cb7b22d20e51d7be", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "5787262ec25a47a9aecdbb98493f5bbc61bc53a9", "outcome": "selected"},
     {"ref": "refs/heads/main", "commit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f", "outcome": "baseline"},
     {"ref": "refs/heads/preserve-local-20260814/_detached/3495e9a5c5b4", "commit": "3495e9a5c5b483c4914afb237184d06517bebc66", "outcome": "archive"},
     {"ref": "refs/heads/preserve-local-20260814/codex/fineract-credential-lease-recipient-20260721", "commit": "f6a1a06947f5525892a89ee4d9e70e34a23fe5a1", "outcome": "archive"},

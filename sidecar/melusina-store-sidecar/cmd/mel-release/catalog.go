@@ -371,10 +371,10 @@ func (c *Catalog) Select(selector string) (App, error) {
 	}
 }
 
-// RequireReleaseReady prevents a complete catalog snapshot from degrading into
-// a way to publish its unresolved entries. The checked-in prelaunch snapshot
-// intentionally holds every entry until the whole default-Bazaar cohort has
-// source, contract, artifact, and tenant proof.
+// RequireReleaseReady prevents a complete catalog snapshot from becoming a
+// way to publish an unresolved entry. The catalog defaults new or incomplete
+// entries to hold; a publishable app must explicitly carry its reviewed source
+// selection and ready release state.
 func (a App) RequireReleaseReady() error {
 	if a.ReleaseState != "ready" {
 		return fmt.Errorf("app %q (%s) is held for reconciliation (%s)", a.Name, a.AppID, a.ReconciliationState)

@@ -2,9 +2,10 @@
   "schema": "melusina-ready-candidate-cohort-v1",
   "catalogOrigin": "https://bazaar.melusina-os.org",
   "createdAt": "2026-08-19",
-  "status": "candidate-ready-not-published",
+  "status": "published-and-verified",
+  "verifiedAt": "2026-08-20T12:41:34Z",
   "expectedCatalogAppCount": 32,
-  "releaseReadyAppCount": 31,
+  "releaseReadyAppCount": 32,
   "releaseSquadsAuthority": {
     "multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
@@ -100,6 +101,15 @@
       "version": "2.1.6",
       "spkSha256": "00c57080533b258670afa2c53f7a3de85779b9655c90bd2d9ffbf2113cbad209",
       "appHash": "62f3885980b028017ec9561b70bf94ec9a88b5500ce3ea540a862073d68703e9"
+    },
+    {
+      "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+      "catalogName": "InstaDAO",
+      "sourceCommit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+      "sourceSelectionReceipt": "prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json",
+      "version": "1.0.14",
+      "spkSha256": "7beb775145c768e0b3181e5b905090822df72ffa93ce52196ab5b08ac7644913",
+      "appHash": "087152467a54a0266e00a2da40602ab7ee08c775d68865d6ff5696c17e9db68f"
     },
     {
       "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",

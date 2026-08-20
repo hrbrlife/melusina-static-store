@@ -2,15 +2,16 @@ schema: melusina-bazaar-catalog/v1
 # This is the complete catalog ledger for the one default Bazaar:
 # https://bazaar.melusina-os.org. It is derived from the live catalog snapshot,
 # not from a local package scan or a smaller release subset. An entry may not be
-# published until it is individually marked ready, and the whole catalog remains
-# held until every live listing has a reconciled source and runtime contract.
+# published until it is individually marked ready. New or incomplete entries
+# remain held; the current 32-entry cohort has explicit reconciled source and
+# runtime-contract evidence.
 #
 # The snapshot is evidence, not a release approval. A new snapshot must update
 # this manifest atomically; a changed count or an omitted immutable appId fails
 # the release CLI closed.
 catalog_origin: https://bazaar.melusina-os.org
-catalog_observed_at: 2026-08-18T10:22:21Z
-catalog_index_sha256: 807c6c82ebc0d8a8dc075b26a9669fb609909881b82bc01be6812324a2a990a5
+catalog_observed_at: 2026-08-20T12:41:34Z
+catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
 expected_live_app_count: 32
 default_release_state: hold
 default_reconciliation_state: source-pinned
@@ -391,7 +392,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
-        live_version: 1.0.12
+        live_version: 1.0.14
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.

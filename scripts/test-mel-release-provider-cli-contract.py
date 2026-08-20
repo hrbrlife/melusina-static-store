@@ -1755,7 +1755,8 @@ def test_ready_cohort_has_exactly_one_production_goldkey():
     app_ids = [app["appId"] for app in cohort["apps"]]
     assert cohort["catalogOrigin"] == "https://bazaar.melusina-os.org", cohort
     assert cohort["expectedCatalogAppCount"] == 32, cohort
-    assert cohort["releaseReadyAppCount"] == len(app_ids) == 31, cohort
+    assert cohort["status"] == "published-and-verified", cohort
+    assert cohort["releaseReadyAppCount"] == len(app_ids) == 32, cohort
     assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
     for app_id, source_commit in {
         "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50": "825963ebdefc07efc8258e153116a1b80b1e3745",
@@ -1794,6 +1795,16 @@ def test_ready_cohort_has_exactly_one_production_goldkey():
         "spkSha256": "99c36503ce0233aa34ba6063188893c3b9d414f65c1725a5093bc0d030852075",
         "appHash": "e6d0ced8ea1cbd607ba58e7326c8b43f6b8f601874292d5489df1f903e2b8987",
     }, cyberteller
+    instadao = next(app for app in cohort["apps"] if app["appId"] == "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0")
+    assert instadao == {
+        "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
+        "catalogName": "InstaDAO",
+        "sourceCommit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+        "sourceSelectionReceipt": "prepublish-selections/gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0.json",
+        "version": "1.0.14",
+        "spkSha256": "7beb775145c768e0b3181e5b905090822df72ffa93ce52196ab5b08ac7644913",
+        "appHash": "087152467a54a0266e00a2da40602ab7ee08c775d68865d6ff5696c17e9db68f",
+    }, instadao
 
 
 def test_checked_in_catalog_preserves_source_and_slot_evidence():

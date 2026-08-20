@@ -337,11 +337,11 @@ groups:
       botmother:
         appId: xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0
         source_path: botmother
-        # The reviewed v28 candidate was recovered from a clean recursive
-        # clone of the advertised canonical branch. Its three declared
-        # submodules resolved at their exact gitlinks and its Go test/tagged
-        # grain/vet gates passed before this source pin was restored.
-        source_commit: 0f224b9d0de09b93eb257bf21788f6f4636d123d
+        # The selected v33 source was recovered from a clean recursive clone
+        # of the canonical dev-publish branch. Its three declared submodules
+        # resolved at their exact gitlinks and its Go test/tagged grain/vet
+        # gates passed before this source pin was advanced.
+        source_commit: 403e526976e700cba7c5671526c788d5b7d86f49
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

@@ -1609,7 +1609,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert instaco["source_selection_state"] == "direct-dev-verified", instaco
     botmother = entries["xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"]
     assert botmother["reconciliation_state"] == "source-pinned", botmother
-    assert botmother["source_commit"] == "0f224b9d0de09b93eb257bf21788f6f4636d123d", botmother
+    assert botmother["source_commit"] == "403e526976e700cba7c5671526c788d5b7d86f49", botmother
     assert botmother["release_state"] == "ready", botmother
     assert botmother["source_selection_state"] == "direct-dev-verified", botmother
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
@@ -1747,7 +1747,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     _, entries = checked_in_catalog_entries()
     cases = {
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
-            ("botmother", "0f224b9d0de09b93eb257bf21788f6f4636d123d", "MELUSINA_BOTMOTHER", "botmother"),
+            ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
             ("dueprocess", "fe8f0b076b4ec996ca0a6be1de366e39343a7315", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":

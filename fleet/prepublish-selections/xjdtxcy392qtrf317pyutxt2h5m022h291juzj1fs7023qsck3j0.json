@@ -2,27 +2,25 @@
   "schema": "melusina-source-selection-v1",
   "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
   "sourceRepository": "https://github.com/hrbrlife/melusina_botmother",
-  "sourceCommit": "0f224b9d0de09b93eb257bf21788f6f4636d123d",
+  "sourceCommit": "403e526976e700cba7c5671526c788d5b7d86f49",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v29 dev-publish tip is the newest valid forward BotMother source. It keeps the current prelaunch hardening, moves package creation into governed candidate mode, and updates the shared module to the current mount-lifecycle implementation. Main and the recent greenfield/prelaunch branches are reviewed ancestors. The divergent codex, planning, preserved, publish, and salvage refs are historic release, documentation, or superseded work rather than a newer valid application source.",
+  "decisionSummary": "The Aug. 20 v33 dev-publish tip is the newest valid forward BotMother source. It retains the prelaunch rendering and least-privilege hardening, repairs the governed package input to use the canonical .sandstorm file list, and binds package creation to that list. Main and the recent greenfield/prelaunch branches are reviewed ancestors. The divergent codex, planning, preserved, publish, and salvage refs are historic release, documentation, or superseded work rather than a newer valid application source.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "fresh recursive checkout resolved the selected source and all declared submodule gitlinks",
       "complete current remote-head snapshot reviewed, including divergent historical and preserved refs",
-      "make vet test verify-build passed at the selected source",
-      "two independent greenfield package runs matched SHA-256 4ced9591c75999ba6bf1a0eb66f824c4176a78ca808fb5797af1c90e6c6a042b and packageId 4ced9591c75999ba6bf1a0eb66f824c4",
-      "spk verify confirmed appId xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0, version 29, and marketing version 1.3.6",
-      "the selected source refuses direct local publish targets and exposes only governed candidate packaging",
-      "provider build bound the selected source and exact SPK to candidate appHash 6318b26f3bbe3da8a3dc2141a8d3a0898ebe447297b86b4d8788e4a39ee0393d",
-      "candidate appHash differs from the signed public pointer appHash 1061c719b4a219f28c635a386dd9f3227b03b86a3df2fdba2ed29637910ff6c8"
+      "make vet test passed at the selected source",
+      "two independent clean package runs matched SHA-256 60a77761e48260943e754cd397040d15e640413090cc301c24a1e2e814616ea8 and packageId 60a77761e48260943e754cd397040d15",
+      "spk verify confirmed appId xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0, version 33, and marketing version 1.3.10",
+      "the selected source binds governed packaging to the canonical .sandstorm file list and exposes no direct live publish target"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/bazaar-repair-botmother-20260711", "commit": "6c969c538ac0fb3f5dcd8ce6e24c7b8d7036050c", "outcome": "archive"},
     {"ref": "refs/heads/copilot/identify-code-improvements", "commit": "4a4fa39f9d2b7275d01427d1c977dff732089874", "outcome": "not-app-relevant"},
-    {"ref": "refs/heads/dev-publish", "commit": "0f224b9d0de09b93eb257bf21788f6f4636d123d", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "403e526976e700cba7c5671526c788d5b7d86f49", "outcome": "selected"},
     {"ref": "refs/heads/feat/greenfield-ready", "commit": "8f855a6fbae01a81c7357abd0ce7b02f2e1cd681", "outcome": "archive"},
     {"ref": "refs/heads/fix/prelaunch-rendering-20260817", "commit": "899cddba7d379813a37c391226f75b069895736d", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "f46f86a48fa6f678f9a111201732bcdad6d144d3", "outcome": "baseline"},

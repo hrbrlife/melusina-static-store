@@ -303,21 +303,35 @@ create clean Jinn and compatible Paint/Sheets grains, grant the bounded viewer
 capability through the rendered PowerBox flow, then verify the read-only
 result and restart persistence.
 
-## Bureau Paint v21 — current peer-provider source proof
+## Bureau Paint 2.0.30 — current published release
 
-The canonical `dev-publish` tip
-`c5347931c2ae9ab3579c8eb869edec5a0f7b44ea` was independently filtered-cloned
-with its declared `spkmodule` gitlink hydrated at the recorded revision. It
-declares Paint metadata `2.0.28` (versionNumber 21), matching the current
-catalog version while still being the current valid source tip.
+The canonical remote `dev-publish` tip is
+`0fe0a04e83fe59d62f4aef6a4a3047acd04af813`. It is the forward
+release-identity cut from the reviewed rich miniPaint/Jinn-peer source and
+declares the immutable Bureau Paint identity at `2.0.30` (versionNumber 23).
+The package manifest, runtime contract, embedded description, and Bazaar
+metadata agree on that public name.
 
-The clean source passed `make release-inputs mutation-test test` (including
-234 Python tests), `go test -count=1 ./internal/capabilities ./internal/service`
-under `grain/go/grainlinkd`, `git diff --check`, and clean recursive status.
-The native tests cover GrainContext descriptor recognition, the scoped
-read-only provider, and persistent grant restoration needed by Jinn's generic
-peer flow.
+The source passed `make release-inputs mutation-test test`, including 234
+Python tests and mutations rejecting the old public name, a Store screenshot
+declaration whose bytes cannot yet be transported, stale metadata, stripped
+frontend paths, and PowerBox bypasses. Two commit-level full packages matched
+SHA-256
+`e7d6e4398713f9f62cc4d7ebec453f3bb3a050aa6b3d9da79eb17ef37c00f7fb`,
+whose package ID is `e7d6e4398713f9f62cc4d7ebec453f3b`. The full miniPaint
+bundle remains embedded in the SPK; only the Store-card gallery declaration is
+empty to avoid a broken public image URL.
 
-This source pin does not claim a governed package, public catalog update, or
-fresh tenant installation. Those remain held until the full source cohort and
-release evidence are complete.
+On 2026-08-20 the governed Bazaar rail registered and promoted that package
+through the catalog-pinned shared 3-of-4 Squads authority. The terminal
+evidence records AppHash
+`69f02122328b62843f277b41613131880024dd899b81ec76be5160628619340f` and
+release hash
+`860c49ce0414296b39fa29189fe4a3dd91e23edc7e5d84eaaf178e00dcf4bcd7`.
+The public 32-app catalog and Chromium-rendered Bazaar card both serve Bureau
+Paint `2.0.30`.
+
+Source coverage confirms the scoped, read-only GrainContext provider required
+by Jinn, including Paint `canvas.*` reads and mutation denial. It does not
+yet claim the real fresh-tenant PowerBox grant, cross-pearl read, or restart
+persistence; that remains the next Jinn/Bureau Paint runtime proof.

@@ -13,9 +13,11 @@
       "complete current remote-head snapshot reviewed",
       "make release-inputs mutation-test and make test (234 passed)",
       "go test ./internal/capabilities ./internal/service in grain/go/grainlinkd",
-      "two independent clean candidate packages matched SHA-256 29561400e1d2fd1ccef008256e696f9bdc3c2d84a26de1a0e45cd4ce917de159 and packageId 29561400e1d2fd1ccef008256e696f9b",
+      "two independent commit-level candidate packages matched SHA-256 e7d6e4398713f9f62cc4d7ebec453f3bb3a050aa6b3d9da79eb17ef37c00f7fb and packageId e7d6e4398713f9f62cc4d7ebec453f3b",
       "make verify-candidate-metadata verified the generated catalog metadata against the exact SPK",
-      "the selected source's catalog metadata, package manifest, and runtime contract all use the requested public name Bureau Paint with an empty Store-gallery declaration"
+      "the selected source's catalog metadata, package manifest, and runtime contract all use the requested public name Bureau Paint with an empty Store-gallery declaration",
+      "the governed candidate bound that exact SPK to AppHash 69f02122328b62843f277b41613131880024dd899b81ec76be5160628619340f and release hash 860c49ce0414296b39fa29189fe4a3dd91e23edc7e5d84eaaf178e00dcf4bcd7",
+      "the shared 3-of-4 Squads authority approved the candidate; the public 32-app catalog and Chromium-rendered Bazaar card serve Bureau Paint 2.0.30 with packageId e7d6e4398713f9f62cc4d7ebec453f3b"
     ]
   },
   "reviewedRefs": [

@@ -14,11 +14,11 @@
     {
       "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
       "catalogName": "Lobby",
-      "sourceCommit": "533d1355231e1cfa85e875b9c4a03a5b9b651755",
+      "sourceCommit": "c9949d4946d04f134006c441fa2f02f107775531",
       "sourceSelectionReceipt": "prepublish-selections/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.json",
-      "version": "0.1.29",
-      "spkSha256": "e6d838323895a8c0a84a973dc6804ad4603b430db41f0ca241d07d4236a87f8a",
-      "appHash": "efe5af4861ae38d09a1e22126fe919043e6fa1af204c61ceb6b9ae21fbb1c833"
+      "version": "0.1.30",
+      "spkSha256": "8889078813a432c506c370f11d6cdcbd96e495dfdefc5af0ee06587385bfd13a",
+      "appHash": "12ba2db4d3a777b49cca18df6cca741053491005bc5badd5c371a488f0af8843"
     },
     {
       "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",

@@ -68,11 +68,11 @@
     {
       "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
       "catalogName": "Fineract Configurator",
-      "sourceCommit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f",
+      "sourceCommit": "5787262ec25a47a9aecdbb98493f5bbc61bc53a9",
       "sourceSelectionReceipt": "prepublish-selections/7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h.json",
-      "version": "0.2.19",
-      "spkSha256": "1703a2343ab3a821d3cf14b5aee54061d8c4346e34350852e6a18ec340521cdb",
-      "appHash": "a3580f7c78b21364a1f7069a674ebd87714ad31b07887ad436a1456aba3b1468"
+      "version": "0.2.20",
+      "spkSha256": "3e3ed58a3ebb151fb569658e32ab67d24e279014b04695cdc12bc20f2e7f7c2c",
+      "appHash": "184493d8d4817bbb1035030ec075a16df77f4b96529a05edb23ab7e3378bed85"
     },
     {
       "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",

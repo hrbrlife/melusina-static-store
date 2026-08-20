@@ -143,7 +143,7 @@ func isUIPath(urlPath string) bool {
 		return false
 	}
 	switch urlPath {
-	case "/", "/index.html", "/manifest.json", "/sw.js", "/update/install.sh":
+	case "/", "/index.html", "/manifest.json", "/sw.js", "/installation-policy.json", "/update/install.sh":
 		return true
 	}
 	return strings.HasPrefix(urlPath, "/assets/") || strings.HasPrefix(urlPath, "/icons/")
@@ -174,7 +174,7 @@ func (h *uiStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
-	if name == "index.html" || name == "sw.js" || name == "manifest.json" || name == "update/install.sh" {
+	if name == "index.html" || name == "sw.js" || name == "manifest.json" || name == "installation-policy.json" || name == "update/install.sh" {
 		w.Header().Set("Cache-Control", "no-store")
 	} else if strings.HasPrefix(name, "assets/") {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")

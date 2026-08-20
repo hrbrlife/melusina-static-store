@@ -45,6 +45,14 @@ BUILD="$TMP/ui"
   npx vite build --outDir "$BUILD" --emptyOutDir >/dev/null
 )
 
+# Installation mode is Store-governed data, not mutable app metadata.  Bake the
+# reviewed default-Bazaar projection into the same signed UI bundle as the SPA;
+# the client merges this map over every served catalog row and fails closed if
+# the asset is unavailable or malformed.
+python3 "$ROOT/scripts/bazaar-installation-policy.py" \
+  --catalog "$ROOT/fleet/bazaar-catalog.yaml" \
+  > "$BUILD/installation-policy.json"
+
 # public/ is Vite's runtime copy source, but this Node regression test is not a
 # browser asset and must not become part of the governed sidecar payload.
 rm -f "$BUILD/sw-guards.test.mjs"

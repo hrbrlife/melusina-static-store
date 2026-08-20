@@ -30,6 +30,7 @@ import {
   isExplicitlyIconless,
 } from "./app-icon-map.js";
 import {
+  applyGovernedInstallationPolicy,
   canSelfInstall,
   installationPresentation,
   isVisibleInPublicBazaar,
@@ -2256,7 +2257,21 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const normalize = (arr) => arr.map((a) => ({ ...a, categories: a.categories || [] }));
+    const normalize = (arr, policies) => arr.map((a) => {
+      const projected = applyGovernedInstallationPolicy(a, policies);
+      return { ...projected, categories: projected.categories || [] };
+    });
+    const loadPolicy = async () => {
+      try {
+        const response = await fetch("/installation-policy.json", { cache: "no-store" });
+        if (!response.ok) return null;
+        const policy = await response.json();
+        return policy && typeof policy === "object" && !Array.isArray(policy) ? policy : null;
+      } catch {
+        return null;
+      }
+    };
+    const policyPromise = loadPolicy();
     // Both entries resolve to the same origin today (APP_INDEX_BASE is
     // window.location.origin), so this is one source, not a fallback pair. Kept as a
     // list so a real mirror can be added without restructuring the loader — but do not
@@ -2269,7 +2284,14 @@ function App() {
           if (!r.ok) continue;
           const j = await r.json();
           const src = Array.isArray(j) ? j : j.apps || [];
-          if (src.length && !cancelled) { registerLiveCapabilities(src); setApps(normalize(src)); setCatalogState("ready"); return; }
+          if (src.length && !cancelled) {
+            const policy = await policyPromise;
+            const projected = normalize(src, policy);
+            registerLiveCapabilities(projected);
+            setApps(projected);
+            setCatalogState("ready");
+            return;
+          }
         } catch { /* try next source */ }
       }
       // Every source failed. Say so plainly rather than showing a catalog we cannot

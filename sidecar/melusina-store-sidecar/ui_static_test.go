@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -90,6 +91,18 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	installer := serve(httptest.NewRequest(http.MethodGet, "/update/install.sh", nil))
 	if installer.Code != http.StatusOK || strings.Contains(installer.Body.String(), "hrbrlife.github.io/melusina-static-store") {
 		t.Fatalf("embedded installer = HTTP %d and still names retired Pages=%t", installer.Code, strings.Contains(installer.Body.String(), "hrbrlife.github.io/melusina-static-store"))
+	}
+
+	policy := serve(httptest.NewRequest(http.MethodGet, "/installation-policy.json", nil))
+	if policy.Code != http.StatusOK || policy.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("embedded installation policy = HTTP %d cache=%q", policy.Code, policy.Header().Get("Cache-Control"))
+	}
+	var entries map[string]map[string]string
+	if err := json.Unmarshal(policy.Body.Bytes(), &entries); err != nil {
+		t.Fatalf("decode embedded installation policy: %v", err)
+	}
+	if len(entries) != 32 {
+		t.Fatalf("embedded installation policy count = %d, want 32", len(entries))
 	}
 }
 

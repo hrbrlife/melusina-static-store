@@ -19,6 +19,21 @@ export function installationFor(app) {
   return policy;
 }
 
+// The signed Store UI owns the default-Bazaar policy asset.  Never retain an
+// app-supplied installation object when applying it: metadata may describe an
+// app but cannot make it directly installable or expose an internal pearl.
+export function applyGovernedInstallationPolicy(app, policies) {
+  const projected = { ...(app || {}) };
+  delete projected.installation;
+  const appId = typeof projected.appId === "string" ? projected.appId : "";
+  const candidate = policies && typeof policies === "object" && !Array.isArray(policies)
+    ? policies[appId]
+    : null;
+  const policy = installationFor({ installation: candidate });
+  if (policy) projected.installation = { ...policy };
+  return projected;
+}
+
 export function canSelfInstall(app) {
   return installationFor(app)?.install_mode === "self-service";
 }

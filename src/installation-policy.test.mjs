@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyGovernedInstallationPolicy,
   canSelfInstall,
   installationFor,
   installationPresentation,
@@ -52,4 +53,22 @@ test("normal Bazaar browsing hides internal modes while retaining a safe migrati
   } }), false);
   assert.equal(isVisibleInPublicBazaar({}), true);
   assert.equal(installationPresentation({}).label, "POLICY PENDING");
+});
+
+test("the signed Bazaar policy overrides app metadata and fails closed when absent", () => {
+  const app = {
+    appId: "foundation-app",
+    installation: workspace.installation,
+  };
+  const governed = {
+    "foundation-app": {
+      audience: "foundation", install_mode: "owner-only", pearl_role: "authority",
+      client_access: "none", admin_surface: "hidden-authority",
+    },
+  };
+  const projected = applyGovernedInstallationPolicy(app, governed);
+  assert.equal(canSelfInstall(projected), false);
+  assert.equal(isVisibleInPublicBazaar(projected), false);
+  assert.deepEqual(app.installation, workspace.installation);
+  assert.equal(canSelfInstall(applyGovernedInstallationPolicy(app, null)), false);
 });

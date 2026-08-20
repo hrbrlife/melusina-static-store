@@ -102,6 +102,36 @@ func TestRuntimeMarkerRefusesFloorDriftBeforeMutation(t *testing.T) {
 	}
 }
 
+func TestRuntimeMarkerFloorRetryOnlyReusesExactRetainedBytes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "runtime", "swaprail.env")
+	prior := []byte("RRS_GENERATION_ID=1\nRRS_SIDECAR_VERSION=old\n")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, prior, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := markerRelease("swaprail", "gen-2", strings.Repeat("e", 64))
+	install := componentrelease.ComponentInstall{ComponentID: "swaprail", RuntimeEnvFile: path}
+	plan, err := planRuntimeMarker(filepath.Join(dir, "backups"), 2, c, install)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := PersistRuntimeMarkerFloor(plan); err != nil {
+		t.Fatalf("first floor persistence: %v", err)
+	}
+	if err := PersistRuntimeMarkerFloor(plan); err != nil {
+		t.Fatalf("exact retry floor persistence: %v", err)
+	}
+	if err := os.WriteFile(plan.PriorPath, []byte("different-retained-floor\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := PersistRuntimeMarkerFloor(plan); err == nil {
+		t.Fatal("mismatched retained marker was accepted on retry")
+	}
+}
+
 func TestFreshRuntimeMarkerRollbackRemovesMarkerBeforeStop(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "runtime", "swaprail.env")

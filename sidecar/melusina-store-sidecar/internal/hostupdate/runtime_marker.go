@@ -80,7 +80,10 @@ func planRuntimeMarker(backupRoot string, generationID uint64, c componentreleas
 // PersistRuntimeMarkerFloor writes the exact prior bytes to a fresh O_EXCL file.
 // Re-reading the live marker and requiring the floor to match closes a local
 // TOCTOU: an external edit between plan and mutation is refused, never silently
-// overwritten by a controller that would no longer know what to restore.
+// overwritten by a controller that would no longer know what to restore. A
+// retry may reuse an existing backup only if it is a regular, no-followed file
+// whose bytes exactly equal the just-proved floor; a different retained file is
+// a collision and fails closed.
 func PersistRuntimeMarkerFloor(p runtimeMarkerPlan) error {
 	if p.Path == "" || !p.present {
 		return nil
@@ -96,7 +99,22 @@ func PersistRuntimeMarkerFloor(p runtimeMarkerPlan) error {
 	if hex.EncodeToString(sum[:]) != p.PriorSHA || string(current) != string(p.prior) {
 		return errors.New("prior runtime marker changed before WAL floor persistence")
 	}
-	return writeRuntimeMarkerExclusive(p.PriorPath, p.prior)
+	if err := writeRuntimeMarkerExclusive(p.PriorPath, p.prior); err != nil {
+		if !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		retained, retainedPresent, readErr := readRuntimeMarker(p.PriorPath)
+		if readErr != nil {
+			return fmt.Errorf("read existing retained runtime marker: %w", readErr)
+		}
+		if !retainedPresent {
+			return errors.New("retained runtime marker disappeared after exclusive collision")
+		}
+		if string(retained) != string(p.prior) {
+			return errors.New("retained runtime marker collision does not match the verified prior floor")
+		}
+	}
+	return nil
 }
 
 // WriteRuntimeMarker atomically installs the signed runtime tuple before the

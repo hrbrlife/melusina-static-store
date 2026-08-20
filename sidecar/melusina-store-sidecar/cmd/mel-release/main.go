@@ -28,6 +28,10 @@
 //	    stage, and the live Active ReleaseEntry first; it never signs, registers,
 //	    revokes, or mutates chain state.
 //
+//	mel-release abandon-init --app <appId|slug|name>
+//	    Archive a stale INIT-only local preflight attempt. It refuses anything
+//	    that reached staging, a Squads proposal, or any other mutable boundary.
+//
 // Config is env-only (MEL_RELEASE_*). mel-release holds no chain key: every
 // governed act is delegated to MEL_RELEASE_SIGNER_PROVIDER (see signer.go) and
 // the store alone operator-signs the served generation.
@@ -121,13 +125,26 @@ func run(args []string) error {
 		fmt.Printf("REPAIR_CATALOG_OK receipt=%s\n", path)
 		return nil
 
+	case "abandon-init":
+		fs := flag.NewFlagSet("abandon-init", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runAbandonInit(cfg, catalog, *app)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("ABANDON_INIT_OK archive=%s\n", path)
+		return nil
+
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog)", sub)
+		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|abandon-init)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog --app <appId|slug|name> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init --app <appId|slug|name> | manifest --out <absolute-path>")
 }

@@ -2,15 +2,15 @@
   "schema": "melusina-source-selection-v1",
   "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
   "sourceRepository": "https://github.com/hrbrlife/MiniGit",
-  "sourceCommit": "610c44614a8b499d1e80795a97daca66a9912f77",
+  "sourceCommit": "825963ebdefc07efc8258e153116a1b80b1e3745",
   "selectionMethod": "direct-dev",
-  "decisionSummary": "The current direct source is canonical. Every divergent remote head was inspected: it is a preserved historical package/release tree, an old ceremony work-in-progress, or the docs-only Aug 1 salvage; none provides a newer runnable source line.",
+  "decisionSummary": "The current direct source is canonical. It adds the app-local build prerequisite that guarantees the shared candidate pack recipe packages a freshly built gitpearl binary. Every divergent remote head was inspected: it is preserved historical package/release work, an old ceremony work-in-progress, or docs-only salvage; none provides a newer runnable source line.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "fresh recursive clone at the selected source commit",
-      "make vet test",
-      "MEL_RELEASE_GREENFIELD_PACK=1 make build pack-local and spk verify",
+      "make vet test and the corrected make pack-local contract",
+      "two corrected make pack-local runs and spk verify",
       "candidate SHA-256 91d7f7c1f0b21b54b24fa89cd8386d40abeea3bc444f0ab2112a6619865a69e8 has the packageId advertised by the public 0.2.14 pointer",
       "provider candidate appHash 6ebfd29116459f95e1c8a98249ee89abed34cd785140399b15ced98851c89b53 equals the signed public pointer"
     ]
@@ -18,7 +18,7 @@
   "reviewedRefs": [
     {"ref": "refs/heads/archive/feat/gomaxprocs-pthread-fix", "commit": "a42c394ec2a7ffdc63f0c4486df2c1a1c2df39bf", "outcome": "archive"},
     {"ref": "refs/heads/archive/wip-pearl-ceremony-2026-05-18", "commit": "6b7e704a595326ee3deef724ee3473b32e5e812d", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "610c44614a8b499d1e80795a97daca66a9912f77", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "825963ebdefc07efc8258e153116a1b80b1e3745", "outcome": "selected"},
     {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "462611fac258ea3be86c6422a605299b303b6241", "outcome": "archive"},
     {"ref": "refs/heads/gitpearl", "commit": "e6604e1909ba3d019c0cd2b1924f33b98fcc47ca", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "610c44614a8b499d1e80795a97daca66a9912f77", "outcome": "baseline"},

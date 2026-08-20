@@ -209,10 +209,11 @@ groups:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
-        # v0.1.96/appVersion-173 is the current valid forward dev-publish
+        # v0.1.97/appVersion-174 is the current valid forward dev-publish
         # source. It combines the reviewed corridor, signed DueProcess, and
-        # release-health work; the full remote-head snapshot is in its receipt.
-        source_commit: b98b0f525b6a43a5b0eeca05213760df42765834
+        # release-health work with a synchronized public-name and pack-build
+        # forward release; the full remote-head snapshot is in its receipt.
+        source_commit: 4377e9f475532343325822393841faa4c6ed9f84
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -222,7 +223,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: 0.1.96
+        live_version: 0.1.97
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller
@@ -358,7 +359,7 @@ groups:
         # A cohort must use a portable product directory, never a preserved
         # workstation worktree name.
         source_path: minigit
-        source_commit: 610c44614a8b499d1e80795a97daca66a9912f77
+        source_commit: 825963ebdefc07efc8258e153116a1b80b1e3745
         source_repository: https://github.com/hrbrlife/MiniGit
         release_state: ready
         source_selection_state: direct-dev-verified

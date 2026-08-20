@@ -2,20 +2,20 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "sourceRepository": "https://github.com/hrbrlife/cyberteller",
-  "sourceCommit": "b98b0f525b6a43a5b0eeca05213760df42765834",
+  "sourceCommit": "4377e9f475532343325822393841faa4c6ed9f84",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.1.96/appVersion-173 dev-publish tip is the newest valid forward CyberTeller source. It incorporates the reviewed sealed-corridor line, the signed DueProcess client, release-bound runtime contract, deterministic package gates, and the package-bound release-health endpoint. Main is an ancestor. Every 72 advertised remote head was reviewed: recent divergent fiat, GL-journal, egress, F5/F7, candidate-pack, health, and demo lines are either already represented in the selected source or are intentionally unsafe/superseded historical work; none is a newer valid release source. CyberTeller uses the catalog-wide Squads publishing authority while retaining its distinct SPK signing identity.",
+  "decisionSummary": "The Aug. 20 v0.1.97/appVersion-174 dev-publish tip is the newest valid forward CyberTeller source. It retains the reviewed sealed-corridor, signed DueProcess, runtime-contract, and release-health work; it aligns the signed source metadata with the approved public name CyberTeller, makes the shared candidate pack recipe build the binary first, and advances the immutable package version for the forward governed release. Main is an ancestor. Every reviewed divergent head remains either represented in this source or intentionally archived as superseded or unsafe history. CyberTeller uses the catalog-wide Squads publishing authority while retaining its distinct SPK signing identity.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "selected dev-publish commit b98b0f525b6a43a5b0eeca05213760df42765834 is remotely advertised and main 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7 is its ancestor",
-      "full make test passed at the selected source, including root packages and common, chainwatch, custody, and sandboxsettlement sidecars",
+      "selected dev-publish commit 4377e9f475532343325822393841faa4c6ed9f84 is remotely advertised and main 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7 is its ancestor",
+      "full make test and go vet passed at the selected source, including root packages and common, chainwatch, custody, and sandboxsettlement sidecars",
       "make check-app-id check-e2e-envelope check-capnp-ordinal passed at the selected source",
       "fresh recursive clone at the selected commit resolved spkmodule 83dcfb515139d4f11899cc414277b103a5ea4c88 and had a clean tracked tree before build",
-      "clean build-source injected source commit b98b0f525b6a43a5b0eeca05213760df42765834; two clean pack-local runs matched SHA-256 221bda999f59a2d4417aaa4b6c679e5197de499e9bc6149d1ab080db3f97cc8c and packageId 221bda999f59a2d4417aaa4b6c679e51",
-      "the Store canonical appHash over the staged SPK and staged metadata is ad751c2ee006596b49e159759daeb5a4f14d2954166ffeb4c3af4cbc3e596cce",
+      "clean build-source injected source commit 4377e9f475532343325822393841faa4c6ed9f84; two pack-local runs matched SHA-256 99c36503ce0233aa34ba6063188893c3b9d414f65c1725a5093bc0d030852075 and packageId 99c36503ce0233aa34ba6063188893c3",
+      "the governed Store build must record the canonical appHash over this SPK and staged metadata before any registration",
       "the selected Makefile and catalog provider enforce the shared Squads multisig 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V, vault 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3, and program SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf; the app-specific SPK identity is not an authority override"
     ]
   },
@@ -92,7 +92,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "b98b0f525b6a43a5b0eeca05213760df42765834",
+      "commit": "4377e9f475532343325822393841faa4c6ed9f84",
       "outcome": "selected"
     },
     {

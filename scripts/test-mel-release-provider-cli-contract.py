@@ -1735,11 +1735,11 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
     assert cyberteller == {
         "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
         "catalogName": "CyberTeller",
-        "sourceCommit": "b98b0f525b6a43a5b0eeca05213760df42765834",
+        "sourceCommit": "4377e9f475532343325822393841faa4c6ed9f84",
         "sourceSelectionReceipt": "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json",
-        "version": "0.1.96",
-        "spkSha256": "221bda999f59a2d4417aaa4b6c679e5197de499e9bc6149d1ab080db3f97cc8c",
-        "appHash": "ad751c2ee006596b49e159759daeb5a4f14d2954166ffeb4c3af4cbc3e596cce",
+        "version": "0.1.97",
+        "spkSha256": "99c36503ce0233aa34ba6063188893c3b9d414f65c1725a5093bc0d030852075",
+        "appHash": "e6d0ced8ea1cbd607ba58e7326c8b43f6b8f601874292d5489df1f903e2b8987",
     }, cyberteller
 
 
@@ -1846,7 +1846,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "b98b0f525b6a43a5b0eeca05213760df42765834", cyberteller
+    assert cyberteller["source_commit"] == "4377e9f475532343325822393841faa4c6ed9f84", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller

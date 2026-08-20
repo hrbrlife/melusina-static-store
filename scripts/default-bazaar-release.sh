@@ -6,6 +6,8 @@
 #     scripts/default-bazaar-release.sh publish --app <appId|slug> --version <version>
 #   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
 #     scripts/default-bazaar-release.sh approve --app <appId|slug>
+#   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
+#     scripts/default-bazaar-release.sh abandon-init --app <appId|slug>
 #
 # The runtime module contains only workstation paths to existing identity files;
 # it never copies a private key. App SPK keys remain package identity only. The
@@ -108,8 +110,8 @@ case "${1:-}" in
       "$MEL_RELEASE_SQUADS_PROGRAM_ID" "$MEL_RELEASE_SQUADS_THRESHOLD" "$MEL_RELEASE_SQUADS_MEMBER_COUNT" "$MEL_RELEASE_CHANNEL"
     exit 0
     ;;
-  publish|approve|manifest|repair-catalog) ;;
-  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog] ...' ;;
+  publish|approve|manifest|repair-catalog|abandon-init) ;;
+  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|abandon-init] ...' ;;
 esac
 
 cd "$ROOT/sidecar/melusina-store-sidecar"

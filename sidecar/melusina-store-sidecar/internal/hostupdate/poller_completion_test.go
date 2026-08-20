@@ -49,7 +49,7 @@ func TestServiceActiveGenerationsUsesPollClockForTerminalReceipt(t *testing.T) {
 			Observe: func(string) string { return entry.ToHash },
 		},
 	}
-	state := ControllerState{}
+	state := ControllerState{Pending: &GenerationCursor{GenerationID: 1, RawSHA256: strings.Repeat("b", 64)}}
 	if err := serviceActiveGenerations(context.Background(), deps, &state, now); err != nil {
 		t.Fatalf("service active generations: %v", err)
 	}
@@ -58,6 +58,9 @@ func TestServiceActiveGenerationsUsesPollClockForTerminalReceipt(t *testing.T) {
 	}
 	if state.LastCommitted == nil || state.LastCommitted.GenerationID != entry.GenerationID {
 		t.Fatalf("committed cursor = %#v, want generation %d", state.LastCommitted, entry.GenerationID)
+	}
+	if state.Pending != nil {
+		t.Fatalf("terminalized generation left a stale pending cursor: %#v", state.Pending)
 	}
 	receipts, err := os.ReadDir(filepath.Join(root, "receipts"))
 	if err != nil {

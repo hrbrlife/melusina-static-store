@@ -120,6 +120,22 @@ func recordTerminalCursor(state *ControllerState, cursor *GenerationCursor) {
 	if state.LastTerminal == nil || cursor.GenerationID >= state.LastTerminal.GenerationID {
 		state.LastTerminal = cursor
 	}
+	clearPendingThroughTerminal(state)
+}
+
+// clearPendingThroughTerminal removes only a notification which is already
+// resolved by the durable terminal cursor. It is called both when a WAL seals
+// and when a later poll observes the exact terminal generation after a process
+// restart, so stale pending state cannot survive either path.
+func clearPendingThroughTerminal(state *ControllerState) {
+	// Pending is an unsealed notification, not a second sequence floor. Once a
+	// terminal cursor reaches or passes it (applied OR rolled back), retaining the
+	// old notification leaves a contradictory controller state and can obstruct a
+	// tightly scoped recovery predicate. Never clear a genuinely newer pending
+	// generation.
+	if state.Pending != nil && state.LastTerminal != nil && state.Pending.GenerationID <= state.LastTerminal.GenerationID {
+		state.Pending = nil
+	}
 }
 
 // generationRolledBack returns true only for a real terminal rollback. A
@@ -201,6 +217,7 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 			return err
 		}
 		if vg.Doc.GenerationID == cursor.GenerationID {
+			clearPendingThroughTerminal(&state)
 			return deps.State.Store(ctx, state) // exact terminal generation — no-op
 		}
 	}

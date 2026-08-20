@@ -278,6 +278,14 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// binds its PID to systemd+/proc.  A store without that local marker returns
 	// 503 instead of fabricating a version from its binary or catalog.
 	mux.HandleFunc("/release-info", handleRuntimeReleaseInfo)
+	// Root trust discovery is an exact dynamic route, never a static fallback.
+	// Consumer tenants verify this bundle before they accept root artifacts.
+	rootTrust, err := newRootTrustBundleHandler(cfg, operator, cr)
+	if err != nil {
+		log.Printf("root trust bundle: unavailable: %v", err)
+		rootTrust = unavailableRootTrustBundleHandler(err)
+	}
+	mux.Handle(rootTrustBundlePath, rootTrust)
 
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)

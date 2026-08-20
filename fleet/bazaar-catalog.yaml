@@ -418,14 +418,14 @@ groups:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: e6c286d8f3a3310b5f6afc2d3f82a66cbb97e896
+        source_commit: e7b6b044b44712c481177a5a0ef63ec93ba82e3f
         source_repository: https://github.com/hrbrlife/CHEESESPREAD
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json
         publish_slug: sheets-bureau
         catalog_name: Bureau Sheets
-        live_version: 2.1.5
+        live_version: 2.1.6
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau

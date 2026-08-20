@@ -2,24 +2,24 @@
   "schema": "melusina-source-selection-v1",
   "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
   "sourceRepository": "https://github.com/hrbrlife/clientspace",
-  "sourceCommit": "c18a2472e526189b491b336ab67a51190069b977",
+  "sourceCommit": "e4d3913a4965153620595552b83b59dace048f28",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The current v0.1.6 dev-publish tip is the newest valid forward ClientSpace source. It merges the recent bounded reporting-session, durable sturdyref persistence, log-redaction, and session-lifecycle work, then binds the forward package metadata to a byte-identical double pack. The current main tip is its reviewed ancestor. Every preserved, salvage, and historic publish ref was inventoried; their unique historical package evidence or superseded security work is not a newer application source than the tested merge.",
+  "decisionSummary": "The current v0.1.7 dev-publish tip is the newest valid forward ClientSpace source. It retains the bounded reporting-session, durable sturdyref persistence, log-redaction, and session-lifecycle work, removes the stale local-only release marker, and binds the canonical public name and forward package metadata to a byte-identical double pack. The current main tip is its reviewed ancestor. Every preserved, salvage, and historic publish ref remains recorded; none is a newer application source than this tested dev-publish tip.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "the selected dev-publish commit was pushed without force and matches the advertised remote tip",
-      "the complete current remote-head snapshot was reviewed, including preserved, salvage, and historic publish refs",
+      "the complete remote-head snapshot remains reviewed; only dev-publish advanced for this forward release",
       "the selected source merges the August reporting-session and sturdyref security line before the forward version cut",
       "make verify-recovery passed: vet, the full security suite, deterministic double pack, SPK verification, and packageId/SHA synchronization",
-      "two independent package runs matched SHA-256 d42355bac41a57c5fbaf58942e7ad9cc89dc8296a9b18e14da445f0699889e07 and packageId d42355bac41a57c5fbaf58942e7ad9cc",
-      "spk verify confirmed the immutable ClientSpace appId, appVersion 11, and marketing version 0.1.6"
+      "two independent package runs matched SHA-256 936315e787b0dac04550205b0dfd918cf16f56d25fec90cd2983802522de2e63 and packageId 936315e787b0dac04550205b0dfd918c",
+      "spk verify confirmed the immutable ClientSpace appId, appVersion 12, and marketing version 0.1.7"
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "c18a2472e526189b491b336ab67a51190069b977", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "e4d3913a4965153620595552b83b59dace048f28", "outcome": "selected"},
     {"ref": "refs/heads/main", "commit": "eb2a2dbcc37479421b696b7fe542ca227ce13237", "outcome": "baseline"},
     {"ref": "refs/heads/preserve-local-20260814/_alt/main-b4a729785aba", "commit": "b4a729785aba93779688bba2949764ee1eecb84d", "outcome": "archive"},
     {"ref": "refs/heads/preserve-local-20260814/_detached/b4a729785aba", "commit": "b4a729785aba93779688bba2949764ee1eecb84d", "outcome": "archive"},

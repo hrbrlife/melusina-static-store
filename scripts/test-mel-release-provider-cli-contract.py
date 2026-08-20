@@ -1629,7 +1629,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert shell_tester["release_state"] == "ready", shell_tester
     assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
-    assert clientspace["source_commit"] == "c18a2472e526189b491b336ab67a51190069b977", clientspace
+    assert clientspace["source_commit"] == "e4d3913a4965153620595552b83b59dace048f28", clientspace
     assert clientspace["reconciliation_state"] == "source-pinned", clientspace
     assert clientspace["release_state"] == "ready", clientspace
     assert clientspace["source_selection_state"] == "direct-dev-verified", clientspace
@@ -1788,7 +1788,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-pinned", clientspace
-    assert clientspace["source_commit"] == "c18a2472e526189b491b336ab67a51190069b977", clientspace
+    assert clientspace["source_commit"] == "e4d3913a4965153620595552b83b59dace048f28", clientspace
     dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
     assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
     assert dashboard["source_repository"] == "https://github.com/hrbrlife/melusina-dashboard-app", dashboard

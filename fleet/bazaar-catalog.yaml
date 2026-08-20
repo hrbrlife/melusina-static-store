@@ -609,14 +609,14 @@ groups:
         # recovery control, and packs byte-identically from its committed
         # source. The selected source is not inferred from the older catalog
         # listing or prior v10 candidate.
-        source_commit: c18a2472e526189b491b336ab67a51190069b977
+        source_commit: e4d3913a4965153620595552b83b59dace048f28
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.json
         publish_slug: clientspace
         catalog_name: ClientSpace
-        live_version: 0.1.6
+        live_version: 0.1.7
         catalog_developer: hrbrlife
         catalog_repo: client_collection
         catalog_slug: clientspace

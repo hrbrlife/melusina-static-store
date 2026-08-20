@@ -312,6 +312,9 @@ def catalog_config() -> dict[str, Any]:
             if not isinstance(spec.get("source_repository"), str):
                 raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing source_repository")
             canonical_source_repository(spec["source_repository"])
+            catalog_name = spec.get("catalog_name")
+            if not isinstance(catalog_name, str) or not catalog_name.strip():
+                raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing catalog_name")
             if "source_branch" in spec:
                 source_branch = spec["source_branch"]
                 if not isinstance(source_branch, str):
@@ -379,6 +382,11 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     "reconciliation_state": reconciliation_state,
                     "source_selection_state": source_selection_state,
                     "source_selection_receipt": str(spec.get("source_selection_receipt", "")),
+                    # The public display name is governed release metadata,
+                    # not a mutable Store-side presentation override.  A
+                    # candidate's tracked metadata must carry this exact
+                    # value before it can be built or published.
+                    "catalog_name": str(spec.get("catalog_name", "")).strip(),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
                     "candidate_source_commit": str(spec.get("candidate_source_commit", "")),
@@ -651,6 +659,24 @@ def source_metadata_path(app_id: str, source: Path, *, require_release_ready: bo
     )
 
 
+def require_catalog_metadata_identity(spec: dict[str, str], metadata: dict[str, Any]) -> None:
+    """Bind the governed display name to tracked, signed app metadata.
+
+    ``catalog_name`` is the one public name approved for an immutable appId.
+    The Store must never silently substitute it at projection time: doing so
+    would make the rendered catalog disagree with the metadata included in the
+    signed AppHash.  A source tip either carries the approved name or needs a
+    normal forward metadata release.
+    """
+    expected = spec["catalog_name"]
+    actual = metadata.get("name")
+    if actual != expected:
+        raise ProviderError(
+            f"source metadata name does not match catalog_name for {spec['appId']}: "
+            f"want {expected!r}, got {actual!r}"
+        )
+
+
 def source_runtime_contract_path(app_id: str, source: Path, *, require_release_ready: bool = True) -> Path:
     return source_file(
         source,
@@ -836,6 +862,7 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
                 metadata = read_json(metadata_path)
                 if metadata.get("appId") != app_id:
                     raise ProviderError("source metadata appId does not match the Bazaar catalog appId")
+                require_catalog_metadata_identity(spec, metadata)
                 version = metadata.get("version")
                 version_number = metadata.get("versionNumber")
                 if not isinstance(version, str) or not version.strip():
@@ -1341,6 +1368,8 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     )
     source_selection = require_current_source_selection(app_id, source, spec)
     source_metadata = source_metadata_path(app_id, source)
+    source_metadata_doc = read_json(source_metadata)
+    require_catalog_metadata_identity(spec, source_metadata_doc)
     slot = catalog_slot(app_id)
     work = state_root(app_id) / "candidate"
     if work.exists():

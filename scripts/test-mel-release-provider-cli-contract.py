@@ -833,7 +833,11 @@ def write_catalog_config(path, apps):
     normalized_apps = {}
     receipts = {}
     for name, spec in apps.items():
-        normalized = {**spec, "source_repository": spec.get("source_repository", fixture_source_repository)}
+        normalized = {
+            **spec,
+            "source_repository": spec.get("source_repository", fixture_source_repository),
+            "catalog_name": spec.get("catalog_name", str(spec["appId"])),
+        }
         source_commit = str(normalized.get("source_commit", "")).lower()
         if len(source_commit) == 40:
             app_id = normalized["appId"]
@@ -966,10 +970,11 @@ def commit_source_fixture(path):
     ).stdout.strip()
 
 
-def write_source_release_fixture(path, app_id, version, version_number):
+def write_source_release_fixture(path, app_id, version, version_number, name=None):
     path.mkdir(parents=True)
     (path / "metadata.json").write_text(json.dumps({
         "appId": app_id,
+        "name": app_id if name is None else name,
         "version": version,
         "versionNumber": version_number,
     }) + "\n", encoding="utf-8")
@@ -983,6 +988,47 @@ def write_source_release_fixture(path, app_id, version, version_number):
         },
     }) + "\n", encoding="utf-8")
     return commit_source_fixture(path)
+
+
+def test_source_cohort_refuses_a_display_name_that_does_not_match_its_governed_catalog_name():
+    app_id = "metadata-name-app"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        source = sources / "app"
+        commit = write_source_release_fixture(source, app_id, "1.2.3", 7, name="Stale public name")
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "app": {
+                "appId": app_id,
+                "catalog_name": "Approved public name",
+                "source_path": "app",
+                "source_commit": commit,
+            },
+        })
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        old_run = provider.run
+        try:
+            def fixture_run(args, **kwargs):
+                if args == ["git", "-C", str(source), "ls-remote", "--heads", "origin", "refs/heads/dev-publish"]:
+                    return f"{commit}\trefs/heads/dev-publish\n"
+                return old_run(args, **kwargs)
+
+            provider.run = fixture_run
+            result = provider.audit_source_cohort(root / "cohort.json")
+            assert result["status"] == "incomplete", result
+            assert result["verifiedSourceCount"] == 0, result
+            assert result["failures"] == [{
+                "appId": app_id,
+                "name": "app",
+                "reason": "source provenance or release-input validation failed",
+            }], result
+        finally:
+            provider.run = old_run
+            restore_env(old)
 
 
 def test_source_selection_requires_a_current_complete_remote_snapshot():
@@ -2167,6 +2213,7 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         write_catalog_config(config, {
             "namedcoin": {
                 "appId": app_id,
+                "catalog_name": "source-authoritative",
                 "source_path": "namedcoin",
                 "source_commit": "a" * 40,
                 "metadata_path": "product/metadata.json",
@@ -2384,6 +2431,7 @@ if __name__ == "__main__":
     test_store_generation_template_pins_catalog_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
+    test_source_cohort_refuses_a_display_name_that_does_not_match_its_governed_catalog_name()
     test_source_selection_requires_a_current_complete_remote_snapshot()
     test_direct_source_selection_requires_an_explicit_historical_baseline()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()

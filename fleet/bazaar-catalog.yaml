@@ -701,12 +701,12 @@ groups:
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
         source_path: vintage-test-dec
-        # The current dev-publish v1.3.3/version-22 source has a tracked
+        # The current dev-publish v1.3.4/version-23 source has a tracked
         # runtime contract, byte-identical clean-checkout package proof, a
         # CGO-free desktop binary, and no staged sidecar state or tenant
-        # authority. The current public catalog is still v1.2.4/version-19,
+        # authority. The current public catalog is still v1.3.3/version-22,
         # so this remains a valid forward candidate without an artificial bump.
-        source_commit: bf88344c05ae70d2b791858f1a0a3e506d4e3740
+        source_commit: 0b0f6d96c620acb1eb6feaeea6bca82e0079cb36
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

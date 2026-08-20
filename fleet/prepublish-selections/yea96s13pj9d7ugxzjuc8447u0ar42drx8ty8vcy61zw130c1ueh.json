@@ -2,21 +2,20 @@
   "schema": "melusina-source-selection-v1",
   "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
   "sourceRepository": "https://github.com/hrbrlife/vintage-test-dec",
-  "sourceCommit": "bf88344c05ae70d2b791858f1a0a3e506d4e3740",
+  "sourceCommit": "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The v1.3.3/appVersion-22 dev-publish tip is the newest valid forward Vintage source. The public catalog remains on v1.2.4/appVersion-19. The July pointer line was reviewed commit by commit: its import correction, reproducibility intent, and package controls are superseded by the selected source, while its old version, hashes, and legacy catalog files would regress the current release design. Every archive, preserved, salvage, and historic publish ref was inventoried and is not a newer valid application source than the tested dev-publish tip.",
+  "decisionSummary": "The v1.3.4/appVersion-23 dev-publish tip is the newest valid forward Vintage source. It is a focused public-identity and version-forward cut over the previously reviewed v1.3.3 tip: signed Bazaar metadata, the Sandstorm package title, the runtime contract wording, changelog, and release guard now agree on Vintage. The complete 20-ref remote snapshot is unchanged except for this selected dev-publish advance; main remains its reviewed ancestor. The public catalog remains on v1.3.3/appVersion-22 until this governed candidate promotes. Every archive, preserved, salvage, and historic publish ref remains reviewed evidence rather than a newer valid release source.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "the selected dev-publish commit matches the current advertised remote tip and main is its reviewed ancestor",
-      "the complete current remote-head snapshot was reviewed, including the July pointer line, preserved refs, salvage, and historic publish refs",
-      "a fresh detached clean checkout initialized both declared submodules at their pinned gitlink revisions",
-      "make verify-recovery passed: vet, full Go tests, and deterministic double packaging",
-      "two independent package runs matched SHA-256 b9fc5a0b81d613270daf848088e5d5b95c225b3c3ec2e3689c86bc26b562e1ba and packageId b9fc5a0b81d613270daf848088e5d5b9",
-      "spk verify confirmed the immutable Vintage appId, appVersion 22, and marketing version 1.3.3",
-      "the live rendered catalog reports v1.2.4/appVersion 19, below the selected source version"
+      "the complete 20-ref remote-head snapshot is unchanged except for the selected dev-publish advance",
+      "the clean source checkout passed make test, go test ., and go vet ./...",
+      "two independent package runs matched SHA-256 74f4eed5e307215e6482e3db11fc14ea9023e592516f3a79afa22291763665a4 and packageId 74f4eed5e307215e6482e3db11fc14ea",
+      "spk verify confirmed the immutable Vintage appId, title Vintage, appVersion 23, and marketing version 1.3.4",
+      "the live rendered catalog reports v1.3.3/appVersion 22, below the selected source version"
     ]
   },
   "reviewedRefs": [
@@ -25,7 +24,7 @@
     {"ref": "refs/heads/archive/fix/imp17-revert-to-sid-query-auth-2026-05-01", "commit": "52b75873de0036ef30b15388f11df64d31201dd3", "outcome": "archive"},
     {"ref": "refs/heads/archive/fix/imp17b-rlimit-as-and-defect5-polled-retry", "commit": "75315c025df24936654751883cad6e25ea128d50", "outcome": "archive"},
     {"ref": "refs/heads/codex/vintage-pointer-20260715", "commit": "40fd3502cecf793a3777335edb2c93c6f99d7d1c", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "bf88344c05ae70d2b791858f1a0a3e506d4e3740", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36", "outcome": "selected"},
     {"ref": "refs/heads/main", "commit": "da1bfdcef7455bf62920a8952e22e77476f5fd68", "outcome": "baseline"},
     {"ref": "refs/heads/polish/golden-mvp-2026-05-06", "commit": "caecc808efe8028c4530d099a84c12f3382f18b8", "outcome": "archive"},
     {"ref": "refs/heads/preserve-local-20260814/_detached/f9891544a344", "commit": "f9891544a3442ae1f3af7378877df81a21c78d77", "outcome": "archive"},

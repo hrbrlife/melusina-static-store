@@ -1640,7 +1640,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert creeper["source_selection_state"] == "direct-dev-verified", creeper
     vintage = entries["yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh"]
     assert vintage["source_path"] == "vintage-test-dec", vintage
-    assert vintage["source_commit"] == "bf88344c05ae70d2b791858f1a0a3e506d4e3740", vintage
+    assert vintage["source_commit"] == "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36", vintage
     assert vintage["reconciliation_state"] == "source-pinned", vintage
     assert vintage["release_state"] == "ready", vintage
     assert vintage["source_selection_state"] == "direct-dev-verified", vintage

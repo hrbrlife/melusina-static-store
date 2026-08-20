@@ -98,6 +98,12 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 		}
 	}
 	legacyStage := rehydrationCorruptStageID("legacy-stage")
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, legacyStage), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.PrivateStageDir, legacyStage, "stage.json"), []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	legacyRollout := appRolloutState{Schema: appRolloutSchema, AppID: legacy, CurrentStageID: legacyStage, CurrentAppHash: legacyArtifact.manifest.AppHash, CurrentVersion: legacyArtifact.manifest.Version, ActivatedAt: 1}
 	if err := writeAppRollout(cfg, legacyRollout); err != nil {
 		t.Fatal(err)
@@ -145,8 +151,21 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 	if _, _, _, _, err := loadStagedApp(cfg.PrivateStageDir, artifactTwo.manifest.StageID); err != nil {
 		t.Fatalf("second fresh stage is not valid: %v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(cfg.PrivateStageDir, rehydrationCorruptStageID(byte(1)))); err != nil {
-		t.Fatalf("corrupt historical stage was not preserved: %v", err)
+	archiveDir, err := catalogRehydrationArchivedStageDir(cfg, report.PlanID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stageID := range []string{rehydrationCorruptStageID(byte(1)), rehydrationCorruptStageID(byte(2)), legacyStage} {
+		if _, err := os.Lstat(filepath.Join(cfg.PrivateStageDir, stageID)); !os.IsNotExist(err) {
+			t.Fatalf("corrupt historical stage %s remains live: %v", stageID, err)
+		}
+		if _, err := os.Lstat(filepath.Join(archiveDir, stageID)); err != nil {
+			t.Fatalf("corrupt historical stage %s was not archived: %v", stageID, err)
+		}
+	}
+	archive, ok, err := readCatalogRehydrationStageArchive(cfg, report.PlanID, uid)
+	if err != nil || !ok || archive.State != "completed" || len(archive.StageIDs) != 3 {
+		t.Fatalf("stage archive = %#v, ok=%t, err=%v", archive, ok, err)
 	}
 	classified, err := classifyRolloutStatesAt(cfg, now)
 	if err != nil {
@@ -172,6 +191,9 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 	}
 	if err := validateRehydratedCatalogSnapshot(current, classified.serving, cfg, operator, mustRehydrationAuthority(t, cfg), map[string]governedInstallationPolicy{appOne: policy, appTwo: policy}); err != nil {
 		t.Fatalf("recovered catalog failed verification: %v", err)
+	}
+	if err := runAppRetentionGC(cfg, store, classified.serving, current.ID, "", now, uid, uint32(os.Getgid())); err != nil {
+		t.Fatalf("retention rejects archived recovery: %v", err)
 	}
 	for _, stale := range []string{legacyArtifact.entry.PackageID} {
 		if _, err := os.Lstat(filepath.Join(current.Root, "packages", stale)); !os.IsNotExist(err) {

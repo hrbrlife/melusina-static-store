@@ -961,6 +961,9 @@ func resumeCatalogRehydration(cfg Config, operator *identity.Private, record cat
 	if err := validateRehydratedCatalogSnapshot(candidate, newRollouts, cfg, operator, authority, deps.policies); err != nil {
 		return catalogRehydrateReport{}, fmt.Errorf("validate rehydrated catalog generation: %w", err)
 	}
+	if err := archiveInvalidRehydrationStages(cfg, record, operator, deps.expectedUID, deps.now().UTC()); err != nil {
+		return catalogRehydrateReport{}, fmt.Errorf("archive invalid historical stages: %w", err)
+	}
 
 	if record.State == "completed" {
 		current, err := store.ResolveCurrent()

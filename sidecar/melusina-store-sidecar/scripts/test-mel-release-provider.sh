@@ -54,6 +54,8 @@ release_squads_authority:
   multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
   vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
   program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+  threshold: 3
+  member_count: 4
 YAML
 export MEL_RELEASE_CONFIG="$TMP/release-catalog.yaml"
 export MEL_RELEASE_SQUADS_MULTISIG=4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
@@ -172,6 +174,8 @@ release_squads_authority:
   multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
   vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
   program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+  threshold: 3
+  member_count: 4
 groups:
   test:
     apps:

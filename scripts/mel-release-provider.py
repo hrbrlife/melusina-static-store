@@ -49,6 +49,12 @@ SOURCE_SELECTION_READY_STATES = {
 }
 SOURCE_SELECTION_STATES = SOURCE_SELECTION_READY_STATES | {SOURCE_SELECTION_PENDING}
 SOURCE_SELECTION_RECEIPT_SCHEMA = "melusina-source-selection-v1"
+INSTALLATION_POLICY_VERSION = 1
+INSTALLATION_AUDIENCES = {"foundation", "operator", "client", "workspace", "engineering"}
+INSTALLATION_MODES = {"owner-only", "owner-provisions", "self-service"}
+PEARL_ROLES = {"authority", "proxy", "workflow", "workspace", "template", "test"}
+CLIENT_ACCESS_MODES = {"none", "scoped-share", "self-owned"}
+ADMIN_SURFACES = {"hidden-authority", "same-pearl", "deployment-only"}
 STORE_READ_TIMEOUT_SECONDS = 180
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
@@ -129,6 +135,25 @@ def canonical_squads_policy_value(value: Any, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ProviderError(f"{field} must be a positive integer")
     return value
+
+
+def validate_installation_policy(spec: dict[str, Any]) -> None:
+    """Validate one Store-governed installation policy without coercion."""
+    app_id = str(spec.get("appId", "")).strip() or "(unknown)"
+    allowed = {
+        "audience": INSTALLATION_AUDIENCES,
+        "install_mode": INSTALLATION_MODES,
+        "pearl_role": PEARL_ROLES,
+        "client_access": CLIENT_ACCESS_MODES,
+        "admin_surface": ADMIN_SURFACES,
+    }
+    for field, values in allowed.items():
+        value = spec.get(field)
+        if not isinstance(value, str) or value not in values:
+            choices = ", ".join(sorted(values))
+            raise ProviderError(
+                f"Bazaar catalog app {app_id} has invalid {field!r}; want one of {choices}"
+            )
 
 
 def parse_shared_squads_authority(doc: dict[str, Any]) -> dict[str, Any]:
@@ -288,6 +313,16 @@ def catalog_config() -> dict[str, Any]:
     if not isinstance(default_source_branch, str):
         raise ProviderError("bazaar-catalog.yaml is missing default_source_branch")
     canonical_source_branch(default_source_branch)
+    policy_version = value.get("installation_policy_version")
+    policy_enabled = policy_version is not None
+    if policy_enabled and (
+        isinstance(policy_version, bool)
+        or not isinstance(policy_version, int)
+        or policy_version != INSTALLATION_POLICY_VERSION
+    ):
+        raise ProviderError(
+            f"bazaar-catalog.yaml installation_policy_version must be {INSTALLATION_POLICY_VERSION}"
+        )
     groups = value.get("groups")
     if not isinstance(groups, dict):
         raise ProviderError("Bazaar catalog config has no groups mapping")
@@ -315,6 +350,8 @@ def catalog_config() -> dict[str, Any]:
             catalog_name = spec.get("catalog_name")
             if not isinstance(catalog_name, str) or not catalog_name.strip():
                 raise ProviderError(f"Bazaar catalog app {spec['appId']} is missing catalog_name")
+            if policy_enabled:
+                validate_installation_policy(spec)
             if "source_branch" in spec:
                 source_branch = spec["source_branch"]
                 if not isinstance(source_branch, str):
@@ -387,6 +424,11 @@ def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, st
                     # candidate's tracked metadata must carry this exact
                     # value before it can be built or published.
                     "catalog_name": str(spec.get("catalog_name", "")).strip(),
+                    "audience": str(spec.get("audience", "")).strip(),
+                    "install_mode": str(spec.get("install_mode", "")).strip(),
+                    "pearl_role": str(spec.get("pearl_role", "")).strip(),
+                    "client_access": str(spec.get("client_access", "")).strip(),
+                    "admin_surface": str(spec.get("admin_surface", "")).strip(),
                     "source_path": str(spec.get("source_path", "")),
                     "source_commit": str(spec.get("source_commit", "")),
                     "candidate_source_commit": str(spec.get("candidate_source_commit", "")),

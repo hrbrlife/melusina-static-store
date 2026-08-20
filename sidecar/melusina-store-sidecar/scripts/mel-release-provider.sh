@@ -113,6 +113,17 @@ if not isinstance(raw, dict):
 values = [raw.get("multisig"), raw.get("vault"), raw.get("program_id")]
 if any(not isinstance(value, str) or not re.fullmatch(r"[1-9A-HJ-NP-Za-km-z]{32,44}", value) for value in values):
     raise SystemExit("Bazaar catalog has malformed release_squads_authority")
+policy_version = doc.get("installation_policy_version")
+if policy_version is not None:
+    if isinstance(policy_version, bool) or policy_version != 1:
+        raise SystemExit("Bazaar catalog has invalid installation_policy_version")
+    installation_values = {
+        "audience": {"foundation", "operator", "client", "workspace", "engineering"},
+        "install_mode": {"owner-only", "owner-provisions", "self-service"},
+        "pearl_role": {"authority", "proxy", "workflow", "workspace", "template", "test"},
+        "client_access": {"none", "scoped-share", "self-owned"},
+        "admin_surface": {"hidden-authority", "same-pearl", "deployment-only"},
+    }
 for group in (doc.get("groups") or {}).values():
     apps = group.get("apps") if isinstance(group, dict) else None
     if not isinstance(apps, dict):
@@ -126,6 +137,12 @@ for group in (doc.get("groups") or {}).values():
                 raise SystemExit(
                     f"Bazaar catalog app {name!r} may not declare app-specific Squads authority field {field!r}"
                 )
+        if policy_version is not None:
+            for field, allowed in installation_values.items():
+                if spec.get(field) not in allowed:
+                    raise SystemExit(
+                        f"Bazaar catalog app {name!r} has invalid installation policy field {field!r}"
+                    )
 print("|".join(values))
 PY
 )" || die "could not read the catalog-pinned shared Squads authority"

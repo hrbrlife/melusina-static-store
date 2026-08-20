@@ -29,6 +29,11 @@ import {
   appIconPath,
   isExplicitlyIconless,
 } from "./app-icon-map.js";
+import {
+  canSelfInstall,
+  installationPresentation,
+  isVisibleInPublicBazaar,
+} from "./installation-policy.js";
 
 // Self-hosted origin: every catalog asset AND the app-install package-download
 // URL resolve from the bazaar origin that served this SPA (the market popup is
@@ -273,6 +278,10 @@ function InstallModal({ app, onClose }) {
   const [installError, setInstallError] = useState('');
 
   const doInstall = useCallback((host) => {
+    if (!canSelfInstall(app)) {
+      setInstallError(installationPresentation(app).detail);
+      return;
+    }
     const h = sanitizeHost(host);
     if (!h) {
       setInstallError("Enter a Melusina server URL before installing.");
@@ -816,6 +825,8 @@ function AppCard({ app, onSelect, onInstall }) {
   const shots = (app.screenshots || []).slice(0, 5);
   const updatedAgo = timeAgo(signedPromotionAt(app));
   const runtime = runtimeContractInfo(app);
+  const selfService = canSelfInstall(app);
+  const installPolicy = installationPresentation(app);
 
   return (
     <div role="button" tabIndex={0}
@@ -898,7 +909,7 @@ function AppCard({ app, onSelect, onInstall }) {
               <Badge key={`conn-${i}`} neon={b.color === 'yellow' ? T.yellow : T.magenta}>{b.icon} {b.short}</Badge>
             ))}
           </div>
-          <button
+          {selfService ? <button
               onClick={(e) => { e.stopPropagation(); onInstall(app); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
@@ -925,7 +936,14 @@ function AppCard({ app, onSelect, onInstall }) {
                 e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`;
                 e.currentTarget.style.transform = "none";
               }}
-            >INSTALL</button>
+            >INSTALL</button> : (
+            <span title={installPolicy.detail} style={{
+              padding: "8px 10px", borderRadius: T.radiusSm,
+              border: `1px solid ${T.yellow}44`, color: T.yellow,
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
+              fontWeight: 700, letterSpacing: ".06em", textAlign: "right",
+            }}>{installPolicy.label}</span>
+          )}
         </div>
       </div>
     </div>
@@ -1378,6 +1396,8 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   useEffect(() => { setTab(initialTab || 'overview'); setOpenFaq(new Set(featuredFaqSet)); setDevSubTab(initialDevSubTab || 'suggestions'); }, [app.appId, featuredFaqSet, initialTab, initialDevSubTab]);
 
   if (!app) return null;
+  const selfService = canSelfInstall(app);
+  const installPolicy = installationPresentation(app);
 
   const rows = [
     ["VERSION", app.version || "—"],
@@ -2019,7 +2039,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
 
         {/* actions */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-          <button onClick={() => onInstall(app)} style={{
+          {selfService ? <button onClick={() => onInstall(app)} style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 36px", minHeight: 48,
               background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
@@ -2043,7 +2063,17 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                 e.currentTarget.style.boxShadow = `0 0 20px ${T.accentGlow}, inset 0 0 20px ${T.cyan}08`;
                 e.currentTarget.style.transform = "none";
               }}
-            ><span style={{ fontSize: 16 }}>↓</span> INSTALL</button>
+            ><span style={{ fontSize: 16 }}>↓</span> INSTALL</button> : (
+            <div role="status" style={{
+              maxWidth: 560, padding: "12px 16px", borderRadius: 3,
+              background: T.yellow + "0d", border: `1px solid ${T.yellow}44`,
+              color: T.textSec, fontSize: 12, lineHeight: 1.5,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              <strong style={{ color: T.yellow, display: "block", marginBottom: 3 }}>{installPolicy.label}</strong>
+              {installPolicy.detail}
+            </div>
+          )}
           {app.webLink && (
             <a href={app.webLink} target="_blank" rel="noopener noreferrer" style={{
               display: "inline-flex", alignItems: "center", gap: 6,
@@ -2176,7 +2206,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       </div>
 
       {/* sticky mobile install bar */}
-      <div className="mobile-sticky-install" style={{
+      {selfService && <div className="mobile-sticky-install" style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300,
         background: "linear-gradient(135deg, rgba(17,14,36,0.96), rgba(30,20,58,0.94))",
         backdropFilter: "blur(20px) saturate(1.4)", WebkitBackdropFilter: "blur(20px) saturate(1.4)",
@@ -2201,7 +2231,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             boxShadow: `0 0 20px ${T.accentGlow}`,
           }}>↓ INSTALL</button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -2222,6 +2252,7 @@ function App() {
   // so an INSTALL clicked during the flash targeted a package the catalog no longer
   // serves. The served catalog is now the only catalog.
   const [catalogState, setCatalogState] = useState("loading"); // loading | ready | error
+  const publicApps = useMemo(() => apps.filter(isVisibleInPublicBazaar), [apps]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2270,12 +2301,12 @@ function App() {
 
   /* ─── ?app=<appId> deep-link: open detail page on mount ─── */
   useEffect(() => {
-    if (apps.length === 0) return;
+    if (publicApps.length === 0) return;
     try {
       const params = new URLSearchParams(window.location.search);
       const appParam = params.get('app');
       if (!appParam) return;
-      const match = apps.find((a) => a.appId === appParam);
+      const match = publicApps.find((a) => a.appId === appParam);
       if (match) {
         setSelectedId(match.appId);
       } else {
@@ -2285,7 +2316,7 @@ function App() {
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
       }
     } catch { /* in-app browsers may restrict URL APIs — fail silently */ }
-  }, [apps]);
+  }, [publicApps]);
 
   /* Sync ?app= to URL whenever selection changes (bookmarkable detail pages). */
   useEffect(() => {
@@ -2297,25 +2328,27 @@ function App() {
     } catch { /* fail silently in restricted browsers */ }
   }, [selectedId]);
 
-  const onInstall = useCallback((app) => { setInstallModalApp(app); }, []);
+  const onInstall = useCallback((app) => {
+    if (canSelfInstall(app)) setInstallModalApp(app);
+  }, []);
 
   const categories = useMemo(() => {
     const s = new Set();
-    apps.forEach((a) => a.categories.forEach((c) => s.add(c)));
+    publicApps.forEach((a) => a.categories.forEach((c) => s.add(c)));
     return ["All", ...Array.from(s).sort()];
-  }, [apps]);
+  }, [publicApps]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return apps.filter((a) => {
+    return publicApps.filter((a) => {
       const catOk = category === "All" || a.categories.some((c) => c.toLowerCase() === category.toLowerCase());
       const qOk = !q || [a.name, a.shortDescription, a.summary, a.upstreamAuthor, a.author?.name]
         .filter(Boolean).some((f) => f.toLowerCase().includes(q));
       return catOk && qOk;
     });
-  }, [apps, query, category]);
+  }, [publicApps, query, category]);
 
-  const selectedApp = useMemo(() => apps.find((a) => a.appId === selectedId), [apps, selectedId]);
+  const selectedApp = useMemo(() => publicApps.find((a) => a.appId === selectedId), [publicApps, selectedId]);
   const [detailInitTab, setDetailInitTab] = useState(null);
   const [detailInitSubTab, setDetailInitSubTab] = useState(null);
   const onSelect = useCallback((id, initTab, initSubTab) => {

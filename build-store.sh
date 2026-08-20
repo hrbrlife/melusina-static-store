@@ -44,6 +44,8 @@ BASE_URL="https://bazaar.melusina-os.org"
 RUNTIME_CONTRACT_VALIDATOR="$SCRIPT_DIR/scripts/validate-runtime-contract.py"
 RUNTIME_CONTRACT_SCHEMA="$SCRIPT_DIR/schemas/melusina-app-runtime-contract-v1.schema.json"
 RELEASE_ATTESTATION_SCHEMA="$SCRIPT_DIR/schemas/melusina-release-v1.schema.json"
+INSTALLATION_POLICY_CATALOG="$SCRIPT_DIR/fleet/bazaar-catalog.yaml"
+INSTALLATION_POLICY_RENDERER="$SCRIPT_DIR/scripts/bazaar-installation-policy.py"
 
 # The catalog admits releases only from this one Core App Team authority. These
 # are catalog governance coordinates, not app content: appHash/releaseHash
@@ -111,6 +113,20 @@ info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
 ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
+
+# Installation audience and installability are Store-governed catalog facts,
+# never values a package's metadata may choose. A real Store checkout always
+# has this manifest; isolated build fixtures intentionally omit fleet/ and
+# therefore exercise only the generic assembler path.
+BAZAAR_INSTALLATION_POLICY_JSON=""
+if [[ -f "$INSTALLATION_POLICY_CATALOG" ]]; then
+  [[ -f "$INSTALLATION_POLICY_RENDERER" ]] || { fail "installation-policy renderer missing at $INSTALLATION_POLICY_RENDERER"; exit 1; }
+  BAZAAR_INSTALLATION_POLICY_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG")" || {
+    fail "invalid governed installation policy at $INSTALLATION_POLICY_CATALOG"
+    exit 1
+  }
+  export BAZAAR_INSTALLATION_POLICY_JSON
+fi
 
 # A materialized tree (git-archive export, no .git) CANNOT refresh submodules;
 # route it to the guarded --no-refresh branch instead of aborting under
@@ -630,6 +646,22 @@ with open(meta_file) as f:
     m = json.load(f)
 with open(os.path.join(os.path.dirname(meta_file), 'RELEASE.json')) as f:
     release = json.load(f)
+
+# This Store deployment owns whether an app is self-service, provisioned, or
+# owner-only. Never accept an app-authored `installation` object: when the
+# fleet policy is available, replace it with the immutable-appId policy; when
+# running an isolated generic fixture, remove it altogether.
+m.pop('installation', None)
+policy_raw = os.environ.get('BAZAAR_INSTALLATION_POLICY_JSON', '')
+if policy_raw:
+    try:
+        policy_by_app = json.loads(policy_raw)
+        installation = policy_by_app[m['appId']]
+    except (KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise SystemExit(f'governed installation policy missing or malformed for {m.get("appId", "(unknown)")}: {exc}')
+    if not isinstance(installation, dict):
+        raise SystemExit(f'governed installation policy is not an object for {m["appId"]}')
+    m['installation'] = installation
 
 # Ensure author has current subfields. Legacy profile handles are intentionally dropped.
 author = m.get('author', {})

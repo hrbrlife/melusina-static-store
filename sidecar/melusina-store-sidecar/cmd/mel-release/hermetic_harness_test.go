@@ -247,6 +247,8 @@ func newHarness(t *testing.T) *harness {
 		"  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V\n" +
 		"  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n" +
 		"  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf\n" +
+		"  threshold: 3\n" +
+		"  member_count: 4\n" +
 		"groups:\n" +
 		"  test:\n" +
 		"    apps:\n" +

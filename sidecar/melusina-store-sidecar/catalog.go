@@ -177,6 +177,10 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 	for key, value := range meta {
 		row[key] = value
 	}
+	// App metadata cannot grant self-service installation or expose an owner-only
+	// foundation pearl. The Store is the policy authority: preserve only the
+	// existing governed projection for this immutable appId below.
+	delete(row, "installation")
 	if _, ok := row["name"]; !ok {
 		row["name"] = row["appTitle"]
 	}
@@ -216,10 +220,23 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 		return zero, fmt.Errorf("read existing app index: %w", err)
 	}
 	kept := index.Apps[:0]
+	var preservedInstallation *governedInstallationPolicy
 	for _, existing := range index.Apps {
-		if existingID, _ := existing["appId"].(string); existingID != appID {
-			kept = append(kept, existing)
+		if existingID, _ := existing["appId"].(string); existingID == appID {
+			rawPolicy, hasPolicy := existing["installation"]
+			policy, present, err := readGovernedInstallationPolicy(rawPolicy, hasPolicy)
+			if err != nil {
+				return zero, fmt.Errorf("existing catalog policy for app %s: %w", appID, err)
+			}
+			if present {
+				preservedInstallation = &policy
+			}
+			continue
 		}
+		kept = append(kept, existing)
+	}
+	if preservedInstallation != nil {
+		row["installation"] = preservedInstallation.catalogValue()
 	}
 	index.Apps = append(kept, row)
 	sort.Slice(index.Apps, func(i, j int) bool {

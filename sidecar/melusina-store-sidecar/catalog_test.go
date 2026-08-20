@@ -76,6 +76,60 @@ func TestProjectCatalogIndexDoesNotTrustMetadataUpdatedAt(t *testing.T) {
 	}
 }
 
+func TestProjectCatalogIndexPreservesOnlyExistingGovernedInstallationPolicy(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "apps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	appID := "policyapp0000000000000000000000000000000000000000000000"
+	initial := `{"apps":[{"appId":"` + appID + `","installation":{"audience":"workspace","install_mode":"self-service","pearl_role":"workspace","client_access":"self-owned","admin_surface":"same-pearl"}}]}`
+	if err := os.WriteFile(filepath.Join(root, "apps", "index.json"), []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spk := []byte("policy-preserving package")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	// A publisher cannot replace the Store's policy through metadata.
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + sha[:32] + `","name":"Policy","version":"1.0.0","installation":{"audience":"foundation","install_mode":"owner-only"}}`)
+	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{"signedAtUnix":1}`), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index struct {
+		Apps []map[string]any `json:"apps"`
+	}
+	if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Apps) != 1 {
+		t.Fatalf("apps = %d, want 1", len(index.Apps))
+	}
+	policy, ok := index.Apps[0]["installation"].(map[string]any)
+	if !ok {
+		t.Fatalf("governed installation policy missing: %#v", index.Apps[0])
+	}
+	if policy["install_mode"] != "self-service" || policy["audience"] != "workspace" || policy["admin_surface"] != "same-pearl" {
+		t.Fatalf("publisher metadata replaced governed policy: %#v", policy)
+	}
+}
+
+func TestProjectCatalogIndexRejectsMalformedExistingInstallationPolicy(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "apps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	appID := "policyapp0000000000000000000000000000000000000000000000"
+	if err := os.WriteFile(filepath.Join(root, "apps", "index.json"), []byte(`{"apps":[{"appId":"`+appID+`","installation":{"install_mode":"self-service"}}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spk := []byte("malformed-policy package")
+	sha := sha256.Sum256(spk)
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + hex.EncodeToString(sha[:])[:32] + `","name":"Policy","version":"1.0.0"}`)
+	if _, err := projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{}`), metadata); err == nil || !strings.Contains(err.Error(), "existing catalog policy") {
+		t.Fatalf("malformed existing installation policy accepted: %v", err)
+	}
+}
+
 // TestProjectCatalogIndexStripsMongoUnsafeKeysPreservingAttestHashes proves the
 // publish path (projectCatalogIndex) emits an apps/index.json whose rows carry
 // NO Minimongo-unsafe key ($-prefixed or dotted) at any depth — so the shell's

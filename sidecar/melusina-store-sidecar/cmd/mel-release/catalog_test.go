@@ -14,6 +14,7 @@ catalog_origin: https://bazaar.melusina-os.org
 expected_live_app_count: 3
 default_release_state: hold
 default_reconciliation_state: source-pinned
+installation_policy_version: 1
 release_squads_authority:
   multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
   vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
@@ -36,6 +37,11 @@ groups:
         catalog_repo: CCASH
         catalog_slug: popaye
         role: "flagship proof app"
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: scoped-share
+        admin_surface: hidden-authority
 
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
@@ -49,6 +55,11 @@ groups:
         catalog_repo: DueProcess
         catalog_slug: dueprocess
         role: "KYC / sanctions screening"
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: workflow
+        client_access: none
+        admin_surface: same-pearl
 
   namedcoin:
     apps:
@@ -64,6 +75,11 @@ groups:
         catalog_repo: namedcoin-admin
         catalog_slug: namedcoin-admin
         role: "NamedCoin admin app"
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: authority
+        client_access: none
+        admin_surface: hidden-authority
 `
 
 func writeCatalog(t *testing.T) string {
@@ -87,6 +103,9 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
+	if catalog.InstallationPolicyVersion != installationPolicyVersion {
+		t.Fatalf("installation policy version = %d, want %d", catalog.InstallationPolicyVersion, installationPolicyVersion)
+	}
 	if got := catalog.ReleaseSquadsAuthority; got.Multisig != "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V" || got.Vault != "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3" || got.ProgramID != "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf" || got.Threshold != defaultSquadsThreshold || got.MemberCount != defaultSquadsMemberCount {
 		t.Fatalf("catalog shared Squads authority = %+v", got)
 	}
@@ -101,7 +120,7 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	if popaye.PublishSlug != "ccash" || popaye.CatalogName != "popaye" || popaye.SourcePath != "ccash_go_htmx" || popaye.SourceRepository != "https://github.com/hrbrlife/ccash_go_htmx" || popaye.CatalogDeveloper != "hrbrlife" || popaye.CatalogRepo != "CCASH" || popaye.CatalogSlug != "popaye" || popaye.LiveVersion != "0.3.189" {
 		t.Fatalf("popaye fields wrong: %+v", popaye)
 	}
-	if popaye.Group != "money" || popaye.ReleaseState != "hold" || popaye.ReconciliationState != "source-pinned" {
+	if popaye.Group != "money" || popaye.ReleaseState != "hold" || popaye.ReconciliationState != "source-pinned" || popaye.Audience != "client" || popaye.InstallMode != "owner-provisions" || popaye.PearlRole != "workspace" || popaye.ClientAccess != "scoped-share" || popaye.AdminSurface != "hidden-authority" {
 		t.Fatalf("popaye catalog state wrong: %+v", popaye)
 	}
 
@@ -219,6 +238,9 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if len(catalog.Apps) != 32 || catalog.ExpectedLiveAppCount != 32 {
 		t.Fatalf("real catalog scope = apps %d expected %d, want 32", len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
+	if catalog.InstallationPolicyVersion != installationPolicyVersion {
+		t.Fatalf("real catalog installation policy version = %d, want %d", catalog.InstallationPolicyVersion, installationPolicyVersion)
+	}
 	seenNames := make(map[string]string, len(catalog.Apps))
 	for _, app := range catalog.Apps {
 		for field, value := range map[string]string{
@@ -230,6 +252,11 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 			"live_version":      app.LiveVersion,
 			"source_repository": app.SourceRepository,
 			"role":              app.Role,
+			"audience":          app.Audience,
+			"install_mode":      app.InstallMode,
+			"pearl_role":        app.PearlRole,
+			"client_access":     app.ClientAccess,
+			"admin_surface":     app.AdminSurface,
 		} {
 			if strings.TrimSpace(value) == "" {
 				t.Fatalf("catalog app %q has empty %s", app.Name, field)
@@ -261,6 +288,31 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		if err != nil || byName.AppID != app.AppID {
 			t.Fatalf("Select(name %q) = %+v, %v", app.Name, byName, err)
 		}
+	}
+}
+
+func TestLoadCatalogRejectsInvalidInstallationPolicy(t *testing.T) {
+	for name, replacement := range map[string]string{
+		"mode":     "        install_mode: arbitrary\n",
+		"audience": "        audience: arbitrary\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := writeCatalog(t)
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mutated := strings.Replace(string(content), map[string]string{
+				"mode":     "        install_mode: owner-provisions\n",
+				"audience": "        audience: client\n",
+			}[name], replacement, 1)
+			if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "installation policy") {
+				t.Fatalf("LoadCatalog accepted invalid installation policy: %v", err)
+			}
+		})
 	}
 }
 

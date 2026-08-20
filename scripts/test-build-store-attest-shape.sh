@@ -22,13 +22,41 @@ cp -a "$ROOT/scripts" "$TMP/"
 cp -a "$ROOT/schemas" "$TMP/"
 mkdir -p "$APP"
 mkdir -p "$CONTRACT_APP"
+mkdir -p "$TMP/fleet"
+
+# The Store, not source metadata, governs installation. Exercise the same
+# manifest renderer used by a real aggregate build and prove an app-authored
+# policy cannot alter the public install surface.
+printf '%s\n' \
+  'schema: melusina-bazaar-catalog/v1' \
+  'catalog_origin: https://bazaar.melusina-os.org' \
+  'expected_live_app_count: 2' \
+  'installation_policy_version: 1' \
+  'groups:' \
+  '  test:' \
+  '    apps:' \
+  '      legacy:' \
+  "        appId: $APP_ID" \
+  '        audience: workspace' \
+  '        install_mode: self-service' \
+  '        pearl_role: workspace' \
+  '        client_access: self-owned' \
+  '        admin_surface: same-pearl' \
+  '      declared:' \
+  "        appId: $CONTRACT_APP_ID" \
+  '        audience: client' \
+  '        install_mode: owner-provisions' \
+  '        pearl_role: workflow' \
+  '        client_access: scoped-share' \
+  '        admin_surface: hidden-authority' \
+  > "$TMP/fleet/bazaar-catalog.yaml"
 
 printf 'fixture-spk-bytes\n' > "$APP/app.spk"
 SPK_SHA="$(sha256sum "$APP/app.spk" | awk '{print $1}')"
 PACKAGE_ID="${SPK_SHA:0:32}"
 
 printf '%s\n' \
-  "{\"appId\":\"$APP_ID\",\"name\":\"Demo\",\"version\":\"1.0.0\",\"versionNumber\":1,\"packageId\":\"$PACKAGE_ID\",\"sha256\":\"$SPK_SHA\",\"shortDescription\":\"Attestation-shape fixture\",\"categories\":[\"Productivity\"],\"isOpenSource\":true,\"webLink\":\"https://example.invalid\",\"codeLink\":\"https://example.invalid/source\",\"upstreamAuthor\":\"Example\",\"createdAt\":1,\"author\":{\"name\":\"Example\"}}" \
+  "{\"appId\":\"$APP_ID\",\"name\":\"Demo\",\"version\":\"1.0.0\",\"versionNumber\":1,\"packageId\":\"$PACKAGE_ID\",\"sha256\":\"$SPK_SHA\",\"shortDescription\":\"Attestation-shape fixture\",\"categories\":[\"Productivity\"],\"isOpenSource\":true,\"webLink\":\"https://example.invalid\",\"codeLink\":\"https://example.invalid/source\",\"upstreamAuthor\":\"Example\",\"createdAt\":1,\"author\":{\"name\":\"Example\"},\"installation\":{\"audience\":\"foundation\",\"install_mode\":\"owner-only\"}}" \
   > "$APP/metadata.json"
 
 # Offline mode is test-only, but this still exercises the production-shaped
@@ -121,6 +149,14 @@ assert runtime_contract["spkSha256"] == contract_spk_sha, runtime_contract
 assert runtime_contract["appHash"] == contract_app_hash, runtime_contract
 assert runtime_contract["path"] == "attest/" + contract_app_id + "/RUNTIME-CONTRACT.json", runtime_contract
 assert runtime_contract["sidecars"] == [], runtime_contract
+assert legacy["installation"] == {
+    "audience": "workspace", "install_mode": "self-service", "pearl_role": "workspace",
+    "client_access": "self-owned", "admin_surface": "same-pearl",
+}, legacy
+assert declared["installation"] == {
+    "audience": "client", "install_mode": "owner-provisions", "pearl_role": "workflow",
+    "client_access": "scoped-share", "admin_surface": "hidden-authority",
+}, declared
 PY
 
 # The offline flag only relaxes the Pearl-signature/stub gate. It must not

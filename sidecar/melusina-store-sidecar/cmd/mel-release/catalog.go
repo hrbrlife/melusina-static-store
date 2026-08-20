@@ -35,6 +35,11 @@ type App struct {
 	CatalogSlug            string
 	PackProfile            string
 	Role                   string
+	Audience               string
+	InstallMode            string
+	PearlRole              string
+	ClientAccess           string
+	AdminSurface           string
 	LiveVersion            string
 	ReconciliationState    string
 	SourceSelectionState   string
@@ -51,6 +56,7 @@ type Catalog struct {
 	DefaultReleaseState         string
 	DefaultReconciliationState  string
 	DefaultSourceSelectionState string
+	InstallationPolicyVersion   int
 	ReleaseSquadsAuthority      SquadsAuthority
 	Apps                        []App
 }
@@ -77,6 +83,7 @@ const (
 	defaultSquadsProgramID    = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
 	defaultSquadsThreshold    = 3
 	defaultSquadsMemberCount  = 4
+	installationPolicyVersion = 1
 )
 
 // LoadCatalog parses the manifest at path. The manifest has one fixed shape
@@ -185,6 +192,12 @@ func LoadCatalog(path string) (*Catalog, error) {
 			catalog.DefaultReconciliationState = unquote(val)
 		case indent == 0 && key == "default_source_selection_state":
 			catalog.DefaultSourceSelectionState = unquote(val)
+		case indent == 0 && key == "installation_policy_version":
+			version, err := strconv.Atoi(unquote(val))
+			if err != nil || version != installationPolicyVersion {
+				return nil, fmt.Errorf("Bazaar catalog manifest %s line %d: installation_policy_version must be %d", path, lineNo, installationPolicyVersion)
+			}
+			catalog.InstallationPolicyVersion = version
 		case indent == 0 && key == "release_squads_authority":
 			if hasVal {
 				return nil, fmt.Errorf("Bazaar catalog manifest %s line %d: release_squads_authority must be a mapping", path, lineNo)
@@ -303,6 +316,12 @@ func LoadCatalog(path string) (*Catalog, error) {
 		if !validSourceSelectionState(a.SourceSelectionState) {
 			return nil, fmt.Errorf("catalog app %q has invalid source_selection_state %q", a.AppID, a.SourceSelectionState)
 		}
+		// Legacy synthetic fixtures stay readable until they opt into the
+		// installation-policy version. The checked-in default Bazaar opts in and
+		// therefore cannot silently lose a mode, audience, or authority surface.
+		if catalog.InstallationPolicyVersion == installationPolicyVersion && !validInstallationPolicy(*a) {
+			return nil, fmt.Errorf("catalog app %q has missing or invalid installation policy", a.AppID)
+		}
 		if a.ReleaseState == "ready" && (strings.TrimSpace(a.SourcePath) == "" || strings.TrimSpace(a.SourceCommit) == "") {
 			return nil, fmt.Errorf("ready catalog app %q must declare source_path and source_commit", a.AppID)
 		}
@@ -402,6 +421,16 @@ func assignAppField(a *App, key, val string) error {
 		a.PackProfile = val
 	case "role":
 		a.Role = val
+	case "audience":
+		a.Audience = val
+	case "install_mode":
+		a.InstallMode = val
+	case "pearl_role":
+		a.PearlRole = val
+	case "client_access":
+		a.ClientAccess = val
+	case "admin_surface":
+		a.AdminSurface = val
 	case "live_version":
 		a.LiveVersion = val
 	case "reconciliation_state":
@@ -416,6 +445,59 @@ func assignAppField(a *App, key, val string) error {
 		return fmt.Errorf("app %q may not declare app-specific Squads authority field %q", a.Name, key)
 	}
 	return nil
+}
+
+func validInstallationPolicy(app App) bool {
+	return validInstallationAudience(app.Audience) &&
+		validInstallationMode(app.InstallMode) &&
+		validPearlRole(app.PearlRole) &&
+		validClientAccess(app.ClientAccess) &&
+		validAdminSurface(app.AdminSurface)
+}
+
+func validInstallationAudience(value string) bool {
+	switch value {
+	case "foundation", "operator", "client", "workspace", "engineering":
+		return true
+	default:
+		return false
+	}
+}
+
+func validInstallationMode(value string) bool {
+	switch value {
+	case "owner-only", "owner-provisions", "self-service":
+		return true
+	default:
+		return false
+	}
+}
+
+func validPearlRole(value string) bool {
+	switch value {
+	case "authority", "proxy", "workflow", "workspace", "template", "test":
+		return true
+	default:
+		return false
+	}
+}
+
+func validClientAccess(value string) bool {
+	switch value {
+	case "none", "scoped-share", "self-owned":
+		return true
+	default:
+		return false
+	}
+}
+
+func validAdminSurface(value string) bool {
+	switch value {
+	case "hidden-authority", "same-pearl", "deployment-only":
+		return true
+	default:
+		return false
+	}
 }
 
 func assignReleaseSquadsAuthority(authority *SquadsAuthority, key, value, path string, lineNo int) error {

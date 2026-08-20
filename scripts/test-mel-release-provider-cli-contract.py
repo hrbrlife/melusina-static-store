@@ -1545,6 +1545,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert len(entries) == 32, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
+    assert document["installation_policy_version"] == 1, document
     assert CYBERTELLER_CONFIG_APP_ID not in entries, entries
     assert RETIRED_GOLDKEY_DEV_APP_ID not in entries, entries
     goldkey = entries[PRODUCTION_GOLDKEY_APP_ID]
@@ -1570,6 +1571,46 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     }
     for app_id, expected_name in expected_public_names.items():
         assert entries[app_id]["catalog_name"] == expected_name, entries[app_id]
+    expected_installation_policy = {
+        "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": ("client", "owner-provisions", "workflow", "scoped-share", "hidden-authority"),
+        "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh": ("client", "owner-provisions", "workspace", "scoped-share", "hidden-authority"),
+        "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0": ("foundation", "owner-only", "authority", "none", "hidden-authority"),
+        "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": ("client", "owner-provisions", "workspace", "scoped-share", "hidden-authority"),
+        "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": ("foundation", "owner-only", "authority", "none", "hidden-authority"),
+        "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0": ("foundation", "owner-only", "workflow", "none", "same-pearl"),
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": ("foundation", "owner-only", "proxy", "none", "hidden-authority"),
+        "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0": ("foundation", "owner-only", "workflow", "none", "same-pearl"),
+        "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": ("foundation", "owner-only", "authority", "none", "hidden-authority"),
+        "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": ("foundation", "owner-only", "workspace", "none", "same-pearl"),
+        "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh": ("client", "owner-provisions", "workspace", "self-owned", "same-pearl"),
+        "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0": ("client", "owner-provisions", "workspace", "self-owned", "same-pearl"),
+        "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0": ("foundation", "owner-provisions", "authority", "scoped-share", "hidden-authority"),
+        "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h": ("foundation", "owner-only", "template", "none", "hidden-authority"),
+        "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": ("client", "owner-provisions", "workspace", "scoped-share", "same-pearl"),
+        "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh": ("foundation", "owner-only", "proxy", "none", "hidden-authority"),
+        "40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0": ("foundation", "owner-only", "workspace", "none", "same-pearl"),
+        "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh": ("foundation", "owner-only", "proxy", "none", "hidden-authority"),
+        "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh": ("engineering", "owner-only", "test", "none", "deployment-only"),
+        "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+    }
+    assert set(expected_installation_policy) == set(entries), entries
+    for app_id, expected_policy in expected_installation_policy.items():
+        actual_policy = tuple(entries[app_id][field] for field in (
+            "audience", "install_mode", "pearl_role", "client_access", "admin_surface",
+        ))
+        assert actual_policy == expected_policy, (app_id, actual_policy, expected_policy)
     for app_id in (
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",

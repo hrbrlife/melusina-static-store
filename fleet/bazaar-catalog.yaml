@@ -21,6 +21,14 @@ default_source_selection_state: pending
 # Every governed build must use the exact current tip of this branch. A Store
 # listing or a reachable historical commit is evidence, never source authority.
 default_source_branch: dev-publish
+# Installation policy is governed by this default-Bazaar manifest, never by an
+# app's mutable metadata. The Store projects these five fields into its served
+# catalog and permits a direct install only for `self-service` workspaces.
+# `owner-provisions` plus `client_access: self-owned` means the owner creates
+# the initial pearl and the client takes governed ownership after setup.
+# A Workspace app may also be owner-provisioned operationally; `self-service`
+# records that a direct workspace install is allowed.
+installation_policy_version: 1
 # One publisher authority governs every default-Bazaar app. Individual apps
 # retain distinct SPK signing keys and immutable app identities, but no app may
 # select a different Squads multisig, its vault, or its program at release time.
@@ -68,6 +76,11 @@ groups:
         catalog_slug: welcome-pearl
         source_repository: https://github.com/hrbrlife/welcome-pearl
         role: public-account-opening-entry
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workflow
+        client_access: scoped-share
+        admin_surface: hidden-authority
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
@@ -92,6 +105,11 @@ groups:
         # its build tags.
         pack_profile: namedcoin-msb-devnet
         role: identity-attestation-gate
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: scoped-share
+        admin_surface: hidden-authority
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
@@ -111,6 +129,11 @@ groups:
         catalog_repo: melusina-namedcoin-admin-app
         catalog_slug: namedcoin-admin
         role: issuer-operations
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: authority
+        client_access: none
+        admin_surface: hidden-authority
       popaye:
         appId: uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510
         # A clean source cohort must place Popaye at this portable path beside
@@ -135,6 +158,11 @@ groups:
         catalog_slug: popaye
         source_repository: https://github.com/hrbrlife/ccash_go_htmx
         role: account-opening-and-client-money-ui
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: scoped-share
+        admin_surface: hidden-authority
       ccashconfig:
         appId: 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0
         # The release provider resolves every source below one clean,
@@ -159,6 +187,11 @@ groups:
         catalog_slug: cca-sh-config
         source_repository: https://github.com/hrbrlife/melusina_ccashconfig_app
         role: central-connection-hub
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: authority
+        client_access: none
+        admin_surface: hidden-authority
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
@@ -181,6 +214,11 @@ groups:
         catalog_repo: DueProcess
         catalog_slug: dueprocess
         role: four-eyes-casework
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: workflow
+        client_access: none
+        admin_surface: same-pearl
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
@@ -206,6 +244,11 @@ groups:
         catalog_repo: AI_Lagoon
         catalog_slug: ai-lagoon
         role: ai-provider-routing-and-vision
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: proxy
+        client_access: none
+        admin_surface: hidden-authority
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
@@ -228,6 +271,11 @@ groups:
         catalog_repo: cyberteller
         catalog_slug: cyberteller
         role: crypto-deposit-and-swap
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: workflow
+        client_access: none
+        admin_surface: same-pearl
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
@@ -245,6 +293,11 @@ groups:
         catalog_repo: fineract-setup
         catalog_slug: fineract-setup
         role: ledger-setup-and-trust-bundle
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: authority
+        client_access: none
+        admin_surface: hidden-authority
       telescreen:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
@@ -264,6 +317,11 @@ groups:
         catalog_slug: telescreen
         source_repository: https://github.com/hrbrlife/pr_ninja
         role: sanctions-screening-and-review
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: workspace
+        client_access: none
+        admin_surface: same-pearl
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
@@ -283,6 +341,11 @@ groups:
         catalog_slug: teleport
         source_repository: https://github.com/hrbrlife/melusina_teleport2
         role: private-chat-and-calls
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
@@ -307,6 +370,11 @@ groups:
         catalog_slug: instaco
         source_repository: https://github.com/hrbrlife/melusina-instaco-app
         role: series-llc-formation-and-corporate-registry
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
@@ -332,6 +400,11 @@ groups:
         catalog_slug: mlsna-admin
         source_repository: https://github.com/hrbrlife/MLSNA_token
         role: dao-formation-governance-and-treasury
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
   platform-tools:
     apps:
       botmother:
@@ -354,6 +427,11 @@ groups:
         catalog_repo: MELUSINA_BOTMOTHER
         catalog_slug: botmother
         role: telegram-bot-management-and-scoped-webhook-ingress
+        audience: foundation
+        install_mode: owner-provisions
+        pearl_role: authority
+        client_access: scoped-share
+        admin_surface: hidden-authority
       minigit:
         appId: pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50
         # A cohort must use a portable product directory, never a preserved
@@ -371,6 +449,11 @@ groups:
         catalog_repo: MiniGit
         catalog_slug: gitpearl
         role: private-git-and-static-publishing
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
@@ -391,6 +474,11 @@ groups:
         catalog_slug: jinn
         source_repository: https://github.com/hrbrlife/jinn
         role: confined-ai-reporting-and-scheduled-sheets-assistance
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink
@@ -413,6 +501,11 @@ groups:
         catalog_slug: cratelink
         source_repository: https://github.com/hrbrlife/melusina_cratelink_app
         role: controlled-workspace-file-transfer
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
   bureau-rich-office:
     # Only the retained rich Office sources are eligible here. Sparse or
     # stripped historical lines are evidence only and must never be selected.
@@ -432,6 +525,11 @@ groups:
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
         role: rich-jspreadsheet-formulas-snapshots-xlsx-collaboration
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       doc-bureau:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
@@ -456,6 +554,11 @@ groups:
         catalog_repo: melusina-bureau-doc-app
         catalog_slug: doc-bureau
         role: rich-tiptap-yjs-collaboration-snapshots-docx-html-export
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
@@ -476,6 +579,11 @@ groups:
         catalog_slug: paint-bureau
         source_repository: https://github.com/hrbrlife/melusina-bureau-paint-app
         role: rich-minipaint-layers-filters-snapshots-powerbox-import
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
   productivity-apps:
     apps:
       goldkey:
@@ -500,6 +608,11 @@ groups:
         catalog_repo: GoldKey
         catalog_slug: goldkey
         role: encrypted-team-vault
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
@@ -516,6 +629,11 @@ groups:
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail
         role: unified-mail-station-and-mailbox
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
   unreconciled-live-listings:
     # These live default-Bazaar listings are deliberately represented here,
     # but have no publishable source path or commit until their retain/retire
@@ -540,6 +658,11 @@ groups:
         catalog_slug: bureau-cal
         source_repository: https://github.com/hrbrlife/melusina_bureau_cal_app
         role: calendar-and-scheduling
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       bureau-contacts:
         appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
         source_path: melusina-bureau-contacts-app
@@ -560,6 +683,11 @@ groups:
         catalog_slug: bureau-contacts
         source_repository: https://github.com/hrbrlife/melusina_bureau_contacts_app
         role: contacts-and-address-book
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       canboard:
         appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
         source_path: melusina-canboard-app
@@ -578,6 +706,11 @@ groups:
         catalog_slug: canboard
         source_repository: https://github.com/hrbrlife/melusina_canboard_app
         role: collaborative-canvas
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
       ccash-domain-template:
         appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
         # v0.5.88/appVersion-110 is the current dev-publish tip. It incorporates
@@ -601,6 +734,11 @@ groups:
         catalog_slug: cca-sh-domain-template
         source_repository: https://github.com/hrbrlife/ccash_domain_template
         role: domain-template
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: template
+        client_access: none
+        admin_surface: hidden-authority
       clientspace:
         appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
         source_path: clientspace
@@ -622,6 +760,11 @@ groups:
         catalog_slug: clientspace
         source_repository: https://github.com/hrbrlife/clientspace
         role: client-workspace
+        audience: client
+        install_mode: owner-provisions
+        pearl_role: workspace
+        client_access: scoped-share
+        admin_surface: same-pearl
       creeper:
         appId: pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh
         source_path: melusina-app-creeper
@@ -640,6 +783,11 @@ groups:
         catalog_slug: creeper
         source_repository: https://github.com/hrbrlife/melusina-app-creeper
         role: monitoring-and-automation
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: proxy
+        client_access: none
+        admin_surface: hidden-authority
       melusina-dashboard:
         appId: 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0
         source_path: melusina-dashboard-app
@@ -661,6 +809,11 @@ groups:
         catalog_slug: melusina-dashboard-app
         source_repository: https://github.com/hrbrlife/melusina-dashboard-app
         role: dashboard-and-navigation
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: workspace
+        client_access: none
+        admin_surface: same-pearl
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
         source_path: melusina-app-opensanctions
@@ -682,6 +835,11 @@ groups:
         catalog_slug: opensanctions
         source_repository: https://github.com/hrbrlife/melusina-app-opensanctions
         role: sanctions-screening
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: proxy
+        client_access: none
+        admin_surface: hidden-authority
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
         source_path: shell-tester
@@ -702,6 +860,11 @@ groups:
         catalog_slug: shell-tester
         source_repository: https://github.com/hrbrlife/shell_tester
         role: shell-validation
+        audience: engineering
+        install_mode: owner-only
+        pearl_role: test
+        client_access: none
+        admin_surface: deployment-only
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
         source_path: vintage-test-dec
@@ -723,3 +886,8 @@ groups:
         catalog_slug: vintage
         source_repository: https://github.com/hrbrlife/vintage-test-dec
         role: remote-desktop
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl

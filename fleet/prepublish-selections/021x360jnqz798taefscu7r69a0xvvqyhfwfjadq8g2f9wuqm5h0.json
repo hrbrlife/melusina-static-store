@@ -2,22 +2,24 @@
   "schema": "melusina-source-selection-v1",
   "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
   "sourceRepository": "https://github.com/hrbrlife/welcome-pearl",
-  "sourceCommit": "f91763a6a325eb3b14f1ca2b61bec25fba30b35d",
+  "sourceCommit": "c9949d4946d04f134006c441fa2f02f107775531",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug 19 dev-publish v0.1.29/appVersion-30 Lobby source is canonical. Its explicit merge carries main's 0.1.28 release cohort forward while retaining the newer build-bound runtime-contract and default-Bazaar fixture controls. The selected head also binds the tracked package identity and fixes the package clock/runtime digest so metadata-only release controls cannot rotate candidate bytes. Every preserved feature/fix line was reviewed as an ancestor or historical release evidence; the sole preserved stash is an obsolete version-only bump with no unique functionality and is explicitly marked not-app-relevant.",
+  "decisionSummary": "The Aug 20 dev-publish v0.1.30/appVersion-31 Lobby source is the newest valid forward source. It retains the selected build-bound runtime-contract, default-Bazaar fixture, and reproducible package controls while creating a distinct immutable version above the prior same-version byte divergence. Main remains an ancestor. Earlier preserved feature and fix lines were already reviewed as ancestors or historical evidence; none contains newer app-relevant work than this direct dev-publish tip. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "clean selected-source checkout with current origin heads",
       "make test and go vet ./...",
       "make verify-perms-pkgdef, make build, and make verify-no-residue",
-      "two byte-identical SPK packs from f91763a6a325eb3b14f1ca2b61bec25fba30b35d matched SHA-256 0cdc88f57032386377a5fc37f6faff1e2050a2b7bd8fc4a4bf65cb0e5fff4503 with packageId synchronization and SPK verification"
+      "two byte-identical SPK packs from c9949d4946d04f134006c441fa2f02f107775531 matched SHA-256 8889078813a432c506c370f11d6cdcbd96e495dfdefc5af0ee06587385bfd13a with packageId synchronization and SPK verification",
+      "the governed Store build must bind the canonical appHash over this SPK and staged metadata before registration",
+      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "f91763a6a325eb3b14f1ca2b61bec25fba30b35d", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "c9949d4946d04f134006c441fa2f02f107775531", "outcome": "selected"},
     {"ref": "refs/heads/feat/welcome-pearl-strip", "commit": "0c28e891a05e342da63a0c8154c978fd42dc6a15", "outcome": "archive"},
     {"ref": "refs/heads/fix/active-bazaar-operator-identity", "commit": "d2c39b4030f086708ed9a08466c0f453f692d184", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "5c3f431561d84516bf3e1c4ff530accd383817b8", "outcome": "baseline"},

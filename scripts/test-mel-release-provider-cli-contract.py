@@ -1593,7 +1593,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_held():
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
-    assert lobby["source_commit"] == "f91763a6a325eb3b14f1ca2b61bec25fba30b35d", lobby
+    assert lobby["source_commit"] == "c9949d4946d04f134006c441fa2f02f107775531", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
@@ -1816,7 +1816,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence_while_held():
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
-    assert lobby["source_commit"] == "f91763a6a325eb3b14f1ca2b61bec25fba30b35d", lobby
+    assert lobby["source_commit"] == "c9949d4946d04f134006c441fa2f02f107775531", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby

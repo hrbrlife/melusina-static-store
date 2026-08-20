@@ -51,18 +51,18 @@ groups:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
         source_path: welcome
-        # v0.1.29/appVersion-30 is the newest dev-publish source. It carries
-        # the build-bound runtime contract and default-Bazaar fixture repairs,
-        # preserves the semantically integrated 0.1.28 release cohort, and
-        # binds the reproducible package identity in tracked source.
-        source_commit: f91763a6a325eb3b14f1ca2b61bec25fba30b35d
+        # v0.1.30/appVersion-31 is the newest valid forward dev-publish
+        # source. It retains the build-bound runtime contract and default
+        # Bazaar fixture repairs, while moving the selected source into a
+        # distinct immutable package/release version.
+        source_commit: c9949d4946d04f134006c441fa2f02f107775531
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0.json
         publish_slug: welcome-pearl
         catalog_name: Lobby
-        live_version: 0.1.29
+        live_version: 0.1.30
         catalog_developer: hrbrlife
         catalog_repo: welcome-pearl
         catalog_slug: welcome-pearl

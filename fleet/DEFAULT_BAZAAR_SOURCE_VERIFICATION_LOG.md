@@ -92,9 +92,8 @@ source; a fresh recursive clone passed `make vet test` on 2026-08-19.
 GoldKey's current `dev-publish` tip
 `4cdde8588370bfb9ae7b4a7d736d623b8ab0536b` is a direct forward descendant of
 the prior production source. A fresh recursive clone hydrated both declared
-submodules and passed the pinned-toolchain `make ci`. The production v0.3.4
-and separate DEV v0.1.3/version-4 identities retain their distinct metadata,
-runtime contracts, and package targets while sharing this one verified source.
+submodules and passed the pinned-toolchain `make ci`. The selected production
+release retains its matching metadata, runtime contract, and package target.
 
 ## Shell–DueProcess autonomous-create versioning
 

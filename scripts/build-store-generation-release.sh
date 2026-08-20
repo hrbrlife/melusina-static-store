@@ -100,17 +100,32 @@ build_once() {
     # reconstruct its JSON or build Go on the target.
     go build -mod=vendor -trimpath -ldflags "-buildid=" \
       -o "$stage/bin/boot-identity-prep" ./cmd/boot-identity-prep
+    # The controller is intentionally a separate root-owned process, but it is
+    # built from the exact source revision as the Store it will govern.  The
+    # first installation remains an explicitly authorized InstallerRelease
+    # bootstrap; later Store generations never smuggle in a controller change.
+    go build -mod=vendor -trimpath -ldflags "-buildid=" \
+      -o "$stage/bin/melusina-update-controller" ./cmd/melusina-update-controller
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \
     "$stage/systemd/melusina-store-sidecar.service"
+  install -m 0644 "$work/deploy/store-generation/melusina-update-controller.service" \
+    "$stage/systemd/melusina-update-controller.service"
+  install -m 0644 "$work/deploy/store-generation/melusina-update-controller.timer" \
+    "$stage/systemd/melusina-update-controller.timer"
   install -m 0644 "$work/deploy/store-generation/store.config.template.json" \
     "$stage/config/store.config.template.json"
+  install -m 0644 "$work/deploy/store-generation/update-controller.config.template.json" \
+    "$stage/config/update-controller.config.template.json"
+  install -m 0644 "$work/deploy/store-generation/component-registry.template.json" \
+    "$stage/config/component-registry.template.json"
   install -m 0644 "$work/deploy/store-generation/DEPLOYMENT-CONTRACT.md" \
     "$stage/DEPLOYMENT-CONTRACT.md"
   printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"uiManifestSha256\":\"$ui_manifest_sha\",\"builds\":2,\"byteIdentical\":true}" \
     >"$stage/BUILD-PROVENANCE.json"
   find "$stage" -type d -exec chmod 0755 {} +
-  chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep"
+  chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" \
+    "$stage/bin/melusina-update-controller"
   chmod 0644 "$stage/BUILD-PROVENANCE.json"
   find "$stage" -exec touch -h -d "@$SOURCE_EPOCH" {} +
   (
@@ -121,7 +136,8 @@ build_once() {
       | env -u XZ_OPT -u XZ_DEFAULTS xz --threads=1 --check=crc64 --lzma2=preset=9e -c \
         >"$out/store-generation-$VERSION.tar.xz"
   )
-  sha256sum "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" "$out/store-generation-$VERSION.tar.xz" \
+  sha256sum "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" \
+    "$stage/bin/melusina-update-controller" "$out/store-generation-$VERSION.tar.xz" \
     | sed "s#  $stage/bin/#  #; s#  $out/#  #" >"$out/SHA256SUMS"
 }
 
@@ -130,6 +146,7 @@ build_once "$W1" "$TMP/out-1"
 build_once "$W2" "$TMP/out-2"
 cmp "$TMP/out-1/stage/bin/melusina-store-sidecar" "$TMP/out-2/stage/bin/melusina-store-sidecar"
 cmp "$TMP/out-1/stage/bin/boot-identity-prep" "$TMP/out-2/stage/bin/boot-identity-prep"
+cmp "$TMP/out-1/stage/bin/melusina-update-controller" "$TMP/out-2/stage/bin/melusina-update-controller"
 cmp "$TMP/out-1/store-generation-$VERSION.tar.xz" "$TMP/out-2/store-generation-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
 
@@ -137,6 +154,7 @@ PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-generation-$VERSION.output.XXXXXX")
 chmod 0755 "$PUBLISH_TMP"
 install -m 0755 "$TMP/out-1/stage/bin/melusina-store-sidecar" "$PUBLISH_TMP/melusina-store-sidecar"
 install -m 0755 "$TMP/out-1/stage/bin/boot-identity-prep" "$PUBLISH_TMP/boot-identity-prep"
+install -m 0755 "$TMP/out-1/stage/bin/melusina-update-controller" "$PUBLISH_TMP/melusina-update-controller"
 install -m 0644 "$TMP/out-1/store-generation-$VERSION.tar.xz" "$PUBLISH_TMP/store-generation-$VERSION.tar.xz"
 install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
 install -m 0644 "$TMP/out-1/stage/BUILD-PROVENANCE.json" "$PUBLISH_TMP/BUILD-PROVENANCE.json"

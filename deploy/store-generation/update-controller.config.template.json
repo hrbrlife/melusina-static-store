@@ -1,0 +1,18 @@
+{
+  "schema": "melusina-update-controller-config-v1",
+  "autoApply": false,
+  "pollIntervalSeconds": 300,
+  "deepStableSeconds": 120,
+  "promoteDeadlineSeconds": 600,
+  "operatorPubkey": "REPLACE_WITH_STORE_OPERATOR_SIGNING_PUBKEY",
+  "expectedStoreId": "REPLACE_WITH_PINNED_STORE_ID",
+  "bundleOrigin": "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST",
+  "storeGenerationUrl": "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST/update/generation.json",
+  "componentRegistryPath": "/etc/melusina/update-controller/component-registry.json",
+  "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+  "masterNftMint": "REPLACE_WITH_RELEASE_MASTER_NFT_MINT",
+  "licenseNftMint": "REPLACE_WITH_TARGET_LICENSE_MINT",
+  "solanaRpcUrl": "REPLACE_WITH_PRIMARY_TRUSTED_SOLANA_RPC_URL",
+  "stateDir": "/var/lib/melusina/update-controller",
+  "receiptDir": "/var/lib/melusina/update-controller/receipts"
+}

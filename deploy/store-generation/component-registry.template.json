@@ -1,0 +1,23 @@
+{
+  "schema": "melusina-component-registry-v1",
+  "components": {
+    "melusina-store-sidecar": {
+      "componentId": "melusina-store-sidecar",
+      "componentClass": "sidecar",
+      "applyKind": "binary-replace",
+      "installRoot": "/opt/melusina-store/current/bin/melusina-store-sidecar",
+      "stagingDir": "/var/lib/melusina/update-controller/staging/melusina-store-sidecar",
+      "serviceUnit": "melusina-store-sidecar.service",
+      "healthCommand": [
+        "/usr/bin/curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST:8443/healthz"
+      ],
+      "selfReportUrl": "https://REPLACE_WITH_PUBLIC_BAZAAR_HOST:8443/release-info",
+      "selfReportDialAddress": "127.0.0.1:8443",
+      "runtimeEnvFile": "/var/lib/melusina-store/runtime/melusina-store-sidecar.env"
+    }
+  }
+}

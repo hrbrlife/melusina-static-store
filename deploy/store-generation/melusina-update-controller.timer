@@ -1,0 +1,11 @@
+[Unit]
+Description=Melusina host update controller tick
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=60
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

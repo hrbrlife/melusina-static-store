@@ -1,0 +1,17 @@
+[Unit]
+Description=Melusina host update controller (one signed-generation poll tick)
+Documentation=https://github.com/hrbrlife/melusina-static-store/blob/main/sidecar/melusina-store-sidecar/docs/CONTROLLER_INSTALL_SURFACE.md
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/melusina/update-controller/config.json
+ConditionPathExists=/etc/melusina/update-controller/component-registry.json
+ConditionFileIsExecutable=/usr/local/lib/melusina/melusina-update-controller
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/lib/melusina/melusina-update-controller -config /etc/melusina/update-controller/config.json -trigger timer
+TimeoutStartSec=900
+Nice=10

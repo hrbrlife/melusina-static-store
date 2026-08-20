@@ -27,6 +27,14 @@ derive the `register_sidecar_identity` input from the archived store ELF, the
 fresh TLS certificate, and the root-owned shard set. It must never hand-compose
 those identity fields or build the preparer on the target.
 
+It also includes the separately running `bin/melusina-update-controller`, its
+root-owned config/registry templates, and the controller service/timer units.
+The controller is built twice with the same source revision as the Store, but
+it is **not** silently installed or updated by a Store generation: its first
+installation still requires an authorized, Active `InstallerReleaseEntry`
+bootstrap ceremony. This bundle makes that ceremony reproducible for new
+tenants while preserving the controller's independent trust boundary.
+
 ## Deployer-owned inputs
 
 The deployer, not the remote generation document, owns all host actions and
@@ -67,8 +75,16 @@ paths. Before enabling the unit it must install or create:
    bundled unit's `EnvironmentFile=-` directive. The controller alone writes
    this marker before a governed component restart and restores it from the
    WAL before rollback; the deployer must never hand-compose a release tuple.
-8. The bundled systemd unit, byte-for-byte, at
-   `/etc/systemd/system/melusina-store-sidecar.service`.
+8. The root-owned controller binary at
+   `/usr/local/lib/melusina/melusina-update-controller`, plus strict rendered
+   `config.json` and `component-registry.json` under
+   `/etc/melusina/update-controller/`. The controller starts with
+   `autoApply: false`; its active `InstallerReleaseEntry` is verified before
+   the bootstrap ceremony enables the bundled timer.
+9. The bundled Store and controller systemd units, byte-for-byte, at
+   `/etc/systemd/system/melusina-store-sidecar.service`,
+   `/etc/systemd/system/melusina-update-controller.service`, and
+   `/etc/systemd/system/melusina-update-controller.timer`.
 
 The current deployer phase that builds during deployment, omits
 `public_base_url`/private roots, starts an empty store, copies the catalog, and

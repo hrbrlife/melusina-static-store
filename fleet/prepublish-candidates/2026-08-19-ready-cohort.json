@@ -113,11 +113,11 @@
     {
       "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
       "catalogName": "ClientSpace",
-      "sourceCommit": "c18a2472e526189b491b336ab67a51190069b977",
+      "sourceCommit": "e4d3913a4965153620595552b83b59dace048f28",
       "sourceSelectionReceipt": "prepublish-selections/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.json",
-      "version": "0.1.6",
-      "spkSha256": "d42355bac41a57c5fbaf58942e7ad9cc89dc8296a9b18e14da445f0699889e07",
-      "appHash": "10c6bb01d1bfab325d210e8d2b8e7eb2398f675d76823f0818660fc9adc4697c"
+      "version": "0.1.7",
+      "spkSha256": "936315e787b0dac04550205b0dfd918cf16f56d25fec90cd2983802522de2e63",
+      "appHash": "39381407aedb5c0833a59e7974f4c6fd962b7fa25632157c64a7302a19de9ff3"
     },
     {
       "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",

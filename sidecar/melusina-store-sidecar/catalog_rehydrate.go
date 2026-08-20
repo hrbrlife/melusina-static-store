@@ -1241,8 +1241,14 @@ func applyRehydrationRetirements(cfg Config, record catalogRehydrationRecord, op
 		}
 		retirement.OperatorSignature = primitives.EncodeBase58(operator.Sign(payload))
 		if prior, ok := existing[item.AppID]; ok {
-			if prior != retirement {
-				return fmt.Errorf("existing retirement receipt differs for %s", item.AppID)
+			// A prior, valid retirement receipt is durable evidence that this
+			// immutable rollout was deliberately removed from the default Bazaar.
+			// Rehydration must preserve it instead of re-signing history merely
+			// because the recovered catalog has a newer snapshot ID.  The receipt
+			// is reusable only when it still binds this exact retained rollout;
+			// otherwise a different release could be silently retired.
+			if err := prior.matchesRollout(item.Original); err != nil {
+				return fmt.Errorf("existing retirement receipt no longer binds %s: %w", item.AppID, err)
 			}
 			continue
 		}

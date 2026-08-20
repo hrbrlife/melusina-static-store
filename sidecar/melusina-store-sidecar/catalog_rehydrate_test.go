@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // This optional evidence test lets a release operator validate the exact
@@ -97,12 +98,32 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 		}
 	}
 	legacyStage := rehydrationCorruptStageID("legacy-stage")
-	if err := writeAppRollout(cfg, appRolloutState{Schema: appRolloutSchema, AppID: legacy, CurrentStageID: legacyStage, CurrentAppHash: legacyArtifact.manifest.AppHash, CurrentVersion: legacyArtifact.manifest.Version, ActivatedAt: 1}); err != nil {
+	legacyRollout := appRolloutState{Schema: appRolloutSchema, AppID: legacy, CurrentStageID: legacyStage, CurrentAppHash: legacyArtifact.manifest.AppHash, CurrentVersion: legacyArtifact.manifest.Version, ActivatedAt: 1}
+	if err := writeAppRollout(cfg, legacyRollout); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Unix(1_800_000_000, 0).UTC()
+	// GoldKey DEV was already deliberately retired before the broader
+	// rehydration.  Its receipt must remain the historical proof rather than
+	// being replaced with a receipt bearing the recovery snapshot IDs.
+	priorRetirement := catalogRetirement{
+		Schema: catalogRetirementSchema, AppID: legacy,
+		CurrentStageID: legacyRollout.CurrentStageID, CurrentAppHash: legacyRollout.CurrentAppHash, CurrentVersion: legacyRollout.CurrentVersion,
+		Reason:           "retired before governed cohort rehydration",
+		SourceSnapshotID: appCatalogGenerationPrefix + strings.Repeat("1", 32), SourceIndexSHA256: strings.Repeat("1", 64),
+		RetiredSnapshotID: appCatalogGenerationPrefix + strings.Repeat("2", 32), RetiredIndexSHA256: strings.Repeat("2", 64),
+		RetiredAtUnix: now.Unix(), OperatorPubkey: operator.Public().SignPubkeyB58,
+	}
+	payload, err := priorRetirement.signingPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	priorRetirement.OperatorSignature = primitives.EncodeBase58(operator.Sign(payload))
+	if _, err := writeCatalogRetirement(cfg, priorRetirement); err != nil {
 		t.Fatal(err)
 	}
 
 	policy := governedInstallationPolicy{Audience: "workspace", InstallMode: "self-service", PearlRole: "workspace", ClientAccess: "self-owned", AdminSurface: "same-pearl"}
-	now := time.Unix(1_800_000_000, 0).UTC()
 	report, err := runCatalogRehydrateWithDependencies(context.Background(), cfg, operator, catalogRehydrateOptions{
 		cohortDir: filepath.Join(root, "cohort"), expectedAppCount: 2, expectedRolloutCount: 3,
 		retireAppIDs: rehydrateStringList{legacy}, apply: true,
@@ -138,7 +159,7 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 		t.Fatal("explicitly retired legacy app remains serving")
 	}
 	retirements, err := readCatalogRetirements(cfg)
-	if err != nil || retirements[legacy].AppID != legacy {
+	if err != nil || retirements[legacy] != priorRetirement {
 		t.Fatalf("retirement receipt = %#v, err=%v", retirements, err)
 	}
 	store := AppCatalogGenerationStore{Root: cfg.CatalogGenerationRoot}

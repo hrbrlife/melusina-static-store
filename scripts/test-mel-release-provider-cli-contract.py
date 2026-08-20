@@ -1721,6 +1721,16 @@ def test_ready_cohort_excludes_retired_goldkey_dev_from_default_bazaar():
     assert cohort["releaseReadyAppCount"] == len(app_ids) == 31, cohort
     assert RETIRED_GOLDKEY_DEV_APP_ID not in app_ids, app_ids
     assert app_ids.count(PRODUCTION_GOLDKEY_APP_ID) == 1, app_ids
+    botmother = next(app for app in cohort["apps"] if app["appId"] == "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0")
+    assert botmother == {
+        "appId": "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0",
+        "catalogName": "BotMother",
+        "sourceCommit": "403e526976e700cba7c5671526c788d5b7d86f49",
+        "sourceSelectionReceipt": "prepublish-selections/xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0.json",
+        "version": "1.3.10",
+        "spkSha256": "60a77761e48260943e754cd397040d15e640413090cc301c24a1e2e814616ea8",
+        "appHash": "36660dc853a4dc3c39d239289a41ebffb4dc19a3e79b90734d54d4f26fa2fcbd",
+    }, botmother
     paype = next(app for app in cohort["apps"] if app["appId"] == "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510")
     assert paype == {
         "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",

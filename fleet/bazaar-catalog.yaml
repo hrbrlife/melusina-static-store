@@ -349,7 +349,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina_botmother
         publish_slug: botmother
         catalog_name: BotMother
-        live_version: 1.3.6
+        live_version: 1.3.10
         catalog_developer: hrbrlife
         catalog_repo: MELUSINA_BOTMOTHER
         catalog_slug: botmother

@@ -11,6 +11,8 @@ APP_ID="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 CONTRACT_APP="$TMP/packages/hrbrlife/fixture/declared"
 CONTRACT_APP_ID="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 CONTRACT_APP_HASH="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+UNMANAGED_APP="$TMP/packages/hrbrlife/legacy/unmanaged"
+UNMANAGED_APP_ID="cccccccccccccccccccccccccccccccccccccccccccccccccccc"
 
 cleanup() {
   find -P "$TMP" -xdev -depth -delete 2>/dev/null || true
@@ -22,6 +24,7 @@ cp -a "$ROOT/scripts" "$TMP/"
 cp -a "$ROOT/schemas" "$TMP/"
 mkdir -p "$APP"
 mkdir -p "$CONTRACT_APP"
+mkdir -p "$UNMANAGED_APP"
 mkdir -p "$TMP/fleet"
 
 # The Store, not source metadata, governs installation. Exercise the same
@@ -50,6 +53,11 @@ printf '%s\n' \
   '        client_access: scoped-share' \
   '        admin_surface: hidden-authority' \
   > "$TMP/fleet/bazaar-catalog.yaml"
+
+# A raw package tree may retain a legacy/internal pearl, but it must never
+# become a third public app or make the governed two-app cohort fail. Deliberately
+# omit its SPK and RELEASE.json: a correct scope gate skips it before validation.
+printf '{"appId":"%s","name":"Unmanaged legacy package"}\n' "$UNMANAGED_APP_ID" > "$UNMANAGED_APP/metadata.json"
 
 printf 'fixture-spk-bytes\n' > "$APP/app.spk"
 SPK_SHA="$(sha256sum "$APP/app.spk" | awk '{print $1}')"
@@ -102,10 +110,15 @@ for path in sys.argv[1:]:
         json.dump(release, f)
 PY
 
-(
+if ! (
   cd "$TMP"
   MELUSINA_ATTEST_OFFLINE=1 bash ./build-store.sh --aggregate --no-refresh > "$TMP/build.log" 2>&1
-)
+); then
+  cat "$TMP/build.log" >&2
+  exit 1
+fi
+
+grep -Fq "Skipping ungoverned package hrbrlife/legacy/unmanaged (appId $UNMANAGED_APP_ID)" "$TMP/build.log"
 
 python3 - \
   "$TMP/dist-publish/apps/index.json" \

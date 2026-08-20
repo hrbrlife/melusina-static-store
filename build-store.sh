@@ -128,6 +128,58 @@ if [[ -f "$INSTALLATION_POLICY_CATALOG" ]]; then
   export BAZAAR_INSTALLATION_POLICY_JSON
 fi
 
+# A raw packages/ tree is evidence, not Store scope. Legacy package directories
+# and internal deployment pearls may remain locally for source/runtime reasons,
+# but only an immutable appId named by the complete governed catalog may enter
+# the default Bazaar assembly.
+governed_catalog_contains() {
+  local app_id="$1"
+  python3 - "$app_id" <<'PY'
+import json
+import os
+import sys
+
+try:
+    policy = json.loads(os.environ["BAZAAR_INSTALLATION_POLICY_JSON"])
+except (KeyError, TypeError, json.JSONDecodeError):
+    raise SystemExit(2)
+raise SystemExit(0 if sys.argv[1] in policy else 1)
+PY
+}
+
+verify_governed_catalog_coverage() {
+  [[ -n "$BAZAAR_INSTALLATION_POLICY_JSON" ]] || return 0
+  python3 - "$APP_JSON_FILE" <<'PY'
+import json
+import os
+import sys
+
+policy = json.loads(os.environ["BAZAAR_INSTALLATION_POLICY_JSON"])
+seen = {}
+with open(sys.argv[1], encoding="utf-8") as entries:
+    for line in entries:
+        line = line.strip()
+        if not line:
+            continue
+        app = json.loads(line)
+        app_id = app.get("appId")
+        seen[app_id] = seen.get(app_id, 0) + 1
+
+unknown = sorted(app_id for app_id in seen if app_id not in policy)
+missing = sorted(app_id for app_id in policy if seen.get(app_id, 0) == 0)
+duplicate = sorted(app_id for app_id, count in seen.items() if count != 1)
+if unknown or missing or duplicate:
+    if unknown:
+        print("ungoverned appIds entered the catalog: " + ", ".join(unknown), file=sys.stderr)
+    if missing:
+        print("governed appIds missing from the catalog: " + ", ".join(missing), file=sys.stderr)
+    if duplicate:
+        print("governed appIds are not unique in the catalog: " + ", ".join(duplicate), file=sys.stderr)
+    raise SystemExit(1)
+print(f"governed catalog coverage: {len(policy)} appIds exactly once")
+PY
+}
+
 # A materialized tree (git-archive export, no .git) CANNOT refresh submodules;
 # route it to the guarded --no-refresh branch instead of aborting under
 # `set -euo pipefail` in the else-branch's unguarded update pipeline (:123).
@@ -199,6 +251,7 @@ REQUIRED_FIELDS=(appId name version versionNumber packageId shortDescription cat
 TOTAL=0
 VALID=0
 ERRORS=0
+UNGOVERNED=0
 APPS_JSON_ENTRIES=""
 
 json_field() {
@@ -609,6 +662,20 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
         continue
       fi
 
+      # Do this before app validation: an old or internal package is not a
+      # default-Bazaar candidate and therefore must not make the governed
+      # 32-app cohort fail or reappear in its public index. A malformed or
+      # missing appId is equally outside scope; the exact-coverage assertion
+      # below still fails if any required governed app is absent.
+      if [[ -n "$BAZAAR_INSTALLATION_POLICY_JSON" ]]; then
+        catalog_app_id="$(json_field "$meta_file" appId 2>/dev/null || true)"
+        if [[ -z "$catalog_app_id" ]] || ! governed_catalog_contains "$catalog_app_id"; then
+          info "Skipping ungoverned package $developer_name/$repo_name/$app_slug${catalog_app_id:+ (appId $catalog_app_id)}"
+          ((UNGOVERNED++)) || true
+          continue
+        fi
+      fi
+
       ((TOTAL++)) || true
 
       if validate_metadata "$meta_file" "$app_dir"; then
@@ -820,7 +887,12 @@ PY
 done
 
 echo ""
-info "Scan complete: $TOTAL apps found, $VALID valid, $ERRORS errors"
+info "Scan complete: $TOTAL governed apps found, $VALID valid, $ERRORS errors, $UNGOVERNED ungoverned packages skipped"
+
+if ! verify_governed_catalog_coverage; then
+  fail "The default Bazaar must assemble every governed app exactly once."
+  exit 1
+fi
 
 if [[ "$ERRORS" -gt 0 ]]; then
   if $DRY_RUN; then
@@ -931,6 +1003,16 @@ for developer_dir in "$PACKAGES_DIR"/*/; do
       [[ "$(basename "$app_dir")" == .* ]] && continue
       meta_file="$app_dir/metadata.json"
       [[ -f "$meta_file" ]] || continue
+
+      # Stage only the exact governed population already validated above. This
+      # second traversal must not resurrect an unmanaged package after the
+      # catalog-index pass deliberately excluded it.
+      if [[ -n "$BAZAAR_INSTALLATION_POLICY_JSON" ]]; then
+        catalog_app_id="$(json_field "$meta_file" appId 2>/dev/null || true)"
+        if [[ -z "$catalog_app_id" ]] || ! governed_catalog_contains "$catalog_app_id"; then
+          continue
+        fi
+      fi
 
       # Copy icon
       if [[ -f "$app_dir/icon.svg" ]]; then

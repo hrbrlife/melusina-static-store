@@ -65,6 +65,66 @@ func TestRunManifestRefusesUnacceptedTerminal(t *testing.T) {
 	}
 }
 
+func TestRunManifestAcceptsTargetPointerTerminalWithHistoricalActives(t *testing.T) {
+	root := t.TempDir()
+	cfg := Config{StateDir: filepath.Join(root, "state")}
+	app := App{AppID: "app-a", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app-a.json"}
+	writeAcceptedTerminal(t, cfg, app, []byte("governed-app-a"))
+
+	termPath := filepath.Join(cfg.appStateDir(app.AppID), "terminal.json")
+	raw, err := os.ReadFile(termPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var term terminalReceipt
+	if err := json.Unmarshal(raw, &term); err != nil {
+		t.Fatal(err)
+	}
+	term.ActiveAfter = append([]releaseRef{{
+		PDA: "historical-pda", AppHash: sha256Hex([]byte("historical-app")), Version: "0.9.0",
+	}}, term.ActiveAfter...)
+	raw, err = json.Marshal(term)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeDurable(termPath, append(raw, '\n')); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runManifest(cfg, &Catalog{Apps: []App{app}}, filepath.Join(root, "out.json")); err != nil {
+		t.Fatalf("runManifest rejected a valid target-pointer terminal: %v", err)
+	}
+}
+
+func TestRunManifestRefusesAmbiguousCurrentActive(t *testing.T) {
+	root := t.TempDir()
+	cfg := Config{StateDir: filepath.Join(root, "state")}
+	app := App{AppID: "app-a", ReleaseState: "ready", SourceSelectionState: "direct-dev-verified", SourceSelectionReceipt: "prepublish-selections/app-a.json"}
+	writeAcceptedTerminal(t, cfg, app, []byte("governed-app-a"))
+
+	termPath := filepath.Join(cfg.appStateDir(app.AppID), "terminal.json")
+	raw, err := os.ReadFile(termPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var term terminalReceipt
+	if err := json.Unmarshal(raw, &term); err != nil {
+		t.Fatal(err)
+	}
+	term.ActiveAfter = append(term.ActiveAfter, term.ActiveAfter[0])
+	raw, err = json.Marshal(term)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeDurable(termPath, append(raw, '\n')); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runManifest(cfg, &Catalog{Apps: []App{app}}, filepath.Join(root, "out.json")); err == nil {
+		t.Fatal("runManifest accepted an ambiguous current Active release")
+	}
+}
+
 func writeAcceptedTerminal(t *testing.T, cfg Config, app App, spk []byte) {
 	t.Helper()
 	dir := cfg.appStateDir(app.AppID)

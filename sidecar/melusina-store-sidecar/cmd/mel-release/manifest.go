@@ -72,11 +72,21 @@ func manifestItemForTerminal(c Config, app App) (baseAppsManifestItem, error) {
 	}
 	if term.Schema != "melusina-mel-release-terminal-receipt-v1" || term.Outcome != "accepted" ||
 		term.AppID != app.AppID || !isLowerHex(term.AppHash, 64) || term.Version == "" ||
-		term.ReleaseEntryPDA == "" || term.CompletedAtUnix <= 0 || len(term.ActiveAfter) != 1 || term.ServedAppHash != term.AppHash {
+		term.ReleaseEntryPDA == "" || term.CompletedAtUnix <= 0 || len(term.ActiveAfter) == 0 ||
+		(len(term.StalePDAs) != 0 && len(term.ActiveAfter) != 1) || term.ServedAppHash != term.AppHash {
 		return baseAppsManifestItem{}, fmt.Errorf("terminal receipt is not a complete accepted release")
 	}
-	active := term.ActiveAfter[0]
-	if active.AppHash != term.AppHash || active.Version != term.Version || active.PDA != term.ReleaseEntryPDA {
+	// A target-pointer release intentionally retains older active release entries.
+	// Require exactly one entry for this terminal release rather than incorrectly
+	// treating the historical active set as an incomplete receipt. A global
+	// supersede still requires the singleton set enforced by writeTerminal.
+	matchingActive := 0
+	for _, active := range term.ActiveAfter {
+		if active.AppHash == term.AppHash && active.Version == term.Version && active.PDA == term.ReleaseEntryPDA {
+			matchingActive++
+		}
+	}
+	if matchingActive != 1 {
 		return baseAppsManifestItem{}, fmt.Errorf("terminal Active release does not bind the accepted app")
 	}
 	buildRef, ok := term.NativeReceipts["build"]

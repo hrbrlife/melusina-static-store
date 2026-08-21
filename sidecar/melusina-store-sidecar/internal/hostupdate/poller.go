@@ -157,6 +157,21 @@ func generationRolledBack(outcomes []ApplyOutcome) bool {
 	return rolledBack
 }
 
+// allSkipped reports a generation that mutated nothing because every locally
+// managed component was already at its signed target. Such a generation opens no
+// WAL entry, so no deep-stable seal will ever advance a cursor for it.
+func allSkipped(outcomes []ApplyOutcome) bool {
+	if len(outcomes) == 0 {
+		return false
+	}
+	for _, outcome := range outcomes {
+		if outcome.Status != ApplyStatusSkipped {
+			return false
+		}
+	}
+	return true
+}
+
 // PollOnce runs one poll iteration. It never mutates on an OFF policy, never trusts
 // a cached notification on a bell, and is fail-closed against replay/equivocation
 // via the durable cursors.
@@ -263,6 +278,21 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 		}
 		_ = deps.State.Store(ctx, state)
 		return fmt.Errorf("apply generation %d: %w", vg.Doc.GenerationID, err)
+	}
+	if allSkipped(outcomes) {
+		// Nothing was applied: every locally managed component was already at this
+		// generation's signed target (typically because a sibling component moved,
+		// or because the bytes arrived outside the rail). No WAL entry exists, so no
+		// deep-stable seal will ever advance a cursor for this generation, and the
+		// cursor would sit behind forever — which is exactly how this host stranded
+		// at 185 while the store published 188 (F-237).
+		//
+		// Advance the immutable sequence floor, which is precisely what LastTerminal
+		// documents itself for. LastCommitted deliberately does NOT move: nothing was
+		// applied here, so this is not a healthy applied generation and must not be
+		// reported as one.
+		recordTerminalCursor(&state, cursorFromGeneration(vg))
+		return deps.State.Store(ctx, state)
 	}
 	state.Pending = cursorFromGeneration(vg)
 	return deps.State.Store(ctx, state)

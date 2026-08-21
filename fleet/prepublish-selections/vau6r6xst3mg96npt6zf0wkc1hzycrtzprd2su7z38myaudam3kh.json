@@ -2,54 +2,173 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
   "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "4e41f7e78ca3a51609eafcb0989e3382f0ec8c90",
+  "sourceCommit": "08e51aadd5fca806a9d8dea4b782ab3639883c32",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v10 source is canonical. It is the direct forward release-identity cut from the reviewed v9 generic GrainContext peer line: it retains the production fresh-grain bootstrap, namespaced read controls, and Paint peer-acceptance coverage while making the signed metadata, package manifest, and catalog name agree on Jinn. Main and the recent v7/v8 peer branches are reviewed ancestors. Divergent archive, publish, salvage, and old launcher lines were reviewed; they contain historical packaging, release evidence, dependency, icon, or superseded runtime work rather than a newer valid Jinn source.",
+  "decisionSummary": "The dev-publish v11/0.0.11 source is canonical. v10/0.0.10 installed and pinned correctly on us.paype.cc and NEVER ran: it received the platform per-grain key correctly ('jinn: keybox derivation = platform-grain-v1') and then looped forever on 'keybox open: keybox: save: keybox: atomically publish retained temporary file: no such file or directory', with the grain's storage holding only .keybox.lock, grain-id and grain-type. The cause was in the SHARED grain-crypto-journal submodule, not in Jinn: a first save published by linking through /proc/self/fd/<n>, and a production grain has no /proc because sandstorm's backend.c++ passes the supervisor's --proc flag only inside 'if (devMode)'. The existing-destination path uses RENAME_EXCHANGE and was unaffected, which is why only first saves broke. This cut points the submodule at grain-crypto-journal 3610213, which renames the named temporary instead.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "the selected 0.0.10 dev-publish tip is the direct descendant of the clean, recursively initialized reviewed v9 source, with only its release identity advanced",
-      "complete current remote-head snapshot reviewed, including all divergent archive, publish, and salvage refs",
-      "make verify-recovery passed: generated Cap'n Proto bindings, go vet, integration tests, production build, and package reproducibility",
-      "the full test suite includes native Paint GrainContext reader catalog acceptance and denies Paint mutation tools",
-      "two independent package runs from the selected 0.0.10 source matched SHA-256 b31f0416015ed8c539a3e38e0330364ac1567e724e9c3f249fd917c104824fc8 and packageId b31f0416015ed8c539a3e38e0330364a",
-      "spk verify confirmed appId vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh, version 10, and marketing version 0.0.10",
-      "the selected metadata, package manifest, and catalog all use the requested public name Jinn",
-      "the governed candidate bound that exact SPK to AppHash 6ff20b9e2eb89c7a03ab6a5f1890bff3b89c5ea2c83753a0fe459ec38398a540 and release hash dbdaf6bb0a7dd2218a79cbfca325a07acb4a5b9ffc5b813ae1069003c0cdacf7",
-      "the shared 3-of-4 Squads authority approved the candidate; the public 32-app catalog and Chromium-rendered Bazaar card serve Jinn 0.0.10 with packageId b31f0416015ed8c539a3e38e0330364a"
+      "clean tracked dev-publish source at the selected commit; make test green and make pack clean",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/jinn11A and /home/user/Desktop/jinn11-repro-B) produced identical packages: packageId 96053cae9d4153bc59388958222b57d3, sha256 96053cae9d4153bc59388958222b57d3c579dae960a380698a20198375431e8b",
+      "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
+      "the component fix carries its own guard: TestFirstSavePublishesVerifiedInode pins that a first save completes, publishes the exact bytes with no surviving temporary, and that a second save still works through the RENAME_EXCHANGE path",
+      "HONEST LIMIT ON THAT GUARD: it cannot reproduce the original failure, because a developer workstation always has /proc \u2014 which is exactly why this bug survived local testing. The decisive control is a live grain.",
+      "my first root-cause claim (a missing CAP_DAC_READ_SEARCH) was DISPROVED by running the keybox suite unprivileged, and corrected in C-066 before any code was changed",
+      "the release cohort guard pins appId, packageId, name and version together; all advanced, and its pkgdef assertion now derives from wantVersionN rather than hardcoding a second copy of the number",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v11. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/archive/dependabot/docker/docker-images-c43d3d18a2", "commit": "e78e5389fc522022f0dc50b2b242b65a200246a6", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/github_actions/actions/checkout-6", "commit": "ae9541509e4b9da04f09971ae0b5fca962d09e4c", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/github_actions/actions/create-github-app-token-3", "commit": "7b7edd5ba57d9724ac37b8d51a55c4c020834965", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/github_actions/actions/setup-node-6", "commit": "393d14081734727fb5cd191abf983542c0844022", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/github_actions/docker/build-push-action-7", "commit": "8c6a36a97be8a66ed4aac0dff75394104258f76e", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/github_actions/gradle/actions-6.1.0", "commit": "635247bae7780d605a1e7efce3dbbc944797ba1d", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/gradle/apps/android/android-deps-89fd55d84d", "commit": "0c8c156e5380367082da8fdf5be31908bd17fbf1", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/gradle/apps/android/androidx.test.uiautomator-uiautomator-2.4.0-beta02", "commit": "05606f6c1e23857fcbd4d5750397a91d511cf072", "outcome": "archive"},
-    {"ref": "refs/heads/archive/dependabot/swift/apps/macos/swift-deps-81e14130ac", "commit": "61c35653aca61fb01b4efdce9fec0baec204af1f", "outcome": "archive"},
-    {"ref": "refs/heads/archive/feat/iter-33-drop-before-delete-2026-05-15", "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045", "outcome": "archive"},
-    {"ref": "refs/heads/archive/fix/launcher-mkdir-2026-05-05", "commit": "70f85bb7efdff70a5307942ea6ba07a083136421", "outcome": "archive"},
-    {"ref": "refs/heads/archive/jinn", "commit": "86ffa509ce697e57d5a05514959ca75fbeb3b670", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "4e41f7e78ca3a51609eafcb0989e3382f0ec8c90", "outcome": "selected"},
-    {"ref": "refs/heads/feat/generic-graincontext-peer-v7", "commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b", "outcome": "archive"},
-    {"ref": "refs/heads/fix/cross-pearl-graincontext-v7", "commit": "05651fd1048c18285d397780113590d8379d38c2", "outcome": "archive"},
-    {"ref": "refs/heads/fix/prelaunch-jinn-v8-generic-peer-setup", "commit": "146ef2e4c0d8bed0845b1407619fd1b29244f72c", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "136ce734d57f11327c2f70a602b1d7f191278023", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/136957d87e40", "commit": "136957d87e40f49a4c46ced6b3c3e304ee959d74", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/canonical/jinn-next", "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-jinn-20260711", "commit": "4031290bedc16e586246f56ae959e869117c7536", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/jinn-release-audit-20260713", "commit": "7452b3f2a04c338c01adab1e4b75dd7d7bd81dd9", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15", "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "55a5c8bd3c3c1aa3016c911307666014a74e834b", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/t2-jinn-schema-fileid-20260804", "commit": "7685e118320f652ec652f4b925b7e6e2a8682fd8", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/golden/b04-executable-20260804", "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/jinn", "commit": "7c2797fa6f5832df4aeecb2801651d8309bc3809", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "068c282bfea7601edf2cfab9b29fe48a3e3efc2e", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "b02a817b009a06ad6f7c9ce40feb5e02bd4e6396", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "4fe923f0a8ed64fb7b728707a199f159ba780eb4", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "ab3039437cc011e06f4f344f994941ce85420868", "outcome": "archive"}
+    {
+      "ref": "refs/heads/archive/dependabot/docker/docker-images-c43d3d18a2",
+      "commit": "e78e5389fc522022f0dc50b2b242b65a200246a6",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/github_actions/actions/checkout-6",
+      "commit": "ae9541509e4b9da04f09971ae0b5fca962d09e4c",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/github_actions/actions/create-github-app-token-3",
+      "commit": "7b7edd5ba57d9724ac37b8d51a55c4c020834965",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/github_actions/actions/setup-node-6",
+      "commit": "393d14081734727fb5cd191abf983542c0844022",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/github_actions/docker/build-push-action-7",
+      "commit": "8c6a36a97be8a66ed4aac0dff75394104258f76e",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/github_actions/gradle/actions-6.1.0",
+      "commit": "635247bae7780d605a1e7efce3dbbc944797ba1d",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/gradle/apps/android/android-deps-89fd55d84d",
+      "commit": "0c8c156e5380367082da8fdf5be31908bd17fbf1",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/gradle/apps/android/androidx.test.uiautomator-uiautomator-2.4.0-beta02",
+      "commit": "05606f6c1e23857fcbd4d5750397a91d511cf072",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/dependabot/swift/apps/macos/swift-deps-81e14130ac",
+      "commit": "61c35653aca61fb01b4efdce9fec0baec204af1f",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/feat/iter-33-drop-before-delete-2026-05-15",
+      "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/fix/launcher-mkdir-2026-05-05",
+      "commit": "70f85bb7efdff70a5307942ea6ba07a083136421",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/jinn",
+      "commit": "86ffa509ce697e57d5a05514959ca75fbeb3b670",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "08e51aadd5fca806a9d8dea4b782ab3639883c32",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/feat/generic-graincontext-peer-v7",
+      "commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/fix/cross-pearl-graincontext-v7",
+      "commit": "05651fd1048c18285d397780113590d8379d38c2",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/fix/prelaunch-jinn-v8-generic-peer-setup",
+      "commit": "146ef2e4c0d8bed0845b1407619fd1b29244f72c",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "136ce734d57f11327c2f70a602b1d7f191278023",
+      "outcome": "baseline"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/_detached/136957d87e40",
+      "commit": "136957d87e40f49a4c46ced6b3c3e304ee959d74",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/canonical/jinn-next",
+      "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-jinn-20260711",
+      "commit": "4031290bedc16e586246f56ae959e869117c7536",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/codex/jinn-release-audit-20260713",
+      "commit": "7452b3f2a04c338c01adab1e4b75dd7d7bd81dd9",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15",
+      "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+      "commit": "55a5c8bd3c3c1aa3016c911307666014a74e834b",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/t2-jinn-schema-fileid-20260804",
+      "commit": "7685e118320f652ec652f4b925b7e6e2a8682fd8",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/golden/b04-executable-20260804",
+      "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/jinn",
+      "commit": "7c2797fa6f5832df4aeecb2801651d8309bc3809",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/main",
+      "commit": "068c282bfea7601edf2cfab9b29fe48a3e3efc2e",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/publish",
+      "commit": "b02a817b009a06ad6f7c9ce40feb5e02bd4e6396",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+      "commit": "4fe923f0a8ed64fb7b728707a199f159ba780eb4",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/publish",
+      "commit": "ab3039437cc011e06f4f344f994941ce85420868",
+      "outcome": "archive"
+    }
   ]
 }

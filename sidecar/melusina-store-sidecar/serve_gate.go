@@ -424,7 +424,13 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 	// One memo for this request: the StoreOperatorAuthorization account is
 	// request-invariant but is read once per app row, so 32 rows meant 32
 	// identical reads. Scoped to this call and discarded on return.
-	catalogReader := newMemoChainReader(g.cr)
+	// Two layers, each removing a different kind of redundancy: the memo
+	// collapses the request-INVARIANT reads (authz, blacklist) that were made
+	// once per row, and the prime answers the genuinely PER-ROW reads (release
+	// entry, listing) from a single batched fetch. The prime degrades to the memo
+	// on any difficulty and never synthesises an answer.
+	catalogReader := chainReader(newMemoChainReader(g.cr))
+	catalogReader = primeCatalogAccounts(verifyCtx, g.cfg, catalogReader, g.cr, candidates)
 	results := make([]error, len(candidates))
 	jobs := make(chan int)
 	var wg sync.WaitGroup

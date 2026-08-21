@@ -111,3 +111,29 @@ func TestRecoveredManifestRejectsMovedServedPointer(t *testing.T) {
 		t.Fatal("manifest accepted a recovery after the served pointer moved")
 	}
 }
+
+func TestRecoveredManifestAcceptsRelocatedSourceSelectionEvidence(t *testing.T) {
+	h := newHarness(t)
+	v1 := configureRecoverableLiveRelease(t, h)
+	path, err := runRecoverLive(h.cfg, h.catalog, testAppID, v1.SpkPath, v1.MetadataPath)
+	if err != nil {
+		t.Fatalf("recover live: %v", err)
+	}
+	var receipt liveRecoveryReceipt
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &receipt); err != nil {
+		t.Fatal(err)
+	}
+	receipt.SourceSelection.Path = filepath.Join(t.TempDir(), "previous-checkout-selection.json")
+	mustWriteJSON(t, path, receipt)
+
+	if _, err := runRecoverLive(h.cfg, h.catalog, testAppID, v1.SpkPath, v1.MetadataPath); err != nil {
+		t.Fatalf("recover live after catalog relocation: %v", err)
+	}
+	if err := runManifest(h.cfg, h.catalog, filepath.Join(t.TempDir(), "base-apps.json")); err != nil {
+		t.Fatalf("manifest after catalog relocation: %v", err)
+	}
+}

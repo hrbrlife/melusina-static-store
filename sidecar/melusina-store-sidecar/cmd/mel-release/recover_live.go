@@ -164,10 +164,18 @@ func runRecoverLive(c Config, catalog *Catalog, selector, spkPath, metadataPath 
 func sameLiveRecoveryIdentity(a, b liveRecoveryReceipt) bool {
 	return a.Schema == b.Schema && a.Outcome == b.Outcome && a.AppID == b.AppID &&
 		a.SourceRepository == b.SourceRepository && a.SourceCommit == b.SourceCommit &&
-		sameArtifactRef(a.SourceSelection, b.SourceSelection) && a.Version == b.Version &&
+		sameSourceSelectionEvidence(a.SourceSelection, b.SourceSelection) && a.Version == b.Version &&
 		a.AppHash == b.AppHash && a.PackageID == b.PackageID &&
 		sameArtifactRef(a.Artifact, b.Artifact) && sameArtifactRef(a.Metadata, b.Metadata) &&
 		a.Release == b.Release && a.ServedAppHash == b.ServedAppHash
+}
+
+// A source-selection receipt is part of the clean catalog checkout, so its
+// absolute workstation path necessarily changes when the catalog moves. Its
+// immutable bytes, rather than that path, bind a recovered live release to the
+// reviewed source decision. Release artifacts remain path-bound elsewhere.
+func sameSourceSelectionEvidence(a, b artifactRef) bool {
+	return a.SHA256 == b.SHA256 && a.Size == b.Size
 }
 
 func readLiveRecoveryReceipt(path string) (liveRecoveryReceipt, artifactRef, error) {
@@ -197,7 +205,7 @@ func validateLiveRecovery(c Config, app App, provider SignerProvider, receipt li
 	if err != nil {
 		return recoveryArtifact{}, err
 	}
-	if !sameArtifactRef(selectionRef, receipt.SourceSelection) {
+	if !sameSourceSelectionEvidence(selectionRef, receipt.SourceSelection) {
 		return recoveryArtifact{}, errors.New("live recovery source-selection evidence drifted")
 	}
 	material, err := inspectRecoveryArtifact(app, receipt.Artifact.Path, receipt.Metadata.Path)

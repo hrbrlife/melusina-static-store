@@ -559,6 +559,28 @@ func (g *serveGate) serveCatalogPointer(w http.ResponseWriter, r *http.Request, 
 		g.fileServer.ServeHTTP(w, r)
 		return
 	}
+	// Resolve "is this even an app in THIS snapshot" BEFORE any chain work.
+	// Projecting first meant an unauthenticated request for an appId that does
+	// not exist still cost a full catalog projection -- ~96 getAccountInfo calls
+	// per 404 -- which is an amplifier anyone could pull on (F-235).
+	//
+	// This weakens nothing. A missing pointer already produced exactly this 404
+	// further down; only its position moves. The read is deliberately bound to
+	// the SAME request-scoped snapshot the projection uses, so a generation
+	// switch mid-request cannot make the pre-check and the projection disagree,
+	// and the bytes are reused below rather than read twice. An app that IS a row
+	// but is not visible still falls to the visibility check, unchanged.
+	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
+	rawPointer, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")))
+	if errors.Is(err, os.ErrNotExist) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "store catalog gate refused: check=catalog_pointer: read pointer", http.StatusServiceUnavailable)
+		return
+	}
+
 	projection, err := g.projectCatalog(r.Context(), r)
 	if err != nil {
 		http.Error(w, "store catalog gate refused: "+err.Error(), http.StatusServiceUnavailable)
@@ -575,16 +597,6 @@ func (g *serveGate) serveCatalogPointer(w http.ResponseWriter, r *http.Request, 
 	operator, err := g.catalogProjectionOperator()
 	if err != nil {
 		http.Error(w, "store catalog gate refused: check=catalog_projection: "+err.Error(), http.StatusServiceUnavailable)
-		return
-	}
-	snapshot, hasSnapshot := appCatalogSnapshotFromRequest(r)
-	rawPointer, err := g.readCatalogFile(snapshot, hasSnapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")))
-	if errors.Is(err, os.ErrNotExist) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "store catalog gate refused: check=catalog_pointer: read pointer", http.StatusServiceUnavailable)
 		return
 	}
 	var pointer AppCatalogPointer

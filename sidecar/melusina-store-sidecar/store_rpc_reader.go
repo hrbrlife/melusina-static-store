@@ -40,8 +40,13 @@ func newStoreRPCReader(endpoint string) *storeRPCReader {
 type rpcFailoverChainReader struct {
 	readers    []chainReader
 	rawReaders []rawAccountReader
-	attempts   int
-	delay      time.Duration
+	// multiReaders parallels readers for batched reads. chainReader has no batch
+	// method, so this cannot ride on readers; keeping the slices index-aligned is
+	// what makes the batch path fail over across the SAME endpoints in the SAME
+	// order as every other read.
+	multiReaders []multiAccountReader
+	attempts     int
+	delay        time.Duration
 }
 
 var _ chainReader = (*rpcFailoverChainReader)(nil)
@@ -50,19 +55,22 @@ var _ rawAccountReader = (*rpcFailoverChainReader)(nil)
 func newConfiguredStoreRPCReader(cfg Config) chainReader {
 	readers := make([]chainReader, 0, 1+len(cfg.RPCFallbackURLs))
 	rawReaders := make([]rawAccountReader, 0, 1+len(cfg.RPCFallbackURLs))
+	multiReaders := make([]multiAccountReader, 0, 1+len(cfg.RPCFallbackURLs))
 	primary := newStoreRPCReader(cfg.RPCURL)
 	readers = append(readers, primary)
 	rawReaders = append(rawReaders, primary)
+	multiReaders = append(multiReaders, primary)
 	for _, endpoint := range cfg.RPCFallbackURLs {
 		reader := newStoreRPCReader(endpoint)
 		readers = append(readers, reader)
 		rawReaders = append(rawReaders, reader)
+		multiReaders = append(multiReaders, reader)
 	}
 	attempts := cfg.RPCAttempts
 	if attempts == 0 {
 		attempts = defaultRPCAttempts
 	}
-	return &rpcFailoverChainReader{readers: readers, rawReaders: rawReaders, attempts: attempts, delay: rpcRetryDelay}
+	return &rpcFailoverChainReader{readers: readers, rawReaders: rawReaders, multiReaders: multiReaders, attempts: attempts, delay: rpcRetryDelay}
 }
 
 func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.Context, chainReader) error) error {

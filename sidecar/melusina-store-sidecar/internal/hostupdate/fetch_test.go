@@ -134,13 +134,57 @@ func TestAcceptAgainstCursor(t *testing.T) {
 	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 5}, RawSHA256: "committed-digest"}); err != nil {
 		t.Fatalf("same-gen same-bytes rejected: %v", err)
 	}
-	// forward generation not chaining onto the committed one = refused
-	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 6, PreviousGeneration: 4}, RawSHA256: "y"}); err == nil {
-		t.Fatal("chain break accepted")
-	}
 	// valid forward advance (6 chains onto committed 5)
 	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{Doc: componentrelease.DesiredGeneration{GenerationID: 6, PreviousGeneration: 5}, RawSHA256: "z"}); err != nil {
 		t.Fatalf("valid forward advance rejected: %v", err)
+	}
+}
+
+// A forward generation whose predecessors this host never observed is ACCEPTED.
+// The estate supports independent and duplicated stores, the producer retains
+// only one generation document, and a host that was down can never be served the
+// records it missed -- so a gap is a missing record, not an attack. Refusing it
+// permanently bricked the live rail (F-235/F-237): the store published 188 while
+// the host sat at 185, running 188's exact bytes, with no product path forward.
+func TestAcceptAgainstCursorAcceptsForwardGenerationAcrossAGap(t *testing.T) {
+	cursor := GenerationCursor{GenerationID: 185, RawSHA256: "committed-digest"}
+	// the exact live shape: committed 185, store publishes 188 chaining onto 187.
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{
+		Doc:       componentrelease.DesiredGeneration{GenerationID: 188, PreviousGeneration: 187},
+		RawSHA256: "raw-188",
+	}); err != nil {
+		t.Fatalf("forward generation across a gap rejected: %v", err)
+	}
+	// But a predecessor BEHIND the cursor is NOT a missing record: that lineage
+	// bypasses a generation this host already reached, which may be one that failed
+	// and rolled back here. It stays refused -- widening gaps must not widen forks.
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{
+		Doc:       componentrelease.DesiredGeneration{GenerationID: 190, PreviousGeneration: 4},
+		RawSHA256: "raw-190",
+	}); err == nil {
+		t.Fatal("fork with a predecessor behind the cursor accepted")
+	}
+}
+
+// Widening forward acceptance must not have widened the two checks that actually
+// need the cursor. These are the mutation controls for this change: each asserts
+// a refusal that MUST survive, and each fails by name if the guard is dropped.
+func TestAcceptAgainstCursorStillRefusesDowngradeAndEquivocation(t *testing.T) {
+	cursor := GenerationCursor{GenerationID: 188, GenerationHash: "hash-188", RawSHA256: "raw-188"}
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{
+		Doc: componentrelease.DesiredGeneration{GenerationID: 187, PreviousGeneration: 186}, RawSHA256: "raw-187",
+	}); err == nil {
+		t.Fatal("downgrade accepted after widening forward acceptance")
+	}
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{
+		Doc: componentrelease.DesiredGeneration{GenerationID: 188, GenerationHash: "hash-188"}, RawSHA256: "DIFFERENT",
+	}); err == nil {
+		t.Fatal("same-id different-bytes equivocation accepted after widening forward acceptance")
+	}
+	if err := AcceptAgainstCursor(cursor, VerifiedGeneration{
+		Doc: componentrelease.DesiredGeneration{GenerationID: 188, GenerationHash: "RESIGNED"}, RawSHA256: "raw-188",
+	}); err == nil {
+		t.Fatal("same-id re-signed generationHash accepted after widening forward acceptance")
 	}
 }
 

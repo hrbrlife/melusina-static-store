@@ -126,10 +126,36 @@ type GenerationCursor struct {
 //   - refuse a generation OLDER than the committed one (downgrade);
 //   - refuse the SAME generation id served with a DIFFERENT raw digest (the store
 //     equivocated — same version, different bytes);
-//   - refuse a forward generation whose previousGeneration != the committed
-//     generation (a fork or a skipped generation in the chain).
+//   - refuse a forward generation whose previousGeneration is BEHIND the cursor
+//     (it would bypass a generation this host already reached -- notably one that
+//     FAILED and rolled back here);
+//   - otherwise accept a forward generation, whether or not this host observed
+//     the records between the cursor and it.
 //
 // A genesis cursor (GenerationID 0) accepts any first generation.
+//
+// Forward acceptance is deliberate and load-bearing. The estate supports
+// independent and duplicated stores: an operator may run their own, generation
+// numbering need not be dense, and a host that was down misses generations it
+// will never be served again -- the producer keeps exactly ONE generation
+// document, so a skipped predecessor is unfetchable by construction.
+//
+// The previous rule required previousGeneration == committed EXACTLY, which made
+// a MISSING RECORD indistinguishable from an ATTACK. It bricked this rail in
+// production (F-235/F-237): one generation whose components were already at
+// target opened no WAL, so the cursor never advanced, and every later generation
+// was then refused "chain break" forever, with no product path out.
+//
+// Nothing that actually protects a host is given up here. A version is withdrawn
+// by CRYPTOGRAPHIC RECALL, never by document linkage: the operator signature and
+// store binding are checked in FetchAndVerify above, and every component is
+// re-verified against the chain immediately before mutation and again before
+// Complete, where a revoked or superseded release refuses the apply and restores
+// the prior artifact. The two checks that genuinely need the cursor -- downgrade
+// and equivocation -- are unchanged, and so is the refusal of a successor that
+// chains from BEHIND the cursor: that is not a missing record but a lineage that
+// bypasses a generation this host already reached, including one that failed and
+// rolled back here (see TestTerminalRollbackBridgesTheNextSignedRecoveryGeneration).
 func AcceptAgainstCursor(cursor GenerationCursor, vg VerifiedGeneration) error {
 	if cursor.GenerationID == 0 {
 		return nil
@@ -150,8 +176,14 @@ func AcceptAgainstCursor(cursor GenerationCursor, vg VerifiedGeneration) error {
 		}
 		return nil // same generation, same bytes — already committed, no-op
 	default: // gen > cursor.GenerationID
-		if vg.Doc.PreviousGeneration != cursor.GenerationID {
-			return fmt.Errorf("chain break: generation %d previousGeneration %d != committed %d", gen, vg.Doc.PreviousGeneration, cursor.GenerationID)
+		// A gap between cursor.GenerationID and gen is a record this host never saw,
+		// not evidence of tampering, so it is accepted; the cursor's own advance
+		// (e.g. 185 -> 188) is the durable record that a gap occurred. A predecessor
+		// BEHIND the cursor is a different thing entirely -- that lineage bypasses a
+		// generation this host already reached, which may be one that failed and
+		// rolled back here -- and stays refused.
+		if vg.Doc.PreviousGeneration < cursor.GenerationID {
+			return fmt.Errorf("fork: generation %d previousGeneration %d is behind committed %d", gen, vg.Doc.PreviousGeneration, cursor.GenerationID)
 		}
 		return nil
 	}

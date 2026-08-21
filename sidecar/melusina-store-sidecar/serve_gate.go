@@ -421,6 +421,10 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 	if workers > len(candidates) {
 		workers = len(candidates)
 	}
+	// One memo for this request: the StoreOperatorAuthorization account is
+	// request-invariant but is read once per app row, so 32 rows meant 32
+	// identical reads. Scoped to this call and discarded on return.
+	catalogReader := newMemoChainReader(g.cr)
 	results := make([]error, len(candidates))
 	jobs := make(chan int)
 	var wg sync.WaitGroup
@@ -438,7 +442,7 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 					if !ok {
 						return
 					}
-					err := g.gate(verifyCtx, candidates[index].app.rel.AppHash, candidates[index].app.rel)
+					err := g.gateWith(verifyCtx, catalogReader, candidates[index].app.rel.AppHash, candidates[index].app.rel)
 					results[index] = err
 					if err != nil && !errors.Is(err, errStoreReleaseListingDelisted) {
 						failureOnce.Do(func() {
@@ -758,11 +762,18 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 // DELIST must take effect on the next request. The caller guarantees g.cr !=
 // nil.
 func (g *serveGate) gate(ctx context.Context, appHash string, rel ReleaseJSON) error {
+	return g.gateWith(ctx, g.cr, appHash, rel)
+}
+
+// gateWith is gate against an explicit reader. The catalog path passes a
+// request-scoped memo so one request does not read the same request-invariant
+// account once per app row; every other caller keeps g.cr and is unchanged.
+func (g *serveGate) gateWith(ctx context.Context, cr chainReader, appHash string, rel ReleaseJSON) error {
 	h := strings.ToLower(strings.TrimSpace(appHash))
 	if g.verdictFresh(h) {
-		return verifyCurrentStoreReleaseListing(ctx, g.cr, g.cfg, h, rel)
+		return verifyCurrentStoreReleaseListing(ctx, cr, g.cfg, h, rel)
 	}
-	if err := VerifyServeHash(ctx, g.cr, g.cfg, h, rel); err != nil {
+	if err := VerifyServeHash(ctx, cr, g.cfg, h, rel); err != nil {
 		return err
 	}
 	g.recordVerdict(h)

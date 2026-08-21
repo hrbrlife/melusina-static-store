@@ -140,8 +140,9 @@ function expectedVaultBinding(state,creator,multisigPda) {
     recentBlockhash:"11111111111111111111111111111111",
     instructions:ceremonyInnerInstructions(state).map(decodeIx),
   }).compileToV0Message();
+  const creatorKey=creator?.publicKey ?? creator;
   return {
-    multisig:String(multisigPda), creator:String(creator.publicKey),
+    multisig:String(multisigPda), creator:String(creatorKey),
     transactionIndex:String(state.transactionIndex), vaultIndex:0,
     ephemeralSignerBumps:[], message,
   };

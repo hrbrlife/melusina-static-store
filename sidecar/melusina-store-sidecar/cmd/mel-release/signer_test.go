@@ -193,6 +193,9 @@ func TestRegisterHelperExecutesOnlyApprovedSquadsProposal(t *testing.T) {
 	if strings.Contains(text, "status) !== \"Active\") throw new Error(`proposal is not executable") {
 		t.Fatalf("register helper %s still rejects the approved state Squads requires for execution", path)
 	}
+	if !strings.Contains(text, "creator?.publicKey ?? creator") {
+		t.Fatalf("register helper %s does not preserve the exact on-chain creator when revalidating a proposal", path)
+	}
 }
 
 func TestProviderReadsAttestedCatalogAppHash(t *testing.T) {

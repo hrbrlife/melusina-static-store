@@ -1818,7 +1818,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "cf2cf934705a9d3987447ab788dcf716edd9b239", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
-            ("GoldKey", "debeecd1d67c16810574c8176592b0bbf0b3e267", "GoldKey", "goldkey"),
+            ("GoldKey", "27d21fd221da80dcb4531e85c25ca53d5e2ee1c6", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":

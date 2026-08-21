@@ -603,11 +603,13 @@ groups:
       goldkey:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
-        # This production-only dev-publish cut removes the retired duplicate
-        # development package and passed clean-clone, race, verified-package,
-        # and byte-for-byte reproducibility controls at v0.3.5 / v8. The
-        # forward source revision also binds the governed candidate output path.
-        source_commit: debeecd1d67c16810574c8176592b0bbf0b3e267
+        # v0.3.6 / v9 is the first GoldKey cut that can actually start. Every
+        # production grain before it waited 20s for a host-side provisioner
+        # that was specified but never built, then exited 1 (F-263). This cut
+        # consumes the platform per-grain root the supervisor injects, which
+        # shell build 103 extends to GoldKey. Two independent clean clones at
+        # DIFFERENT paths produced byte-identical packages.
+        source_commit: 27d21fd221da80dcb4531e85c25ca53d5e2ee1c6
         source_baseline_branch: master
         reconciliation_state: source-pinned
         release_state: ready
@@ -616,7 +618,7 @@ groups:
         source_repository: https://github.com/hrbrlife/GoldKey
         publish_slug: goldkey
         catalog_name: GoldKey
-        live_version: 0.3.5
+        live_version: 0.3.6
         # The provider advances only this immutable production coordinate.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey

@@ -70,8 +70,40 @@ func TestRejectedProposalArchivePreservesEvidenceAndUnblocksForwardWAL(t *testin
 	if err := decodeStrictJSON(markerBytes, &marker); err != nil {
 		t.Fatal(err)
 	}
-	if marker.Outcome != "rejected-unpublished-candidate" || marker.TransactionPDA != rec.TransactionPDA || marker.RejectionReceipt != rejectionRef {
+	if marker.Outcome != "rejected-unpublished-candidate" || marker.TransactionPDA != rec.TransactionPDA ||
+		marker.RejectionReceipt.SHA256 != rejectionRef.SHA256 || marker.RejectionReceipt.Size != rejectionRef.Size ||
+		marker.RejectionReceipt.Path != filepath.Join(archive, "rejection.json") {
 		t.Fatalf("unexpected rejected-proposal marker: %+v", marker)
+	}
+	// Simulate the pre-fix marker spelling. The controlled finder must prove the
+	// archived receipt, write a bound repair record, and restore only its path.
+	legacy := marker
+	legacy.RejectionReceipt.Path = c.receiptPath(app.AppID, "rejection.json")
+	legacyBytes, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyBytes = append(legacyBytes, '\n')
+	markerPath := filepath.Join(archive, "rejected-proposal-archive.json")
+	if err := writeDurable(markerPath, legacyBytes); err != nil {
+		t.Fatal(err)
+	}
+	found, ok, err := findRejectedProposal(c, app.AppID)
+	if err != nil || !ok || found != archive {
+		t.Fatalf("legacy archive repair = %q, %t, %v; want %q, true, nil", found, ok, err, archive)
+	}
+	repairedBytes, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := decodeStrictJSON(repairedBytes, &marker); err != nil {
+		t.Fatal(err)
+	}
+	if marker.RejectionReceipt.Path != filepath.Join(archive, "rejection.json") {
+		t.Fatalf("legacy marker was not repaired: %+v", marker.RejectionReceipt)
+	}
+	if _, err := os.Stat(filepath.Join(archive, "rejection-ref-repair.json")); err != nil {
+		t.Fatalf("legacy marker repair receipt missing: %v", err)
 	}
 
 	seed := walReceipt{Schema: walSchema, State: stateInit, AppID: app.AppID, PublishSlug: app.PublishSlug,

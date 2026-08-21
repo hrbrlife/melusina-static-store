@@ -1620,7 +1620,8 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "a645df2141877dc9269d31d110011d14c134ed23", paint
+    assert paint["source_commit"] == "8ee93a002d975c80beb330252e117711105eb60e", paint
+    assert paint["live_version"] == "2.0.32", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
     assert jinn["source_commit"] == "4e41f7e78ca3a51609eafcb0989e3382f0ec8c90", jinn
@@ -1739,7 +1740,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "a645df2141877dc9269d31d110011d14c134ed23", paint
+    assert paint["source_commit"] == "8ee93a002d975c80beb330252e117711105eb60e", paint
     assert paint["release_state"] == "ready", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
@@ -1871,7 +1872,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "a645df2141877dc9269d31d110011d14c134ed23", paint
+    assert paint["source_commit"] == "8ee93a002d975c80beb330252e117711105eb60e", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn

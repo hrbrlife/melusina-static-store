@@ -2,26 +2,25 @@
   "schema": "melusina-source-selection-v1",
   "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
-  "sourceCommit": "a645df2141877dc9269d31d110011d14c134ed23",
+  "sourceCommit": "8ee93a002d975c80beb330252e117711105eb60e",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 21 dev-publish v24/2.0.31 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it removes the unavailable sandbox mkdir invocation that prevented a new Paint grain from starting, retains the scoped read-only GrainContext integration for Jinn and the full PowerBox-gated image editor, and keeps candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
+  "decisionSummary": "The Aug 21 dev-publish v25/2.0.32 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it retains the unavailable-sandbox-mkdir repair and fixes the real Sandstorm resume path so a fresh Paint grain defaults explicitly to minipaint. It retains scoped read-only GrainContext integration for Jinn, the full PowerBox-gated image editor, and candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "complete current remote-head snapshot reviewed; only dev-publish advanced from the prior receipt",
-      "clean tracked dev-publish source at the selected commit passed release-inputs and the sandbox-launcher mutation control",
+      "clean tracked dev-publish source at the selected commit passed release-inputs and mutation controls for both the sandbox launcher and fresh-grain resume type",
       "make build and make test passed, including 234 Python and integration tests",
-      "two independent selected-commit candidates matched SHA-256 7d49c2057d684248ecd1172033ba6b9ab5801ab1d57e285bf6ae34988cfb3a57 and packageId 7d49c2057d684248ecd1172033ba6b9a",
-      "make verify-candidate-metadata verified the generated 2.0.31 catalog metadata against the exact SPK",
-      "the selected source metadata and package manifest agree on Bureau Paint v24/2.0.31 with an empty Store-gallery declaration",
-      "the new source removes the unavailable sandbox mkdir command that caused first-grain exit 127; governed publication and clean-tenant runtime retest remain required"
+      "two independent selected-commit candidates matched SHA-256 7b0c872ce61e3e6678a95459e3b3f8ae10880c215c2d95043b56ea84e24ca21a and packageId 7b0c872ce61e3e6678a95459e3b3f8ae",
+      "the selected source metadata and package manifest agree on Bureau Paint v25/2.0.32 with an empty Store-gallery declaration",
+      "the v2.0.31 pilot grain proved governed authorization and provenance; its runtime log exposed the missing fresh-grain resume type, which this forward source repairs; governed publication and clean-tenant runtime retest remain required"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/canonical-release-paint-20260713", "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef", "outcome": "archive"},
     {"ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814", "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "a645df2141877dc9269d31d110011d14c134ed23", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "8ee93a002d975c80beb330252e117711105eb60e", "outcome": "selected"},
     {"ref": "refs/heads/feat/greenfield-ready", "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240", "outcome": "archive"},
     {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97", "outcome": "baseline"},

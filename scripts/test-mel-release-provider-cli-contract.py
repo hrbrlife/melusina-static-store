@@ -1624,7 +1624,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["live_version"] == "2.0.33", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "b8d2348da4e25494093225b7af291654356c3052", jinn
+    assert jinn["source_commit"] == "cc8e2843f42e20314316c86adc81dede164e5db5", jinn
     assert jinn["release_state"] == "ready", jinn
     assert jinn["source_selection_state"] == "direct-dev-verified", jinn
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
@@ -1877,7 +1877,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "b8d2348da4e25494093225b7af291654356c3052", jinn
+    assert jinn["source_commit"] == "cc8e2843f42e20314316c86adc81dede164e5db5", jinn
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby

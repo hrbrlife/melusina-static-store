@@ -469,7 +469,7 @@ groups:
         # and generic, read-only peer attachment. Its clean-clone recovery and
         # reproducibility gates passed; tenant capability and rendered-picker
         # checks run immediately after its governed signed publish.
-        source_commit: b8d2348da4e25494093225b7af291654356c3052
+        source_commit: cc8e2843f42e20314316c86adc81dede164e5db5
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn

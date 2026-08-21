@@ -2,20 +2,21 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
   "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "b8d2348da4e25494093225b7af291654356c3052",
+  "sourceCommit": "cc8e2843f42e20314316c86adc81dede164e5db5",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v12/0.0.12 source is canonical. v11/0.0.11 PROVED the keybox fix on the tenant \u2014 fresh grain 9YDbi96t8xLoxLaGBaz5gK created keybox.json (417 bytes, which v10 never managed) and logged 'keybox open (... created=true)' with zero keybox errors \u2014 and then died on the very next line of that same first start with 'sqlitestore: pragma \"PRAGMA journal_mode=WAL\": unable to open database file: out of memory (14)'. SQLite 14 is SQLITE_CANTOPEN: WAL needs a shared-memory mapping and the supervisor's default RLIMIT_AS starves it for a Go+capnp process. This cut adds requestedMemoryGiB = 4, the same lever Bureau Doc 2.0.37 and Teleport 1.3.6 needed and which is proven end-to-end for both. It removes the CAUSE rather than weakening Jinn's deliberate creation-authority rule (F-267).",
+  "decisionSummary": "The dev-publish v13/0.0.13 source is canonical. Jinn had THREE stacked defects and each fix exposed the next. v11 fixed the keybox first-save, which a fresh grain proved (keybox.json created, created=true, zero keybox errors \u2014 v10 never managed it). v12 then failed on the next line with 'sqlitestore: pragma \"PRAGMA journal_mode=WAL\": unable to open database file: out of memory (14)'; I read that as RLIMIT_AS starvation and shipped requestedMemoryGiB, and the tenant DISPROVED it \u2014 identical failure with the declaration in place (C-067). The real cause was the keybox bug one package over: sqlitestore reached the database through /proc/self/fd in three places and a production grain has no /proc (F-268). Fixed in grain-crypto-journal e7c60d2, which resolves by plain path while keeping the TOCTOU defence, since every call site is already preceded by validateNamedPath().",
   "internalControls": {
     "status": "passed",
     "checks": [
       "clean tracked dev-publish source at the selected commit; make test green and make pack clean",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId 911dfb2e7b2bbec8ffab07a044982083, sha256 911dfb2e7b2bbec8ffab07a044982083432737455e0202e517494d9ea077bcee",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId f7804cbaa1837e8bc4cce215cfeb859f, sha256 f7804cbaa1837e8bc4cce215cfeb859f5e3e40cdbad70107706eed28876e9845",
       "reproducibility confirmed independently of the packer's own report: sha256sum matched and cmp reported identical bytes",
-      "the keybox half of this app's defect is ALREADY PROVEN fixed on the tenant at v11: keybox.json created, created=true, zero keybox errors",
-      "the release cohort guard pins appId, packageId, name and version together; all advanced, and its pkgdef assertion derives from wantVersionN",
-      "KNOWN RESIDUAL, not fixed here and recorded as F-267: any failure between keybox creation and store creation leaves that grain permanently unable to initialise, because creation authority is derived from having created the keybox in the same call",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v12. This receipt does not claim it."
+      "the keybox half is ALREADY PROVEN on the tenant at v11: keybox.json created, created=true, zero keybox errors",
+      "the sqlitestore fix carries its own guard, TestStorePathIsNotProcIndirection, with a mutation control: restoring the /proc form fails it by name",
+      "HONEST LIMIT: neither guard can reproduce the original failure, because a workstation always has /proc \u2014 which is exactly why both bugs survived local testing. Each pins the property that broke instead, and the decisive control is a live grain.",
+      "KNOWN RESIDUAL (F-267, not fixed here): any failure between keybox creation and store creation still leaves that grain unable to initialise, because creation authority derives from having created the keybox in the same call",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v13."
     ]
   },
   "reviewedRefs": [
@@ -81,7 +82,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "b8d2348da4e25494093225b7af291654356c3052",
+      "commit": "cc8e2843f42e20314316c86adc81dede164e5db5",
       "outcome": "selected"
     },
     {

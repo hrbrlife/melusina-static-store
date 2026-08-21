@@ -2,21 +2,21 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
   "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "cc8e2843f42e20314316c86adc81dede164e5db5",
+  "sourceCommit": "4ca7e53ceaf5700276b761d39f4a66142ec096b0",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v13/0.0.13 source is canonical. Jinn had THREE stacked defects and each fix exposed the next. v11 fixed the keybox first-save, which a fresh grain proved (keybox.json created, created=true, zero keybox errors \u2014 v10 never managed it). v12 then failed on the next line with 'sqlitestore: pragma \"PRAGMA journal_mode=WAL\": unable to open database file: out of memory (14)'; I read that as RLIMIT_AS starvation and shipped requestedMemoryGiB, and the tenant DISPROVED it \u2014 identical failure with the declaration in place (C-067). The real cause was the keybox bug one package over: sqlitestore reached the database through /proc/self/fd in three places and a production grain has no /proc (F-268). Fixed in grain-crypto-journal e7c60d2, which resolves by plain path while keeping the TOCTOU defence, since every call site is already preceded by validateNamedPath().",
+  "decisionSummary": "The dev-publish v14/0.0.14 source is canonical. Jinn's failure was ONE defect appearing in THREE places in the shared grain-crypto-journal module, each hidden behind the last: keybox first-save publish, sqlitestore database open, and sqlitestore first write all reached the filesystem through /proc/self/fd, which a production Sandstorm grain cannot resolve because backend.c++ passes the supervisor's --proc flag only for dev-mode grains. Every fix moved the error exactly one line further, which is why this looked like a single stubborn bug. All three are now fixed (grain-crypto-journal 3610213, e7c60d2, d17a74b) and no non-test code in that module references /proc or Linkat any more.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "clean tracked dev-publish source at the selected commit; make test green and make pack clean",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId f7804cbaa1837e8bc4cce215cfeb859f, sha256 f7804cbaa1837e8bc4cce215cfeb859f5e3e40cdbad70107706eed28876e9845",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId 3a685793521d75fb0fc6a6946a2dc0a6, sha256 3a685793521d75fb0fc6a6946a2dc0a6c609643e3b01923a7270709154449b3d",
       "reproducibility confirmed independently of the packer's own report: sha256sum matched and cmp reported identical bytes",
-      "the keybox half is ALREADY PROVEN on the tenant at v11: keybox.json created, created=true, zero keybox errors",
-      "the sqlitestore fix carries its own guard, TestStorePathIsNotProcIndirection, with a mutation control: restoring the /proc form fails it by name",
-      "HONEST LIMIT: neither guard can reproduce the original failure, because a workstation always has /proc \u2014 which is exactly why both bugs survived local testing. Each pins the property that broke instead, and the decisive control is a live grain.",
-      "KNOWN RESIDUAL (F-267, not fixed here): any failure between keybox creation and store creation still leaves that grain unable to initialise, because creation authority derives from having created the keybox in the same call",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v13."
+      "each of the three component fixes carries a behavioural guard; the namedPath guard has a mutation control that fails by name",
+      "STATED PLAINLY: the two publish-path guards have NO mutation control that fails locally, because a workstation has /proc and linkat succeeds there. They pin that first publish/first write work. The durable protection is that no non-test code in the module references /proc or Linkat, and the discriminating control is a live grain.",
+      "a wrong intermediate diagnosis (RLIMIT_AS, shipped as requestedMemoryGiB in 0.0.12) was disproved by the tenant and recorded in C-067 rather than quietly dropped",
+      "KNOWN RESIDUAL (F-267): any failure between keybox creation and store creation still leaves that grain unable to initialise",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v14."
     ]
   },
   "reviewedRefs": [
@@ -82,7 +82,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "cc8e2843f42e20314316c86adc81dede164e5db5",
+      "commit": "4ca7e53ceaf5700276b761d39f4a66142ec096b0",
       "outcome": "selected"
     },
     {

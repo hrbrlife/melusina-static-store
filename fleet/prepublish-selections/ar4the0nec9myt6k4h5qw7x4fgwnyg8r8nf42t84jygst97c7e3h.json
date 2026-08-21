@@ -2,25 +2,27 @@
   "schema": "melusina-source-selection-v1",
   "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
   "sourceRepository": "https://github.com/hrbrlife/melusina_teleport2",
-  "sourceCommit": "5253c92e7b12ef83afadceb24dc384645d048460",
+  "sourceCommit": "cf2cf934705a9d3987447ab788dcf716edd9b239",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "ancestor",
-  "decisionSummary": "Selected the current Teleport dev-publish v1.3.5/version-11 source after a complete remote-head inventory. It contains the fail-closed Shell-permission work, a forward-only metadata cut, and source-level release controls; main is its reviewed ancestor. The divergent publish line is the historical v1.0.0 delivery branch, retained as evidence rather than release input.",
+  "decisionSummary": "The dev-publish v12/1.3.6 source is canonical. v11/1.3.5 installed and pinned correctly on us.paype.cc and its grain ran CLEAN on an idle host \u2014 grain 8wBtLKetY9YBHnKTviyKR5 served 'GET api/messages' over an established WebSocket at 21:26 with zero pthread failures \u2014 then hit 'runtime/cgo: pthread_create failed: Resource temporarily unavailable' and exit 2 on a restart at 21:29 while other grains were starting. The defect is therefore load-sensitive under-provisioning of virtual address space, not contention alone and not a deterministic crash (F-262). supervisor.c++ documents both cause and lever: the default RLIMIT_AS starves pthread_create's stack mmap for runtimes whose virtual reservations exceed working-set RSS, and apps override via Manifest.requestedMemoryGiB. This cut adds requestedMemoryGiB = 4, the same fix proven end-to-end for Bureau Doc at 2.0.37.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "clean exact checkout at the selected commit",
-      "origin dev-publish advertises the selected commit and main is its reviewed ancestor",
-      "all advertised remote heads recorded and reviewed for current source selection",
-      "make capnp, go vet ./pkg/..., go test -race ./pkg/..., go test ., and make verify-build",
-      "runtime contract matches immutable app identity and declares the greenfield visible UI probe"
+      "clean tracked dev-publish source at the selected commit; make pack green and spk verify clean",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/telA and /home/user/Desktop/tel-repro-B) produced identical packages: sha256 072aa045f5b2ec9a878ac8290fe5199f3b94a0fa6b0f6c337439ed9e65e677cc",
+      "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
+      "SOURCE_DATE_EPOCH is a pinned repo constant (1704067200), so the epoch is not build-time dependent",
+      "the packaged manifest reports marketingVersion 1.3.6",
+      "requestedMemoryGiB is a numeric capnp manifest field and cannot be proven by string inspection of the package; the POSITIVE CONTROL owed is a fresh grain that survives concurrent load without pthread_create failures",
+      "STILL OWED: governed publication, then that clean-tenant runtime proof under load. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "5253c92e7b12ef83afadceb24dc384645d048460",
+      "commit": "cf2cf934705a9d3987447ab788dcf716edd9b239",
       "outcome": "selected"
     },
     {

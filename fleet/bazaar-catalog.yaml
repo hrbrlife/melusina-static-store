@@ -536,12 +536,15 @@ groups:
       doc-bureau:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
-        # v28/2.0.33 closes the candidate-pack path over the current rich
-        # Document build, so neither local nor governed packaging can omit a
-        # GrainContext bridge binary. The direct v30/2.0.35 forward cut keeps
-        # the signed Bureau Doc identity coherent and suppresses Store-gallery
-        # image declarations until the governed transport carries their bytes.
-        source_commit: 08634ecd652d18f756aeb3c1efb12b9afaf17e9b
+        # v31/2.0.36. v30/2.0.35 installed and pinned correctly but NO grain
+        # ever ran it: launcher.sh called `mkdir -p /var` and then probed the
+        # backend with `sleep 1` + `kill -0`, and the sandbox image ships no
+        # coreutils, so bash exited 127 and the supervisor restarted forever
+        # (F-252, observed live on a fresh grain). Both calls are removed and
+        # this cut is byte-reproducible across two clean clones at different
+        # paths. Same shape as Bureau Paint 2.0.34, proven end-to-end on the
+        # tenant with a fresh grain that runs.
+        source_commit: 079e4d367dc141f7b5ed592486659a1adb1e55bc
         reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau

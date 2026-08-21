@@ -2,33 +2,88 @@
   "schema": "melusina-source-selection-v1",
   "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-doc-app",
-  "sourceCommit": "08634ecd652d18f756aeb3c1efb12b9afaf17e9b",
+  "sourceCommit": "079e4d367dc141f7b5ed592486659a1adb1e55bc",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v30/2.0.35 source is the newest valid forward Bureau Doc source. It is the direct continuation of the reviewed rich TipTap/Yjs document line and its candidate-pack/GrainContext controls, while making the signed product identity, package title, and runtime contract language agree with the requested public Bureau Doc name. It intentionally removes Store-gallery image declarations until the governed transport can carry their bytes, preventing a signed card from advertising broken URLs. Main remains the reviewed ancestor. The divergent historical master, release, publish, metadata, and salvage refs remain older alternate architecture, historical package evidence, or procedure material rather than newer runnable Document source.",
+  "decisionSummary": "The dev-publish v31/2.0.36 source is canonical. It is the direct forward fix from the selected v30/2.0.35 line, which was upgraded on us.paype.cc through the real store Upgrade control on 2026-08-21 and pinned correctly (db.userActions and db.grains both appVersion 30) but could not run: launcher.sh called `mkdir -p /var` and then probed the backend with `sleep 1` + `kill -0`, and the minimal sandbox image ships no coreutils, so bash exited 127 and the supervisor restarted forever (F-252). Sandstorm already provisions the persistent /var, and GrainLink already retries the local backend connection, so both calls were removable rather than replaceable; fixing only the mkdir would have moved the identical failure four lines down to the sleep. The `sleep 1` remaining in the legacy grainlinkd branch is unreachable because the pkgdef pins DIRECT_CAPNP=1 for both actions. Main remains the reviewed stable ancestor.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "the selected remote dev-publish tip 08634ecd652d18f756aeb3c1efb12b9afaf17e9b is a direct forward continuation of the previously reviewed rich document source",
-      "complete current remote-head snapshot reviewed, including divergent historical master, release, publish, and salvage refs",
-      "make release-inputs and make test-release-inputs passed on the selected 2.0.35 source; mutation controls reject stale runtime metadata, Node closure drift, wrong resume command, and candidate packaging without a build",
-      "the selected source makes the metadata name, package title, and runtime-contract wording agree on Bureau Doc, and intentionally declares no Store-gallery screenshots until their bytes are transportable",
-      "the selected 2.0.35 source passed its fresh full test suite, deterministic double packaging, and SPK verification; the published package SHA-256 is 3998cc06b3461a86b5c7a5e264fc3a721567bcca611ef3ac34d0c2c5357b8f2e"
+      "clean tracked dev-publish source at the selected commit; make build-source and make pack-local both green",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/docA and /home/user/Desktop/doc-repro-B) produced identical packages: packageId 49874875e80b1d92ef5cb4c96afb2f73, sha256 49874875e80b1d92ef5cb4c96afb2f7328d0e85bc43820b3dfbfd0c75db86938, 93642136 bytes, SOURCE_DATE_EPOCH=1787328395 derived from the source commit",
+      "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
+      "positive control on the packaged bytes, not the diff: spk unpack of the candidate yields launcher.sh sha256 3dcc3daee2bd745d342016cd17ac3047b5b381b2b58f60cc24177607a4d5d9c0 and neither mkdir nor sleep appears on any reachable path",
+      "the selected source metadata and package manifest agree on Bureau Doc v31/2.0.36",
+      "mutation control for this defect class already ran in production: the unfixed launcher fails by name with 'mkdir: command not found' and exit 127, in fresh grain ziZcaisL25W9HQKxqaq233",
+      "the identical fix shape was proven end-to-end for Bureau Paint 2.0.34/v27: governed release accepted, tenant pin 27, fresh grain DCFcgGqKfQzn9uWBZmGr73 running with zero exit-127",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v31. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/codex/canonical-release-doc-20260713", "commit": "04e1fe5124ef11b95aa32c128f366e9681badbf9", "outcome": "archive"},
-    {"ref": "refs/heads/cut/doc-bureau-v26-greenfield-20260814", "commit": "70aa484257057efaf5f319fa6f795e84363fd619", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "08634ecd652d18f756aeb3c1efb12b9afaf17e9b", "outcome": "selected"},
-    {"ref": "refs/heads/fix/bureau-docs-2-0-27", "commit": "355a070ddc06054a6aa376232382cf7209f2c1fa", "outcome": "archive"},
-    {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "f5feff22c7800fb1921177c676d5f9d9ea27baa7", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69", "outcome": "baseline"},
-    {"ref": "refs/heads/master", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-bureau-doc", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "ce6a7991eabae82f66682ef45bb09ba293f94e46", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/golden/mvp-b08-t11-canonical", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/master", "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "1bbdb865f3ee858e8c19cbc8c997d07724754f95", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "f6fc254b25bef8ea061c48eaf067aa403d651351", "outcome": "archive"}
+    {
+      "ref": "refs/heads/codex/canonical-release-doc-20260713",
+      "commit": "04e1fe5124ef11b95aa32c128f366e9681badbf9",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/cut/doc-bureau-v26-greenfield-20260814",
+      "commit": "70aa484257057efaf5f319fa6f795e84363fd619",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "079e4d367dc141f7b5ed592486659a1adb1e55bc",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/fix/bureau-docs-2-0-27",
+      "commit": "355a070ddc06054a6aa376232382cf7209f2c1fa",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/fix/metadata-defects-2026-08-05",
+      "commit": "f5feff22c7800fb1921177c676d5f9d9ea27baa7",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69",
+      "outcome": "baseline"
+    },
+    {
+      "ref": "refs/heads/master",
+      "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-bureau-doc",
+      "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+      "commit": "ce6a7991eabae82f66682ef45bb09ba293f94e46",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/golden/mvp-b08-t11-canonical",
+      "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/master",
+      "commit": "a1d4fa53fecf9825173ac85393e0e6f1cd936623",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+      "commit": "1bbdb865f3ee858e8c19cbc8c997d07724754f95",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/publish",
+      "commit": "f6fc254b25bef8ea061c48eaf067aa403d651351",
+      "outcome": "archive"
+    }
   ]
 }

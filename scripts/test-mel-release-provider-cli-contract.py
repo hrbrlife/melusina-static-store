@@ -1639,7 +1639,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
-    assert doc["source_commit"] == "079e4d367dc141f7b5ed592486659a1adb1e55bc", doc
+    assert doc["source_commit"] == "035b1f3f03a9da7a539269dcd7c3ca86384a1c9b", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]

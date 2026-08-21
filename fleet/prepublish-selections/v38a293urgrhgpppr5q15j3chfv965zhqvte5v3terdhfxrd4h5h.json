@@ -2,21 +2,19 @@
   "schema": "melusina-source-selection-v1",
   "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-doc-app",
-  "sourceCommit": "079e4d367dc141f7b5ed592486659a1adb1e55bc",
+  "sourceCommit": "035b1f3f03a9da7a539269dcd7c3ca86384a1c9b",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v31/2.0.36 source is canonical. It is the direct forward fix from the selected v30/2.0.35 line, which was upgraded on us.paype.cc through the real store Upgrade control on 2026-08-21 and pinned correctly (db.userActions and db.grains both appVersion 30) but could not run: launcher.sh called `mkdir -p /var` and then probed the backend with `sleep 1` + `kill -0`, and the minimal sandbox image ships no coreutils, so bash exited 127 and the supervisor restarted forever (F-252). Sandstorm already provisions the persistent /var, and GrainLink already retries the local backend connection, so both calls were removable rather than replaceable; fixing only the mkdir would have moved the identical failure four lines down to the sleep. The `sleep 1` remaining in the legacy grainlinkd branch is unreachable because the pkgdef pins DIRECT_CAPNP=1 for both actions. Main remains the reviewed stable ancestor.",
+  "decisionSummary": "The dev-publish v32/2.0.37 source is canonical. v31/2.0.36 was published, installed and pinned on us.paype.cc and a fresh grain PROVED its coreutils fix (zero 'command not found', zero exit 127, launcher reaching 'Backend started'), then died on a second, stacked defect: 'runtime/cgo: pthread_create failed: Resource temporarily unavailable' and exit 2, measured on an IDLE host so it is not contention (F-259). supervisor.c++ documents the cause: the default RLIMIT_AS of 1.5 GiB soft / 2 GiB hard starves pthread_create's stack mmap for runtimes whose virtual reservations exceed working-set RSS, and the documented lever is Manifest.requestedMemoryGiB. The retired CHEESESPREAD monorepo already carried requestedMemoryGiB = 4 for Doc; the per-app repo never received it. This cut restores it.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "clean tracked dev-publish source at the selected commit; make build-source and make pack-local both green",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/docA and /home/user/Desktop/doc-repro-B) produced identical packages: packageId 49874875e80b1d92ef5cb4c96afb2f73, sha256 49874875e80b1d92ef5cb4c96afb2f7328d0e85bc43820b3dfbfd0c75db86938, 93642136 bytes, SOURCE_DATE_EPOCH=1787328395 derived from the source commit",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/doc37A and /home/user/Desktop/doc37-repro-B) produced identical packages: packageId 273fa65410ada1b6da5d8b543e4fbf82, sha256 273fa65410ada1b6da5d8b543e4fbf82fa82e4385d4677df7346e612b3bc0e7b, 93641884 bytes",
       "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
-      "positive control on the packaged bytes, not the diff: spk unpack of the candidate yields launcher.sh sha256 3dcc3daee2bd745d342016cd17ac3047b5b381b2b58f60cc24177607a4d5d9c0 and neither mkdir nor sleep appears on any reachable path",
-      "the selected source metadata and package manifest agree on Bureau Doc v31/2.0.36",
-      "mutation control for this defect class already ran in production: the unfixed launcher fails by name with 'mkdir: command not found' and exit 127, in fresh grain ziZcaisL25W9HQKxqaq233",
-      "the identical fix shape was proven end-to-end for Bureau Paint 2.0.34/v27: governed release accepted, tenant pin 27, fresh grain DCFcgGqKfQzn9uWBZmGr73 running with zero exit-127",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v31. This receipt does not claim it."
+      "the coreutils half of this app's defect is ALREADY PROVEN fixed on the tenant at v31: fresh grain HnXKkHHbGepyxbuwEsZkJE had 0 'command not found' and 0 exit-127",
+      "the selected source metadata and package manifest agree on Bureau Doc v32/2.0.37",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v32 showing zero pthread_create failures. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
@@ -32,7 +30,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "079e4d367dc141f7b5ed592486659a1adb1e55bc",
+      "commit": "035b1f3f03a9da7a539269dcd7c3ca86384a1c9b",
       "outcome": "selected"
     },
     {

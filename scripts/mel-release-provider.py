@@ -2064,6 +2064,57 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
     })
 
 
+def reject_register(app_id: str, app_hash: str, release_hash: str, version: str, nonce: str,
+                    transaction_pda: str, receipt_out: Path) -> None:
+    """Reject one exact unexecuted release proposal through the shared authority.
+
+    This deliberately has no source-tree, build, Store-stage, finalization, or
+    promotion work: the frozen provider context and on-chain proposal are the
+    only valid inputs to a rejection. The Node helper validates the exact vault
+    transaction payload before recording shared-authority rejection votes.
+    """
+    authority = require_shared_squads_authority()
+    context = require_context(app_id)
+    state = read_json(clean_abs(str(context["statePath"]), "provider statePath"))
+    expected = {
+        "appId": app_id,
+        "appHash": app_hash,
+        "releaseHash": release_hash,
+        "version": version,
+        "releaseNonce": nonce,
+        "transactionPda": transaction_pda,
+    }
+    mismatches = [field for field, value in expected.items() if state.get(field) != value]
+    if mismatches:
+        raise ProviderError("rejection request does not bind the immutable proposal state: " + ", ".join(mismatches))
+    policy = state.get("quorumPolicy")
+    if (not isinstance(policy, dict) or policy.get("multisigPda") != authority["multisig"] or
+            state.get("multisigPda") != authority["multisig"] or
+            state.get("licenseSquadsVault") != authority["vault"]):
+        raise ProviderError("rejection ceremony state does not bind the catalog-pinned shared authority")
+    raw = run(["node", str(register_executor()), "reject-proposed", str(context["statePath"])],
+              extra_env=register_executor_env())
+    result = last_json(raw)
+    if (result.get("status") != "Rejected" or result.get("transactionPda") != transaction_pda or
+            result.get("proposalPda") != state.get("proposalPda") or
+            result.get("transactionIndex") != state.get("transactionIndex") or
+            not isinstance(result.get("alreadyRejected"), bool)):
+        raise ProviderError("Squads rejection result does not bind the prepared proposal state")
+    signatures = result.get("transactionSignatures")
+    if (not isinstance(signatures, list) or any(not isinstance(item, str) or not item for item in signatures) or
+            (not result["alreadyRejected"] and not signatures)):
+        raise ProviderError("Squads rejection result has invalid transaction signatures")
+    write_json(receipt_out, {
+        "schema": "melusina-register-rejection-receipt-v1",
+        "appId": app_id, "appHash": app_hash, "releaseHash": release_hash,
+        "version": version, "releaseNonce": nonce,
+        "releaseEntryPda": state["releaseEntryPda"], "transactionPda": transaction_pda,
+        "multisig": authority["multisig"], "vault": authority["vault"],
+        "status": "Rejected", "alreadyRejected": result["alreadyRejected"],
+        "transactionSignatures": signatures,
+    })
+
+
 def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
     authority = require_shared_squads_authority()
     context = require_context(app_id)
@@ -2191,7 +2242,7 @@ def revoke(pda: str, receipt_out: Path) -> None:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        raise ProviderError("usage: mel-release-provider.py <audit-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke>")
+        raise ProviderError("usage: mel-release-provider.py <audit-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|reject-register|promote|revoke>")
     op = sys.argv[1]
     app_id = env("MEL_APP_ID")
     if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
@@ -2217,6 +2268,13 @@ def main() -> None:
         propose(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True), authority["multisig"], authority["vault"], clean_abs(env("MEL_RELEASE_JSON_OUT", required=True), "MEL_RELEASE_JSON_OUT"), clean_abs(env("MEL_PROPOSE_RECEIPT_OUT", required=True), "MEL_PROPOSE_RECEIPT_OUT"))
     elif op == "approve-register":
         approve(app_id, env("MEL_TRANSACTION_PDA", required=True), clean_abs(env("MEL_REGISTER_RECEIPT_OUT", required=True), "MEL_REGISTER_RECEIPT_OUT"), clean_abs(env("MEL_FINAL_RELEASE_JSON_OUT", required=True), "MEL_FINAL_RELEASE_JSON_OUT"))
+    elif op == "reject-register":
+        reject_register(
+            env("MEL_APP_ID", required=True), env("MEL_NEW_APP_HASH", required=True),
+            env("MEL_RELEASE_HASH", required=True), env("MEL_NEW_VERSION", required=True),
+            env("MEL_RELEASE_NONCE", required=True), env("MEL_TRANSACTION_PDA", required=True),
+            clean_abs(env("MEL_REJECTION_RECEIPT_OUT", required=True), "MEL_REJECTION_RECEIPT_OUT"),
+        )
     elif op == "promote":
         promote(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_STAGE_ID", required=True), clean_abs(env("MEL_PROMOTE_RECEIPT_OUT", required=True), "MEL_PROMOTE_RECEIPT_OUT"))
     elif op == "revoke":

@@ -27,7 +27,7 @@ die() { printf 'mel-release-catalog-provider: %s\n' "$*" >&2; exit 2; }
 # the provider still performs its RPC/store checks, and revoke remains governed
 # by the caller's catalog-pinned Squads authority.
 case "$1" in
-  active-releases|served-app-hash|release-status|revoke)
+  active-releases|served-app-hash|release-status|revoke|reject-register)
     exec python3 "$PROVIDER" "$1"
     ;;
 esac

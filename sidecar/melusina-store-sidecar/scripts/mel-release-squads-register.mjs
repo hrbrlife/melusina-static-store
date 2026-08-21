@@ -200,6 +200,35 @@ function assertProposal(state,proposal,memberKeys) {
   });
 }
 
+// A rejected proposal may be resumed after a crash, but it must still be the
+// exact prepared release transaction and it may never have an approval or
+// cancellation vote. Those states need a different governed action; treating
+// them as an interchangeable "not executed" proposal would be unsafe.
+function rejectableProposalStatus(state, proposal, memberKeys) {
+  if (String(proposal.multisig) !== String(state.multisigPda)) {
+    throw new Error("proposal multisig does not bind the prepared ceremony");
+  }
+  if (String(proposal.transactionIndex) !== String(state.transactionIndex)) {
+    throw new Error("proposal transaction index does not bind the prepared ceremony");
+  }
+  const status=String(proposal.pretty().status);
+  if (status !== "Active" && status !== "Rejected") {
+    throw new Error(`proposal is not rejectable in status ${status}`);
+  }
+  const members=new Set(memberKeys);
+  for (const field of ["approved","cancelled"]) {
+    if ((proposal[field] ?? []).length !== 0) {
+      throw new Error(`proposal has ${field} votes and cannot be rejected as an untouched candidate`);
+    }
+  }
+  for (const member of proposal.rejected ?? []) {
+    if (!members.has(String(member))) {
+      throw new Error("proposal rejection vote belongs to a non-member");
+    }
+  }
+  return status;
+}
+
 function foreignTransactionIndex(state,disposition) {
   // A ceremony state is prepared before the private Store stage.  Another
   // governed publisher can legitimately consume its next Squads index between
@@ -318,13 +347,64 @@ async function approveExecute(statePath) {
   process.stdout.write(JSON.stringify({alreadyExecuted:false,transactionSignatures:signatures,executeSignature})+"\n");
 }
 
+async function rejectProposal(statePath) {
+  const state=readJSON(statePath), {connection,multisigPda}=context(state);
+  const appId=typeof state.appId === "string" ? state.appId : state.appID;
+  if (!appId) throw new Error("prepared ceremony state lacks appId");
+  const configuredMembers=members();
+  const memberKeys=await governedMemberKeys(connection,multisigPda,state);
+  const {transactionIndex,transactionPda,proposalPda}=statePDAs(state,multisigPda);
+  const vaultInfo=await accountOrNull(connection,transactionPda,"VaultTransaction");
+  const proposalInfo=await accountOrNull(connection,proposalPda,"Proposal");
+  if (!vaultInfo || !proposalInfo) throw new Error("prepared release transaction or proposal is absent");
+  const vaultTransaction=loadedVault(vaultInfo);
+  if (!memberKeys.includes(String(vaultTransaction.creator))) {
+    throw new Error("prepared release transaction creator is not a current Squads member");
+  }
+  assertVaultTransactionBinding(vaultTransaction,expectedVaultBinding(state,vaultTransaction.creator,multisigPda));
+
+  let proposal=loadedProposal(proposalInfo);
+  let status=rejectableProposalStatus(state,proposal,memberKeys);
+  const alreadyRejected=status === "Rejected";
+  const signatures=[];
+  if (!alreadyRejected) {
+    for (const member of configuredMembers) {
+      proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
+      status=rejectableProposalStatus(state,proposal,memberKeys);
+      if (status === "Rejected") break;
+      if ((proposal.rejected ?? []).some((item)=>String(item) === String(member.publicKey))) continue;
+      try {
+        const signature=await multisig.rpc.proposalReject({
+          connection,feePayer:member,member,multisigPda,transactionIndex,
+          memo:`reject invalid Melusina ReleaseEntry ${appId}`,
+        });
+        await confirm(connection,signature);
+        signatures.push(signature);
+      } catch (err) {
+        proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
+        status=rejectableProposalStatus(state,proposal,memberKeys);
+        if (status === "Rejected" || (proposal.rejected ?? []).some((item)=>String(item) === String(member.publicKey))) continue;
+        throw err;
+      }
+    }
+  }
+  proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
+  status=rejectableProposalStatus(state,proposal,memberKeys);
+  if (status !== "Rejected") throw new Error(`proposal remained ${status} after shared-authority rejection votes`);
+  process.stdout.write(JSON.stringify({
+    transactionPda:state.transactionPda,proposalPda:state.proposalPda,transactionIndex:state.transactionIndex,
+    status:"Rejected",alreadyRejected,transactionSignatures:signatures,
+  })+"\n");
+}
+
 const [op, statePath] = process.argv.slice(2);
 try {
   if (op === "next-index" && !statePath) await nextIndex();
   else if (op === "policy" && !statePath) await policy();
   else if (op === "propose" && statePath) await propose(statePath);
   else if (op === "approve-execute" && statePath) await approveExecute(statePath);
-  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|approve-execute <state>}");
+  else if (op === "reject-proposed" && statePath) await rejectProposal(statePath);
+  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|approve-execute <state>|reject-proposed <state>}");
 } catch (err) {
   console.error(`mel-release-squads-register: ${formatTransactionFailure(err)}`);
   process.exit(1);

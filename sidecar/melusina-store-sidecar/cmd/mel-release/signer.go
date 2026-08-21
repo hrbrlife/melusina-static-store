@@ -77,6 +77,12 @@ type SignerProvider interface {
 	// receipt (registerOut, schema melusina-register-release-receipt-v1).
 	ApproveRegister(appID, appHash, releaseHash, version, nonce, transactionPda, registerOut, finalReleaseOut string) error
 
+	// RejectRegister records the shared-authority rejection of an exact,
+	// unexecuted register_release_entry proposal and writes a rejection receipt
+	// (rejectOut, schema melusina-register-rejection-receipt-v1). It must never
+	// register, promote, serve, or revoke a ReleaseEntry.
+	RejectRegister(appID, appHash, releaseHash, version, nonce, transactionPda, rejectOut string) error
+
 	// Promote durably promotes the staged bytes into the served catalog + signed
 	// pointer and writes a promotion receipt (schema melusina-app-promotion-receipt-v1).
 	Promote(app App, appHash, releaseHash, version, stageID, receiptOut string) error
@@ -248,6 +254,15 @@ func (e *execProvider) ApproveRegister(appID, appHash, releaseHash, version, non
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
 		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce, "MEL_TRANSACTION_PDA": transactionPda,
 		"MEL_REGISTER_RECEIPT_OUT": registerOut, "MEL_FINAL_RELEASE_JSON_OUT": finalReleaseOut,
+	})
+	return err
+}
+
+func (e *execProvider) RejectRegister(appID, appHash, releaseHash, version, nonce, transactionPda, rejectOut string) error {
+	_, err := e.run("reject-register", map[string]string{
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce, "MEL_TRANSACTION_PDA": transactionPda,
+		"MEL_REJECTION_RECEIPT_OUT": rejectOut,
 	})
 	return err
 }

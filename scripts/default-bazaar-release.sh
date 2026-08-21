@@ -8,6 +8,7 @@
 #     scripts/default-bazaar-release.sh approve --app <appId|slug>
 #   scripts/default-bazaar-release.sh recover-live --app <appId|slug> --spk <absolute-path> --metadata <absolute-path>
 #   scripts/default-bazaar-release.sh abandon-init --app <appId|slug>
+#   scripts/default-bazaar-release.sh reject-proposed --app <appId|slug>
 #
 # The runtime module contains only workstation paths to existing identity files;
 # it never copies a private key. App SPK keys remain package identity only. The
@@ -112,8 +113,8 @@ case "${1:-}" in
   publish|approve|repair-catalog)
     need_source_root=yes
     ;;
-  manifest|recover-live|abandon-init) ;;
-  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|recover-live|abandon-init] ...' ;;
+  manifest|recover-live|abandon-init|reject-proposed) ;;
+  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed] ...' ;;
 esac
 
 if [[ "$need_source_root" = yes ]]; then

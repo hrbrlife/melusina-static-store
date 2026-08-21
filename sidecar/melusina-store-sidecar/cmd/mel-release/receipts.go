@@ -23,6 +23,7 @@ const (
 	releaseSchema   = "melusina-release-v1"
 	proposalSchema  = "melusina-register-proposal-receipt-v1"
 	registerSchema  = "melusina-register-release-receipt-v1"
+	rejectionSchema = "melusina-register-rejection-receipt-v1"
 	stageSchema     = "melusina-app-stage-receipt-v1"
 	promoteSchema   = "melusina-app-promotion-receipt-v1"
 	revokeSchema    = "melusina-revoke-release-receipt-v1"
@@ -188,6 +189,47 @@ func readRegisterReceipt(path, releaseEntryPda, releaseHash string) (artifactRef
 	}
 	if !r.AlreadyRegistered && len(r.TransactionSignatures) == 0 {
 		return artifactRef{}, errors.New("new registration receipt has no transaction signature")
+	}
+	return ref, nil
+}
+
+// ── register-proposal rejection receipt (reject-proposed side) ─────────────────
+
+type proposalRejectionReceipt struct {
+	Schema                string   `json:"schema"`
+	AppID                 string   `json:"appId"`
+	AppHash               string   `json:"appHash"`
+	ReleaseHash           string   `json:"releaseHash"`
+	Version               string   `json:"version"`
+	ReleaseNonce          string   `json:"releaseNonce"`
+	ReleaseEntryPDA       string   `json:"releaseEntryPda"`
+	TransactionPDA        string   `json:"transactionPda"`
+	Multisig              string   `json:"multisig"`
+	Vault                 string   `json:"vault"`
+	Status                string   `json:"status"`
+	AlreadyRejected       bool     `json:"alreadyRejected,omitempty"`
+	TransactionSignatures []string `json:"transactionSignatures,omitempty"`
+}
+
+func readProposalRejectionReceipt(path string, c Config, rec *walReceipt) (artifactRef, error) {
+	var r proposalRejectionReceipt
+	ref, err := readNativeJSON(path, &r)
+	if err != nil {
+		return artifactRef{}, err
+	}
+	if r.Schema != rejectionSchema || r.AppID != rec.AppID || r.AppHash != rec.NewAppHash ||
+		r.ReleaseHash != rec.ReleaseHash || r.Version != rec.Version || r.ReleaseNonce != rec.ReleaseNonce ||
+		r.ReleaseEntryPDA != rec.NewReleasePDA || r.TransactionPDA != rec.TransactionPDA ||
+		r.Multisig != c.SquadsMultisig || r.Vault != c.SquadsVault || r.Status != "Rejected" {
+		return artifactRef{}, errors.New("proposal rejection receipt schema or immutable candidate binding mismatch")
+	}
+	if !r.AlreadyRejected && len(r.TransactionSignatures) == 0 {
+		return artifactRef{}, errors.New("new proposal rejection receipt has no transaction signature")
+	}
+	for _, signature := range r.TransactionSignatures {
+		if signature == "" {
+			return artifactRef{}, errors.New("proposal rejection receipt has an empty transaction signature")
+		}
 	}
 	return ref, nil
 }

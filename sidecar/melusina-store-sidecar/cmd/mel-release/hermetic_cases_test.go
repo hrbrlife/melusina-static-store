@@ -593,6 +593,9 @@ func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string
 func (s *revokeGuardStubProvider) ApproveRegister(string, string, string, string, string, string, string, string) error {
 	return nil
 }
+func (s *revokeGuardStubProvider) RejectRegister(string, string, string, string, string, string, string) error {
+	return nil
+}
 func (s *revokeGuardStubProvider) Promote(App, string, string, string, string, string) error {
 	return nil
 }

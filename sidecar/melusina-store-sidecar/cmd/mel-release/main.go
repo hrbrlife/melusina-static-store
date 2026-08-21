@@ -38,6 +38,12 @@
 //	    Archive a stale INIT-only local preflight attempt. It refuses anything
 //	    that reached staging, a Squads proposal, or any other mutable boundary.
 //
+//	mel-release reject-proposed --app <appId|slug|name>
+//	    Re-validate and reject one exact, still-unexecuted Squads proposal through
+//	    the catalog-pinned shared authority, then archive its complete local WAL.
+//	    This is for an invalid candidate that must not be approved; it never
+//	    registers, promotes, serves, or revokes a ReleaseEntry.
+//
 // Config is env-only (MEL_RELEASE_*). mel-release holds no chain key: every
 // governed act is delegated to MEL_RELEASE_SIGNER_PROVIDER (see signer.go) and
 // the store alone operator-signs the served generation.
@@ -162,13 +168,26 @@ func run(args []string) error {
 		fmt.Printf("ABANDON_INIT_OK archive=%s\n", path)
 		return nil
 
+	case "reject-proposed":
+		fs := flag.NewFlagSet("reject-proposed", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runRejectProposed(cfg, catalog, *app)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("REJECT_PROPOSED_OK archive=%s\n", path)
+		return nil
+
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|recover-live|abandon-init)", sub)
+		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

@@ -2,21 +2,20 @@
   "schema": "melusina-source-selection-v1",
   "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
   "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "08e51aadd5fca806a9d8dea4b782ab3639883c32",
+  "sourceCommit": "b8d2348da4e25494093225b7af291654356c3052",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v11/0.0.11 source is canonical. v10/0.0.10 installed and pinned correctly on us.paype.cc and NEVER ran: it received the platform per-grain key correctly ('jinn: keybox derivation = platform-grain-v1') and then looped forever on 'keybox open: keybox: save: keybox: atomically publish retained temporary file: no such file or directory', with the grain's storage holding only .keybox.lock, grain-id and grain-type. The cause was in the SHARED grain-crypto-journal submodule, not in Jinn: a first save published by linking through /proc/self/fd/<n>, and a production grain has no /proc because sandstorm's backend.c++ passes the supervisor's --proc flag only inside 'if (devMode)'. The existing-destination path uses RENAME_EXCHANGE and was unaffected, which is why only first saves broke. This cut points the submodule at grain-crypto-journal 3610213, which renames the named temporary instead.",
+  "decisionSummary": "The dev-publish v12/0.0.12 source is canonical. v11/0.0.11 PROVED the keybox fix on the tenant \u2014 fresh grain 9YDbi96t8xLoxLaGBaz5gK created keybox.json (417 bytes, which v10 never managed) and logged 'keybox open (... created=true)' with zero keybox errors \u2014 and then died on the very next line of that same first start with 'sqlitestore: pragma \"PRAGMA journal_mode=WAL\": unable to open database file: out of memory (14)'. SQLite 14 is SQLITE_CANTOPEN: WAL needs a shared-memory mapping and the supervisor's default RLIMIT_AS starves it for a Go+capnp process. This cut adds requestedMemoryGiB = 4, the same lever Bureau Doc 2.0.37 and Teleport 1.3.6 needed and which is proven end-to-end for both. It removes the CAUSE rather than weakening Jinn's deliberate creation-authority rule (F-267).",
   "internalControls": {
     "status": "passed",
     "checks": [
       "clean tracked dev-publish source at the selected commit; make test green and make pack clean",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/jinn11A and /home/user/Desktop/jinn11-repro-B) produced identical packages: packageId 96053cae9d4153bc59388958222b57d3, sha256 96053cae9d4153bc59388958222b57d3c579dae960a380698a20198375431e8b",
-      "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
-      "the component fix carries its own guard: TestFirstSavePublishesVerifiedInode pins that a first save completes, publishes the exact bytes with no surviving temporary, and that a second save still works through the RENAME_EXCHANGE path",
-      "HONEST LIMIT ON THAT GUARD: it cannot reproduce the original failure, because a developer workstation always has /proc \u2014 which is exactly why this bug survived local testing. The decisive control is a live grain.",
-      "my first root-cause claim (a missing CAP_DAC_READ_SEARCH) was DISPROVED by running the keybox suite unprivileged, and corrected in C-066 before any code was changed",
-      "the release cohort guard pins appId, packageId, name and version together; all advanced, and its pkgdef assertion now derives from wantVersionN rather than hardcoding a second copy of the number",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v11. This receipt does not claim it."
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId 911dfb2e7b2bbec8ffab07a044982083, sha256 911dfb2e7b2bbec8ffab07a044982083432737455e0202e517494d9ea077bcee",
+      "reproducibility confirmed independently of the packer's own report: sha256sum matched and cmp reported identical bytes",
+      "the keybox half of this app's defect is ALREADY PROVEN fixed on the tenant at v11: keybox.json created, created=true, zero keybox errors",
+      "the release cohort guard pins appId, packageId, name and version together; all advanced, and its pkgdef assertion derives from wantVersionN",
+      "KNOWN RESIDUAL, not fixed here and recorded as F-267: any failure between keybox creation and store creation leaves that grain permanently unable to initialise, because creation authority is derived from having created the keybox in the same call",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v12. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
@@ -82,7 +81,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "08e51aadd5fca806a9d8dea4b782ab3639883c32",
+      "commit": "b8d2348da4e25494093225b7af291654356c3052",
       "outcome": "selected"
     },
     {

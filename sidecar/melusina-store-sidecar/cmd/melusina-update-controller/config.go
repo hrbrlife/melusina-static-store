@@ -54,6 +54,12 @@ type ControllerConfig struct {
 	MasterNftMint  string `json:"masterNftMint"`
 	LicenseNftMint string `json:"licenseNftMint"`
 	SolanaRPCURL   string `json:"solanaRpcUrl"`
+	// A single trusted endpoint is the shape that took the catalog to HTTP 503
+	// when one key hit its quota (F-235/F-238). It is worse here: boot identity
+	// turns any chain error into log.Fatalf under Restart=on-failure with no
+	// start limit, so one exhausted endpoint crash-loops the controller.
+	SolanaRPCFallbackURLs []string `json:"solanaRpcFallbackUrls,omitempty"`
+	SolanaRPCAttempts     int      `json:"solanaRpcAttempts,omitempty"`
 
 	// Persistent state.
 	StateDir    string `json:"stateDir"`              // ControllerState + active WAL
@@ -109,6 +115,12 @@ func (c ControllerConfig) validate() error {
 		return fmt.Errorf("timing policy: %w", err)
 	}
 	if _, err := c.operatorKey(); err != nil {
+		return err
+	}
+	// Refuse a malformed endpoint set at LOAD time. LoadConfig runs before
+	// anything else in main, so a duplicate or an orphaned fallback list fails
+	// visibly here instead of surfacing as a chain-read error later.
+	if _, _, _, err := normalizeControllerRPCEndpoints(c.SolanaRPCURL, c.SolanaRPCFallbackURLs, c.SolanaRPCAttempts); err != nil {
 		return err
 	}
 	for name, value := range map[string]string{

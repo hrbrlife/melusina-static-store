@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -22,7 +21,7 @@ import (
 // account is authoritative. Account decode uses the shared, verified
 // melusina-identity-gate/verify readers (no hand-rolled Borsh, base58, or curve math).
 type solanaChainGate struct {
-	rpc               *verify.RPCClient
+	rpc               chainRPC
 	program           primitives.Pubkey
 	masterMint        primitives.Pubkey
 	licenseMintPubkey primitives.Pubkey
@@ -44,8 +43,12 @@ func newSolanaChainGate(cfg ControllerConfig) (*solanaChainGate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("licenseNftMint is not a valid pubkey: %w", err)
 	}
+	primaryRPC, fallbackRPCs, attempts, err := normalizeControllerRPCEndpoints(cfg.SolanaRPCURL, cfg.SolanaRPCFallbackURLs, cfg.SolanaRPCAttempts)
+	if err != nil {
+		return nil, err
+	}
 	return &solanaChainGate{
-		rpc:               verify.NewRPCClient(cfg.SolanaRPCURL),
+		rpc:               newFailoverRPC(primaryRPC, fallbackRPCs, attempts),
 		program:           program,
 		masterMint:        master,
 		licenseMintPubkey: license,

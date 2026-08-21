@@ -13,6 +13,8 @@
   "masterNftMint": "REPLACE_WITH_RELEASE_MASTER_NFT_MINT",
   "licenseNftMint": "REPLACE_WITH_TARGET_LICENSE_MINT",
   "solanaRpcUrl": "REPLACE_WITH_PRIMARY_TRUSTED_SOLANA_RPC_URL",
+  "_comment_solanaRpcFallbackUrls": "Second and further TRUSTED same-cluster endpoints. A single endpoint is what took the catalog to HTTP 503 when one key hit its quota (F-235/F-238); worse here, because boot identity turns any chain error into log.Fatalf under Restart=on-failure. Must not duplicate solanaRpcUrl.",
+  "solanaRpcFallbackUrls": [],
   "stateDir": "/var/lib/melusina/update-controller",
   "receiptDir": "/var/lib/melusina/update-controller/receipts"
 }

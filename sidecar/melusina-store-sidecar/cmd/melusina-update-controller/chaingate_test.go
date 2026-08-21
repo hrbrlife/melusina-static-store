@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -151,7 +153,7 @@ func TestGateLicenseAndResellerRejectsRevokedParent(t *testing.T) {
 		})
 	}))
 	defer server.Close()
-	g.rpc.Endpoint = server.URL
+	g.rpc = verify.NewRPCClient(server.URL)
 
 	err = g.gateLicenseAndReseller(context.Background(), componentrelease.ComponentRelease{ComponentID: "rrs-store"}, "rrs-store")
 	if err == nil || !strings.Contains(err.Error(), "reseller entry not Active") {

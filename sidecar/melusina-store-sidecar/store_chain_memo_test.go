@@ -100,3 +100,47 @@ func TestMemoChainReaderDoesNotMemoizeACancelledRead(t *testing.T) {
 		t.Fatalf("chain reads = %d, want 2 — a cancelled read must not be memoized", got)
 	}
 }
+
+type countingBlacklistReader struct {
+	chainReader
+	calls atomic.Int32
+}
+
+func (c *countingBlacklistReader) FetchBlacklistEntry(_ context.Context, _ string) (bool, verify.BlacklistType, error) {
+	c.calls.Add(1)
+	return false, 0, nil
+}
+
+// The blacklist PDA derives from the app's masterNftMint, and the estate
+// publishes every app under ONE master mint, so all 32 rows request the same
+// address — another 31 identical reads per catalog request.
+func TestMemoChainReaderCollapsesTheSharedBlacklistRead(t *testing.T) {
+	inner := &countingBlacklistReader{}
+	memo := newMemoChainReader(inner)
+	const rows = 32
+	const addr = "BlacklistPDAForTheOneMasterMint1111111111111"
+
+	var wg sync.WaitGroup
+	for i := 0; i < rows; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			present, _, err := memo.FetchBlacklistEntry(context.Background(), addr)
+			if err != nil || present {
+				t.Errorf("unexpected blacklist answer: present=%v err=%v", present, err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := inner.calls.Load(); got != 1 {
+		t.Fatalf("chain reads = %d for %d rows, want exactly 1", got, rows)
+	}
+	// A DIFFERENT master mint must still reach the chain: the memo keys on the
+	// address, it never assumes every app shares one mint.
+	if _, _, err := memo.FetchBlacklistEntry(context.Background(), "ADifferentMasterMintBlacklistPDA111111111111"); err != nil {
+		t.Fatal(err)
+	}
+	if got := inner.calls.Load(); got != 2 {
+		t.Fatalf("chain reads = %d after a distinct address, want 2", got)
+	}
+}

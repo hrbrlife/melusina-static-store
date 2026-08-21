@@ -2,25 +2,25 @@
   "schema": "melusina-source-selection-v1",
   "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
-  "sourceCommit": "8ee93a002d975c80beb330252e117711105eb60e",
+  "sourceCommit": "5af01d245fed0862b884b5faca00f63280419cf2",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 21 dev-publish v25/2.0.32 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it retains the unavailable-sandbox-mkdir repair and fixes the real Sandstorm resume path so a fresh Paint grain defaults explicitly to minipaint. It retains scoped read-only GrainContext integration for Jinn, the full PowerBox-gated image editor, and candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
+  "decisionSummary": "The Aug 21 dev-publish v26/2.0.33 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it retains the unavailable-sandbox-mkdir repair, fixes the real Sandstorm resume path so a fresh Paint grain defaults explicitly to minipaint, and locks every runtime dependency required for byte-reproducible SPK construction. It retains scoped read-only GrainContext integration for Jinn, the full PowerBox-gated image editor, and candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
   "internalControls": {
     "status": "passed",
     "checks": [
       "complete current remote-head snapshot reviewed; only dev-publish advanced from the prior receipt",
-      "clean tracked dev-publish source at the selected commit passed release-inputs and mutation controls for both the sandbox launcher and fresh-grain resume type",
+      "clean tracked dev-publish source at the selected commit passed release-inputs and mutation controls for both the sandbox launcher/fresh-grain resume type and fully pinned runtime dependencies",
       "make build and make test passed, including 234 Python and integration tests",
-      "two independent selected-commit candidates matched SHA-256 7b0c872ce61e3e6678a95459e3b3f8ae10880c215c2d95043b56ea84e24ca21a and packageId 7b0c872ce61e3e6678a95459e3b3f8ae",
-      "the selected source metadata and package manifest agree on Bureau Paint v25/2.0.32 with an empty Store-gallery declaration",
+      "two independent fresh recursive clones at the selected commit matched SHA-256 1becd1ca0133317fe0b654147d59530494750edb154274489b9ff8fa0ad2a670, packageId 1becd1ca0133317fe0b654147d595304, and size 100675528 bytes",
+      "the selected source metadata and package manifest agree on Bureau Paint v26/2.0.33 with an empty Store-gallery declaration",
       "the v2.0.31 pilot grain proved governed authorization and provenance; its runtime log exposed the missing fresh-grain resume type, which this forward source repairs; governed publication and clean-tenant runtime retest remain required"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/canonical-release-paint-20260713", "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef", "outcome": "archive"},
     {"ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814", "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "8ee93a002d975c80beb330252e117711105eb60e", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "5af01d245fed0862b884b5faca00f63280419cf2", "outcome": "selected"},
     {"ref": "refs/heads/feat/greenfield-ready", "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240", "outcome": "archive"},
     {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97", "outcome": "baseline"},

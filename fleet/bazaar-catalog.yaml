@@ -565,14 +565,14 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # The current dev-publish v25/2.0.32 source fixes the real-Sandstorm
-        # resume path: a fresh Paint grain now unambiguously starts minipaint
-        # while retaining its permission-scoped GrainContext and metadata.
-        source_commit: 8ee93a002d975c80beb330252e117711105eb60e
+        # The current dev-publish v26/2.0.33 source fixes the real-Sandstorm
+        # resume path and pins the complete runtime dependency graph, so a
+        # fresh Paint grain starts minipaint from reproducible candidate bytes.
+        source_commit: 5af01d245fed0862b884b5faca00f63280419cf2
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
-        live_version: 2.0.32
+        live_version: 2.0.33
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json

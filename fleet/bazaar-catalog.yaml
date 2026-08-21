@@ -565,10 +565,13 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # The current dev-publish v26/2.0.33 source fixes the real-Sandstorm
-        # resume path and pins the complete runtime dependency graph, so a
-        # fresh Paint grain starts minipaint from reproducible candidate bytes.
-        source_commit: 5af01d245fed0862b884b5faca00f63280419cf2
+        # v27/2.0.34. v26/2.0.33 installed and pinned correctly but NO grain
+        # ever ran it: the launcher probed the backend with `sleep 1` + `kill
+        # -0` and the sandbox image ships no coreutils, so bash exited 127 and
+        # the supervisor restarted forever (F-252, observed live on a fresh
+        # grain). This cut removes that probe and is byte-reproducible across
+        # two clean clones at different paths.
+        source_commit: bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint

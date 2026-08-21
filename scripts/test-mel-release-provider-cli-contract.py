@@ -1620,7 +1620,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "5af01d245fed0862b884b5faca00f63280419cf2", paint
+    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
     assert paint["live_version"] == "2.0.33", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
@@ -1740,7 +1740,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "5af01d245fed0862b884b5faca00f63280419cf2", paint
+    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
     assert paint["release_state"] == "ready", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
@@ -1872,7 +1872,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "5af01d245fed0862b884b5faca00f63280419cf2", paint
+    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn

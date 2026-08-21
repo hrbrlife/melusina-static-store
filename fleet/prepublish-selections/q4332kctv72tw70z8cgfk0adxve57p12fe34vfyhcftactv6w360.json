@@ -2,34 +2,87 @@
   "schema": "melusina-source-selection-v1",
   "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
-  "sourceCommit": "5af01d245fed0862b884b5faca00f63280419cf2",
+  "sourceCommit": "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 21 dev-publish v26/2.0.33 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it retains the unavailable-sandbox-mkdir repair, fixes the real Sandstorm resume path so a fresh Paint grain defaults explicitly to minipaint, and locks every runtime dependency required for byte-reproducible SPK construction. It retains scoped read-only GrainContext integration for Jinn, the full PowerBox-gated image editor, and candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
+  "decisionSummary": "The dev-publish v27/2.0.34 source is canonical. It is the direct forward fix from the selected v26/2.0.33 line, which this receipt's predecessor correctly flagged as still owing a clean-tenant runtime retest. That retest was performed on 2026-08-21 against us.paype.cc and FAILED: 2.0.33 installed from the Store UI and pinned correctly (db.userActions and db.grains both appVersion 26) but no grain ever ran, because .sandstorm/launcher.sh probed the backend with `sleep 1` + `kill -0` and the minimal sandbox image ships no coreutils, so bash exited 127 and the supervisor restarted forever (F-252). This cut removes that probe and defers readiness to GrainLink's existing retry of the local backend connection; the `sleep 1` remaining in the legacy grainlinkd branch is unreachable because the pkgdef pins DIRECT_CAPNP=1 for both actions. Main remains the reviewed stable ancestor; no other ref carries newer runnable Paint source.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "complete current remote-head snapshot reviewed; only dev-publish advanced from the prior receipt",
-      "clean tracked dev-publish source at the selected commit passed release-inputs and mutation controls for both the sandbox launcher/fresh-grain resume type and fully pinned runtime dependencies",
-      "make build and make test passed, including 234 Python and integration tests",
-      "two independent fresh recursive clones at the selected commit matched SHA-256 1becd1ca0133317fe0b654147d59530494750edb154274489b9ff8fa0ad2a670, packageId 1becd1ca0133317fe0b654147d595304, and size 100675528 bytes",
-      "the selected source metadata and package manifest agree on Bureau Paint v26/2.0.33 with an empty Store-gallery declaration",
-      "the v2.0.31 pilot grain proved governed authorization and provenance; its runtime log exposed the missing fresh-grain resume type, which this forward source repairs; governed publication and clean-tenant runtime retest remain required"
+      "clean tracked dev-publish source at the selected commit; make build-source and make pack-local both green",
+      "two INDEPENDENT fresh recursive clones at DIFFERENT paths (/home/user/Desktop/paintA and /home/user/Desktop/paint-repro-B) produced identical packages: packageId 7bb0d30a7142a93307abe368b86ea3cd, sha256 7bb0d30a7142a93307abe368b86ea3cde1817ee524146706cc14aeb46c3db9f8, 100678912 bytes, SOURCE_DATE_EPOCH=1787325452 derived from the source commit",
+      "reproducibility confirmed independently of the packer's own report: sha256sum on both files matched and cmp reported identical bytes",
+      "positive control on the packaged bytes, not the diff: spk unpack of the candidate yields launcher.sh sha256 dac41efd4b53f500e71f0e84cf7b2e2e522adc2b607ebeeb85b50b0d001c520f (the failing live artifact is e8be57e3660617d2a8f310ee718a0f94b3503910e3afdcc607a5a00f5b7384c8); the reachable DIRECT_CAPNP path contains no coreutils invocation",
+      "the selected source metadata and package manifest agree on Bureau Paint v27/2.0.34",
+      "mutation control for this defect class already ran in production: the unfixed launcher fails by name with 'sleep: command not found' and exit 127, five restarts logged in grain vdGii5BzqdHaFBt4Qzwox5",
+      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v27. This receipt does not claim it."
     ]
   },
   "reviewedRefs": [
-    {"ref": "refs/heads/codex/canonical-release-paint-20260713", "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef", "outcome": "archive"},
-    {"ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814", "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "5af01d245fed0862b884b5faca00f63280419cf2", "outcome": "selected"},
-    {"ref": "refs/heads/feat/greenfield-ready", "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240", "outcome": "archive"},
-    {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-bureau-paint-20260711", "commit": "d062a2f1f5d4820a474b5f15dcd14ed08519dbf3", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "aa213120a03fb996cfdc0ce0fa84583ad816c253", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "78af5b867a68d1373f1ecb91b6ee4c8e4e6f1f92", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "1151b40c3c410e40de14c6efa24e24654e83dd68", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/resign-attest", "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233", "outcome": "archive"}
+    {
+      "ref": "refs/heads/codex/canonical-release-paint-20260713",
+      "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814",
+      "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/dev-publish",
+      "commit": "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3",
+      "outcome": "selected"
+    },
+    {
+      "ref": "refs/heads/feat/greenfield-ready",
+      "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/fix/metadata-defects-2026-08-05",
+      "commit": "ab5694fb7be8076cdc935022133f5638a7be785b",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97",
+      "outcome": "baseline"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-bureau-paint-20260711",
+      "commit": "d062a2f1f5d4820a474b5f15dcd14ed08519dbf3",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/metadata-defects-2026-08-05",
+      "commit": "ab5694fb7be8076cdc935022133f5638a7be785b",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+      "commit": "aa213120a03fb996cfdc0ce0fa84583ad816c253",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/main",
+      "commit": "78af5b867a68d1373f1ecb91b6ee4c8e4e6f1f92",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/publish",
+      "commit": "1151b40c3c410e40de14c6efa24e24654e83dd68",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/preserve-local-20260814/resign-attest",
+      "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/publish",
+      "commit": "d39c1c90aade8b5f0afe5f361fb713ace51e9233",
+      "outcome": "archive"
+    }
   ]
 }

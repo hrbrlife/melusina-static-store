@@ -18,7 +18,7 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, errors.New("Store Link config path must be absolute")
 	}
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() < 1 || info.Size() > maxConfigBytes {
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o022 != 0 || info.Size() < 1 || info.Size() > maxConfigBytes {
 		return Config{}, errors.New("Store Link config must be a bounded regular file")
 	}
 	raw, err := os.ReadFile(path)

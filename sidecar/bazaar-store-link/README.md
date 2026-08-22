@@ -13,16 +13,19 @@ Bazaar Store Link --pinned mTLS--> Store sidecar
 Store sidecar --Unix socket--> listing signer
 ```
 
-The connector currently exposes exactly three operations:
+The connector currently exposes exactly this fixed vocabulary:
 
 - `POST /v1/release-commands/<24-lower-hex>/prepare`
 - `POST /v1/release-commands/<24-lower-hex>/publish`
 - `GET /v1/authority/<configured-store>/<app>/<publisher>`
+- `POST /v1/build-jobs`, `GET /v1/build-jobs/<24-lower-hex>`
+- `POST /v1/tenant-proof-jobs`, `GET /v1/tenant-proof-jobs/<24-lower-hex>`
 
 It cannot accept a caller-chosen URL, method, sidecar path, transaction,
 signing request, publisher lifecycle request, generic RPC call, or listing
-instruction. It maps those three operations to the typed sidecar routes only.
-For release commands it forwards only `Content-Type`, the Pearl command,
+instruction. It maps release/authority operations to the typed sidecar routes
+only, and forwards build/proof jobs to separately configured worker origins
+only. For release commands it forwards only `Content-Type`, the Pearl command,
 Pearl signature, and—for publication—the offline approval. The sidecar still
 verifies the same command, publisher grant, artifact, chain facts, predecessor,
 and listing-before-selector rule independently.
@@ -44,7 +47,10 @@ Example shape (use real protected paths; do not commit this file):
   "sidecarUrl": "https://127.0.0.1:9443",
   "clientCertPath": "/etc/bazaar-store-link/client.pem",
   "clientKeyPath": "/etc/bazaar-store-link/client.key",
-  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem"
+  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
+  "buildWorkerUrl": "https://127.0.0.1:9461",
+  "tenantProofWorkerUrl": "https://127.0.0.1:9462",
+  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem"
 }
 ```
 
@@ -62,10 +68,11 @@ bazaar-store-link -config /etc/bazaar-store-link/config.json
 
 ## Current status
 
-This source is a verified connector boundary, **not a deployed Golden MVP**.
-It deliberately does not yet expose trusted-build or tenant-proof worker jobs;
-those need separate bounded worker implementations and release-bound signed
-results before a pilot can run. Do not switch
+This source is a verified connector boundary and durable-job relay, **not a
+deployed Golden MVP**. It requires separately deployed bounded build and
+tenant-proof workers, which must persist their own jobs and return
+release-bound signed results. The relay intentionally rejects startup without
+both worker origins and their CA. Do not switch
 `require_pearl_control_for_app_publish` on a live Store until the complete
 provisioning and one-app pilot in Bazaar Control's deployment requirements have
 passed.

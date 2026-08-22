@@ -20,7 +20,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Store Link sidecar identity: %v", err)
 	}
-	handler, err := storelink.NewHandler(config, forwarder)
+	workers, err := storelink.NewWorkerForwarder(config)
+	if err != nil {
+		log.Fatalf("Store Link worker boundary: %v", err)
+	}
+	handler, err := storelink.NewHandlerWithWorkers(config, forwarder, workers)
 	if err != nil {
 		log.Fatalf("Store Link handler: %v", err)
 	}

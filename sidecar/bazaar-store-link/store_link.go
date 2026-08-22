@@ -38,13 +38,20 @@ const (
 // Config is host-owned deployment configuration. It is intentionally absent
 // from the Pearl package: only this connector holds a private mTLS key.
 type Config struct {
-	ListenAddr        string `json:"listenAddr"`
-	StoreID           string `json:"storeId"`
-	SidecarURL        string `json:"sidecarUrl"`
-	ClientCertPath    string `json:"clientCertPath"`
-	ClientKeyPath     string `json:"clientKeyPath"`
-	SidecarCAPath     string `json:"sidecarCaPath"`
-	MaxCandidateBytes int64  `json:"maxCandidateBytes,omitempty"`
+	ListenAddr     string `json:"listenAddr"`
+	StoreID        string `json:"storeId"`
+	SidecarURL     string `json:"sidecarUrl"`
+	ClientCertPath string `json:"clientCertPath"`
+	ClientKeyPath  string `json:"clientKeyPath"`
+	SidecarCAPath  string `json:"sidecarCaPath"`
+	// BuildWorkerURL and TenantProofWorkerURL are separate fixed, private
+	// origins. They are used only by NewWorkerForwarder; keeping them out of
+	// the sidecar forwarder prevents a release command from ever selecting a
+	// worker route.
+	BuildWorkerURL       string `json:"buildWorkerUrl,omitempty"`
+	TenantProofWorkerURL string `json:"tenantProofWorkerUrl,omitempty"`
+	WorkerCAPath         string `json:"workerCaPath,omitempty"`
+	MaxCandidateBytes    int64  `json:"maxCandidateBytes,omitempty"`
 }
 
 func (c Config) candidateLimit() int64 {
@@ -68,15 +75,15 @@ func (c Config) Validate() error {
 	for label, path := range map[string]string{
 		"clientCertPath": c.ClientCertPath, "clientKeyPath": c.ClientKeyPath, "sidecarCaPath": c.SidecarCAPath,
 	} {
-		if !absoluteRegularPath(path) {
-			return fmt.Errorf("store link %s must be an absolute regular-file path", label)
+		if !absolutePath(path) {
+			return fmt.Errorf("store link %s must be an absolute path", label)
 		}
 	}
 	_, err = parsePrivateHTTPSOrigin(c.SidecarURL)
 	return err
 }
 
-func absoluteRegularPath(path string) bool {
+func absolutePath(path string) bool {
 	return strings.HasPrefix(strings.TrimSpace(path), "/")
 }
 
@@ -188,16 +195,21 @@ type Handler struct {
 	storeID string
 	maxBody int64
 	forward Forwarder
+	jobs    WorkerForwarder
 }
 
 func NewHandler(config Config, forwarder Forwarder) (*Handler, error) {
+	return NewHandlerWithWorkers(config, forwarder, nil)
+}
+
+func NewHandlerWithWorkers(config Config, forwarder Forwarder, workers WorkerForwarder) (*Handler, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
 	if forwarder == nil {
 		return nil, errors.New("Store Link requires a sidecar forwarder")
 	}
-	return &Handler{storeID: config.StoreID, maxBody: config.candidateLimit(), forward: forwarder}, nil
+	return &Handler{storeID: config.StoreID, maxBody: config.candidateLimit(), forward: forwarder, jobs: workers}, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +223,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleRelease(w, r)
 	case strings.HasPrefix(path, "/v1/authority/"):
 		h.handleAuthority(w, r)
+	case path == "/v1/"+buildJobCollection || strings.HasPrefix(path, "/v1/"+buildJobCollection+"/"):
+		h.handleJob(w, r, buildJobCollection)
+	case path == "/v1/"+tenantProofJobCollection || strings.HasPrefix(path, "/v1/"+tenantProofJobCollection+"/"):
+		h.handleJob(w, r, tenantProofJobCollection)
 	default:
 		http.NotFound(w, r)
 	}

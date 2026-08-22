@@ -1,58 +1,61 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
-  "sourceRepository": "https://github.com/hrbrlife/melusina-app-opensanctions",
-  "sourceCommit": "2a40dfca3eee0c0c774898b245ccf400731613f1",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.1.25/appVersion-27 dev-publish tip is the newest valid forward OpenSanctions source. It integrates the July screening, privacy, authorization, fail-closed executor, and proof-persistence work into the current reproducible release base. Main is an ancestor. The July UX line is retained as integrated evidence; the remaining preserved refs are historical or superseded rather than a newer valid application source.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "fresh remote clone resolved dev-publish 2a40dfca3eee0c0c774898b245ccf400731613f1",
-      "complete current remote-head snapshot reviewed, including the July screening/privacy source line",
-      "go vet ./..., go test ./..., and go test -tags melusina ./grain/... passed",
-      "make verify-recovery passed from the selected clean clone",
-      "two package runs matched SHA-256 db17bae2f39ff27f2b0b40b4f74475b69b21bbee06aeb013f1cab363dd8f0c3b and packageId db17bae2f39ff27f2b0b40b4f74475b6",
-      "SPK verification confirmed appId msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh, version 27, and marketing version 0.1.25"
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/codex/opensanctions-httpout-ux-20260713",
-      "commit": "fae73047c2a4c14b86b2ac7567d658f35861e903",
-      "outcome": "retained"
+    "schema": "melusina-source-selection-v1",
+    "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
+    "sourceRepository": "https://github.com/hrbrlife/melusina-app-opensanctions",
+    "sourceCommit": "3f188d8901728d7cf6818789f74f19cade55a171",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "OpenSanctions 0.1.26 answers the owner report 'OpenSanction doesnt correctly claim HTTP-OUT \u2014 No grapple popup'. The claim path was never broken. A PowerBox claim is three steps, and the third \u2014 persisting the redeemed sturdyref through the cap-token store \u2014 lives behind the wallet-anchored keybox; without MELUSINA_INSTALL_TRUST_ROOT and MELUSINA_OPERATOR_WALLET_PUBKEY the keybox never opens, CapTokens is nil, no claim hook is registered, and the first two steps are wasted motion. The grain said so at boot in a log the owner cannot read, while the page rendered a Claim button that opened the dialog and discarded the answer. The connections slot now carries the reason and the exact missing inputs and the template renders that refusal instead of the control, across three states: unconfigured, configured-but-rejected, and configured. Supplying the runtime configuration remains an operator action in the Configuration Console (F-127); this cut is the code half only. The commit message on this exact dev-publish tip records the measurement and every mutation. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "go test ./... passes",
+            "mutation: removing the reason from BuildConnectionSlots, and making the template render the claim button anyway, each fail by name",
+            "positive control on every assertion: a configured slot must still offer Claim, so 'no claim button' cannot pass on a page that can never claim at all",
+            "the pre-existing claim-xor-release test now establishes the configured state, because that question is only about a grain that CAN claim; its other half is a new case asserting a degraded grain offers neither button and names the missing input on the page",
+            "the block is a reason, not a mutilated slot: the descriptor and claim URL survive, so the page works the moment configuration arrives",
+            "the release cohort guard held three literal copies of two numbers, one of which had drifted a release behind and made the guard assert that metadata.json disagrees with itself; all comparisons now derive from the cohort constants and a half-bump of either file fails by name",
+            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+        ]
     },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "2a40dfca3eee0c0c774898b245ccf400731613f1",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "fdfa93417002b11483e0eebfe8152343c4ec7da0",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/teama-screening-admin-gate-2026-06-26",
-      "commit": "f527f2d4f73093f79e2284004b55fcb0fdbc3d3b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fleet-eob/sanctions-api-prefix",
-      "commit": "cf477846d2dfe326398157a5e4ae43b00f74f7cb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "6cbb2671292da25f6a13e778d4c5edca9e9cd422",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
-      "commit": "f9887fd1cbf35f3e390259685bb417be4f299d2b",
-      "outcome": "archive"
-    }
-  ]
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/codex/opensanctions-httpout-ux-20260713",
+            "commit": "fae73047c2a4c14b86b2ac7567d658f35861e903",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "3f188d8901728d7cf6818789f74f19cade55a171",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "fdfa93417002b11483e0eebfe8152343c4ec7da0",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-screening-admin-gate-2026-06-26",
+            "commit": "f527f2d4f73093f79e2284004b55fcb0fdbc3d3b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fleet-eob/sanctions-api-prefix",
+            "commit": "cf477846d2dfe326398157a5e4ae43b00f74f7cb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "6cbb2671292da25f6a13e778d4c5edca9e9cd422",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "f9887fd1cbf35f3e390259685bb417be4f299d2b",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

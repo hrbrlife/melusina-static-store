@@ -340,14 +340,14 @@ groups:
         # starves at pthread_create's stack mmap (F-259/F-262). This cut adds
         # the documented Manifest.requestedMemoryGiB lever, the same fix Bureau
         # Doc needed at 2.0.37 and which is proven end-to-end there.
-        source_commit: cf2cf934705a9d3987447ab788dcf716edd9b239
+        source_commit: 9b8f137dc65d85b8a4b423af73ba416677eb143e
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.json
         publish_slug: teleport
         catalog_name: Teleport
-        live_version: 1.3.6
+        live_version: 1.3.7
         catalog_developer: hrbrlife
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
@@ -558,12 +558,12 @@ groups:
         # this cut is byte-reproducible across two clean clones at different
         # paths. Same shape as Bureau Paint 2.0.34, proven end-to-end on the
         # tenant with a fresh grain that runs.
-        source_commit: d953dd917e1208da426e28de09b9f43e90c1f639
+        source_commit: f2c6df1fbb4466292616b3b7343cc1ff46d51aa9
         reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
         catalog_name: Bureau Doc
-        live_version: "2.0.38"
+        live_version: "2.0.39"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h.json
@@ -844,7 +844,7 @@ groups:
         # v0.1.25/appVersion-27 is the current dev-publish tip. It integrates
         # the July screening/privacy forward work, passes recovery from a fresh
         # clone, and packs byte-identically.
-        source_commit: 2a40dfca3eee0c0c774898b245ccf400731613f1
+        source_commit: 3f188d8901728d7cf6818789f74f19cade55a171
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -853,7 +853,7 @@ groups:
         source_selection_receipt: prepublish-selections/msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh.json
         publish_slug: opensanctions
         catalog_name: OpenSanctions
-        live_version: 0.1.25
+        live_version: 0.1.26
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-opensanctions
         catalog_slug: opensanctions

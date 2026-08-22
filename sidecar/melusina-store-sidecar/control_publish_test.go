@@ -216,9 +216,21 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	req.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
 	req.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
 	w := httptest.NewRecorder()
-	svc.handleControlPublish(w, req)
+	svc.handleControlRelease(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("control publish got %d: %s", w.Code, w.Body.String())
+	}
+	// The response could be lost after the sidecar has switched the catalog.
+	// An exact command retry must return its durable receipt before it attempts
+	// to parse a body or claim the publisher envelope nonce again.
+	retry := httptest.NewRequest(http.MethodPost, command.Route, nil)
+	retry.Header.Set(controlCommandHeader, controlHeader(t, command))
+	retry.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
+	retry.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
+	w = httptest.NewRecorder()
+	svc.handleControlRelease(w, retry)
+	if w.Code != http.StatusOK {
+		t.Fatalf("completed control publish retry got %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -308,6 +320,16 @@ func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
 	if _, _, _, _, _, err := loadStagedAppWithRuntimeContract(svc.cfg.PrivateStageDir, command.StageID); err != nil {
 		t.Fatalf("control prepare did not durably stage the candidate: %v", err)
 	}
+	// A response-loss retry does not need the large body or a fresh publisher
+	// nonce. The journal returns the signed durable stage receipt directly.
+	retry := httptest.NewRequest(http.MethodPost, command.Route, nil)
+	retry.Header.Set(controlCommandHeader, controlHeader(t, command))
+	retry.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
+	w = httptest.NewRecorder()
+	svc.handleControlRelease(w, retry)
+	if w.Code != http.StatusOK {
+		t.Fatalf("completed control prepare retry got %d: %s", w.Code, w.Body.String())
+	}
 
 	// The old transport cannot use that publisher merely because the Pearl
 	// command succeeded: its static migration allowlist is empty.
@@ -389,7 +411,7 @@ func TestControlCriticalRecheckRefusesBeforeNonceOrCatalogMutation(t *testing.T)
 		return claimed.SignPubkeyB58, nil
 	}, func(appPublishPreflight, time.Time) error {
 		return errors.New("publisher grant became suspended")
-	}, nil)
+	}, nil, nil)
 	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "publisher grant became suspended") {
 		t.Fatalf("critical recheck got %d: %s", w.Code, w.Body.String())
 	}
@@ -403,7 +425,7 @@ func TestControlCriticalRecheckRefusesBeforeNonceOrCatalogMutation(t *testing.T)
 		return claimed.SignPubkeyB58, nil
 	}, func(appPublishPreflight, time.Time) error {
 		return errors.New("publisher grant became suspended")
-	}, nil)
+	}, nil, nil)
 	if w.Code != http.StatusForbidden || strings.Contains(w.Body.String(), "nonce") {
 		t.Fatalf("critical refusal consumed the envelope: %d: %s", w.Code, w.Body.String())
 	}

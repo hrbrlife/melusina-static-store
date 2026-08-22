@@ -34,6 +34,14 @@ const (
 	maxControlHeaderEncodedBytes = 32 << 10
 )
 
+// controlExecution binds a verified Pearl command to its private durable
+// receipt record. It is passed only to the shared stage/publish implementations
+// after the typed route has selected the authority model.
+type controlExecution struct {
+	command  controlCommand
+	receipts *controlReceiptLedger
+}
+
 // handleControlRelease is the only Pearl route family. Its two exact actions
 // deliberately have different authority: prepare may persist an immutable
 // private candidate; publish requires the separate human offline approval
@@ -71,6 +79,9 @@ func (s *publishService) handleControlPublish(w http.ResponseWriter, r *http.Req
 		http.Error(w, "check=control_command: command does not name this release route", http.StatusForbidden)
 		return
 	}
+	if s.respondStoredControlResult(w, command) {
+		return
+	}
 
 	resolvePublisher := func(preflight appPublishPreflight, claimed identity.Public) (string, error) {
 		return s.verifyControlPublishAuthorization(r, preflight, command, pearlSignature, offlineApproval, claimed, s.currentTime())
@@ -82,7 +93,7 @@ func (s *publishService) handleControlPublish(w http.ResponseWriter, r *http.Req
 	snapshotCheck := func(snapshot AppCatalogSnapshot, preflight appPublishPreflight) error {
 		return verifyControlCommandPredecessor(snapshot, preflight, command)
 	}
-	s.handleAppPublish(w, r, route, resolvePublisher, criticalCheck, snapshotCheck)
+	s.handleAppPublish(w, r, route, resolvePublisher, criticalCheck, snapshotCheck, &controlExecution{command: command, receipts: s.controlReceipts})
 }
 
 // handleControlPrepare accepts the same exact-candidate command shape as the
@@ -104,6 +115,9 @@ func (s *publishService) handleControlPrepare(w http.ResponseWriter, r *http.Req
 		http.Error(w, "check=control_command: command does not name this release route", http.StatusForbidden)
 		return
 	}
+	if s.respondStoredControlResult(w, command) {
+		return
+	}
 
 	resolvePublisher := func(preflight appPublishPreflight, claimed identity.Public) (string, error) {
 		return s.verifyControlPrepareAuthorization(r, preflight, command, pearlSignature, claimed, s.currentTime())
@@ -112,7 +126,58 @@ func (s *publishService) handleControlPrepare(w http.ResponseWriter, r *http.Req
 		_, err := s.verifyControlPrepareAuthorization(r, preflight, command, pearlSignature, preflight.sig.Payload.Source, now)
 		return err
 	}
-	s.handleAppStage(w, r, route, resolvePublisher, criticalCheck)
+	s.handleAppStage(w, r, route, resolvePublisher, criticalCheck, &controlExecution{command: command, receipts: s.controlReceipts})
+}
+
+// respondStoredControlResult turns a lost response into a harmless exact retry.
+// A pending entry never retries blind: it becomes an explicit attention item,
+// because the sidecar must not guess which post-claim mutation completed.
+func (s *publishService) respondStoredControlResult(w http.ResponseWriter, command controlCommand) bool {
+	if s.controlReceiptErr != nil || s.controlReceipts == nil {
+		http.Error(w, "Bazaar Control receipt storage is unavailable.", http.StatusServiceUnavailable)
+		return true
+	}
+	record, found, err := s.controlReceipts.Load(command)
+	if err != nil {
+		http.Error(w, "check=control_receipt: "+err.Error(), http.StatusConflict)
+		return true
+	}
+	if !found {
+		return false
+	}
+	switch record.State {
+	case controlReceiptCompleted:
+		w.Header().Set("Content-Type", "application/json")
+		switch command.Action {
+		case controlCommandActionPrepare:
+			if record.Stage == nil {
+				http.Error(w, "check=control_receipt: completed preparation has no receipt", http.StatusInternalServerError)
+				return true
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(record.Stage)
+		case controlCommandActionPublish:
+			if record.Publish == nil {
+				http.Error(w, "check=control_receipt: completed publication has no receipt", http.StatusInternalServerError)
+				return true
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(record.Publish)
+		default:
+			http.Error(w, "check=control_receipt: unsupported completed action", http.StatusConflict)
+		}
+		return true
+	case controlReceiptPending:
+		_, _ = s.controlReceipts.MarkNeedsAttention(command, "reconcile_required", s.currentTime())
+		http.Error(w, "Publishing paused: a prior attempt needs safe reconciliation in Bazaar Control.", http.StatusConflict)
+		return true
+	case controlReceiptAttention:
+		http.Error(w, "Publishing paused: safe reconciliation is required in Bazaar Control.", http.StatusConflict)
+		return true
+	default:
+		http.Error(w, "check=control_receipt: unsupported receipt state", http.StatusConflict)
+		return true
+	}
 }
 
 func controlPublishRoute(path string) (dossierID, route string, err error) {

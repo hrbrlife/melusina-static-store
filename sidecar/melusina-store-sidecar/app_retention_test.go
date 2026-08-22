@@ -19,6 +19,9 @@ import (
 func TestAppRetentionStageWindowAndStrictSevenDayBoundary(t *testing.T) {
 	now := time.Unix(2_000_000_000, 0).UTC()
 	cfg, store, currentGeneration := newRetentionFixture(t)
+	if _, err := openOrInitializeControlReceiptLedger(cfg.PrivateStageDir); err != nil {
+		t.Fatal(err)
+	}
 	current := persistRetentionStageVersion(t, cfg.PrivateStageDir, "same-app", "2.0.0", now.Add(-30*24*time.Hour))
 	previous := persistRetentionStageVersion(t, cfg.PrivateStageDir, "same-app", "1.0.0", now.Add(-30*24*time.Hour))
 	equality := persistRetentionStage(t, cfg.PrivateStageDir, "equality-app", now.Add(-appStageUnreferencedRetention))
@@ -44,7 +47,7 @@ func TestAppRetentionStageWindowAndStrictSevenDayBoundary(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, old.StageID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("strictly old unreferenced stage remains: %v", err)
 	}
-	for _, reserved := range []string{publishNonceLedgerDirName, "rollouts"} {
+	for _, reserved := range []string{publishNonceLedgerDirName, controlReceiptDirName, "rollouts"} {
 		if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, reserved)); err != nil {
 			t.Fatalf("reserved namespace %s removed: %v", reserved, err)
 		}

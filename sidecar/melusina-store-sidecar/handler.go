@@ -45,6 +45,8 @@ type publishService struct {
 	assembler                   *CatalogAssembler
 	nonces                      envelope.NonceCache // installer route only; app routes use appNonces
 	appNonces                   *publishNonceLedger
+	controlReceipts             *controlReceiptLedger
+	controlReceiptErr           error
 	listingRegistrar            listingRegistrar
 	listingRegistrationRequired bool
 	catalogGenerations          AppCatalogGenerationStore
@@ -288,6 +290,11 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
 	mux := http.NewServeMux()
+	var controlReceipts *controlReceiptLedger
+	var controlReceiptErr error
+	if operator != nil && runtime.appNonces != nil {
+		controlReceipts, controlReceiptErr = openOrInitializeControlReceiptLedger(cfg.PrivateStageDir)
+	}
 
 	svc := &publishService{
 		cfg:                         cfg,
@@ -296,6 +303,8 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		assembler:                   NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
 		nonces:                      envelope.NewMemoryNonceCache(),
 		appNonces:                   runtime.appNonces,
+		controlReceipts:             controlReceipts,
+		controlReceiptErr:           controlReceiptErr,
 		listingRegistrar:            newBoundedListingRegistrar(cfg, cr, operator),
 		listingRegistrationRequired: runtime.listingRegistrationRequired,
 		catalogGenerations:          runtime.catalogGenerations,
@@ -403,14 +412,14 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
 		}
 		return signerKey, nil
-	}, nil)
+	}, nil, nil)
 }
 
 // handleAppStage is the one private-candidate implementation. Route-specific
 // authority selects the publisher resolver, but every caller shares the same
 // envelope, chain/store, blacklist, capacity, nonce, persistence, and signed
 // stage-receipt checks. A successful stage never selects catalog content.
-func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck) {
+func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, control *controlExecution) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -485,6 +494,28 @@ func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	if control != nil {
+		if control.receipts == nil {
+			http.Error(w, "check=control_receipt: durable receipt storage is unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		record, created, err := control.receipts.Begin(control.command, lockedNow)
+		if err != nil {
+			http.Error(w, "check=control_receipt: "+err.Error(), http.StatusConflict)
+			return
+		}
+		if !created {
+			if record.State == controlReceiptCompleted && record.Stage != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(record.Stage)
+				return
+			}
+			_, _ = control.receipts.MarkNeedsAttention(control.command, "reconcile_required", lockedNow)
+			http.Error(w, "Publishing paused: a prior attempt needs safe reconciliation in Bazaar Control.", http.StatusConflict)
+			return
+		}
+	}
 	claimNow := s.currentTime()
 	if err := s.claimAppEnvelope(preflight.sig, claimNow); err != nil {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
@@ -498,6 +529,14 @@ func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if control != nil {
+		stored, err := control.receipts.CompleteStage(control.command, receipt, s.currentTime())
+		if err != nil || stored.Stage == nil {
+			http.Error(w, "check=control_receipt: could not durably record preparation", http.StatusInternalServerError)
+			return
+		}
+		receipt = *stored.Stage
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -514,14 +553,14 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
 		}
 		return signerKey, nil
-	}, nil, nil)
+	}, nil, nil, nil)
 }
 
 // handleAppPublish is the one gated write implementation. Route-specific
 // authority selects the accepted publisher key, but every caller shares the
 // same chain, stage, listing-before-selector, nonce, catalog, and receipt
 // controls below.
-func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, snapshotCheck appPublishSnapshotCheck) {
+func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, snapshotCheck appPublishSnapshotCheck, control *controlExecution) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -690,6 +729,28 @@ func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	if control != nil {
+		if control.receipts == nil {
+			http.Error(w, "check=control_receipt: durable receipt storage is unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		record, created, err := control.receipts.Begin(control.command, lockedNow)
+		if err != nil {
+			http.Error(w, "check=control_receipt: "+err.Error(), http.StatusConflict)
+			return
+		}
+		if !created {
+			if record.State == controlReceiptCompleted && record.Publish != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(record.Publish)
+				return
+			}
+			_, _ = control.receipts.MarkNeedsAttention(control.command, "reconcile_required", lockedNow)
+			http.Error(w, "Publishing paused: a prior attempt needs safe reconciliation in Bazaar Control.", http.StatusConflict)
+			return
+		}
+	}
 
 	// No semantic or trust read may occur after this exact instant. The durable
 	// claim is the last gate and precedes retained rollout state, source persist,
@@ -806,6 +867,14 @@ func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request
 	receipt.Rollout = &rolloutReceipt
 	receipt.Catalog = &catalogPointer
 	receipt.Listing = listingReceipt
+	if control != nil {
+		stored, err := control.receipts.CompletePublish(control.command, receipt, s.currentTime())
+		if err != nil || stored.Publish == nil {
+			http.Error(w, "check=control_receipt: could not durably record publication", http.StatusInternalServerError)
+			return
+		}
+		receipt = *stored.Publish
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)

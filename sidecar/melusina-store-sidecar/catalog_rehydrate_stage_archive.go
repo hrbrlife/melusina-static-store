@@ -184,6 +184,12 @@ func collectInvalidRehydrationStages(cfg Config, record catalogRehydrationRecord
 		if name == publishNonceLedgerDirName || name == "rollouts" {
 			continue
 		}
+		if name == controlReceiptDirName {
+			if _, err := openOrInitializeControlReceiptLedger(cfg.PrivateStageDir); err != nil {
+				return nil, fmt.Errorf("validate control receipt ledger: %w", err)
+			}
+			continue
+		}
 		if !validStageID(name) {
 			return nil, fmt.Errorf("unsafe private-stage rehydration member %q", name)
 		}

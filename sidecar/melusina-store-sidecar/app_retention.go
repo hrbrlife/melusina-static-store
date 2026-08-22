@@ -107,6 +107,11 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 		switch {
 		case name == publishNonceLedgerDirName || name == "rollouts":
 			continue
+		case name == controlReceiptDirName:
+			if _, err := openOrInitializeControlReceiptLedger(cfg.PrivateStageDir); err != nil {
+				return plan, fmt.Errorf("validate control receipt ledger: %w", err)
+			}
+			continue
 		case validStageID(name):
 			if err := validateCommittedStageTree(path, expectedUID, expectedGID); err != nil {
 				return plan, fmt.Errorf("validate retained stage %s: %w", name, err)

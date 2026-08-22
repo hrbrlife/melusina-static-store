@@ -7,6 +7,11 @@
   "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
   "buildWorkerUrl": "https://127.0.0.1:9461",
   "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
+  "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
   "tenantProofWorkerUrl": "https://127.0.0.1:9462",
-  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem"
+  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem",
+  "buildWorkerCertSha256": "<lowercase sha256 of build worker certificate DER>",
+  "releasePreparationWorkerCertSha256": "<lowercase sha256 of preparation worker certificate DER>",
+  "releaseFinalizationWorkerCertSha256": "<lowercase sha256 of finalization worker certificate DER>",
+  "tenantProofWorkerCertSha256": "<lowercase sha256 of tenant-proof worker certificate DER>"
 }

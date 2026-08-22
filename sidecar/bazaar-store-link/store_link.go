@@ -58,7 +58,14 @@ type Config struct {
 	ReleaseFinalizationWorkerURL string `json:"releaseFinalizationWorkerUrl,omitempty"`
 	TenantProofWorkerURL         string `json:"tenantProofWorkerUrl,omitempty"`
 	WorkerCAPath                 string `json:"workerCaPath,omitempty"`
-	MaxCandidateBytes            int64  `json:"maxCandidateBytes,omitempty"`
+	// Each worker leaf is pinned independently. A worker CA limits who can
+	// obtain a certificate; these pins bind the fixed job routes to their exact
+	// deployed services, even when they share a private CA or host.
+	BuildWorkerCertSHA256               string `json:"buildWorkerCertSha256,omitempty"`
+	ReleasePreparationWorkerCertSHA256  string `json:"releasePreparationWorkerCertSha256,omitempty"`
+	ReleaseFinalizationWorkerCertSHA256 string `json:"releaseFinalizationWorkerCertSha256,omitempty"`
+	TenantProofWorkerCertSHA256         string `json:"tenantProofWorkerCertSha256,omitempty"`
+	MaxCandidateBytes                   int64  `json:"maxCandidateBytes,omitempty"`
 }
 
 func (c Config) candidateLimit() int64 {

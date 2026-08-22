@@ -13,8 +13,10 @@ package storelink
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,11 +74,18 @@ type WorkerForwarder interface {
 }
 
 type privateWorkerForwarder struct {
-	buildOrigin        *url.URL
-	preparationOrigin  *url.URL
-	finalizationOrigin *url.URL
-	proofOrigin        *url.URL
-	http               *http.Client
+	build        workerTarget
+	preparation  workerTarget
+	finalization workerTarget
+	proof        workerTarget
+}
+
+// workerTarget couples one fixed worker origin to its own exact TLS leaf
+// pin.  Keeping the client next to the origin prevents a same-host worker
+// from being accepted merely because another worker's certificate is trusted.
+type workerTarget struct {
+	origin *url.URL
+	http   *http.Client
 }
 
 // NewWorkerForwarder fails closed until both actual workers have been
@@ -106,6 +115,25 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	if err != nil {
 		return nil, errors.New("Store Link tenantProofWorkerUrl must be one exact private HTTPS origin")
 	}
+	buildPin, err := workerLeafPin("buildWorkerCertSha256", config.BuildWorkerCertSHA256)
+	if err != nil {
+		return nil, err
+	}
+	preparationPin, err := workerLeafPin("releasePreparationWorkerCertSha256", config.ReleasePreparationWorkerCertSHA256)
+	if err != nil {
+		return nil, err
+	}
+	finalizationPin, err := workerLeafPin("releaseFinalizationWorkerCertSha256", config.ReleaseFinalizationWorkerCertSHA256)
+	if err != nil {
+		return nil, err
+	}
+	proofPin, err := workerLeafPin("tenantProofWorkerCertSha256", config.TenantProofWorkerCertSHA256)
+	if err != nil {
+		return nil, err
+	}
+	if err := distinctWorkerLeafPins(buildPin, preparationPin, finalizationPin, proofPin); err != nil {
+		return nil, err
+	}
 	certificate, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("load Store Link worker client certificate: %w", err)
@@ -118,39 +146,51 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	if !pool.AppendCertsFromPEM(caBytes) {
 		return nil, errors.New("worker CA contains no certificates")
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate}, RootCAs: pool}
-	return &privateWorkerForwarder{buildOrigin: buildOrigin, preparationOrigin: preparationOrigin, finalizationOrigin: finalizationOrigin, proofOrigin: proofOrigin, http: &http.Client{
-		Transport: transport,
-		Timeout:   2 * time.Minute,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return errors.New("Store Link refuses worker redirects")
-		},
-	}}, nil
+	buildHTTP, err := newPinnedWorkerHTTPClient(certificate, pool, buildPin)
+	if err != nil {
+		return nil, err
+	}
+	preparationHTTP, err := newPinnedWorkerHTTPClient(certificate, pool, preparationPin)
+	if err != nil {
+		return nil, err
+	}
+	finalizationHTTP, err := newPinnedWorkerHTTPClient(certificate, pool, finalizationPin)
+	if err != nil {
+		return nil, err
+	}
+	proofHTTP, err := newPinnedWorkerHTTPClient(certificate, pool, proofPin)
+	if err != nil {
+		return nil, err
+	}
+	return &privateWorkerForwarder{
+		build:        workerTarget{origin: buildOrigin, http: buildHTTP},
+		preparation:  workerTarget{origin: preparationOrigin, http: preparationHTTP},
+		finalization: workerTarget{origin: finalizationOrigin, http: finalizationHTTP},
+		proof:        workerTarget{origin: proofOrigin, http: proofHTTP},
+	}, nil
 }
 
 func (f *privateWorkerForwarder) ForwardBuild(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
-	return f.forward(ctx, f.buildOrigin, buildJobCollection, request)
+	return f.forward(ctx, f.build, buildJobCollection, request)
 }
 
 func (f *privateWorkerForwarder) ForwardReleasePreparation(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
-	return f.forward(ctx, f.preparationOrigin, releasePreparationJobCollection, request)
+	return f.forward(ctx, f.preparation, releasePreparationJobCollection, request)
 }
 
 func (f *privateWorkerForwarder) ForwardReleaseFinalization(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
-	return f.forward(ctx, f.finalizationOrigin, releaseFinalizationJobCollection, request)
+	return f.forward(ctx, f.finalization, releaseFinalizationJobCollection, request)
 }
 
 func (f *privateWorkerForwarder) ForwardTenantProof(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
-	return f.forward(ctx, f.proofOrigin, tenantProofJobCollection, request)
+	return f.forward(ctx, f.proof, tenantProofJobCollection, request)
 }
 
-func (f *privateWorkerForwarder) forward(ctx context.Context, origin *url.URL, collection string, forwarded WorkerRequest) (WorkerResponse, error) {
-	if f == nil || f.http == nil || origin == nil || forwarded.Body == nil || !canonicalJobPath(forwarded.Method, forwarded.Path, collection) {
+func (f *privateWorkerForwarder) forward(ctx context.Context, target workerTarget, collection string, forwarded WorkerRequest) (WorkerResponse, error) {
+	if f == nil || target.http == nil || target.origin == nil || forwarded.Body == nil || !canonicalJobPath(forwarded.Method, forwarded.Path, collection) {
 		return WorkerResponse{}, errors.New("Store Link refused an invalid worker request")
 	}
-	endpoint := *origin
+	endpoint := *target.origin
 	endpoint.Path = forwarded.Path
 	endpoint.RawPath = ""
 	request, err := http.NewRequestWithContext(ctx, forwarded.Method, endpoint.String(), forwarded.Body)
@@ -160,11 +200,65 @@ func (f *privateWorkerForwarder) forward(ctx context.Context, origin *url.URL, c
 	if forwarded.Method == http.MethodPost {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	response, err := f.http.Do(request)
+	response, err := target.http.Do(request)
 	if err != nil {
 		return WorkerResponse{}, fmt.Errorf("call private worker: %w", err)
 	}
 	return WorkerResponse{StatusCode: response.StatusCode, Header: response.Header.Clone(), Body: response.Body, ContentLength: response.ContentLength}, nil
+}
+
+func workerLeafPin(label, raw string) ([]byte, error) {
+	digest := strings.TrimSpace(raw)
+	if len(digest) != sha256.Size*2 || digest != strings.ToLower(digest) {
+		return nil, fmt.Errorf("Store Link %s must be a lowercase SHA-256 certificate digest", label)
+	}
+	pin, err := hex.DecodeString(digest)
+	if err != nil || len(pin) != sha256.Size {
+		return nil, fmt.Errorf("Store Link %s must be a lowercase SHA-256 certificate digest", label)
+	}
+	return pin, nil
+}
+
+func distinctWorkerLeafPins(pins ...[]byte) error {
+	for i := range pins {
+		for j := 0; j < i; j++ {
+			if bytes.Equal(pins[i], pins[j]) {
+				return errors.New("Store Link worker leaf pins must identify distinct services")
+			}
+		}
+	}
+	return nil
+}
+
+func newPinnedWorkerHTTPClient(certificate tls.Certificate, roots *x509.CertPool, pinnedLeaf []byte) (*http.Client, error) {
+	if roots == nil || len(pinnedLeaf) != sha256.Size {
+		return nil, errors.New("Store Link worker TLS identity is incomplete")
+	}
+	pin := append([]byte(nil), pinnedLeaf...)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.TLSClientConfig = &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      roots,
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.VerifiedChains) == 0 || len(state.VerifiedChains[0]) == 0 {
+				return errors.New("Store Link worker certificate was not verified")
+			}
+			actual := sha256.Sum256(state.VerifiedChains[0][0].Raw)
+			if !bytes.Equal(actual[:], pin) {
+				return errors.New("Store Link worker certificate is not the pinned worker identity")
+			}
+			return nil
+		},
+	}
+	return &http.Client{
+		Transport: transport,
+		Timeout:   2 * time.Minute,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errors.New("Store Link refuses worker redirects")
+		},
+	}, nil
 }
 
 func (h *Handler) handleJob(w http.ResponseWriter, r *http.Request, collection string) {

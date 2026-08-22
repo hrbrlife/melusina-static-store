@@ -642,6 +642,18 @@ func TestWorkerProvisioningRequiresEveryFixedOrigin(t *testing.T) {
 	if _, err := NewWorkerForwarder(config); err == nil || !strings.Contains(err.Error(), "releaseFinalizationWorkerUrl") {
 		t.Fatalf("missing finalization origin error = %v", err)
 	}
+	config.ReleaseFinalizationWorkerURL = "https://127.0.0.1:9464"
+	config.TenantProofWorkerURL = "https://127.0.0.1:9462"
+	if _, err := NewWorkerForwarder(config); err == nil || !strings.Contains(err.Error(), "buildWorkerCertSha256") {
+		t.Fatalf("missing worker leaf pin error = %v", err)
+	}
+	config.BuildWorkerCertSHA256 = strings.Repeat("a", 64)
+	config.ReleasePreparationWorkerCertSHA256 = strings.Repeat("a", 64)
+	config.ReleaseFinalizationWorkerCertSHA256 = strings.Repeat("b", 64)
+	config.TenantProofWorkerCertSHA256 = strings.Repeat("c", 64)
+	if _, err := NewWorkerForwarder(config); err == nil || !strings.Contains(err.Error(), "distinct services") {
+		t.Fatalf("duplicate worker leaf pin error = %v", err)
+	}
 }
 
 func TestLoadConfigRejectsGroupOrWorldWritableFile(t *testing.T) {

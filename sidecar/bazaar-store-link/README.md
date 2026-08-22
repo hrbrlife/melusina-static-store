@@ -11,6 +11,7 @@ human offline approval -------------> Bazaar Control Pearl
 Pearl --selected Sandstorm HTTP-out capability--> Bazaar Store Link
 Bazaar Store Link --pinned mTLS--> Store sidecar
 Store sidecar --Unix socket--> listing signer
+Bazaar Store Link --mutually pinned mTLS--> fixed release workers
 ```
 
 The connector currently exposes exactly this fixed vocabulary:
@@ -80,7 +81,11 @@ Example shape (use real protected paths; do not commit this file):
   "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
   "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
   "tenantProofWorkerUrl": "https://127.0.0.1:9462",
-  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem"
+  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem",
+  "buildWorkerCertSha256": "<lowercase sha256 of build worker certificate DER>",
+  "releasePreparationWorkerCertSha256": "<lowercase sha256 of preparation worker certificate DER>",
+  "releaseFinalizationWorkerCertSha256": "<lowercase sha256 of finalization worker certificate DER>",
+  "tenantProofWorkerCertSha256": "<lowercase sha256 of tenant-proof worker certificate DER>"
 }
 ```
 
@@ -88,6 +93,19 @@ The listener must be restricted at the host firewall to Sandstorm's outbound
 service path. That network rule protects availability; it is not release
 authority. The actual mutation gate is the independently verified, expiring,
 single-use Pearl command plus the exact offline approval.
+
+`workerCaPath` establishes the worker-serving trust root. It is deliberately
+not sufficient by itself: the four `*WorkerCertSha256` values are mandatory
+per-worker SHA-256 digests over the serving certificate DER. Store Link pins
+each digest on its own fixed route; a different certificate from the same
+worker CA is refused before any job HTTP request. Conversely, every worker
+must require TLS 1.3, verify the Store Link client CA, and pin the configured
+Store Link client leaf. The same Store Link client key may be presented to all
+four workers, but each worker result key and serving certificate is distinct.
+
+The example digests are placeholders and fail closed. The deployer must replace
+all four alongside the private origins, CA, and Store Link client key; a
+missing finalization origin or any missing/invalid worker pin prevents startup.
 
 Run the service only after the sidecar has a dedicated TLS-1.3 control listener
 configured with this connector's exact client-leaf digest:
@@ -104,7 +122,8 @@ build, release-preparation, release-finalization, and tenant-proof workers,
 which must persist their own jobs and return release-bound signed results. The
 finalizer also needs a configured immutable content-addressed artifact vault;
 the relay must never become its artifact transport. The relay intentionally
-rejects startup without the worker origins and their CA. Do not switch
+rejects startup without the worker origins, their CA, and their exact leaf
+pins. Do not switch
 `require_pearl_control_for_app_publish` on a live Store until the complete
 provisioning and one-app pilot in Bazaar Control's deployment requirements have
 passed.

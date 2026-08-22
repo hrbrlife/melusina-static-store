@@ -1,0 +1,8 @@
+{
+  "listenAddr": "10.53.155.42:9460",
+  "storeId": "melusina-os-root-store",
+  "sidecarUrl": "https://127.0.0.1:9443",
+  "clientCertPath": "/etc/bazaar-store-link/client.pem",
+  "clientKeyPath": "/etc/bazaar-store-link/client.key",
+  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem"
+}

@@ -1,0 +1,420 @@
+// Package storelink is the narrow, operator-owned bridge between a contained
+// Bazaar Control Pearl and a Store sidecar's private control listener.
+//
+// It is deliberately not a publish API, RPC proxy, signing service, or
+// transaction relay. A caller can use only a fixed vocabulary that maps to
+// the sidecar's typed control routes. The connector owns the mTLS client
+// identity; the Pearl continues to prove every operation with a signed,
+// single-use command and, for a live release, a separate offline approval.
+package storelink
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+)
+
+const (
+	controlCommandHeader         = "X-Bazaar-Control-Command"
+	controlPearlSignatureHeader  = "X-Bazaar-Pearl-Signature"
+	controlOfflineApprovalHeader = "X-Bazaar-Offline-Approval"
+
+	maxControlHeaderBytes int64 = 32 << 10
+	maxCandidateBytes     int64 = 256 << 20
+	maxResponseBytes      int64 = 1 << 20
+)
+
+// Config is host-owned deployment configuration. It is intentionally absent
+// from the Pearl package: only this connector holds a private mTLS key.
+type Config struct {
+	ListenAddr        string `json:"listenAddr"`
+	StoreID           string `json:"storeId"`
+	SidecarURL        string `json:"sidecarUrl"`
+	ClientCertPath    string `json:"clientCertPath"`
+	ClientKeyPath     string `json:"clientKeyPath"`
+	SidecarCAPath     string `json:"sidecarCaPath"`
+	MaxCandidateBytes int64  `json:"maxCandidateBytes,omitempty"`
+}
+
+func (c Config) candidateLimit() int64 {
+	if c.MaxCandidateBytes == 0 {
+		return maxCandidateBytes
+	}
+	return c.MaxCandidateBytes
+}
+
+func (c Config) Validate() error {
+	if !validSegment(c.StoreID) {
+		return errors.New("store link storeId is invalid")
+	}
+	host, port, err := net.SplitHostPort(strings.TrimSpace(c.ListenAddr))
+	if err != nil || host == "" || port == "" || !privateOrLoopbackHost(host) {
+		return errors.New("store link listenAddr must be a private or loopback host:port")
+	}
+	if c.candidateLimit() < 1 || c.candidateLimit() > maxCandidateBytes {
+		return fmt.Errorf("store link maxCandidateBytes must be between 1 and %d", maxCandidateBytes)
+	}
+	for label, path := range map[string]string{
+		"clientCertPath": c.ClientCertPath, "clientKeyPath": c.ClientKeyPath, "sidecarCaPath": c.SidecarCAPath,
+	} {
+		if !absoluteRegularPath(path) {
+			return fmt.Errorf("store link %s must be an absolute regular-file path", label)
+		}
+	}
+	_, err = parsePrivateHTTPSOrigin(c.SidecarURL)
+	return err
+}
+
+func absoluteRegularPath(path string) bool {
+	return strings.HasPrefix(strings.TrimSpace(path), "/")
+}
+
+func privateOrLoopbackHost(host string) bool {
+	ip := net.ParseIP(strings.Trim(strings.TrimSpace(host), "[]"))
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
+}
+
+func parsePrivateHTTPSOrigin(raw string) (*url.URL, error) {
+	origin, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || origin.Scheme != "https" || origin.Host == "" || origin.User != nil || origin.RawQuery != "" || origin.Fragment != "" || (origin.Path != "" && origin.Path != "/") || !privateOrLoopbackHost(origin.Hostname()) {
+		return nil, errors.New("store link sidecarUrl must be one exact private HTTPS origin")
+	}
+	return origin, nil
+}
+
+// ForwardRequest is constructed only by Handler after canonical route and
+// header validation. There is intentionally no method or URL field supplied
+// by a caller.
+type ForwardRequest struct {
+	Method  string
+	Path    string
+	Headers http.Header
+	Body    io.ReadCloser
+}
+
+type ForwardResponse struct {
+	StatusCode int
+	Header     http.Header
+	Body       []byte
+}
+
+type Forwarder interface {
+	Forward(context.Context, ForwardRequest) (ForwardResponse, error)
+}
+
+// SidecarForwarder is the only component that presents the Store Link's mTLS
+// identity to the private sidecar. It refuses redirects and joins a fixed,
+// configuration-selected origin with a fixed path supplied by Handler.
+type SidecarForwarder struct {
+	origin *url.URL
+	http   *http.Client
+}
+
+func NewSidecarForwarder(config Config) (*SidecarForwarder, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	origin, err := parsePrivateHTTPSOrigin(config.SidecarURL)
+	if err != nil {
+		return nil, err
+	}
+	certificate, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("load Store Link client certificate: %w", err)
+	}
+	caBytes, err := os.ReadFile(config.SidecarCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("read Store sidecar CA: %w", err)
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caBytes) {
+		return nil, errors.New("Store sidecar CA contains no certificates")
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate}, RootCAs: pool}
+	return &SidecarForwarder{origin: origin, http: &http.Client{
+		Transport: transport,
+		Timeout:   3 * time.Minute,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errors.New("Store Link refuses sidecar redirects")
+		},
+	}}, nil
+}
+
+func (f *SidecarForwarder) Forward(ctx context.Context, forwarded ForwardRequest) (ForwardResponse, error) {
+	if f == nil || f.origin == nil || f.http == nil || !canonicalSidecarPath(forwarded.Method, forwarded.Path) || forwarded.Body == nil {
+		return ForwardResponse{}, errors.New("Store Link refused an invalid sidecar forwarding request")
+	}
+	endpoint := *f.origin
+	endpoint.Path = forwarded.Path
+	endpoint.RawPath = ""
+	request, err := http.NewRequestWithContext(ctx, forwarded.Method, endpoint.String(), forwarded.Body)
+	if err != nil {
+		return ForwardResponse{}, fmt.Errorf("build sidecar request: %w", err)
+	}
+	request.Header = exactForwardHeaders(forwarded.Headers)
+	response, err := f.http.Do(request)
+	if err != nil {
+		return ForwardResponse{}, fmt.Errorf("call private Store sidecar: %w", err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
+	if err != nil {
+		return ForwardResponse{}, fmt.Errorf("read private Store sidecar response: %w", err)
+	}
+	if int64(len(body)) > maxResponseBytes {
+		return ForwardResponse{}, errors.New("private Store sidecar response exceeded its bound")
+	}
+	return ForwardResponse{StatusCode: response.StatusCode, Header: response.Header.Clone(), Body: body}, nil
+}
+
+// Handler accepts traffic only from a selected Sandstorm capability. Sandstorm
+// enforces that capability's path and permission boundary; this handler still
+// rejects every route, method, query, header, and payload shape outside the
+// fixed vocabulary so it stays safe if placed behind an additional proxy.
+type Handler struct {
+	storeID string
+	maxBody int64
+	forward Forwarder
+}
+
+func NewHandler(config Config, forwarder Forwarder) (*Handler, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	if forwarder == nil {
+		return nil, errors.New("Store Link requires a sidecar forwarder")
+	}
+	return &Handler{storeID: config.StoreID, maxBody: config.candidateLimit(), forward: forwarder}, nil
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.forward == nil || r == nil || r.URL == nil || r.URL.RawQuery != "" || r.URL.RawPath != "" {
+		http.NotFound(w, r)
+		return
+	}
+	path := r.URL.Path
+	switch {
+	case strings.HasPrefix(path, "/v1/release-commands/"):
+		h.handleRelease(w, r)
+	case strings.HasPrefix(path, "/v1/authority/"):
+		h.handleAuthority(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h *Handler) handleRelease(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	dossierID, action, ok := releaseRoute(r.URL.Path)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if r.ContentLength > h.maxBody {
+		http.Error(w, "release candidate exceeds the Store Link limit", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if !isJSONContentType(r.Header.Get("Content-Type")) {
+		http.Error(w, "release command requires application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	command, signature, approval, err := releaseHeaders(r.Header, action)
+	if err != nil {
+		http.Error(w, "invalid Bazaar Control command: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if command.DossierID != dossierID || command.Action != actionToCommandAction(action) || command.Method != http.MethodPost || command.Route != sidecarReleasePath(dossierID, action) || signature == "" || (action == "prepare" && approval != "") || (action == "publish" && approval == "") {
+		http.Error(w, "Bazaar Control command does not bind this Store Link operation", http.StatusForbidden)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, h.maxBody)
+	h.forwardResponse(w, r, ForwardRequest{Method: http.MethodPost, Path: sidecarReleasePath(dossierID, action), Headers: exactForwardHeaders(r.Header), Body: r.Body})
+}
+
+func (h *Handler) handleAuthority(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	storeID, appID, publisher, ok := authorityRoute(r.URL.Path)
+	if !ok || storeID != h.storeID {
+		http.NotFound(w, r)
+		return
+	}
+	h.forwardResponse(w, r, ForwardRequest{Method: http.MethodGet, Path: "/control/v1/authority/" + appID + "/" + publisher, Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+}
+
+func (h *Handler) forwardResponse(w http.ResponseWriter, r *http.Request, forwarded ForwardRequest) {
+	defer forwarded.Body.Close()
+	response, err := h.forward.Forward(r.Context(), forwarded)
+	if err != nil {
+		if strings.Contains(err.Error(), "request body too large") {
+			http.Error(w, "release candidate exceeds the Store Link limit", http.StatusRequestEntityTooLarge)
+			return
+		}
+		http.Error(w, "Store Link could not reach the private Store control service", http.StatusBadGateway)
+		return
+	}
+	if response.StatusCode < http.StatusContinue || response.StatusCode > 599 || int64(len(response.Body)) > maxResponseBytes {
+		http.Error(w, "Store Link received an invalid private Store response", http.StatusBadGateway)
+		return
+	}
+	contentType := response.Header.Get("Content-Type")
+	if isJSONContentType(contentType) {
+		w.Header().Set("Content-Type", "application/json")
+	} else {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(response.StatusCode)
+	_, _ = w.Write(response.Body)
+}
+
+type wireCommand struct {
+	DossierID string `json:"dossierId"`
+	Action    string `json:"action"`
+	Route     string `json:"route"`
+	Method    string `json:"method"`
+}
+
+func releaseHeaders(headers http.Header, action string) (wireCommand, string, string, error) {
+	commandEncoded := headers.Get(controlCommandHeader)
+	signature := headers.Get(controlPearlSignatureHeader)
+	approval := headers.Get(controlOfflineApprovalHeader)
+	if err := validateControlHeader(commandEncoded); err != nil {
+		return wireCommand{}, "", "", errors.New("command header")
+	}
+	if err := validateControlHeader(signature); err != nil {
+		return wireCommand{}, "", "", errors.New("Pearl signature header")
+	}
+	if action == "publish" {
+		if err := validateControlHeader(approval); err != nil {
+			return wireCommand{}, "", "", errors.New("offline approval header")
+		}
+	} else if approval != "" {
+		return wireCommand{}, "", "", errors.New("private preparation cannot carry an offline approval")
+	}
+	raw, _ := base64.RawURLEncoding.DecodeString(commandEncoded)
+	var command wireCommand
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	if err := decoder.Decode(&command); err != nil {
+		return wireCommand{}, "", "", errors.New("command JSON")
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return wireCommand{}, "", "", errors.New("command JSON has trailing data")
+	}
+	return command, signature, approval, nil
+}
+
+func validateControlHeader(encoded string) error {
+	if encoded == "" || int64(len(encoded)) > maxControlHeaderBytes {
+		return errors.New("missing or oversized")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil || len(raw) == 0 || int64(len(raw)) > maxControlHeaderBytes || !json.Valid(raw) {
+		return errors.New("not bounded base64url JSON")
+	}
+	return nil
+}
+
+func exactForwardHeaders(input http.Header) http.Header {
+	output := make(http.Header, 4)
+	if contentType := input.Get("Content-Type"); contentType != "" {
+		output.Set("Content-Type", contentType)
+	}
+	for _, name := range []string{controlCommandHeader, controlPearlSignatureHeader, controlOfflineApprovalHeader} {
+		if value := input.Get(name); value != "" {
+			output.Set(name, value)
+		}
+	}
+	return output
+}
+
+func releaseRoute(path string) (string, string, bool) {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(parts) != 4 || parts[0] != "v1" || parts[1] != "release-commands" || !isLowerHex(parts[2], 24) || (parts[3] != "prepare" && parts[3] != "publish") {
+		return "", "", false
+	}
+	return parts[2], parts[3], true
+}
+
+func authorityRoute(path string) (string, string, string, bool) {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(parts) != 5 || parts[0] != "v1" || parts[1] != "authority" || !validSegment(parts[2]) || !validSegment(parts[3]) || !validSegment(parts[4]) {
+		return "", "", "", false
+	}
+	return parts[2], parts[3], parts[4], true
+}
+
+func canonicalSidecarPath(method, path string) bool {
+	if method == http.MethodPost && strings.HasPrefix(path, "/control/v1/releases/") {
+		parts := strings.Split(strings.TrimPrefix(path, "/control/v1/releases/"), "/")
+		return len(parts) == 2 && isLowerHex(parts[0], 24) && (parts[1] == "prepare" || parts[1] == "publish")
+	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/control/v1/authority/") {
+		parts := strings.Split(strings.TrimPrefix(path, "/control/v1/authority/"), "/")
+		return len(parts) == 2 && validSegment(parts[0]) && validSegment(parts[1])
+	}
+	return false
+}
+
+func sidecarReleasePath(dossierID, action string) string {
+	return "/control/v1/releases/" + dossierID + "/" + action
+}
+
+func actionToCommandAction(action string) string {
+	if action == "prepare" {
+		return "prepare_release"
+	}
+	return "publish_release"
+}
+
+func validSegment(value string) bool {
+	if value == "" || len(value) > 256 {
+		return false
+	}
+	for _, r := range value {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+func isLowerHex(value string, want int) bool {
+	if len(value) != want {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '0' && r <= '9') && !(r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func isJSONContentType(value string) bool {
+	mediaType := strings.TrimSpace(strings.Split(value, ";")[0])
+	return strings.EqualFold(mediaType, "application/json")
+}
+
+func methodNotAllowed(w http.ResponseWriter) {
+	w.Header().Set("Allow", "GET, POST")
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}

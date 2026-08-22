@@ -1,0 +1,71 @@
+# Bazaar Store Link
+
+`bazaar-store-link` is the small, host-operated connector between a contained
+Bazaar Control Pearl and the Store sidecar's private control listener. It makes
+the release flow human-sized without turning the Store into a public signing or
+transaction service.
+
+```text
+terminal agent --submit capability--> Bazaar Control Pearl
+human offline approval -------------> Bazaar Control Pearl
+Pearl --selected Sandstorm HTTP-out capability--> Bazaar Store Link
+Bazaar Store Link --pinned mTLS--> Store sidecar
+Store sidecar --Unix socket--> listing signer
+```
+
+The connector currently exposes exactly three operations:
+
+- `POST /v1/release-commands/<24-lower-hex>/prepare`
+- `POST /v1/release-commands/<24-lower-hex>/publish`
+- `GET /v1/authority/<configured-store>/<app>/<publisher>`
+
+It cannot accept a caller-chosen URL, method, sidecar path, transaction,
+signing request, publisher lifecycle request, generic RPC call, or listing
+instruction. It maps those three operations to the typed sidecar routes only.
+For release commands it forwards only `Content-Type`, the Pearl command,
+Pearl signature, and—for publication—the offline approval. The sidecar still
+verifies the same command, publisher grant, artifact, chain facts, predecessor,
+and listing-before-selector rule independently.
+
+## Deployment boundary
+
+The connector is an operator service next to the Store, not code inside the
+Pearl SPK. Its configuration names a private listener and the private sidecar
+origin plus paths to its client certificate, private key, and sidecar CA. Those
+credentials must be created by the Store operator and are never copied into a
+Pearl, terminal, build worker, browser, or package.
+
+Example shape (use real protected paths; do not commit this file):
+
+```json
+{
+  "listenAddr": "10.53.155.42:9460",
+  "storeId": "melusina-os-root-store",
+  "sidecarUrl": "https://127.0.0.1:9443",
+  "clientCertPath": "/etc/bazaar-store-link/client.pem",
+  "clientKeyPath": "/etc/bazaar-store-link/client.key",
+  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem"
+}
+```
+
+The listener must be restricted at the host firewall to Sandstorm's outbound
+service path. That network rule protects availability; it is not release
+authority. The actual mutation gate is the independently verified, expiring,
+single-use Pearl command plus the exact offline approval.
+
+Run the service only after the sidecar has a dedicated TLS-1.3 control listener
+configured with this connector's exact client-leaf digest:
+
+```text
+bazaar-store-link -config /etc/bazaar-store-link/config.json
+```
+
+## Current status
+
+This source is a verified connector boundary, **not a deployed Golden MVP**.
+It deliberately does not yet expose trusted-build or tenant-proof worker jobs;
+those need separate bounded worker implementations and release-bound signed
+results before a pilot can run. Do not switch
+`require_pearl_control_for_app_publish` on a live Store until the complete
+provisioning and one-app pilot in Bazaar Control's deployment requirements have
+passed.

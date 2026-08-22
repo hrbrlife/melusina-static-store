@@ -1,36 +1,105 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
-  "sourceRepository": "https://github.com/hrbrlife/MiniGit",
-  "sourceCommit": "825963ebdefc07efc8258e153116a1b80b1e3745",
-  "selectionMethod": "direct-dev",
-  "decisionSummary": "The current direct source is canonical. It adds the app-local build prerequisite that guarantees the shared candidate pack recipe packages a freshly built gitpearl binary. Every divergent remote head was inspected: it is preserved historical package/release work, an old ceremony work-in-progress, or docs-only salvage; none provides a newer runnable source line.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "fresh recursive clone at the selected source commit",
-      "make vet test and the corrected make pack-local contract",
-      "two corrected make pack-local runs and spk verify",
-      "candidate SHA-256 91d7f7c1f0b21b54b24fa89cd8386d40abeea3bc444f0ab2112a6619865a69e8 has the packageId advertised by the public 0.2.14 pointer",
-      "provider candidate appHash 6ebfd29116459f95e1c8a98249ee89abed34cd785140399b15ced98851c89b53 equals the signed public pointer"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/archive/feat/gomaxprocs-pthread-fix", "commit": "a42c394ec2a7ffdc63f0c4486df2c1a1c2df39bf", "outcome": "archive"},
-    {"ref": "refs/heads/archive/wip-pearl-ceremony-2026-05-18", "commit": "6b7e704a595326ee3deef724ee3473b32e5e812d", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "825963ebdefc07efc8258e153116a1b80b1e3745", "outcome": "selected"},
-    {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "462611fac258ea3be86c6422a605299b303b6241", "outcome": "archive"},
-    {"ref": "refs/heads/gitpearl", "commit": "e6604e1909ba3d019c0cd2b1924f33b98fcc47ca", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "610c44614a8b499d1e80795a97daca66a9912f77", "outcome": "baseline"},
-    {"ref": "refs/heads/master", "commit": "1d1118e725eb75b840f6efe4d446a52be1cb25ea", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/_stash/3134d40a0b02", "commit": "3134d40a0b02462c44e8699678861a4dd035a871", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/gitpearl", "commit": "e6604e1909ba3d019c0cd2b1924f33b98fcc47ca", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/master", "commit": "1d1118e725eb75b840f6efe4d446a52be1cb25ea", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "71d221bf05037337b6c3017763c93d66ec83b5d6", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/release/minigit-v029-live-20260814", "commit": "10c5f85301267481b6bde0ed9e57a4b48c2b72c6", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "bb7804dd0d796cf1f499fdd0420a2fa346d0955f", "outcome": "not-app-relevant"},
-    {"ref": "refs/heads/preserve-local-20260814/wip-pearl-ceremony-2026-05-18", "commit": "6b7e704a595326ee3deef724ee3473b32e5e812d", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "0e9adc2abc87d229a04f5166beec633ecc3df644", "outcome": "archive"},
-    {"ref": "refs/heads/resign-attest", "commit": "2638d243cb2e0e43cb823f7567be8e7a99aab9db", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50",
+    "sourceRepository": "https://github.com/hrbrlife/MiniGit",
+    "sourceCommit": "dcd121ce64091e5cb512aa8cb66e605218e97865",
+    "selectionMethod": "direct-dev",
+    "decisionSummary": "Selected the 2026-08-22 dev-publish MiniGit v0.2.15/v21 cut. It fixes the defect that made gitpearl invisible to every GrainContext consumer: TypeIDGrainContext was the literal 0xb7c5e2f1a9d30468, which is the @0x on line 1 of capnp/graincontext.capnp - the FILE id, not the interface id. `interface GrainContext` declares no explicit id, so capnp derives 0x91283d5a5fde4380, which is what the generated bindings carry and what Jinn requests. Attaching a MiniGit pearl to a Jinn assistant therefore reported 'No matching pearls found' for a pearl that was running and healthy. The constant is now derived from the generated bindings so it cannot be transcribed wrong again, and the comments that named the file id as 'the interface id' are corrected. Jinn required no change - it was correct throughout, and adding a legacy descriptor there would have been a compatibility shim the operating contract forbids.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "fresh single-branch clone at the selected source commit with submodules initialised; git status --untracked-files=all empty",
+            "go build ./... clean",
+            "go test ./... green across all 12 packages",
+            "GUARD: TypeIDGrainContext must equal the generated GrainContext_TypeID, must equal the canonical interoperability id 0x91283d5a5fde4380, and must NOT be the schema file id - three assertions, each failing by name",
+            "GUARD: a second test pins the assumption the first rests on, that the vendored schema still declares no explicit interface id so the generated value stays derived",
+            "MUTATION CONTROL: restoring the file id fails TestGrainContextTypeIDIsTheInterfaceIDNotTheFileID by name; restoring the fix returns the package to ok",
+            "version cohort advanced together: metadata.json, sandstorm-pkgdef.capnp, Makefile PEARL_RELEASE_VERSION, release_candidate_test.go pins, description.md, RUNTIME-CONTRACT.json, changelog head - verified by the repo's own TestReleaseCandidateMetadataCohort",
+            "gofmt clean on both changed files"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/feat/gomaxprocs-pthread-fix",
+            "commit": "a42c394ec2a7ffdc63f0c4486df2c1a1c2df39bf",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/wip-pearl-ceremony-2026-05-18",
+            "commit": "6b7e704a595326ee3deef724ee3473b32e5e812d",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "dcd121ce64091e5cb512aa8cb66e605218e97865",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/metadata-defects-2026-08-05",
+            "commit": "462611fac258ea3be86c6422a605299b303b6241",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/gitpearl",
+            "commit": "e6604e1909ba3d019c0cd2b1924f33b98fcc47ca",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "610c44614a8b499d1e80795a97daca66a9912f77",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/master",
+            "commit": "1d1118e725eb75b840f6efe4d446a52be1cb25ea",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/3134d40a0b02",
+            "commit": "3134d40a0b02462c44e8699678861a4dd035a871",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/gitpearl",
+            "commit": "e6604e1909ba3d019c0cd2b1924f33b98fcc47ca",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/master",
+            "commit": "1d1118e725eb75b840f6efe4d446a52be1cb25ea",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "71d221bf05037337b6c3017763c93d66ec83b5d6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/release/minigit-v029-live-20260814",
+            "commit": "10c5f85301267481b6bde0ed9e57a4b48c2b72c6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "bb7804dd0d796cf1f499fdd0420a2fa346d0955f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wip-pearl-ceremony-2026-05-18",
+            "commit": "6b7e704a595326ee3deef724ee3473b32e5e812d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "0e9adc2abc87d229a04f5166beec633ecc3df644",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/resign-attest",
+            "commit": "2638d243cb2e0e43cb823f7567be8e7a99aab9db",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

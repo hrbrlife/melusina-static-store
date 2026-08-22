@@ -347,7 +347,7 @@ groups:
         source_selection_receipt: prepublish-selections/ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h.json
         publish_slug: teleport
         catalog_name: Teleport
-        live_version: 1.3.5
+        live_version: 1.3.6
         catalog_developer: hrbrlife
         catalog_repo: melusina_teleport2
         catalog_slug: teleport
@@ -448,7 +448,7 @@ groups:
         # A cohort must use a portable product directory, never a preserved
         # workstation worktree name.
         source_path: minigit
-        source_commit: 825963ebdefc07efc8258e153116a1b80b1e3745
+        source_commit: dcd121ce64091e5cb512aa8cb66e605218e97865
         source_repository: https://github.com/hrbrlife/MiniGit
         reconciliation_state: source-pinned
         release_state: ready
@@ -456,7 +456,7 @@ groups:
         source_selection_receipt: prepublish-selections/pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50.json
         publish_slug: minigit
         catalog_name: MiniGit
-        live_version: 0.2.14
+        live_version: 0.2.15
         catalog_developer: hrbrlife
         catalog_repo: MiniGit
         catalog_slug: gitpearl
@@ -588,7 +588,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
-        live_version: 2.0.33
+        live_version: 2.0.34
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json

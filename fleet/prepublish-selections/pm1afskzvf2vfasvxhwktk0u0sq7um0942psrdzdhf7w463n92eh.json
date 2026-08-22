@@ -1,72 +1,71 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
-  "sourceRepository": "https://github.com/hrbrlife/melusina-app-creeper",
-  "sourceCommit": "d9a282fb50711038f7f456e8d107064f888742ae",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "Selected the current dev-publish v0.1.24/version-26 Creeper source after a complete remote-head inventory. The selected source is the forward descendant of main and carries the current tracked runtime contract and reproducible package controls. The only recent divergent salvage line is documentation-only; preserved, security, audit, and historical delivery lines remain retained Git evidence rather than newer app input.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean exact checkout at the selected commit",
-      "origin dev-publish still advertises the selected commit",
-      "all advertised remote heads recorded and reviewed for current source selection",
-      "metadata and build-bound runtime contract match immutable app identity",
-      "make package-reproducibility produced two matching SPKs with SHA-256 ab1a4ecf00c489e89f224744da7d0c0d5eacafd74d42fb29a85619234c6e2731"
+    "schema": "melusina-source-selection-v1",
+    "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
+    "sourceRepository": "https://github.com/hrbrlife/melusina-app-creeper",
+    "sourceCommit": "6edfb3ebc93fdce0c6723697f6acef8312bc3b19",
+    "selectionMethod": "direct-dev",
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor",
+    "decisionSummary": "Creeper 0.1.25 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "go test ./... passes for grain and catalogmeta",
+            "the catalogmeta guard now requires the license declaration and forbids the two key-derivation roots as actual declarations rather than substrings; both directions proven by mutation",
+            "root cause measured in the owner's grain log: 'MELUSINA_LICENSE_NFT is unset - sidecar auth will fail (401)' followed by 'cap-routed exception synthesized 401'"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "6edfb3ebc93fdce0c6723697f6acef8312bc3b19",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/prelaunch-creeper-v25",
+            "commit": "3127c8fe2f092c26a299f400acb38f336c646686",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "dd0535cfd090f5d8c907436c299b67029ab6d3d9",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-screening-admin-gate-2026-06-26",
+            "commit": "16e805b164448ea32294068861fd344109797fb1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/creeper-session-teardown-20260814",
+            "commit": "06dcc9355d9d411ea0635bd496a87826020283fc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "60c38c8074039776eea14cecf5f66315c5075b19",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "5a96df73681429c932b98238d446c70c36dd33b5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/security/admin-gate-and-inv3",
+            "commit": "712618198b3f008494cd91b34be0bf4dfd1bf8e4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/security/saveclaim-validation",
+            "commit": "95383ae7bba5baf81d62900f7a35b0323b53eae2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/security/session-registry-leak",
+            "commit": "3f05d80d72c37f345effe9d7fd1ee3eeb736528d",
+            "outcome": "retained"
+        }
     ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "d9a282fb50711038f7f456e8d107064f888742ae",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/fix/prelaunch-creeper-v25",
-      "commit": "3127c8fe2f092c26a299f400acb38f336c646686",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "dd0535cfd090f5d8c907436c299b67029ab6d3d9",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/teama-screening-admin-gate-2026-06-26",
-      "commit": "16e805b164448ea32294068861fd344109797fb1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/creeper-session-teardown-20260814",
-      "commit": "06dcc9355d9d411ea0635bd496a87826020283fc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "60c38c8074039776eea14cecf5f66315c5075b19",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
-      "commit": "5a96df73681429c932b98238d446c70c36dd33b5",
-      "outcome": "not-app-relevant"
-    },
-    {
-      "ref": "refs/heads/security/admin-gate-and-inv3",
-      "commit": "712618198b3f008494cd91b34be0bf4dfd1bf8e4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/security/saveclaim-validation",
-      "commit": "95383ae7bba5baf81d62900f7a35b0323b53eae2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/security/session-registry-leak",
-      "commit": "3f05d80d72c37f345effe9d7fd1ee3eeb736528d",
-      "outcome": "archive"
-    }
-  ]
 }

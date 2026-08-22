@@ -1,174 +1,172 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
-  "sourceRepository": "https://github.com/hrbrlife/jinn",
-  "sourceCommit": "4ca7e53ceaf5700276b761d39f4a66142ec096b0",
-  "selectionMethod": "direct-dev",
-  "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v14/0.0.14 source is canonical. Jinn's failure was ONE defect appearing in THREE places in the shared grain-crypto-journal module, each hidden behind the last: keybox first-save publish, sqlitestore database open, and sqlitestore first write all reached the filesystem through /proc/self/fd, which a production Sandstorm grain cannot resolve because backend.c++ passes the supervisor's --proc flag only for dev-mode grains. Every fix moved the error exactly one line further, which is why this looked like a single stubborn bug. All three are now fixed (grain-crypto-journal 3610213, e7c60d2, d17a74b) and no non-test code in that module references /proc or Linkat any more.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean tracked dev-publish source at the selected commit; make test green and make pack clean",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId 3a685793521d75fb0fc6a6946a2dc0a6, sha256 3a685793521d75fb0fc6a6946a2dc0a6c609643e3b01923a7270709154449b3d",
-      "reproducibility confirmed independently of the packer's own report: sha256sum matched and cmp reported identical bytes",
-      "each of the three component fixes carries a behavioural guard; the namedPath guard has a mutation control that fails by name",
-      "STATED PLAINLY: the two publish-path guards have NO mutation control that fails locally, because a workstation has /proc and linkat succeeds there. They pin that first publish/first write work. The durable protection is that no non-test code in the module references /proc or Linkat, and the discriminating control is a live grain.",
-      "a wrong intermediate diagnosis (RLIMIT_AS, shipped as requestedMemoryGiB in 0.0.12) was disproved by the tenant and recorded in C-067 rather than quietly dropped",
-      "KNOWN RESIDUAL (F-267): any failure between keybox creation and store creation still leaves that grain unable to initialise",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v14."
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/dependabot/docker/docker-images-c43d3d18a2",
-      "commit": "e78e5389fc522022f0dc50b2b242b65a200246a6",
-      "outcome": "archive"
+    "schema": "melusina-source-selection-v1",
+    "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
+    "sourceRepository": "https://github.com/hrbrlife/jinn",
+    "sourceCommit": "a56cc6c56f0933995407549f5fe8a8c0fa9c16b7",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Jinn 0.0.15 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "full go test ./... passes",
+            "every handleStatic call site and every shell.html /static reference resolves in the embed FS; the guard carries a positive control and fails by name when either capitalised spelling is restored",
+            "root cause measured in the owner's grain log: 'jinn: 404 static: static/jinn-PowerBox.js' against the embedded static/jinn-powerbox.js"
+        ]
     },
-    {
-      "ref": "refs/heads/archive/dependabot/github_actions/actions/checkout-6",
-      "commit": "ae9541509e4b9da04f09971ae0b5fca962d09e4c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/github_actions/actions/create-github-app-token-3",
-      "commit": "7b7edd5ba57d9724ac37b8d51a55c4c020834965",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/github_actions/actions/setup-node-6",
-      "commit": "393d14081734727fb5cd191abf983542c0844022",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/github_actions/docker/build-push-action-7",
-      "commit": "8c6a36a97be8a66ed4aac0dff75394104258f76e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/github_actions/gradle/actions-6.1.0",
-      "commit": "635247bae7780d605a1e7efce3dbbc944797ba1d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/gradle/apps/android/android-deps-89fd55d84d",
-      "commit": "0c8c156e5380367082da8fdf5be31908bd17fbf1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/gradle/apps/android/androidx.test.uiautomator-uiautomator-2.4.0-beta02",
-      "commit": "05606f6c1e23857fcbd4d5750397a91d511cf072",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/dependabot/swift/apps/macos/swift-deps-81e14130ac",
-      "commit": "61c35653aca61fb01b4efdce9fec0baec204af1f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/iter-33-drop-before-delete-2026-05-15",
-      "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/fix/launcher-mkdir-2026-05-05",
-      "commit": "70f85bb7efdff70a5307942ea6ba07a083136421",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/jinn",
-      "commit": "86ffa509ce697e57d5a05514959ca75fbeb3b670",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "4ca7e53ceaf5700276b761d39f4a66142ec096b0",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/feat/generic-graincontext-peer-v7",
-      "commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/fix/cross-pearl-graincontext-v7",
-      "commit": "05651fd1048c18285d397780113590d8379d38c2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/fix/prelaunch-jinn-v8-generic-peer-setup",
-      "commit": "146ef2e4c0d8bed0845b1407619fd1b29244f72c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "136ce734d57f11327c2f70a602b1d7f191278023",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_detached/136957d87e40",
-      "commit": "136957d87e40f49a4c46ced6b3c3e304ee959d74",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/canonical/jinn-next",
-      "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-jinn-20260711",
-      "commit": "4031290bedc16e586246f56ae959e869117c7536",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/jinn-release-audit-20260713",
-      "commit": "7452b3f2a04c338c01adab1e4b75dd7d7bd81dd9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15",
-      "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-      "commit": "55a5c8bd3c3c1aa3016c911307666014a74e834b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-jinn-schema-fileid-20260804",
-      "commit": "7685e118320f652ec652f4b925b7e6e2a8682fd8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/golden/b04-executable-20260804",
-      "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/jinn",
-      "commit": "7c2797fa6f5832df4aeecb2801651d8309bc3809",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "068c282bfea7601edf2cfab9b29fe48a3e3efc2e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "b02a817b009a06ad6f7c9ce40feb5e02bd4e6396",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
-      "commit": "4fe923f0a8ed64fb7b728707a199f159ba780eb4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "ab3039437cc011e06f4f344f994941ce85420868",
-      "outcome": "archive"
-    }
-  ]
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/dependabot/docker/docker-images-c43d3d18a2",
+            "commit": "e78e5389fc522022f0dc50b2b242b65a200246a6",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/github_actions/actions/checkout-6",
+            "commit": "ae9541509e4b9da04f09971ae0b5fca962d09e4c",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/github_actions/actions/create-github-app-token-3",
+            "commit": "7b7edd5ba57d9724ac37b8d51a55c4c020834965",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/github_actions/actions/setup-node-6",
+            "commit": "393d14081734727fb5cd191abf983542c0844022",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/github_actions/docker/build-push-action-7",
+            "commit": "8c6a36a97be8a66ed4aac0dff75394104258f76e",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/github_actions/gradle/actions-6.1.0",
+            "commit": "635247bae7780d605a1e7efce3dbbc944797ba1d",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/gradle/apps/android/android-deps-89fd55d84d",
+            "commit": "0c8c156e5380367082da8fdf5be31908bd17fbf1",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/gradle/apps/android/androidx.test.uiautomator-uiautomator-2.4.0-beta02",
+            "commit": "05606f6c1e23857fcbd4d5750397a91d511cf072",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/dependabot/swift/apps/macos/swift-deps-81e14130ac",
+            "commit": "61c35653aca61fb01b4efdce9fec0baec204af1f",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/iter-33-drop-before-delete-2026-05-15",
+            "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/launcher-mkdir-2026-05-05",
+            "commit": "70f85bb7efdff70a5307942ea6ba07a083136421",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/jinn",
+            "commit": "86ffa509ce697e57d5a05514959ca75fbeb3b670",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "a56cc6c56f0933995407549f5fe8a8c0fa9c16b7",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/generic-graincontext-peer-v7",
+            "commit": "dd7f3aab2361026dbbcc76785188bc81dd06157b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/cross-pearl-graincontext-v7",
+            "commit": "05651fd1048c18285d397780113590d8379d38c2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/prelaunch-jinn-v8-generic-peer-setup",
+            "commit": "146ef2e4c0d8bed0845b1407619fd1b29244f72c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "136ce734d57f11327c2f70a602b1d7f191278023",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/136957d87e40",
+            "commit": "136957d87e40f49a4c46ced6b3c3e304ee959d74",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/canonical/jinn-next",
+            "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-jinn-20260711",
+            "commit": "4031290bedc16e586246f56ae959e869117c7536",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/jinn-release-audit-20260713",
+            "commit": "7452b3f2a04c338c01adab1e4b75dd7d7bd81dd9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15",
+            "commit": "84cfd8c9b5e0d1abd72787c1e251969bb4df2045",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "55a5c8bd3c3c1aa3016c911307666014a74e834b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-jinn-schema-fileid-20260804",
+            "commit": "7685e118320f652ec652f4b925b7e6e2a8682fd8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/golden/b04-executable-20260804",
+            "commit": "c7e87d1971940ae2e3d81cb06dc04ddf317c1fc2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/jinn",
+            "commit": "7c2797fa6f5832df4aeecb2801651d8309bc3809",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "068c282bfea7601edf2cfab9b29fe48a3e3efc2e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "b02a817b009a06ad6f7c9ce40feb5e02bd4e6396",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "4fe923f0a8ed64fb7b728707a199f159ba780eb4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "ab3039437cc011e06f4f344f994941ce85420868",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

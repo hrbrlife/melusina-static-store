@@ -1,29 +1,31 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
-  "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
-  "sourceCommit": "e7b6b044b44712c481177a5a0ef63ec93ba82e3f",
-  "selectionMethod": "direct-dev",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean detached checkout at the selected canonical dev-publish commit",
-      "make test (202 unit tests and 35 integration tests passed; no frontend suite is configured)",
-      "MEL_RELEASE_GREENFIELD_PACK=1 make pack twice with identical SHA-256 00c57080533b258670afa2c53f7a3de85779b9655c90bd2d9ffbf2113cbad209",
-      "spk verify passed; package metadata and SPK report Bureau Sheets marketing version 2.1.6 and package version 28",
-      "the SPK retains its embedded rich screenshot while source catalog metadata declares no unsupported Store-card screenshot URL"
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "e7b6b044b44712c481177a5a0ef63ec93ba82e3f",
-      "outcome": "selected"
+    "schema": "melusina-source-selection-v1",
+    "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
+    "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
+    "sourceCommit": "827c8a0cf95fe8d2c01992f4f1672bdf2be47af6",
+    "selectionMethod": "direct-dev",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "release guard suite passes (12 tests) including the new address-space guard",
+            "requestedMemoryGiB = 4 asserted in the SHIPPED manifest; proven by two mutations that each fail by name (declaration removed; value lowered to 2)",
+            "root cause measured in the owner's grain log: six 'pthread_create failed: Resource temporarily unavailable' crashes each followed by 'App exited with status code: 2'"
+        ]
     },
-    {
-      "ref": "refs/heads/main",
-      "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
-      "outcome": "baseline"
-    }
-  ]
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "827c8a0cf95fe8d2c01992f4f1672bdf2be47af6",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+            "outcome": "baseline"
+        }
+    ],
+    "decisionSummary": "Bureau Sheets 2.1.7 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

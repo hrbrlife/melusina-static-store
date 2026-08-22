@@ -1,52 +1,46 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
-  "sourceRepository": "https://github.com/hrbrlife/GoldKey",
-  "sourceCommit": "27d21fd221da80dcb4531e85c25ca53d5e2ee1c6",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "master",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The dev-publish v0.3.6/v9 source is canonical. GoldKey had NEVER started in production: cmd/goldkey/main.go waited 20s for /var/melusina/goldkey-master-key -- a host-side provisioner named in RUNTIME-CONTRACT.json but never built -- and then exited 1 on 'per-grain GoldKey master key is absent' (F-263). The mechanism that does exist is the supervisor's grain-master allowlist, which derives a per-grain 32-byte root from verified installed .appid and injects it as MELUSINA_GRAIN_MASTER_KEY at exec; Sheets, InstaCo and Jinn already consume it. This cut derives GoldKey's vault master from that root under its own domain, exactly as InstaCo derives its keybox master. Precedence is platform root, then scoped lease, then provisioned file, and a malformed root refuses rather than falling through to a weaker key. The other half of the fix is shell build 103, which adds GoldKey to the allowlist. master is the reviewed stable ancestor.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean tracked dev-publish source at the selected commit; go build ./... and go test ./... green (13/13 in cmd/goldkey, all packages ok)",
-      "two INDEPENDENT fresh recursive clones at DIFFERENT paths produced identical packages: packageId ac0a37853f03e2dc5767783d82b73e55, sha256 ac0a37853f03e2dc5767783d82b73e557c9cceee52ef2c097dde75c203059b60",
-      "reproducibility confirmed independently of the packer's own report: sha256sum matched and cmp reported identical bytes",
-      "THE FIX IS PROVEN PRESENT IN THE ARTIFACT, not just in source: the packed SPK was unpacked and its goldkey binary carries MELUSINA_GRAIN_MASTER_KEY, melusina/goldkey/vault-master/v1 and the production appId, with a negative control confirming the mutated domain string is absent",
-      "three mutation controls RUN rather than reasoned about: checking the lease before the platform root fails TestPlatformRootOutranksTheEnvironmentLease; making a malformed root fall through fails TestMalformedPlatformRootRefusesRatherThanFallingBack by name; changing the derivation domain fails TestPlatformRootDerivesTheDocumentedVaultMaster with both digests printed",
-      "positive control: TestDerivationAppIDMatchesThePublishedPackageIdentity asserts the derivation app id equals the single id sandstorm-pkgdef.capnp publishes",
-      "version cohort guard: reverting pkgdef appVersion to 8 while metadata advances fails TestProductionPkgdefMatchesMetadata by name",
-      "NO VAULT DATA CAN BE ORPHANED: no production GoldKey grain has ever completed startup, so no vault exists that was encrypted under another key",
-      "PAIRED DEPENDENCY: this cut is inert until shell build 103 is live, because the supervisor injects nothing for an app that is not on its allowlist. The two halves must land together.",
-      "STILL OWED: governed publication, then a clean-tenant fresh-grain runtime proof at v9."
+    "schema": "melusina-source-selection-v1",
+    "appId": "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh",
+    "sourceRepository": "https://github.com/hrbrlife/GoldKey",
+    "sourceCommit": "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915",
+    "selectionMethod": "direct-dev",
+    "baselineBranch": "master",
+    "baselineRelation": "ancestor",
+    "decisionSummary": "GoldKey 0.3.7 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "go test ./... passes across all 5 packages",
+            "a locked vault now posts e2eUnlockRequest to the shell and retries exactly once; the new /api/v1/session endpoint reports the shell-stamped identity and credential shape and sits outside the E2E gate by design",
+            "restoring the dead-end message fails two guards by name"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/agent/goldkey-direct-launch",
+            "commit": "56bb1e2377dd1e36ca989a263e98bbc5b3038c2f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/master",
+            "commit": "a46106ded2aab2c7b50465cd561f176de25b4947",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260816/goldkey",
+            "commit": "9cd909b0161cd8fe655631503775575a2d8c0558",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "90eb8b475d596213ad8d99cb449458946f0fb55b",
+            "outcome": "retained"
+        }
     ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/agent/goldkey-direct-launch",
-      "commit": "56bb1e2377dd1e36ca989a263e98bbc5b3038c2f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "27d21fd221da80dcb4531e85c25ca53d5e2ee1c6",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/master",
-      "commit": "a46106ded2aab2c7b50465cd561f176de25b4947",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260816/goldkey",
-      "commit": "9cd909b0161cd8fe655631503775575a2d8c0558",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "90eb8b475d596213ad8d99cb449458946f0fb55b",
-      "outcome": "archive"
-    }
-  ]
 }

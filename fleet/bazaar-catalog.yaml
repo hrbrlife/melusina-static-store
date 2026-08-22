@@ -90,7 +90,7 @@ groups:
         # CGO_ENABLED=0, go-sqlite3 requires cgo to work. This is a stub"
         # (F-265). NamedCoin itself was already pure-Go; the cgo driver came
         # from melusina-grain-restore, fixed at v0.1.2 and consumed here.
-        source_commit: 84dee1cd67716dc70801b8896576886a34663f91
+        source_commit: e250b0498086ea58507510da01979f68b2b5db21
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -98,7 +98,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-app
         publish_slug: namedcoin
         catalog_name: NamedCoin
-        live_version: 0.1.36
+        live_version: "0.1.38"
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-app
         catalog_slug: namedcoin
@@ -175,7 +175,7 @@ groups:
         # v0.0.81/appVersion-89 is the current dev-publish tip. It includes
         # the B06 issuer-provenance controls, passes a fresh recursive clone,
         # and keeps the source and public CCA.SH Configurator identity aligned.
-        source_commit: 8528a560b73a2f16b360e6a6a2ba1104d582511d
+        source_commit: 869590a0a7fa79098a1b96aba128024e1cb18ca8
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -184,7 +184,7 @@ groups:
         source_selection_receipt: prepublish-selections/6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0.json
         publish_slug: ccashconfig
         catalog_name: CCA.SH Configurator
-        live_version: 0.0.81
+        live_version: "0.0.82"
         catalog_developer: hrbrlife
         catalog_repo: melusina_ccashconfig_app
         catalog_slug: cca-sh-config
@@ -202,7 +202,7 @@ groups:
         # receiver-bound, idempotent signed service path required for a
         # governed CyberTeller integration. Its fresh clone, test suite,
         # deterministic package, and shared-authority controls have passed.
-        source_commit: fe8f0b076b4ec996ca0a6be1de366e39343a7315
+        source_commit: 4aea50ff9058ac0bc42d5e98b4545d76d47b9d36
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -212,7 +212,7 @@ groups:
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess
-        live_version: 0.1.76
+        live_version: "0.1.77"
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess
@@ -229,7 +229,7 @@ groups:
         # It keeps tenant binding shell-owned and forward-ports consumer-bound,
         # revocable AI capability grants without changing the shared publisher.
         # The forward release-interface fix binds the provider output path.
-        source_commit: 90d9e560219b137c26b20a558f8e981e40e3bd3c
+        source_commit: 9905f220d9e4d3d5e8666f6d448dfc87284b4610
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -239,7 +239,7 @@ groups:
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
-        live_version: 0.7.26
+        live_version: "0.7.28"
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata
@@ -259,7 +259,7 @@ groups:
         # source. It combines the reviewed corridor, signed DueProcess, and
         # release-health work with a synchronized public-name and pack-build
         # forward release; the full remote-head snapshot is in its receipt.
-        source_commit: 4377e9f475532343325822393841faa4c6ed9f84
+        source_commit: 1fee2eb93eb55a9a3eb6e86e186a7325611b9e84
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -269,7 +269,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: 0.1.97
+        live_version: "0.1.98"
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller
@@ -469,11 +469,11 @@ groups:
         # and generic, read-only peer attachment. Its clean-clone recovery and
         # reproducibility gates passed; tenant capability and rendered-picker
         # checks run immediately after its governed signed publish.
-        source_commit: 4ca7e53ceaf5700276b761d39f4a66142ec096b0
+        source_commit: a56cc6c56f0933995407549f5fe8a8c0fa9c16b7
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
-        live_version: 0.0.10
+        live_version: "0.0.15"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh.json
@@ -521,7 +521,7 @@ groups:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: e7b6b044b44712c481177a5a0ef63ec93ba82e3f
+        source_commit: 827c8a0cf95fe8d2c01992f4f1672bdf2be47af6
         source_repository: https://github.com/hrbrlife/CHEESESPREAD
         reconciliation_state: source-pinned
         release_state: ready
@@ -529,7 +529,7 @@ groups:
         source_selection_receipt: prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json
         publish_slug: sheets-bureau
         catalog_name: Bureau Sheets
-        live_version: 2.1.6
+        live_version: "2.1.7"
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau
@@ -609,7 +609,7 @@ groups:
         # consumes the platform per-grain root the supervisor injects, which
         # shell build 103 extends to GoldKey. Two independent clean clones at
         # DIFFERENT paths produced byte-identical packages.
-        source_commit: 27d21fd221da80dcb4531e85c25ca53d5e2ee1c6
+        source_commit: 4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915
         source_baseline_branch: master
         reconciliation_state: source-pinned
         release_state: ready
@@ -618,7 +618,7 @@ groups:
         source_repository: https://github.com/hrbrlife/GoldKey
         publish_slug: goldkey
         catalog_name: GoldKey
-        live_version: 0.3.6
+        live_version: "0.3.7"
         # The provider advances only this immutable production coordinate.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey
@@ -632,7 +632,7 @@ groups:
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 55e276e3a5aef4e0f5605c191759c5fdce781fdc
+        source_commit: 1add5d7cdc7ca2fbb88143482939831a4815595f
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -640,7 +640,7 @@ groups:
         source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
-        live_version: 0.5.5
+        live_version: "0.5.6"
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail
@@ -661,11 +661,11 @@ groups:
         # The current dev-publish v0.22.1/version-23 source adds a permanent
         # cross-file Calendar identity guard while retaining the verified
         # runtime-contract and deterministic package controls.
-        source_commit: 3ec2f484ea7e9d7931443e665d497eb841c93c84
+        source_commit: 26146db1438dd244d2d675a7bd24f5e74b4b84b4
         reconciliation_state: source-pinned
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
-        live_version: 0.22.1
+        live_version: "0.22.2"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0.json
@@ -686,11 +686,11 @@ groups:
         # recursive-clone proof, source controls, and deterministic candidate
         # packages. The separately recorded historical main baseline is not a
         # substitute for this selected source.
-        source_commit: 039d7ea6f977a3fc02e6d96545de0c3d5850db88
+        source_commit: a1cd0be902a5b148d1a22f6272284417dd7d1daa
         reconciliation_state: source-pinned
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts
-        live_version: 0.16.0
+        live_version: "0.17.0"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh.json
@@ -709,11 +709,11 @@ groups:
         source_path: melusina-canboard-app
         # The current dev-publish v0.2.5/version-12 source passed a fresh
         # recursive-clone proof, vet/test, and deterministic candidate packs.
-        source_commit: 2164058d5ad3cd275ec24d9498786a257e1efb2a
+        source_commit: f1e5c5b43c93b02b0491fad44d4f291c2e2b2300
         reconciliation_state: source-pinned
         publish_slug: canboard
         catalog_name: CanBoard
-        live_version: 0.2.5
+        live_version: "0.2.6"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.json
@@ -786,14 +786,14 @@ groups:
         source_path: melusina-app-creeper
         # Selected after a complete remote-head inventory and clean package
         # proof. The governed provider still rechecks this exact dev head.
-        source_commit: d9a282fb50711038f7f456e8d107064f888742ae
+        source_commit: 6edfb3ebc93fdce0c6723697f6acef8312bc3b19
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh.json
         publish_slug: creeper
         catalog_name: Creeper
-        live_version: 0.1.24
+        live_version: "0.1.25"
         catalog_developer: hrbrlife
         catalog_repo: melusina-app-creeper
         catalog_slug: creeper

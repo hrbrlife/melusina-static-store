@@ -1,227 +1,226 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
-  "sourceRepository": "https://github.com/hrbrlife/melusina_ccashconfig_app",
-  "sourceCommit": "8528a560b73a2f16b360e6a6a2ba1104d582511d",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.0.81/appVersion-89 dev-publish tip is the newest valid forward CCA.SH Configurator source. It forward-ports the B06 issuer-provenance and fail-closed validation controls into the current reproducible source, synchronizes the public CCA.SH Configurator identity, and keeps the shared publishing authority unchanged. Main is an ancestor. The preserved B06 source line is retained as integrated evidence; the remaining historical and preserved refs do not provide a newer valid application source.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "fresh recursive clone resolved dev-publish 8528a560b73a2f16b360e6a6a2ba1104d582511d and the declared SPK module gitlink",
-      "complete current remote-head snapshot reviewed, including the preserved B06 source line",
-      "go test ./... -count=1 and go vet ./... passed from the selected clean clone",
-      "make check-drift passed, including app identity, hook arm, egress envelope, and Cap'n Proto ordinal controls",
-      "make build-source produced committed-source binary SHA-256 0758ad7c317b5d12012fb342535ab33ceb8a2e3e74c4645399c61f672b55dc8c"
+    "schema": "melusina-source-selection-v1",
+    "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
+    "sourceRepository": "https://github.com/hrbrlife/melusina_ccashconfig_app",
+    "sourceCommit": "869590a0a7fa79098a1b96aba128024e1cb18ca8",
+    "selectionMethod": "direct-dev",
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor",
+    "decisionSummary": "CCA.SH Configurator 0.0.82 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "full go test ./... passes across all 21 packages, including the reproducible-build test",
+            "the key offered by the setup screen is proven to be one enrolment accepts, using an independently written base58 encoder so the round trip is not the decoder agreeing with itself",
+            "leading-zero truncation and a swallowed unreadable signer both fail by name under mutation"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/feat/ct-sdl-ccashconfig-launcher-optout-20260814",
+            "commit": "aa27e974918fc06ef49ef38a9332e5fa050f1549",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/screening-enrollment-investigation-20260812",
+            "commit": "cd6dfda0b2ec35e9ae5c42bd81f1c6b6f6f253b0",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/screening-fresh-design-20260812",
+            "commit": "518691004b0692ab3e17800c7a96c4ff61925e7b",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/stationgrainid-20260808",
+            "commit": "73492e59902b0b7c0715fad73a436a8fc53b7a63",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/template-service-per-domain-design-20260812",
+            "commit": "c7f92a56f9f725c8ab6c736f7ad7c4c2d598ea8f",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/codex/ccashconfig-0049-release-prep-20260721",
+            "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/tenant-lease-v2-secrets-20260721",
+            "commit": "52a016af0ef5c98fea83a0835ad6a060dc719b93",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "869590a0a7fa79098a1b96aba128024e1cb18ca8",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/case-kyc-verifier-capability-20260726",
+            "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/feat/codex-psp-configuration",
+            "commit": "eb6bed16d53e1c9e7e3b06d2b55a2204f39c9715",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/feat/mel-release-health-ccashconfig",
+            "commit": "76a0bf22720430d2c878b3faa383eaba6db0f65d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/feat/namedcoin-root-capability-20260726",
+            "commit": "5d074dbeb52e2d59d263d73819aa609a905bf2ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/capnp-toolchain-fix-20260721",
+            "commit": "b7edcd8d44b60be96546e2ea97ef2100e0a271e3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-0049-release-prep-20260721",
+            "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-egress-schema-20260721",
+            "commit": "1b25861201bb506930fb15d09ec6241aa42ad546",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-lease-pusher-20260721",
+            "commit": "c1907db159442a3c0eb6cca5421c79919e4f1311",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-resolver-v111-20260809",
+            "commit": "2b511ca109e7ec3169fb6a1c49ac7e80a659f75a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-screening-enrollment-20260812",
+            "commit": "cd6dfda0b2ec35e9ae5c42bd81f1c6b6f6f253b0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-screening-fresh-20260812",
+            "commit": "518691004b0692ab3e17800c7a96c4ff61925e7b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-v2-capability-push-20260721",
+            "commit": "4bf2ac365d17c62879b147e53d68a1183502865e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-v64-release-20260809",
+            "commit": "582e0f6ea6f0b50011e845dd6899ca70f40f2bc8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/push-enrollment-ui-20260721",
+            "commit": "2a4ea15d0cdd8262e58580a9b952b65c80f6c3a2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/tenant-lease-v2-secrets-20260721",
+            "commit": "52a016af0ef5c98fea83a0835ad6a060dc719b93",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/case-kyc-verifier-capability-20260726",
+            "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/codex-psp-configuration",
+            "commit": "eb6bed16d53e1c9e7e3b06d2b55a2204f39c9715",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-sdl-ccashconfig-launcher-optout",
+            "commit": "aa27e974918fc06ef49ef38a9332e5fa050f1549",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-ccashconfig",
+            "commit": "76a0bf22720430d2c878b3faa383eaba6db0f65d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/namedcoin-root-capability-20260726",
+            "commit": "a96292e8f68860df3a69a0722b768e6f0285b6ea",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-lifecycle-20260814",
+            "commit": "4bc9433dc1e7eccd725eda95498f281f2990015b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/template-service-per-domain-v80-20260812",
+            "commit": "38737707014deb1ce3621db5a63d7c86e47e0c53",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "ae7ca6eaeea536bbe62cabf8c9ae4d42c0785ed2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding",
+            "commit": "0e8cc1d17838eb2445e7d3e57055e53c1e08b016",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/team1/a03-portability-20260804",
+            "commit": "5d074dbeb52e2d59d263d73819aa609a905bf2ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/feat/case-kyc-verifier-capability-20260726",
+            "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/golden-mvp-a09-powerbox",
+            "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/station-grain-id-required",
+            "commit": "73492e59902b0b7c0715fad73a436a8fc53b7a63",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/t2-b06-pasted-key-20260804",
+            "commit": "cb619f9e488c1af2623d003011f6434c6c4d8d57",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/template-service-per-domain-20260812",
+            "commit": "c7f92a56f9f725c8ab6c736f7ad7c4c2d598ea8f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "ae7ca6eaeea536bbe62cabf8c9ae4d42c0785ed2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/storekeeper/drop-ccash-domain-branding",
+            "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
+            "outcome": "retained"
+        }
     ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/feat/ct-sdl-ccashconfig-launcher-optout-20260814",
-      "commit": "aa27e974918fc06ef49ef38a9332e5fa050f1549",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/screening-enrollment-investigation-20260812",
-      "commit": "cd6dfda0b2ec35e9ae5c42bd81f1c6b6f6f253b0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/screening-fresh-design-20260812",
-      "commit": "518691004b0692ab3e17800c7a96c4ff61925e7b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/stationgrainid-20260808",
-      "commit": "73492e59902b0b7c0715fad73a436a8fc53b7a63",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/template-service-per-domain-design-20260812",
-      "commit": "c7f92a56f9f725c8ab6c736f7ad7c4c2d598ea8f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/ccashconfig-0049-release-prep-20260721",
-      "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/tenant-lease-v2-secrets-20260721",
-      "commit": "52a016af0ef5c98fea83a0835ad6a060dc719b93",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "8528a560b73a2f16b360e6a6a2ba1104d582511d",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/feat/case-kyc-verifier-capability-20260726",
-      "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/codex-psp-configuration",
-      "commit": "eb6bed16d53e1c9e7e3b06d2b55a2204f39c9715",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-ccashconfig",
-      "commit": "76a0bf22720430d2c878b3faa383eaba6db0f65d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/namedcoin-root-capability-20260726",
-      "commit": "5d074dbeb52e2d59d263d73819aa609a905bf2ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/capnp-toolchain-fix-20260721",
-      "commit": "b7edcd8d44b60be96546e2ea97ef2100e0a271e3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-0049-release-prep-20260721",
-      "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-egress-schema-20260721",
-      "commit": "1b25861201bb506930fb15d09ec6241aa42ad546",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-lease-pusher-20260721",
-      "commit": "c1907db159442a3c0eb6cca5421c79919e4f1311",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-resolver-v111-20260809",
-      "commit": "2b511ca109e7ec3169fb6a1c49ac7e80a659f75a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-screening-enrollment-20260812",
-      "commit": "cd6dfda0b2ec35e9ae5c42bd81f1c6b6f6f253b0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-screening-fresh-20260812",
-      "commit": "518691004b0692ab3e17800c7a96c4ff61925e7b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-v2-capability-push-20260721",
-      "commit": "4bf2ac365d17c62879b147e53d68a1183502865e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/ccashconfig-v64-release-20260809",
-      "commit": "582e0f6ea6f0b50011e845dd6899ca70f40f2bc8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/push-enrollment-ui-20260721",
-      "commit": "2a4ea15d0cdd8262e58580a9b952b65c80f6c3a2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/tenant-lease-v2-secrets-20260721",
-      "commit": "52a016af0ef5c98fea83a0835ad6a060dc719b93",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/case-kyc-verifier-capability-20260726",
-      "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/codex-psp-configuration",
-      "commit": "eb6bed16d53e1c9e7e3b06d2b55a2204f39c9715",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-sdl-ccashconfig-launcher-optout",
-      "commit": "aa27e974918fc06ef49ef38a9332e5fa050f1549",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-ccashconfig",
-      "commit": "76a0bf22720430d2c878b3faa383eaba6db0f65d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/namedcoin-root-capability-20260726",
-      "commit": "a96292e8f68860df3a69a0722b768e6f0285b6ea",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-lifecycle-20260814",
-      "commit": "4bc9433dc1e7eccd725eda95498f281f2990015b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/template-service-per-domain-v80-20260812",
-      "commit": "38737707014deb1ce3621db5a63d7c86e47e0c53",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "ae7ca6eaeea536bbe62cabf8c9ae4d42c0785ed2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding",
-      "commit": "0e8cc1d17838eb2445e7d3e57055e53c1e08b016",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/team1/a03-portability-20260804",
-      "commit": "5d074dbeb52e2d59d263d73819aa609a905bf2ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/feat/case-kyc-verifier-capability-20260726",
-      "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/golden-mvp-a09-powerbox",
-      "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/station-grain-id-required",
-      "commit": "73492e59902b0b7c0715fad73a436a8fc53b7a63",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/t2-b06-pasted-key-20260804",
-      "commit": "cb619f9e488c1af2623d003011f6434c6c4d8d57",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/template-service-per-domain-20260812",
-      "commit": "c7f92a56f9f725c8ab6c736f7ad7c4c2d598ea8f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "ae7ca6eaeea536bbe62cabf8c9ae4d42c0785ed2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/storekeeper/drop-ccash-domain-branding",
-      "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
-      "outcome": "archive"
-    }
-  ]
 }

@@ -1,153 +1,151 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
-  "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
-  "sourceCommit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "same",
-  "decisionSummary": "Selected the current MerMail dev-publish v0.5.5/version-20 source after a complete remote-head and focus-file comparison. Its HTTP-out readiness, session, object authorization, admin, delete-flow, and out-of-box behavior match the relevant preserved work, while it adds mailbox authorization/readiness, canonical Station endpoint targeting, and the author-key rotation/release-input gate. Older preserved snapshots carry stale release-input and key state and are retained as Git evidence rather than merged.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean exact checkout at the selected commit",
-      "origin dev-publish and main both advertise the selected commit",
-      "all advertised remote heads recorded and reviewed for current source selection",
-      "make release-inputs test pack-local",
-      "unified package and product metadata verification",
-      "runtime contract matches immutable app identity and remains build-bound in source"
+    "schema": "melusina-source-selection-v1",
+    "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
+    "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
+    "sourceCommit": "1add5d7cdc7ca2fbb88143482939831a4815595f",
+    "selectionMethod": "direct-dev",
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor",
+    "decisionSummary": "MerMail 0.5.6 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22).",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached checkout at the selected canonical dev-publish commit",
+            "go test ./... passes for grain-station and grain-station/httpout",
+            "requestedMemoryGiB = 4 added; the Go backend was crash-looping on pthread_create while the mailbox UI kept rendering",
+            "scripts/verify-release-inputs.py constants now match the cohort and are asserted by the cohort test \u2014 the previous cut stopped at `make release-inputs` because that guard was outside every cohort check"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/agent/mermail-0.5.1-governed-catalog-20260812",
+            "commit": "c4791c3dbb91c1205638064dc0b8d31b9edac803",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/agent/mermail-runtime-contract-20260812",
+            "commit": "f41978160a936c1e99e0d26e5bf4a05b494d99c4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/agent/mermail-source-metadata-20260812",
+            "commit": "255fb87d93153f37c1d9b8813f0dd5be893bea1d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/archive/codex/research-and-suggest-project-gameplan",
+            "commit": "5f10911be9e4a9ebb2bad8eb050ee32cfcfecc9f",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/mermail-deploy-ready-2026-06-23",
+            "commit": "c814523a4c20b5576647d593e407206c6ecc1902",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/codex/fix-mermail-httpout-session-retention-20260812",
+            "commit": "0189b02507b81b9e3532f54fcfe7cbd2c2ee9901",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/mermail-0.5.0-20260711",
+            "commit": "7cdfe91f5b13b4c67dad89db04135521adeb3f11",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/mermail-0.5.1-httpout-release-20260812",
+            "commit": "79fe960cdff034be1fb9e9249a61c9682cebff4a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/mermail-catalog-050-20260711",
+            "commit": "4380321f650722ba19e0328b6a1a38185a24b065",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/conserve/mermail-0.5.1-20260812",
+            "commit": "1d145cf98a235a449adad9aa3175b133c31d0c6f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "1add5d7cdc7ca2fbb88143482939831a4815595f",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/drop-before-delete-iter27",
+            "commit": "21c0fb9e80c595b18bda8bef4304e1dcdf601c09",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_alt/main-9574f6dfee81",
+            "commit": "9574f6dfee81a550999c0a1347742516640e6494",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_alt/publish-8ec1f26d2955",
+            "commit": "8ec1f26d2955bd884f22c1b2b513e4bf3c507184",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/mermail-out-of-box-20260731",
+            "commit": "8c13752be6a025fdcb6167db2671b32af66b10df",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/conserve/mermail-0.5.1-20260812",
+            "commit": "1d145cf98a235a449adad9aa3175b133c31d0c6f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/admin-auth-harmonize",
+            "commit": "adf3804e075620d48ffcc6592186caa8c37cd4e3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/drop-before-delete-iter27",
+            "commit": "21c0fb9e80c595b18bda8bef4304e1dcdf601c09",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "4a793c3241a1d534286842131dac5483719f2815",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "3776bb10e06f88966824b33465772d174db2070a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "14a2b80ec306b242d71295f576f2528f2f15b231",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish-fix",
+            "commit": "76e08b2db1916fb1a5e05109524b2e9c22f983db",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/resign-attest",
+            "commit": "c663a7826412cc0dab53ef07a78c9f301a16f892",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260816/mermail-app",
+            "commit": "4ff33c668f664b7181e24a95add3505fbf717c47",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "83cc8616cc97e257d22f0a40c752245eb8b6ad27",
+            "outcome": "retained"
+        }
     ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/agent/mermail-0.5.1-governed-catalog-20260812",
-      "commit": "c4791c3dbb91c1205638064dc0b8d31b9edac803",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/agent/mermail-runtime-contract-20260812",
-      "commit": "f41978160a936c1e99e0d26e5bf4a05b494d99c4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/agent/mermail-source-metadata-20260812",
-      "commit": "255fb87d93153f37c1d9b8813f0dd5be893bea1d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/codex/research-and-suggest-project-gameplan",
-      "commit": "5f10911be9e4a9ebb2bad8eb050ee32cfcfecc9f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/mermail-deploy-ready-2026-06-23",
-      "commit": "c814523a4c20b5576647d593e407206c6ecc1902",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/fix-mermail-httpout-session-retention-20260812",
-      "commit": "0189b02507b81b9e3532f54fcfe7cbd2c2ee9901",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/mermail-0.5.0-20260711",
-      "commit": "7cdfe91f5b13b4c67dad89db04135521adeb3f11",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/mermail-0.5.1-httpout-release-20260812",
-      "commit": "79fe960cdff034be1fb9e9249a61c9682cebff4a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/mermail-catalog-050-20260711",
-      "commit": "4380321f650722ba19e0328b6a1a38185a24b065",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/conserve/mermail-0.5.1-20260812",
-      "commit": "1d145cf98a235a449adad9aa3175b133c31d0c6f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/feat/drop-before-delete-iter27",
-      "commit": "21c0fb9e80c595b18bda8bef4304e1dcdf601c09",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_alt/main-9574f6dfee81",
-      "commit": "9574f6dfee81a550999c0a1347742516640e6494",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_alt/publish-8ec1f26d2955",
-      "commit": "8ec1f26d2955bd884f22c1b2b513e4bf3c507184",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/mermail-out-of-box-20260731",
-      "commit": "8c13752be6a025fdcb6167db2671b32af66b10df",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/conserve/mermail-0.5.1-20260812",
-      "commit": "1d145cf98a235a449adad9aa3175b133c31d0c6f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/admin-auth-harmonize",
-      "commit": "adf3804e075620d48ffcc6592186caa8c37cd4e3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/drop-before-delete-iter27",
-      "commit": "21c0fb9e80c595b18bda8bef4304e1dcdf601c09",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-      "commit": "4a793c3241a1d534286842131dac5483719f2815",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "3776bb10e06f88966824b33465772d174db2070a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "14a2b80ec306b242d71295f576f2528f2f15b231",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish-fix",
-      "commit": "76e08b2db1916fb1a5e05109524b2e9c22f983db",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/resign-attest",
-      "commit": "c663a7826412cc0dab53ef07a78c9f301a16f892",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260816/mermail-app",
-      "commit": "4ff33c668f664b7181e24a95add3505fbf717c47",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "83cc8616cc97e257d22f0a40c752245eb8b6ad27",
-      "outcome": "archive"
-    }
-  ]
 }

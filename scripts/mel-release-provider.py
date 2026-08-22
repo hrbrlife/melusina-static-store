@@ -76,6 +76,26 @@ STORE_READ_TIMEOUT_SECONDS = 180
 # kills this provider before submit can report anything useful.
 SUBMIT_TIMEOUT_SECONDS_DEFAULT = 480
 
+# cmd/submit derives its attest envelope lifetime as `-timeout + 2 minutes`
+# (cmd/submit/main.go: `envTTL := o.timeout + 2*time.Minute`), and TWO ceilings
+# apply to the result. Both were found by walking into them:
+#
+#   submit-side, at 3600s:
+#     submit: envelope: attest envelope: transport lifetime exceeds the 1h
+#     ceiling: ttl=1h2m0s max=1h0m0s
+#   store-side, at 3480s — the binding one:
+#     store rejected publish: HTTP 401: check=envelope_ttl: signed lifetime
+#     must be positive and at most 30m0s
+#
+# So the usable maximum is 28 minutes. It is a policy ceiling, not a tunable:
+# the TTL bounds how long a stolen envelope stays replayable, and a slow link
+# does not get to widen that window. Measured throughput on this path has run
+# 36-74KB/s, so 28 minutes covers roughly 60-120MB — which does include the
+# two ~90MB Bureau apps, but not by much. An artifact that cannot be uploaded
+# inside the window needs a faster path to the store, never a longer-lived
+# credential.
+SUBMIT_TIMEOUT_SECONDS_CEILING = 1680
+
 
 def submit_timeout() -> str:
     raw = os.environ.get("MEL_RELEASE_SUBMIT_TIMEOUT_SECS", "").strip()
@@ -94,6 +114,16 @@ def submit_timeout() -> str:
         raise ProviderError(
             f"MEL_RELEASE_SUBMIT_TIMEOUT_SECS may only raise the {SUBMIT_TIMEOUT_SECONDS_DEFAULT}s "
             f"default, got {seconds}s"
+        )
+    if seconds > SUBMIT_TIMEOUT_SECONDS_CEILING:
+        # Refuse here rather than letting submit build the envelope and the
+        # STORE reject it: that failure arrives after the artifact has been
+        # read and hashed, names a ttl the operator never typed, and reads as
+        # a store-side policy problem.
+        raise ProviderError(
+            f"MEL_RELEASE_SUBMIT_TIMEOUT_SECS is capped at {SUBMIT_TIMEOUT_SECONDS_CEILING}s "
+            f"(28m): submit adds 2 minutes for the attest envelope and the store refuses a "
+            f"signed lifetime over 30m (HTTP 401 check=envelope_ttl). Got {seconds}s"
         )
     return f"{seconds}s"
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(

@@ -2,20 +2,19 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
     "sourceRepository": "https://github.com/hrbrlife/jinn",
-    "sourceCommit": "ee4babbcb2776b37fed691cd3419c54e033244ab",
+    "sourceCommit": "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Jinn 0.0.16 answers an owner report filed against 0.0.15 on the live tenant: asked to edit a file on a mini-git pearl it had attached, the assistant correctly answered that it had no write tools at all. mini-git advertises 30 operations across three permission tiers and Jinn's catalog builder dropped all 17 mutating ones unconditionally, by design and with a comment naming the path that had not been built yet. This cut builds it: a mutating operation reaches the assistant only when an admin has raised that specific pearl's write_mode, the operation's tier is within that decision, the PowerBox grant carries that much authority, and the session is admin \u2014 four independent conditions, each failing closed on its own, three of them provably load-bearing under mutation. The commit message on this exact dev-publish tip records the defect, the four mutations run against the guards, and the two cases where the obvious implementation is wrong. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "Jinn 0.0.17 answers the second half of an owner report filed against the live tenant on 2026-08-22. With a Domain Template Grain and a mini-git pearl both attached and healthy the assistant said it had no way to enumerate its connections; it was right, because the chat catalog is assembled from GrainContext-speaking pearls and a pearl contributes tool entries but never a fact about itself, while a DTG speaks no GrainContext at all. pearls.list reads the registry instead, and reports granted authority as a sentence rather than an enum so the assistant repeats a fact instead of translating one. It never returns the sturdyref token. The same line's 0.0.16 built the write-authority path the first half of that report needed. The commit message on this exact dev-publish tip records both, with the mutations run against every guard. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
             "full go test ./... passes; go vet clean",
-            "four mutation controls run, not reasoned about \u2014 deleting the writeAuthorized call, rounding under-declared write ops down instead of up, dropping the admin-session requirement, and dropping the PowerBox grant ceiling each fail a named test",
-            "the grant-ceiling mutation initially SURVIVED the suite: an honestly-declared operation is dropped by opPermitted before the ceiling runs, so the guard was rewritten around an operation declaring no required permissions, where the grant tier is the only remaining ceiling",
-            "the role guard initially survived its own mutation too: Build drops an entire pearl for a collaborator when the grant's derived tier is admin, so the fixture was changed to a view+edit grant that actually reaches the per-operation role check",
-            "positive controls: reads survive every tier, an admin session still receives its write tool, a collaborator keeps its reads, and readOnlyOperation's classification is separately pinned",
-            "attach confers no write authority \u2014 Insert stores 'off' whatever the caller struct holds, and unrecognised stored values normalise to 'off' on read as well as write"
+            "pearls.list never returns the sturdyref token \u2014 the guard pairs the leak check with a positive control, so an empty listing cannot pass it",
+            "the DTG case is covered explicitly: a pearl the chat catalog structurally cannot show is the reason a registry-reading tool is not redundant with the catalog",
+            "all three write-authority tiers plus the non-GrainContext case that must claim none of them; include_inactive; an explicit zero count; the three argument shapes a model emits for a no-argument tool",
+            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
         ]
     },
     "reviewedRefs": [
@@ -81,7 +80,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "ee4babbcb2776b37fed691cd3419c54e033244ab",
+            "commit": "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c",
             "outcome": "selected"
         },
         {

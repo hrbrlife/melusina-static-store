@@ -469,14 +469,15 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        # dev-publish v16 adds per-pearl AI write authority: every attached
-        # pearl stays read-only on arrival, and a mutating provider operation
-        # reaches the assistant only after an admin raises that pearl's
-        # write_mode, and only as far as the PowerBox grant itself reaches.
-        # Its clean-clone recovery and reproducibility gates passed; tenant
-        # capability and rendered-picker checks run immediately after its
-        # governed signed publish.
-        source_commit: ee4babbcb2776b37fed691cd3419c54e033244ab
+        # dev-publish v17 adds `pearls.list`, so the assistant can answer
+        # "what am I attached to?" from the registry instead of inferring it
+        # from its own tool names — it got that wrong in both directions on
+        # 2026-08-22. v16, in the same line, added per-pearl AI write
+        # authority: every attached pearl stays read-only on arrival, and a
+        # mutating provider operation reaches the assistant only after an
+        # admin raises that pearl's write_mode, and only as far as the
+        # PowerBox grant itself reaches.
+        source_commit: 3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn

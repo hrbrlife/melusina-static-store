@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	controlCommandHeader         = "X-Bazaar-Control-Command"
-	controlPearlSignatureHeader  = "X-Bazaar-Pearl-Signature"
-	controlOfflineApprovalHeader = "X-Bazaar-Offline-Approval"
+	controlCommandHeader              = "X-Bazaar-Control-Command"
+	controlPearlSignatureHeader       = "X-Bazaar-Pearl-Signature"
+	controlOfflineApprovalHeader      = "X-Bazaar-Offline-Approval"
+	controlReleaseAuthorizationHeader = "X-Bazaar-Release-Authorization"
 
 	maxControlHeaderBytes int64 = 32 << 10
 	maxCandidateBytes     int64 = 256 << 20
@@ -255,12 +256,12 @@ func (h *Handler) handleRelease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "release command requires application/json", http.StatusUnsupportedMediaType)
 		return
 	}
-	command, signature, approval, err := releaseHeaders(r.Header, action)
+	command, signature, approval, authorization, err := releaseHeaders(r.Header, action)
 	if err != nil {
 		http.Error(w, "invalid Bazaar Control command: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if command.DossierID != dossierID || command.Action != actionToCommandAction(action) || command.Method != http.MethodPost || command.Route != sidecarReleasePath(dossierID, action) || signature == "" || (action == "prepare" && approval != "") || (action == "publish" && approval == "") {
+	if command.DossierID != dossierID || command.Action != actionToCommandAction(action) || command.Method != http.MethodPost || command.Route != sidecarReleasePath(dossierID, action) || signature == "" || (action == "prepare" && (approval != "" || authorization != "")) {
 		http.Error(w, "Bazaar Control command does not bind this Store Link operation", http.StatusForbidden)
 		return
 	}
@@ -308,39 +309,63 @@ func (h *Handler) forwardResponse(w http.ResponseWriter, r *http.Request, forwar
 }
 
 type wireCommand struct {
+	Schema    string `json:"schema"`
 	DossierID string `json:"dossierId"`
 	Action    string `json:"action"`
 	Route     string `json:"route"`
 	Method    string `json:"method"`
 }
 
-func releaseHeaders(headers http.Header, action string) (wireCommand, string, string, error) {
+// releaseHeaders is deliberately schema-aware, but not a second sidecar
+// verifier. Store Link reads only enough of the typed command to choose the
+// one authorization header it may relay. It never generically forwards caller
+// headers and the sidecar independently validates every signed field.
+func releaseHeaders(headers http.Header, action string) (wireCommand, string, string, string, error) {
 	commandEncoded := headers.Get(controlCommandHeader)
 	signature := headers.Get(controlPearlSignatureHeader)
 	approval := headers.Get(controlOfflineApprovalHeader)
+	authorization := headers.Get(controlReleaseAuthorizationHeader)
 	if err := validateControlHeader(commandEncoded); err != nil {
-		return wireCommand{}, "", "", errors.New("command header")
+		return wireCommand{}, "", "", "", errors.New("command header")
 	}
 	if err := validateControlHeader(signature); err != nil {
-		return wireCommand{}, "", "", errors.New("Pearl signature header")
-	}
-	if action == "publish" {
-		if err := validateControlHeader(approval); err != nil {
-			return wireCommand{}, "", "", errors.New("offline approval header")
-		}
-	} else if approval != "" {
-		return wireCommand{}, "", "", errors.New("private preparation cannot carry an offline approval")
+		return wireCommand{}, "", "", "", errors.New("Pearl signature header")
 	}
 	raw, _ := base64.RawURLEncoding.DecodeString(commandEncoded)
 	var command wireCommand
 	decoder := json.NewDecoder(strings.NewReader(string(raw)))
 	if err := decoder.Decode(&command); err != nil {
-		return wireCommand{}, "", "", errors.New("command JSON")
+		return wireCommand{}, "", "", "", errors.New("command JSON")
 	}
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return wireCommand{}, "", "", errors.New("command JSON has trailing data")
+		return wireCommand{}, "", "", "", errors.New("command JSON has trailing data")
 	}
-	return command, signature, approval, nil
+	if action == "prepare" {
+		if command.Schema != "bazaar-control-command-v1" || approval != "" || authorization != "" {
+			return wireCommand{}, "", "", "", errors.New("private preparation accepts only a v1 command without release authorization")
+		}
+		return command, signature, "", "", nil
+	}
+	switch command.Schema {
+	case "bazaar-control-command-v1":
+		if authorization != "" {
+			return wireCommand{}, "", "", "", errors.New("v1 publication cannot carry a stable release authorization")
+		}
+		if err := validateControlHeader(approval); err != nil {
+			return wireCommand{}, "", "", "", errors.New("offline approval header")
+		}
+		return command, signature, approval, "", nil
+	case "bazaar-control-command-v2":
+		if approval != "" {
+			return wireCommand{}, "", "", "", errors.New("v2 publication cannot carry a legacy offline approval")
+		}
+		if err := validateControlHeader(authorization); err != nil {
+			return wireCommand{}, "", "", "", errors.New("stable release authorization header")
+		}
+		return command, signature, "", authorization, nil
+	default:
+		return wireCommand{}, "", "", "", errors.New("unsupported command schema")
+	}
 }
 
 func validateControlHeader(encoded string) error {
@@ -355,11 +380,11 @@ func validateControlHeader(encoded string) error {
 }
 
 func exactForwardHeaders(input http.Header) http.Header {
-	output := make(http.Header, 4)
+	output := make(http.Header, 5)
 	if contentType := input.Get("Content-Type"); contentType != "" {
 		output.Set("Content-Type", contentType)
 	}
-	for _, name := range []string{controlCommandHeader, controlPearlSignatureHeader, controlOfflineApprovalHeader} {
+	for _, name := range []string{controlCommandHeader, controlPearlSignatureHeader, controlOfflineApprovalHeader, controlReleaseAuthorizationHeader} {
 		if value := input.Get(name); value != "" {
 			output.Set(name, value)
 		}

@@ -375,11 +375,11 @@ func TestControlPublishHeaderAndRouteAreStrict(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodPost, "/", nil)
 	request.Header.Set(controlCommandHeader, "not-base64")
-	if _, _, _, err := parsePearlControlHeaders(request); err == nil {
+	if _, _, _, _, err := parsePearlControlHeaders(request); err == nil {
 		t.Fatal("malformed control header accepted")
 	}
 	request.Header.Set(controlCommandHeader, base64.RawURLEncoding.EncodeToString([]byte(`{} trailing`)))
-	if _, _, _, err := parsePearlControlHeaders(request); err == nil {
+	if _, _, _, _, err := parsePearlControlHeaders(request); err == nil {
 		t.Fatal("control header with trailing JSON was accepted")
 	}
 }

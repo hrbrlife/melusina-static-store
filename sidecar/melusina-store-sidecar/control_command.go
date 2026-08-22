@@ -20,6 +20,7 @@ import (
 
 const (
 	controlCommandSchema          = "bazaar-control-command-v1"
+	controlCommandSchemaV2        = "bazaar-control-command-v2"
 	pearlCommandSignatureSchema   = "bazaar-control-pearl-signature-v1"
 	offlineApprovalSchema         = "bazaar-control-offline-approval-v1"
 	controlCommandActionPrepare   = "prepare_release"
@@ -30,27 +31,31 @@ const (
 )
 
 type controlCommand struct {
-	Schema               string    `json:"schema"`
-	CommandID            string    `json:"commandId"`
-	DossierID            string    `json:"dossierId"`
-	Action               string    `json:"action"`
-	Route                string    `json:"route"`
-	Method               string    `json:"method"`
-	StorePolicy          string    `json:"storePolicy"`
-	PolicyEpoch          uint64    `json:"policyEpoch"`
-	PublisherGrant       string    `json:"publisherGrant"`
-	GrantEpoch           uint64    `json:"grantEpoch"`
-	PublisherIntentHash  string    `json:"publisherIntentHash"`
-	AppID                string    `json:"appId"`
-	Version              string    `json:"version"`
-	ArtifactSHA256       string    `json:"artifactSha256"`
-	AppHash              string    `json:"appHash"`
-	ReleaseHash          string    `json:"releaseHash"`
-	ExpectedPriorAppHash string    `json:"expectedPriorAppHash"`
-	StageID              string    `json:"stageId"`
-	IssuedAt             time.Time `json:"issuedAt"`
-	ExpiresAt            time.Time `json:"expiresAt"`
-	Nonce                string    `json:"nonce"`
+	Schema              string `json:"schema"`
+	CommandID           string `json:"commandId"`
+	DossierID           string `json:"dossierId"`
+	Action              string `json:"action"`
+	Route               string `json:"route"`
+	Method              string `json:"method"`
+	StorePolicy         string `json:"storePolicy"`
+	PolicyEpoch         uint64 `json:"policyEpoch"`
+	PublisherGrant      string `json:"publisherGrant"`
+	GrantEpoch          uint64 `json:"grantEpoch"`
+	PublisherIntentHash string `json:"publisherIntentHash"`
+	// ReleaseAuthorizationDigest appears only in v2. It binds a stable
+	// human approval that deliberately excludes the short-lived publisher
+	// envelope represented by PublisherIntentHash.
+	ReleaseAuthorizationDigest string    `json:"releaseAuthorizationDigest,omitempty"`
+	AppID                      string    `json:"appId"`
+	Version                    string    `json:"version"`
+	ArtifactSHA256             string    `json:"artifactSha256"`
+	AppHash                    string    `json:"appHash"`
+	ReleaseHash                string    `json:"releaseHash"`
+	ExpectedPriorAppHash       string    `json:"expectedPriorAppHash"`
+	StageID                    string    `json:"stageId"`
+	IssuedAt                   time.Time `json:"issuedAt"`
+	ExpiresAt                  time.Time `json:"expiresAt"`
+	Nonce                      string    `json:"nonce"`
 }
 
 // pearlCommandSignature is the Pearl's machine signature. It is distinct from
@@ -107,7 +112,7 @@ type controlCommandFacts struct {
 }
 
 func (c controlCommand) Validate(now time.Time) error {
-	if c.Schema != controlCommandSchema {
+	if c.Schema != controlCommandSchema && c.Schema != controlCommandSchemaV2 {
 		return errors.New("unknown control command schema")
 	}
 	for label, value := range map[string]string{
@@ -120,6 +125,15 @@ func (c controlCommand) Validate(now time.Time) error {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("control command %s is required", label)
 		}
+	}
+	if c.Schema == controlCommandSchemaV2 && !isLowerHex(c.ReleaseAuthorizationDigest, 64) {
+		return errors.New("control command stable release authorization is not canonical")
+	}
+	if c.Schema == controlCommandSchemaV2 && c.Action != controlCommandActionPublish {
+		return errors.New("v2 control command is valid only for final publication")
+	}
+	if c.Schema == controlCommandSchema && c.ReleaseAuthorizationDigest != "" {
+		return errors.New("v1 control command carries a v2 stable release authorization")
 	}
 	if !isLowerHex(c.CommandID, 24) || !isLowerHex(c.Nonce, 24) {
 		return errors.New("control command id or nonce is not canonical")
@@ -179,6 +193,9 @@ func (c controlCommand) Digest() string {
 		fmt.Sprint(c.PolicyEpoch), c.PublisherGrant, fmt.Sprint(c.GrantEpoch), c.PublisherIntentHash,
 		c.AppID, c.Version, c.ArtifactSHA256, c.AppHash, c.ReleaseHash, c.ExpectedPriorAppHash,
 		c.StageID, c.IssuedAt.UTC().Format(time.RFC3339Nano), c.ExpiresAt.UTC().Format(time.RFC3339Nano), c.Nonce,
+	}
+	if c.Schema == controlCommandSchemaV2 {
+		parts = append(parts, c.ReleaseAuthorizationDigest)
 	}
 	h := sha256.New()
 	for _, part := range parts {

@@ -25,14 +25,15 @@ import (
 )
 
 const (
-	controlPublishPathPrefix     = "/control/v1/releases/"
-	controlPreparePathSuffix     = "/prepare"
-	controlPublishPathSuffix     = "/publish"
-	controlAuthorityPathPrefix   = "/control/v1/authority/"
-	controlCommandHeader         = "X-Bazaar-Control-Command"
-	controlPearlSignatureHeader  = "X-Bazaar-Pearl-Signature"
-	controlOfflineApprovalHeader = "X-Bazaar-Offline-Approval"
-	maxControlHeaderEncodedBytes = 32 << 10
+	controlPublishPathPrefix          = "/control/v1/releases/"
+	controlPreparePathSuffix          = "/prepare"
+	controlPublishPathSuffix          = "/publish"
+	controlAuthorityPathPrefix        = "/control/v1/authority/"
+	controlCommandHeader              = "X-Bazaar-Control-Command"
+	controlPearlSignatureHeader       = "X-Bazaar-Pearl-Signature"
+	controlOfflineApprovalHeader      = "X-Bazaar-Offline-Approval"
+	controlReleaseAuthorizationHeader = "X-Bazaar-Release-Authorization"
+	maxControlHeaderEncodedBytes      = 32 << 10
 )
 
 // controlExecution binds a verified Pearl command to its private durable
@@ -165,7 +166,7 @@ func (s *publishService) handleControlPublish(w http.ResponseWriter, r *http.Req
 		http.NotFound(w, r)
 		return
 	}
-	command, pearlSignature, offlineApproval, err := parsePearlControlHeaders(r)
+	command, pearlSignature, offlineApproval, releaseAuthorization, err := parsePearlControlHeaders(r)
 	if err != nil {
 		http.Error(w, "check=control_command: "+err.Error(), http.StatusBadRequest)
 		return
@@ -179,10 +180,10 @@ func (s *publishService) handleControlPublish(w http.ResponseWriter, r *http.Req
 	}
 
 	resolvePublisher := func(preflight appPublishPreflight, claimed identity.Public) (string, error) {
-		return s.verifyControlPublishAuthorization(r, preflight, command, pearlSignature, offlineApproval, claimed, s.currentTime())
+		return s.verifyControlPublishAuthorization(r, preflight, command, pearlSignature, offlineApproval, releaseAuthorization, claimed, s.currentTime())
 	}
 	criticalCheck := func(preflight appPublishPreflight, now time.Time) error {
-		_, err := s.verifyControlPublishAuthorization(r, preflight, command, pearlSignature, offlineApproval, preflight.sig.Payload.Source, now)
+		_, err := s.verifyControlPublishAuthorization(r, preflight, command, pearlSignature, offlineApproval, releaseAuthorization, preflight.sig.Payload.Source, now)
 		return err
 	}
 	snapshotCheck := func(snapshot AppCatalogSnapshot, preflight appPublishPreflight) error {
@@ -309,20 +310,36 @@ func parsePearlControlPrepareHeaders(r *http.Request) (controlCommand, pearlComm
 	return command, signature, nil
 }
 
-func parsePearlControlHeaders(r *http.Request) (controlCommand, pearlCommandSignature, offlineControlApproval, error) {
+func parsePearlControlHeaders(r *http.Request) (controlCommand, pearlCommandSignature, offlineControlApproval, stableReleaseAuthorization, error) {
 	var command controlCommand
 	var signature pearlCommandSignature
 	var approval offlineControlApproval
+	var authorization stableReleaseAuthorization
 	if err := decodeControlHeader(r.Header.Get(controlCommandHeader), &command); err != nil {
-		return command, signature, approval, fmt.Errorf("command header: %w", err)
+		return command, signature, approval, authorization, fmt.Errorf("command header: %w", err)
 	}
 	if err := decodeControlHeader(r.Header.Get(controlPearlSignatureHeader), &signature); err != nil {
-		return command, signature, approval, fmt.Errorf("Pearl signature header: %w", err)
+		return command, signature, approval, authorization, fmt.Errorf("Pearl signature header: %w", err)
 	}
-	if err := decodeControlHeader(r.Header.Get(controlOfflineApprovalHeader), &approval); err != nil {
-		return command, signature, approval, fmt.Errorf("offline approval header: %w", err)
+	switch command.Schema {
+	case controlCommandSchema:
+		if r.Header.Get(controlReleaseAuthorizationHeader) != "" {
+			return command, signature, approval, authorization, errors.New("v1 command cannot carry a stable release authorization")
+		}
+		if err := decodeControlHeader(r.Header.Get(controlOfflineApprovalHeader), &approval); err != nil {
+			return command, signature, approval, authorization, fmt.Errorf("offline approval header: %w", err)
+		}
+	case controlCommandSchemaV2:
+		if r.Header.Get(controlOfflineApprovalHeader) != "" {
+			return command, signature, approval, authorization, errors.New("v2 command cannot carry a legacy offline approval")
+		}
+		if err := decodeControlHeader(r.Header.Get(controlReleaseAuthorizationHeader), &authorization); err != nil {
+			return command, signature, approval, authorization, fmt.Errorf("stable release authorization header: %w", err)
+		}
+	default:
+		return command, signature, approval, authorization, errors.New("command header has an unsupported schema")
 	}
-	return command, signature, approval, nil
+	return command, signature, approval, authorization, nil
 }
 
 func decodeControlHeader(encoded string, target any) error {
@@ -345,7 +362,7 @@ func decodeControlHeader(encoded string, target any) error {
 	return nil
 }
 
-func (s *publishService) verifyControlPublishAuthorization(r *http.Request, preflight appPublishPreflight, command controlCommand, signature pearlCommandSignature, approval offlineControlApproval, claimed identity.Public, now time.Time) (string, error) {
+func (s *publishService) verifyControlPublishAuthorization(r *http.Request, preflight appPublishPreflight, command controlCommand, signature pearlCommandSignature, approval offlineControlApproval, authorization stableReleaseAuthorization, claimed identity.Public, now time.Time) (string, error) {
 	appID := metadataAppID(preflight.metadata)
 	chainAppID, err := controlSandstormAppID(appID)
 	if err != nil {
@@ -385,7 +402,11 @@ func (s *publishService) verifyControlPublishAuthorization(r *http.Request, pref
 	if err := verifyPearlControlCommand(command, signature, policy, grant, facts, now); err != nil {
 		return "", err
 	}
-	if err := verifyOfflineControlApproval(command, approval, policy, now); err != nil {
+	if command.Schema == controlCommandSchemaV2 {
+		if err := verifyStableReleaseAuthorization(authorization, command, policy, now); err != nil {
+			return "", err
+		}
+	} else if err := verifyOfflineControlApproval(command, approval, policy, now); err != nil {
 		return "", err
 	}
 	return publisherKey.Base58(), nil

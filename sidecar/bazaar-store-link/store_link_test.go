@@ -114,12 +114,24 @@ func releaseRequest(t *testing.T, action string) *http.Request {
 	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"candidate":"bounded"}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set(controlCommandHeader, encodedHeader(t, wireCommand{
-		DossierID: testDossierID, Action: actionToCommandAction(action), Route: sidecarReleasePath(testDossierID, action), Method: http.MethodPost,
+		Schema: "bazaar-control-command-v1", DossierID: testDossierID, Action: actionToCommandAction(action), Route: sidecarReleasePath(testDossierID, action), Method: http.MethodPost,
 	}))
 	request.Header.Set(controlPearlSignatureHeader, encodedHeader(t, map[string]string{"signature": "placeholder"}))
 	if action == "publish" {
 		request.Header.Set(controlOfflineApprovalHeader, encodedHeader(t, map[string]string{"signature": "human"}))
 	}
+	return request
+}
+
+func releaseRequestV2(t *testing.T) *http.Request {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodPost, "/v1/release-commands/"+testDossierID+"/publish", strings.NewReader(`{"candidate":"bounded"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set(controlCommandHeader, encodedHeader(t, wireCommand{
+		Schema: "bazaar-control-command-v2", DossierID: testDossierID, Action: "publish_release", Route: sidecarReleasePath(testDossierID, "publish"), Method: http.MethodPost,
+	}))
+	request.Header.Set(controlPearlSignatureHeader, encodedHeader(t, map[string]string{"signature": "placeholder"}))
+	request.Header.Set(controlReleaseAuthorizationHeader, encodedHeader(t, map[string]string{"signature": "stable-human"}))
 	return request
 }
 
@@ -189,6 +201,20 @@ func TestReleaseForwardingIsExactlyBounded(t *testing.T) {
 	}
 }
 
+func TestV2ReleaseForwardingRelaysOnlyStableAuthorization(t *testing.T) {
+	forwarder := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"state":"live"}`)}}
+	handler := newTestHandler(t, forwarder)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, releaseRequestV2(t))
+	if recorder.Code != http.StatusOK || len(forwarder.requests) != 1 {
+		t.Fatalf("v2 status/forwards = %d/%d", recorder.Code, len(forwarder.requests))
+	}
+	headers := forwarder.requests[0].Headers
+	if headers.Get(controlReleaseAuthorizationHeader) == "" || headers.Get(controlOfflineApprovalHeader) != "" || headers.Get(controlCommandHeader) == "" || headers.Get(controlPearlSignatureHeader) == "" {
+		t.Fatalf("v2 forward headers = %#v", headers)
+	}
+}
+
 func TestReleaseBoundaryRefusesAnythingButExactOperation(t *testing.T) {
 	cases := []struct {
 		name string
@@ -198,11 +224,15 @@ func TestReleaseBoundaryRefusesAnythingButExactOperation(t *testing.T) {
 		{"wrong method", func(r *http.Request) { r.Method = http.MethodGet }, http.StatusMethodNotAllowed},
 		{"query", func(r *http.Request) { r.URL.RawQuery = "target=other" }, http.StatusNotFound},
 		{"missing approval", func(r *http.Request) { r.Header.Del(controlOfflineApprovalHeader) }, http.StatusBadRequest},
+		{"v2 with legacy approval", func(r *http.Request) {
+			r.Header.Set(controlCommandHeader, encodedHeader(t, wireCommand{Schema: "bazaar-control-command-v2", DossierID: testDossierID, Action: "publish_release", Route: sidecarReleasePath(testDossierID, "publish"), Method: http.MethodPost}))
+			r.Header.Set(controlReleaseAuthorizationHeader, encodedHeader(t, map[string]string{"signature": "stable-human"}))
+		}, http.StatusBadRequest},
 		{"approval on prepare", func(r *http.Request) {
 			r.Header.Set(controlOfflineApprovalHeader, encodedHeader(t, map[string]string{"signature": "wrong"}))
 		}, http.StatusBadRequest},
 		{"mismatched command action", func(r *http.Request) {
-			r.Header.Set(controlCommandHeader, encodedHeader(t, wireCommand{DossierID: testDossierID, Action: "prepare_release", Route: sidecarReleasePath(testDossierID, "prepare"), Method: http.MethodPost}))
+			r.Header.Set(controlCommandHeader, encodedHeader(t, wireCommand{Schema: "bazaar-control-command-v1", DossierID: testDossierID, Action: "prepare_release", Route: sidecarReleasePath(testDossierID, "prepare"), Method: http.MethodPost}))
 		}, http.StatusForbidden},
 		{"wrong content type", func(r *http.Request) { r.Header.Set("Content-Type", "application/octet-stream") }, http.StatusUnsupportedMediaType},
 		{"too large", func(r *http.Request) { r.ContentLength = maxCandidateBytes + 1 }, http.StatusRequestEntityTooLarge},

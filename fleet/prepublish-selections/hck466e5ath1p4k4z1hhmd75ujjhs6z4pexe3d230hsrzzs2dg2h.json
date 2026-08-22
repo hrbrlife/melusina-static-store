@@ -1,248 +1,250 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
-  "sourceRepository": "https://github.com/hrbrlife/ccash_domain_template",
-  "sourceCommit": "98aa6c7a905364c33c916cf1e64495da41204e3f",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.5.88/appVersion-110 dev-publish tip is the newest valid forward DomainTemplate source. It incorporates the missing package-bound release-identity health control, retains the current signed DomainRouter and evidence ownership model, and supersedes the older divergent UX, lease, sanctions, and historic release lines after focused comparison. Main is an ancestor. The retained health and v109 lines are evidence for the forward integration; the remaining preserved and historical refs do not contain a newer valid application source.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "fresh recursive clone resolved dev-publish 98aa6c7a905364c33c916cf1e64495da41204e3f and the declared SPK module gitlink",
-      "complete current remote-head snapshot reviewed, including divergent and preserved refs",
-      "make verify-recovery passed from the selected source",
-      "a fresh remote clone independently passed make verify-recovery at the same commit",
-      "two package runs matched SHA-256 9cfbe6b3441413960cf6656c9e6d1c92ba446c23ae8f8bc683a8ab809ac1a7a4",
-      "release identity is package-bound and exposes no mutable package digest field"
+    "schema": "melusina-source-selection-v1",
+    "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+    "sourceRepository": "https://github.com/hrbrlife/ccash_domain_template",
+    "sourceCommit": "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b",
+    "selectionMethod": "direct-dev",
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor",
+    "decisionSummary": "Selected the 2026-08-22 dev-publish DomainTemplate v0.5.89/v111 cut. It moves this app to melusina-msb-protocol minor 14, which every other MSB participant in the estate was already built against: paype.cc 0.3.191, CCA.SH Configurator 0.0.82 and NamedCoin Admin all pin v0.0.0-20260809143748-456e1ca0143f, and this app alone still pinned minor 12. capability/validate.go compares minors for EXACT equality, so the skew refused every participant enrolment with 'domain-participant provisioning seed protocolVersion is invalid' and blocked portal enrolment, StationFactory provisioning of the identity-verification station, and the two-user NamedCoin account-opening ceremony. Protocol 1.14 adds execution provider profiles; no production code in this app authors them (the only production reference validates a producer-supplied description, and dossier/deletion claims are copied wholesale via capnp CopyFrom), so the change is confined to test fixtures that build those structures, each profile bound to its signed root. main is the reviewed stable ancestor of this cut.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "fresh single-branch clone at the selected source commit with submodules initialised; git status --untracked-files=all empty",
+            "go build ./... clean at protocol minor 14",
+            "go test ./... green - the full pkg/template suite passes",
+            "regression baseline recorded before the change: the bump alone failed 22 tests, 20 on one cause",
+            "each execution provider profile bound to its signed root and verified by the protocol's own validators rather than by assertion",
+            "profile issuer identity/licence READ FROM the built descriptor, not hardcoded - the fixtures derive from two different parent scopes and a hardcoded value fails as 'differs from its signed root'",
+            "version cohort advanced together: Makefile PEARL_RELEASE_VERSION, metadata.json, sandstorm-pkgdef.capnp, release_identity.json, pkg/template/version.go, changelog head",
+            "gofmt clean"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/feat/killlist-dtg-b2-provider-routes-20260509",
+            "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/master-target-app-id-sweep-2026-05-19",
+            "commit": "67cf9a1c3fb1ee13aba7c30f6f9f0e9c0e2a10f1",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/proxy-fix/picker-case-mismatch-2026-05-19",
+            "commit": "4fc011c5c9547b1b65416556fbfb4c86f385aa5e",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/rtg/egress-sanctions-fold",
+            "commit": "c6908f572164988344ac17644cb9850354eeba9f",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/codex/domain-template-ux-20260713",
+            "commit": "c3b715eb9679647046885938006554a28a685660",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/dtg-lease-issuer-20260721",
+            "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/codex/product-path-readiness-20260713",
+            "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/dtg-redeploy-0.5.58",
+            "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/feat/mel-release-health-ccash-domain-template",
+            "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/prelaunch-domain-template-v109-greenfield",
+            "commit": "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "e4132f2148fc7dd9c737f7fb3e2015d17a23f55c",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/126ba080d3fc",
+            "commit": "126ba080d3fcc276dc6dcd53596a8efb704b08bc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/7a3a7b7b217b",
+            "commit": "7a3a7b7b217bdfcc5747b2ccce6be766d06e6e37",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/audit-remediation-2026-06-05",
+            "commit": "2949349e7531e3fe47e9538fd9765b1ef299cf8b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/bump/dtg-0.5.61",
+            "commit": "94ffb0762eee3c4035be5a3ca44c478c5e61c341",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/domain-template-ux-20260713",
+            "commit": "c3b715eb9679647046885938006554a28a685660",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/dtg-lease-issuer-20260721",
+            "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/dtg-telescreen-slot-20260721",
+            "commit": "35720f072674943fa33bf448864c7967f94d0737",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dtg-redeploy-0.5.58",
+            "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dao-securities-dt-2026-06-26",
+            "commit": "1fc2ead689f281aac736c0bffc28905a5007fec2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt5-configstation-osproxy",
+            "commit": "6858e3685dd5cb7c164e14acb3e844fe81a00ab1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dtg-J-2026-06-08",
+            "commit": "5770bf0d27fda859125a34170b5b2a301a3579d8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/foureyes-active-bridge-2026-07-06",
+            "commit": "188b9459d114ad18dcbe8220419c98c31364648b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
+            "commit": "3b9cf7ee50f92e98fb89faedca90d1ff8e7838a9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "1a7c94c7706ff95f8f33010ad9dabb809a07320a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dtg-b2-provider-routes-20260509",
+            "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dtg-b3-datasetblob-20260509",
+            "commit": "3fee8ffc219fff95483b2a785445507da14c362a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-ccash-domain-template",
+            "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/process-template-source-20260726",
+            "commit": "6019f7054aa1cec4fb017453b47332499c390eb6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/audit-h2-dtg",
+            "commit": "1d0fc7c62c37ddb3a0f42dafadb28727be57a02f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/msb-status-contract-20260814",
+            "commit": "75383e841f977d94073de04f7dd0c9a55f9fef6b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "e643527024d55a900eacea7f6fcfbbdac1df1b64",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "e643527024d55a900eacea7f6fcfbbdac1df1b64",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/master-target-app-id-sweep-2026-05-19",
+            "commit": "67cf9a1c3fb1ee13aba7c30f6f9f0e9c0e2a10f1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/proxy-fix/picker-case-mismatch-2026-05-19",
+            "commit": "4fc011c5c9547b1b65416556fbfb4c86f385aa5e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/release/ccash-domain-template-0.5.62",
+            "commit": "25cb0956b17a11b9596f2ad62c12ec7845cffb5d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/rtg/audience-resolver",
+            "commit": "c6138550753bebc0b8666d06e16d70311037cbd3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/rtg/bnd-audience-binding",
+            "commit": "d5fc715873e2f3c08d8271aebdaa81f2b9d03102",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/rtg/egress-sanctions-fold",
+            "commit": "c6908f572164988344ac17644cb9850354eeba9f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/rtg/scope-to-audience",
+            "commit": "8ae4b4fadc6ed7275bb4a1f89ec073b2bfd06771",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding",
+            "commit": "f6488ad5d36b060ecdefccadf46c179b8882004f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/kb-3-domain-template-fix",
+            "commit": "d54d7e38d386ab50877a0a8f620daabed31e02f1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
+            "outcome": "retained"
+        }
     ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/feat/killlist-dtg-b2-provider-routes-20260509",
-      "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/master-target-app-id-sweep-2026-05-19",
-      "commit": "67cf9a1c3fb1ee13aba7c30f6f9f0e9c0e2a10f1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/proxy-fix/picker-case-mismatch-2026-05-19",
-      "commit": "4fc011c5c9547b1b65416556fbfb4c86f385aa5e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/rtg/egress-sanctions-fold",
-      "commit": "c6908f572164988344ac17644cb9850354eeba9f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/domain-template-ux-20260713",
-      "commit": "c3b715eb9679647046885938006554a28a685660",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/dtg-lease-issuer-20260721",
-      "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/product-path-readiness-20260713",
-      "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "98aa6c7a905364c33c916cf1e64495da41204e3f",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/dtg-redeploy-0.5.58",
-      "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-ccash-domain-template",
-      "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/fix/prelaunch-domain-template-v109-greenfield",
-      "commit": "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "e4132f2148fc7dd9c737f7fb3e2015d17a23f55c",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_detached/126ba080d3fc",
-      "commit": "126ba080d3fcc276dc6dcd53596a8efb704b08bc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/7a3a7b7b217b",
-      "commit": "7a3a7b7b217bdfcc5747b2ccce6be766d06e6e37",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/audit-remediation-2026-06-05",
-      "commit": "2949349e7531e3fe47e9538fd9765b1ef299cf8b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/bump/dtg-0.5.61",
-      "commit": "94ffb0762eee3c4035be5a3ca44c478c5e61c341",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/domain-template-ux-20260713",
-      "commit": "c3b715eb9679647046885938006554a28a685660",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/dtg-lease-issuer-20260721",
-      "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/dtg-telescreen-slot-20260721",
-      "commit": "35720f072674943fa33bf448864c7967f94d0737",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/dtg-redeploy-0.5.58",
-      "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dao-securities-dt-2026-06-26",
-      "commit": "1fc2ead689f281aac736c0bffc28905a5007fec2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt5-configstation-osproxy",
-      "commit": "6858e3685dd5cb7c164e14acb3e844fe81a00ab1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dtg-J-2026-06-08",
-      "commit": "5770bf0d27fda859125a34170b5b2a301a3579d8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/foureyes-active-bridge-2026-07-06",
-      "commit": "188b9459d114ad18dcbe8220419c98c31364648b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
-      "commit": "3b9cf7ee50f92e98fb89faedca90d1ff8e7838a9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
-      "commit": "1a7c94c7706ff95f8f33010ad9dabb809a07320a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dtg-b2-provider-routes-20260509",
-      "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dtg-b3-datasetblob-20260509",
-      "commit": "3fee8ffc219fff95483b2a785445507da14c362a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-ccash-domain-template",
-      "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/process-template-source-20260726",
-      "commit": "6019f7054aa1cec4fb017453b47332499c390eb6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/audit-h2-dtg",
-      "commit": "1d0fc7c62c37ddb3a0f42dafadb28727be57a02f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/msb-status-contract-20260814",
-      "commit": "75383e841f977d94073de04f7dd0c9a55f9fef6b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-      "commit": "e643527024d55a900eacea7f6fcfbbdac1df1b64",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "e643527024d55a900eacea7f6fcfbbdac1df1b64",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/master-target-app-id-sweep-2026-05-19",
-      "commit": "67cf9a1c3fb1ee13aba7c30f6f9f0e9c0e2a10f1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/proxy-fix/picker-case-mismatch-2026-05-19",
-      "commit": "4fc011c5c9547b1b65416556fbfb4c86f385aa5e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/release/ccash-domain-template-0.5.62",
-      "commit": "25cb0956b17a11b9596f2ad62c12ec7845cffb5d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/rtg/audience-resolver",
-      "commit": "c6138550753bebc0b8666d06e16d70311037cbd3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/rtg/bnd-audience-binding",
-      "commit": "d5fc715873e2f3c08d8271aebdaa81f2b9d03102",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/rtg/egress-sanctions-fold",
-      "commit": "c6908f572164988344ac17644cb9850354eeba9f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/rtg/scope-to-audience",
-      "commit": "8ae4b4fadc6ed7275bb4a1f89ec073b2bfd06771",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding",
-      "commit": "f6488ad5d36b060ecdefccadf46c179b8882004f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/kb-3-domain-template-fix",
-      "commit": "d54d7e38d386ab50877a0a8f620daabed31e02f1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
-      "outcome": "archive"
-    }
-  ]
 }

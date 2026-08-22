@@ -1,7 +1,8 @@
 package storelink
 
-// Durable-job relay for the two mechanical stages that must not be performed
-// in a human browser: isolated build verification and tenant product proof.
+// Durable-job relay for the mechanical stages that must not be performed in a
+// human browser: isolated build verification, post-review preparation, and
+// tenant product proof.
 //
 // The Store Link accepts only release-bound job shapes from the Pearl and
 // forwards them to separately deployed workers at fixed private origins. It
@@ -26,13 +27,15 @@ import (
 )
 
 const (
-	buildJobCollection             = "build-jobs"
-	tenantProofJobCollection       = "tenant-proof-jobs"
-	maxJobRequestBytes       int64 = 64 << 10
+	buildJobCollection                    = "build-jobs"
+	releasePreparationJobCollection       = "release-preparation-jobs"
+	tenantProofJobCollection              = "tenant-proof-jobs"
+	maxJobRequestBytes              int64 = 64 << 10
 	// A complete build result includes the candidate JSON body encoded as
 	// base64url. The Pearl enforces the same candidate cap after decoding.
-	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
-	maxProofJobResultBytes int64 = 64 << 10
+	maxBuildJobResultBytes       int64 = (maxCandidateBytes*4)/3 + (128 << 10)
+	maxPreparationJobResultBytes int64 = 128 << 10
+	maxProofJobResultBytes       int64 = 64 << 10
 )
 
 // WorkerRequest is constructed only after a Store Link route and its JSON
@@ -57,13 +60,15 @@ type WorkerResponse struct {
 
 type WorkerForwarder interface {
 	ForwardBuild(context.Context, WorkerRequest) (WorkerResponse, error)
+	ForwardReleasePreparation(context.Context, WorkerRequest) (WorkerResponse, error)
 	ForwardTenantProof(context.Context, WorkerRequest) (WorkerResponse, error)
 }
 
 type privateWorkerForwarder struct {
-	buildOrigin *url.URL
-	proofOrigin *url.URL
-	http        *http.Client
+	buildOrigin       *url.URL
+	preparationOrigin *url.URL
+	proofOrigin       *url.URL
+	http              *http.Client
 }
 
 // NewWorkerForwarder fails closed until both actual workers have been
@@ -80,6 +85,10 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	buildOrigin, err := parsePrivateHTTPSOrigin(config.BuildWorkerURL)
 	if err != nil {
 		return nil, errors.New("Store Link buildWorkerUrl must be one exact private HTTPS origin")
+	}
+	preparationOrigin, err := parsePrivateHTTPSOrigin(config.ReleasePreparationWorkerURL)
+	if err != nil {
+		return nil, errors.New("Store Link releasePreparationWorkerUrl must be one exact private HTTPS origin")
 	}
 	proofOrigin, err := parsePrivateHTTPSOrigin(config.TenantProofWorkerURL)
 	if err != nil {
@@ -100,7 +109,7 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate}, RootCAs: pool}
-	return &privateWorkerForwarder{buildOrigin: buildOrigin, proofOrigin: proofOrigin, http: &http.Client{
+	return &privateWorkerForwarder{buildOrigin: buildOrigin, preparationOrigin: preparationOrigin, proofOrigin: proofOrigin, http: &http.Client{
 		Transport: transport,
 		Timeout:   2 * time.Minute,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -111,6 +120,10 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 
 func (f *privateWorkerForwarder) ForwardBuild(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
 	return f.forward(ctx, f.buildOrigin, buildJobCollection, request)
+}
+
+func (f *privateWorkerForwarder) ForwardReleasePreparation(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
+	return f.forward(ctx, f.preparationOrigin, releasePreparationJobCollection, request)
 }
 
 func (f *privateWorkerForwarder) ForwardTenantProof(ctx context.Context, request WorkerRequest) (WorkerResponse, error) {
@@ -183,10 +196,16 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 		response WorkerResponse
 		err      error
 	)
-	if collection == buildJobCollection {
+	switch collection {
+	case buildJobCollection:
 		response, err = h.jobs.ForwardBuild(r.Context(), request)
-	} else {
+	case releasePreparationJobCollection:
+		response, err = h.jobs.ForwardReleasePreparation(r.Context(), request)
+	case tenantProofJobCollection:
 		response, err = h.jobs.ForwardTenantProof(r.Context(), request)
+	default:
+		http.Error(w, "Verification worker is temporarily unavailable.", http.StatusBadGateway)
+		return
 	}
 	if err != nil {
 		http.Error(w, "Verification worker is temporarily unavailable.", http.StatusBadGateway)
@@ -226,6 +245,9 @@ func jobResponseLimit(collection string, start bool) int64 {
 	if collection == buildJobCollection {
 		return maxBuildJobResultBytes
 	}
+	if collection == releasePreparationJobCollection {
+		return maxPreparationJobResultBytes
+	}
 	return maxProofJobResultBytes
 }
 
@@ -252,6 +274,30 @@ type proofStartRequest struct {
 	ReleaseDigest string `json:"releaseDigest"`
 }
 
+// preparationStartRequest contains only frozen source-to-package facts. It
+// deliberately cannot name a command, worker URL, signer, publisher envelope,
+// stage, proposal, selector, or listing. Those are derived by the separately
+// configured post-review worker and returned in its signed result.
+type preparationStartRequest struct {
+	Schema                 string `json:"schema"`
+	DossierID              string `json:"dossierId"`
+	StoreID                string `json:"storeId"`
+	AppID                  string `json:"appId"`
+	SourceRef              string `json:"sourceRef"`
+	SourceCommit           string `json:"sourceCommit"`
+	Version                string `json:"version"`
+	BuildAttestationDigest string `json:"buildAttestationDigest"`
+	CandidateSHA256        string `json:"candidateSha256"`
+	CandidateBytes         int64  `json:"candidateBytes"`
+	ArtifactSHA256         string `json:"artifactSha256"`
+	MetadataSHA256         string `json:"metadataSha256"`
+	RuntimeContractSHA256  string `json:"runtimeContractSha256,omitempty"`
+	PackageID              string `json:"packageId"`
+	AppHash                string `json:"appHash"`
+	Action                 string `json:"action"`
+	RequestDigest          string `json:"requestDigest"`
+}
+
 func validateJobStart(collection string, body []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
@@ -262,6 +308,16 @@ func validateJobStart(collection string, body []byte) error {
 		}
 		if value.Schema != "bazaar-control-trusted-build-job-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.RequestDigest, 64) {
 			return errors.New("build job is not exact")
+		}
+		return nil
+	}
+	if collection == releasePreparationJobCollection {
+		var value preparationStartRequest
+		if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+			return errors.New("release preparation job JSON is malformed")
+		}
+		if value.Schema != "bazaar-control-release-preparation-request-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.BuildAttestationDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || !isLowerHex(value.ArtifactSHA256, 64) || !isLowerHex(value.MetadataSHA256, 64) || (value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64)) || !safeJobText(value.PackageID) || !isLowerHex(value.AppHash, 64) || value.Action != "prepare_release" || !isLowerHex(value.RequestDigest, 64) {
+			return errors.New("release preparation job is not exact")
 		}
 		return nil
 	}

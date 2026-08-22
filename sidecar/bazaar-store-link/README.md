@@ -49,6 +49,7 @@ Example shape (use real protected paths; do not commit this file):
   "clientKeyPath": "/etc/bazaar-store-link/client.key",
   "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
   "buildWorkerUrl": "https://127.0.0.1:9461",
+  "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
   "tenantProofWorkerUrl": "https://127.0.0.1:9462",
   "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem"
 }

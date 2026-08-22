@@ -27,11 +27,13 @@ type capturedForwarder struct {
 }
 
 type capturedWorkerForwarder struct {
-	buildRequests []WorkerRequest
-	proofRequests []WorkerRequest
-	buildResponse WorkerResponse
-	proofResponse WorkerResponse
-	err           error
+	buildRequests       []WorkerRequest
+	preparationRequests []WorkerRequest
+	proofRequests       []WorkerRequest
+	buildResponse       WorkerResponse
+	preparationResponse WorkerResponse
+	proofResponse       WorkerResponse
+	err                 error
 }
 
 func (f *capturedWorkerForwarder) ForwardBuild(_ context.Context, request WorkerRequest) (WorkerResponse, error) {
@@ -45,6 +47,19 @@ func (f *capturedWorkerForwarder) ForwardBuild(_ context.Context, request Worker
 		return WorkerResponse{}, f.err
 	}
 	return f.buildResponse, nil
+}
+
+func (f *capturedWorkerForwarder) ForwardReleasePreparation(_ context.Context, request WorkerRequest) (WorkerResponse, error) {
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		return WorkerResponse{}, err
+	}
+	request.Body = io.NopCloser(bytes.NewReader(body))
+	f.preparationRequests = append(f.preparationRequests, request)
+	if f.err != nil {
+		return WorkerResponse{}, f.err
+	}
+	return f.preparationResponse, nil
 }
 
 func (f *capturedWorkerForwarder) ForwardTenantProof(_ context.Context, request WorkerRequest) (WorkerResponse, error) {
@@ -138,6 +153,14 @@ func proofJobRequest(t *testing.T) *http.Request {
 	t.Helper()
 	body := `{"schema":"bazaar-control-tenant-proof-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","version":"1.2.3","packageId":"pkg-1","appHash":"` + strings.Repeat("b", 64) + `","releaseHash":"` + strings.Repeat("c", 64) + `","releaseDigest":"` + strings.Repeat("d", 64) + `"}`
 	request := httptest.NewRequest(http.MethodPost, "/v1/tenant-proof-jobs", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	return request
+}
+
+func preparationJobRequest(t *testing.T) *http.Request {
+	t.Helper()
+	body := `{"schema":"bazaar-control-release-preparation-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
+	request := httptest.NewRequest(http.MethodPost, "/v1/release-preparation-jobs", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	return request
 }
@@ -275,8 +298,9 @@ func TestConfigKeepsTheConnectorOnPrivateOrigins(t *testing.T) {
 
 func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 	workers := &capturedWorkerForwarder{
-		buildResponse: WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-trusted-build-job-v1"}`))},
-		proofResponse: WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-tenant-proof-job-v1"}`))},
+		buildResponse:       WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-trusted-build-job-v1"}`))},
+		preparationResponse: WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-job-v1"}`))},
+		proofResponse:       WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-tenant-proof-job-v1"}`))},
 	}
 	handler := newJobTestHandler(t, &capturedForwarder{}, workers)
 
@@ -288,6 +312,16 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 	build := workers.buildRequests[0]
 	if build.Method != http.MethodPost || build.Path != "/v1/build-jobs" {
 		t.Fatalf("build worker request = %s %s", build.Method, build.Path)
+	}
+
+	preparationRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(preparationRecorder, preparationJobRequest(t))
+	if preparationRecorder.Code != http.StatusAccepted || len(workers.preparationRequests) != 1 {
+		t.Fatalf("preparation status/requests = %d/%d", preparationRecorder.Code, len(workers.preparationRequests))
+	}
+	preparation := workers.preparationRequests[0]
+	if preparation.Method != http.MethodPost || preparation.Path != "/v1/release-preparation-jobs" {
+		t.Fatalf("preparation worker request = %s %s", preparation.Method, preparation.Path)
 	}
 
 	proofRecorder := httptest.NewRecorder()
@@ -308,6 +342,13 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 	}
 	if workers.proofRequests[1].Path != "/v1/tenant-proof-jobs/0123456789abcdef01234567" {
 		t.Fatalf("proof poll path = %q", workers.proofRequests[1].Path)
+	}
+
+	workers.preparationResponse = WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-job-v1"}`))}
+	pollRecorder = httptest.NewRecorder()
+	handler.ServeHTTP(pollRecorder, httptest.NewRequest(http.MethodGet, "/v1/release-preparation-jobs/0123456789abcdef01234567", nil))
+	if pollRecorder.Code != http.StatusAccepted || len(workers.preparationRequests) != 2 || workers.preparationRequests[1].Path != "/v1/release-preparation-jobs/0123456789abcdef01234567" {
+		t.Fatalf("preparation poll status/requests/path = %d/%d/%q", pollRecorder.Code, len(workers.preparationRequests), workers.preparationRequests[1].Path)
 	}
 }
 
@@ -330,6 +371,15 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 		t.Fatalf("bad job status/requests = %d/%d", badRecorder.Code, len(workers.buildRequests))
 	}
 
+	badPreparation := preparationJobRequest(t)
+	badPreparation.Body = io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
+	badPreparation.ContentLength = int64(len(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
+	badPreparationRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(badPreparationRecorder, badPreparation)
+	if badPreparationRecorder.Code != http.StatusBadRequest || len(workers.preparationRequests) != 0 {
+		t.Fatalf("bad preparation status/requests = %d/%d", badPreparationRecorder.Code, len(workers.preparationRequests))
+	}
+
 	wrongRoute := httptest.NewRequest(http.MethodPost, "/v1/build-jobs/0123456789abcdef01234567", nil)
 	wrongRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(wrongRecorder, wrongRoute)
@@ -338,9 +388,17 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	}
 }
 
-func TestWorkerProvisioningRequiresBothFixedOrigins(t *testing.T) {
+func TestWorkerProvisioningRequiresEveryFixedOrigin(t *testing.T) {
 	if _, err := NewWorkerForwarder(testConfig()); err == nil || !strings.Contains(err.Error(), "workerCaPath") {
 		t.Fatalf("unprovisioned workers error = %v", err)
+	}
+
+	config := testConfig()
+	config.WorkerCAPath = "/etc/bazaar-store-link/worker-ca.pem"
+	config.BuildWorkerURL = "https://127.0.0.1:9461"
+	config.TenantProofWorkerURL = "https://127.0.0.1:9462"
+	if _, err := NewWorkerForwarder(config); err == nil || !strings.Contains(err.Error(), "releasePreparationWorkerUrl") {
+		t.Fatalf("missing preparation origin error = %v", err)
 	}
 }
 

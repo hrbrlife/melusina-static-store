@@ -24,10 +24,12 @@ The connector currently exposes exactly this fixed vocabulary:
 - `POST /v1/tenant-proof-jobs`, `GET /v1/tenant-proof-jobs/<24-lower-hex>`
 
 It cannot accept a caller-chosen URL, method, sidecar path, transaction,
-signing request, publisher lifecycle request, generic RPC call, or listing
-instruction. It maps release/authority operations to the typed sidecar routes
-only, and forwards build/proof jobs to separately configured worker origins
-only. For release commands it forwards only `Content-Type`, the Pearl command,
+signing request, artifact body/path/URL, publisher lifecycle request, generic
+RPC call, or listing instruction. It maps release/authority operations to the
+typed sidecar routes only, and forwards build/proof jobs to separately
+configured worker origins only. Finalization jobs carry a committed candidate
+SHA-256 and byte count, not candidate bytes; the finalizer retrieves that exact
+object from its fixed content-addressed artifact vault. For release commands it forwards only `Content-Type`, the Pearl command,
 Pearl signature, and—for publication—the offline approval. The sidecar still
 verifies the same command, publisher grant, artifact, chain facts, predecessor,
 and listing-before-selector rule independently.
@@ -76,7 +78,9 @@ This source is a verified connector boundary and durable-job relay, **not a
 deployed Golden MVP**. It requires separately implemented and deployed bounded
 build, release-preparation, release-finalization, and tenant-proof workers,
 which must persist their own jobs and return release-bound signed results. The
-relay intentionally rejects startup without the worker origins and their CA. Do not switch
+finalizer also needs a configured immutable content-addressed artifact vault;
+the relay must never become its artifact transport. The relay intentionally
+rejects startup without the worker origins and their CA. Do not switch
 `require_pearl_control_for_app_publish` on a live Store until the complete
 provisioning and one-app pilot in Bazaar Control's deployment requirements have
 passed.

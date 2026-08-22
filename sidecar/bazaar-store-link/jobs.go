@@ -331,6 +331,8 @@ type finalizationStartRequest struct {
 	ReleaseAuthorizationDigest string `json:"releaseAuthorizationDigest"`
 	ProposalReference          string `json:"proposalReference"`
 	ProposalDigest             string `json:"proposalDigest"`
+	CandidateSHA256            string `json:"candidateSha256"`
+	CandidateBytes             int64  `json:"candidateBytes"`
 	ExpectedPriorAppHash       string `json:"expectedPriorAppHash,omitempty"`
 	ReleaseHash                string `json:"releaseHash"`
 	StageID                    string `json:"stageId"`
@@ -370,7 +372,7 @@ func validateJobStart(collection string, body []byte) error {
 		if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
 			return errors.New("release finalization job JSON is malformed")
 		}
-		if value.Schema != "bazaar-control-release-finalization-request-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !isLowerHex(value.ReleaseAuthorizationDigest, 64) || !safeJobText(value.ProposalReference) || !isLowerHex(value.ProposalDigest, 64) || (value.ExpectedPriorAppHash != "" && !isLowerHex(value.ExpectedPriorAppHash, 64)) || !isLowerHex(value.ReleaseHash, 64) || !isLowerHex(value.StageID, 64) || !safeJobText(value.StorePolicy) || value.PolicyEpoch == 0 || !safeJobText(value.PublisherGrant) || value.GrantEpoch == 0 || value.Action != "finalize_release" || !isLowerHex(value.RequestDigest, 64) {
+		if value.Schema != "bazaar-control-release-finalization-request-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !isLowerHex(value.ReleaseAuthorizationDigest, 64) || !safeJobText(value.ProposalReference) || !isLowerHex(value.ProposalDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || (value.ExpectedPriorAppHash != "" && !isLowerHex(value.ExpectedPriorAppHash, 64)) || !isLowerHex(value.ReleaseHash, 64) || !isLowerHex(value.StageID, 64) || !safeJobText(value.StorePolicy) || value.PolicyEpoch == 0 || !safeJobText(value.PublisherGrant) || value.GrantEpoch == 0 || value.Action != "finalize_release" || !isLowerHex(value.RequestDigest, 64) {
 			return errors.New("release finalization job is not exact")
 		}
 		return nil

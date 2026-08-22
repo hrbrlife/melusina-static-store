@@ -194,7 +194,7 @@ func preparationJobRequest(t *testing.T) *http.Request {
 
 func finalizationJobRequest(t *testing.T) *http.Request {
 	t.Helper()
-	body := `{"schema":"bazaar-control-release-finalization-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","releaseAuthorizationDigest":"` + strings.Repeat("a", 64) + `","proposalReference":"squads:proposal-1","proposalDigest":"` + strings.Repeat("b", 64) + `","expectedPriorAppHash":"` + strings.Repeat("c", 64) + `","releaseHash":"` + strings.Repeat("d", 64) + `","stageId":"` + strings.Repeat("e", 64) + `","storePolicy":"policy-1","policyEpoch":7,"publisherGrant":"grant-1","grantEpoch":3,"action":"finalize_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
+	body := `{"schema":"bazaar-control-release-finalization-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","candidateSha256":"` + strings.Repeat("9", 64) + `","candidateBytes":42,"releaseAuthorizationDigest":"` + strings.Repeat("a", 64) + `","proposalReference":"squads:proposal-1","proposalDigest":"` + strings.Repeat("b", 64) + `","expectedPriorAppHash":"` + strings.Repeat("c", 64) + `","releaseHash":"` + strings.Repeat("d", 64) + `","stageId":"` + strings.Repeat("e", 64) + `","storePolicy":"policy-1","policyEpoch":7,"publisherGrant":"grant-1","grantEpoch":3,"action":"finalize_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
 	request := httptest.NewRequest(http.MethodPost, "/v1/release-finalization-jobs", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	return request
@@ -458,6 +458,20 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	handler.ServeHTTP(badFinalizationRecorder, badFinalization)
 	if badFinalizationRecorder.Code != http.StatusBadRequest || len(workers.finalizationRequests) != 0 {
 		t.Fatalf("bad finalization status/requests = %d/%d", badFinalizationRecorder.Code, len(workers.finalizationRequests))
+	}
+
+	missingCandidate := finalizationJobRequest(t)
+	missingBody, err := io.ReadAll(missingCandidate.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingBody = []byte(strings.Replace(string(missingBody), `,"candidateSha256":"`+strings.Repeat("9", 64)+`","candidateBytes":42`, "", 1))
+	missingCandidate.Body = io.NopCloser(strings.NewReader(string(missingBody)))
+	missingCandidate.ContentLength = int64(len(missingBody))
+	missingCandidateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(missingCandidateRecorder, missingCandidate)
+	if missingCandidateRecorder.Code != http.StatusBadRequest || len(workers.finalizationRequests) != 0 {
+		t.Fatalf("missing finalization candidate status/requests = %d/%d", missingCandidateRecorder.Code, len(workers.finalizationRequests))
 	}
 
 	wrongRoute := httptest.NewRequest(http.MethodPost, "/v1/build-jobs/0123456789abcdef01234567", nil)

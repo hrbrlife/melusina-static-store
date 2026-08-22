@@ -203,3 +203,53 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 		t.Fatalf("wrong Store Link client reached HTTP handler %d times", requests)
 	}
 }
+
+func TestStoreLinkTLSInputsRequireProtectedRealFiles(t *testing.T) {
+	ca, caKey := newWorkerTestCA(t)
+	clientLeaf := newWorkerTestLeaf(t, 2, "store-link", x509.ExtKeyUsageClientAuth, ca, caKey)
+	dir := t.TempDir()
+	certPath, keyPath := writeWorkerTestCertificate(t, dir, "store-link", clientLeaf)
+	if _, err := loadStoreLinkClientIdentity(certPath, keyPath); err != nil {
+		t.Fatalf("protected Store Link client identity: %v", err)
+	}
+	if err := os.Chmod(keyPath, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadStoreLinkClientIdentity(certPath, keyPath); err == nil {
+		t.Fatal("Store Link accepted a group-readable client key")
+	}
+	if err := os.Chmod(keyPath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	keyLink := filepath.Join(dir, "store-link-link.key")
+	if err := os.Symlink(keyPath, keyLink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadStoreLinkClientIdentity(certPath, keyLink); err == nil {
+		t.Fatal("Store Link accepted a symlinked client key")
+	}
+
+	caPath := filepath.Join(dir, "worker-ca.crt")
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readProtectedStoreLinkFile(caPath, "worker CA", false); err != nil {
+		t.Fatalf("protected worker CA: %v", err)
+	}
+	if err := os.Chmod(caPath, 0o660); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readProtectedStoreLinkFile(caPath, "worker CA", false); err == nil {
+		t.Fatal("Store Link accepted a group-writable worker CA")
+	}
+	if err := os.Chmod(caPath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	caLink := filepath.Join(dir, "worker-ca-link.crt")
+	if err := os.Symlink(caPath, caLink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readProtectedStoreLinkFile(caLink, "worker CA", false); err == nil {
+		t.Fatal("Store Link accepted a symlinked worker CA")
+	}
+}

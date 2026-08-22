@@ -23,7 +23,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -134,11 +133,11 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	if err := distinctWorkerLeafPins(buildPin, preparationPin, finalizationPin, proofPin); err != nil {
 		return nil, err
 	}
-	certificate, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
+	certificate, err := loadStoreLinkClientIdentity(config.ClientCertPath, config.ClientKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("load Store Link worker client certificate: %w", err)
 	}
-	caBytes, err := os.ReadFile(config.WorkerCAPath)
+	caBytes, err := readProtectedStoreLinkFile(config.WorkerCAPath, "worker CA", false)
 	if err != nil {
 		return nil, fmt.Errorf("read worker CA: %w", err)
 	}

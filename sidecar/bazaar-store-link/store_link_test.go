@@ -680,6 +680,16 @@ func TestLoadConfigRejectsGroupOrWorldWritableFile(t *testing.T) {
 	if _, err := LoadConfig(path); err == nil {
 		t.Fatal("LoadConfig() accepted a world-writable connector config")
 	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	symlink := filepath.Join(t.TempDir(), "store-link-link.json")
+	if err := os.Symlink(path, symlink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadConfig(symlink); err == nil {
+		t.Fatal("LoadConfig() accepted a symlinked connector config")
+	}
 }
 
 func TestForwardFailureNeverLeaksAsSuccess(t *testing.T) {

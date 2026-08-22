@@ -67,6 +67,15 @@ origin plus paths to its client certificate, private key, and sidecar CA. Those
 credentials must be created by the Store operator and are never copied into a
 Pearl, terminal, build worker, browser, or package.
 
+The source asset `systemd/melusina-bazaar-store-link.service` runs the connector
+as the dedicated `bazaar-store-link` account. Its config, certificate, and CA
+must be root- or service-account-owned real regular files with no group/world
+write permission; the client key must be owned by that service account and
+mode `0600`. The connector verifies those properties, refuses symlinks, and
+loads the certificate/key from the checked bytes. The unit has no writable
+state directory, no capabilities, no home access, and no environmental target
+or credential inputs.
+
 Example shape (use real protected paths; do not commit this file):
 
 ```json

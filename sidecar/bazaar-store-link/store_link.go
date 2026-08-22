@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -150,11 +149,11 @@ func NewSidecarForwarder(config Config) (*SidecarForwarder, error) {
 	if err != nil {
 		return nil, err
 	}
-	certificate, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
+	certificate, err := loadStoreLinkClientIdentity(config.ClientCertPath, config.ClientKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("load Store Link client certificate: %w", err)
 	}
-	caBytes, err := os.ReadFile(config.SidecarCAPath)
+	caBytes, err := readProtectedStoreLinkFile(config.SidecarCAPath, "sidecar CA", false)
 	if err != nil {
 		return nil, fmt.Errorf("read Store sidecar CA: %w", err)
 	}
@@ -172,6 +171,22 @@ func NewSidecarForwarder(config Config) (*SidecarForwarder, error) {
 			return errors.New("Store Link refuses sidecar redirects")
 		},
 	}}, nil
+}
+
+func loadStoreLinkClientIdentity(certPath, keyPath string) (tls.Certificate, error) {
+	certPEM, err := readProtectedStoreLinkFile(certPath, "client certificate", false)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	keyPEM, err := readProtectedStoreLinkFile(keyPath, "client key", true)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	certificate, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	return certificate, nil
 }
 
 func (f *SidecarForwarder) Forward(ctx context.Context, forwarded ForwardRequest) (ForwardResponse, error) {

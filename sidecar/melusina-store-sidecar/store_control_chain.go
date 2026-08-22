@@ -51,6 +51,9 @@ func readStoreControlPolicyMeta(data []byte) (storeControlPolicyMeta, error) {
 	if offset, err = copyFixed(data, offset, meta.PearlCommandPublicKey[:], "store_control_policy", "pearl_command_ed25519_pubkey"); err != nil {
 		return meta, err
 	}
+	if offset, err = copyFixed(data, offset, meta.HumanApprovalPublicKey[:], "store_control_policy", "human_approval_ed25519_pubkey"); err != nil {
+		return meta, err
+	}
 	if offset+8 > len(data) {
 		return meta, errors.New("store_control_policy: policy_epoch: buffer too short")
 	}
@@ -234,7 +237,7 @@ func fetchActiveStoreControlPolicy(ctx context.Context, cfg Config, cr chainRead
 	if err != nil {
 		return zero, fmt.Errorf("derive StoreOperatorAuthorization: %w", err)
 	}
-	if !meta.Active || meta.PolicyEpoch == 0 || meta.LicenseNFTMint != licenseMint || meta.StoreDomainHash != domainHash || meta.StoreAuthority != storeAuthority || meta.StoreOperatorAuthorization != authz || meta.PearlCommandPublicKey == [32]byte{} {
+	if !meta.Active || meta.PolicyEpoch == 0 || meta.LicenseNFTMint != licenseMint || meta.StoreDomainHash != domainHash || meta.StoreAuthority != storeAuthority || meta.StoreOperatorAuthorization != authz || meta.PearlCommandPublicKey == [32]byte{} || meta.HumanApprovalPublicKey == [32]byte{} {
 		return zero, errors.New("StoreControlPolicy does not bind this active store")
 	}
 	return meta, nil

@@ -75,6 +75,24 @@ type appPublishPreflight struct {
 	release         ReleaseJSON
 }
 
+// appPublisherResolver is the narrow injection point between a signed
+// publisher envelope and the source of publisher authority.  The legacy
+// /publish route resolves its signer from the static migration allowlist;
+// Bazaar Control resolves the exact signer from a verified, app-scoped
+// on-chain grant.  The rest of the publish gate is deliberately shared.
+type appPublisherResolver func(appPublishPreflight, identity.Public) (string, error)
+
+// appPublishCriticalCheck re-reads dynamic authorization inside the single
+// writer just before the ordinary chain gate. It closes the interval between a
+// control-command preflight and mutation: a grant or policy retired while a
+// request waits for the writer lock cannot still authorize the publish.
+type appPublishCriticalCheck func(appPublishPreflight, time.Time) error
+
+// appPublishSnapshotCheck binds a control action to the currently selected
+// catalog only after the writer lock is held. It is separate from the chain
+// checks because the selector is a local, mutable concurrency boundary.
+type appPublishSnapshotCheck func(AppCatalogSnapshot, appPublishPreflight) error
+
 func (s *publishService) currentTime() time.Time {
 	if s.now != nil {
 		return s.now().UTC()
@@ -87,11 +105,29 @@ func (s *publishService) currentTime() time.Time {
 // the route-specific critical section, so a refusal cannot allocate replay
 // state and no plan made outside the lock can later commit.
 func (s *publishService) preflightAppPublish(r *http.Request, route string) (appPublishPreflight, error) {
+	return s.preflightAppPublishWithPublisher(r, route, func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	})
+}
+
+// preflightAppPublishWithPublisher verifies an exact publisher envelope after
+// its signer has been resolved from a caller-owned authority source. It never
+// claims the durable nonce or changes catalog state.
+func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route string, resolvePublisher appPublisherResolver) (appPublishPreflight, error) {
 	var out appPublishPreflight
 	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
 	if err != nil {
 		return out, fmt.Errorf("check=request: %w", err)
 	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
+		return out, fmt.Errorf("check=release_json: %w", err)
+	}
+	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}
 	now := s.currentTime()
 	if s.appNonces == nil {
 		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
@@ -116,9 +152,12 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	// own diagnostic and never reaches envelope.Verify. The resolved key —
 	// never the blob's own claimed key — is what the signature is verified
 	// against below.
-	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
-	if !ok {
-		return out, errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+	if resolvePublisher == nil {
+		return out, errors.New("check=publisher_authority: publisher authority resolver is not configured")
+	}
+	signerKey, err := resolvePublisher(out, sig.Payload.Source)
+	if err != nil {
+		return out, err
 	}
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
 		Now:                     now,
@@ -149,11 +188,7 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
 		return out, fmt.Errorf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex)
 	}
-	var rel ReleaseJSON
-	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
-		return out, fmt.Errorf("check=release_json: %w", err)
-	}
-	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}, nil
+	return out, nil
 }
 
 func verifyTightAppEnvelopeWindow(payload envelope.Payload, now time.Time) error {
@@ -295,6 +330,9 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	// Typed human-reviewed release commands. This prefix handler performs its
+	// own exact dossier-path check and cannot fall through to /publish.
+	mux.HandleFunc("/control/v1/releases/", svc.handleControlPublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -446,10 +484,24 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 	_ = json.NewEncoder(w).Encode(receipt)
 }
 
-// handlePublish is the gated write path. It fails closed and names the failing
-// check on any rejection (4xx). On success it returns 200 + the store-signed
-// provenance Receipt JSON.
+// handlePublish retains the legacy transport surface while Bazaar Control is
+// piloted. Its static allowlist is explicitly a migration path; it is not used
+// by the typed Pearl route.
 func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppPublish(w, r, "/publish", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	}, nil, nil)
+}
+
+// handleAppPublish is the one gated write implementation. Route-specific
+// authority selects the accepted publisher key, but every caller shares the
+// same chain, stage, listing-before-selector, nonce, catalog, and receipt
+// controls below.
+func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, snapshotCheck appPublishSnapshotCheck) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -466,7 +518,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preflight, err := s.preflightAppPublish(r, "/publish")
+	preflight, err := s.preflightAppPublishWithPublisher(r, route, resolvePublisher)
 	if err != nil {
 		http.Error(w, err.Error(), appPreflightErrorStatus(err))
 		return
@@ -486,6 +538,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	operatorPub := s.operator.Public()
+	if criticalCheck != nil {
+		if err := criticalCheck(preflight, lockedNow); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusForbidden)
+			return
+		}
+	}
 
 	// THE TRUST GATE: re-verify on-chain. No env bypass is reachable here. The
 	// FoundationApp tier ceiling (B1-05/B2-05) is resolved INSIDE VerifyPublish
@@ -511,6 +569,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "check=catalog_generation: resolve current: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if snapshotCheck != nil {
+		if err := snapshotCheck(activeGeneration, preflight); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusConflict)
+			return
+		}
 	}
 	activeCfg := s.cfg
 	activeCfg.DistDir = activeGeneration.Root

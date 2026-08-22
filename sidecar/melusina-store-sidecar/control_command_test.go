@@ -93,3 +93,25 @@ func TestPearlCommandDigestIsPinnedAcrossImplementations(t *testing.T) {
 		t.Fatalf("control command digest drifted: got %s", got)
 	}
 }
+
+func TestOfflineApprovalRequiresTheDistinctPolicyBoundHumanKey(t *testing.T) {
+	command, _, policy, _, _, now := signedControlFixture(t)
+	humanPublic, humanPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copy(policy.HumanApprovalPublicKey[:], humanPublic)
+	approval := offlineControlApproval{
+		Schema: offlineApprovalSchema, CommandDigest: command.Digest(),
+		SignerPublicKey: base64.RawURLEncoding.EncodeToString(humanPublic),
+		Signature:       base64.RawURLEncoding.EncodeToString(ed25519.Sign(humanPrivate, []byte(command.HumanSigningText()))),
+		SignedAt:        now,
+	}
+	if err := verifyOfflineControlApproval(command, approval, policy, now); err != nil {
+		t.Fatalf("valid offline approval refused: %v", err)
+	}
+	approval.SignerPublicKey = base64.RawURLEncoding.EncodeToString(make([]byte, ed25519.PublicKeySize))
+	if err := verifyOfflineControlApproval(command, approval, policy, now); err == nil {
+		t.Fatal("approval from a non-policy signer was accepted")
+	}
+}

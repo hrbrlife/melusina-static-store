@@ -21,6 +21,7 @@ import (
 const (
 	controlCommandSchema          = "bazaar-control-command-v1"
 	pearlCommandSignatureSchema   = "bazaar-control-pearl-signature-v1"
+	offlineApprovalSchema         = "bazaar-control-offline-approval-v1"
 	controlCommandActionPublish   = "publish_release"
 	maxControlCommandTTL          = 15 * time.Minute
 	controlCommandClockSkew       = 2 * time.Minute
@@ -61,6 +62,17 @@ type pearlCommandSignature struct {
 	SignedAt      time.Time `json:"signedAt"`
 }
 
+// offlineControlApproval is supplied by an offline signer after the Pearl has
+// prepared the exact command. Its public key is chain-bound in the store
+// policy; the Pearl machine key is deliberately insufficient on its own.
+type offlineControlApproval struct {
+	Schema          string    `json:"schema"`
+	CommandDigest   string    `json:"commandDigest"`
+	SignerPublicKey string    `json:"signerPublicKey"`
+	Signature       string    `json:"signature"`
+	SignedAt        time.Time `json:"signedAt"`
+}
+
 type storeControlPolicyMeta struct {
 	PDA                        string
 	LicenseNFTMint             [32]byte
@@ -68,6 +80,7 @@ type storeControlPolicyMeta struct {
 	StoreAuthority             [32]byte
 	StoreOperatorAuthorization [32]byte
 	PearlCommandPublicKey      [32]byte
+	HumanApprovalPublicKey     [32]byte
 	PolicyEpoch                uint64
 	Active                     bool
 }
@@ -165,6 +178,52 @@ func (c controlCommand) Digest() string {
 
 func pearlCommandSignaturePayload(command controlCommand) []byte {
 	return []byte(controlCommandSignaturePrefix + command.Digest())
+}
+
+// HumanSigningText deliberately describes the release a person is approving,
+// not transaction bytes or sidecar implementation details. It is identical to
+// the Pearl's offline-signature payload and ends in the complete command
+// digest, which binds every omitted-looking field too.
+func (c controlCommand) HumanSigningText() string {
+	return strings.Join([]string{
+		"Bazaar release approval",
+		"Action: publish this exact release",
+		"Store: " + c.StorePolicy,
+		"App: " + c.AppID,
+		"Version: " + c.Version,
+		"Artifact: " + c.ArtifactSHA256,
+		"Release: " + c.ReleaseHash,
+		"Previous release: " + c.ExpectedPriorAppHash,
+		"Expires: " + c.ExpiresAt.UTC().Format(time.RFC3339),
+		"Approval digest: " + c.Digest(),
+	}, "\n")
+}
+
+func verifyOfflineControlApproval(command controlCommand, approval offlineControlApproval, policy storeControlPolicyMeta, now time.Time) error {
+	if approval.Schema != offlineApprovalSchema || approval.CommandDigest != command.Digest() || approval.SignedAt.IsZero() || approval.SignedAt.Before(command.IssuedAt.Add(-controlCommandClockSkew)) || approval.SignedAt.After(command.ExpiresAt) || approval.SignedAt.After(now.UTC().Add(controlCommandClockSkew)) {
+		return errors.New("offline approval does not bind this exact live command")
+	}
+	key, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(approval.SignerPublicKey))
+	if err != nil || len(key) != ed25519.PublicKeySize || !equal32(key, policy.HumanApprovalPublicKey[:]) {
+		return errors.New("offline approval is not from the store policy's human signer")
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(approval.Signature))
+	if err != nil || len(signature) != ed25519.SignatureSize || !ed25519.Verify(ed25519.PublicKey(policy.HumanApprovalPublicKey[:]), []byte(command.HumanSigningText()), signature) {
+		return errors.New("offline approval signature does not match this command")
+	}
+	return nil
+}
+
+func equal32(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func verifyPearlControlCommand(command controlCommand, signature pearlCommandSignature, policy storeControlPolicyMeta, grant storePublisherGrantMeta, facts controlCommandFacts, now time.Time) error {

@@ -32,6 +32,7 @@ func storeControlPolicyBlob(status byte) []byte {
 	b = appendControlFixed(b, 3, 32) // store authority
 	b = appendControlFixed(b, 4, 32) // operator authz
 	b = appendControlFixed(b, 5, 32) // Pearl command key
+	b = appendControlFixed(b, 6, 32) // human approval key
 	b = appendControlU64(b, 7)
 	b = append(b, status)
 	b = appendControlFixed(b, 6, 32)
@@ -72,11 +73,11 @@ func TestReadStoreControlPolicyMetaStrictlyDecodesLayout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read active policy: %v", err)
 	}
-	if !meta.Active || meta.PolicyEpoch != 7 || meta.LicenseNFTMint[0] != 1 || meta.LicenseNFTMint[31] != 1 || meta.PearlCommandPublicKey[0] != 5 || meta.PearlCommandPublicKey[31] != 5 {
+	if !meta.Active || meta.PolicyEpoch != 7 || meta.LicenseNFTMint[0] != 1 || meta.LicenseNFTMint[31] != 1 || meta.PearlCommandPublicKey[0] != 5 || meta.PearlCommandPublicKey[31] != 5 || meta.HumanApprovalPublicKey[0] != 6 || meta.HumanApprovalPublicKey[31] != 6 {
 		t.Fatalf("decoded policy drift: %#v", meta)
 	}
 	for name, mutate := range map[string]func([]byte){
-		"unknown status": func(b []byte) { b[8+32+32+32+32+32+8] = 9 },
+		"unknown status": func(b []byte) { b[8+32+32+32+32+32+32+8] = 9 },
 		"truncated":      func(b []byte) { b[len(b)-1] = 0; b = b[:len(b)-1] },
 		"trailing":       func(b []byte) { b = append(b, 1) },
 	} {

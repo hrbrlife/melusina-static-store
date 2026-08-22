@@ -33,8 +33,11 @@ const (
 	maxJobRequestBytes              int64 = 64 << 10
 	// A complete build result includes the candidate JSON body encoded as
 	// base64url. The Pearl enforces the same candidate cap after decoding.
-	maxBuildJobResultBytes       int64 = (maxCandidateBytes*4)/3 + (128 << 10)
-	maxPreparationJobResultBytes int64 = 128 << 10
+	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
+	// A completed preparation result carries the full, signed final sidecar
+	// request. It is bounded the same way as a build candidate, then verified
+	// and stored privately by the Pearl; the relay never interprets it.
+	maxPreparationJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
 	maxProofJobResultBytes       int64 = 64 << 10
 )
 

@@ -354,6 +354,14 @@ func LoadConfig(path string) (Config, error) {
 	if err := cfg.validateStoreLinkControlMTLS(); err != nil {
 		return cfg, err
 	}
+	// A Pearl-controlled, listing-enforcing Store must never retain the legacy
+	// in-process listing signer.  The control listener makes friendly publish
+	// reachable; StoreReleaseListing registration therefore has to cross the
+	// constrained local signer boundary too.  Keep the legacy fallback only for
+	// stores that have not opted into the private Store Link control surface.
+	if cfg.StoreLinkControlMTLS.configured() && strings.TrimSpace(cfg.StoreAuthority) != "" && strings.TrimSpace(cfg.ListingSignerSocket) == "" {
+		return cfg, fmt.Errorf("config: listing_signer_socket is required when Store Link control mTLS and store_authority are configured")
+	}
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		return cfg, err
 	}

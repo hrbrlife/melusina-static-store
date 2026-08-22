@@ -80,7 +80,7 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 
 func TestLoadConfig_RecordsExplicitStoreLinkAppPublishCutover(t *testing.T) {
 	controlDir := t.TempDir()
-	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true},"store_link_control_mtls":{"listen_addr":"127.0.0.1:9443","cert_path":"`+controlDir+`/server.crt","key_path":"`+controlDir+`/server.key","client_ca_path":"`+controlDir+`/ca.crt","store_link_client_cert_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}`))
+	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","listing_signer_socket":"/run/melusina/listing-signer.sock","policy":{"require_pearl_control_for_app_publish":true},"store_link_control_mtls":{"listen_addr":"127.0.0.1:9443","cert_path":"`+controlDir+`/server.crt","key_path":"`+controlDir+`/server.key","client_ca_path":"`+controlDir+`/ca.crt","store_link_client_cert_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +96,21 @@ func TestLoadConfig_RequiresCompletePrivateStoreLinkControlListenerAtCutover(t *
 	}
 	if _, err := LoadConfig(writeTmpConfig(t, base+`,"store_link_control_mtls":{"listen_addr":"127.0.0.1:9443"}}`)); err == nil || !strings.Contains(err.Error(), "store_link_control_mtls.") {
 		t.Fatalf("partial private Store Link listener = %v", err)
+	}
+}
+
+func TestLoadConfig_RequiresConstrainedListingSignerForPearlControl(t *testing.T) {
+	controlDir := t.TempDir()
+	base := `{"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true},"store_link_control_mtls":{"listen_addr":"127.0.0.1:9443","cert_path":"` + controlDir + `/server.crt","key_path":"` + controlDir + `/server.key","client_ca_path":"` + controlDir + `/ca.crt","store_link_client_cert_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`
+	if _, err := LoadConfig(writeTmpConfig(t, base+`}`)); err == nil || !strings.Contains(err.Error(), "listing_signer_socket is required") {
+		t.Fatalf("Pearl-controlled listing enforcement accepted an in-process signer fallback: %v", err)
+	}
+	cfg, err := LoadConfig(writeTmpConfig(t, base+`,"listing_signer_socket":"/run/melusina/listing-signer.sock"}`))
+	if err != nil {
+		t.Fatalf("Pearl-controlled Store rejected its constrained signer: %v", err)
+	}
+	if cfg.ListingSignerSocket != "/run/melusina/listing-signer.sock" {
+		t.Fatalf("listing signer socket = %q", cfg.ListingSignerSocket)
 	}
 }
 

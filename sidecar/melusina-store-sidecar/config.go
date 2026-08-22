@@ -118,6 +118,11 @@ type Config struct {
 	// read-only store retains the legacy <catalog_repo_root>/.melusina-private-stage
 	// default because it cannot accept or promote candidates.
 	PrivateStageDir string `json:"private_stage_dir,omitempty"`
+	// ListingSignerSocket is an absolute Unix-domain socket used only for the
+	// fixed StoreReleaseListing instruction. When configured, the sidecar never
+	// holds the listing transaction signer in its serving process. The Pearl
+	// never reaches this socket; it remains inside the store's local boundary.
+	ListingSignerSocket string `json:"listing_signer_socket,omitempty"`
 	// CatalogGenerationRoot owns immutable app-catalog generations and the
 	// relative "current" symlink. It is never served directly and must be
 	// lexically disjoint from DistDir, PrivateStageDir, and
@@ -309,6 +314,12 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.PrivateStageDir == "" {
 		cfg.PrivateStageDir = filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage")
+	}
+	if cfg.ListingSignerSocket != "" {
+		cfg.ListingSignerSocket = filepath.Clean(strings.TrimSpace(cfg.ListingSignerSocket))
+		if !filepath.IsAbs(cfg.ListingSignerSocket) || cfg.ListingSignerSocket == "/" {
+			return cfg, fmt.Errorf("config: listing_signer_socket must be an absolute socket path")
+		}
 	}
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		return cfg, err

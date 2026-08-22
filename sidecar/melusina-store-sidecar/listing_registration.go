@@ -63,13 +63,20 @@ type boundedListingRegistrar struct {
 	cr       chainReader
 	operator *identity.Private
 	rpc      *listingBootstrapRPC
+	signer   listingTransactionSigner
 }
 
 func newBoundedListingRegistrar(cfg Config, cr chainReader, operator *identity.Private) listingRegistrar {
 	if strings.TrimSpace(cfg.StoreAuthority) == "" || cr == nil || operator == nil {
 		return nil
 	}
-	return &boundedListingRegistrar{cfg: cfg, cr: cr, operator: operator, rpc: newListingBootstrapRPC(cfg)}
+	return &boundedListingRegistrar{
+		cfg:      cfg,
+		cr:       cr,
+		operator: operator,
+		rpc:      newListingBootstrapRPC(cfg),
+		signer:   newListingTransactionSigner(cfg, cr, operator),
+	}
 }
 
 type listingRegistrationState struct {
@@ -85,14 +92,14 @@ type listingRegistrationState struct {
 
 func (r *boundedListingRegistrar) EnsureActive(ctx context.Context, intent listingRegistrationIntent) (listingRegistrationReceipt, error) {
 	var receipt listingRegistrationReceipt
-	if r == nil || r.cr == nil || r.operator == nil || r.rpc == nil {
+	if r == nil || r.cr == nil || r.operator == nil || r.rpc == nil || r.signer == nil {
 		return receipt, errors.New("listing registrar is not initialized")
 	}
 	if err := requireSecureDirectory(r.cfg.CatalogMigrationStateDir, 0o700); err != nil {
 		return receipt, fmt.Errorf("listing state directory: %w", err)
 	}
 
-	state, storeAuthority, authzPDA, licenseMint, domainHash, err := r.expectedState(ctx, intent)
+	state, storeAuthority, authzPDA, _, domainHash, err := r.expectedState(ctx, intent)
 	if err != nil {
 		return receipt, err
 	}
@@ -151,7 +158,7 @@ func (r *boundedListingRegistrar) EnsureActive(ctx context.Context, intent listi
 		}, nil
 	}
 
-	prepared, err := prepareListingBootstrapTransaction(ctx, r.rpc, r.operator, storeAuthority, authzPDA, licenseMint, domainHash, mustListingHex32(state.StoreCertFingerprint), state.Item)
+	prepared, err := r.signer.Prepare(ctx, state, intent)
 	if err != nil {
 		return receipt, err
 	}

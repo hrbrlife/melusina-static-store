@@ -78,6 +78,22 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_ListingSignerSocketMustBeAbsolute(t *testing.T) {
+	base := `"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org"`
+	cfg, err := LoadConfig(writeTmpConfig(t, `{`+base+`,"listing_signer_socket":"/run/melusina/listing-signer.sock"}`))
+	if err != nil {
+		t.Fatalf("absolute listing signer socket: %v", err)
+	}
+	if cfg.ListingSignerSocket != "/run/melusina/listing-signer.sock" {
+		t.Fatalf("listing signer socket = %q", cfg.ListingSignerSocket)
+	}
+	for _, socket := range []string{"listing-signer.sock", "/"} {
+		if _, err := LoadConfig(writeTmpConfig(t, `{`+base+`,"listing_signer_socket":"`+socket+`"}`)); err == nil || !strings.Contains(err.Error(), "listing_signer_socket") {
+			t.Fatalf("unsafe listing signer socket %q was accepted: %v", socket, err)
+		}
+	}
+}
+
 func TestLoadConfig_NormalizesTrustedRPCEndpoints(t *testing.T) {
 	cfg, err := LoadConfig(writeTmpConfig(t, `{
 		"license_nft_mint":"LIC",

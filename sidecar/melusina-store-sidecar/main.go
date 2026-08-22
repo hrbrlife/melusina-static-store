@@ -51,6 +51,13 @@ func main() {
 		runListingBootstrapSubcommand(os.Args[2:])
 		return
 	}
+	// The listing signer holds the narrow authority that normal publishes need
+	// to register one exact StoreReleaseListing before selecting a catalog. It
+	// is local-only and has no HTTP surface.
+	if len(os.Args) > 1 && os.Args[1] == "listing-signer" {
+		runListingSignerSubcommand(os.Args[2:])
+		return
+	}
 	// A catalog retirement is a Store-governed visibility transition, not an
 	// app republish. It creates a fresh sealed generation and leaves the
 	// retired release's immutable chain history intact.

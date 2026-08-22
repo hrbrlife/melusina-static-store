@@ -10,6 +10,25 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/artifactvault"
 )
 
+type memoryBodyVault struct{ values map[string][]byte }
+
+func (v *memoryBodyVault) Store(_ context.Context, body []byte) (artifactvault.Descriptor, error) {
+	if v.values == nil {
+		v.values = map[string][]byte{}
+	}
+	descriptor := artifactvault.DescriptorFor(body)
+	v.values[descriptor.SHA256] = append([]byte(nil), body...)
+	return descriptor, nil
+}
+
+func (v *memoryBodyVault) Load(_ context.Context, descriptor artifactvault.Descriptor) ([]byte, error) {
+	body, found := v.values[descriptor.SHA256]
+	if !found || artifactvault.DescriptorFor(body) != descriptor {
+		return nil, errors.New("test body vault descriptor is unavailable")
+	}
+	return append([]byte(nil), body...), nil
+}
+
 func TestRunnerPersistsTheDerivedBodyAndRecoversLostResponses(t *testing.T) {
 	now := time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC)
 	engine, request, _, observer, signer, public := finalizerFixture(t, now)
@@ -18,11 +37,7 @@ func TestRunnerPersistsTheDerivedBodyAndRecoversLostResponses(t *testing.T) {
 		t.Fatal(err)
 	}
 	records.now = func() time.Time { return now }
-	body, err := artifactvault.Open(filepath.Join(t.TempDir(), "bodies"), maxBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runner, err := NewRunner(engine, records, body)
+	runner, err := NewRunner(engine, records, &memoryBodyVault{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,11 +61,7 @@ func TestRunnerDoesNotSignUntilTheExactProposalExecutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	records.now = func() time.Time { return now }
-	body, err := artifactvault.Open(filepath.Join(t.TempDir(), "bodies"), maxBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runner, err := NewRunner(engine, records, body)
+	runner, err := NewRunner(engine, records, &memoryBodyVault{})
 	if err != nil {
 		t.Fatal(err)
 	}

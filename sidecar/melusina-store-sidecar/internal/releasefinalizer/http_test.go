@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/hrbrlife/melusina-store-sidecar/internal/artifactvault"
 )
 
 func finalizerHTTPFixture(t *testing.T, now time.Time) (*HTTPHandler, Request, *testObserver, *testSigner, *x509.Certificate) {
@@ -24,11 +22,7 @@ func finalizerHTTPFixture(t *testing.T, now time.Time) (*HTTPHandler, Request, *
 		t.Fatal(err)
 	}
 	records.now = func() time.Time { return now }
-	body, err := artifactvault.Open(filepath.Join(t.TempDir(), "bodies"), maxBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runner, err := NewRunner(engine, records, body)
+	runner, err := NewRunner(engine, records, &memoryBodyVault{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,10 +7,8 @@ package artifactvault
 import shared "github.com/melusina-os/melusina-artifact-vault"
 
 type Descriptor = shared.Descriptor
-type Vault = shared.Vault
 type UnixClient = shared.UnixClient
 type UnixClientConfig = shared.UnixClientConfig
 
-var Open = shared.Open
 var DescriptorFor = shared.DescriptorFor
 var NewUnixClient = shared.NewUnixClient

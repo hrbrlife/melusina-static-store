@@ -1,18 +1,24 @@
 package artifactvault
 
 import (
-	"context"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func TestSidecarVaultFacadeUsesTheSharedDescriptorAndStore(t *testing.T) {
-	vault, err := Open(filepath.Join(t.TempDir(), "vault"), 1024)
+func TestSidecarVaultFacadeExposesOnlySharedDescriptorsAndUnixClient(t *testing.T) {
+	descriptor := DescriptorFor([]byte("final candidate"))
+	if descriptor.SHA256 == "" || descriptor.Bytes != int64(len("final candidate")) {
+		t.Fatalf("descriptor = %#v", descriptor)
+	}
+	raw, err := os.ReadFile(filepath.Join("vault.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor, err := vault.Store(context.Background(), []byte("final candidate"))
-	if err != nil || descriptor != DescriptorFor([]byte("final candidate")) {
-		t.Fatalf("store = %#v err=%v", descriptor, err)
+	for _, forbidden := range []string{"type Vault =", "Open = shared.Open"} {
+		if strings.Contains(string(raw), forbidden) {
+			t.Fatalf("sidecar vault facade must not expose a direct disk vault: %q", forbidden)
+		}
 	}
 }

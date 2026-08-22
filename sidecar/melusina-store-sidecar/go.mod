@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/hrbrlife/melusina-attest v0.0.0-00010101000000-000000000000
 	github.com/hrbrlife/melusina-identity-gate v0.0.0-00010101000000-000000000000
+	github.com/melusina-os/melusina-artifact-vault v0.0.0
 	github.com/melusina-os/melusina-solana-primitives v0.0.0
 )
 
@@ -18,5 +19,7 @@ require (
 replace github.com/hrbrlife/melusina-attest => ../../../Melusina/shared/melusina-attest
 
 replace github.com/hrbrlife/melusina-identity-gate => ../../../Melusina/shared/melusina-identity-gate
+
+replace github.com/melusina-os/melusina-artifact-vault => ../../../Melusina/shared/melusina-artifact-vault
 
 replace github.com/melusina-os/melusina-solana-primitives => ../../../Melusina/shared/melusina-solana-primitives

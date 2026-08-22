@@ -116,6 +116,19 @@ The example digests are placeholders and fail closed. The deployer must replace
 all four alongside the private origins, CA, and Store Link client key; a
 missing finalization origin or any missing/invalid worker pin prevents startup.
 
+Before enabling the service for a pilot, the deployer runs the one fixed,
+read-only worker preflight:
+
+```text
+bazaar-store-link -config /etc/bazaar-store-link/config.json -verify-workers
+```
+
+It sends four TLS-authenticated `GET`s for a reserved nonexistent job ID and
+requires `404 Not Found` from build, preparation, finalization, and proof. It
+cannot create a job, build an artifact, start a browser, or publish a release.
+Any other status or TLS failure is a deployment hold. This is not part of the
+human release screen or a recovery shortcut.
+
 Run the service only after the sidecar has a dedicated TLS-1.3 control listener
 configured with this connector's exact client-leaf digest:
 

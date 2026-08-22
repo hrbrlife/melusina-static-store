@@ -44,8 +44,9 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   before parsing a body or changing state. Typed, human-approved
   `/control/v1/releases/<dossier>/prepare|publish` commands are then the only
   app-release write path. In the cutover configuration they exist only on the
-  separate `pearl_control_mtls.listen_addr`: TLS 1.3, a verified control-plane
-  client CA, and the exact pinned Pearl client certificate are all required.
+  separate `store_link_control_mtls.listen_addr`: TLS 1.3, a verified Store
+  Link control-plane client CA, and the exact pinned Store Link client
+  certificate are all required.
   The public catalog listener returns `404` for that route. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either
   path.**
@@ -84,7 +85,7 @@ is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
 `policy.require_pearl_control_for_app_publish` defaults to `false` for a safe,
 explicit migration. Set it to `true` only after a named pilot has completed all
 of these in the real tenant: exact frozen candidate, offline human approval,
-typed Pearl command over its private mTLS listener, sidecar pre-switch listing proof, catalog/pin
+typed Pearl command through its private Store Link mTLS listener, sidecar pre-switch listing proof, catalog/pin
 agreement, fresh-grain runtime proof, and rollback rehearsal. In that state the
 sidecar returns `410 Gone` for direct app `/publish` and `/publish/stage` before
 it reads a request body, claims a nonce, or touches staged candidates. This is a
@@ -96,7 +97,7 @@ separate from this app-release cutover and require their own governed controls.
 The typed Pearl routes are present, but certificate injection, network policy,
 and the Pearl's secret injection must be deployed and proved before this flag is
 enabled in a live store. The config loader refuses this cutover unless a complete
-`pearl_control_mtls` listener is supplied. It refuses partial settings, a
+`store_link_control_mtls` listener is supplied. It refuses partial settings, a
 non-absolute certificate path, an unpinned client leaf, or reuse of the public
 listener address.
 

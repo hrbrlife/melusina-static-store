@@ -155,7 +155,7 @@ func controlFixture(t *testing.T, f publishFixture) publishFixture {
 }
 
 func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.T) {
-	clock := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
@@ -235,7 +235,7 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 }
 
 func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
-	clock := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
@@ -385,7 +385,7 @@ func TestControlPublishHeaderAndRouteAreStrict(t *testing.T) {
 }
 
 func TestControlCriticalRecheckRefusesBeforeNonceOrCatalogMutation(t *testing.T) {
-	clock := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)

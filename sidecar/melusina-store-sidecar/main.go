@@ -182,17 +182,17 @@ func main() {
 		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
 	}
 
-	publicHandler, controlHandler := newRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.PearlControlMTLS.configured())
+	publicHandler, controlHandler := newRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           publicHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	var pearlControlServer *http.Server
-	if cfg.PearlControlMTLS.configured() {
-		pearlControlServer, err = newPearlControlServer(cfg.PearlControlMTLS, controlHandler)
+	var storeLinkControlServer *http.Server
+	if cfg.StoreLinkControlMTLS.configured() {
+		storeLinkControlServer, err = newStoreLinkControlServer(cfg.StoreLinkControlMTLS, controlHandler)
 		if err != nil {
-			log.Fatalf("Pearl control mTLS: %v", err)
+			log.Fatalf("Store Link control mTLS: %v", err)
 		}
 	}
 
@@ -204,7 +204,7 @@ func main() {
 		cancelRoot()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		for _, server := range []*http.Server{srv, pearlControlServer} {
+		for _, server := range []*http.Server{srv, storeLinkControlServer} {
 			if server != nil {
 				if err := server.Shutdown(ctx); err != nil {
 					log.Printf("graceful shutdown: %v", err)
@@ -224,10 +224,10 @@ func main() {
 		log.Printf("WARNING: listening WITHOUT TLS on %s — production stores MUST set tls.cert_path/key_path", cfg.ListenAddr)
 		serveErrors <- srv.ListenAndServe()
 	}()
-	if pearlControlServer != nil {
+	if storeLinkControlServer != nil {
 		go func() {
-			log.Printf("listening (Pearl control mTLS) on %s", pearlControlServer.Addr)
-			serveErrors <- pearlControlServer.ListenAndServeTLS("", "")
+			log.Printf("listening (Store Link control mTLS) on %s", storeLinkControlServer.Addr)
+			serveErrors <- storeLinkControlServer.ListenAndServeTLS("", "")
 		}()
 	}
 	err = <-serveErrors

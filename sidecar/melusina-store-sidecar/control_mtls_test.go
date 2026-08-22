@@ -84,10 +84,10 @@ func writeControlCertificate(t *testing.T, dir, name string, certificate tls.Cer
 	return certPath, keyPath
 }
 
-func TestPearlControlMTLSRequiresTLS13VerifiedAndPinnedPearlLeaf(t *testing.T) {
+func TestStoreLinkControlMTLSRequiresTLS13VerifiedAndPinnedStoreLinkLeaf(t *testing.T) {
 	ca, caKey, roots := newControlTestCA(t)
 	serverLeaf := newControlTestLeaf(t, 2, "sidecar.test", x509.ExtKeyUsageServerAuth, ca, caKey)
-	pearlLeaf := newControlTestLeaf(t, 3, "pearl.test", x509.ExtKeyUsageClientAuth, ca, caKey)
+	storeLinkLeaf := newControlTestLeaf(t, 3, "store-link.test", x509.ExtKeyUsageClientAuth, ca, caKey)
 	otherLeaf := newControlTestLeaf(t, 4, "other.test", x509.ExtKeyUsageClientAuth, ca, caKey)
 	dir := t.TempDir()
 	serverCertPath, serverKeyPath := writeControlCertificate(t, dir, "server", serverLeaf)
@@ -95,10 +95,10 @@ func TestPearlControlMTLSRequiresTLS13VerifiedAndPinnedPearlLeaf(t *testing.T) {
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw}), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pinned := sha256.Sum256(pearlLeaf.Certificate[0])
-	tlsConfig, err := newPearlControlTLSConfig(PearlControlMTLSConfig{
+	pinned := sha256.Sum256(storeLinkLeaf.Certificate[0])
+	tlsConfig, err := newStoreLinkControlTLSConfig(StoreLinkControlMTLSConfig{
 		ListenAddr: "127.0.0.1:9443", CertPath: serverCertPath, KeyPath: serverKeyPath, ClientCAPath: caPath,
-		PearlClientCertSHA256: hex.EncodeToString(pinned[:]),
+		StoreLinkClientCertSHA256: hex.EncodeToString(pinned[:]),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +108,7 @@ func TestPearlControlMTLSRequiresTLS13VerifiedAndPinnedPearlLeaf(t *testing.T) {
 	}
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.TLS == nil || r.TLS.Version < tls.VersionTLS13 || len(r.TLS.PeerCertificates) != 1 {
-			http.Error(w, "missing verified Pearl mTLS", http.StatusForbidden)
+			http.Error(w, "missing verified Store Link mTLS", http.StatusForbidden)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -121,16 +121,16 @@ func TestPearlControlMTLSRequiresTLS13VerifiedAndPinnedPearlLeaf(t *testing.T) {
 			MinVersion: tls.VersionTLS13, RootCAs: roots, ServerName: "sidecar.test", Certificates: []tls.Certificate{certificate},
 		}}}
 	}
-	response, err := newClient(pearlLeaf).Get(server.URL)
+	response, err := newClient(storeLinkLeaf).Get(server.URL)
 	if err != nil {
-		t.Fatalf("pinned Pearl request: %v", err)
+		t.Fatalf("pinned Store Link request: %v", err)
 	}
 	response.Body.Close()
 	if response.StatusCode != http.StatusNoContent {
 		t.Fatalf("pinned Pearl status = %d", response.StatusCode)
 	}
 	if _, err := newClient(otherLeaf).Get(server.URL); err == nil {
-		t.Fatal("a different certificate from the trusted CA reached the Pearl-control listener")
+		t.Fatal("a different certificate from the trusted CA reached the Store Link control listener")
 	}
 }
 

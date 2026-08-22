@@ -1,10 +1,13 @@
 package publisherenvelope
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +15,53 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 )
+
+func TestClientUsesOnlyTheOwnerOnlySignerSocket(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "socket")
+	if err := os.Mkdir(directory, directoryMode); err != nil {
+		t.Fatal(err)
+	}
+	publisher := signerIdentity(t, 1, false)
+	store := signerIdentity(t, 9, true).Public()
+	service, err := New(publisher, store, "melusina-os-root-store", uint32(os.Geteuid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	socket := filepath.Join(directory, "publisher-envelope.sock")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- Serve(ctx, socket, service) }()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if err := requireSignerSocket(socket); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("signer socket did not become ready")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	client, err := NewClient(socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientContext, cancelClient := context.WithTimeout(context.Background(), time.Second)
+	defer cancelClient()
+	response, err := client.Sign(clientContext, requestFixture())
+	if err != nil || response.Schema != ResponseSchema || response.PublisherIntentHash == "" || response.EnvelopeB64 == "" {
+		t.Fatalf("client response = %#v err=%v", response, err)
+	}
+	cancel()
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("signer did not stop")
+	case <-done:
+	}
+	if _, err := NewClient("relative.sock"); err == nil {
+		t.Fatal("client accepted a relative socket")
+	}
+}
 
 func signerIdentity(t *testing.T, seed byte, sidecar bool) *identity.Private {
 	t.Helper()

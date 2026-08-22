@@ -66,6 +66,7 @@ type listingBootstrapState struct {
 	StoreDomainHash        string                 `json:"storeDomainHash"`
 	StoreCertFingerprint   string                 `json:"storeCertFingerprint"`
 	RentPerListingLamports uint64                 `json:"rentPerListingLamports"`
+	PayerRentFloorLamports uint64                 `json:"payerRentFloorLamports"`
 	RequiredLamports       uint64                 `json:"requiredLamports"`
 	ConfigSHA256Before     string                 `json:"configSha256Before,omitempty"`
 	ConfigSHA256After      string                 `json:"configSha256After,omitempty"`
@@ -94,6 +95,7 @@ type listingBootstrapReport struct {
 	AlreadyActive          int    `json:"alreadyActive"`
 	RegisteredThisRun      int    `json:"registeredThisRun"`
 	RentPerListingLamports uint64 `json:"rentPerListingLamports"`
+	PayerRentFloorLamports uint64 `json:"payerRentFloorLamports"`
 	RequiredLamports       uint64 `json:"requiredLamports"`
 	StoreAuthority         string `json:"storeAuthority"`
 }
@@ -260,7 +262,22 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 			return report, err
 		}
 		state.RentPerListingLamports = rent
-		state.RequiredLamports = uint64(missing) * (rent + listingFeeReserveLamports)
+		// The payer must ALSO retain its own rent-exempt minimum. A system
+		// account that would drop below it is rejected by the runtime with
+		//   Transaction results in an account (0) with insufficient funds for rent
+		// at sendTransaction — AFTER this precheck has already said the balance
+		// was sufficient. That is exactly how the 2026-08-22 MerMail repair
+		// failed: the authority held 3,219,920 lamports and this figure asked
+		// for 2,647,840, so the check passed and the transfer could not be
+		// built. Counting the payer's own floor makes the refusal happen here,
+		// where it names the shortfall, instead of mid-repair with the app
+		// catalog already serving 503.
+		payerFloor, err := rpc.minimumBalanceForRentExemption(ctx, 0)
+		if err != nil {
+			return report, err
+		}
+		state.PayerRentFloorLamports = payerFloor
+		state.RequiredLamports = uint64(missing)*(rent+listingFeeReserveLamports) + payerFloor
 	}
 	report = listingBootstrapReport{
 		State:                  state.State,
@@ -269,6 +286,7 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 		Apps:                   len(state.Items),
 		AlreadyActive:          len(state.Items) - missing,
 		RentPerListingLamports: state.RentPerListingLamports,
+		PayerRentFloorLamports: state.PayerRentFloorLamports,
 		RequiredLamports:       state.RequiredLamports,
 		StoreAuthority:         state.StoreAuthority,
 	}
@@ -284,7 +302,12 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 			return report, err
 		}
 		if balance < state.RequiredLamports {
-			return report, fmt.Errorf("store authority %s has %d lamports; bootstrap requires at least %d for %d missing listings", storeAuthority.Base58(), balance, state.RequiredLamports, missing)
+			return report, fmt.Errorf(
+				"store authority %s has %d lamports; bootstrap requires at least %d "+
+					"(%d missing listing(s) x %d rent + %d fee reserve, plus the payer's own %d rent-exempt floor) — short by %d",
+				storeAuthority.Base58(), balance, state.RequiredLamports,
+				missing, state.RentPerListingLamports, listingFeeReserveLamports,
+				state.PayerRentFloorLamports, state.RequiredLamports-balance)
 		}
 	}
 
@@ -649,6 +672,7 @@ func mergeListingBootstrapState(current *listingBootstrapState, existing listing
 	}
 	current.State = existing.State
 	current.RentPerListingLamports = existing.RentPerListingLamports
+	current.PayerRentFloorLamports = existing.PayerRentFloorLamports
 	current.RequiredLamports = existing.RequiredLamports
 	current.ConfigSHA256Before = existing.ConfigSHA256Before
 	current.ConfigSHA256After = existing.ConfigSHA256After

@@ -213,6 +213,42 @@ func TestListingRegistrationStateIsStageBound(t *testing.T) {
 	}
 }
 
+func TestMergeListingRegistrationStatePreservesPreparedTransaction(t *testing.T) {
+	current := listingRegistrationState{
+		Schema:                listingRegistrationStateSchema,
+		StageID:               strings.Repeat("a", 64),
+		StoreAuthority:        randPubkeyB58(t),
+		LicenseNFTMint:        randPubkeyB58(t),
+		StoreDomainHash:       strings.Repeat("b", 64),
+		StoreCertFingerprint:  strings.Repeat("c", 64),
+		OperatorAuthorization: randPubkeyB58(t),
+		Item: listingBootstrapItem{
+			AppID:         "test-app",
+			AppHash:       strings.Repeat("d", 64),
+			ReleaseEntry:  randPubkeyB58(t),
+			FoundationApp: randPubkeyB58(t),
+			Listing:       randPubkeyB58(t),
+			State:         "pending",
+		},
+	}
+	existing := current
+	existing.Item.State = "prepared"
+	existing.Item.Attempts = 2
+	existing.Item.TransactionSignature = "5Y1QV1yP7ZL9E8zfrDNn2jvLR1MtCiXfH1fKfDQSoA3P"
+	existing.Item.RecentBlockhash = randPubkeyB58(t)
+	existing.Item.LastError = "transport interrupted after durable prepare"
+
+	if err := mergeListingRegistrationState(&current, existing); err != nil {
+		t.Fatalf("mergeListingRegistrationState: %v", err)
+	}
+	if current.Item.State != "prepared" || current.Item.Attempts != 2 || current.Item.TransactionSignature != existing.Item.TransactionSignature || current.Item.RecentBlockhash != existing.Item.RecentBlockhash || current.Item.LastError != existing.Item.LastError {
+		t.Fatalf("prepared transaction provenance was not preserved: %+v", current.Item)
+	}
+	if err := validateListingRegistrationState(current); err != nil {
+		t.Fatalf("merged state rejected: %v", err)
+	}
+}
+
 func TestBoundedListingRegistrarAcceptsOnlyTheExactExistingListing(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "bounded-listing-store", cfg.LicenseNFTMint, cfg.Domain)

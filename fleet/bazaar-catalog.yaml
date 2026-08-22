@@ -481,7 +481,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
-        live_version: "0.0.15"
+        live_version: "0.0.17"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh.json

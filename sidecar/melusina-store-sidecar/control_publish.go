@@ -58,10 +58,11 @@ type controlStatusSnapshot struct {
 // policy scope. It is a read-only input to publisher-enrolment requests, not a
 // way to select a policy, construct a transaction, or obtain a signing key.
 type controlPolicySnapshot struct {
-	Schema      string `json:"schema"`
-	StoreID     string `json:"storeId"`
-	StorePolicy string `json:"storePolicy"`
-	PolicyEpoch uint64 `json:"policyEpoch"`
+	Schema                string `json:"schema"`
+	StoreID               string `json:"storeId"`
+	StorePolicy           string `json:"storePolicy"`
+	PolicyEpoch           uint64 `json:"policyEpoch"`
+	PearlCommandPublicKey string `json:"pearlCommandPublicKey"`
 }
 
 // handleControlStatus exposes one exact, read-only private control status.
@@ -78,6 +79,10 @@ func (s *publishService) handleControlStatus(w http.ResponseWriter, r *http.Requ
 	}
 	if err := s.controlReadinessError(); err != nil {
 		http.Error(w, "Bazaar Store control service is not ready.", http.StatusServiceUnavailable)
+		return
+	}
+	if _, err := fetchActiveStoreControlPolicy(r.Context(), s.cfg, s.cr); err != nil {
+		http.Error(w, "Bazaar Store control policy could not be confirmed.", http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -116,10 +121,11 @@ func (s *publishService) handleControlPolicy(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(controlPolicySnapshot{
-		Schema:      controlPolicySnapshotSchema,
-		StoreID:     s.cfg.StoreID,
-		StorePolicy: policy.PDA,
-		PolicyEpoch: policy.PolicyEpoch,
+		Schema:                controlPolicySnapshotSchema,
+		StoreID:               s.cfg.StoreID,
+		StorePolicy:           policy.PDA,
+		PolicyEpoch:           policy.PolicyEpoch,
+		PearlCommandPublicKey: base64.RawURLEncoding.EncodeToString(policy.PearlCommandPublicKey[:]),
 	})
 }
 

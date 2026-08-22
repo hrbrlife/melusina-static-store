@@ -345,7 +345,8 @@ func TestStoreStatusIsFixedReadOnlyAndStorePinned(t *testing.T) {
 }
 
 func TestStorePolicyIsFixedReadOnlyAndStorePinned(t *testing.T) {
-	forwarder := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"` + testStoreID + `","storePolicy":"policy_123","policyEpoch":7}`)}}
+	pearlKey := strings.Repeat("A", 43)
+	forwarder := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"` + testStoreID + `","storePolicy":"policy_123","policyEpoch":7,"pearlCommandPublicKey":"` + pearlKey + `"}`)}}
 	handler := newTestHandler(t, forwarder)
 	request := httptest.NewRequest(http.MethodGet, "/v1/store-policy", nil)
 	request.Header.Set(controlCommandHeader, "must-not-forward")
@@ -366,12 +367,19 @@ func TestStorePolicyIsFixedReadOnlyAndStorePinned(t *testing.T) {
 	if wrongMethod.Code != http.StatusMethodNotAllowed || len(forwarder.requests) != 1 {
 		t.Fatalf("store policy mutation = %d forwards=%d", wrongMethod.Code, len(forwarder.requests))
 	}
-	wrongStore := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"other-store","storePolicy":"policy_123","policyEpoch":7}`)}}
+	wrongStore := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"other-store","storePolicy":"policy_123","policyEpoch":7,"pearlCommandPublicKey":"` + pearlKey + `"}`)}}
 	wrongHandler := newTestHandler(t, wrongStore)
 	wrongResponse := httptest.NewRecorder()
 	wrongHandler.ServeHTTP(wrongResponse, httptest.NewRequest(http.MethodGet, "/v1/store-policy", nil))
 	if wrongResponse.Code != http.StatusBadGateway {
 		t.Fatalf("wrong Store policy accepted: %d %s", wrongResponse.Code, wrongResponse.Body.String())
+	}
+	invalidKey := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"` + testStoreID + `","storePolicy":"policy_123","policyEpoch":7,"pearlCommandPublicKey":"bad"}`)}}
+	invalidHandler := newTestHandler(t, invalidKey)
+	invalidResponse := httptest.NewRecorder()
+	invalidHandler.ServeHTTP(invalidResponse, httptest.NewRequest(http.MethodGet, "/v1/store-policy", nil))
+	if invalidResponse.Code != http.StatusBadGateway {
+		t.Fatalf("invalid Pearl command key accepted: %d %s", invalidResponse.Code, invalidResponse.Body.String())
 	}
 }
 

@@ -19,7 +19,7 @@ The connector currently exposes exactly this fixed vocabulary:
 - `POST /v1/release-commands/<24-lower-hex>/publish`
 - `GET /v1/authority/<configured-store>/<app>/<publisher>`
 - `GET /v1/store-status` (read-only control-path readiness only)
-- `GET /v1/store-policy` (read-only active policy ID and revision only)
+- `GET /v1/store-policy` (read-only active policy ID, revision, and public Pearl command-key binding)
 - `POST /v1/build-jobs`, `GET /v1/build-jobs/<24-lower-hex>`
 - `POST /v1/release-preparation-jobs`, `GET /v1/release-preparation-jobs/<24-lower-hex>`
 - `POST /v1/release-finalization-jobs`, `GET /v1/release-finalization-jobs/<24-lower-hex>`
@@ -44,9 +44,11 @@ is readable nor exposes release, chain, endpoint, or key facts.
 
 `GET /v1/store-policy` is equally bounded. It maps only to the private active
 policy snapshot, requires the same exact configured Store ID, and relays only
-that policy's identifier and nonzero revision. Bazaar Control uses those facts
-to fill a publisher-enrolment request; a caller cannot select a Store or policy,
-obtain a transaction/signature, or activate a publisher through this route.
+that policy's identifier, nonzero revision, and public Pearl command-key
+binding. Bazaar Control must compare that public key to its durable routing key
+before it shows Ready or fills a publisher-enrolment request; a caller cannot
+select a Store, policy, or Pearl identity, obtain a transaction/signature, or
+activate a publisher through this route.
 
 The proof-resume route is deliberately not a generic job action. It accepts
 only the exact `bazaar-control-tenant-proof-resume-request-v1` body containing

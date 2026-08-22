@@ -10,6 +10,7 @@ package storelink
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -335,10 +336,11 @@ func (h *Handler) handleStoreStatus(w http.ResponseWriter, r *http.Request) {
 // that it belongs to its configured Store before returning it; it carries no
 // transaction, signing, endpoint, or policy-selection capability.
 type storePolicySnapshot struct {
-	Schema      string `json:"schema"`
-	StoreID     string `json:"storeId"`
-	StorePolicy string `json:"storePolicy"`
-	PolicyEpoch uint64 `json:"policyEpoch"`
+	Schema                string `json:"schema"`
+	StoreID               string `json:"storeId"`
+	StorePolicy           string `json:"storePolicy"`
+	PolicyEpoch           uint64 `json:"policyEpoch"`
+	PearlCommandPublicKey string `json:"pearlCommandPublicKey"`
 }
 
 func (h *Handler) handleStorePolicy(w http.ResponseWriter, r *http.Request) {
@@ -359,6 +361,11 @@ func (h *Handler) handleStorePolicy(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(strings.NewReader(string(response.Body)))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storePolicySnapshotSchema || snapshot.StoreID != h.storeID || !validSegment(snapshot.StorePolicy) || snapshot.PolicyEpoch == 0 {
+		http.Error(w, "Store Link received an invalid private Store policy", http.StatusBadGateway)
+		return
+	}
+	pearlKey, err := base64.RawURLEncoding.DecodeString(snapshot.PearlCommandPublicKey)
+	if err != nil || len(pearlKey) != ed25519.PublicKeySize {
 		http.Error(w, "Store Link received an invalid private Store policy", http.StatusBadGateway)
 		return
 	}

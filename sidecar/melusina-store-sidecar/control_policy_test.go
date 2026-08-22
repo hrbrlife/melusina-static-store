@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -47,7 +48,8 @@ func TestPrivateControlPolicyReturnsOnlyActiveConfiguredStorePolicy(t *testing.T
 	if err := decoder.Decode(&snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Schema != controlPolicySnapshotSchema || snapshot.StoreID != cfg.StoreID || snapshot.StorePolicy != policyPDA.Base58() || snapshot.PolicyEpoch != 7 {
+	expectedPearlKey := [32]byte{1}
+	if snapshot.Schema != controlPolicySnapshotSchema || snapshot.StoreID != cfg.StoreID || snapshot.StorePolicy != policyPDA.Base58() || snapshot.PolicyEpoch != 7 || snapshot.PearlCommandPublicKey != base64.RawURLEncoding.EncodeToString(expectedPearlKey[:]) {
 		t.Fatalf("policy snapshot does not bind configured policy: %+v", snapshot)
 	}
 }

@@ -50,9 +50,10 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   certificate are all required. That listener additionally exposes two exact
   read-only responses: `GET /control/v1/status` for Bazaar Control Home, and
   `GET /control/v1/policy` for native publisher-enrolment scope. Status says
-  only that release-control dependencies are ready. Policy returns only the
-  configured Store ID plus the active governed policy identifier and revision.
-  Neither is public catalog health, a chain diagnostic, a policy selector, or a
+  only that release-control dependencies and the active governed policy are
+  ready. Policy returns only the configured Store ID plus the active governed
+  policy identifier, revision, and public Pearl command-key binding. Neither
+  is public catalog health, a chain diagnostic, a policy/Pearl selector, or a
   transaction/signing API.
   The public catalog listener returns `404` for that route. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either

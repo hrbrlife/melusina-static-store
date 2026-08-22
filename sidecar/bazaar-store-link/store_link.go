@@ -45,17 +45,19 @@ type Config struct {
 	ClientCertPath string `json:"clientCertPath"`
 	ClientKeyPath  string `json:"clientKeyPath"`
 	SidecarCAPath  string `json:"sidecarCaPath"`
-	// BuildWorkerURL, ReleasePreparationWorkerURL, and TenantProofWorkerURL are
+	// BuildWorkerURL, ReleasePreparationWorkerURL, ReleaseFinalizationWorkerURL,
+	// and TenantProofWorkerURL are
 	// separate fixed, private origins. They are used only by
 	// NewWorkerForwarder; keeping them out of the sidecar forwarder prevents a
 	// release command from ever selecting a worker route. Preparation is its own
 	// post-review authority boundary: it may create one unexecuted proposal, not
 	// approve, execute, select, or list a release.
-	BuildWorkerURL              string `json:"buildWorkerUrl,omitempty"`
-	ReleasePreparationWorkerURL string `json:"releasePreparationWorkerUrl,omitempty"`
-	TenantProofWorkerURL        string `json:"tenantProofWorkerUrl,omitempty"`
-	WorkerCAPath                string `json:"workerCaPath,omitempty"`
-	MaxCandidateBytes           int64  `json:"maxCandidateBytes,omitempty"`
+	BuildWorkerURL               string `json:"buildWorkerUrl,omitempty"`
+	ReleasePreparationWorkerURL  string `json:"releasePreparationWorkerUrl,omitempty"`
+	ReleaseFinalizationWorkerURL string `json:"releaseFinalizationWorkerUrl,omitempty"`
+	TenantProofWorkerURL         string `json:"tenantProofWorkerUrl,omitempty"`
+	WorkerCAPath                 string `json:"workerCaPath,omitempty"`
+	MaxCandidateBytes            int64  `json:"maxCandidateBytes,omitempty"`
 }
 
 func (c Config) candidateLimit() int64 {
@@ -231,6 +233,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleJob(w, r, buildJobCollection)
 	case path == "/v1/"+releasePreparationJobCollection || strings.HasPrefix(path, "/v1/"+releasePreparationJobCollection+"/"):
 		h.handleJob(w, r, releasePreparationJobCollection)
+	case path == "/v1/"+releaseFinalizationJobCollection || strings.HasPrefix(path, "/v1/"+releaseFinalizationJobCollection+"/"):
+		h.handleJob(w, r, releaseFinalizationJobCollection)
 	case path == "/v1/"+tenantProofJobCollection || strings.HasPrefix(path, "/v1/"+tenantProofJobCollection+"/"):
 		h.handleJob(w, r, tenantProofJobCollection)
 	default:

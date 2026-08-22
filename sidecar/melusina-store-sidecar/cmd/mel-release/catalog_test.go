@@ -235,8 +235,8 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("real catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
-	if len(catalog.Apps) != 32 || catalog.ExpectedLiveAppCount != 32 {
-		t.Fatalf("real catalog scope = apps %d expected %d, want 32", len(catalog.Apps), catalog.ExpectedLiveAppCount)
+	if len(catalog.Apps) != 33 || catalog.ExpectedLiveAppCount != 33 {
+		t.Fatalf("real catalog scope = apps %d expected %d, want 33", len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
 	if catalog.InstallationPolicyVersion != installationPolicyVersion {
 		t.Fatalf("real catalog installation policy version = %d, want %d", catalog.InstallationPolicyVersion, installationPolicyVersion)
@@ -288,6 +288,18 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 		if err != nil || byName.AppID != app.AppID {
 			t.Fatalf("Select(name %q) = %+v, %v", app.Name, byName, err)
 		}
+	}
+	claude, err := catalog.Select("claude-melusina")
+	if err != nil {
+		t.Fatalf("Select(claude-melusina): %v", err)
+	}
+	if claude.AppID != "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h" ||
+		claude.SourcePath != "claude-melusina" ||
+		claude.SourceCommit != "498dbf93c385f23517101748bc8017585a6a2042" ||
+		claude.CatalogDeveloper != "hrbrlife" ||
+		claude.CatalogRepo != "Claude-Melusina" ||
+		claude.CatalogSlug != "claude-melusina" {
+		t.Fatalf("Claude-Melusina catalog identity drift: %+v", claude)
 	}
 }
 

@@ -12,7 +12,7 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-20T12:41:34Z
 catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
-expected_live_app_count: 32
+expected_live_app_count: 33
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -490,6 +490,35 @@ groups:
         catalog_slug: jinn
         source_repository: https://github.com/hrbrlife/jinn
         role: confined-ai-reporting-and-scheduled-sheets-assistance
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
+      claude-melusina:
+        appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h
+        # First governed Claude-Melusina candidate. The current direct release
+        # objective supersedes the historical 32-app pre-launch planning cut
+        # for this one onboarding. This dev-publish cut upgrades the runtime
+        # installation boundary and carries a session-only operator BYOK proxy;
+        # its source-selection receipt records the independent
+        # clean-clone/package evidence. No package or public pointer exists
+        # until the governed ceremony completes.
+        source_path: claude-melusina
+        source_commit: 498dbf93c385f23517101748bc8017585a6a2042
+        source_baseline_branch: main
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json
+        source_repository: https://github.com/hrbrlife/Claude-Melusina
+        publish_slug: claude-melusina
+        catalog_name: Claude-Melusina
+        live_version: "0.1.0"
+        catalog_developer: hrbrlife
+        catalog_repo: Claude-Melusina
+        catalog_slug: claude-melusina
+        role: confined-byok-claude-code-workspace
         audience: workspace
         install_mode: self-service
         pearl_role: workspace

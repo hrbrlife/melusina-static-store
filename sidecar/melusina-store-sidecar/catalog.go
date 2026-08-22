@@ -19,7 +19,8 @@ import (
 // already passed the publisher, on-chain, version, and timestamp gates. It does
 // not need a Git checkout or build-store.sh on the serving machine.
 type CatalogAssembler struct {
-	DistDir string
+	DistDir                    string
+	firstPublishPolicyProvider func() (map[string]governedInstallationPolicy, error)
 }
 
 var errCatalogIndexCapacity = errors.New("projected catalog index exceeds bounded size")
@@ -31,10 +32,35 @@ type catalogProjection struct {
 }
 
 func NewCatalogAssembler(_ string, distDir string) *CatalogAssembler {
+	return newCatalogAssembler(distDir, nil)
+}
+
+// NewGovernedCatalogAssembler is the only assembler used by the serving Store.
+// On a first publish it derives installation policy solely from the policy table
+// compiled into this signed Store release; a source app can never grant itself a
+// placement or a self-service capability through metadata.
+func NewGovernedCatalogAssembler(_ string, distDir string) *CatalogAssembler {
+	return newCatalogAssembler(distDir, embeddedInstallationPolicies)
+}
+
+func newCatalogAssembler(distDir string, firstPublishPolicyProvider func() (map[string]governedInstallationPolicy, error)) *CatalogAssembler {
 	if strings.TrimSpace(distDir) == "" {
 		distDir = "."
 	}
-	return &CatalogAssembler{DistDir: distDir}
+	return &CatalogAssembler{DistDir: distDir, firstPublishPolicyProvider: firstPublishPolicyProvider}
+}
+
+// withDistDir preserves the governing policy source when a publish assembles a
+// fresh immutable generation rather than its currently served source snapshot.
+func (a *CatalogAssembler) withDistDir(distDir string) *CatalogAssembler {
+	if a == nil {
+		return newCatalogAssembler(distDir, nil)
+	}
+	return newCatalogAssembler(distDir, a.firstPublishPolicyProvider)
+}
+
+func (a *CatalogAssembler) projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []byte) (catalogProjection, error) {
+	return projectCatalogIndexWithFirstPublishPolicy(snapshot, spk, release, metadata, a.firstPublishPolicyProvider)
 }
 
 // AssemblePublishedApp writes immutable package/signature/attestation bytes,
@@ -44,7 +70,7 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte) e
 	if strings.TrimSpace(a.DistDir) == "" {
 		return fmt.Errorf("catalog dist dir is empty")
 	}
-	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
+	projection, err := a.projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
 	if err != nil {
 		return err
 	}
@@ -73,7 +99,7 @@ func (a *CatalogAssembler) AssemblePublishedAppWithRuntimeContract(spk, release,
 	} else if len(runtimeContract) != 0 {
 		return errors.New("runtime contract was supplied but RELEASE.json does not bind one")
 	}
-	projection, err := projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
+	projection, err := a.projectCatalogIndex(AppCatalogSnapshot{Root: a.DistDir}, spk, release, metadata)
 	if err != nil {
 		return err
 	}
@@ -146,9 +172,19 @@ func validateCatalogAssemblyTargetsWithRuntimeContract(snapshot AppCatalogSnapsh
 	return nil
 }
 
-// projectCatalogIndex is the shared, mutation-free source of truth for both
-// pre-claim capacity admission and candidate assembly.
+// projectCatalogIndex is the policy-neutral projection used by legacy/bootstrap
+// tools and focused unit fixtures. The serving Store calls the policy-aware
+// CatalogAssembler method above, so a live first publish cannot bypass its
+// signed installation-policy table.
 func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []byte) (catalogProjection, error) {
+	return projectCatalogIndexWithFirstPublishPolicy(snapshot, spk, release, metadata, nil)
+}
+
+// projectCatalogIndexWithFirstPublishPolicy is the shared, mutation-free source
+// of truth for both pre-claim capacity admission and candidate assembly. A nil
+// provider intentionally retains legacy projection behavior; a governed
+// provider is fail-closed for an unknown first-publish app ID.
+func projectCatalogIndexWithFirstPublishPolicy(snapshot AppCatalogSnapshot, spk, release, metadata []byte, firstPublishPolicyProvider func() (map[string]governedInstallationPolicy, error)) (catalogProjection, error) {
 	var zero catalogProjection
 	var meta map[string]any
 	if err := json.Unmarshal(metadata, &meta); err != nil {
@@ -178,8 +214,8 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 		row[key] = value
 	}
 	// App metadata cannot grant self-service installation or expose an owner-only
-	// foundation pearl. The Store is the policy authority: preserve only the
-	// existing governed projection for this immutable appId below.
+	// foundation pearl. The Store retains a valid existing policy on an update;
+	// governed first publishes obtain one only from the signed Store policy table.
 	delete(row, "installation")
 	if _, ok := row["name"]; !ok {
 		row["name"] = row["appTitle"]
@@ -237,6 +273,16 @@ func projectCatalogIndex(snapshot AppCatalogSnapshot, spk, release, metadata []b
 	}
 	if preservedInstallation != nil {
 		row["installation"] = preservedInstallation.catalogValue()
+	} else if firstPublishPolicyProvider != nil {
+		policies, err := firstPublishPolicyProvider()
+		if err != nil {
+			return zero, fmt.Errorf("load governed installation policy for first publish: %w", err)
+		}
+		policy, ok := policies[appID]
+		if !ok {
+			return zero, fmt.Errorf("no governed installation policy for first publish app %s", appID)
+		}
+		row["installation"] = policy.catalogValue()
 	}
 	index.Apps = append(kept, row)
 	sort.Slice(index.Apps, func(i, j int) bool {

@@ -1540,8 +1540,8 @@ def checked_in_catalog_entries():
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 32, document
-    assert len(entries) == 32, entries
+    assert document["expected_live_app_count"] == 33, document
+    assert len(entries) == 33, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert document["installation_policy_version"] == 1, document
@@ -1560,6 +1560,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": "Fineract Configurator",
         "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "TeleScreen",
         "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh": "Jinn",
+        "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h": "Claude-Melusina",
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": "Bureau Sheets",
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": "Bureau Doc",
         "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": "Bureau Paint",
@@ -1586,6 +1587,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0": ("foundation", "owner-provisions", "authority", "scoped-share", "hidden-authority"),
         "pe3k6wapfczy7797n8xxu3qsn40sd1k4mvfmqv8kz2200dqavv50": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
@@ -1621,12 +1623,23 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
     assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
-    assert paint["live_version"] == "2.0.33", paint
+    assert paint["live_version"] == "2.0.34", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "4ca7e53ceaf5700276b761d39f4a66142ec096b0", jinn
+    assert jinn["source_commit"] == "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c", jinn
     assert jinn["release_state"] == "ready", jinn
     assert jinn["source_selection_state"] == "direct-dev-verified", jinn
+    claude = entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]
+    assert claude["group"] == "platform-tools", claude
+    assert claude["source_path"] == "claude-melusina", claude
+    assert claude["source_commit"] == "498dbf93c385f23517101748bc8017585a6a2042", claude
+    assert claude["source_baseline_branch"] == "main", claude
+    assert claude["reconciliation_state"] == "source-pinned", claude
+    assert claude["release_state"] == "ready", claude
+    assert claude["source_selection_state"] == "direct-dev-verified", claude
+    assert claude["source_selection_receipt"] == (
+        "prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json"
+    ), claude
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
     assert namedcoin_admin["source_commit"] == "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8", namedcoin_admin
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
@@ -1639,7 +1652,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
-    assert doc["source_commit"] == "035b1f3f03a9da7a539269dcd7c3ca86384a1c9b", doc
+    assert doc["source_commit"] == "f2c6df1fbb4466292616b3b7343cc1ff46d51aa9", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]
@@ -1658,7 +1671,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     telescreen = entries["55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"]
-    assert telescreen["source_commit"] == "69b0c6fadb5298a3e87c1d92ff669ac871a8c514", telescreen
+    assert telescreen["source_commit"] == "415766bed3137f37bb09c50b1cbaada5f43100cb", telescreen
     assert telescreen["reconciliation_state"] == "source-pinned", telescreen
     assert telescreen["release_state"] == "ready", telescreen
     assert telescreen["source_selection_state"] == "direct-dev-verified", telescreen
@@ -1674,7 +1687,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert clientspace["release_state"] == "ready", clientspace
     assert clientspace["source_selection_state"] == "direct-dev-verified", clientspace
     creeper = entries["pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh"]
-    assert creeper["source_commit"] == "d9a282fb50711038f7f456e8d107064f888742ae", creeper
+    assert creeper["source_commit"] == "6edfb3ebc93fdce0c6723697f6acef8312bc3b19", creeper
     assert creeper["reconciliation_state"] == "source-pinned", creeper
     assert creeper["release_state"] == "ready", creeper
     assert creeper["source_selection_state"] == "direct-dev-verified", creeper
@@ -1695,7 +1708,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json"
     ), dashboard
     domain_template = entries["hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h"]
-    assert domain_template["source_commit"] == "98aa6c7a905364c33c916cf1e64495da41204e3f", domain_template
+    assert domain_template["source_commit"] == "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", domain_template
     assert domain_template["source_baseline_branch"] == "main", domain_template
     assert domain_template["runtime_contract_path"] == "RUNTIME-CONTRACT.json", domain_template
     assert domain_template["reconciliation_state"] == "source-pinned", domain_template
@@ -1725,17 +1738,17 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
+    assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
     assert canboard["release_state"] == "ready", canboard
     assert canboard["source_selection_state"] == "direct-dev-verified", canboard
     contacts = entries["trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh"]
     assert contacts["reconciliation_state"] == "source-pinned", contacts
-    assert contacts["source_commit"] == "039d7ea6f977a3fc02e6d96545de0c3d5850db88", contacts
+    assert contacts["source_commit"] == "a1cd0be902a5b148d1a22f6272284417dd7d1daa", contacts
     assert contacts["release_state"] == "ready", contacts
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
     assert calendar["reconciliation_state"] == "source-pinned", calendar
-    assert calendar["source_commit"] == "3ec2f484ea7e9d7931443e665d497eb841c93c84", calendar
+    assert calendar["source_commit"] == "26146db1438dd244d2d675a7bd24f5e74b4b84b4", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
@@ -1745,7 +1758,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
-    assert ai_lagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ai_lagoon
+    assert ai_lagoon["source_commit"] == "9905f220d9e4d3d5e8666f6d448dfc87284b4610", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
 
@@ -1814,15 +1827,15 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "fe8f0b076b4ec996ca0a6be1de366e39343a7315", "DueProcess", "dueprocess"),
+            ("dueprocess", "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36", "DueProcess", "dueprocess"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
-            ("teleport", "cf2cf934705a9d3987447ab788dcf716edd9b239", "melusina_teleport2", "teleport"),
+            ("teleport", "9b8f137dc65d85b8a4b423af73ba416677eb143e", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
-            ("GoldKey", "27d21fd221da80dcb4531e85c25ca53d5e2ee1c6", "GoldKey", "goldkey"),
+            ("GoldKey", "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
-            ("INSTASYS_MAIL-main", "55e276e3a5aef4e0f5605c191759c5fdce781fdc", "INSTASYS_MAIL", "mermail"),
+            ("INSTASYS_MAIL-main", "1add5d7cdc7ca2fbb88143482939831a4815595f", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
-            ("ccash-domain-template", "98aa6c7a905364c33c916cf1e64495da41204e3f", "ccash_domain_template", "cca-sh-domain-template"),
+            ("ccash-domain-template", "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
             ("instaco", "f1a0afea1defcfe756c89865ca9ebdeda84335a5", "instaco-app", "instaco"),
     }
@@ -1834,14 +1847,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
-    assert ai_lagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ai_lagoon
+    assert ai_lagoon["source_commit"] == "9905f220d9e4d3d5e8666f6d448dfc87284b4610", ai_lagoon
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "fe8f0b076b4ec996ca0a6be1de366e39343a7315", dueprocess
+    assert dueprocess["source_commit"] == "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36", dueprocess
     assert dueprocess["source_baseline_branch"] == "main", dueprocess
     assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
     assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
@@ -1877,7 +1890,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "4ca7e53ceaf5700276b761d39f4a66142ec096b0", jinn
+    assert jinn["source_commit"] == "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c", jinn
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
@@ -1888,7 +1901,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ccashconfig = entries["6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"]
     assert ccashconfig["source_path"] == "ccashconfig", ccashconfig
     assert ccashconfig["source_repository"] == "https://github.com/hrbrlife/melusina_ccashconfig_app", ccashconfig
-    assert ccashconfig["source_commit"] == "8528a560b73a2f16b360e6a6a2ba1104d582511d", ccashconfig
+    assert ccashconfig["source_commit"] == "869590a0a7fa79098a1b96aba128024e1cb18ca8", ccashconfig
     assert ccashconfig["source_baseline_branch"] == "main", ccashconfig
     assert ccashconfig["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ccashconfig
     assert ccashconfig["reconciliation_state"] == "source-pinned", ccashconfig
@@ -1900,7 +1913,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ailagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ailagoon["source_path"] == "ai-lagoon-main", ailagoon
     assert ailagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ailagoon
-    assert ailagoon["source_commit"] == "90d9e560219b137c26b20a558f8e981e40e3bd3c", ailagoon
+    assert ailagoon["source_commit"] == "9905f220d9e4d3d5e8666f6d448dfc87284b4610", ailagoon
     assert ailagoon["source_baseline_branch"] == "main", ailagoon
     assert ailagoon["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ailagoon
     assert ailagoon["reconciliation_state"] == "source-pinned", ailagoon
@@ -1911,7 +1924,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "4377e9f475532343325822393841faa4c6ed9f84", cyberteller
+    assert cyberteller["source_commit"] == "1fee2eb93eb55a9a3eb6e86e186a7325611b9e84", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
@@ -1948,10 +1961,10 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["source_path"] == "melusina-canboard-app", canboard
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "2164058d5ad3cd275ec24d9498786a257e1efb2a", canboard
+    assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
     opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
     assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
-    assert opensanctions["source_commit"] == "2a40dfca3eee0c0c774898b245ccf400731613f1", opensanctions
+    assert opensanctions["source_commit"] == "3f188d8901728d7cf6818789f74f19cade55a171", opensanctions
     assert opensanctions["source_baseline_branch"] == "main", opensanctions
     assert opensanctions["runtime_contract_path"] == "RUNTIME-CONTRACT.json", opensanctions
     assert opensanctions["reconciliation_state"] == "source-pinned", opensanctions

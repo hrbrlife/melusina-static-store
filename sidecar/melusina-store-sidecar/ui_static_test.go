@@ -101,8 +101,11 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	if err := json.Unmarshal(policy.Body.Bytes(), &entries); err != nil {
 		t.Fatalf("decode embedded installation policy: %v", err)
 	}
-	if len(entries) != 32 {
-		t.Fatalf("embedded installation policy count = %d, want 32", len(entries))
+	if len(entries) != 33 {
+		t.Fatalf("embedded installation policy count = %d, want 33", len(entries))
+	}
+	if got := entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]; got["audience"] != "workspace" || got["install_mode"] != "self-service" || got["pearl_role"] != "workspace" || got["client_access"] != "self-owned" || got["admin_surface"] != "same-pearl" {
+		t.Fatalf("Claude-Melusina embedded installation policy = %#v", got)
 	}
 }
 

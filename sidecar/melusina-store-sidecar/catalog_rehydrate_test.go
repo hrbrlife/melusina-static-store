@@ -202,6 +202,35 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 	}
 }
 
+func TestRehydrationPermitsPredeclaredFutureInstallationPolicy(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "apps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	activeAppID := "activeapp000000000000000000000000000000000000000000000"
+	futureAppID := "futureapp000000000000000000000000000000000000000000000"
+	if err := os.WriteFile(filepath.Join(root, "apps", "index.json"), []byte(`{"apps":[{"appId":"`+activeAppID+`","name":"Active"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	policy := governedInstallationPolicy{
+		Audience: "workspace", InstallMode: "self-service", PearlRole: "workspace",
+		ClientAccess: "self-owned", AdminSurface: "same-pearl",
+	}
+	policies := map[string]governedInstallationPolicy{activeAppID: policy, futureAppID: policy}
+	if err := validateRehydrationPolicies(policies, []governedCohortArtifact{{entry: governedCohortApp{AppID: activeAppID}}}); err != nil {
+		t.Fatalf("predeclared future policy blocked active cohort recovery: %v", err)
+	}
+	if err := applyGovernedInstallationPolicies(root, policies); err != nil {
+		t.Fatalf("apply policies with future policy: %v", err)
+	}
+	if err := validateSnapshotInstallationPolicies(AppCatalogSnapshot{Root: root}, policies); err != nil {
+		t.Fatalf("validate snapshot with future policy: %v", err)
+	}
+	if err := validateRehydrationPolicies(map[string]governedInstallationPolicy{futureAppID: policy}, []governedCohortArtifact{{entry: governedCohortApp{AppID: activeAppID}}}); err == nil {
+		t.Fatal("active cohort without a governed policy was accepted")
+	}
+}
+
 func rehydrationCorruptStageID(value any) string {
 	encoded, _ := json.Marshal(value)
 	digest := sha256.Sum256(encoded)

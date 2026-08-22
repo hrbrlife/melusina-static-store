@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+const firstPublishPolicyAppID = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
+
 func TestCatalogAssemblerMaterializesVerifiedTriple(t *testing.T) {
 	dir := t.TempDir()
 	spk := []byte("signed package")
@@ -44,6 +46,9 @@ func TestCatalogAssemblerMaterializesVerifiedTriple(t *testing.T) {
 	if len(index.Apps) != 1 || index.Apps[0]["appId"] != appID ||
 		index.Apps[0]["sha256"] != sha || index.Apps[0]["updatedAt"] != float64(123000) {
 		t.Fatalf("unexpected index row: %#v", index.Apps)
+	}
+	if _, ok := index.Apps[0]["installation"]; ok {
+		t.Fatalf("policy-neutral assembler unexpectedly injected installation policy: %#v", index.Apps[0])
 	}
 }
 
@@ -127,6 +132,42 @@ func TestProjectCatalogIndexRejectsMalformedExistingInstallationPolicy(t *testin
 	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + hex.EncodeToString(sha[:])[:32] + `","name":"Policy","version":"1.0.0"}`)
 	if _, err := projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{}`), metadata); err == nil || !strings.Contains(err.Error(), "existing catalog policy") {
 		t.Fatalf("malformed existing installation policy accepted: %v", err)
+	}
+}
+
+func TestGovernedCatalogAssemblerFirstPublishUsesEmbeddedPolicy(t *testing.T) {
+	root := t.TempDir()
+	spk := []byte("governed-policy package")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	metadata := []byte(`{"appId":"` + firstPublishPolicyAppID + `","packageId":"` + sha[:32] + `","name":"Claude-Melusina","version":"0.1.0"}`)
+	projection, err := NewGovernedCatalogAssembler("", root).projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{"signedAtUnix":1}`), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index struct {
+		Apps []map[string]any `json:"apps"`
+	}
+	if err := json.Unmarshal(projection.indexBytes, &index); err != nil {
+		t.Fatal(err)
+	}
+	policy, ok := index.Apps[0]["installation"].(map[string]any)
+	if !ok || policy["audience"] != "workspace" || policy["install_mode"] != "self-service" ||
+		policy["pearl_role"] != "workspace" || policy["client_access"] != "self-owned" ||
+		policy["admin_surface"] != "same-pearl" {
+		t.Fatalf("first governed publish did not receive the compiled policy: %#v", index.Apps[0])
+	}
+}
+
+func TestGovernedCatalogAssemblerRejectsFirstPublishWithoutEmbeddedPolicy(t *testing.T) {
+	root := t.TempDir()
+	spk := []byte("unknown-policy package")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	appID := "testapp0000000000000000000000000000000000000000000000"
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + sha[:32] + `","name":"Unknown","version":"1.0.0"}`)
+	if _, err := NewGovernedCatalogAssembler("", root).projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{"signedAtUnix":1}`), metadata); err == nil || !strings.Contains(err.Error(), "no governed installation policy for first publish") {
+		t.Fatalf("first governed publish without a compiled policy was accepted: %v", err)
 	}
 }
 

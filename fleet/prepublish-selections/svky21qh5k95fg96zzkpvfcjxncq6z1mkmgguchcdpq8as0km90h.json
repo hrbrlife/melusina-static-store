@@ -1,0 +1,34 @@
+{
+    "schema": "melusina-source-selection-v1",
+    "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
+    "sourceRepository": "https://github.com/hrbrlife/Claude-Melusina",
+    "sourceCommit": "498dbf93c385f23517101748bc8017585a6a2042",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "The current direct Claude release objective supersedes the historical 32-app pre-launch planning cut for this one onboarding. Selected Claude-Melusina 0.1.0/appVersion 1 from the canonical dev-publish cut after the release-hardening work: Go 1.25.13, bounded atomic runtime staging, and a session-only direct Anthropic credential proxy. main and dev-publish point to the same reviewed commit, so this direct-dev selection adds no divergent source line. The source is eligible for a governed candidate only; this record does not claim a package, on-chain release, public pointer, tenant install, or provider response exists.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean detached recursive checkout at the selected commit; origin main and dev-publish advertise the exact same source",
+            "candidate-preflight passed on the selected source: CI, race suite, module verification, and govulncheck",
+            "two independent clean GitHub clones at different paths produced byte-identical signed SPKs under the pinned Go toolchain",
+            "runtime installer regression coverage exercises cumulative upload bounds, atomic staging and swap, tar containment, and malformed archive refusal",
+            "credential proxy regression coverage proves a direct key stays memory-only and Claude receives only a per-process proxy token",
+            "receipt generated from git ls-remote at selection time rather than hand-transcribed"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "498dbf93c385f23517101748bc8017585a6a2042",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "498dbf93c385f23517101748bc8017585a6a2042",
+            "outcome": "baseline"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "same"
+}

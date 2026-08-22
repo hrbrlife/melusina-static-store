@@ -1081,12 +1081,15 @@ func applyGovernedInstallationPolicies(root string, policies map[string]governed
 	if err := json.Unmarshal(raw, &index); err != nil {
 		return err
 	}
-	if len(index.Apps) != len(policies) {
-		return fmt.Errorf("rehydrated catalog has %d apps, governed policy has %d", len(index.Apps), len(policies))
-	}
 	seen := make(map[string]struct{}, len(index.Apps))
 	for _, row := range index.Apps {
 		appID, _ := row["appId"].(string)
+		if !isSafePathSegment(appID) {
+			return fmt.Errorf("rehydrated catalog has unsafe appId %q", appID)
+		}
+		if _, duplicate := seen[appID]; duplicate {
+			return fmt.Errorf("rehydrated catalog duplicates appId %s", appID)
+		}
 		policy, ok := policies[appID]
 		if !ok || !validGovernedInstallationPolicy(policy) {
 			return fmt.Errorf("no valid governed installation policy for %s", appID)
@@ -1094,9 +1097,11 @@ func applyGovernedInstallationPolicies(root string, policies map[string]governed
 		row["installation"] = policy.catalogValue()
 		seen[appID] = struct{}{}
 	}
-	if len(seen) != len(policies) {
-		return errors.New("rehydrated catalog policy population differs from app population")
-	}
+	// A signed Store release may predeclare a policy for a governed first
+	// publish. That future app has no recovery artifact until its own release
+	// becomes Active, so it must not make recovery of the currently served
+	// cohort impossible. Every app that IS being rehydrated is still required
+	// above to have one exact valid policy.
 	body, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		return err
@@ -1180,11 +1185,15 @@ func validateSnapshotInstallationPolicies(snapshot AppCatalogSnapshot, policies 
 	if err := json.Unmarshal(raw, &index); err != nil {
 		return err
 	}
-	if len(index.Apps) != len(policies) {
-		return errors.New("catalog installation policy population has wrong count")
-	}
+	seen := make(map[string]struct{}, len(index.Apps))
 	for _, row := range index.Apps {
 		appID, _ := row["appId"].(string)
+		if !isSafePathSegment(appID) {
+			return fmt.Errorf("catalog has unsafe appId %q", appID)
+		}
+		if _, duplicate := seen[appID]; duplicate {
+			return fmt.Errorf("catalog duplicates appId %s", appID)
+		}
 		want, ok := policies[appID]
 		if !ok {
 			return fmt.Errorf("catalog has no governed policy for %s", appID)
@@ -1193,7 +1202,11 @@ func validateSnapshotInstallationPolicies(snapshot AppCatalogSnapshot, policies 
 		if err != nil || !present || got != want {
 			return fmt.Errorf("catalog installation policy differs for %s", appID)
 		}
+		seen[appID] = struct{}{}
 	}
+	// Future first-publish policies are allowed to be present in the signed
+	// Store release. They do not weaken this validation: every row in the
+	// recovery snapshot was required above to match its exact policy.
 	return nil
 }
 
@@ -1298,9 +1311,10 @@ func embeddedInstallationPolicies() (map[string]governedInstallationPolicy, erro
 }
 
 func validateRehydrationPolicies(policies map[string]governedInstallationPolicy, artifacts []governedCohortArtifact) error {
-	if len(policies) != len(artifacts) {
-		return fmt.Errorf("embedded installation policy has %d apps, cohort has %d", len(policies), len(artifacts))
-	}
+	// A policy map can intentionally be a strict superset of the active cohort:
+	// the production first-publish path needs a compiled policy before the new
+	// app has an Active ReleaseEntry or a recoverable cohort artifact. Recovery
+	// remains fail-closed because every artifact below must still be covered.
 	for _, artifact := range artifacts {
 		policy, ok := policies[artifact.entry.AppID]
 		if !ok || !validGovernedInstallationPolicy(policy) {

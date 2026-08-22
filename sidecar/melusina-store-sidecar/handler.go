@@ -248,13 +248,24 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
+	return newRouterWithCatalogRuntimeAndAssembler(cfg, operator, cr, mirror, runtime, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
+}
+
+// newGovernedRouterWithCatalogRuntime is the production server constructor.
+// It has no configuration switch: a first app publish must match a policy
+// compiled into this Store release before a generation can be materialized.
+func newGovernedRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
+	return newRouterWithCatalogRuntimeAndAssembler(cfg, operator, cr, mirror, runtime, NewGovernedCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
+}
+
+func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, assembler *CatalogAssembler) http.Handler {
 	mux := http.NewServeMux()
 
 	svc := &publishService{
 		cfg:                cfg,
 		cr:                 cr,
 		operator:           operator,
-		assembler:          NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
+		assembler:          assembler,
 		nonces:             envelope.NewMemoryNonceCache(),
 		appNonces:          runtime.appNonces,
 		catalogGenerations: runtime.catalogGenerations,
@@ -578,7 +589,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=rollout_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
-	projection, err := projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata)
+	projection, err := s.assembler.projectCatalogIndex(activeGeneration, spk, preflight.releaseBytes, metadata)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, errCatalogIndexCapacity) {
@@ -618,7 +629,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	committedGeneration, err := s.catalogGenerations.BuildCommittedFrom(activeGeneration.Root, func(candidateRoot string) error {
-		candidateAssembler := NewCatalogAssembler(s.cfg.CatalogRepoRoot, candidateRoot)
+		candidateAssembler := s.assembler.withDistDir(candidateRoot)
 		if err := candidateAssembler.assemblePublishedAppProjectionWithRuntimeContract(spk, preflight.releaseBytes, metadata, stagedRuntimeContract, projection); err != nil {
 			return fmt.Errorf("assemble: %w", err)
 		}

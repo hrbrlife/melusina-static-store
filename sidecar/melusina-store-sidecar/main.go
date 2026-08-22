@@ -175,7 +175,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogState),
+		Handler:           newGovernedRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogState),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

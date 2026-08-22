@@ -151,7 +151,12 @@ func (s *Service) Sign(request Request) (Response, error) {
 	}
 	return Response{
 		Schema: ResponseSchema, PublisherIntentHash: signed.PayloadHash,
-		EnvelopeB64: base64.RawURLEncoding.EncodeToString(raw), ExpiresAt: now.Add(envelopeTTL),
+		EnvelopeB64: base64.RawURLEncoding.EncodeToString(raw),
+		// Return the exact millisecond value encoded in the signed payload.
+		// Using now.Add(envelopeTTL) here could retain sub-millisecond precision
+		// that the envelope does not carry, making a caller unable to bind the
+		// response expiry to the signed message exactly.
+		ExpiresAt: time.UnixMilli(signed.Payload.ExpiresAtMs).UTC(),
 	}, nil
 }
 

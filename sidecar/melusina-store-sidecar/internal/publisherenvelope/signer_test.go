@@ -83,6 +83,9 @@ func TestSignDerivesOnlyTheExactPearlPublishRoute(t *testing.T) {
 	if signed.PayloadHash != response.PublisherIntentHash {
 		t.Fatalf("intent hash = %s, want %s", response.PublisherIntentHash, signed.PayloadHash)
 	}
+	if signed.Payload.ExpiresAtMs != response.ExpiresAt.UnixMilli() {
+		t.Fatalf("response expiry %s does not bind signed expiry %d", response.ExpiresAt, signed.Payload.ExpiresAtMs)
+	}
 	release, _ := base64.StdEncoding.DecodeString(request.ReleaseB64)
 	want := sha256.Sum256(release)
 	if signed.Payload.BodyHashHex != hex.EncodeToString(want[:]) {

@@ -32,17 +32,24 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   SPK or tampered `metadata.json` (recomputed AppHash ≠ the on-chain-anchored `appHash`) is
   refused. A verified verdict is cached per-appHash for `serve_verify_ttl_seconds` (default
   60s; the revoke-visibility window).
-- **WRITE** (gated; the sidecar is the SINGLE WRITER): `POST /publish`
-  — sealed-v3 envelope from an attested publisher (+ the `metadata.json`) → recompute the
-  AppHash (tree-hash over `{app.spk, metadata.json}`) == on-chain `ReleaseEntry.app_hash`,
-  PDA Active, blacklist clear, version floor → invoke `build-store.sh` as an in-process
-  assembler → return a store-signed provenance receipt. **No `MELUSINA_ATTEST_OFFLINE`/
-  `SKIP_STEPS`/`SCAN_NOOP` bypass exists on this path.**
+- **WRITE** (gated; the sidecar is the SINGLE WRITER): while
+  `policy.require_pearl_control_for_app_publish=false`, the legacy
+  `POST /publish` route accepts a sealed-v3 envelope from an attested publisher
+  (+ `metadata.json`), recomputes the AppHash (tree-hash over
+  `{app.spk, metadata.json}`), requires the matching Active on-chain
+  `ReleaseEntry`, a clear blacklist, and the version floor, then invokes
+  `build-store.sh` as an in-process assembler and returns a store-signed
+  provenance receipt. After the named Bazaar Control pilot is proven, set the
+  flag to `true`: legacy app `POST /publish` and `/publish/stage` return `410`
+  before parsing a body or changing state. Typed, human-approved
+  `/control/v1/releases/<dossier>/prepare|publish` commands are then the only
+  app-release write path. **No `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP`
+  bypass exists on either path.**
 - **Ops:** `GET /healthz`
 
 ### Runtime-contract gate
 
-Every new `POST /publish` also requires a raw `RUNTIME-CONTRACT.json` artifact.
+Every new app release also requires a raw `RUNTIME-CONTRACT.json` artifact.
 `RELEASE.json.runtimeContractSha256` binds those exact JSON bytes through the
 publisher-signed envelope, and the contract binds `sha256(app.spk)`. The contract
 declares the visible launch steps, exact sidecar endpoint tuple, TLS and
@@ -56,28 +63,48 @@ a contract but loses or alters it is excluded by the serve-time gate. See
 [`../../docs/RUNTIME_CONTRACT_V1.md`](../../docs/RUNTIME_CONTRACT_V1.md).
 
 ## Status
-Phase-1 spine: READ surface + **gated `/publish`** (C2.3). The receive path now
-verifies the publisher's signed artifact envelope, recomputes the AppHash (the
-tree-hash over `{app.spk, metadata.json}`) and requires it == the on-chain
-`ReleaseEntry.app_hash`, requires an Active `StoreOperatorAuthorization`
-whose `store_authority` is this sidecar's own operator key, requires a clear
-`BlacklistEntry`, then (single writer, under a mutex) runs `build-store.sh` as a
-convenience assembler and returns a store-signed provenance receipt over the raw
+Phase-1 spine: READ surface plus the gated legacy app-publish receive path
+(C2.3), retained only until the Bazaar Control pilot cutover. It verifies the
+publisher's signed artifact envelope, recomputes the AppHash (the tree-hash over
+`{app.spk, metadata.json}`), requires it == the on-chain `ReleaseEntry.app_hash`,
+requires an Active `StoreOperatorAuthorization` whose `store_authority` is this
+sidecar's own operator key, requires a clear `BlacklistEntry`, then (single
+writer, under a mutex) runs `build-store.sh` as a convenience assembler and
+returns a store-signed provenance receipt over the raw
 96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify
 is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
 `SKIP_STEPS` / `SCAN_NOOP` bypass is reachable on this path (spec §5 S7).
 
-### Boot identity (gated `/publish`) — B1-02
+### Retiring direct app publish after the Bazaar Control pilot
+
+`policy.require_pearl_control_for_app_publish` defaults to `false` for a safe,
+explicit migration. Set it to `true` only after a named pilot has completed all
+of these in the real tenant: exact frozen candidate, offline human approval,
+typed Pearl command over mTLS, sidecar pre-switch listing proof, catalog/pin
+agreement, fresh-grain runtime proof, and rollback rehearsal. In that state the
+sidecar returns `410 Gone` for direct app `/publish` and `/publish/stage` before
+it reads a request body, claims a nonce, or touches staged candidates. This is a
+routing cutover, not a weaker verification mode.
+
+`/publish/installer`, `/publish/generation`, and
+`/publish/legacy-manifest-bootstrap` are system-update routes. They remain
+separate from this app-release cutover and require their own governed controls.
+The typed Pearl routes are present, but production mTLS server enforcement and
+the Pearl's secret injection must be deployed and proved before this flag is
+enabled in a live store.
+
+### Boot identity (gated app publish) — B1-02
 The operator signing identity (receipt signer + envelope destination) is no
 longer a nil stub. When `boot_identity.shards_dir` is set, `main` runs the
 boot-identity ceremony (`boot_identity.go`): it DERIVES the operator from the
 three deploy-provisioned attest shards (`derive.DeriveSidecar`) and binds it —
 fail-closed — to an on-chain `SidecarIdentityEntry`, asserting **all** of
 `signing_pubkey`, `encryption_pubkey`, `domain_hash`, `tls_cert_fingerprint`, and
-`binary_hash` match the locally derived/observed values before `/publish` is
-enabled. Any mismatch / missing entry / RPC error is FATAL (Inv 5). When
-`shards_dir` is unset the store is deliberately read-only: operator nil,
-`/publish` `503`, serve gate unaffected.
+`binary_hash` match the locally derived/observed values before any app-publish
+route is enabled. Any mismatch / missing entry / RPC error is FATAL (Inv 5).
+When `shards_dir` is unset the store is deliberately read-only: operator nil,
+the legacy `/publish` route returns `503` (or `410` after cutover), and the
+serve gate is unaffected.
 
 **DEPLOYER must provision** (NONE of this lives in-repo — it is secret /
 per-install material):

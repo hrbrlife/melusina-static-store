@@ -40,6 +40,12 @@ type Policy struct {
 	// resolve to a signer key. Empty fails closed on /publish and
 	// /publish/installer.
 	AcceptPublishers []string `json:"accept_publishers"`
+	// RequirePearlControlForAppPublish is the deliberate post-pilot cutover.
+	// When true, the legacy app /publish and /publish/stage routes return before
+	// parsing a body, claiming a nonce, or touching private stage state. Typed
+	// Pearl release commands remain available. System-update routes are outside
+	// this app-release switch and are unaffected.
+	RequirePearlControlForAppPublish bool `json:"require_pearl_control_for_app_publish"`
 }
 
 // ReleaseSquadsAuthority is the one catalog-level Squads publisher authority

@@ -78,6 +78,16 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_RecordsExplicitPearlAppPublishCutover(t *testing.T) {
+	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Policy.RequirePearlControlForAppPublish {
+		t.Fatal("explicit direct app-publish retirement was lost during config load")
+	}
+}
+
 func TestLoadConfig_ListingSignerSocketMustBeAbsolute(t *testing.T) {
 	base := `"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org"`
 	cfg, err := LoadConfig(writeTmpConfig(t, `{`+base+`,"listing_signer_socket":"/run/melusina/listing-signer.sock"}`))

@@ -318,7 +318,7 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 			"status":  "ok",
 			"store":   cfg.StoreID,
 			"domain":  cfg.Domain,
-			"surface": "read + gated /publish (on-chain verified, single writer)",
+			"surface": "read + governed app publishing (on-chain verified, single writer)",
 		})
 	})
 	// Runtime identity is intentionally a separate exact route, ahead of the
@@ -337,8 +337,13 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	}
 	mux.Handle(rootTrustBundlePath, rootTrust)
 
-	mux.HandleFunc("/publish", svc.handlePublish)
-	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	if cfg.Policy.RequirePearlControlForAppPublish {
+		mux.HandleFunc("/publish", retiredLegacyAppPublish)
+		mux.HandleFunc("/publish/stage", retiredLegacyAppPublish)
+	} else {
+		mux.HandleFunc("/publish", svc.handlePublish)
+		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	}
 	// Typed human-reviewed release commands. This prefix handler performs its
 	// own exact dossier-path check and cannot fall through to /publish.
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
@@ -399,6 +404,15 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
 	}
 	return mux
+}
+
+// retiredLegacyAppPublish is a routing cutover, not an additional publish
+// check. It runs before body parsing, envelope handling, nonce allocation, and
+// stage access, so a direct caller cannot turn a retired endpoint into a
+// partially-completed release. The exact Bazaar Control routes remain separate
+// registrations above.
+func retiredLegacyAppPublish(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "Direct app publishing is retired. Prepare and approve the release in Bazaar Control.", http.StatusGone)
 }
 
 // handleStagePublish durably stores a candidate in the private content-addressed

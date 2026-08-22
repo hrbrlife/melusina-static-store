@@ -2,21 +2,26 @@
     "schema": "melusina-source-selection-v1",
     "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
     "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
-    "sourceCommit": "827c8a0cf95fe8d2c01992f4f1672bdf2be47af6",
+    "sourceCommit": "6a823a296ef86a4f8571cad30a533f81d25e0b7b",
     "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Bureau Sheets 2.1.8 makes every Bureau grain attachable to an AI consumer. The owner reported 'nope I cannot add a bureau sheets pearl to Jinn' and the PowerBox picker showed nothing for a grain that was running and healthy. matchRequests is what a grain OFFERS; every Bureau grain implements GrainContext over capnp and the interface id was already defined in grainlinkd, but no grain type ever put it in matchRequests, so the shell was never told and a consumer requesting GrainContext saw 'No matching pearls found'. Spreadsheet, document and minipaint now advertise it, spreadsheet and document keep the AIAgent entry they already had, and the client grain still advertises nothing at all. The commit message on this exact dev-publish tip records the measurement and the guards. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
-            "release guard suite passes (12 tests) including the new address-space guard",
-            "requestedMemoryGiB = 4 asserted in the SHIPPED manifest; proven by two mutations that each fail by name (declaration removed; value lowered to 2)",
-            "root cause measured in the owner's grain log: six 'pthread_create failed: Resource temporarily unavailable' crashes each followed by 'App exited with status code: 2'"
+            "go test ./... passes in grain/go/grainlinkd",
+            "capabilities_test.go fails by name for each affected grain type when the GrainContext entry is dropped from New()",
+            "negative control: the client grain type must still advertise zero matchRequests, so the fix cannot be satisfied by handing the entry to every grain type indiscriminately",
+            "the advertised id is pinned to the canonical GrainContext interface id 0x91283d5a5fde4380 that Jinn requests and gitpearl advertises, not to the schema FILE id \u2014 the exact mistake that made MiniGit unattachable for months",
+            "the pre-existing AIAgent entry is separately guarded so adding GrainContext cannot silently drop it",
+            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "827c8a0cf95fe8d2c01992f4f1672bdf2be47af6",
+            "commit": "6a823a296ef86a4f8571cad30a533f81d25e0b7b",
             "outcome": "selected"
         },
         {
@@ -25,7 +30,6 @@
             "outcome": "baseline"
         }
     ],
-    "decisionSummary": "Bureau Sheets 2.1.7 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "baselineBranch": "main",
     "baselineRelation": "ancestor"
 }

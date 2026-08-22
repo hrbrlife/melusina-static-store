@@ -83,8 +83,18 @@ paths. Before enabling the unit it must install or create:
    the bootstrap ceremony enables the bundled timer.
 9. The bundled Store and controller systemd units, byte-for-byte, at
    `/etc/systemd/system/melusina-store-sidecar.service`,
+   `/etc/systemd/system/melusina-store-listing-signer.service`,
    `/etc/systemd/system/melusina-update-controller.service`, and
    `/etc/systemd/system/melusina-update-controller.timer`.
+   The listing-signer unit is installed but enabled **only** when the rendered
+   config sets `listing_signer_socket`. It owns that mode-0600 socket and has
+   only the Store's configured operator derivation and staged-release read
+   inputs. The Store is deliberately not made `Requires=`-dependent on this
+   unit: a signer outage must hold a new publication without taking the
+   currently served catalog offline. When Store Link control mTLS and
+   `store_authority` are configured, `LoadConfig` already refuses startup
+   without this socket path; enable and prove the signer before the first
+   Pearl-control pilot.
 
 The current deployer phase that builds during deployment, omits
 `public_base_url`/private roots, starts an empty store, copies the catalog, and

@@ -1,0 +1,41 @@
+[Unit]
+Description=Melusina Store constrained release-listing signer
+Documentation=https://github.com/hrbrlife/melusina-static-store/blob/main/sidecar/melusina-store-sidecar/listing_signer.go
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/melusina/store/store.config.json
+ConditionFileIsExecutable=/opt/melusina-store/current/bin/melusina-store-sidecar
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+# Enable this unit only when store.config.json sets listing_signer_socket. The
+# constrained signer owns that Unix socket; the Store process only requests one
+# independently re-derived StoreReleaseListing transaction through it.
+RuntimeDirectory=melusina
+RuntimeDirectoryMode=0700
+ExecStart=/opt/melusina-store/current/bin/melusina-store-sidecar listing-signer -config /etc/melusina/store/store.config.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=45s
+TimeoutStopSec=15s
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/etc/melusina/store /var/lib/melusina-store-private
+ReadWritePaths=/run/melusina
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=melusina-store-listing-signer
+
+[Install]
+WantedBy=multi-user.target

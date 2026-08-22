@@ -116,6 +116,8 @@ build_once() {
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \
     "$stage/systemd/melusina-store-sidecar.service"
+  install -m 0644 "$work/deploy/store-generation/melusina-store-listing-signer.service" \
+    "$stage/systemd/melusina-store-listing-signer.service"
   install -m 0644 "$work/deploy/store-generation/melusina-update-controller.service" \
     "$stage/systemd/melusina-update-controller.service"
   install -m 0644 "$work/deploy/store-generation/melusina-update-controller.timer" \

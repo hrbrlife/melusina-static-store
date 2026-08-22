@@ -42,6 +42,53 @@ func TestStoreGenerationUnitConsumesControllerRuntimeMarker(t *testing.T) {
 	}
 }
 
+func TestStoreGenerationBundleCarriesConstrainedListingSignerUnit(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	unitPath := filepath.Join(root, "deploy", "store-generation", "melusina-store-listing-signer.service")
+	unit, err := os.ReadFile(unitPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", unitPath, err)
+	}
+	for _, required := range []string{
+		"listing-signer -config /etc/melusina/store/store.config.json",
+		"RuntimeDirectory=melusina",
+		"RuntimeDirectoryMode=0700",
+		"ReadOnlyPaths=/etc/melusina/store /var/lib/melusina-store-private",
+		"ReadWritePaths=/run/melusina",
+		"NoNewPrivileges=yes",
+	} {
+		if !strings.Contains(string(unit), required) {
+			t.Fatalf("%s omits constrained-listing-signer setting %q", unitPath, required)
+		}
+	}
+	if strings.Contains(string(unit), "Requires=melusina-store-sidecar.service") {
+		t.Fatalf("%s must not make catalog serving depend on the listing signer", unitPath)
+	}
+
+	buildPath := filepath.Join(root, "scripts", "build-store-generation-release.sh")
+	build, err := os.ReadFile(buildPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", buildPath, err)
+	}
+	if !strings.Contains(string(build), "melusina-store-listing-signer.service") {
+		t.Fatalf("%s does not package the listing signer unit", buildPath)
+	}
+	contractPath := filepath.Join(root, "deploy", "store-generation", "DEPLOYMENT-CONTRACT.md")
+	contract, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", contractPath, err)
+	}
+	for _, required := range []string{"listing_signer_socket", "enabled **only**", "without taking the\n   currently served catalog offline"} {
+		if !strings.Contains(string(contract), required) {
+			t.Fatalf("%s omits listing-signer activation contract %q", contractPath, required)
+		}
+	}
+}
+
 func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	valid := map[string]string{
 		"RRS_RUNTIME_SCHEMA":  componentrelease.RuntimeReleaseInfoSchema,

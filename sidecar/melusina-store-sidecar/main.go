@@ -182,10 +182,18 @@ func main() {
 		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
 	}
 
+	publicHandler, controlHandler := newRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.PearlControlMTLS.configured())
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogState),
+		Handler:           publicHandler,
 		ReadHeaderTimeout: 10 * time.Second,
+	}
+	var pearlControlServer *http.Server
+	if cfg.PearlControlMTLS.configured() {
+		pearlControlServer, err = newPearlControlServer(cfg.PearlControlMTLS, controlHandler)
+		if err != nil {
+			log.Fatalf("Pearl control mTLS: %v", err)
+		}
 	}
 
 	idleClosed := make(chan struct{})
@@ -196,19 +204,33 @@ func main() {
 		cancelRoot()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("graceful shutdown: %v", err)
+		for _, server := range []*http.Server{srv, pearlControlServer} {
+			if server != nil {
+				if err := server.Shutdown(ctx); err != nil {
+					log.Printf("graceful shutdown: %v", err)
+				}
+			}
 		}
 		close(idleClosed)
 	}()
 
-	if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
-		log.Printf("listening (TLS) on %s", cfg.ListenAddr)
-		err = srv.ListenAndServeTLS(cfg.TLS.CertPath, cfg.TLS.KeyPath)
-	} else {
+	serveErrors := make(chan error, 2)
+	go func() {
+		if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
+			log.Printf("listening (TLS) on %s", cfg.ListenAddr)
+			serveErrors <- srv.ListenAndServeTLS(cfg.TLS.CertPath, cfg.TLS.KeyPath)
+			return
+		}
 		log.Printf("WARNING: listening WITHOUT TLS on %s — production stores MUST set tls.cert_path/key_path", cfg.ListenAddr)
-		err = srv.ListenAndServe()
+		serveErrors <- srv.ListenAndServe()
+	}()
+	if pearlControlServer != nil {
+		go func() {
+			log.Printf("listening (Pearl control mTLS) on %s", pearlControlServer.Addr)
+			serveErrors <- pearlControlServer.ListenAndServeTLS("", "")
+		}()
 	}
+	err = <-serveErrors
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("serve: %v", err)
 	}

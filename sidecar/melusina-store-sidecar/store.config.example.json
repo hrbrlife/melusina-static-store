@@ -33,6 +33,14 @@
     "cert_path": "/etc/melusina/store/tls/cert.pem",
     "key_path": "/etc/melusina/store/tls/key.pem"
   },
+  "_comment_pearl_control_mtls": "REQUIRED when policy.require_pearl_control_for_app_publish=true. This is a private listener; do not route it through the public catalog edge. The SHA-256 is over the Pearl client certificate DER, not a public key or CA certificate.",
+  "pearl_control_mtls": {
+    "listen_addr": "store-control.internal.example:9443",
+    "cert_path": "/etc/melusina/store/control-tls/cert.pem",
+    "key_path": "/etc/melusina/store/control-tls/key.pem",
+    "client_ca_path": "/etc/melusina/store/control-tls/pearl-client-ca.pem",
+    "pearl_client_cert_sha256": "<lowercase sha256 of Pearl client certificate DER>"
+  },
   "boot_identity": {
     "_comment": "OMIT this block for a READ-ONLY store (operator nil, legacy /publish 503 or 410 after Pearl cutover). Set it to enable governed app publishing (B1-02). DEPLOYER MUST also register an Active on-chain SidecarIdentityEntry (register_sidecar_identity) pinning the derived signing/encryption pubkeys + this store's domain hash, sha256(tls cert DER), and the binary hash.",
     "shards_dir": "/etc/melusina/store/shards",

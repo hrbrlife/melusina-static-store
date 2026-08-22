@@ -79,12 +79,23 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 }
 
 func TestLoadConfig_RecordsExplicitPearlAppPublishCutover(t *testing.T) {
-	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true}}`))
+	controlDir := t.TempDir()
+	cfg, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true},"pearl_control_mtls":{"listen_addr":"127.0.0.1:9443","cert_path":"`+controlDir+`/server.crt","key_path":"`+controlDir+`/server.key","client_ca_path":"`+controlDir+`/ca.crt","pearl_client_cert_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.Policy.RequirePearlControlForAppPublish {
 		t.Fatal("explicit direct app-publish retirement was lost during config load")
+	}
+}
+
+func TestLoadConfig_RequiresCompletePrivatePearlControlListenerAtCutover(t *testing.T) {
+	base := `{"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org","policy":{"require_pearl_control_for_app_publish":true}`
+	if _, err := LoadConfig(writeTmpConfig(t, base+`}`)); err == nil || !strings.Contains(err.Error(), "pearl_control_mtls is required") {
+		t.Fatalf("cutover without private Pearl listener = %v", err)
+	}
+	if _, err := LoadConfig(writeTmpConfig(t, base+`,"pearl_control_mtls":{"listen_addr":"127.0.0.1:9443"}}`)); err == nil || !strings.Contains(err.Error(), "pearl_control_mtls.") {
+		t.Fatalf("partial private Pearl listener = %v", err)
 	}
 }
 

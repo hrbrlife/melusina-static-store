@@ -55,6 +55,16 @@ tls:
   cert_path: "/etc/melusina/store/tls/cert.pem"
   key_path: "/etc/melusina/store/tls/key.pem"
 
+# REQUIRED when require_pearl_control_for_app_publish is true. Keep this
+# listener off the public catalog edge. It requires TLS 1.3, a certificate
+# trusted by client_ca_path, and this exact Pearl client certificate digest.
+pearl_control_mtls:
+  listen_addr: "store-control.internal.example:9443"
+  cert_path: "/etc/melusina/store/control-tls/cert.pem"
+  key_path: "/etc/melusina/store/control-tls/key.pem"
+  client_ca_path: "/etc/melusina/store/control-tls/pearl-client-ca.pem"
+  pearl_client_cert_sha256: "<lowercase sha256 of Pearl client certificate DER>"
+
 boot_identity:
   # Omit this block for a read-only store (legacy /publish 503, or 410 after
   # the Bazaar Control cutover).

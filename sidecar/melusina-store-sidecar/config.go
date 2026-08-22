@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -25,6 +27,23 @@ import (
 type TLSConfig struct {
 	CertPath string `json:"cert_path"`
 	KeyPath  string `json:"key_path"`
+}
+
+// PearlControlMTLSConfig is a separate, private listener for the only
+// sidecar actions Bazaar Control can request. It is deliberately not the
+// public catalog listener: browsers and tenants must never need a Pearl
+// certificate, while the Pearl must never send a release command through a
+// public listener.
+//
+// The CA verifies that the peer is in the control plane. The leaf digest pins
+// that peer to this one Pearl, so another certificate issued by the same CA
+// cannot become a publisher by accident.
+type PearlControlMTLSConfig struct {
+	ListenAddr            string `json:"listen_addr"`
+	CertPath              string `json:"cert_path"`
+	KeyPath               string `json:"key_path"`
+	ClientCAPath          string `json:"client_ca_path"`
+	PearlClientCertSHA256 string `json:"pearl_client_cert_sha256"`
 }
 
 type Policy struct {
@@ -148,6 +167,10 @@ type Config struct {
 	// Defaults to "." only for legacy/read-only compatibility.
 	CatalogRepoRoot string    `json:"catalog_repo_root"`
 	TLS             TLSConfig `json:"tls"`
+	// PearlControlMTLS binds the private Bazaar Control surface to its own
+	// TLS-1.3 listener. It is mandatory when direct app publishing has been
+	// retired, otherwise the Pearl route could accidentally remain public.
+	PearlControlMTLS PearlControlMTLSConfig `json:"pearl_control_mtls"`
 
 	// ServeVerifyTTLSeconds bounds how long a verified serve-time verdict
 	// (appHash -> Active on-chain ReleaseEntry) is cached before the chain is
@@ -327,10 +350,69 @@ func LoadConfig(path string) (Config, error) {
 			return cfg, fmt.Errorf("config: listing_signer_socket must be an absolute socket path")
 		}
 	}
+	if err := cfg.validatePearlControlMTLS(); err != nil {
+		return cfg, err
+	}
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+func (cfg PearlControlMTLSConfig) configured() bool {
+	return strings.TrimSpace(cfg.ListenAddr) != "" || strings.TrimSpace(cfg.CertPath) != "" || strings.TrimSpace(cfg.KeyPath) != "" || strings.TrimSpace(cfg.ClientCAPath) != "" || strings.TrimSpace(cfg.PearlClientCertSHA256) != ""
+}
+
+func (cfg *Config) validatePearlControlMTLS() error {
+	control := &cfg.PearlControlMTLS
+	if !control.configured() {
+		if cfg.Policy.RequirePearlControlForAppPublish {
+			return fmt.Errorf("config: pearl_control_mtls is required when policy.require_pearl_control_for_app_publish is true")
+		}
+		return nil
+	}
+	for label, value := range map[string]string{
+		"listen_addr":              control.ListenAddr,
+		"cert_path":                control.CertPath,
+		"key_path":                 control.KeyPath,
+		"client_ca_path":           control.ClientCAPath,
+		"pearl_client_cert_sha256": control.PearlClientCertSHA256,
+	} {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("config: pearl_control_mtls.%s is required when Pearl control mTLS is configured", label)
+		}
+	}
+	control.ListenAddr = strings.TrimSpace(control.ListenAddr)
+	if _, port, err := net.SplitHostPort(control.ListenAddr); err != nil || port == "" {
+		return fmt.Errorf("config: pearl_control_mtls.listen_addr must be a host:port")
+	}
+	if control.ListenAddr == cfg.ListenAddr {
+		return fmt.Errorf("config: pearl_control_mtls.listen_addr must not equal listen_addr")
+	}
+	for label, path := range map[string]string{
+		"cert_path": control.CertPath, "key_path": control.KeyPath, "client_ca_path": control.ClientCAPath,
+	} {
+		clean := filepath.Clean(strings.TrimSpace(path))
+		if !filepath.IsAbs(clean) || clean == "/" {
+			return fmt.Errorf("config: pearl_control_mtls.%s must be an absolute file path", label)
+		}
+		switch label {
+		case "cert_path":
+			control.CertPath = clean
+		case "key_path":
+			control.KeyPath = clean
+		case "client_ca_path":
+			control.ClientCAPath = clean
+		}
+	}
+	control.PearlClientCertSHA256 = strings.ToLower(strings.TrimSpace(control.PearlClientCertSHA256))
+	if len(control.PearlClientCertSHA256) != 64 {
+		return fmt.Errorf("config: pearl_control_mtls.pearl_client_cert_sha256 must be a SHA-256 digest")
+	}
+	if _, err := hex.DecodeString(control.PearlClientCertSHA256); err != nil {
+		return fmt.Errorf("config: pearl_control_mtls.pearl_client_cert_sha256 must be a SHA-256 digest")
+	}
+	return nil
 }
 
 // normalizeRPCEndpoints validates the operator's trusted endpoint set before

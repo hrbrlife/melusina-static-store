@@ -289,7 +289,19 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	mux := http.NewServeMux()
+	// Unit and local-development callers retain the combined shape. The real
+	// process uses newRouterSurfaces with isolateControl=true once the dedicated
+	// Pearl mTLS listener is configured.
+	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, false)
+	return public
+}
+
+// newRouterSurfaces creates exactly one publish service, then presents it on
+// the public catalog surface and (when enabled by main) a distinct private
+// Pearl-control surface. Sharing the service preserves one nonce, receipt, and
+// single-writer state machine; constructing two routers independently would
+// create an unsafe split brain.
+func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool) (http.Handler, http.Handler) {
 	var controlReceipts *controlReceiptLedger
 	var controlReceiptErr error
 	if operator != nil && runtime.appNonces != nil {
@@ -311,6 +323,11 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		catalogExpectedUID:          runtime.expectedUID,
 		catalogExpectedGID:          runtime.expectedGID,
 	}
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, !isolateControl), newControlReleaseRouter(svc)
+}
+
+func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {
+	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -344,9 +361,14 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		mux.HandleFunc("/publish", svc.handlePublish)
 		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	}
-	// Typed human-reviewed release commands. This prefix handler performs its
-	// own exact dossier-path check and cannot fall through to /publish.
-	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	// During migration the typed control route remains on the combined test and
+	// local-development surface. A Golden configuration removes it from the
+	// public listener entirely; only the dedicated mTLS listener owns it.
+	if exposeControl {
+		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	} else {
+		mux.HandleFunc("/control/v1/releases/", privateControlRouteOnly)
+	}
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -404,6 +426,19 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 		log.Printf("read surface: %q — static byte-identical; /packages/* gated by on-chain ReleaseEntry at serve time (verdict TTL %s)", cfg.DistDir, gate.verifyTTL)
 	}
 	return mux
+}
+
+func newControlReleaseRouter(svc *publishService) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	return mux
+}
+
+// privateControlRouteOnly prevents a control endpoint from existing at all on
+// the browser/catalog listener. It intentionally returns a plain 404 rather
+// than advertising the private listener or its authentication method.
+func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
 }
 
 // retiredLegacyAppPublish is a routing cutover, not an additional publish

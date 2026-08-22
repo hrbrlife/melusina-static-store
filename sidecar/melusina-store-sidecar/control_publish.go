@@ -30,6 +30,7 @@ const (
 	controlPublishPathSuffix          = "/publish"
 	controlAuthorityPathPrefix        = "/control/v1/authority/"
 	controlStatusPath                 = "/control/v1/status"
+	controlPolicyPath                 = "/control/v1/policy"
 	controlCommandHeader              = "X-Bazaar-Control-Command"
 	controlPearlSignatureHeader       = "X-Bazaar-Pearl-Signature"
 	controlOfflineApprovalHeader      = "X-Bazaar-Offline-Approval"
@@ -38,6 +39,8 @@ const (
 )
 
 const controlStatusSnapshotSchema = "bazaar-control-store-status-v1"
+
+const controlPolicySnapshotSchema = "bazaar-control-store-policy-snapshot-v1"
 
 // controlStatusSnapshot is intentionally a very small readiness observation
 // for Bazaar Control's Home screen. It is not a catalog listing, a chain
@@ -49,6 +52,16 @@ type controlStatusSnapshot struct {
 	StoreID   string    `json:"storeId"`
 	Status    string    `json:"status"`
 	CheckedAt time.Time `json:"checkedAt"`
+}
+
+// controlPolicySnapshot is the selected Store's currently active governed
+// policy scope. It is a read-only input to publisher-enrolment requests, not a
+// way to select a policy, construct a transaction, or obtain a signing key.
+type controlPolicySnapshot struct {
+	Schema      string `json:"schema"`
+	StoreID     string `json:"storeId"`
+	StorePolicy string `json:"storePolicy"`
+	PolicyEpoch uint64 `json:"policyEpoch"`
 }
 
 // handleControlStatus exposes one exact, read-only private control status.
@@ -74,6 +87,39 @@ func (s *publishService) handleControlStatus(w http.ResponseWriter, r *http.Requ
 		StoreID:   s.cfg.StoreID,
 		Status:    "ready",
 		CheckedAt: s.currentTime().UTC(),
+	})
+}
+
+// handleControlPolicy exposes only the active policy identity and its
+// monotonically increasing revision for the configured Store. The Store Link
+// pins this response to its configured StoreID before returning it to the
+// Pearl, so an operator cannot type a different Store or policy into an
+// enrolment form.
+func (s *publishService) handleControlPolicy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.URL.Path != controlPolicyPath || r.URL.RawQuery != "" {
+		http.NotFound(w, r)
+		return
+	}
+	if s == nil || s.cr == nil {
+		http.Error(w, "Bazaar Store policy is unavailable.", http.StatusServiceUnavailable)
+		return
+	}
+	policy, err := fetchActiveStoreControlPolicy(r.Context(), s.cfg, s.cr)
+	if err != nil {
+		http.Error(w, "Bazaar Store policy could not be confirmed.", http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(controlPolicySnapshot{
+		Schema:      controlPolicySnapshotSchema,
+		StoreID:     s.cfg.StoreID,
+		StorePolicy: policy.PDA,
+		PolicyEpoch: policy.PolicyEpoch,
 	})
 }
 

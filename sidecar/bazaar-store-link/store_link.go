@@ -231,6 +231,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleAuthority(w, r)
 	case path == "/v1/store-status":
 		h.handleStoreStatus(w, r)
+	case path == "/v1/store-policy":
+		h.handleStorePolicy(w, r)
 	case path == "/v1/"+buildJobCollection || strings.HasPrefix(path, "/v1/"+buildJobCollection+"/"):
 		h.handleJob(w, r, buildJobCollection)
 	case path == "/v1/"+releasePreparationJobCollection || strings.HasPrefix(path, "/v1/"+releasePreparationJobCollection+"/"):
@@ -289,6 +291,7 @@ func (h *Handler) handleAuthority(w http.ResponseWriter, r *http.Request) {
 }
 
 const storeStatusSnapshotSchema = "bazaar-control-store-status-v1"
+const storePolicySnapshotSchema = "bazaar-control-store-policy-snapshot-v1"
 
 // storeStatusSnapshot is the sole Store-health observation that Store Link
 // relays. It deliberately contains no catalog, chain, release, endpoint, or
@@ -320,6 +323,43 @@ func (h *Handler) handleStoreStatus(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storeStatusSnapshotSchema || snapshot.StoreID != h.storeID || snapshot.Status != "ready" || snapshot.CheckedAt.IsZero() {
 		http.Error(w, "Store Link received an invalid private Store status", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(snapshot)
+}
+
+// storePolicySnapshot is the minimum active governed policy scope Bazaar
+// Control needs to prepare a publisher-enrolment request. Store Link validates
+// that it belongs to its configured Store before returning it; it carries no
+// transaction, signing, endpoint, or policy-selection capability.
+type storePolicySnapshot struct {
+	Schema      string `json:"schema"`
+	StoreID     string `json:"storeId"`
+	StorePolicy string `json:"storePolicy"`
+	PolicyEpoch uint64 `json:"policyEpoch"`
+}
+
+func (h *Handler) handleStorePolicy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	response, err := h.forward.Forward(r.Context(), ForwardRequest{Method: http.MethodGet, Path: "/control/v1/policy", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+	if err != nil {
+		http.Error(w, "Store Link could not reach the private Store control service", http.StatusBadGateway)
+		return
+	}
+	if response.StatusCode != http.StatusOK || int64(len(response.Body)) > maxResponseBytes || !isJSONContentType(response.Header.Get("Content-Type")) {
+		http.Error(w, "Store control policy is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var snapshot storePolicySnapshot
+	decoder := json.NewDecoder(strings.NewReader(string(response.Body)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storePolicySnapshotSchema || snapshot.StoreID != h.storeID || !validSegment(snapshot.StorePolicy) || snapshot.PolicyEpoch == 0 {
+		http.Error(w, "Store Link received an invalid private Store policy", http.StatusBadGateway)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -455,6 +495,9 @@ func authorityRoute(path string) (string, string, string, bool) {
 
 func canonicalSidecarPath(method, path string) bool {
 	if method == http.MethodGet && path == "/control/v1/status" {
+		return true
+	}
+	if method == http.MethodGet && path == "/control/v1/policy" {
 		return true
 	}
 	if method == http.MethodPost && strings.HasPrefix(path, "/control/v1/releases/") {

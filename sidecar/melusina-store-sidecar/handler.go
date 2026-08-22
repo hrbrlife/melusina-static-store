@@ -368,6 +368,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// Otherwise a development convenience would turn the Home observation into a
 	// public sidecar probe when a production listener is configured.
 	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
+	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
 	if exposeControl {
 		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	} else {
@@ -435,6 +436,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(controlStatusPath, svc.handleControlStatus)
+	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	return mux

@@ -344,6 +344,37 @@ func TestStoreStatusIsFixedReadOnlyAndStorePinned(t *testing.T) {
 	}
 }
 
+func TestStorePolicyIsFixedReadOnlyAndStorePinned(t *testing.T) {
+	forwarder := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"` + testStoreID + `","storePolicy":"policy_123","policyEpoch":7}`)}}
+	handler := newTestHandler(t, forwarder)
+	request := httptest.NewRequest(http.MethodGet, "/v1/store-policy", nil)
+	request.Header.Set(controlCommandHeader, "must-not-forward")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK || len(forwarder.requests) != 1 || recorder.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("store policy/result = %d/%d headers=%#v body=%s", recorder.Code, len(forwarder.requests), recorder.Header(), recorder.Body.String())
+	}
+	got := forwarder.requests[0]
+	if got.Method != http.MethodGet || got.Path != "/control/v1/policy" || len(got.Headers) != 0 {
+		t.Fatalf("store policy forwarding = %#v", got)
+	}
+
+	wrongMethod := httptest.NewRecorder()
+	handler.ServeHTTP(wrongMethod, httptest.NewRequest(http.MethodPost, "/v1/store-policy", nil))
+	if wrongMethod.Code != http.StatusMethodNotAllowed || len(forwarder.requests) != 1 {
+		t.Fatalf("store policy mutation = %d forwards=%d", wrongMethod.Code, len(forwarder.requests))
+	}
+	wrongStore := &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"schema":"bazaar-control-store-policy-snapshot-v1","storeId":"other-store","storePolicy":"policy_123","policyEpoch":7}`)}}
+	wrongHandler := newTestHandler(t, wrongStore)
+	wrongResponse := httptest.NewRecorder()
+	wrongHandler.ServeHTTP(wrongResponse, httptest.NewRequest(http.MethodGet, "/v1/store-policy", nil))
+	if wrongResponse.Code != http.StatusBadGateway {
+		t.Fatalf("wrong Store policy accepted: %d %s", wrongResponse.Code, wrongResponse.Body.String())
+	}
+}
+
 func TestConnectorNeverBuildsAnArbitrarySidecarRequest(t *testing.T) {
 	for _, tc := range []struct {
 		method string
@@ -354,6 +385,7 @@ func TestConnectorNeverBuildsAnArbitrarySidecarRequest(t *testing.T) {
 		{http.MethodPost, "/control/v1/releases/" + testDossierID + "/publish", true},
 		{http.MethodGet, "/control/v1/authority/app/publisher", true},
 		{http.MethodGet, "/control/v1/status", true},
+		{http.MethodGet, "/control/v1/policy", true},
 		{http.MethodPost, "/publish", false},
 		{http.MethodDelete, "/control/v1/releases/" + testDossierID + "/publish", false},
 		{http.MethodGet, "/control/v1/authority/app/publisher/extra", false},

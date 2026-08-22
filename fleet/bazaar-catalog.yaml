@@ -469,11 +469,14 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        # The current dev-publish v10 source adds production grain-key bootstrap
-        # and generic, read-only peer attachment. Its clean-clone recovery and
-        # reproducibility gates passed; tenant capability and rendered-picker
-        # checks run immediately after its governed signed publish.
-        source_commit: a56cc6c56f0933995407549f5fe8a8c0fa9c16b7
+        # dev-publish v16 adds per-pearl AI write authority: every attached
+        # pearl stays read-only on arrival, and a mutating provider operation
+        # reaches the assistant only after an admin raises that pearl's
+        # write_mode, and only as far as the PowerBox grant itself reaches.
+        # Its clean-clone recovery and reproducibility gates passed; tenant
+        # capability and rendered-picker checks run immediately after its
+        # governed signed publish.
+        source_commit: ee4babbcb2776b37fed691cd3419c54e033244ab
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
@@ -525,7 +528,7 @@ groups:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: 827c8a0cf95fe8d2c01992f4f1672bdf2be47af6
+        source_commit: 6a823a296ef86a4f8571cad30a533f81d25e0b7b
         source_repository: https://github.com/hrbrlife/CHEESESPREAD
         reconciliation_state: source-pinned
         release_state: ready
@@ -533,7 +536,7 @@ groups:
         source_selection_receipt: prepublish-selections/fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0.json
         publish_slug: sheets-bureau
         catalog_name: Bureau Sheets
-        live_version: "2.1.7"
+        live_version: "2.1.8"
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-sheets-app
         catalog_slug: sheets-bureau

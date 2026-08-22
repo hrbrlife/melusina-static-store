@@ -56,6 +56,46 @@ PEARL_ROLES = {"authority", "proxy", "workflow", "workspace", "template", "test"
 CLIENT_ACCESS_MODES = {"none", "scoped-share", "self-owned"}
 ADMIN_SURFACES = {"hidden-authority", "same-pearl", "deployment-only"}
 STORE_READ_TIMEOUT_SECONDS = 180
+
+# cmd/submit's own http.Client deadline for one stage/promote POST. It is NOT
+# the same clock as MEL_RELEASE_OP_TIMEOUT_SECS, which bounds this provider
+# PROCESS: submit hits its client deadline first and reports
+# "Client.Timeout exceeded while awaiting headers", which reads like the store
+# is down when it is merely slow.
+#
+# 480s was a hard-coded constant until 2026-08-22, when it stopped being enough
+# twice in one session on the two largest apps in the catalog: Bureau Sheets
+# (88MB) at stage and Bureau Doc (93MB) at promote. A stage or promote POST
+# carries the whole SPK and the store then verifies, signs and seals a new
+# generation under its writer lock, so the wall clock scales with artifact size
+# and with how many apps the catalog holds — both of which only grow.
+#
+# Raising the default would hide a genuinely wedged store, so the default is
+# unchanged and the knob is explicit. Set MEL_RELEASE_SUBMIT_TIMEOUT_SECS for a
+# large artifact, and keep MEL_RELEASE_OP_TIMEOUT_SECS above it or mel-release
+# kills this provider before submit can report anything useful.
+SUBMIT_TIMEOUT_SECONDS_DEFAULT = 480
+
+
+def submit_timeout() -> str:
+    raw = os.environ.get("MEL_RELEASE_SUBMIT_TIMEOUT_SECS", "").strip()
+    if not raw:
+        return f"{SUBMIT_TIMEOUT_SECONDS_DEFAULT}s"
+    try:
+        seconds = int(raw)
+    except ValueError:
+        raise ProviderError(
+            f"MEL_RELEASE_SUBMIT_TIMEOUT_SECS must be whole seconds, got {raw!r}"
+        )
+    if seconds < SUBMIT_TIMEOUT_SECONDS_DEFAULT:
+        # Lowering it can only turn a slow-but-healthy publish into a failure
+        # that looks like a store outage, and a stage POST that dies mid-upload
+        # still costs the store the work it already did.
+        raise ProviderError(
+            f"MEL_RELEASE_SUBMIT_TIMEOUT_SECS may only raise the {SUBMIT_TIMEOUT_SECONDS_DEFAULT}s "
+            f"default, got {seconds}s"
+        )
+    return f"{seconds}s"
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
 )
@@ -1585,7 +1625,7 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
         "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
         "--runtime-contract", str(context["runtimeContractPath"]),
         "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
-        "--domain", domain, "--rpc-url", rpc, "--timeout", "480s", "--receipt-out", str(receipt_out),
+        "--domain", domain, "--rpc-url", rpc, "--timeout", submit_timeout(), "--receipt-out", str(receipt_out),
         "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
     ]
     if stage_only:

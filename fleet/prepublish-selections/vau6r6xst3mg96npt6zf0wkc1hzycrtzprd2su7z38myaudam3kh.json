@@ -2,17 +2,20 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
     "sourceRepository": "https://github.com/hrbrlife/jinn",
-    "sourceCommit": "a56cc6c56f0933995407549f5fe8a8c0fa9c16b7",
+    "sourceCommit": "ee4babbcb2776b37fed691cd3419c54e033244ab",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Jinn 0.0.15 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "Jinn 0.0.16 answers an owner report filed against 0.0.15 on the live tenant: asked to edit a file on a mini-git pearl it had attached, the assistant correctly answered that it had no write tools at all. mini-git advertises 30 operations across three permission tiers and Jinn's catalog builder dropped all 17 mutating ones unconditionally, by design and with a comment naming the path that had not been built yet. This cut builds it: a mutating operation reaches the assistant only when an admin has raised that specific pearl's write_mode, the operation's tier is within that decision, the PowerBox grant carries that much authority, and the session is admin \u2014 four independent conditions, each failing closed on its own, three of them provably load-bearing under mutation. The commit message on this exact dev-publish tip records the defect, the four mutations run against the guards, and the two cases where the obvious implementation is wrong. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes",
-            "every handleStatic call site and every shell.html /static reference resolves in the embed FS; the guard carries a positive control and fails by name when either capitalised spelling is restored",
-            "root cause measured in the owner's grain log: 'jinn: 404 static: static/jinn-PowerBox.js' against the embedded static/jinn-powerbox.js"
+            "full go test ./... passes; go vet clean",
+            "four mutation controls run, not reasoned about \u2014 deleting the writeAuthorized call, rounding under-declared write ops down instead of up, dropping the admin-session requirement, and dropping the PowerBox grant ceiling each fail a named test",
+            "the grant-ceiling mutation initially SURVIVED the suite: an honestly-declared operation is dropped by opPermitted before the ceiling runs, so the guard was rewritten around an operation declaring no required permissions, where the grant tier is the only remaining ceiling",
+            "the role guard initially survived its own mutation too: Build drops an entire pearl for a collaborator when the grant's derived tier is admin, so the fixture was changed to a view+edit grant that actually reaches the per-operation role check",
+            "positive controls: reads survive every tier, an admin session still receives its write tool, a collaborator keeps its reads, and readOnlyOperation's classification is separately pinned",
+            "attach confers no write authority \u2014 Insert stores 'off' whatever the caller struct holds, and unrecognised stored values normalise to 'off' on read as well as write"
         ]
     },
     "reviewedRefs": [
@@ -78,7 +81,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "a56cc6c56f0933995407549f5fe8a8c0fa9c16b7",
+            "commit": "ee4babbcb2776b37fed691cd3419c54e033244ab",
             "outcome": "selected"
         },
         {

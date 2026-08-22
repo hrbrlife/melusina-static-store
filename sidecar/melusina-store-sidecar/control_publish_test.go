@@ -43,13 +43,13 @@ func controlPolicyBlob(license, domain, authority, authz, pearlKey, humanKey [32
 	return b
 }
 
-func controlGrantBlob(policy, appID, vault, publisherKey [32]byte, epoch uint64, now time.Time) []byte {
+func controlGrantBlob(policy, appID, vault, publisherKey [32]byte, actions uint16, epoch uint64, now time.Time) []byte {
 	b := append([]byte{}, accountDiscriminator("StorePublisherGrant")...)
 	b = appendControlKey(b, policy)
 	b = appendControlKey(b, appID)
 	b = appendControlKey(b, vault)
 	b = appendControlKey(b, publisherKey)
-	b = appendControlU16(b, storePublisherActionPublishRelease)
+	b = appendControlU16(b, actions)
 	b = appendControlU64(b, uint64(now.Add(-time.Minute).Unix()))
 	b = appendControlU64(b, uint64(now.Add(time.Hour).Unix()))
 	b = appendControlU64(b, epoch)
@@ -74,15 +74,19 @@ func controlHeader(t *testing.T, value any) string {
 	return base64.RawURLEncoding.EncodeToString(raw)
 }
 
-func newControlCommand(t *testing.T, now time.Time, dossierID string, preflight appPublishPreflight, policy, grant string) (controlCommand, pearlCommandSignature, offlineControlApproval, ed25519.PublicKey, ed25519.PublicKey) {
+func newControlCommand(t *testing.T, now time.Time, dossierID string, preflight appPublishPreflight, policy, grant, action string) (controlCommand, pearlCommandSignature, offlineControlApproval, ed25519.PublicKey, ed25519.PublicKey) {
 	t.Helper()
 	stage, err := buildStagedAppManifestWithRuntimeContract(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.runtimeContract, preflight.release, preflight.hint, now)
 	if err != nil {
 		t.Fatal(err)
 	}
+	route := controlPublishPathPrefix + dossierID + controlPublishPathSuffix
+	if action == controlCommandActionPrepare {
+		route = controlPublishPathPrefix + dossierID + controlPreparePathSuffix
+	}
 	command := controlCommand{
 		Schema: controlCommandSchema, CommandID: "0123456789abcdef01234567", DossierID: dossierID,
-		Action: controlCommandActionPublish, Route: controlPublishPathPrefix + dossierID + controlPublishPathSuffix, Method: http.MethodPost,
+		Action: action, Route: route, Method: http.MethodPost,
 		StorePolicy: policy, PolicyEpoch: 7, PublisherGrant: grant, GrantEpoch: 3,
 		PublisherIntentHash: strings.ToLower(preflight.sig.PayloadHash), AppID: stage.AppID, Version: stage.Version,
 		ArtifactSHA256: stage.SPKSHA256, AppHash: stage.AppHash, ReleaseHash: stage.ReleaseHash, StageID: stage.StageID,
@@ -197,13 +201,13 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, pearlSignature, offlineApproval, pearlKey, humanKey := newControlCommand(t, clock, "dossier-1", preflight, policyPDA.Base58(), grantPDA.Base58())
+	command, pearlSignature, offlineApproval, pearlKey, humanKey := newControlCommand(t, clock, "dossier-1", preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPublish)
 	var pearlRaw [32]byte
 	copy(pearlRaw[:], pearlKey)
 	var humanRaw [32]byte
 	copy(humanRaw[:], humanKey)
 	m.rawAccounts[policyPDA.Base58()] = controlPolicyBlob(license, primitives.StoreDomainHash(cfg.Domain), authority, authz, pearlRaw, humanRaw, 7)
-	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, releaseMeta.publisherSquadsVault, publisherKey, 3, clock)
+	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, releaseMeta.publisherSquadsVault, publisherKey, storePublisherActionPublishRelease, 3, clock)
 
 	body := jsonPublishBody(t, preflight.sig, preflight.releaseBytes, preflight.spk, preflight.metadata)
 	req := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(body.Bytes()))
@@ -215,6 +219,102 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	svc.handleControlPublish(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("control publish got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
+	clock := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	cfg.ProgramID = programID.Base58()
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	f := controlFixture(t, buildValidFixture(t, cfg, randPubkeyB58(t)))
+	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
+	m := newMockChainReader()
+	f.pinAccept(m, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, m, op)
+	svc.now = func() time.Time { return clock }
+	// The legacy migration allowlist is empty: this proves the Pearl route gets
+	// its publisher authority only from the governed app-scoped grant.
+	svc.cfg.Policy.AcceptPublishers = nil
+	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	release := mustJSON(t, f.rel)
+	prepareRoute := controlPublishPathPrefix + "dossier-prepare" + controlPreparePathSuffix
+	prepareEnvelope := signPublishForRoute(t, publisher, op.Public(), f.spk, release, prepareRoute, clock, 5*time.Minute, "prepare-nonce")
+	preflight := appPublishPreflight{sig: prepareEnvelope, releaseBytes: release, spk: f.spk, metadata: f.metadata, runtimeContract: f.runtimeContract, release: f.rel}
+
+	appID, err := controlSandstormAppID(metadataAppID(f.metadata))
+	if err != nil {
+		t.Fatal(err)
+	}
+	license, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority, err := primitives.PubkeyFromBase58(cfg.StoreAuthority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authz, err := primitives.PubkeyFromBase58(f.authzPDA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyPDA, err := deriveStoreControlPolicy(license, primitives.StoreDomainHash(cfg.Domain), programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherKey, err := primitives.PubkeyFromBase58(publisher.Public().SignPubkeyB58)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grantPDA, err := deriveStorePublisherGrant(policyPDA, appID, publisherKey, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, pearlSignature, _, pearlKey, humanKey := newControlCommand(t, clock, "dossier-prepare", preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPrepare)
+	var pearlRaw [32]byte
+	copy(pearlRaw[:], pearlKey)
+	var humanRaw [32]byte
+	copy(humanRaw[:], humanKey)
+	releaseMeta := m.releaseEntry[f.relPDA]
+	publisherVault, err := primitives.PubkeyFromBase58(f.rel.LicenseSquadsVault)
+	if err != nil || publisherVault != releaseMeta.publisherSquadsVault {
+		t.Fatalf("fixture release does not bind the expected publisher vault: %v", err)
+	}
+	m.rawAccounts[policyPDA.Base58()] = controlPolicyBlob(license, primitives.StoreDomainHash(cfg.Domain), authority, authz, pearlRaw, humanRaw, 7)
+	// This grant deliberately has PREPARE and not PUBLISH. If the control path
+	// accidentally used the publish bit, this positive control must fail.
+	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, publisherVault, publisherKey, storePublisherActionPrepareRelease, 3, clock)
+
+	body := jsonPublishBody(t, prepareEnvelope, release, f.spk, f.metadata)
+	req := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(body.Bytes()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(controlCommandHeader, controlHeader(t, command))
+	req.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
+	// There is intentionally no offline-approval header. Preparation cannot
+	// publish and must not make an operator sign a mere private stage.
+	w := httptest.NewRecorder()
+	svc.handleControlRelease(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("control prepare got %d: %s", w.Code, w.Body.String())
+	}
+	var receipt StageReceipt
+	if err := json.Unmarshal(w.Body.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	if receipt.StageID != command.StageID {
+		t.Fatalf("prepare receipt stage = %s, want %s", receipt.StageID, command.StageID)
+	}
+	if _, _, _, _, _, err := loadStagedAppWithRuntimeContract(svc.cfg.PrivateStageDir, command.StageID); err != nil {
+		t.Fatalf("control prepare did not durably stage the candidate: %v", err)
+	}
+
+	// The old transport cannot use that publisher merely because the Pearl
+	// command succeeded: its static migration allowlist is empty.
+	legacyEnvelope := signPublishForRoute(t, publisher, op.Public(), f.spk, release, "/publish/stage", clock, 5*time.Minute, "legacy-nonce")
+	legacy := doStagePublish(t, svc, jsonPublishBody(t, legacyEnvelope, release, f.spk, f.metadata))
+	if legacy.Code != http.StatusForbidden || !strings.Contains(legacy.Body.String(), "accept_publishers") {
+		t.Fatalf("legacy route bypassed the empty migration allowlist: %d: %s", legacy.Code, legacy.Body.String())
 	}
 }
 
@@ -247,6 +347,9 @@ func envelopeSignedForControl(t *testing.T) envelope.Signed {
 func TestControlPublishHeaderAndRouteAreStrict(t *testing.T) {
 	if _, _, err := controlPublishRoute("/control/v1/releases/../publish"); err == nil {
 		t.Fatal("unsafe route accepted")
+	}
+	if _, _, err := controlPrepareRoute("/control/v1/releases/../prepare"); err == nil {
+		t.Fatal("unsafe prepare route accepted")
 	}
 	request := httptest.NewRequest(http.MethodPost, "/", nil)
 	request.Header.Set(controlCommandHeader, "not-base64")

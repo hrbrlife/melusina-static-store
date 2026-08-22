@@ -22,6 +22,7 @@ const (
 	controlCommandSchema          = "bazaar-control-command-v1"
 	pearlCommandSignatureSchema   = "bazaar-control-pearl-signature-v1"
 	offlineApprovalSchema         = "bazaar-control-offline-approval-v1"
+	controlCommandActionPrepare   = "prepare_release"
 	controlCommandActionPublish   = "publish_release"
 	maxControlCommandTTL          = 15 * time.Minute
 	controlCommandClockSkew       = 2 * time.Minute
@@ -123,7 +124,7 @@ func (c controlCommand) Validate(now time.Time) error {
 	if !isLowerHex(c.CommandID, 24) || !isLowerHex(c.Nonce, 24) {
 		return errors.New("control command id or nonce is not canonical")
 	}
-	if c.Action != controlCommandActionPublish || c.Method != "POST" || c.Route != "/control/v1/releases/"+c.DossierID+"/publish" {
+	if c.Method != "POST" || !c.hasExpectedRoute() {
 		return errors.New("control command has an invalid action target")
 	}
 	if c.PolicyEpoch == 0 || c.GrantEpoch == 0 {
@@ -145,6 +146,17 @@ func (c controlCommand) Validate(now time.Time) error {
 		return errors.New("control command is expired or has an invalid time window")
 	}
 	return nil
+}
+
+func (c controlCommand) hasExpectedRoute() bool {
+	switch c.Action {
+	case controlCommandActionPrepare:
+		return c.Route == "/control/v1/releases/"+c.DossierID+"/prepare"
+	case controlCommandActionPublish:
+		return c.Route == "/control/v1/releases/"+c.DossierID+"/publish"
+	default:
+		return false
+	}
 }
 
 func isLowerHex(value string, length int) bool {
@@ -185,9 +197,13 @@ func pearlCommandSignaturePayload(command controlCommand) []byte {
 // the Pearl's offline-signature payload and ends in the complete command
 // digest, which binds every omitted-looking field too.
 func (c controlCommand) HumanSigningText() string {
+	action := "publish this exact release"
+	if c.Action == controlCommandActionPrepare {
+		action = "prepare this exact release"
+	}
 	return strings.Join([]string{
 		"Bazaar release approval",
-		"Action: publish this exact release",
+		"Action: " + action,
 		"Store: " + c.StorePolicy,
 		"App: " + c.AppID,
 		"Version: " + c.Version,
@@ -200,6 +216,9 @@ func (c controlCommand) HumanSigningText() string {
 }
 
 func verifyOfflineControlApproval(command controlCommand, approval offlineControlApproval, policy storeControlPolicyMeta, now time.Time) error {
+	if command.Action != controlCommandActionPublish {
+		return errors.New("offline approval is required only for publish_release")
+	}
 	if approval.Schema != offlineApprovalSchema || approval.CommandDigest != command.Digest() || approval.SignedAt.IsZero() || approval.SignedAt.Before(command.IssuedAt.Add(-controlCommandClockSkew)) || approval.SignedAt.After(command.ExpiresAt) || approval.SignedAt.After(now.UTC().Add(controlCommandClockSkew)) {
 		return errors.New("offline approval does not bind this exact live command")
 	}
@@ -240,10 +259,23 @@ func verifyPearlControlCommand(command controlCommand, signature pearlCommandSig
 	if err != nil || len(sigBytes) != ed25519.SignatureSize || !ed25519.Verify(ed25519.PublicKey(policy.PearlCommandPublicKey[:]), pearlCommandSignaturePayload(command), sigBytes) {
 		return errors.New("control command signature is not valid for the active Pearl key")
 	}
-	if !grant.Active || grant.Policy != command.StorePolicy || grant.PDA != command.PublisherGrant || grant.GrantEpoch != command.GrantEpoch || grant.AppID != facts.AppID || grant.PublisherSquadsVault != facts.PublisherSquadsVault || grant.PublisherEd25519Pubkey != facts.PublisherEd25519PublicKey || grant.Actions&storePublisherActionPublishRelease == 0 || now.UTC().Before(grant.NotBefore) || !now.UTC().Before(grant.ExpiresAt) {
+	requiredAction := storePublisherActionForControl(command.Action)
+	if requiredAction == 0 || !grant.Active || grant.Policy != command.StorePolicy || grant.PDA != command.PublisherGrant || grant.GrantEpoch != command.GrantEpoch || grant.AppID != facts.AppID || grant.PublisherSquadsVault != facts.PublisherSquadsVault || grant.PublisherEd25519Pubkey != facts.PublisherEd25519PublicKey || grant.Actions&requiredAction == 0 || now.UTC().Before(grant.NotBefore) || !now.UTC().Before(grant.ExpiresAt) {
 		return errors.New("control command publisher grant is not active for this release")
 	}
 	return nil
 }
 
+func storePublisherActionForControl(action string) uint16 {
+	switch action {
+	case controlCommandActionPrepare:
+		return storePublisherActionPrepareRelease
+	case controlCommandActionPublish:
+		return storePublisherActionPublishRelease
+	default:
+		return 0
+	}
+}
+
+const storePublisherActionPrepareRelease uint16 = 1 << 0
 const storePublisherActionPublishRelease uint16 = 1 << 1

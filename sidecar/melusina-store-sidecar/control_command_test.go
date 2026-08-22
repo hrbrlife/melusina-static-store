@@ -115,3 +115,23 @@ func TestOfflineApprovalRequiresTheDistinctPolicyBoundHumanKey(t *testing.T) {
 		t.Fatal("approval from a non-policy signer was accepted")
 	}
 }
+
+func TestOfflineApprovalCannotAuthorizePreparation(t *testing.T) {
+	command, _, policy, _, _, now := signedControlFixture(t)
+	command.Action = controlCommandActionPrepare
+	command.Route = "/control/v1/releases/" + command.DossierID + "/prepare"
+	humanPublic, humanPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copy(policy.HumanApprovalPublicKey[:], humanPublic)
+	approval := offlineControlApproval{
+		Schema: offlineApprovalSchema, CommandDigest: command.Digest(),
+		SignerPublicKey: base64.RawURLEncoding.EncodeToString(humanPublic),
+		Signature:       base64.RawURLEncoding.EncodeToString(ed25519.Sign(humanPrivate, []byte(command.HumanSigningText()))),
+		SignedAt:        now,
+	}
+	if err := verifyOfflineControlApproval(command, approval, policy, now); err == nil || !strings.Contains(err.Error(), "only for publish") {
+		t.Fatalf("offline approval unexpectedly authorized preparation: %v", err)
+	}
+}

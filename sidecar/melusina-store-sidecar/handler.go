@@ -332,7 +332,7 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	// Typed human-reviewed release commands. This prefix handler performs its
 	// own exact dossier-path check and cannot fall through to /publish.
-	mux.HandleFunc("/control/v1/releases/", svc.handleControlPublish)
+	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -397,6 +397,20 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 // envelope, exact app hash, store operator authority, path policy, and
 // blacklists, but deliberately does not assemble or expose the candidate.
 func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppStage(w, r, "/publish/stage", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	}, nil)
+}
+
+// handleAppStage is the one private-candidate implementation. Route-specific
+// authority selects the publisher resolver, but every caller shares the same
+// envelope, chain/store, blacklist, capacity, nonce, persistence, and signed
+// stage-receipt checks. A successful stage never selects catalog content.
+func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -409,7 +423,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	preflight, err := s.preflightAppPublish(r, "/publish/stage")
+	preflight, err := s.preflightAppPublishWithPublisher(r, route, resolvePublisher)
 	if err != nil {
 		http.Error(w, err.Error(), appPreflightErrorStatus(err))
 		return
@@ -427,6 +441,12 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 	if s.appNonces == nil {
 		http.Error(w, "check=nonce_ledger: durable app nonce ledger is not initialized", http.StatusServiceUnavailable)
 		return
+	}
+	if criticalCheck != nil {
+		if err := criticalCheck(preflight, lockedNow); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusForbidden)
+			return
+		}
 	}
 	operatorPub, err := signPubkey32(s.operator.Public())
 	if err != nil {

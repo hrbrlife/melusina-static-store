@@ -31,6 +31,7 @@ const (
 	releasePreparationJobCollection        = "release-preparation-jobs"
 	releaseFinalizationJobCollection       = "release-finalization-jobs"
 	tenantProofJobCollection               = "tenant-proof-jobs"
+	tenantProofResumeSchema                = "bazaar-control-tenant-proof-resume-request-v1"
 	maxJobRequestBytes               int64 = 64 << 10
 	// A complete build result includes the candidate JSON body encoded as
 	// base64url. The Pearl enforces the same candidate cap after decoding.
@@ -175,13 +176,22 @@ func (h *Handler) handleJob(w http.ResponseWriter, r *http.Request, collection s
 		h.handleJobStart(w, r, collection)
 		return
 	}
+	if r.Method == http.MethodPost && collection == tenantProofJobCollection {
+		id, ok := tenantProofResumeRoute(r.URL.Path)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		h.handleTenantProofResume(w, r, id)
+		return
+	}
 	if r.Method == http.MethodGet {
 		id, ok := jobResultRoute(r.URL.Path, collection)
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
-		h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodGet, Path: "/v1/" + collection + "/" + id, Body: io.NopCloser(strings.NewReader(""))}, false)
+		h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodGet, Path: "/v1/" + collection + "/" + id, Body: io.NopCloser(strings.NewReader(""))}, false, false)
 		return
 	}
 	methodNotAllowed(w)
@@ -202,10 +212,33 @@ func (h *Handler) handleJobStart(w http.ResponseWriter, r *http.Request, collect
 		http.Error(w, "Verification job does not bind one release.", http.StatusBadRequest)
 		return
 	}
-	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: "/v1/" + collection, Body: io.NopCloser(bytes.NewReader(body))}, true)
+	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: "/v1/" + collection, Body: io.NopCloser(bytes.NewReader(body))}, true, false)
 }
 
-func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, collection string, request WorkerRequest, start bool) {
+// handleTenantProofResume preserves the human's explicit recovery boundary.
+// The Pearl's operator-only Resume safely action can name only the already
+// persisted job and its immutable release facts. Store Link validates that
+// narrow shape then forwards it to the one fixed proof worker; it cannot accept
+// a caller-selected retry target, selector, browser command, or job action.
+func (h *Handler) handleTenantProofResume(w http.ResponseWriter, r *http.Request, jobID string) {
+	if r.ContentLength > maxJobRequestBytes || !isJSONContentType(r.Header.Get("Content-Type")) {
+		http.Error(w, "Tenant proof resume requires a bounded application/json request.", http.StatusBadRequest)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxJobRequestBytes)
+	body, err := io.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		http.Error(w, "Tenant proof resume request could not be read.", http.StatusBadRequest)
+		return
+	}
+	if err := validateTenantProofResume(jobID, body); err != nil {
+		http.Error(w, "Tenant proof resume does not bind one persisted release.", http.StatusBadRequest)
+		return
+	}
+	h.forwardJobResponse(w, r, tenantProofJobCollection, WorkerRequest{Method: http.MethodPost, Path: "/v1/" + tenantProofJobCollection + "/" + jobID + "/resume", Body: io.NopCloser(bytes.NewReader(body))}, true, true)
+}
+
+func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, collection string, request WorkerRequest, start, resume bool) {
 	defer request.Body.Close()
 	var (
 		response WorkerResponse
@@ -228,7 +261,7 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 		http.Error(w, "Verification worker is temporarily unavailable.", http.StatusBadGateway)
 		return
 	}
-	if response.Body == nil || !allowedJobStatus(response.StatusCode, start) || response.ContentLength > jobResponseLimit(collection, start) {
+	if response.Body == nil || !allowedJobStatus(response.StatusCode, start, resume) || response.ContentLength > jobResponseLimit(collection, start) {
 		if response.Body != nil {
 			_ = response.Body.Close()
 		}
@@ -248,7 +281,12 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 	_, _ = io.Copy(w, io.LimitReader(response.Body, jobResponseLimit(collection, start)+1))
 }
 
-func allowedJobStatus(status int, start bool) bool {
+func allowedJobStatus(status int, start, resume bool) bool {
+	if resume {
+		// The worker may either acknowledge an exact resumed job or leave the
+		// release visibly blocked. It may not return a proof through this route.
+		return status == http.StatusAccepted || status == http.StatusConflict
+	}
 	if start {
 		return status == http.StatusAccepted
 	}
@@ -294,6 +332,12 @@ type proofStartRequest struct {
 	PackageID     string `json:"packageId"`
 	AppHash       string `json:"appHash"`
 	ReleaseHash   string `json:"releaseHash"`
+	ReleaseDigest string `json:"releaseDigest"`
+}
+
+type proofResumeRequest struct {
+	Schema        string `json:"schema"`
+	DossierID     string `json:"dossierId"`
 	ReleaseDigest string `json:"releaseDigest"`
 }
 
@@ -392,6 +436,22 @@ func validateJobStart(collection string, body []byte) error {
 	return nil
 }
 
+func validateTenantProofResume(jobID string, body []byte) error {
+	if !isLowerHex(jobID, 24) {
+		return errors.New("tenant proof resume job is invalid")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	var value proofResumeRequest
+	if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("tenant proof resume JSON is malformed")
+	}
+	if value.Schema != tenantProofResumeSchema || !isLowerHex(value.DossierID, 24) || !isLowerHex(value.ReleaseDigest, 64) {
+		return errors.New("tenant proof resume is not exact")
+	}
+	return nil
+}
+
 func jobResultRoute(path, collection string) (string, bool) {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	if len(parts) != 3 || parts[0] != "v1" || parts[1] != collection || !isLowerHex(parts[2], 24) {
@@ -400,9 +460,21 @@ func jobResultRoute(path, collection string) (string, bool) {
 	return parts[2], true
 }
 
+func tenantProofResumeRoute(path string) (string, bool) {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(parts) != 4 || parts[0] != "v1" || parts[1] != tenantProofJobCollection || parts[3] != "resume" || !isLowerHex(parts[2], 24) {
+		return "", false
+	}
+	return parts[2], true
+}
+
 func canonicalJobPath(method, path, collection string) bool {
 	if method == http.MethodPost {
-		return path == "/v1/"+collection
+		if path == "/v1/"+collection {
+			return true
+		}
+		_, ok := tenantProofResumeRoute(path)
+		return collection == tenantProofJobCollection && ok
 	}
 	if method == http.MethodGet {
 		_, ok := jobResultRoute(path, collection)

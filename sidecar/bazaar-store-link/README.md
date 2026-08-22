@@ -22,6 +22,7 @@ The connector currently exposes exactly this fixed vocabulary:
 - `POST /v1/release-preparation-jobs`, `GET /v1/release-preparation-jobs/<24-lower-hex>`
 - `POST /v1/release-finalization-jobs`, `GET /v1/release-finalization-jobs/<24-lower-hex>`
 - `POST /v1/tenant-proof-jobs`, `GET /v1/tenant-proof-jobs/<24-lower-hex>`
+- `POST /v1/tenant-proof-jobs/<24-lower-hex>/resume`
 
 It cannot accept a caller-chosen URL, method, sidecar path, transaction,
 signing request, artifact body/path/URL, publisher lifecycle request, generic
@@ -33,6 +34,14 @@ object from its fixed content-addressed artifact vault. For release commands it 
 Pearl signature, and—for publication—the offline approval. The sidecar still
 verifies the same command, publisher grant, artifact, chain facts, predecessor,
 and listing-before-selector rule independently.
+
+The proof-resume route is deliberately not a generic job action. It accepts
+only the exact `bazaar-control-tenant-proof-resume-request-v1` body containing
+the existing dossier ID and release digest, and forwards it only to the pinned
+proof worker. The worker independently requires that the named job is already
+`Needs attention` and that those facts match its durable record. It returns a
+job acknowledgement or the same visible `Needs attention` state; the Pearl
+must poll the signed attestation separately before marking a release live.
 
 ## Deployment boundary
 

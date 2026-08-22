@@ -184,6 +184,14 @@ func proofJobRequest(t *testing.T) *http.Request {
 	return request
 }
 
+func proofResumeHTTPRequest(t *testing.T, jobID, dossierID, releaseDigest string) *http.Request {
+	t.Helper()
+	body := `{"schema":"bazaar-control-tenant-proof-resume-request-v1","dossierId":"` + dossierID + `","releaseDigest":"` + releaseDigest + `"}`
+	request := httptest.NewRequest(http.MethodPost, "/v1/tenant-proof-jobs/"+jobID+"/resume", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	return request
+}
+
 func preparationJobRequest(t *testing.T) *http.Request {
 	t.Helper()
 	body := `{"schema":"bazaar-control-release-preparation-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
@@ -408,6 +416,24 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 		t.Fatalf("proof poll path = %q", workers.proofRequests[1].Path)
 	}
 
+	workers.proofResponse = WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-tenant-proof-job-v1"}`))}
+	resumeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(resumeRecorder, proofResumeHTTPRequest(t, testDossierID, testDossierID, strings.Repeat("d", 64)))
+	if resumeRecorder.Code != http.StatusAccepted || len(workers.proofRequests) != 3 {
+		t.Fatalf("proof resume status/requests = %d/%d", resumeRecorder.Code, len(workers.proofRequests))
+	}
+	resume := workers.proofRequests[2]
+	if resume.Method != http.MethodPost || resume.Path != "/v1/tenant-proof-jobs/0123456789abcdef01234567/resume" {
+		t.Fatalf("proof resume worker request = %s %s", resume.Method, resume.Path)
+	}
+	resumeBody, err := io.ReadAll(resume.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(resumeBody) != `{"schema":"bazaar-control-tenant-proof-resume-request-v1","dossierId":"0123456789abcdef01234567","releaseDigest":"`+strings.Repeat("d", 64)+`"}` {
+		t.Fatalf("proof resume body = %q", resumeBody)
+	}
+
 	workers.preparationResponse = WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-job-v1"}`))}
 	pollRecorder = httptest.NewRecorder()
 	handler.ServeHTTP(pollRecorder, httptest.NewRequest(http.MethodGet, "/v1/release-preparation-jobs/0123456789abcdef01234567", nil))
@@ -509,6 +535,21 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	handler.ServeHTTP(wrongRecorder, wrongRoute)
 	if wrongRecorder.Code != http.StatusMethodNotAllowed || len(workers.buildRequests) != 0 {
 		t.Fatalf("wrong job route status/requests = %d/%d", wrongRecorder.Code, len(workers.buildRequests))
+	}
+
+	badResume := proofResumeHTTPRequest(t, testDossierID, "not-a-dossier", strings.Repeat("d", 64))
+	badResumeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(badResumeRecorder, badResume)
+	if badResumeRecorder.Code != http.StatusBadRequest || len(workers.proofRequests) != 0 {
+		t.Fatalf("bad proof resume status/requests = %d/%d", badResumeRecorder.Code, len(workers.proofRequests))
+	}
+
+	inventedAction := httptest.NewRequest(http.MethodPost, "/v1/tenant-proof-jobs/0123456789abcdef01234567/delete", strings.NewReader(`{"schema":"bazaar-control-tenant-proof-resume-request-v1","dossierId":"`+testDossierID+`","releaseDigest":"`+strings.Repeat("d", 64)+`"}`))
+	inventedAction.Header.Set("Content-Type", "application/json")
+	inventedRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(inventedRecorder, inventedAction)
+	if inventedRecorder.Code != http.StatusNotFound || len(workers.proofRequests) != 0 {
+		t.Fatalf("invented proof action status/requests = %d/%d", inventedRecorder.Code, len(workers.proofRequests))
 	}
 }
 

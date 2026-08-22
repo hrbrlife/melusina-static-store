@@ -74,7 +74,7 @@ func (v *Vault) Store(ctx context.Context, body []byte) (Descriptor, error) {
 	}
 	sum := sha256.Sum256(body)
 	descriptor := Descriptor{SHA256: hex.EncodeToString(sum[:]), Bytes: int64(len(body))}
-	if err := descriptor.validate(v.maxBytes); err != nil {
+	if err := descriptor.Validate(v.maxBytes); err != nil {
 		return Descriptor{}, err
 	}
 	v.mu.Lock()
@@ -117,7 +117,7 @@ func (v *Vault) Load(ctx context.Context, descriptor Descriptor) ([]byte, error)
 	if v == nil {
 		return nil, errors.New("artifact vault is unavailable")
 	}
-	if err := descriptor.validate(v.maxBytes); err != nil {
+	if err := descriptor.Validate(v.maxBytes); err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -143,7 +143,7 @@ func (v *Vault) Load(ctx context.Context, descriptor Descriptor) ([]byte, error)
 }
 
 func (v *Vault) path(descriptor Descriptor) (string, error) {
-	if err := descriptor.validate(v.maxBytes); err != nil {
+	if err := descriptor.Validate(v.maxBytes); err != nil {
 		return "", err
 	}
 	return filepath.Join(v.objects, descriptor.SHA256), nil
@@ -182,7 +182,9 @@ func (v *Vault) readLocked(path string, descriptor Descriptor) ([]byte, bool, er
 	return body, true, nil
 }
 
-func (d Descriptor) validate(maxBytes int64) error {
+// Validate confirms that a descriptor is safe to use with a vault configured
+// for maxBytes. It never opens a path or performs I/O.
+func (d Descriptor) Validate(maxBytes int64) error {
 	if !lowerHex(d.SHA256, 64) || d.Bytes <= 0 || d.Bytes > maxBytes {
 		return errors.New("artifact descriptor is incomplete or exceeds its configured limit")
 	}

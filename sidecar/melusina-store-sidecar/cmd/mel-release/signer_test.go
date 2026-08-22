@@ -92,6 +92,49 @@ printf '%s|%s|%s\n' "$1" "$MEL_RELEASE_SQUADS_MULTISIG" "$MEL_RELEASE_SQUADS_VAU
 	}
 }
 
+func TestPreflightProviderStripsEveryLegacyMutationCredential(t *testing.T) {
+	dir := t.TempDir()
+	capture := filepath.Join(dir, "capture")
+	script := filepath.Join(dir, "capture-provider.sh")
+	const body = `#!/bin/sh
+for key in \
+  MEL_RELEASE_STORE_PUBKEY MEL_RELEASE_STORE_LICENSE_MINT MEL_RELEASE_LICENSE_MINT \
+  MEL_RELEASE_PUBLISHER_KEY MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBERS \
+  MEL_RELEASE_SQUADS_NODE_MODULES MEL_RELEASE_SQUADS_EXECUTOR MEL_RELEASE_REGISTER_EXECUTOR \
+  MEL_RELEASE_PEARL_TOOL MEL_RELEASE_RUNTIME_ENV MEL_RELEASE_MEMBER_KEYPAIR_0 \
+  SQUADS_MEMBER_KEYPAIRS TEST_WALLETS_DIR
+do
+  if printenv "$key" >/dev/null; then printf '%s\n' "$key" >> "$MEL_CAPTURE"; fi
+done
+printf 'source=%s\n' "$MEL_RELEASE_SOURCE_ROOT" >> "$MEL_CAPTURE"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MEL_CAPTURE", capture)
+	t.Setenv("MEL_RELEASE_SOURCE_ROOT", "/approved/source")
+	for _, key := range []string{
+		"MEL_RELEASE_STORE_PUBKEY", "MEL_RELEASE_STORE_LICENSE_MINT", "MEL_RELEASE_LICENSE_MINT",
+		"MEL_RELEASE_PUBLISHER_KEY", "MEL_RELEASE_AUTHOR_KEYPAIR", "MEL_RELEASE_SQUADS_MEMBERS",
+		"MEL_RELEASE_SQUADS_NODE_MODULES", "MEL_RELEASE_SQUADS_EXECUTOR", "MEL_RELEASE_REGISTER_EXECUTOR",
+		"MEL_RELEASE_PEARL_TOOL", "MEL_RELEASE_RUNTIME_ENV", "MEL_RELEASE_MEMBER_KEYPAIR_0",
+		"SQUADS_MEMBER_KEYPAIRS", "TEST_WALLETS_DIR",
+	} {
+		t.Setenv(key, "/credential/"+strings.ToLower(key))
+	}
+	p := newPreflightExecProvider(Config{SignerProvider: script, StoreURL: defaultBazaarOrigin, ConfigPath: "/catalog", StateDir: dir, OpTimeoutSecs: 1})
+	if err := p.Build("app", "1.2.3", filepath.Join(dir, "build.json")); err != nil {
+		t.Fatalf("preflight Build: %v", err)
+	}
+	got, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "source=/approved/source\n"; string(got) != want {
+		t.Fatalf("preflight provider inherited credentials: %q, want %q", got, want)
+	}
+}
+
 func TestExecProviderRejectsForeignProposalAuthorityBeforeInvocation(t *testing.T) {
 	p := &execProvider{command: "false", timeout: time.Second, env: map[string]string{
 		"MEL_RELEASE_SQUADS_MULTISIG": "catalog-multisig",

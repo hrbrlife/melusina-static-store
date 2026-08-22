@@ -3,6 +3,8 @@
 #
 # Usage:
 #   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
+#     scripts/default-bazaar-release.sh preflight --app <appId|slug> --version <version>
+#   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
 #     scripts/default-bazaar-release.sh publish --app <appId|slug> --version <version>
 #   MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
 #     scripts/default-bazaar-release.sh approve --app <appId|slug>
@@ -34,6 +36,31 @@ pin() {
   fi
   export "$name=$want"
 }
+
+# Preflight is deliberately before the legacy release-runtime module. That
+# module names publisher and shared-Squads key paths for the historical
+# publish/approve commands; a source-to-package check must not load, validate,
+# or pass any of them into its child process. This branch uses only catalog,
+# source, public Store/chain bindings, and a private state directory.
+if [[ "${1:-}" = preflight ]]; then
+  : "${MEL_RELEASE_SOURCE_ROOT:?MEL_RELEASE_SOURCE_ROOT is required}"
+  [[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
+  pin MEL_RELEASE_STORE_URL 'https://bazaar.melusina-os.org'
+  pin MEL_RELEASE_BUNDLE_ORIGIN 'https://bazaar.melusina-os.org'
+  pin MEL_RELEASE_STORE_ID 'melusina-os-root-store'
+  pin MEL_RELEASE_RPC_URL 'https://api.devnet.solana.com'
+  pin MEL_RELEASE_CHANNEL 'dev'
+  pin MEL_PROGRAM_ID '7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb'
+  pin MEL_RELEASE_MASTER_NFT_MINT 'B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe'
+  export MEL_RELEASE_CONFIG="$ROOT/fleet/bazaar-catalog.yaml"
+  export MEL_RELEASE_SIGNER_PROVIDER="$ROOT/sidecar/melusina-store-sidecar/scripts/mel-release-catalog-provider.sh"
+  export MEL_RELEASE_STATE_DIR="${MEL_RELEASE_STATE_DIR:-$DEFAULT_STATE_DIR}"
+  unset MEL_RELEASE_STORE_PUBKEY MEL_RELEASE_STORE_LICENSE_MINT MEL_RELEASE_LICENSE_MINT \
+    MEL_RELEASE_PUBLISHER_KEY MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBERS \
+    MEL_RELEASE_SQUADS_NODE_MODULES MEL_RELEASE_SQUADS_EXECUTOR MEL_RELEASE_PEARL_TOOL
+  cd "$ROOT/sidecar/melusina-store-sidecar"
+  exec go run ./cmd/mel-release "$@"
+fi
 
 runtime_env="${MEL_RELEASE_RUNTIME_ENV:-$DEFAULT_RUNTIME_ENV}"
 [[ "$runtime_env" = /* && "$runtime_env" != *'/../'* ]] || die 'MEL_RELEASE_RUNTIME_ENV must be an absolute clean path'
@@ -110,11 +137,11 @@ case "${1:-}" in
       "$MEL_RELEASE_SQUADS_PROGRAM_ID" "$MEL_RELEASE_SQUADS_THRESHOLD" "$MEL_RELEASE_SQUADS_MEMBER_COUNT" "$MEL_RELEASE_CHANNEL"
     exit 0
     ;;
-  publish|approve|repair-catalog)
+  preflight|publish|approve|repair-catalog)
     need_source_root=yes
     ;;
   manifest|recover-live|abandon-init|reject-proposed) ;;
-  *) die 'usage: default-bazaar-release.sh [--print-config|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed] ...' ;;
+  *) die 'usage: default-bazaar-release.sh [--print-config|preflight|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed] ...' ;;
 esac
 
 if [[ "$need_source_root" = yes ]]; then

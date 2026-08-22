@@ -5,8 +5,9 @@ For the current release, the only configured public target is
 `https://bazaar.melusina-os.org`. The binary remains parameterized by
 `store.yaml`/`store.config.json` + three attest shards (never a code fork):
 
-1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (~40
-   Squads-signed apps), baked into every shell as the default app source + the
+1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (32
+   catalog apps: 19 tenant-installable and 13 policy-hidden), baked into every
+   shell as the default app source + the
    source for Sandstorm binary updates. `is_root=true`, no parent.
 2. **RESELLER** — an operator-configured reseller endpoint. Mirrors ROOT
    (via `root_store_url`) and adds reseller-specific apps.
@@ -50,6 +51,16 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   The public catalog listener returns `404` for that route. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either
   path.**
+- **Internal preflight** (not an HTTP route):
+  `scripts/default-bazaar-release.sh preflight --app <immutable-app-id>
+  --version <version>` is a worker-only source-to-package check. It stops at
+  an immutable source-bound preflight receipt—never a legacy release WAL or
+  nonce—and it cannot private-stage bytes, create a Squads proposal, approve or
+  execute one, register a listing, select a catalog, or call the sidecar write
+  surface. Its child provider receives the approved source root and public
+  catalog bindings, but strips all Store, publisher, Squads-member, and legacy
+  runtime credential variables. It is a preparation-worker primitive, not a
+  terminal, Pearl, or public publishing API.
 - **Ops:** `GET /healthz`
 
 ### Runtime-contract gate

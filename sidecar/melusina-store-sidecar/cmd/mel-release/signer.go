@@ -95,9 +95,10 @@ type SignerProvider interface {
 // execProvider satisfies SignerProvider by shelling to the configured governed
 // command with the request in the environment.
 type execProvider struct {
-	command string
-	env     map[string]string
-	timeout time.Duration
+	command            string
+	env                map[string]string
+	timeout            time.Duration
+	stripPreflightCred bool
 }
 
 func newExecProvider(c Config) *execProvider {
@@ -120,11 +121,33 @@ func newExecProvider(c Config) *execProvider {
 	}
 }
 
+// newPreflightExecProvider starts from the same trusted provider binding as a
+// normal release operation, but removes every credential-shaped input before
+// spawning the child. Preflight is intentionally useful with a terminal or a
+// control worker that has no publishing authority; merely leaving a key path in
+// its inherited environment would make that promise false.
+func newPreflightExecProvider(c Config) *execProvider {
+	p := newExecProvider(c)
+	p.stripPreflightCred = true
+	for _, name := range []string{
+		"MEL_RELEASE_STORE_PUBKEY",
+		"MEL_RELEASE_STORE_LICENSE_MINT",
+		"MEL_RELEASE_PUBLISHER_KEY",
+	} {
+		delete(p.env, name)
+	}
+	return p
+}
+
 func (e *execProvider) run(op string, env map[string]string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", e.command+" "+op)
-	cmd.Env = mergedEnvironment(os.Environ(), e.env, env)
+	base := os.Environ()
+	if e.stripPreflightCred {
+		base = withoutPreflightCredentials(base)
+	}
+	cmd.Env = mergedEnvironment(base, e.env, env)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -132,6 +155,46 @@ func (e *execProvider) run(op string, env map[string]string) (string, error) {
 		return "", fmt.Errorf("signer-provider %q failed: %w: %s", op, err, strings.TrimSpace(stderr.String()))
 	}
 	return stdout.String(), nil
+}
+
+// withoutPreflightCredentials removes every variable used by the legacy
+// publish/approval signers, including derived per-member paths. Keep this list
+// beside the provider seam so a new provider credential cannot quietly become
+// reachable from the source-to-package command.
+func withoutPreflightCredentials(base []string) []string {
+	filtered := make([]string, 0, len(base))
+	for _, item := range base {
+		name, _, ok := strings.Cut(item, "=")
+		if !ok || isPreflightCredentialName(name) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func isPreflightCredentialName(name string) bool {
+	if strings.HasPrefix(name, "MEL_RELEASE_MEMBER_KEYPAIR_") {
+		return true
+	}
+	switch name {
+	case "MEL_RELEASE_STORE_PUBKEY",
+		"MEL_RELEASE_STORE_LICENSE_MINT",
+		"MEL_RELEASE_LICENSE_MINT",
+		"MEL_RELEASE_PUBLISHER_KEY",
+		"MEL_RELEASE_AUTHOR_KEYPAIR",
+		"MEL_RELEASE_SQUADS_MEMBERS",
+		"MEL_RELEASE_SQUADS_NODE_MODULES",
+		"MEL_RELEASE_SQUADS_EXECUTOR",
+		"MEL_RELEASE_REGISTER_EXECUTOR",
+		"MEL_RELEASE_PEARL_TOOL",
+		"MEL_RELEASE_RUNTIME_ENV",
+		"SQUADS_MEMBER_KEYPAIRS",
+		"TEST_WALLETS_DIR":
+		return true
+	default:
+		return false
+	}
 }
 
 // mergedEnvironment removes ambient duplicates before adding the governed

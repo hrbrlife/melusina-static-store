@@ -20,6 +20,7 @@ The connector currently exposes exactly this fixed vocabulary:
 - `GET /v1/authority/<configured-store>/<app>/<publisher>`
 - `POST /v1/build-jobs`, `GET /v1/build-jobs/<24-lower-hex>`
 - `POST /v1/release-preparation-jobs`, `GET /v1/release-preparation-jobs/<24-lower-hex>`
+- `POST /v1/release-finalization-jobs`, `GET /v1/release-finalization-jobs/<24-lower-hex>`
 - `POST /v1/tenant-proof-jobs`, `GET /v1/tenant-proof-jobs/<24-lower-hex>`
 
 It cannot accept a caller-chosen URL, method, sidecar path, transaction,
@@ -51,6 +52,7 @@ Example shape (use real protected paths; do not commit this file):
   "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
   "buildWorkerUrl": "https://127.0.0.1:9461",
   "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
+  "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
   "tenantProofWorkerUrl": "https://127.0.0.1:9462",
   "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem"
 }
@@ -71,10 +73,10 @@ bazaar-store-link -config /etc/bazaar-store-link/config.json
 ## Current status
 
 This source is a verified connector boundary and durable-job relay, **not a
-deployed Golden MVP**. It requires separately deployed bounded build,
-release-preparation, and tenant-proof workers, which must persist their own
-jobs and return release-bound signed results. The relay intentionally rejects
-startup without the worker origins and their CA. Do not switch
+deployed Golden MVP**. It requires separately implemented and deployed bounded
+build, release-preparation, release-finalization, and tenant-proof workers,
+which must persist their own jobs and return release-bound signed results. The
+relay intentionally rejects startup without the worker origins and their CA. Do not switch
 `require_pearl_control_for_app_publish` on a live Store until the complete
 provisioning and one-app pilot in Bazaar Control's deployment requirements have
 passed.

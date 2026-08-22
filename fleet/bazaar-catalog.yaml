@@ -497,13 +497,13 @@ groups:
         admin_surface: same-pearl
       claude-melusina:
         appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h
-        # First governed Claude-Melusina candidate. The current direct release
-        # objective supersedes the historical 32-app pre-launch planning cut
-        # for this one onboarding. This dev-publish cut upgrades the runtime
-        # installation boundary and carries a session-only operator BYOK proxy;
-        # its source-selection receipt records the independent
-        # clean-clone/package evidence. No package or public pointer exists
-        # until the governed ceremony completes.
+        # First governed Claude-Melusina release. The 0.1.0 ceremony completed
+        # with ReleaseEntry 3iWLh4wXTf5mQTB4uKBQnVLZyKMS1emJbPeG75Ry1CQn
+        # Active for appHash d5274d6f2fb90305b6506d8c71bc3f4e820f15fe06de81e6d53419dbd21b814b.
+        # Its exact 5ac624283edf56e5031cb3c765a40ac4 package, final release
+        # receipt, and materialized runtime contract are recorded in the
+        # catalog slot below; source provenance remains the independent clean
+        # clone/package evidence named by this selection receipt.
         source_path: claude-melusina
         source_commit: 498dbf93c385f23517101748bc8017585a6a2042
         source_baseline_branch: main

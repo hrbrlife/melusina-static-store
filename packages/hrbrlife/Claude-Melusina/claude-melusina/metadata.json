@@ -1,0 +1,32 @@
+{
+  "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
+  "name": "Claude-Melusina",
+  "version": "0.1.0",
+  "versionNumber": 1,
+  "marketingVersion": "0.1.0",
+  "shortDescription": "A shell and Claude Code, streamed to the browser, running out of the grain's own /var.",
+  "description": "EXPERIMENTAL. Claude-Melusina turns the grain sandbox's constraints into its design. /var is the only writable, persistent mount, and it is exec-capable, so the Claude Code binary and its loader are staged there once and survive restarts and package upgrades. A grain cannot allocate a PTY, so the shell is a pure-Go POSIX interpreter whose pipes stream to the browser over the WebSession response's streamed body arm, journalled to /var so a dropped connection or a grain restart costs nothing but a reconnect. A grain has no network, so model egress is a PowerBox HTTP-out capability granted from the setup screen and fronted by a loopback proxy.",
+  "categories": [
+    "Developer Tools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/Claude-Melusina",
+  "upstreamAuthor": "Alexei Karpov",
+  "createdAt": 1786855638563,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "screenshots": [],
+  "license": "Melusina Public License v3.0 (MPL-MEL-3.0) \u2014 source-available, not open source",
+  "tier": "experimental",
+  "domains": [],
+  "packageId": "5ac624283edf56e5031cb3c765a40ac4",
+  "sha256": "5ac624283edf56e5031cb3c765a40ac42f9d9a8221ef5ac5ae1d14a159ba51d0"
+}

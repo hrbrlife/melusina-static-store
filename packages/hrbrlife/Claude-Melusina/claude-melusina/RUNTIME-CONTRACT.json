@@ -1,0 +1,44 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "d5274d6f2fb90305b6506d8c71bc3f4e820f15fe06de81e6d53419dbd21b814b",
+    "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
+    "spkSha256": "5ac624283edf56e5031cb3c765a40ac42f9d9a8221ef5ac5ae1d14a159ba51d0",
+    "version": "0.1.0"
+  },
+  "cleanup": {
+    "steps": [
+      "Move the probe grain to Sandstorm Trash through its visible grain menu. Its /var, including the probe/ directory and every session transcript, is destroyed with it.",
+      "This probe stages no runtime, grants no PowerBox capability, and makes no outbound request: the grain has no route out of its network namespace until a capability is granted, which this probe deliberately does not do."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A newly installed Claude-Melusina grain reaches its setup screen, streams real shell output incrementally from the grain's own /var, keeps that transcript across a grain restart, and refuses a Claude turn it cannot service instead of appearing to accept one.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this release from the Melusina App Bazaar through the rendered Admin -> Updates control, then launch a NEW grain with the visible \"New Claude workspace\" action and open it as the grain owner.",
+        "expectedResult": "The setup screen renders all three steps: 'Network egress \u2014 PowerBox HTTP-out' reporting 'not configured'; 'Direct Anthropic API key' reporting 'choose egress' with its input disabled; and 'Claude Code runtime in /var/runtime' reporting 'not staged'. The console must NOT be visible underneath it. The header chips report a /var size, runtime 'not staged', and a mount state."
+      },
+      {
+        "action": "Click 'continue to the shell', then '+ shell', then run this exact command in the composer: A=FIR; B=ST; echo $A$B; sleep 3; echo DONE",
+        "expectedResult": "STREAMING, NOT BUFFERING - the line FIRST must appear in the transcript about three seconds BEFORE the line DONE. Both arriving together means the response was buffered and the release fails this probe. The markers are assembled from shell variables so the echoed command line cannot itself contain them."
+      },
+      {
+        "action": "In the same shell session run: mkdir -p probe && date > probe/stamp.txt && cat probe/stamp.txt && pwd",
+        "expectedResult": "The file is created and read back, and pwd reports a path under /var/workspace. This proves the grain's only writable mount is being used, by the pure-Go builtins that need no libc, loader or /bin - none of which this package ships."
+      },
+      {
+        "action": "PERSISTENCE - close the grain tab, use the Sandstorm grain menu to shut the grain down, then reopen it, choose the same session in the sessions rail, and run: pwd; cat probe/stamp.txt",
+        "expectedResult": "The earlier transcript is still present, pwd reports the same directory the session was left in, and the file written before the restart reads back unchanged. The session survived because it is a directory in /var, not a process."
+      },
+      {
+        "action": "NEGATIVE CONTROL - with no runtime staged and no egress capability granted, create a '+ claude' session and send any message.",
+        "expectedResult": "The message is REFUSED with a reason naming the missing precondition ('no Claude Code runtime staged under /var/runtime'). It must not be silently accepted, must not hang, and must not report a turn it cannot perform. A grain that accepts this message fails the probe."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": []
+}

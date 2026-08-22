@@ -367,7 +367,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	if exposeControl {
 		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	} else {
-		mux.HandleFunc("/control/v1/releases/", privateControlRouteOnly)
+		mux.HandleFunc("/control/v1/", privateControlRouteOnly)
 	}
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
@@ -431,6 +431,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	return mux
 }
 

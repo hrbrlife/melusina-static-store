@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -137,15 +138,19 @@ func TestIsolatedControlSurfaceDoesNotExistOnPublicCatalogListener(t *testing.T)
 	cfg, _ := testConfig(t)
 	cfg.PrivateStageDir = t.TempDir()
 	public, control := newRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, true)
-	request := httptest.NewRequest(http.MethodPost, "/control/v1/releases/dossier/prepare", nil)
-	response := httptest.NewRecorder()
-	public.ServeHTTP(response, request)
-	if response.Code != http.StatusNotFound {
-		t.Fatalf("public listener exposed Pearl control route: %d %s", response.Code, response.Body.String())
-	}
-	response = httptest.NewRecorder()
-	control.ServeHTTP(response, request)
-	if response.Code == http.StatusNotFound {
-		t.Fatal("private Pearl control surface did not own the exact route")
+	for _, request := range []*http.Request{
+		httptest.NewRequest(http.MethodPost, "/control/v1/releases/dossier/prepare", nil),
+		httptest.NewRequest(http.MethodGet, "/control/v1/authority/"+strings.Repeat("a", 52)+"/11111111111111111111111111111111", nil),
+	} {
+		response := httptest.NewRecorder()
+		public.ServeHTTP(response, request)
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("public listener exposed Pearl control route %s: %d %s", request.URL.Path, response.Code, response.Body.String())
+		}
+		response = httptest.NewRecorder()
+		control.ServeHTTP(response, request)
+		if response.Code == http.StatusNotFound {
+			t.Fatalf("private Pearl control surface did not own %s", request.URL.Path)
+		}
 	}
 }

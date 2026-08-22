@@ -28,6 +28,7 @@ const (
 	controlPublishPathPrefix     = "/control/v1/releases/"
 	controlPreparePathSuffix     = "/prepare"
 	controlPublishPathSuffix     = "/publish"
+	controlAuthorityPathPrefix   = "/control/v1/authority/"
 	controlCommandHeader         = "X-Bazaar-Control-Command"
 	controlPearlSignatureHeader  = "X-Bazaar-Pearl-Signature"
 	controlOfflineApprovalHeader = "X-Bazaar-Offline-Approval"
@@ -41,6 +42,25 @@ type controlExecution struct {
 	command  controlCommand
 	receipts *controlReceiptLedger
 }
+
+// controlAuthoritySnapshot is a read-only view of the active governed policy
+// and publisher grant. It lets the Pearl construct a short-lived command from
+// facts the sidecar itself has just read from chain; it is not a grant API and
+// never returns a signing key or transaction.
+type controlAuthoritySnapshot struct {
+	Schema         string    `json:"schema"`
+	StoreID        string    `json:"storeId"`
+	AppID          string    `json:"appId"`
+	StorePolicy    string    `json:"storePolicy"`
+	PolicyEpoch    uint64    `json:"policyEpoch"`
+	PublisherGrant string    `json:"publisherGrant"`
+	GrantEpoch     uint64    `json:"grantEpoch"`
+	Actions        []string  `json:"actions"`
+	NotBefore      time.Time `json:"notBefore"`
+	ExpiresAt      time.Time `json:"expiresAt"`
+}
+
+const controlAuthoritySnapshotSchema = "bazaar-control-authority-snapshot-v1"
 
 // handleControlRelease is the only Pearl route family. Its two exact actions
 // deliberately have different authority: prepare may persist an immutable
@@ -59,6 +79,81 @@ func (s *publishService) handleControlRelease(w http.ResponseWriter, r *http.Req
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// handleControlAuthority exposes one bounded, private read: the active policy
+// and app-scoped grant for the publisher identity already bound into a trusted
+// candidate. It belongs only on the Pearl mTLS listener. A caller cannot name a
+// policy PDA, select a different store, or mutate a chain record.
+func (s *publishService) handleControlAuthority(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	appText, publisherText, err := controlAuthorityRoute(r.URL.Path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if s == nil || s.cr == nil {
+		http.Error(w, "check=control_authority: chain reader is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	appID, err := controlSandstormAppID(appText)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	publisher, err := primitives.PubkeyFromBase58(publisherText)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	policy, err := fetchActiveStoreControlPolicy(r.Context(), s.cfg, s.cr)
+	if err != nil {
+		http.Error(w, "check=control_authority: store policy: "+err.Error(), http.StatusConflict)
+		return
+	}
+	grant, err := fetchStorePublisherGrant(r.Context(), s.cfg, s.cr, policy, appID, publisher)
+	if err != nil {
+		http.Error(w, "check=control_authority: publisher grant: "+err.Error(), http.StatusConflict)
+		return
+	}
+	if !grant.Active || grant.GrantEpoch == 0 || grant.NotBefore.After(s.currentTime().UTC()) || !grant.ExpiresAt.After(s.currentTime().UTC()) {
+		http.Error(w, "check=control_authority: publisher grant is not active", http.StatusConflict)
+		return
+	}
+	actions := make([]string, 0, 2)
+	if grant.Actions&storePublisherActionPrepareRelease != 0 {
+		actions = append(actions, controlCommandActionPrepare)
+	}
+	if grant.Actions&storePublisherActionPublishRelease != 0 {
+		actions = append(actions, controlCommandActionPublish)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(controlAuthoritySnapshot{
+		Schema:         controlAuthoritySnapshotSchema,
+		StoreID:        s.cfg.StoreID,
+		AppID:          appText,
+		StorePolicy:    policy.PDA,
+		PolicyEpoch:    policy.PolicyEpoch,
+		PublisherGrant: grant.PDA,
+		GrantEpoch:     grant.GrantEpoch,
+		Actions:        actions,
+		NotBefore:      grant.NotBefore.UTC(),
+		ExpiresAt:      grant.ExpiresAt.UTC(),
+	})
+}
+
+func controlAuthorityRoute(path string) (string, string, error) {
+	if !strings.HasPrefix(path, controlAuthorityPathPrefix) {
+		return "", "", errors.New("not a control authority route")
+	}
+	parts := strings.Split(strings.TrimPrefix(path, controlAuthorityPathPrefix), "/")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+		return "", "", errors.New("control authority route must name one app and publisher")
+	}
+	return parts[0], parts[1], nil
 }
 
 // handleControlPublish accepts only the one typed Pearl action. It is not a

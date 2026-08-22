@@ -423,6 +423,22 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 	}
 }
 
+func TestWorkerPollRelaysSafeNeedsAttentionState(t *testing.T) {
+	workers := &capturedWorkerForwarder{
+		finalizationResponse: WorkerResponse{
+			StatusCode: http.StatusConflict,
+			Header:     http.Header{"Content-Type": []string{"text/plain; charset=utf-8"}},
+			Body:       io.NopCloser(strings.NewReader("Release finalization needs attention. The catalog is unchanged.\n")),
+		},
+	}
+	handler := newJobTestHandler(t, &capturedForwarder{}, workers)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/release-finalization-jobs/0123456789abcdef01234567", nil))
+	if recorder.Code != http.StatusConflict || recorder.Body.String() != "Release finalization needs attention. The catalog is unchanged.\n" || len(workers.finalizationRequests) != 1 {
+		t.Fatalf("attention poll = %d %q requests=%d", recorder.Code, recorder.Body.String(), len(workers.finalizationRequests))
+	}
+}
+
 func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	forwarder := &capturedForwarder{}
 	noWorkers := newTestHandler(t, forwarder)

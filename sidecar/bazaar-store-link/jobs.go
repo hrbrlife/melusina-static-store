@@ -252,7 +252,10 @@ func allowedJobStatus(status int, start bool) bool {
 	if start {
 		return status == http.StatusAccepted
 	}
-	return status == http.StatusAccepted || status == http.StatusOK
+	// A worker may surface one bounded, human-safe conflict when it cannot
+	// continue an already persisted job. Preserve that state for the Pearl's
+	// “Needs attention” view rather than laundering it into a connector 502.
+	return status == http.StatusAccepted || status == http.StatusOK || status == http.StatusConflict
 }
 
 func jobResponseLimit(collection string, start bool) int64 {

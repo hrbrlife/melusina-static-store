@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -148,6 +149,7 @@ func main() {
 		log.Fatalf("catalog bootstrap: %v", err)
 	}
 	catalogState.ui = ui
+	catalogState.listingRegistrationRequired = strings.TrimSpace(cfg.StoreAuthority) != ""
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker

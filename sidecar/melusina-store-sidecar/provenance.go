@@ -15,15 +15,16 @@ import (
 // the RAW 96-byte tuple appHash||releaseHash||servingDomainHash (contract C-2);
 // hex/base58 in the JSON below are presentation only.
 type Receipt struct {
-	Schema            string             `json:"schema,omitempty"`
-	AppHash           string             `json:"appHash"`           // lowercase hex of [32]byte
-	ReleaseHash       string             `json:"releaseHash"`       // lowercase hex of [32]byte
-	ServingDomainHash string             `json:"servingDomainHash"` // lowercase hex of [32]byte (= StoreDomainHash(cfg.Domain))
-	OperatorSignature string             `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
-	StoredAt          int64              `json:"storedAt"`          // unix seconds
-	Stage             *StageReceipt      `json:"stage,omitempty"`
-	Rollout           *AppRolloutReceipt `json:"rollout,omitempty"`
-	Catalog           *AppCatalogPointer `json:"catalog,omitempty"`
+	Schema            string                      `json:"schema,omitempty"`
+	AppHash           string                      `json:"appHash"`           // lowercase hex of [32]byte
+	ReleaseHash       string                      `json:"releaseHash"`       // lowercase hex of [32]byte
+	ServingDomainHash string                      `json:"servingDomainHash"` // lowercase hex of [32]byte (= StoreDomainHash(cfg.Domain))
+	OperatorSignature string                      `json:"operatorSignature"` // base58 of the 64-byte ed25519 signature
+	StoredAt          int64                       `json:"storedAt"`          // unix seconds
+	Stage             *StageReceipt               `json:"stage,omitempty"`
+	Rollout           *AppRolloutReceipt          `json:"rollout,omitempty"`
+	Catalog           *AppCatalogPointer          `json:"catalog,omitempty"`
+	Listing           *listingRegistrationReceipt `json:"listing,omitempty"`
 }
 
 // receiptMessage assembles the EXACT bytes the operator signs / a verifier

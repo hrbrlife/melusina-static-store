@@ -39,17 +39,19 @@ const (
 // cache. The mutex enforces the SINGLE WRITER invariant — one in-flight publish
 // at a time.
 type publishService struct {
-	cfg                Config
-	cr                 chainReader
-	operator           *identity.Private
-	assembler          *CatalogAssembler
-	nonces             envelope.NonceCache // installer route only; app routes use appNonces
-	appNonces          *publishNonceLedger
-	catalogGenerations AppCatalogGenerationStore
-	catalogExpectedUID uint32
-	catalogExpectedGID uint32
-	now                func() time.Time
-	afterAppMutation   func(string) error // test-only crash seam; production nil
+	cfg                         Config
+	cr                          chainReader
+	operator                    *identity.Private
+	assembler                   *CatalogAssembler
+	nonces                      envelope.NonceCache // installer route only; app routes use appNonces
+	appNonces                   *publishNonceLedger
+	listingRegistrar            listingRegistrar
+	listingRegistrationRequired bool
+	catalogGenerations          AppCatalogGenerationStore
+	catalogExpectedUID          uint32
+	catalogExpectedGID          uint32
+	now                         func() time.Time
+	afterAppMutation            func(string) error // test-only crash seam; production nil
 
 	mu sync.Mutex // SINGLE WRITER: serializes the verify→assemble→receipt path
 }
@@ -244,22 +246,26 @@ type installerPublishRequest struct {
 // When non-nil, its verified snapshot is served under /root/ (X-Store-Origin:
 // root). The root operator passes nil (it originates, never mirrors).
 func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror) http.Handler {
-	return newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogRuntime{})
+	return newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogRuntime{
+		listingRegistrationRequired: strings.TrimSpace(cfg.StoreAuthority) != "",
+	})
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
 	mux := http.NewServeMux()
 
 	svc := &publishService{
-		cfg:                cfg,
-		cr:                 cr,
-		operator:           operator,
-		assembler:          NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
-		nonces:             envelope.NewMemoryNonceCache(),
-		appNonces:          runtime.appNonces,
-		catalogGenerations: runtime.catalogGenerations,
-		catalogExpectedUID: runtime.expectedUID,
-		catalogExpectedGID: runtime.expectedGID,
+		cfg:                         cfg,
+		cr:                          cr,
+		operator:                    operator,
+		assembler:                   NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir),
+		nonces:                      envelope.NewMemoryNonceCache(),
+		appNonces:                   runtime.appNonces,
+		listingRegistrar:            newBoundedListingRegistrar(cfg, cr, operator),
+		listingRegistrationRequired: runtime.listingRegistrationRequired,
+		catalogGenerations:          runtime.catalogGenerations,
+		catalogExpectedUID:          runtime.expectedUID,
+		catalogExpectedGID:          runtime.expectedGID,
 	}
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -637,6 +643,32 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=fault_after_generation_commit: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// A listing is a serve-time prerequisite, not post-publish repair work. When
+	// listing enforcement is active, verify/create the one exact on-chain
+	// projection before retaining rollout state or moving the public selector.
+	// A failure therefore leaves the prior catalog generation live and usable.
+	var listingReceipt *listingRegistrationReceipt
+	if s.listingRegistrationRequired {
+		if s.listingRegistrar == nil {
+			http.Error(w, "check=store_release_listing: listing enforcement is enabled but no bounded registrar is initialized", http.StatusServiceUnavailable)
+			return
+		}
+		registered, err := s.listingRegistrar.EnsureActive(r.Context(), listingRegistrationIntent{
+			StageID:       staged.StageID,
+			AppID:         staged.AppID,
+			AppHash:       staged.AppHash,
+			MasterNFTMint: preflight.release.MasterNftMint,
+		})
+		if err != nil {
+			http.Error(w, "check=store_release_listing: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		listingReceipt = &registered
+		if err := s.appMutationStep("after-listing-verified"); err != nil {
+			http.Error(w, "check=fault_after_listing_verified: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	if err := commitAppRollout(s.cfg, rollout); err != nil {
 		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -689,6 +721,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	receipt.Stage = &stageReceipt
 	receipt.Rollout = &rolloutReceipt
 	receipt.Catalog = &catalogPointer
+	receipt.Listing = listingReceipt
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)

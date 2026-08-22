@@ -17,6 +17,30 @@ import (
 
 const workerPreflightJobID = "000000000000000000000000"
 
+// VerifyControlPlane is the complete installer preflight. It verifies one
+// private ready-status observation through the pinned sidecar mTLS path, then
+// proves every pinned worker path using only the reserved no-job reads below.
+// It deliberately cannot exercise a release mutation or public catalog route.
+func VerifyControlPlane(ctx context.Context, config Config, sidecar Forwarder, workers WorkerForwarder) error {
+	if err := config.Validate(); err != nil {
+		return err
+	}
+	if sidecar == nil {
+		return errors.New("Store Link control-plane preflight requires a sidecar forwarder")
+	}
+	response, err := sidecar.Forward(ctx, ForwardRequest{Method: http.MethodGet, Path: "/control/v1/status", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+	if err != nil {
+		return fmt.Errorf("Store Link sidecar control-plane preflight: %w", err)
+	}
+	if err := verifyReadyStoreStatus(config.StoreID, response); err != nil {
+		return fmt.Errorf("Store Link sidecar control-plane preflight: %w", err)
+	}
+	if err := VerifyFixedWorkers(ctx, workers); err != nil {
+		return err
+	}
+	return nil
+}
+
 // VerifyFixedWorkers proves that every configured worker accepts Store Link's
 // pinned mTLS identity and exposes only its expected collection route. Each
 // worker must return 404 for the reserved job ID; any other response, TLS

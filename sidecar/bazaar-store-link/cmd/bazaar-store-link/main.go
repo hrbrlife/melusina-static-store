@@ -13,7 +13,11 @@ import (
 func main() {
 	configPath := flag.String("config", "", "absolute Store Link configuration path")
 	verifyWorkers := flag.Bool("verify-workers", false, "verify the four fixed worker mTLS routes without creating a job")
+	verifyControlPlane := flag.Bool("verify-control-plane", false, "verify the pinned sidecar ready status and four fixed worker routes without creating a job")
 	flag.Parse()
+	if *verifyWorkers && *verifyControlPlane {
+		log.Fatal("Store Link preflight: choose -verify-workers or -verify-control-plane, not both")
+	}
 	config, err := storelink.LoadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("Store Link config: %v", err)
@@ -25,6 +29,13 @@ func main() {
 	workers, err := storelink.NewWorkerForwarder(config)
 	if err != nil {
 		log.Fatalf("Store Link worker boundary: %v", err)
+	}
+	if *verifyControlPlane {
+		if err := storelink.VerifyControlPlane(context.Background(), config, forwarder, workers); err != nil {
+			log.Fatalf("Store Link control-plane preflight: %v", err)
+		}
+		log.Printf("Store Link control-plane preflight passed: sidecar ready and all four pinned worker routes refused the reserved job")
+		return
 	}
 	if *verifyWorkers {
 		if err := storelink.VerifyFixedWorkers(context.Background(), workers); err != nil {

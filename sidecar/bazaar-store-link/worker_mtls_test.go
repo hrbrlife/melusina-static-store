@@ -204,6 +204,104 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 	}
 }
 
+func TestSidecarForwarderUsesMutualTLSAndPinsSidecarLeaf(t *testing.T) {
+	ca, caKey := newWorkerTestCA(t)
+	sidecarLeaf := newWorkerTestLeaf(t, 2, "sidecar", x509.ExtKeyUsageServerAuth, ca, caKey)
+	storeLinkLeaf := newWorkerTestLeaf(t, 3, "store-link", x509.ExtKeyUsageClientAuth, ca, caKey)
+	otherStoreLinkLeaf := newWorkerTestLeaf(t, 4, "other-store-link", x509.ExtKeyUsageClientAuth, ca, caKey)
+	trustedClientDigest := sha256.Sum256(storeLinkLeaf.Certificate[0])
+	clientRoots := x509.NewCertPool()
+	clientRoots.AddCert(ca)
+
+	requests := 0
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/control/v1/status" {
+			t.Fatalf("sidecar route = %q", request.URL.Path)
+		}
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"schema":"bazaar-control-store-status-v1"}`))
+	}))
+	server.TLS = &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{sidecarLeaf},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    clientRoots,
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.VerifiedChains) == 0 || len(state.VerifiedChains[0]) == 0 {
+				return io.ErrUnexpectedEOF
+			}
+			actual := sha256.Sum256(state.VerifiedChains[0][0].Raw)
+			if actual != trustedClientDigest {
+				return io.ErrClosedPipe
+			}
+			return nil
+		},
+	}
+	server.StartTLS()
+	defer server.Close()
+
+	dir := t.TempDir()
+	clientCertPath, clientKeyPath := writeWorkerTestCertificate(t, dir, "store-link", storeLinkLeaf)
+	otherClientCertPath, otherClientKeyPath := writeWorkerTestCertificate(t, dir, "other-store-link", otherStoreLinkLeaf)
+	caPath := filepath.Join(dir, "sidecar-ca.crt")
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	config := testConfig()
+	config.SidecarURL = server.URL
+	config.ClientCertPath = clientCertPath
+	config.ClientKeyPath = clientKeyPath
+	config.SidecarCAPath = caPath
+	config.SidecarCertSHA256 = workerLeafDigest(sidecarLeaf)
+
+	forwarder, err := NewSidecarForwarder(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := forwarder.Forward(context.Background(), ForwardRequest{Method: http.MethodGet, Path: "/control/v1/status", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+	if err != nil {
+		t.Fatalf("pinned mTLS sidecar call: %v", err)
+	}
+	if response.StatusCode != http.StatusOK || requests != 1 {
+		t.Fatalf("pinned mTLS sidecar response/requests = %d/%d", response.StatusCode, requests)
+	}
+
+	wrongPin := config
+	wrongPin.SidecarCertSHA256 = strings.Repeat("a", sha256.Size*2)
+	forwarder, err = NewSidecarForwarder(wrongPin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forwarder.Forward(context.Background(), ForwardRequest{Method: http.MethodGet, Path: "/control/v1/status", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))}); err == nil {
+		t.Fatal("Store Link accepted a trusted-CA sidecar with the wrong leaf pin")
+	}
+	if requests != 1 {
+		t.Fatalf("wrong-pinned sidecar reached HTTP handler %d times", requests)
+	}
+
+	wrongClient := config
+	wrongClient.ClientCertPath, wrongClient.ClientKeyPath = otherClientCertPath, otherClientKeyPath
+	forwarder, err = NewSidecarForwarder(wrongClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forwarder.Forward(context.Background(), ForwardRequest{Method: http.MethodGet, Path: "/control/v1/status", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))}); err == nil {
+		t.Fatal("sidecar accepted a different Store Link leaf from the same CA")
+	}
+	if requests != 1 {
+		t.Fatalf("wrong Store Link client reached sidecar handler %d times", requests)
+	}
+
+	missingPin := config
+	missingPin.SidecarCertSHA256 = ""
+	if _, err := NewSidecarForwarder(missingPin); err == nil || !strings.Contains(err.Error(), "sidecarCertSha256") {
+		t.Fatalf("missing sidecar leaf pin error = %v", err)
+	}
+}
+
 func TestStoreLinkTLSInputsRequireProtectedRealFiles(t *testing.T) {
 	ca, caKey := newWorkerTestCA(t)
 	clientLeaf := newWorkerTestLeaf(t, 2, "store-link", x509.ExtKeyUsageClientAuth, ca, caKey)

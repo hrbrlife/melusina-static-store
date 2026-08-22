@@ -86,6 +86,7 @@ Example shape (use real protected paths; do not commit this file):
   "clientCertPath": "/etc/bazaar-store-link/client.pem",
   "clientKeyPath": "/etc/bazaar-store-link/client.key",
   "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
+  "sidecarCertSha256": "<lowercase sha256 of Store sidecar certificate DER>",
   "buildWorkerUrl": "https://127.0.0.1:9461",
   "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
   "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
@@ -103,6 +104,12 @@ service path. That network rule protects availability; it is not release
 authority. The actual mutation gate is the independently verified, expiring,
 single-use Pearl command plus the exact offline approval.
 
+`sidecarCaPath` establishes the Store-control trust root. It is deliberately
+not sufficient by itself: `sidecarCertSha256` is mandatory and pins the exact
+sidecar serving certificate DER before Store Link sends a private control
+request. The sidecar must in turn require TLS 1.3 and pin this Store Link
+client leaf. A same-CA sidecar certificate is not an acceptable substitute.
+
 `workerCaPath` establishes the worker-serving trust root. It is deliberately
 not sufficient by itself: the four `*WorkerCertSha256` values are mandatory
 per-worker SHA-256 digests over the serving certificate DER. Store Link pins
@@ -113,21 +120,25 @@ Store Link client leaf. The same Store Link client key may be presented to all
 four workers, but each worker result key and serving certificate is distinct.
 
 The example digests are placeholders and fail closed. The deployer must replace
-all four alongside the private origins, CA, and Store Link client key; a
-missing finalization origin or any missing/invalid worker pin prevents startup.
+the sidecar and all four worker pins alongside the private origins, CAs, and
+Store Link client key; a missing finalization origin or any missing/invalid pin
+prevents the relevant connector from starting.
 
 Before enabling the service for a pilot, the deployer runs the one fixed,
-read-only worker preflight:
+read-only control-plane preflight:
 
 ```text
-bazaar-store-link -config /etc/bazaar-store-link/config.json -verify-workers
+bazaar-store-link -config /etc/bazaar-store-link/config.json -verify-control-plane
 ```
 
-It sends four TLS-authenticated `GET`s for a reserved nonexistent job ID and
-requires `404 Not Found` from build, preparation, finalization, and proof. It
-cannot create a job, build an artifact, start a browser, or publish a release.
-Any other status or TLS failure is a deployment hold. This is not part of the
-human release screen or a recovery shortcut.
+It first makes one mutually authenticated `GET /control/v1/status` through the
+pinned sidecar and requires its exact `ready` Store snapshot. Only then does it
+send four TLS-authenticated `GET`s for a reserved nonexistent job ID and require
+`404 Not Found` from build, preparation, finalization, and proof. It cannot
+create a job, build an artifact, start a browser, or publish a release. Any
+status, schema, TLS, or leaf-pin failure is a deployment hold. This is not part
+of the human release screen or a recovery shortcut. `-verify-workers` remains a
+lower-level route diagnostic; it does not establish sidecar readiness.
 
 Run the service only after the sidecar has a dedicated TLS-1.3 control listener
 configured with this connector's exact client-leaf digest:

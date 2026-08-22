@@ -9,8 +9,10 @@
 package storelink
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -45,6 +47,10 @@ type Config struct {
 	ClientCertPath string `json:"clientCertPath"`
 	ClientKeyPath  string `json:"clientKeyPath"`
 	SidecarCAPath  string `json:"sidecarCaPath"`
+	// SidecarCertSHA256 pins the sidecar serving leaf in addition to its CA.
+	// The sidecar separately pins this connector's client leaf, so the private
+	// control hop has a single exact identity in both directions.
+	SidecarCertSHA256 string `json:"sidecarCertSha256"`
 	// BuildWorkerURL, ReleasePreparationWorkerURL, ReleaseFinalizationWorkerURL,
 	// and TenantProofWorkerURL are
 	// separate fixed, private origins. They are used only by
@@ -149,6 +155,10 @@ func NewSidecarForwarder(config Config) (*SidecarForwarder, error) {
 	if err != nil {
 		return nil, err
 	}
+	sidecarPin, err := certificateLeafPin("sidecarCertSha256", config.SidecarCertSHA256)
+	if err != nil {
+		return nil, err
+	}
 	certificate, err := loadStoreLinkClientIdentity(config.ClientCertPath, config.ClientKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("load Store Link client certificate: %w", err)
@@ -161,16 +171,11 @@ func NewSidecarForwarder(config Config) (*SidecarForwarder, error) {
 	if !pool.AppendCertsFromPEM(caBytes) {
 		return nil, errors.New("Store sidecar CA contains no certificates")
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate}, RootCAs: pool}
-	return &SidecarForwarder{origin: origin, http: &http.Client{
-		Transport: transport,
-		Timeout:   3 * time.Minute,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return errors.New("Store Link refuses sidecar redirects")
-		},
-	}}, nil
+	client, err := newPinnedSidecarHTTPClient(certificate, pool, sidecarPin)
+	if err != nil {
+		return nil, err
+	}
+	return &SidecarForwarder{origin: origin, http: client}, nil
 }
 
 func loadStoreLinkClientIdentity(certPath, keyPath string) (tls.Certificate, error) {
@@ -187,6 +192,37 @@ func loadStoreLinkClientIdentity(certPath, keyPath string) (tls.Certificate, err
 		return tls.Certificate{}, err
 	}
 	return certificate, nil
+}
+
+func newPinnedSidecarHTTPClient(certificate tls.Certificate, roots *x509.CertPool, pinnedLeaf []byte) (*http.Client, error) {
+	if roots == nil || len(pinnedLeaf) != sha256.Size {
+		return nil, errors.New("Store Link sidecar TLS identity is incomplete")
+	}
+	pin := append([]byte(nil), pinnedLeaf...)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.TLSClientConfig = &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      roots,
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.VerifiedChains) == 0 || len(state.VerifiedChains[0]) == 0 {
+				return errors.New("Store Link sidecar certificate was not verified")
+			}
+			actual := sha256.Sum256(state.VerifiedChains[0][0].Raw)
+			if !bytes.Equal(actual[:], pin) {
+				return errors.New("Store Link sidecar certificate is not the pinned sidecar identity")
+			}
+			return nil
+		},
+	}
+	return &http.Client{
+		Transport: transport,
+		Timeout:   3 * time.Minute,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errors.New("Store Link refuses sidecar redirects")
+		},
+	}, nil
 }
 
 func (f *SidecarForwarder) Forward(ctx context.Context, forwarded ForwardRequest) (ForwardResponse, error) {
@@ -337,20 +373,28 @@ func (h *Handler) handleStoreStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Store Link could not reach the private Store control service", http.StatusBadGateway)
 		return
 	}
-	if response.StatusCode != http.StatusOK || int64(len(response.Body)) > maxResponseBytes || !isJSONContentType(response.Header.Get("Content-Type")) {
-		http.Error(w, "Store control service is unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	var snapshot storeStatusSnapshot
-	decoder := json.NewDecoder(strings.NewReader(string(response.Body)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storeStatusSnapshotSchema || snapshot.StoreID != h.storeID || snapshot.Status != "ready" || snapshot.CheckedAt.IsZero() {
+	if err := verifyReadyStoreStatus(h.storeID, response); err != nil {
 		http.Error(w, "Store Link received an invalid private Store status", http.StatusBadGateway)
 		return
 	}
+	var snapshot storeStatusSnapshot
+	_ = json.Unmarshal(response.Body, &snapshot)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(snapshot)
+}
+
+func verifyReadyStoreStatus(storeID string, response ForwardResponse) error {
+	if response.StatusCode != http.StatusOK || int64(len(response.Body)) > maxResponseBytes || !isJSONContentType(response.Header.Get("Content-Type")) {
+		return errors.New("Store control status is unavailable")
+	}
+	var snapshot storeStatusSnapshot
+	decoder := json.NewDecoder(bytes.NewReader(response.Body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storeStatusSnapshotSchema || snapshot.StoreID != storeID || snapshot.Status != "ready" || snapshot.CheckedAt.IsZero() {
+		return errors.New("Store control status is not a ready snapshot for this Store")
+	}
+	return nil
 }
 
 // storePolicySnapshot is the minimum active governed policy scope Bazaar

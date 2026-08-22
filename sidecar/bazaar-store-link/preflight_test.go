@@ -74,3 +74,46 @@ func TestVerifyFixedWorkersFailsWhenAnyRouteDoesNotProveNoJob(t *testing.T) {
 		t.Fatalf("preflight continued after unhealthy fixed route: %d requests", len(workers.requests))
 	}
 }
+
+func TestVerifyControlPlaneRequiresPinnedReadySidecarBeforeWorkerProbes(t *testing.T) {
+	sidecar := &capturedForwarder{response: ForwardResponse{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       []byte(`{"schema":"bazaar-control-store-status-v1","storeId":"melusina-os-root-store","status":"ready","checkedAt":"2026-08-23T12:00:00Z"}`),
+	}}
+	workers := &preflightWorkerForwarder{}
+	if err := VerifyControlPlane(context.Background(), testConfig(), sidecar, workers); err != nil {
+		t.Fatal(err)
+	}
+	if len(sidecar.requests) != 1 {
+		t.Fatalf("sidecar preflight requests = %d, want 1", len(sidecar.requests))
+	}
+	request := sidecar.requests[0]
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = request.Body.Close()
+	if request.Method != http.MethodGet || request.Path != "/control/v1/status" || len(request.Headers) != 0 || len(body) != 0 {
+		t.Fatalf("sidecar preflight request = %s %q headers=%v body=%q", request.Method, request.Path, request.Headers, body)
+	}
+	if len(workers.requests) != 4 {
+		t.Fatalf("worker preflight requests = %d, want 4", len(workers.requests))
+	}
+}
+
+func TestVerifyControlPlaneStopsBeforeWorkersWhenSidecarIsNotReady(t *testing.T) {
+	sidecar := &capturedForwarder{response: ForwardResponse{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       []byte(`{"schema":"bazaar-control-store-status-v1","storeId":"melusina-os-root-store","status":"unready","checkedAt":"2026-08-23T12:00:00Z"}`),
+	}}
+	workers := &preflightWorkerForwarder{}
+	err := VerifyControlPlane(context.Background(), testConfig(), sidecar, workers)
+	if err == nil || !strings.Contains(err.Error(), "sidecar control-plane") || !strings.Contains(err.Error(), "not a ready snapshot") {
+		t.Fatalf("unexpected control-plane preflight result: %v", err)
+	}
+	if len(workers.requests) != 0 {
+		t.Fatalf("worker preflight ran after a non-ready sidecar snapshot: %d requests", len(workers.requests))
+	}
+}

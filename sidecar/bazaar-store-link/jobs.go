@@ -114,19 +114,19 @@ func NewWorkerForwarder(config Config) (WorkerForwarder, error) {
 	if err != nil {
 		return nil, errors.New("Store Link tenantProofWorkerUrl must be one exact private HTTPS origin")
 	}
-	buildPin, err := workerLeafPin("buildWorkerCertSha256", config.BuildWorkerCertSHA256)
+	buildPin, err := certificateLeafPin("buildWorkerCertSha256", config.BuildWorkerCertSHA256)
 	if err != nil {
 		return nil, err
 	}
-	preparationPin, err := workerLeafPin("releasePreparationWorkerCertSha256", config.ReleasePreparationWorkerCertSHA256)
+	preparationPin, err := certificateLeafPin("releasePreparationWorkerCertSha256", config.ReleasePreparationWorkerCertSHA256)
 	if err != nil {
 		return nil, err
 	}
-	finalizationPin, err := workerLeafPin("releaseFinalizationWorkerCertSha256", config.ReleaseFinalizationWorkerCertSHA256)
+	finalizationPin, err := certificateLeafPin("releaseFinalizationWorkerCertSha256", config.ReleaseFinalizationWorkerCertSHA256)
 	if err != nil {
 		return nil, err
 	}
-	proofPin, err := workerLeafPin("tenantProofWorkerCertSha256", config.TenantProofWorkerCertSHA256)
+	proofPin, err := certificateLeafPin("tenantProofWorkerCertSha256", config.TenantProofWorkerCertSHA256)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (f *privateWorkerForwarder) forward(ctx context.Context, target workerTarge
 	return WorkerResponse{StatusCode: response.StatusCode, Header: response.Header.Clone(), Body: response.Body, ContentLength: response.ContentLength}, nil
 }
 
-func workerLeafPin(label, raw string) ([]byte, error) {
+func certificateLeafPin(label, raw string) ([]byte, error) {
 	digest := strings.TrimSpace(raw)
 	if len(digest) != sha256.Size*2 || digest != strings.ToLower(digest) {
 		return nil, fmt.Errorf("Store Link %s must be a lowercase SHA-256 certificate digest", label)

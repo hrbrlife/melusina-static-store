@@ -2,18 +2,19 @@
     "schema": "melusina-source-selection-v1",
     "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
     "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
-    "sourceCommit": "1add5d7cdc7ca2fbb88143482939831a4815595f",
+    "sourceCommit": "4d0c13703ed237822bd3df875f61664531b0e4bb",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
-    "decisionSummary": "MerMail 0.5.6 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22).",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "MerMail 0.5.7 makes the packaged htmx reachable so the pearl UI's controls work at all: 0.5.6 shipped the bytes but resolved static paths against the pearl CWD (and the station had no static route), so Send degraded to a native GET and a received message could not be opened (F-310), measured live on us.paype.cc.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
-            "go test ./... passes for grain-station and grain-station/httpout",
-            "requestedMemoryGiB = 4 added; the Go backend was crash-looping on pthread_create while the mailbox UI kept rendering",
-            "scripts/verify-release-inputs.py constants now match the cohort and are asserted by the cohort test \u2014 the previous cut stopped at `make release-inputs` because that guard was outside every cohort check"
+            "go test -tags=melusina ./... passes for htmx-uiview-mail, grain-station and grain-station/httpout",
+            "both pearls resolve STATIC_DIR (launcher-exported /static) with a dev-mode CWD fallback; the station websession gained the static/ route it never had",
+            "scripts/verify-release-inputs.py self-test runs 8 failing-by-name mutations including missing and tampered htmx vendor bytes",
+            "scripts/verify-unified-package.sh asserts the BUILT ARTIFACT: pinned htmx sha256 inside the SPK, the launcher STATIC_DIR export, and STATIC_DIR consumed by both shipped binaries (0.5.6 binaries carry zero occurrences)",
+            "two clean clones at different paths produce byte-identical app.spk (sha256 7f282f944b459b478305640388bf106a5192dae59a380a77680117a15e7d705d)"
         ]
     },
     "reviewedRefs": [
@@ -69,7 +70,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "1add5d7cdc7ca2fbb88143482939831a4815595f",
+            "commit": "4d0c13703ed237822bd3df875f61664531b0e4bb",
             "outcome": "selected"
         },
         {
@@ -147,5 +148,7 @@
             "commit": "83cc8616cc97e257d22f0a40c752245eb8b6ad27",
             "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

@@ -669,7 +669,7 @@ groups:
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 1add5d7cdc7ca2fbb88143482939831a4815595f
+        source_commit: 4d0c13703ed237822bd3df875f61664531b0e4bb
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -677,7 +677,7 @@ groups:
         source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
-        live_version: "0.5.6"
+        live_version: "0.5.7"
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail

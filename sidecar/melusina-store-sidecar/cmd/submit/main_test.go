@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -342,6 +343,68 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 			t.Fatalf("buildEnvelope accepted non-app target %q", target)
 		}
 	}
+
+	controlTarget, err := controlPublishTarget("0123456789abcdef01234567")
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, err := buildEnvelope(pub, opPub, controlTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("buildEnvelope control route: %v", err)
+	}
+	if control.Payload.Target != controlTarget {
+		t.Fatalf("control target = %q, want %q", control.Payload.Target, controlTarget)
+	}
+	for _, target := range []string{
+		"/control/v1/releases/dossier-1/publish",
+		"/control/v1/releases/0123456789abcdef01234567/prepare",
+		"/control/v1/releases/0123456789abcdef01234567/publish/extra",
+		"/control/v1/releases/0123456789abcdef0123456A/publish",
+	} {
+		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, 1, 5*time.Minute); err == nil {
+			t.Fatalf("buildEnvelope accepted non-Pearl control target %q", target)
+		}
+	}
+}
+
+func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
+	master := randPubkeyB58(t)
+	spk, metadata, releaseBytes, claims := testRelease(t, master)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
+	target, err := controlPublishTarget("0123456789abcdef01234567")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, err := buildEnvelope(pub, op.Public(), target, spk, releaseBytes, claims, 1, 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, nil, "dev", "repo", "app")
+	if err != nil {
+		t.Fatalf("marshal control request: %v", err)
+	}
+	var request publishRequest
+	if err := json.Unmarshal(body, &request); err != nil {
+		t.Fatalf("decode control request: %v", err)
+	}
+	if request.Envelope.Payload.Target != target || request.Envelope.Payload.Method != http.MethodPost {
+		t.Fatalf("control request purpose = %s %q, want POST %q", request.Envelope.Payload.Method, request.Envelope.Payload.Target, target)
+	}
+	if got, err := base64.StdEncoding.DecodeString(request.SPKB64); err != nil || !bytes.Equal(got, spk) {
+		t.Fatalf("control request SPK changed: %v", err)
+	}
+	if request.Developer != "dev" || request.Repo != "repo" || request.Slug != "app" {
+		t.Fatalf("control request slot hint changed: %+v", request)
+	}
+
+	direct, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := marshalControlPublishRequest(direct, releaseBytes, spk, metadata, nil, "", "", ""); err == nil {
+		t.Fatal("direct /publish envelope was accepted as a Pearl control request")
+	}
 }
 
 func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
@@ -480,6 +543,132 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 	}
 	if _, err := parseFlags(withoutDomain); err == nil {
 		t.Fatal("verify mode accepted a receipt without a serving domain")
+	}
+}
+
+func TestParseFlagsControlRequestModeIsFileOnlyAndComplete(t *testing.T) {
+	valid := []string{
+		"--request-out", "/var/lib/bazaar-worker/control/request.json",
+		"--control-dossier", "0123456789abcdef01234567",
+		"--spk", "app.spk", "--metadata", "metadata.json", "--release", "RELEASE.json",
+		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+	}
+	got, err := parseFlags(valid)
+	if err != nil {
+		t.Fatalf("control request flags rejected: %v", err)
+	}
+	if got.store != "" || got.rpcURL != "" || got.controlDossier != "0123456789abcdef01234567" {
+		t.Fatalf("control request mode retained a sidecar connection: %+v", got)
+	}
+	for _, args := range [][]string{
+		append(append([]string{}, valid...), "--store", "https://store.example"),
+		append(append([]string{}, valid...), "--stage"),
+		append(append([]string{}, valid...), "--rpc-url", "https://rpc.example"),
+		append([]string{"--request-out", "/var/lib/bazaar-worker/control/request.json", "--control-dossier", "not-a-dossier"}, valid[4:]...),
+	} {
+		if _, err := parseFlags(args); err == nil {
+			t.Fatalf("control request mode accepted forbidden/incomplete flags: %v", args)
+		}
+	}
+}
+
+func TestWriteOwnerOnlyControlRequestRefusesTempSharedAndOverwrite(t *testing.T) {
+	dir, err := os.MkdirTemp(".", ".submit-control-request-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	path, err := filepath.Abs(filepath.Join(dir, "request.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writeOwnerOnlyControlRequest(path, []byte(`{"prepared":true}`)); err != nil {
+		t.Fatalf("write owner-only request: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("request permissions = %o, want 600", info.Mode().Perm())
+	}
+	if _, err := writeOwnerOnlyControlRequest(path, []byte(`{}`)); err == nil {
+		t.Fatal("owner-only request overwrote an existing body")
+	}
+	if _, err := writeOwnerOnlyControlRequest(filepath.Join(t.TempDir(), "request.json"), []byte(`{}`)); err == nil {
+		t.Fatal("owner-only request wrote below the temporary directory")
+	}
+	shared := filepath.Join(dir, "shared")
+	if err := os.Mkdir(shared, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writeOwnerOnlyControlRequest(filepath.Join(shared, "request.json"), []byte(`{}`)); err == nil {
+		t.Fatal("owner-only request wrote to a group/world-readable directory")
+	}
+}
+
+func TestRunControlRequestWritesExactCandidateWithoutStoreConnection(t *testing.T) {
+	work := t.TempDir()
+	spk := []byte("control-request test package")
+	metadata := []byte(`{"appId":"org.example.control-request","appVersion":"1.0.0"}`)
+	appHash, err := apphash.Canonical(bytes.NewReader(spk), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releaseHash := sha256.Sum256([]byte("control-request release"))
+	releaseBytes, err := json.Marshal(ReleaseClaims{AppHash: appHash, ReleaseHash: hex.EncodeToString(releaseHash[:]), Version: "1.0.0", MasterNftMint: randPubkeyB58(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(name string, body []byte) string {
+		path := filepath.Join(work, name)
+		if err := os.WriteFile(path, body, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	spkPath := write("app.spk", spk)
+	metadataPath := write("metadata.json", metadata)
+	releasePath := write("RELEASE.json", releaseBytes)
+	pubRef := identity.Ref{Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: programIDB58, LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org", PDA: "11111111111111111111111111111111", SidecarID: "publisher", KeyVersion: 1}
+	publisherKey := writePublisherKey(t, pubRef)
+	operator := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
+	opBytes, err := json.Marshal(operator.Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	operatorPath := write("store.pub.json", opBytes)
+	outputDir, err := os.MkdirTemp(".", ".submit-control-run-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(outputDir)
+	requestPath, err := filepath.Abs(filepath.Join(outputDir, "request.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	err = run([]string{
+		"--request-out", requestPath, "--control-dossier", "0123456789abcdef01234567",
+		"--spk", spkPath, "--metadata", metadataPath, "--release", releasePath,
+		"--publisher-key", publisherKey, "--store-pubkey", operatorPath,
+	}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("file-only request run: %v; stderr=%s", err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "no network, chain, stage, or catalog action occurred") {
+		t.Fatalf("file-only result did not name its no-mutation boundary: %s", stdout.String())
+	}
+	raw, err := os.ReadFile(requestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var request publishRequest
+	if err := json.Unmarshal(raw, &request); err != nil {
+		t.Fatal(err)
+	}
+	if want, _ := controlPublishTarget("0123456789abcdef01234567"); request.Envelope.Payload.Target != want {
+		t.Fatalf("request targeted %q, want %q", request.Envelope.Payload.Target, want)
 	}
 }
 

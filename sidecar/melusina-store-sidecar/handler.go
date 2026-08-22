@@ -364,6 +364,10 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// During migration the typed control route remains on the combined test and
 	// local-development surface. A Golden configuration removes it from the
 	// public listener entirely; only the dedicated mTLS listener owns it.
+	// Store status remains private even in local combined-mode development.
+	// Otherwise a development convenience would turn the Home observation into a
+	// public sidecar probe when a production listener is configured.
+	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
 	if exposeControl {
 		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	} else {
@@ -430,6 +434,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 
 func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc(controlStatusPath, svc.handleControlStatus)
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	return mux

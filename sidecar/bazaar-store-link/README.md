@@ -18,6 +18,7 @@ The connector currently exposes exactly this fixed vocabulary:
 - `POST /v1/release-commands/<24-lower-hex>/prepare`
 - `POST /v1/release-commands/<24-lower-hex>/publish`
 - `GET /v1/authority/<configured-store>/<app>/<publisher>`
+- `GET /v1/store-status` (read-only control-path readiness only)
 - `POST /v1/build-jobs`, `GET /v1/build-jobs/<24-lower-hex>`
 - `POST /v1/release-preparation-jobs`, `GET /v1/release-preparation-jobs/<24-lower-hex>`
 - `POST /v1/release-finalization-jobs`, `GET /v1/release-finalization-jobs/<24-lower-hex>`
@@ -34,6 +35,11 @@ object from its fixed content-addressed artifact vault. For release commands it 
 Pearl signature, and—for publication—the offline approval. The sidecar still
 verifies the same command, publisher grant, artifact, chain facts, predecessor,
 and listing-before-selector rule independently.
+
+`GET /v1/store-status` is not a generic health proxy. It maps only to the
+sidecar's private mTLS control status, requires the exact configured Store ID,
+and relays only its fixed `ready` schema. It neither claims the public catalog
+is readable nor exposes release, chain, endpoint, or key facts.
 
 The proof-resume route is deliberately not a generic job action. It accepts
 only the exact `bazaar-control-tenant-proof-resume-request-v1` body containing

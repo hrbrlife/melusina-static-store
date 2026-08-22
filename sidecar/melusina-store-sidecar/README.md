@@ -47,7 +47,10 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   app-release write path. In the cutover configuration they exist only on the
   separate `store_link_control_mtls.listen_addr`: TLS 1.3, a verified Store
   Link control-plane client CA, and the exact pinned Store Link client
-  certificate are all required.
+  certificate are all required. That listener additionally exposes one exact
+  read-only `GET /control/v1/status` response for Bazaar Control Home. It says
+  only that release-control dependencies are ready; it is neither public
+  catalog health nor a chain diagnostic.
   The public catalog listener returns `404` for that route. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either
   path.**

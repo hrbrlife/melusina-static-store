@@ -29,12 +29,63 @@ const (
 	controlPreparePathSuffix          = "/prepare"
 	controlPublishPathSuffix          = "/publish"
 	controlAuthorityPathPrefix        = "/control/v1/authority/"
+	controlStatusPath                 = "/control/v1/status"
 	controlCommandHeader              = "X-Bazaar-Control-Command"
 	controlPearlSignatureHeader       = "X-Bazaar-Pearl-Signature"
 	controlOfflineApprovalHeader      = "X-Bazaar-Offline-Approval"
 	controlReleaseAuthorizationHeader = "X-Bazaar-Release-Authorization"
 	maxControlHeaderEncodedBytes      = 32 << 10
 )
+
+const controlStatusSnapshotSchema = "bazaar-control-store-status-v1"
+
+// controlStatusSnapshot is intentionally a very small readiness observation
+// for Bazaar Control's Home screen. It is not a catalog listing, a chain
+// diagnostic, or a general sidecar health endpoint. Reaching it proves the
+// Store Link's pinned mTLS path reached a control service whose critical
+// release dependencies are initialized.
+type controlStatusSnapshot struct {
+	Schema    string    `json:"schema"`
+	StoreID   string    `json:"storeId"`
+	Status    string    `json:"status"`
+	CheckedAt time.Time `json:"checkedAt"`
+}
+
+// handleControlStatus exposes one exact, read-only private control status.
+// It deliberately returns no catalog, release, chain, URL, or key material;
+// callers needing those facts use the existing release-specific routes.
+func (s *publishService) handleControlStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.URL.Path != controlStatusPath || r.URL.RawQuery != "" {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.controlReadinessError(); err != nil {
+		http.Error(w, "Bazaar Store control service is not ready.", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(controlStatusSnapshot{
+		Schema:    controlStatusSnapshotSchema,
+		StoreID:   s.cfg.StoreID,
+		Status:    "ready",
+		CheckedAt: s.currentTime().UTC(),
+	})
+}
+
+func (s *publishService) controlReadinessError() error {
+	if s == nil || strings.TrimSpace(s.cfg.StoreID) == "" || s.operator == nil || s.cr == nil || s.appNonces == nil || s.controlReceipts == nil || s.controlReceiptErr != nil {
+		return errors.New("control release dependencies are unavailable")
+	}
+	if s.listingRegistrationRequired && s.listingRegistrar == nil {
+		return errors.New("listing registration is unavailable")
+	}
+	return nil
+}
 
 // controlExecution binds a verified Pearl command to its private durable
 // receipt record. It is passed only to the shared stage/publish implementations

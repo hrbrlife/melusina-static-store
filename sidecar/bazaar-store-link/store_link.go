@@ -229,6 +229,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleRelease(w, r)
 	case strings.HasPrefix(path, "/v1/authority/"):
 		h.handleAuthority(w, r)
+	case path == "/v1/store-status":
+		h.handleStoreStatus(w, r)
 	case path == "/v1/"+buildJobCollection || strings.HasPrefix(path, "/v1/"+buildJobCollection+"/"):
 		h.handleJob(w, r, buildJobCollection)
 	case path == "/v1/"+releasePreparationJobCollection || strings.HasPrefix(path, "/v1/"+releasePreparationJobCollection+"/"):
@@ -284,6 +286,45 @@ func (h *Handler) handleAuthority(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.forwardResponse(w, r, ForwardRequest{Method: http.MethodGet, Path: "/control/v1/authority/" + appID + "/" + publisher, Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+}
+
+const storeStatusSnapshotSchema = "bazaar-control-store-status-v1"
+
+// storeStatusSnapshot is the sole Store-health observation that Store Link
+// relays. It deliberately contains no catalog, chain, release, endpoint, or
+// key material, and it is revalidated against Store Link's configured Store
+// before a contained Pearl can see it.
+type storeStatusSnapshot struct {
+	Schema    string    `json:"schema"`
+	StoreID   string    `json:"storeId"`
+	Status    string    `json:"status"`
+	CheckedAt time.Time `json:"checkedAt"`
+}
+
+func (h *Handler) handleStoreStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	response, err := h.forward.Forward(r.Context(), ForwardRequest{Method: http.MethodGet, Path: "/control/v1/status", Headers: make(http.Header), Body: io.NopCloser(strings.NewReader(""))})
+	if err != nil {
+		http.Error(w, "Store Link could not reach the private Store control service", http.StatusBadGateway)
+		return
+	}
+	if response.StatusCode != http.StatusOK || int64(len(response.Body)) > maxResponseBytes || !isJSONContentType(response.Header.Get("Content-Type")) {
+		http.Error(w, "Store control service is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var snapshot storeStatusSnapshot
+	decoder := json.NewDecoder(strings.NewReader(string(response.Body)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&snapshot); err != nil || decoder.Decode(&struct{}{}) != io.EOF || snapshot.Schema != storeStatusSnapshotSchema || snapshot.StoreID != h.storeID || snapshot.Status != "ready" || snapshot.CheckedAt.IsZero() {
+		http.Error(w, "Store Link received an invalid private Store status", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(snapshot)
 }
 
 func (h *Handler) forwardResponse(w http.ResponseWriter, r *http.Request, forwarded ForwardRequest) {
@@ -413,6 +454,9 @@ func authorityRoute(path string) (string, string, string, bool) {
 }
 
 func canonicalSidecarPath(method, path string) bool {
+	if method == http.MethodGet && path == "/control/v1/status" {
+		return true
+	}
 	if method == http.MethodPost && strings.HasPrefix(path, "/control/v1/releases/") {
 		parts := strings.Split(strings.TrimPrefix(path, "/control/v1/releases/"), "/")
 		return len(parts) == 2 && isLowerHex(parts[0], 24) && (parts[1] == "prepare" || parts[1] == "publish")

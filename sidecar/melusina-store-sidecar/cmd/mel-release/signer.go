@@ -52,6 +52,9 @@ type SignerProvider interface {
 	// (schema melusina-app-candidate-receipt-v1) to receiptOut, including the
 	// served-SPK sha256/size, the on-chain app_hash claim, the packageId, the
 	// master NFT mint, and absolute paths to the staged {app.spk, metadata.json}.
+	// When the selected build profile materializes a runtime contract, the
+	// receipt MUST also carry its sha256/size/path together. Consumers must not
+	// substitute a source-tree contract for that materialized evidence.
 	Build(appID, version, receiptOut string) error
 
 	// ActiveReleases lists every Active on-chain ReleaseEntry for appID.

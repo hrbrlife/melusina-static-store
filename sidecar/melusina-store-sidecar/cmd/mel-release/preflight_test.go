@@ -43,11 +43,27 @@ func TestPreflightStopsBeforeEveryMutableReleaseBoundary(t *testing.T) {
 	if result.Schema != preflightSchema || result.AppID != testAppID || result.Version != "1.0.1" ||
 		result.SourceCommit != "0123456789abcdef0123456789abcdef01234567" || result.ArtifactSHA256 != v.ArtifactSha ||
 		result.ArtifactSize != v.ArtifactSize || result.PackageID != v.PkgID || result.AppHash != v.AppHash ||
-		result.MasterNftMint != v.MasterMint || result.MetadataSHA256 == "" {
+		result.MasterNftMint != v.MasterMint || result.MetadataSHA256 == "" || result.RuntimeContractSHA256 != v.RuntimeContractSHA256 {
 		t.Fatalf("preflight receipt does not bind the built candidate: %+v", result)
 	}
 	if err := verifyArtifactRef(result.BuildReceipt); err != nil {
 		t.Fatalf("preflight build receipt is not hash-bound: %v", err)
+	}
+}
+
+func TestPreflightRefusesRuntimeContractDigestDrift(t *testing.T) {
+	h := newHarness(t)
+	path, err := h.preflight("1.0.1")
+	mustNoErr(t, "preflight", err)
+	v := h.fx.Versions["1.0.1"]
+	if err := os.WriteFile(v.RuntimeContractPath, []byte(`{"schema":"tampered"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.preflight("1.0.1"); err == nil || !strings.Contains(err.Error(), "runtime contract differs") {
+		t.Fatalf("preflight after runtime-contract tamper error = %v, want runtime-contract refusal", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("existing preflight evidence was unexpectedly removed: %v", err)
 	}
 }
 

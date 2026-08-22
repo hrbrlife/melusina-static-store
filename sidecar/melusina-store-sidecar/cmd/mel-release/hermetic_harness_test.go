@@ -68,7 +68,8 @@ type provRef struct{ PDA, AppHash, Version string }
 
 type provVersion struct {
 	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, ArtifactSha string
-	ArtifactSize                                                   int64
+	RuntimeContractPath, RuntimeContractSHA256                     string
+	ArtifactSize, RuntimeContractSize                              int64
 	PdaNew, PreviousSha256, PreviousVersion                        string
 }
 
@@ -188,10 +189,15 @@ func newHarness(t *testing.T) *harness {
 		meta := []byte("{\"appId\":\"" + testAppID + "\",\"name\":\"testapp\",\"version\":\"" + ver + "\",\"packageId\":\"" + packageID + "\",\"sha256\":\"" + hex.EncodeToString(artSum[:]) + "\"}")
 		spkPath := filepath.Join(filesDir, "app-"+ver+".spk")
 		metaPath := filepath.Join(filesDir, "metadata-"+ver+".json")
+		runtimeContract := []byte("{\"schema\":\"melusina-app-runtime-contract-v1\",\"version\":\"" + ver + "\"}")
+		runtimeContractPath := filepath.Join(filesDir, "RUNTIME-CONTRACT-"+ver+".json")
 		if err := os.WriteFile(spkPath, spk, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(metaPath, meta, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(runtimeContractPath, runtimeContract, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		ah, err := apphash.Canonical(bytes.NewReader(spk), meta)
@@ -206,6 +212,7 @@ func newHarness(t *testing.T) *harness {
 			AppHash: ah, PkgID: packageID, MasterMint: masterMint,
 			SpkPath: spkPath, MetadataPath: metaPath,
 			ArtifactSha: hex.EncodeToString(artSum[:]), ArtifactSize: int64(len(spk)),
+			RuntimeContractPath: runtimeContractPath, RuntimeContractSHA256: sha256Hex(runtimeContract), RuntimeContractSize: int64(len(runtimeContract)),
 			PdaNew: pdaNew, PreviousSha256: prevSha, PreviousVersion: prevVer,
 		}
 	}

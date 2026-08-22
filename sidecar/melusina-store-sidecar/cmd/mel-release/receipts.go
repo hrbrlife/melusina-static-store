@@ -84,6 +84,15 @@ type buildReceipt struct {
 	MasterNftMint string `json:"masterNftMint"` // ReleaseEntry PDA seed
 	SpkPath       string `json:"spkPath"`       // absolute staged app.spk
 	MetadataPath  string `json:"metadataPath"`  // absolute staged metadata.json
+	// RuntimeContract is emitted when the provider materializes a runtime
+	// contract. Keeping it in source-to-package evidence lets a post-review
+	// worker compare the exact contract the final RELEASE.json will bind; an
+	// omitted contract stays explicit for older app build profiles.
+	RuntimeContract struct {
+		SHA256 string `json:"sha256"`
+		Size   int64  `json:"size"`
+		Path   string `json:"path"`
+	} `json:"runtimeContract,omitempty"`
 
 	// Optional: the currently-served release being superseded (the per-component
 	// rollback floor). Empty for a first publication.
@@ -111,6 +120,11 @@ func readBuildReceipt(path, appID, version string) (buildReceipt, artifactRef, e
 	}
 	if b.PreviousSHA256 != "" && !isLowerHex(b.PreviousSHA256, 64) {
 		return b, artifactRef{}, errors.New("build receipt previousSha256 must be 64 lowercase hex chars")
+	}
+	if b.RuntimeContract.Path != "" || b.RuntimeContract.SHA256 != "" || b.RuntimeContract.Size != 0 {
+		if !isLowerHex(b.RuntimeContract.SHA256, 64) || b.RuntimeContract.Size <= 0 || b.RuntimeContract.Path == "" {
+			return b, artifactRef{}, errors.New("build receipt runtimeContract must carry sha256/size/path together")
+		}
 	}
 	return b, ref, nil
 }

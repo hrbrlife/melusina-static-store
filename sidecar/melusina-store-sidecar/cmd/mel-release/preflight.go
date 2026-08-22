@@ -35,9 +35,14 @@ type preflightReceipt struct {
 	ArtifactSHA256 string `json:"artifactSha256"`
 	ArtifactSize   int64  `json:"artifactSize"`
 	MetadataSHA256 string `json:"metadataSha256"`
-	PackageID      string `json:"packageId"`
-	AppHash        string `json:"appHash"`
-	MasterNftMint  string `json:"masterNftMint"`
+	// RuntimeContractSHA256 is empty only for a build profile that has no
+	// materialized runtime contract. A worker comparing a Pearl request with a
+	// non-empty runtime digest must reject such a preflight rather than assume
+	// the package check covered it.
+	RuntimeContractSHA256 string `json:"runtimeContractSha256,omitempty"`
+	PackageID             string `json:"packageId"`
+	AppHash               string `json:"appHash"`
+	MasterNftMint         string `json:"masterNftMint"`
 
 	PreviousSHA256  string      `json:"previousSha256,omitempty"`
 	PreviousVersion string      `json:"previousVersion,omitempty"`
@@ -165,11 +170,23 @@ func makePreflightReceipt(app App, version string, b buildReceipt, ref artifactR
 	if metadataSize < 1 {
 		return preflightReceipt{}, errors.New("preflight metadata is empty")
 	}
+	runtimeContractSHA256 := ""
+	if b.RuntimeContract.Path != "" {
+		var runtimeContractSize int64
+		runtimeContractSHA256, runtimeContractSize, err = regularFileSHA256(b.RuntimeContract.Path, maxNativeReceiptBytes)
+		if err != nil {
+			return preflightReceipt{}, fmt.Errorf("preflight runtime contract: %w", err)
+		}
+		if runtimeContractSize != b.RuntimeContract.Size || runtimeContractSHA256 != b.RuntimeContract.SHA256 {
+			return preflightReceipt{}, errors.New("preflight runtime contract differs from the build receipt")
+		}
+	}
 	return preflightReceipt{
 		Schema: preflightSchema, AppID: app.AppID, Version: version,
 		SourceCommit: app.SourceCommit, ArtifactSHA256: b.Artifact.SHA256,
 		ArtifactSize: b.Artifact.Size, MetadataSHA256: metadataSHA256,
-		PackageID: b.PackageID, AppHash: b.AppHash, MasterNftMint: b.MasterNftMint,
+		RuntimeContractSHA256: runtimeContractSHA256,
+		PackageID:             b.PackageID, AppHash: b.AppHash, MasterNftMint: b.MasterNftMint,
 		PreviousSHA256: b.PreviousSHA256, PreviousVersion: b.PreviousVersion,
 		BuildReceipt: ref,
 	}, nil
@@ -216,6 +233,9 @@ func encodePreflight(value preflightReceipt) ([]byte, error) {
 		value.ArtifactSize < 1 || !isLowerHex(value.MetadataSHA256, 64) ||
 		value.PackageID == "" || !isLowerHex(value.AppHash, 64) || value.MasterNftMint == "" {
 		return nil, errors.New("preflight receipt is incomplete")
+	}
+	if value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64) {
+		return nil, errors.New("preflight receipt has an invalid runtime-contract digest")
 	}
 	if err := verifyArtifactRef(value.BuildReceipt); err != nil {
 		return nil, fmt.Errorf("preflight build receipt: %w", err)

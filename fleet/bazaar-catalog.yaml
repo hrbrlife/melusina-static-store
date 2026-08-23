@@ -677,7 +677,7 @@ groups:
         # and exposes the K1-guarded GrainContext capability for Jinn.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 4eb0018392d27f994b6196bda4ce89b4a4c98704
+        source_commit: 2f140345da03e3a756c91a96c1c2f7d12ec4c913
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -685,7 +685,7 @@ groups:
         source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
-        live_version: "0.6.0"
+        live_version: "0.6.1"
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail

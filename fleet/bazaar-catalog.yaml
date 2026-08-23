@@ -667,14 +667,12 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
       mermail:
-        # MerMail 0.6.0 ceremony completed with ReleaseEntry
-        # 4PYD9mzY7oZ3oSgu8X5wSJShQ6vVugvqcwMw3HRFS8D8 Active for appHash
-        # 0607d94a4650e5943e8463f6817d961a3a83b62637e2f1268eb20348cd656229.
-        # Its exact 675a9e51d1479eaa3b3109916d68d985 package, final release
-        # receipt, and materialized runtime contract are recorded in the
-        # catalog slot submodule. The cut wires filters into delivery (with
-        # a forward action), adds rich text / attachments / Bcc / threading,
-        # and exposes the K1-guarded GrainContext capability for Jinn.
+        # MerMail 0.6.1 ceremony completed with ReleaseEntry
+        # 8GYNpnYBZfCgijyyz8Rj3u6fDXH1eB4cSu61kokSHRCr Active for appHash
+        # <served>. Its exact a7b170b2456ac59bda598c5d9dbb2e7a package, final
+        # release receipt and materialized runtime contract are recorded in the
+        # catalog slot submodule. Adds settings-gated live refresh of the open
+        # mailbox and a Sandstorm new-mail notification for closed mailboxes.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 2f140345da03e3a756c91a96c1c2f7d12ec4c913

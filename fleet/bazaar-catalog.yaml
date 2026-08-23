@@ -667,6 +667,13 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
       mermail:
+        # MerMail 0.5.7 ceremony completed with ReleaseEntry
+        # 7zND1nz6StYN6MZ5vqGWzHk1b1E6txnYBFmuRArzZe6a Active for appHash
+        # 91da4691d63e3fc269e771cf8c41c710a0122813195e07f417a91deb75cd3afb.
+        # Its exact 7f282f944b459b478305640388bf106a package, final release
+        # receipt, and materialized runtime contract are recorded in the
+        # catalog slot submodule. The cut makes the packaged htmx reachable
+        # so every hx-driven control works in grain mode (F-310).
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 4d0c13703ed237822bd3df875f61664531b0e4bb

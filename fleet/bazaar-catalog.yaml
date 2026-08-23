@@ -667,13 +667,14 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
       mermail:
-        # MerMail 0.5.7 ceremony completed with ReleaseEntry
-        # 7zND1nz6StYN6MZ5vqGWzHk1b1E6txnYBFmuRArzZe6a Active for appHash
-        # 91da4691d63e3fc269e771cf8c41c710a0122813195e07f417a91deb75cd3afb.
-        # Its exact 7f282f944b459b478305640388bf106a package, final release
+        # MerMail 0.6.0 ceremony completed with ReleaseEntry
+        # 4PYD9mzY7oZ3oSgu8X5wSJShQ6vVugvqcwMw3HRFS8D8 Active for appHash
+        # 0607d94a4650e5943e8463f6817d961a3a83b62637e2f1268eb20348cd656229.
+        # Its exact 675a9e51d1479eaa3b3109916d68d985 package, final release
         # receipt, and materialized runtime contract are recorded in the
-        # catalog slot submodule. The cut makes the packaged htmx reachable
-        # so every hx-driven control works in grain mode (F-310).
+        # catalog slot submodule. The cut wires filters into delivery (with
+        # a forward action), adds rich text / attachments / Bcc / threading,
+        # and exposes the K1-guarded GrainContext capability for Jinn.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 4eb0018392d27f994b6196bda4ce89b4a4c98704

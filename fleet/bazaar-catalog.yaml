@@ -676,7 +676,7 @@ groups:
         # so every hx-driven control works in grain mode (F-310).
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 4d0c13703ed237822bd3df875f61664531b0e4bb
+        source_commit: 4eb0018392d27f994b6196bda4ce89b4a4c98704
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -684,7 +684,7 @@ groups:
         source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
-        live_version: "0.5.7"
+        live_version: "0.6.0"
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail

@@ -2,19 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
     "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
-    "sourceCommit": "4d0c13703ed237822bd3df875f61664531b0e4bb",
+    "sourceCommit": "4eb0018392d27f994b6196bda4ce89b4a4c98704",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "MerMail 0.5.7 makes the packaged htmx reachable so the pearl UI's controls work at all: 0.5.6 shipped the bytes but resolved static paths against the pearl CWD (and the station had no static route), so Send degraded to a native GET and a received message could not be opened (F-310), measured live on us.paype.cc.",
+    "decisionSummary": "MerMail 0.6.0 is the refined-mail cut: filters wired into delivery with a forward action, rich text/attachments/Bcc/threading on the wire, working htmx partials, hardened sharing edges, and a GrainContext provider so Jinn can search/read/draft/send this mailbox under the MiniGit-proven contract (K1-guarded interface id, consent picker, sturdyref restore, admin-tier external send with outbox queueing).",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
             "go test -tags=melusina ./... passes for htmx-uiview-mail, grain-station and grain-station/httpout",
-            "both pearls resolve STATIC_DIR (launcher-exported /static) with a dev-mode CWD fallback; the station websession gained the static/ route it never had",
-            "scripts/verify-release-inputs.py self-test runs 8 failing-by-name mutations including missing and tampered htmx vendor bytes",
-            "scripts/verify-unified-package.sh asserts the BUILT ARTIFACT: pinned htmx sha256 inside the SPK, the launcher STATIC_DIR export, and STATIC_DIR consumed by both shipped binaries (0.5.6 binaries carry zero occurrences)",
-            "two clean clones at different paths produce byte-identical app.spk (sha256 7f282f944b459b478305640388bf106a5192dae59a380a77680117a15e7d705d)"
+            "delivery-path guards executed: filters apply at delivery, forward reaches the transport with loop guards, attachments round-trip with content_id, threading columns persist \u2014 mutation-proven (severing the action dispatch fails the named tests)",
+            "GrainContext guards: derived interface id pinned against the file id (mutation-proven), vendored schema byte-identical to Jinn's copy, every op schema valid JSON, read ops read-shaped, write ops declare cumulative permissions, send_message pinned to admin/external/walletSignature",
+            "verify-release-inputs.py self-test 8 failing-by-name mutations; verify-unified-package.sh asserts the unpacked SPK (pinned htmx bytes, STATIC_DIR in both shipped binaries)"
         ]
     },
     "reviewedRefs": [
@@ -70,7 +69,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "4d0c13703ed237822bd3df875f61664531b0e4bb",
+            "commit": "4eb0018392d27f994b6196bda4ce89b4a4c98704",
             "outcome": "selected"
         },
         {
@@ -145,7 +144,7 @@
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "83cc8616cc97e257d22f0a40c752245eb8b6ad27",
+            "commit": "b607d239697dfc65b5eaeebdac4c711545480750",
             "outcome": "retained"
         }
     ],

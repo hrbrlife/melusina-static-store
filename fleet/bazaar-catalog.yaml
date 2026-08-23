@@ -12,7 +12,10 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-20T12:41:34Z
 catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
-expected_live_app_count: 32
+# 32 live listings plus Claude-Melusina, which is entering the catalog with its
+# first governed release and therefore has no live row yet. The loader requires
+# this to equal the number of apps named below and fails closed otherwise.
+expected_live_app_count: 33
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -509,6 +512,44 @@ groups:
         catalog_slug: cratelink
         source_repository: https://github.com/hrbrlife/melusina_cratelink_app
         role: controlled-workspace-file-transfer
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
+      claude-melusina:
+        appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h
+        source_path: claude-melusina
+        # NOT YET LIVE. This is the catalog's first entry for an app the Store
+        # has never served, and the schema has no representation for that: the
+        # loader hard-requires live_version because every other row was derived
+        # from an observed live snapshot. The value below is therefore the
+        # version this first governed release establishes, NOT a version
+        # observed live — do not read it as evidence of a served row until the
+        # release is accepted. It is inert for this release either way:
+        # live_version is consumed only by the recover-live path, never by
+        # preflight, publish, or approve.
+        #
+        # The selected head seals Claude Code and
+        # its full library closure into the signed SPK (the /var upload path and
+        # its build tool are deleted, not retained as a fallback), replaces the
+        # removed API-key flow with Claude Code's own browser-link OAuth, and
+        # re-pins the runtime archive byte-reproducibly so a release build can
+        # regenerate it. bin/claude remains pinned separately against Anthropic's
+        # signed release manifest.
+        source_commit: 06c01b870ae5d7f90840492f939b8b3a56b0f9b8
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json
+        source_repository: https://github.com/hrbrlife/Claude-Melusina
+        publish_slug: claude-melusina
+        catalog_name: Claude-Melusina
+        live_version: 0.2.0
+        catalog_developer: hrbrlife
+        catalog_repo: Claude-Melusina
+        catalog_slug: claude-melusina
+        role: self-contained-claude-code-workspace
         audience: workspace
         install_mode: self-service
         pearl_role: workspace

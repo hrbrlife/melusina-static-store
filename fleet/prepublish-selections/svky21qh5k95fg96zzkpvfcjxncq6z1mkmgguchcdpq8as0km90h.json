@@ -1,0 +1,25 @@
+{
+  "schema": "melusina-source-selection-v1",
+  "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
+  "sourceRepository": "https://github.com/hrbrlife/Claude-Melusina",
+  "sourceCommit": "06c01b870ae5d7f90840492f939b8b3a56b0f9b8",
+  "selectionMethod": "direct-dev",
+  "baselineBranch": "main",
+  "baselineRelation": "same",
+  "decisionSummary": "First governed release of Claude-Melusina. The repository carries exactly two heads and both are the same commit, so there is no divergent line to reconcile and no preserved branch to adopt: dev-publish is selected and main is its identical baseline. The selected head completes two architectural changes and one release-integrity fix. (1) Claude Code, its loader and its exact shared-library closure are sealed into the signed SPK and detected read-only from the package root; the previous design had the operator upload a runtime tarball into the grain's /var at setup time, and that path, its verifier and its build tool are deleted rather than retained as a fallback. (2) Authentication is Claude Code's own browser-link OAuth, replacing the session-only pasted API key removed in this same line: the grain surfaces only the one-time login URL, forwards the pasted code straight to the CLI's stdin, and never persists or journals it, while HOME stays pinned at /var/home so the CLI's own credential and resumable session state survive a grain restart. (3) The runtime archive pin bound a tarball packed without a fixed mtime or gzip -n, so its digest recorded when the archive was assembled rather than what it contained and could not be regenerated once the original file was gone; the same reviewed members are now repacked byte-reproducibly and re-pinned. The upstream provenance anchor is unchanged and still enforced separately: bin/claude hashes to the digest verified against Anthropic's signed release manifest. This release also adds PowerBox connections to arbitrary other grains, reusing the vendored melusina-http-component capability lifecycle against a wildcard UiView descriptor, with permission level chosen in Sandstorm's own grain-picker rather than in app UI.",
+  "internalControls": {
+    "status": "passed",
+    "checks": [
+      "clean selected-source checkout with current origin heads; git status --porcelain --untracked-files=all empty in both proof clones",
+      "go build ./..., go vet ./cmd/... ./grain/..., and go test ./... all pass at 06c01b870ae5d7f90840492f939b8b3a56b0f9b8",
+      "two byte-identical SPK packs from 06c01b870ae5d7f90840492f939b8b3a56b0f9b8, cloned to two different path depths, matched SHA-256 b5e1add77f5575f0640f486a23e52db3590e8f820148d2e3c9a93e157e510492 (78084260 bytes, packageId b5e1add77f5575f0640f486a23e52db3) under spk-verify-package",
+      "shipped-artifact control: spk unpack of the candidate proves runtime/bin/claude at the Anthropic-manifest-verified digest 1386169da77de19a655f07a86ab80f5775983a50eb0c9c27a7daf16e7320322d, the packaged pure-Go /bin/sh, and the new pearl-connection routes present in the shipped bin/server rather than only in source",
+      "packaged-runtime gate re-verified end to end: exact seven-file allow-list, no links or special files, and the bundled loader resolving every ELF dependency inside the package tree",
+      "F-218 control: sandstorm-pkgdef.capnp sourceMap.searchPath is repo-only with no host-root entry, so the package pulls no build-host libraries"
+    ]
+  },
+  "reviewedRefs": [
+    {"ref": "refs/heads/dev-publish", "commit": "06c01b870ae5d7f90840492f939b8b3a56b0f9b8", "outcome": "selected"},
+    {"ref": "refs/heads/main", "commit": "06c01b870ae5d7f90840492f939b8b3a56b0f9b8", "outcome": "baseline"}
+  ]
+}

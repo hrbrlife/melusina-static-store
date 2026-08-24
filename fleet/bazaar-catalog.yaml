@@ -254,11 +254,10 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        # v0.7.26/appVersion-34 is the newest validated dev-publish source.
-        # It keeps tenant binding shell-owned and forward-ports consumer-bound,
-        # revocable AI capability grants without changing the shared publisher.
-        # The forward release-interface fix binds the provider output path.
-        source_commit: 9905f220d9e4d3d5e8666f6d448dfc87284b4610
+        # v0.7.29/appVersion-37 is the current validated dev-publish source.
+        # It keeps tenant binding shell-owned and makes local vision-provider
+        # readiness/provenance explicit without claiming an identity verdict.
+        source_commit: 30abb2973fd20bb0e3d7e0b4fce069585ddda5f5
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

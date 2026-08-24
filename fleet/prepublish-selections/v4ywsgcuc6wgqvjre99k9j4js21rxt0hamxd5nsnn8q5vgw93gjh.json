@@ -2,18 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
     "sourceRepository": "https://github.com/hrbrlife/ai-lagoon",
-    "sourceCommit": "9905f220d9e4d3d5e8666f6d448dfc87284b4610",
+    "sourceCommit": "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
-    "decisionSummary": "AiLagoon 0.7.28 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "AiLagoon v0.7.29/appVersion 37 is the current canonical dev-publish source for the generic OCR/vision dependency. It makes local provider readiness and provenance explicit, preserves tenant binding as shell-owned, and returns structured unavailability rather than an identity verdict. Main remains the reviewed baseline.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes across every package",
-            "the AICapBundle grant is activated BEFORE the capability is handed to the shell, because AppPersistent.Save runs during fulfillRequest and requires an active grant; every failure path revokes",
-            "three mutations fail by name: the old fulfill-then-activate order, a deleted fulfill-failure revoke, and a pending grant passing Store.Active"
+            "release-source check and focused vision readiness/refusal controls pass at the selected commit",
+            "metadata.json and sandstorm-pkgdef.capnp agree on version 0.7.29 and appVersion 37",
+            "raw-image transport is restricted to the canonical same-host Ollama PowerBox sidecar; unavailable or misconfigured providers fail closed"
         ]
     },
     "reviewedRefs": [
@@ -44,7 +43,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "9905f220d9e4d3d5e8666f6d448dfc87284b4610",
+            "commit": "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5",
             "outcome": "selected"
         },
         {
@@ -222,5 +221,7 @@
             "commit": "b27a869cee454846f80e8427d027218cb3119e48",
             "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

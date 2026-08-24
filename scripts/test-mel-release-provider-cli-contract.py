@@ -1014,6 +1014,9 @@ def test_source_cohort_refuses_a_display_name_that_does_not_match_its_governed_c
             def fixture_run(args, **kwargs):
                 if args == ["git", "-C", str(source), "ls-remote", "--heads", "origin", "refs/heads/dev-publish"]:
                     return f"{commit}\trefs/heads/dev-publish\n"
+                if args == ["git", "-C", str(source), "ls-remote", "--heads", "origin"]:
+                    return (f"{commit}\trefs/heads/dev-publish\n"
+                            f"{commit}\trefs/heads/main\n")
                 return old_run(args, **kwargs)
 
             provider.run = fixture_run
@@ -1177,6 +1180,14 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
                 if commit is None:
                     raise AssertionError(f"unexpected origin reachability source: {args}")
                 return f"{commit}\trefs/heads/dev-publish\n"
+            if (args[:2] == ["git", "-C"] and args[3:] == [
+                "ls-remote", "--heads", "origin",
+            ]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected source-selection source: {args}")
+                return (f"{commit}\trefs/heads/dev-publish\n"
+                        f"{commit}\trefs/heads/main\n")
             return old_run(args, **kwargs)
 
         try:
@@ -1187,8 +1198,42 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
             assert result["verifiedSourceCount"] == 2, result
             assert [entry["appId"] for entry in result["sources"]] == [first_app_id, second_app_id], result
             assert {entry["sourceBranch"] for entry in result["sources"]} == {"dev-publish"}, result
+            assert {entry["sourceSelection"]["receipt"] for entry in result["sources"]} == {
+                f"prepublish-selections/{first_app_id}.json",
+                f"prepublish-selections/{second_app_id}.json",
+            }, result
+            assert {
+                entry["sourceSelection"]["receiptSha256"]
+                for entry in result["sources"]
+            } == {
+                provider.hex_sha(root / "prepublish-selections" / f"{first_app_id}.json"),
+                provider.hex_sha(root / "prepublish-selections" / f"{second_app_id}.json"),
+            }, result
             assert result == json.loads(receipt.read_text(encoding="utf-8")), result
             assert str(sources) not in receipt.read_text(encoding="utf-8"), receipt.read_text(encoding="utf-8")
+
+            # The all-cohort auditor must have the same stale-selection
+            # refusal as an individual package build.  A locally clean source
+            # at the current dev-publish tip is not enough once the signed
+            # source-ref snapshot has drifted.
+            selection_path = root / "prepublish-selections" / f"{first_app_id}.json"
+            original_selection = selection_path.read_text(encoding="utf-8")
+            changed_selection = json.loads(original_selection)
+            changed_selection["reviewedRefs"].append({
+                "ref": "refs/heads/feat/unreviewed",
+                "commit": "f" * 40,
+                "outcome": "hold",
+            })
+            selection_path.write_text(json.dumps(changed_selection) + "\n", encoding="utf-8")
+            drifted = provider.audit_source_cohort(receipt)
+            assert drifted["status"] == "incomplete", drifted
+            assert drifted["verifiedSourceCount"] == 1, drifted
+            assert drifted["failures"] == [{
+                "appId": first_app_id,
+                "name": "first",
+                "reason": "source provenance or release-input validation failed",
+            }], drifted
+            selection_path.write_text(original_selection, encoding="utf-8")
 
             # A predecessor that remains reachable from dev-publish cannot
             # become release input after the branch has advanced.
@@ -1833,7 +1878,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
-            ("INSTASYS_MAIL-main", "1add5d7cdc7ca2fbb88143482939831a4815595f", "INSTASYS_MAIL", "mermail"),
+            ("INSTASYS_MAIL-main", "2f140345da03e3a756c91a96c1c2f7d12ec4c913", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
             ("ccash-domain-template", "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":

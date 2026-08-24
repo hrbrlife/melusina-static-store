@@ -964,6 +964,14 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
                 require_source_commit_advertised_by_origin(
                     app_id, source, spec["source_commit"].strip().lower(), spec["source_branch"]
                 )
+                # A current dev-publish tip is necessary but not sufficient:
+                # the release decision also covers every advertised source
+                # head.  Without this check a whole-cohort receipt could look
+                # ready after an unreviewed source ref appeared, even though
+                # an individual build correctly refuses it.  Keep the cohort
+                # gate identical to the build gate and retain the selection
+                # receipt digest as portable provenance.
+                source_selection = require_current_source_selection(app_id, source, spec)
                 metadata_path = source_metadata_path(app_id, source, require_release_ready=False)
                 contract_path = source_runtime_contract_path(app_id, source, require_release_ready=False)
                 for artifact in (metadata_path, contract_path):
@@ -997,6 +1005,7 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
                     "sourceCommit": spec["source_commit"].strip().lower(),
                     "sourceRepository": spec["source_repository"],
                     "sourceBranch": spec["source_branch"],
+                    "sourceSelection": source_selection,
                     "version": version,
                     "versionNumber": version_number,
                 })

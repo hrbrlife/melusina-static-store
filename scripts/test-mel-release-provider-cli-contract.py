@@ -934,6 +934,27 @@ def test_catalog_rejects_app_specific_squads_authority():
                 restore_env(old)
 
 
+def test_catalog_refuses_duplicate_yaml_keys_before_release_selection():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        config.write_text(
+            "schema: melusina-bazaar-catalog/v1\n"
+            "schema: melusina-bazaar-catalog/v1\n",
+            encoding="utf-8",
+        )
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "duplicate catalog YAML key" in str(exc), exc
+            else:
+                raise AssertionError("catalog accepted duplicate YAML keys")
+        finally:
+            restore_env(old)
+
+
 def test_golden_publish_entrypoints_refuse_caller_selected_source_paths():
     """Old automation must not stage an artifact from a caller-picked path."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -1006,6 +1027,13 @@ def commit_source_fixture(path):
 
 def write_source_release_fixture(path, app_id, version, version_number, name=None):
     path.mkdir(parents=True)
+    (path / "sandstorm-pkgdef.capnp").write_text(
+        'const pkgdef :Spk.PackageDefinition = (\n'
+        f'  id = "{app_id}",\n'
+        '  manifest = (id = "nested-decoy")\n'
+        ');\n',
+        encoding="utf-8",
+    )
     (path / "metadata.json").write_text(json.dumps({
         "appId": app_id,
         "name": app_id if name is None else name,
@@ -1409,6 +1437,12 @@ def test_msb_scoped_cohort_requires_its_declared_dependency_closure():
             assert ready["expectedCohortAppCount"] == 2, ready
             assert ready["declaredDependencyClosure"] == [first_app_id, second_app_id], ready
             assert ready["missingCatalogEntries"] == [], ready
+            assert ready["pkgdefSourceOwnership"] == {
+                "status": "passed",
+                "checkedAppCount": 2,
+                "pkgdefFileCount": 2,
+                "findings": [],
+            }, ready
             assert {entry["sourceSelection"]["receiptSha256"] for entry in ready["sources"]} == {
                 provider.hex_sha(root / "prepublish-selections" / f"{first_app_id}.json"),
                 provider.hex_sha(root / "prepublish-selections" / f"{second_app_id}.json"),
@@ -1435,6 +1469,166 @@ def test_msb_scoped_cohort_requires_its_declared_dependency_closure():
         finally:
             provider.run = old_run
             restore_env(old)
+
+
+def test_cohort_refuses_pkgdef_claim_outside_its_selected_source_path():
+    first_app_id = "a" * 52
+    second_app_id = "b" * 52
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        first = sources / "first"
+        second = sources / "second"
+        first_commit = write_source_release_fixture(first, first_app_id, "1.2.3", 7)
+        second_commit = write_source_release_fixture(second, second_app_id, "2.3.4", 8)
+        shadow = sources / "third-party" / "shadow-pkgdef.capnp"
+        shadow.parent.mkdir(parents=True)
+        shadow.write_text(
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{first_app_id}",\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "first": {"appId": first_app_id, "source_path": "first", "source_commit": first_commit},
+            "second": {"appId": second_app_id, "source_path": "second", "source_commit": second_commit},
+        })
+        receipt = root / "cohort.json"
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        old_run = provider.run
+        advertised = {str(first): first_commit, str(second): second_commit}
+
+        def fixture_run(args, **kwargs):
+            if (args[:2] == ["git", "-C"] and args[3:] == [
+                "ls-remote", "--heads", "origin", "refs/heads/dev-publish",
+            ]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected pkgdef source reachability: {args}")
+                return f"{commit}\trefs/heads/dev-publish\n"
+            if (args[:2] == ["git", "-C"] and args[3:] == ["ls-remote", "--heads", "origin"]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected pkgdef source selection: {args}")
+                return (f"{commit}\trefs/heads/dev-publish\n"
+                        f"{commit}\trefs/heads/main\n")
+            return old_run(args, **kwargs)
+
+        try:
+            provider.run = fixture_run
+            result = provider.audit_source_cohort(receipt)
+        finally:
+            provider.run = old_run
+            restore_env(old)
+
+    assert result["status"] == "incomplete", result
+    assert result["verifiedSourceCount"] == 2, result
+    assert result["pkgdefSourceOwnership"] == {
+        "status": "failed",
+        "checkedAppCount": 2,
+        "pkgdefFileCount": 3,
+        "findings": [{
+            "appId": first_app_id,
+            "code": "DUPLICATE_APP_ID_SOURCE",
+            "path": "third-party/shadow-pkgdef.capnp",
+        }],
+    }, result
+    assert result["failures"] == [{
+        "appId": first_app_id,
+        "name": "first",
+        "reason": "DUPLICATE_APP_ID_SOURCE",
+    }], result
+
+
+def test_pkgdef_guard_ignores_comments_nested_ids_and_safe_in_source_aliases():
+    first_app_id = "a" * 52
+    second_app_id = "b" * 52
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "sources"
+        first = root / "first"
+        second = root / "second"
+        canonical = first / "pkgdef" / "sandstorm-pkgdef.capnp"
+        canonical.parent.mkdir(parents=True)
+        canonical.write_text(
+            f'# id = "{second_app_id}"\n'
+            f'// id = "{second_app_id}"\n'
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{first_app_id}",\n'
+            f'  manifest = (id = "{second_app_id}")\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        os.symlink(canonical.relative_to(first), first / "sandstorm-pkgdef.capnp")
+        second.mkdir(parents=True)
+        (second / "sandstorm-pkgdef.capnp").write_text(
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{second_app_id}"\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        old = with_env({"MEL_RELEASE_SOURCE_ROOT": str(root)})
+        try:
+            findings, count = provider.catalog_pkgdef_source_findings(
+                [
+                    {"appId": first_app_id, "source_path": "first"},
+                    {"appId": second_app_id, "source_path": "second"},
+                ],
+                {first_app_id: first, second_app_id: second},
+            )
+        finally:
+            restore_env(old)
+
+    assert findings == [], findings
+    assert count == 2
+
+
+def test_pkgdef_guard_refuses_a_selected_cross_source_symlink_claim():
+    first_app_id = "a" * 52
+    second_app_id = "b" * 52
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "sources"
+        first = root / "first"
+        second = root / "second"
+        first.mkdir(parents=True)
+        second.mkdir(parents=True)
+        (first / "sandstorm-pkgdef.capnp").write_text(
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{first_app_id}"\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        foreign = first / "foreign-pkgdef.capnp"
+        foreign.write_text(
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{second_app_id}"\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        (second / "sandstorm-pkgdef.capnp").write_text(
+            'const pkgdef :Spk.PackageDefinition = (\n'
+            f'  id = "{second_app_id}"\n'
+            ');\n',
+            encoding="utf-8",
+        )
+        os.symlink(os.path.relpath(foreign, second), second / "foreign-pkgdef.capnp")
+        old = with_env({"MEL_RELEASE_SOURCE_ROOT": str(root)})
+        try:
+            findings, _ = provider.catalog_pkgdef_source_findings(
+                [
+                    {"appId": first_app_id, "source_path": "first"},
+                    {"appId": second_app_id, "source_path": "second"},
+                ],
+                {first_app_id: first, second_app_id: second},
+            )
+        finally:
+            restore_env(old)
+
+    assert any(item["code"] == "PKGDEF_SYMLINK_CROSS_SOURCE" for item in findings), findings
+    assert any(item["code"] == "DUPLICATE_APP_ID_SOURCE" for item in findings), findings
 
 
 def test_source_root_resolves_only_clean_relative_manifest_paths():
@@ -2758,11 +2952,15 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_catalog_pins_one_shared_squads_authority()
     test_catalog_rejects_app_specific_squads_authority()
+    test_catalog_refuses_duplicate_yaml_keys_before_release_selection()
     test_golden_publish_entrypoints_refuse_caller_selected_source_paths()
     test_store_generation_template_pins_catalog_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
     test_msb_scoped_cohort_requires_its_declared_dependency_closure()
+    test_cohort_refuses_pkgdef_claim_outside_its_selected_source_path()
+    test_pkgdef_guard_ignores_comments_nested_ids_and_safe_in_source_aliases()
+    test_pkgdef_guard_refuses_a_selected_cross_source_symlink_claim()
     test_source_cohort_refuses_a_display_name_that_does_not_match_its_governed_catalog_name()
     test_source_selection_requires_a_current_complete_remote_snapshot()
     test_direct_source_selection_requires_an_explicit_historical_baseline()

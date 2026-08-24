@@ -19,6 +19,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,32 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+class DuplicateKeySafeLoader(yaml.SafeLoader):
+    """YAML loader which refuses ambiguity instead of keeping the last key."""
+
+
+def construct_unique_yaml_mapping(
+    loader: yaml.SafeLoader, node: yaml.nodes.MappingNode, deep: bool = False
+) -> dict[Any, Any]:
+    result: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            duplicate = key in result
+        except TypeError as exc:
+            raise yaml.YAMLError("catalog mapping key must be scalar") from exc
+        if duplicate:
+            raise yaml.YAMLError(f"duplicate catalog YAML key {key!r}")
+        result[key] = loader.construct_object(value_node, deep=deep)
+    return result
+
+
+DuplicateKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    construct_unique_yaml_mapping,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -132,10 +159,21 @@ CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
 
 
 BASE58_PUBLIC_KEY_RE = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,44}")
+PKGDEF_DECLARATION_RE = re.compile(r"\bconst\s+pkgdef\b[^=]*=\s*\(")
+PKGDEF_ID_ASSIGNMENT_RE = re.compile(r'\bid\s*=\s*"(?P<value>(?:\\.|[^"\\])*)"')
 
 
 class ProviderError(RuntimeError):
     pass
+
+
+class PkgdefClaim:
+    """One top-level Sandstorm package identity found in a source cohort."""
+
+    def __init__(self, app_id: str, path: Path, canonical_path: Path) -> None:
+        self.app_id = app_id
+        self.path = path
+        self.canonical_path = canonical_path
 
 
 def env(name: str, *, required: bool = False, default: str = "") -> str:
@@ -358,7 +396,7 @@ def context_path(app_id: str) -> Path:
 def catalog_config() -> dict[str, Any]:
     path = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = yaml.load(path.read_text(encoding="utf-8"), Loader=DuplicateKeySafeLoader)
     except (OSError, yaml.YAMLError) as exc:
         raise ProviderError(f"read Bazaar catalog config: {exc}") from exc
     if not isinstance(value, dict):
@@ -945,6 +983,268 @@ def source_path(app_id: str, *, require_release_ready: bool = True) -> Path:
     return path
 
 
+def path_is_below(path: Path, root: Path) -> bool:
+    """Return whether a canonical filesystem path is contained by ``root``."""
+
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def strip_capnp_comments(text: str) -> str:
+    """Remove Cap'n Proto comments without treating comment text as syntax."""
+
+    output: list[str] = []
+    index = 0
+    state = "normal"
+    while index < len(text):
+        char = text[index]
+        nxt = text[index + 1] if index + 1 < len(text) else ""
+        if state == "normal":
+            if char == "#":
+                state = "line"
+                output.append(" ")
+            elif char == "/" and nxt == "/":
+                state = "line"
+                output.extend((" ", " "))
+                index += 1
+            elif char == "/" and nxt == "*":
+                state = "block"
+                output.extend((" ", " "))
+                index += 1
+            elif char == '"':
+                state = "string"
+                output.append(char)
+            else:
+                output.append(char)
+        elif state == "line":
+            if char in "\r\n":
+                state = "normal"
+                output.append(char)
+            else:
+                output.append(" ")
+        elif state == "block":
+            if char == "*" and nxt == "/":
+                state = "normal"
+                output.extend((" ", " "))
+                index += 1
+            else:
+                output.append(char if char in "\r\n" else " ")
+        else:  # string
+            output.append(char)
+            if char == "\\" and nxt:
+                output.append(nxt)
+                index += 1
+            elif char == '"':
+                state = "normal"
+        index += 1
+    return "".join(output)
+
+
+def pkgdef_body(text: str) -> str | None:
+    """Return the outer body of exactly one ``const pkgdef`` declaration."""
+
+    declarations = list(PKGDEF_DECLARATION_RE.finditer(text))
+    if len(declarations) != 1:
+        return None
+    open_index = declarations[0].end() - 1
+    depth = 0
+    index = open_index
+    in_string = False
+    while index < len(text):
+        char = text[index]
+        if in_string:
+            if char == "\\" and index + 1 < len(text):
+                index += 2
+                continue
+            if char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_index + 1:index]
+        index += 1
+    return None
+
+
+def outer_pkgdef_fields(body: str) -> str:
+    """Mask nested values so a nested ``id`` cannot impersonate pkgdef.id."""
+
+    output: list[str] = []
+    depth = 0
+    in_string = False
+    index = 0
+    while index < len(body):
+        char = body[index]
+        if in_string:
+            output.append(char if depth == 0 else " ")
+            if char == "\\" and index + 1 < len(body):
+                index += 1
+                output.append(body[index] if depth == 0 else " ")
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+            output.append(char if depth == 0 else " ")
+        elif char in "([{":
+            depth += 1
+            output.append(" ")
+        elif char in ")]}":
+            if depth:
+                depth -= 1
+            output.append(" ")
+        else:
+            output.append(char if depth == 0 else (char if char in "\r\n" else " "))
+        index += 1
+    return "".join(output)
+
+
+def pkgdef_app_id(path: Path) -> tuple[str | None, str | None]:
+    """Read exactly one unescaped top-level pkgdef id, or a named refusal code."""
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None, "PKGDEF_UNREADABLE"
+    stripped = strip_capnp_comments(text)
+    declarations = list(PKGDEF_DECLARATION_RE.finditer(stripped))
+    if len(declarations) != 1:
+        return None, "PKGDEF_DECLARATION"
+    body = pkgdef_body(stripped)
+    if body is None:
+        return None, "PKGDEF_UNBALANCED"
+    values = [match.group("value") for match in PKGDEF_ID_ASSIGNMENT_RE.finditer(outer_pkgdef_fields(body))]
+    if not values:
+        return None, "PKGDEF_APP_ID_MISSING"
+    if len(values) != 1:
+        return None, "PKGDEF_AMBIGUOUS_APP_ID"
+    value = values[0]
+    if not value or "\\" in value:
+        return None, "PKGDEF_APP_ID_LITERAL"
+    return value, None
+
+
+def pkgdef_display_path(path: Path, root: Path) -> str:
+    """Keep audit output portable by never writing absolute checkout paths."""
+
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return "<outside-source-root>"
+
+
+def catalog_pkgdef_source_findings(
+    specs: list[dict[str, str]], selected_paths: dict[str, Path]
+) -> tuple[list[dict[str, str]], int]:
+    """Refuse any catalog appId claimed from outside its selected source path.
+
+    The catalog's ``appId -> source_path`` mapping is a package-authority
+    boundary.  This scanner is intentionally invoked only by the cohort audit:
+    it examines the entire declared source root, but it considers claims only
+    for the explicit whole-catalog or scoped-cohort app set.
+    """
+
+    root = clean_source_root()
+    findings: list[dict[str, str]] = []
+    claims: list[PkgdefClaim] = []
+    for directory, directories, files in os.walk(root, followlinks=False):
+        directories[:] = sorted(name for name in directories if name != ".git")
+        for filename in sorted(files):
+            lower = filename.lower()
+            if not (lower.endswith(".capnp") and "pkgdef" in lower):
+                continue
+            path = Path(directory) / filename
+            try:
+                metadata = path.lstat()
+            except OSError:
+                findings.append({
+                    "appId": "catalog",
+                    "code": "PKGDEF_UNREADABLE",
+                    "path": pkgdef_display_path(path, root),
+                })
+                continue
+            if path.is_symlink():
+                try:
+                    canonical = path.resolve(strict=True)
+                    target = canonical.lstat()
+                except OSError:
+                    findings.append({
+                        "appId": "catalog",
+                        "code": "PKGDEF_UNREADABLE",
+                        "path": pkgdef_display_path(path, root),
+                    })
+                    continue
+                if not path_is_below(canonical, root) or not stat.S_ISREG(target.st_mode):
+                    findings.append({
+                        "appId": "catalog",
+                        "code": "PKGDEF_SYMLINK_ESCAPE",
+                        "path": pkgdef_display_path(path, root),
+                    })
+                    continue
+            elif not metadata or not path.is_file():
+                findings.append({
+                    "appId": "catalog",
+                    "code": "PKGDEF_TYPE",
+                    "path": pkgdef_display_path(path, root),
+                })
+                continue
+            else:
+                canonical = path
+            app_id, error = pkgdef_app_id(canonical)
+            if error is not None:
+                findings.append({
+                    "appId": "catalog",
+                    "code": error,
+                    "path": pkgdef_display_path(path, root),
+                })
+                continue
+            assert app_id is not None
+            claims.append(PkgdefClaim(app_id=app_id, path=path, canonical_path=canonical))
+
+    expected = {spec["appId"]: spec for spec in specs}
+    for app_id, spec in sorted(expected.items()):
+        selected = selected_paths[app_id]
+        matching = [claim for claim in claims if claim.app_id == app_id]
+        inside = [claim for claim in matching if path_is_below(claim.path, selected)]
+        outside = [claim for claim in matching if not path_is_below(claim.path, selected)]
+        cross_source = [claim for claim in inside if not path_is_below(claim.canonical_path, selected)]
+        for claim in cross_source:
+            findings.append({
+                "appId": app_id,
+                "code": "PKGDEF_SYMLINK_CROSS_SOURCE",
+                "path": pkgdef_display_path(claim.path, root),
+            })
+        safe = [claim for claim in inside if claim not in cross_source]
+        unique_selected = {claim.canonical_path: claim for claim in safe}
+        if not unique_selected:
+            findings.append({
+                "appId": app_id,
+                "code": "PKGDEF_SELECTED_APP_ID_MISSING",
+                "path": spec["source_path"],
+            })
+        elif len(unique_selected) != 1:
+            findings.append({
+                "appId": app_id,
+                "code": "PKGDEF_SELECTED_APP_ID_AMBIGUOUS",
+                "path": spec["source_path"],
+            })
+        for claim in outside:
+            findings.append({
+                "appId": app_id,
+                "code": "DUPLICATE_APP_ID_SOURCE",
+                "path": pkgdef_display_path(claim.path, root),
+            })
+
+    findings.sort(key=lambda item: (item["code"], item["appId"], item["path"]))
+    return findings, len({claim.canonical_path for claim in claims})
+
+
 def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> dict[str, Any]:
     """Prove a complete catalog or explicitly declared scoped source cohort.
 
@@ -1012,6 +1312,13 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
             })
 
     verified_sources: list[dict[str, Any]] = []
+    verified_source_paths: dict[str, Path] = {}
+    pkgdef_source_ownership: dict[str, Any] = {
+        "status": "not-run",
+        "checkedAppCount": 0,
+        "pkgdefFileCount": 0,
+        "findings": [],
+    }
     # Do not validate a convenient subset when any catalog entry is unresolved:
     # a partial result is not a reproducible release cohort.
     if not unreconciled and not failures and not missing_catalog_entries:
@@ -1019,6 +1326,7 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
             app_id = spec["appId"]
             try:
                 source = source_path(app_id, require_release_ready=False)
+                verified_source_paths[app_id] = source
                 require_source_commit_advertised_by_origin(
                     app_id, source, spec["source_commit"].strip().lower(), spec["source_branch"]
                 )
@@ -1077,6 +1385,29 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
                     "reason": "source provenance or release-input validation failed",
                 })
 
+    # A clean checkout at the catalog pin is still insufficient if another
+    # source below the same cohort root claims the immutable Sandstorm appId.
+    # Run this after every selected path passed its Git/receipt checks so the
+    # guard's output identifies the actual cross-source package claim rather
+    # than masking an unrelated checkout failure.
+    if not failures and len(verified_sources) == len(specs):
+        pkgdef_findings, pkgdef_count = catalog_pkgdef_source_findings(specs, verified_source_paths)
+        pkgdef_source_ownership = {
+            "status": "passed" if not pkgdef_findings else "failed",
+            "checkedAppCount": len(specs),
+            "pkgdefFileCount": pkgdef_count,
+            "findings": pkgdef_findings,
+        }
+        specs_by_id = {spec["appId"]: spec for spec in specs}
+        for finding in pkgdef_findings:
+            app_id = finding["appId"]
+            spec = specs_by_id.get(app_id)
+            failures.append({
+                "appId": app_id,
+                "name": spec["name"] if spec is not None else "catalog",
+                "reason": finding["code"],
+            })
+
     result: dict[str, Any] = {
         "schema": "melusina-source-cohort-audit-v1",
         "catalogOrigin": document["catalog_origin"],
@@ -1087,6 +1418,7 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
         "expectedLiveAppCount": document["expected_live_app_count"],
         "sourcePinnedCount": len(pinned_specs),
         "verifiedSourceCount": len(verified_sources),
+        "pkgdefSourceOwnership": pkgdef_source_ownership,
         "status": "ready" if not unreconciled and not failures and not missing_catalog_entries and len(verified_sources) == len(specs) else "incomplete",
         "sources": sorted(verified_sources, key=lambda entry: str(entry["appId"])),
         "unreconciled": sorted(unreconciled, key=lambda entry: str(entry["appId"])),

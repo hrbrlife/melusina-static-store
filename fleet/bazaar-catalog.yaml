@@ -333,14 +333,12 @@ groups:
       telescreen:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
-        # The current dev-publish v0.0.17 / v21 source is a clean-clone,
-        # contract-bearing governed candidate. Relevant divergent feature work
-        # is retained or held in its selection receipt, never silently lost.
-        # v21 makes the Grapple-granted ScreeningService saveable: Sandstorm
-        # calls AppPersistent.save() on a cap while fulfilling the PowerBox
-        # request, and the bare client had no such method, so every grant died
-        # with a nested `unimplemented` and the consumer waited forever.
-        source_commit: 415766bed3137f37bb09c50b1cbaada5f43100cb
+        # The current dev-publish v0.0.17 / v21 source preserves the v21
+        # saveable ScreeningService repair and isolates the bundled sidecar's
+        # loopback listener to POST /llm/. Forged Sandstorm-permission headers
+        # cannot reach its shell-facing /admin/* mux. Its direct shared-
+        # protocol consumer still needs final P_bind alignment before package.
+        source_commit: b334cec9bff40e56323b93074e479c3e01b22610
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

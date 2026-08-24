@@ -2,28 +2,23 @@
     "schema": "melusina-source-selection-v1",
     "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
     "sourceRepository": "https://github.com/hrbrlife/pr_ninja",
-    "sourceCommit": "415766bed3137f37bb09c50b1cbaada5f43100cb",
+    "sourceCommit": "b334cec9bff40e56323b93074e479c3e01b22610",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Selected the 2026-08-22 dev-publish TeleScreen v0.0.17/v21 cut. It fixes a defect that made the app's advertised outbound capability unusable: a Grapple grant of ScreeningService could never complete, because Sandstorm calls AppPersistent.save() on a capability while fulfilling the PowerBox request and the cap handed over was a bare ScreeningService client with no such method. SessionContext.fulfillRequest failed with a nested 'unimplemented' and every consuming grain waited forever. The fulfil now hands over a client carrying BOTH AppPersistent and ScreeningService, the shape telescreen_subcap.go already used for the inside-install sub-cap, and MainView.restore gained a ScreeningService branch under its own objectId tag so a granted cap survives a restart. Also repairs the release-cohort guard, whose pkgdef appVersion regex was a hardcoded 20 while its failure message interpolated wantVersionNumber - it asserted the opposite of what it claimed. main is the same commit as dev-publish for this cut.",
+    "decisionSummary": "TeleScreen v0.0.17/appVersion 21 canonical dev-publish carries the P0 loopback authority boundary: the bundled sidecar receives only POST /llm/ and cannot reach shell-facing admin routes through forged headers. main is the reviewed v21 ancestor. This source-selection record does not claim final shared-protocol P_bind alignment, a package, listing, installation, or customer screening flow.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh single-branch clone at the selected source commit, git status --untracked-files=all empty",
-            "go build ./... (untagged)",
-            "go build -tags=melusina ./...",
-            "go test ./... - full suite green including TestReleaseCohortAgrees",
-            "NEGATIVE CONTROL: TestBareScreeningServiceIsNotSaveable drives AppPersistent.save against the pre-fix bare client and requires it to fail",
-            "MUTATION CONTROL: dropping AppPersistent from the persistent method table reproduces 'grain.capnp:AppPersistent.save: unimplemented' verbatim - the exact production error",
-            "MUTATION CONTROL: a half-bumped sandstorm-pkgdef.capnp (appVersion left at 20) fails TestReleaseCohortAgrees by name; the full cohort passes",
-            "version cohort advanced together: sandstorm-pkgdef.capnp, metadata.json, pyproject.toml, changelog.md, release_cohort_test.go constants",
-            "gofmt clean outside third_party"
+            "Fresh detached checkout at b334cec9bff40e56323b93074e479c3e01b22610 remained clean after validation.",
+            "grain/go.mod verification, default and melusina-tagged go vet ./..., and default and melusina-tagged go test -count=1 ./... passed.",
+            "TestLoopbackSidecarMux_RejectsForgedSandstormPermissions returns 404 for forged-header admin routes; TestLoopbackSidecarMux_StillForwardsLLMPost preserves POST forwarding and refuses GET.",
+            "The direct shared-protocol v1.14 consumer was identified as a pending final P_bind cohort member; this receipt is not package approval."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "415766bed3137f37bb09c50b1cbaada5f43100cb",
+            "commit": "b334cec9bff40e56323b93074e479c3e01b22610",
             "outcome": "selected"
         },
         {
@@ -113,5 +108,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "same"
+    "baselineRelation": "ancestor"
 }

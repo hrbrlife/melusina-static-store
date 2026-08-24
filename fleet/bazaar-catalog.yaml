@@ -525,15 +525,13 @@ groups:
         admin_surface: same-pearl
       claude-melusina:
         appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h
-        # First governed Claude-Melusina release. The 0.1.0 ceremony completed
-        # with ReleaseEntry 3iWLh4wXTf5mQTB4uKBQnVLZyKMS1emJbPeG75Ry1CQn
-        # Active for appHash d5274d6f2fb90305b6506d8c71bc3f4e820f15fe06de81e6d53419dbd21b814b.
-        # Its exact 5ac624283edf56e5031cb3c765a40ac4 package, final release
-        # receipt, and materialized runtime contract are recorded in the
-        # catalog slot below; source provenance remains the independent clean
-        # clone/package evidence named by this selection receipt.
+        # The selected v0.2.1/appVersion 3 source is the governed
+        # DiagnosticProbe v1 candidate. It succeeds the v0.1.0 source cut,
+        # whose ReleaseEntry/package evidence remains historical. This source
+        # pin is provenance only: it does not claim a v0.2.1 package, listing,
+        # public pointer, install, or target-Pearl response exists yet.
         source_path: claude-melusina
-        source_commit: 498dbf93c385f23517101748bc8017585a6a2042
+        source_commit: 204a0ddbb2b99b108ce3dbc83bf28faf7cdd5142
         source_baseline_branch: main
         reconciliation_state: source-pinned
         release_state: ready

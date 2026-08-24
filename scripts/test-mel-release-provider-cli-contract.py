@@ -2001,7 +2001,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     claude = entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]
     assert claude["group"] == "platform-tools", claude
     assert claude["source_path"] == "claude-melusina", claude
-    assert claude["source_commit"] == "498dbf93c385f23517101748bc8017585a6a2042", claude
+    assert claude["source_commit"] == "204a0ddbb2b99b108ce3dbc83bf28faf7cdd5142", claude
     assert claude["source_baseline_branch"] == "main", claude
     assert claude["reconciliation_state"] == "source-pinned", claude
     assert claude["release_state"] == "ready", claude

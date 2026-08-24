@@ -12,7 +12,7 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-20T12:41:34Z
 catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
-expected_live_app_count: 33
+expected_live_app_count: 34
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -723,9 +723,10 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
   unreconciled-live-listings:
-    # These live default-Bazaar listings are deliberately represented here,
-    # but have no publishable source path or commit until their retain/retire
-    # decision and contract-bearing source evidence are complete.
+    # These historically divergent default-Bazaar listings remain explicitly
+    # represented here. An individual entry becomes releasable only when its
+    # own source pin, selection receipt, and contract-bearing source evidence
+    # are complete; the group name never relaxes those gates.
     apps:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
@@ -799,6 +800,33 @@ groups:
         pearl_role: workspace
         client_access: self-owned
         admin_surface: same-pearl
+      cyberteller-config:
+        appId: 3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10
+        # The install-scoped ConfigGate provider is a direct MSB dependency,
+        # not a raw-package exception. This selected v0.1.18/appVersion-27
+        # source aligns its shared protocol dependency and advertises all
+        # eight retained ConfigGate wire methods truthfully.
+        source_path: cybertellerconfig
+        source_commit: 0302051d0be4960e16e4f20b9ca6be2ee69cb12e
+        source_baseline_branch: main
+        runtime_contract_path: RUNTIME-CONTRACT.json
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10.json
+        source_repository: https://github.com/hrbrlife/melusina_cybertellerconfig_app
+        publish_slug: cybertellerconfig
+        catalog_name: Cyberteller Config
+        live_version: "0.1.18"
+        catalog_developer: hrbrlife
+        catalog_repo: melusina_cybertellerconfig_app
+        catalog_slug: cybertellerconfig
+        role: install-scoped-configgate-provider
+        audience: foundation
+        install_mode: owner-only
+        pearl_role: authority
+        client_access: none
+        admin_surface: hidden-authority
       ccash-domain-template:
         appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
         # v0.5.88/appVersion-110 is the current dev-publish tip. It incorporates

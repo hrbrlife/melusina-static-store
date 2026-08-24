@@ -1712,12 +1712,13 @@ def checked_in_catalog_entries():
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 33, document
-    assert len(entries) == 33, entries
+    assert document["expected_live_app_count"] == 34, document
+    assert len(entries) == 34, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert document["installation_policy_version"] == 1, document
-    assert CYBERTELLER_CONFIG_APP_ID not in entries, entries
+    assert sum(app["appId"] == CYBERTELLER_CONFIG_APP_ID for app in entries.values()) == 1, entries
+    assert document["scoped_cohorts"]["msb"]["app_ids"].count(CYBERTELLER_CONFIG_APP_ID) == 1, document
     assert sum(app["catalog_name"] == "GoldKey" for app in entries.values()) == 1, entries
     goldkey = entries[PRODUCTION_GOLDKEY_APP_ID]
     assert (goldkey["name"], goldkey["source_path"], goldkey["catalog_name"], goldkey["catalog_slug"]) == (
@@ -1729,6 +1730,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510": "paype.cc",
         "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0": "CCA.SH Configurator",
         "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0": "CyberTeller",
+        CYBERTELLER_CONFIG_APP_ID: "Cyberteller Config",
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": "Fineract Configurator",
         "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": "TeleScreen",
         "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh": "Jinn",
@@ -1751,6 +1753,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0": ("foundation", "owner-only", "workflow", "none", "same-pearl"),
         "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": ("foundation", "owner-only", "proxy", "none", "hidden-authority"),
         "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0": ("foundation", "owner-only", "workflow", "none", "same-pearl"),
+        CYBERTELLER_CONFIG_APP_ID: ("foundation", "owner-only", "authority", "none", "hidden-authority"),
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h": ("foundation", "owner-only", "authority", "none", "hidden-authority"),
         "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60": ("foundation", "owner-only", "workspace", "none", "same-pearl"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
@@ -2010,6 +2013,8 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
             ("ccash-domain-template", "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
             ("instaco", "f1a0afea1defcfe756c89865ca9ebdeda84335a5", "instaco-app", "instaco"),
+        CYBERTELLER_CONFIG_APP_ID:
+            ("cybertellerconfig", "0302051d0be4960e16e4f20b9ca6be2ee69cb12e", "melusina_cybertellerconfig_app", "cybertellerconfig"),
     }
     for app_id, (source_path, source_commit, repo, slug) in cases.items():
         app = entries[app_id]
@@ -2105,6 +2110,18 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert cyberteller["source_selection_receipt"] == (
         "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
     ), cyberteller
+    cyberteller_config = entries[CYBERTELLER_CONFIG_APP_ID]
+    assert cyberteller_config["group"] == "unreconciled-live-listings", cyberteller_config
+    assert cyberteller_config["source_path"] == "cybertellerconfig", cyberteller_config
+    assert cyberteller_config["source_commit"] == "0302051d0be4960e16e4f20b9ca6be2ee69cb12e", cyberteller_config
+    assert cyberteller_config["source_baseline_branch"] == "main", cyberteller_config
+    assert cyberteller_config["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller_config
+    assert cyberteller_config["reconciliation_state"] == "source-pinned", cyberteller_config
+    assert cyberteller_config["release_state"] == "ready", cyberteller_config
+    assert cyberteller_config["source_selection_state"] == "direct-dev-verified", cyberteller_config
+    assert cyberteller_config["source_selection_receipt"] == (
+        "prepublish-selections/3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10.json"
+    ), cyberteller_config
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
     assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
@@ -2163,12 +2180,10 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
                 assert "held for reconciliation" in str(exc), exc
             else:
                 raise AssertionError(f"held catalog app {app_id} was releasable")
-        try:
-            provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
-        except provider.ProviderError as exc:
-            assert "not declared" in str(exc), exc
-        else:
-            raise AssertionError("non-live configuration candidate was in the default Bazaar catalog")
+        config_provider = provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
+        assert config_provider["source_path"] == "cybertellerconfig", config_provider
+        assert config_provider["reconciliation_state"] == "source-pinned", config_provider
+        assert config_provider["source_selection_state"] == "direct-dev-verified", config_provider
     finally:
         restore_env(old)
 

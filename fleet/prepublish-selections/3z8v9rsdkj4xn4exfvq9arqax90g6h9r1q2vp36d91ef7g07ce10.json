@@ -1,0 +1,82 @@
+{
+    "schema": "melusina-source-selection-v1",
+    "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
+    "sourceRepository": "https://github.com/hrbrlife/melusina_cybertellerconfig_app",
+    "sourceCommit": "0302051d0be4960e16e4f20b9ca6be2ee69cb12e",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Cyberteller Config v0.1.18/appVersion-27 is the reviewed install-scoped ConfigGate provider cut. It advances the reviewed main baseline with the selected shared-protocol alignment and truthful eight-method lifecycle metadata; dev-publish is the current release authority.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean recursive clone at the selected canonical dev-publish commit",
+            "go test -count=1 ./... and go vet ./... pass in the isolated provider worktree",
+            "the ConfigGate interface and EnvConfig ordinals are pinned, and capability metadata names all eight wire methods while setEnv remains refusal-only",
+            "remote-head inventory retains archive and preservation refs; the three hosted non-retention heads remain below the five-active-branch ceiling"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/mel-release-health-cybertellerconfig-20260814",
+            "commit": "d03e97f8269aada2a76ca5d81d4074c5cbed8655",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "0302051d0be4960e16e4f20b9ca6be2ee69cb12e",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "e26e2d1e5222ba7f2beac9f0d3d3801a0d86d492",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/T1-CAPNP-cybertellerconfig-2026-06-07",
+            "commit": "3fe259700875128d6e09c7cbf34f3a931356e742",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "f040de626653afbafaee019cf23fd76d2c260ca8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-cybertellerconfig",
+            "commit": "d03e97f8269aada2a76ca5d81d4074c5cbed8655",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
+            "commit": "fc7a10625d32e19da331bb0ba2fbd4c22f4beed5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/v0.1-wizard-20260511",
+            "commit": "2faeae0178157930afc8b9f30a5c0a419c0f98f3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "267a83a5b5dcd8fe0edc7d2e479d049f5844513d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "c2bb23235fa407cdd383ffd740eceb3f5bb97f85",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "c09a8ae7b8c594434b53aa2475b90926697f6e02",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "c09a8ae7b8c594434b53aa2475b90926697f6e02",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
+}

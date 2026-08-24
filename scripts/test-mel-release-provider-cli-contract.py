@@ -934,6 +934,41 @@ def test_catalog_rejects_app_specific_squads_authority():
                 restore_env(old)
 
 
+def test_golden_publish_entrypoints_refuse_caller_selected_source_paths():
+    """Old automation must not stage an artifact from a caller-picked path."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "unmanaged-source"
+        keys = root / "unmanaged-keys"
+        source.mkdir()
+        keys.mkdir()
+
+        direct = subprocess.run(
+            ["bash", str(HERE / "self-publish.sh"), str(source), "--keys", str(keys)],
+            text=True, capture_output=True,
+        )
+        assert direct.returncode == 2, direct
+        assert "caller-selected self-publish is disabled" in direct.stderr, direct
+        assert "default-bazaar-release.sh" in direct.stderr, direct
+        assert not (source / "app.spk").exists(), "retired direct path reached package build"
+
+        make = subprocess.run(
+            ["make", "-C", str(HERE.parent), "--no-print-directory", "publish-app",
+             f"SRC={source}", f"KEYS={keys}"],
+            text=True, capture_output=True,
+        )
+        assert make.returncode == 2, make
+        assert "caller-selected publish-app is disabled" in make.stdout, make
+        assert "default-bazaar-release.sh publish --app" in make.stdout, make
+        assert not (source / "app.spk").exists(), "retired Make path reached package build"
+
+        help_text = subprocess.run(
+            ["bash", str(HERE / "self-publish.sh"), "--help"],
+            text=True, capture_output=True, check=True,
+        )
+        assert "default-bazaar-release.sh publish --app" in help_text.stdout, help_text
+
+
 def test_store_generation_template_pins_catalog_shared_squads_authority():
     """A first install must not omit or drift from the single release authority."""
     catalog = HERE.parent / "fleet" / "bazaar-catalog.yaml"
@@ -1305,6 +1340,98 @@ def test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
                 "name": "first",
                 "reason": "source provenance or release-input validation failed",
             }], rejected
+        finally:
+            provider.run = old_run
+            restore_env(old)
+
+
+def test_msb_scoped_cohort_requires_its_declared_dependency_closure():
+    first_app_id = "msb-first-app"
+    second_app_id = "msb-second-app"
+    missing_app_id = "msb-config-provider-pending"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        sources = root / "sources"
+        first = sources / "first"
+        second = sources / "second"
+        first_commit = write_source_release_fixture(first, first_app_id, "1.2.3", 7)
+        second_commit = write_source_release_fixture(second, second_app_id, "2.3.4", 8)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {
+            "first": {"appId": first_app_id, "source_path": "first", "source_commit": first_commit},
+            "second": {"appId": second_app_id, "source_path": "second", "source_commit": second_commit},
+        })
+        document = json.loads(config.read_text(encoding="utf-8"))
+        document["default_release_state"] = "hold"
+        document["scoped_cohorts"] = {"msb": {"app_ids": [first_app_id, missing_app_id]}}
+        config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+        receipt = root / "msb-cohort.json"
+        old = with_env({
+            "MEL_RELEASE_CONFIG": str(config),
+            "MEL_RELEASE_SOURCE_ROOT": str(sources),
+        })
+        old_run = provider.run
+        advertised = {str(first): first_commit, str(second): second_commit}
+
+        def fixture_run(args, **kwargs):
+            if (args[:2] == ["git", "-C"] and args[3:] == [
+                "ls-remote", "--heads", "origin", "refs/heads/dev-publish",
+            ]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected scoped source reachability: {args}")
+                return f"{commit}\trefs/heads/dev-publish\n"
+            if (args[:2] == ["git", "-C"] and args[3:] == [
+                "ls-remote", "--heads", "origin",
+            ]):
+                commit = advertised.get(args[2])
+                if commit is None:
+                    raise AssertionError(f"unexpected scoped source selection: {args}")
+                return (f"{commit}\trefs/heads/dev-publish\n"
+                        f"{commit}\trefs/heads/main\n")
+            return old_run(args, **kwargs)
+
+        try:
+            provider.run = fixture_run
+            pending = provider.audit_source_cohort(receipt, "msb")
+            assert pending["status"] == "incomplete", pending
+            assert pending["scope"] == "msb", pending
+            assert pending["expectedCohortAppCount"] == 2, pending
+            assert pending["declaredDependencyClosure"] == [first_app_id, missing_app_id], pending
+            assert pending["missingCatalogEntries"] == [{"appId": missing_app_id}], pending
+            assert pending["verifiedSourceCount"] == 0, pending
+
+            document["scoped_cohorts"]["msb"]["app_ids"] = [first_app_id, second_app_id]
+            config.write_text(json.dumps(document) + "\n", encoding="utf-8")
+            ready = provider.audit_source_cohort(receipt, "msb")
+            assert ready["status"] == "ready", ready
+            assert ready["scope"] == "msb", ready
+            assert ready["expectedCohortAppCount"] == 2, ready
+            assert ready["declaredDependencyClosure"] == [first_app_id, second_app_id], ready
+            assert ready["missingCatalogEntries"] == [], ready
+            assert {entry["sourceSelection"]["receiptSha256"] for entry in ready["sources"]} == {
+                provider.hex_sha(root / "prepublish-selections" / f"{first_app_id}.json"),
+                provider.hex_sha(root / "prepublish-selections" / f"{second_app_id}.json"),
+            }, ready
+
+            selection_path = root / "prepublish-selections" / f"{first_app_id}.json"
+            original_selection = selection_path.read_text(encoding="utf-8")
+            changed_selection = json.loads(original_selection)
+            changed_selection["reviewedRefs"].append({
+                "ref": "refs/heads/feat/unreviewed",
+                "commit": "f" * 40,
+                "outcome": "hold",
+            })
+            selection_path.write_text(json.dumps(changed_selection) + "\n", encoding="utf-8")
+            drifted = provider.audit_source_cohort(receipt, "msb")
+            assert drifted["status"] == "incomplete", drifted
+            assert drifted["verifiedSourceCount"] == 1, drifted
+            assert drifted["failures"] == [{
+                "appId": first_app_id,
+                "name": "first",
+                "reason": "source provenance or release-input validation failed",
+            }], drifted
+            selection_path.write_text(original_selection, encoding="utf-8")
         finally:
             provider.run = old_run
             restore_env(old)
@@ -2616,9 +2743,11 @@ if __name__ == "__main__":
     test_release_status_requires_program_owner()
     test_catalog_pins_one_shared_squads_authority()
     test_catalog_rejects_app_specific_squads_authority()
+    test_golden_publish_entrypoints_refuse_caller_selected_source_paths()
     test_store_generation_template_pins_catalog_shared_squads_authority()
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_audit_cohort_requires_all_catalog_sources_and_writes_portable_receipt()
+    test_msb_scoped_cohort_requires_its_declared_dependency_closure()
     test_source_cohort_refuses_a_display_name_that_does_not_match_its_governed_catalog_name()
     test_source_selection_requires_a_current_complete_remote_snapshot()
     test_direct_source_selection_requires_an_explicit_historical_baseline()

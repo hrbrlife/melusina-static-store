@@ -240,7 +240,7 @@ plan: preflight
 #   - staging tree fingerprint has changed (someone touched $(PLAN_STAGING))
 # Cleans up $(PLAN_DIR) on success so the next call requires a fresh plan.
 apply:
-	@echo "ERROR: legacy flat-catalog apply is retired; app publication is store-mediated via make publish-app"
+	@echo "ERROR: legacy flat-catalog apply is retired; use the catalog-keyed default-bazaar-release.sh"
 	exit 2
 
 # The retired writer body is deliberately absent: a dormant force-publish
@@ -259,10 +259,10 @@ deploy:
 # --- publish: legacy flat-catalog deployment only ----------------------------
 # This target is retained solely for exact 1.0.3 rollback/catalog maintenance.
 # It cannot publish an app and never invokes the two-phase store API. App
-# publication has exactly one entry point: `make publish-app`, which delegates
-# to the serialized PUBLISH-TZAR driver below.
+# publication has exactly one entry point: the catalog-keyed
+# `scripts/default-bazaar-release.sh` release driver.
 publish:
-	@echo "ERROR: legacy flat-catalog publish is retired; use make publish-app"
+	@echo "ERROR: legacy flat-catalog publish is retired; use the catalog-keyed default-bazaar-release.sh"
 	exit 2
 
 # --- submit-build: compile the sealed-v3 submit client -----------------------
@@ -273,18 +273,15 @@ submit-build:
 	go build -C $(SIDECAR_DIR) -o "$(CURDIR)/$(SUBMIT_BIN)" ./cmd/submit
 	@test -x "$(CURDIR)/$(SUBMIT_BIN)" || { echo "submit build failed — no $(SUBMIT_BIN)"; exit 1; }
 
-# --- publish-app: sole serialized two-phase app entry point -----------------
-# Default stops after private stage. Set PROMOTE_EXISTING=1 for G2's exact-
-# current, zero-chain-write path. New app-chain releases are finalized by the
-# separate governed ceremony before their exact bytes enter this driver.
+# --- publish-app: retired caller-selected entry point ------------------------
+# A Golden-MVP package must start with catalog appId -> source_path ->
+# source_commit.  The old SRC/KEYS/CATALOG_PATH route cannot establish that
+# provenance, so fail closed rather than allowing old automation to stage an
+# otherwise plausible but ungoverned artifact.
 publish-app:
-	@test -n "$(SRC)" || { echo "ERROR: SRC=<app source dir> required"; exit 2; }
-	@test -n "$(KEYS)" || { echo "ERROR: KEYS=<publisher key dir> required"; exit 2; }
-	bash scripts/self-publish.sh "$(SRC)" --keys "$(KEYS)" \
-	  --bump "$(or $(BUMP),none)" \
-	  $(if $(CATALOG_PATH),--catalog-path "$(CATALOG_PATH)") \
-	  $(if $(PROMOTE_EXISTING),--promote-existing-active) \
-	  $(if $(DRY_RUN),--dry-run)
+	@echo "ERROR: caller-selected publish-app is disabled during the Golden MVP freeze"
+	@echo "Use: MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root scripts/default-bazaar-release.sh publish --app <catalog-appId|slug> --version <version>"
+	@exit 2
 
 # --- sync: refresh submodules + rebuild dist-publish (no plan/apply) ---------
 # Cheap "pick up whatever publish branches have moved upstream" target.

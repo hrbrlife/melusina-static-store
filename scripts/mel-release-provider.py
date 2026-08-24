@@ -396,6 +396,25 @@ def catalog_config() -> dict[str, Any]:
     groups = value.get("groups")
     if not isinstance(groups, dict):
         raise ProviderError("Bazaar catalog config has no groups mapping")
+    scoped_cohorts = value.get("scoped_cohorts", {})
+    if not isinstance(scoped_cohorts, dict):
+        raise ProviderError("bazaar-catalog.yaml scoped_cohorts must be a mapping")
+    for cohort_name, cohort in scoped_cohorts.items():
+        if (not isinstance(cohort_name, str) or not cohort_name.strip() or
+                not re.fullmatch(r"[a-z0-9][a-z0-9-]*", cohort_name)):
+            raise ProviderError("bazaar-catalog.yaml has an invalid scoped cohort name")
+        if not isinstance(cohort, dict):
+            raise ProviderError(f"Bazaar scoped cohort {cohort_name!r} must be a mapping")
+        closure = cohort.get("app_ids")
+        if not isinstance(closure, list) or not closure:
+            raise ProviderError(f"Bazaar scoped cohort {cohort_name!r} must declare non-empty app_ids")
+        if any(
+            not isinstance(app_id, str) or not app_id.strip() or app_id != app_id.strip()
+            for app_id in closure
+        ):
+            raise ProviderError(f"Bazaar scoped cohort {cohort_name!r} has an invalid appId")
+        if len(set(closure)) != len(closure):
+            raise ProviderError(f"Bazaar scoped cohort {cohort_name!r} duplicates an appId")
     app_ids: list[str] = []
     for group in groups.values():
         apps = group.get("apps", {}) if isinstance(group, dict) else {}
@@ -459,6 +478,27 @@ def catalog_config() -> dict[str, Any]:
     if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
     return value
+
+
+def scoped_cohort_app_ids(cohort_name: str, document: dict[str, Any] | None = None) -> list[str]:
+    """Return one explicitly declared release-dependency closure.
+
+    The closure is intentionally allowed to name a dependency whose catalog
+    admission is still pending.  That lets the scoped audit fail by the exact
+    missing appId instead of silently shrinking the MSB release to whatever is
+    currently catalogued.  Catalog parsing still validates the shape and
+    uniqueness of that declaration above.
+    """
+    if document is None:
+        document = catalog_config()
+    cohorts = document.get("scoped_cohorts", {})
+    assert isinstance(cohorts, dict)
+    cohort = cohorts.get(cohort_name)
+    if not isinstance(cohort, dict):
+        raise ProviderError(f"Bazaar catalog has no scoped cohort {cohort_name!r}")
+    app_ids = cohort.get("app_ids")
+    assert isinstance(app_ids, list)
+    return list(app_ids)
 
 
 def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, str]:
@@ -905,14 +945,15 @@ def source_path(app_id: str, *, require_release_ready: bool = True) -> Path:
     return path
 
 
-def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
-    """Prove that the complete default-Bazaar source cohort is materialized.
+def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> dict[str, Any]:
+    """Prove a complete catalog or explicitly declared scoped source cohort.
 
     This is deliberately a read-only gate.  A source pin is useful evidence
     but is not permission to publish; held apps stay held.  The audit refuses
     to treat a locally available subset as a release cohort, and its portable
     receipt omits workstation paths so it can be checked from another clean
-    release host.
+    release host.  A scoped cohort is not an inferred group shortcut: it must
+    name every direct catalog dependency in its declared closure.
     """
     document = catalog_config()
     app_ids: list[str] = []
@@ -928,7 +969,24 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
                 raise ProviderError("Bazaar catalog app must be a mapping")
             app_ids.append(str(raw_spec.get("appId", "")))
 
-    specs = [app_spec(app_id, require_release_ready=False) for app_id in sorted(app_ids)]
+    all_specs = [app_spec(app_id, require_release_ready=False) for app_id in sorted(app_ids)]
+    declared_closure: list[str] = []
+    missing_catalog_entries: list[dict[str, str]] = []
+    scope_name = "whole-catalog"
+    if scoped_cohort is None:
+        specs = all_specs
+    else:
+        scope_name = scoped_cohort
+        declared_closure = scoped_cohort_app_ids(scoped_cohort, document)
+        by_app_id = {spec["appId"]: spec for spec in all_specs}
+        specs = []
+        for app_id in declared_closure:
+            spec = by_app_id.get(app_id)
+            if spec is None:
+                missing_catalog_entries.append({"appId": app_id})
+                continue
+            specs.append(spec)
+
     pinned_specs = [spec for spec in specs if spec["reconciliation_state"] == "source-pinned"]
     unreconciled = []
     for spec in specs:
@@ -956,7 +1014,7 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
     verified_sources: list[dict[str, Any]] = []
     # Do not validate a convenient subset when any catalog entry is unresolved:
     # a partial result is not a reproducible release cohort.
-    if not unreconciled and not failures:
+    if not unreconciled and not failures and not missing_catalog_entries:
         for spec in specs:
             app_id = spec["appId"]
             try:
@@ -1022,10 +1080,14 @@ def audit_source_cohort(receipt_out: Path) -> dict[str, Any]:
     result: dict[str, Any] = {
         "schema": "melusina-source-cohort-audit-v1",
         "catalogOrigin": document["catalog_origin"],
+        "scope": scope_name,
+        "expectedCohortAppCount": len(declared_closure) if scoped_cohort is not None else len(specs),
+        "declaredDependencyClosure": declared_closure,
+        "missingCatalogEntries": sorted(missing_catalog_entries, key=lambda entry: entry["appId"]),
         "expectedLiveAppCount": document["expected_live_app_count"],
         "sourcePinnedCount": len(pinned_specs),
         "verifiedSourceCount": len(verified_sources),
-        "status": "ready" if not unreconciled and not failures and len(verified_sources) == len(specs) else "incomplete",
+        "status": "ready" if not unreconciled and not failures and not missing_catalog_entries and len(verified_sources) == len(specs) else "incomplete",
         "sources": sorted(verified_sources, key=lambda entry: str(entry["appId"])),
         "unreconciled": sorted(unreconciled, key=lambda entry: str(entry["appId"])),
         "failures": sorted(failures, key=lambda entry: str(entry["appId"])),
@@ -2321,7 +2383,7 @@ def revoke(pda: str, receipt_out: Path) -> None:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        raise ProviderError("usage: mel-release-provider.py <audit-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|reject-register|promote|revoke>")
+        raise ProviderError("usage: mel-release-provider.py <audit-cohort|audit-msb-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|reject-register|promote|revoke>")
     op = sys.argv[1]
     app_id = env("MEL_APP_ID")
     if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
@@ -2332,6 +2394,14 @@ def main() -> None:
         print(json.dumps(result, separators=(",", ":"), sort_keys=True))
         if result["status"] != "ready":
             raise ProviderError("complete Bazaar source cohort is not reconciled; see MEL_COHORT_AUDIT_OUT")
+    elif op == "audit-msb-cohort":
+        result = audit_source_cohort(
+            clean_abs(env("MEL_COHORT_AUDIT_OUT", required=True), "MEL_COHORT_AUDIT_OUT"),
+            "msb",
+        )
+        print(json.dumps(result, separators=(",", ":"), sort_keys=True))
+        if result["status"] != "ready":
+            raise ProviderError("MSB scoped source cohort is not reconciled; see MEL_COHORT_AUDIT_OUT")
     elif op == "build":
         build(app_id, env("MEL_NEW_VERSION", required=True), clean_abs(env("MEL_CANDIDATE_RECEIPT_OUT", required=True), "MEL_CANDIDATE_RECEIPT_OUT"))
     elif op == "active-releases":

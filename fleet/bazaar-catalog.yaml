@@ -3,7 +3,7 @@ schema: melusina-bazaar-catalog/v1
 # https://bazaar.melusina-os.org. It is derived from the live catalog snapshot,
 # not from a local package scan or a smaller release subset. An entry may not be
 # published until it is individually marked ready. New or incomplete entries
-# remain held; the current 32-entry cohort has explicit reconciled source and
+# remain held; the current complete cohort has explicit reconciled source and
 # runtime-contract evidence.
 #
 # The snapshot is evidence, not a release approval. A new snapshot must update
@@ -22,6 +22,35 @@ default_source_selection_state: pending
 # Every governed build must use the exact current tip of this branch. A Store
 # listing or a reachable historical commit is evidence, never source authority.
 default_source_branch: dev-publish
+# This is the business-release dependency closure, not a convenient
+# group-name filter.  The scoped auditor refuses the entire MSB freeze if any
+# item is absent from the governed catalog or fails the same current-source
+# selection/receipt checks as the whole-store audit.  CyberTeller Config is
+# deliberately named before its admission: its missing catalog row must fail
+# by appId until its reviewed dev-publish source and selection receipt exist.
+scoped_cohorts:
+  msb:
+    app_ids:
+      # Customer journey / money-path Pearls.
+      - 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0 # welcome / Lobby
+      - 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh # NamedCoin
+      - zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0 # NamedCoin Admin
+      - uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510 # Popaye / CCASH
+      - 6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0 # CCASH Config
+      - 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0 # DueProcess
+      - v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh # AiLagoon
+      - vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0 # CyberTeller
+      - 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h # Fineract
+      - 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60 # TeleScreen
+      - ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h # Teleport
+      - u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh # InstaCo
+      - gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0 # InstaDAO Pearl
+      # Direct catalogued dependencies that sit outside money-path.
+      - hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h # DomainTemplate
+      - pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh # Creeper
+      - msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh # OpenSanctions
+      # P0 provider admission pending; must not be omitted from the closure.
+      - 3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10 # CyberTeller Config
 # Installation policy is governed by this default-Bazaar manifest, never by an
 # app's mutable metadata. The Store projects these five fields into its served
 # catalog and permits a direct install only for `self-service` workspaces.

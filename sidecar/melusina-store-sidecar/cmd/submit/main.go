@@ -83,10 +83,11 @@ type Receipt struct {
 	Catalog           *AppCatalogPointer `json:"catalog"`
 }
 
-// PublishReceipt is the machine receipt assembled by self-publish.sh after the
-// store promotion, served-byte checks, and install acceptance. The promotion
-// object is the cryptographic source of truth; the duplicated top-level proofs
-// are checked for exact equality before a finalizer may consume them.
+// PublishReceipt is the historical machine receipt shape for a staged/published
+// Store artifact.  Golden-MVP publication now starts from the catalog-keyed
+// mel-release path, but the promotion object remains the cryptographic source
+// of truth; duplicated top-level proofs must match before a finalizer consumes
+// them.
 type PublishReceipt struct {
 	Schema       string             `json:"schema"`
 	App          PublishReceiptApp  `json:"app"`

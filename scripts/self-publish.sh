@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# self-publish.sh — serialized two-phase PUBLISH-TZAR app driver.
+# self-publish.sh — retired caller-selected PUBLISH-TZAR entry point.
 #
 # Default execution is deliberately PRE-CHAIN: build a clean candidate, stage
 # it privately with a purpose-bound POST+/publish/stage envelope, verify and
@@ -10,9 +10,11 @@
 # chain write; a new ReleaseEntry must be finalized by the separate governed
 # ceremony before its exact bytes enter this stage/promote driver.
 #
-# Usage:
-#   self-publish.sh <app-source-dir> --keys <dir> [--catalog-path <dir>] \
-#     [--bump patch|minor|major|none] [--promote-existing-active] [--dry-run]
+# During the Golden MVP freeze, a caller-selected source directory is not an
+# admissible release input.  Every package must begin with the catalog's
+# immutable appId and resolve appId -> source_path -> source_commit through
+# default-bazaar-release.sh / mel-release.  Keep this executable as a
+# fail-closed tombstone so old automation cannot silently regain that bypass.
 #
 # The driver never writes dist-publish, calls sync-catalog.sh, revokes a
 # release, installs a store, or treats dry-run as proof.
@@ -21,6 +23,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATIC_STORE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1704067200}"
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+self-publish.sh is retired during the Golden MVP freeze.
+Use: MEL_RELEASE_SOURCE_ROOT=/absolute/clean/source-root \
+  scripts/default-bazaar-release.sh publish --app <catalog-appId|slug> --version <version>
+EOF
+  exit 0
+fi
+printf '%s\n' '[FAIL] caller-selected self-publish is disabled during the Golden MVP freeze; use default-bazaar-release.sh with a catalog appId' >&2
+exit 2
 
 APP_DIR=""
 KEYS_DIR=""

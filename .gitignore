@@ -12,6 +12,8 @@ dist-melusina/
 .claude/
 sandstorm-*.tar.xz
 *.log
+__pycache__/
+*.pyc
 nohup.out
 bf4d676cf1f6ad39d528ae0c65ca12e1
 .chatpid

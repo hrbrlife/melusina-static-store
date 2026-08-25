@@ -2,7 +2,7 @@
     "schema": "melusina-source-selection-v1",
     "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-app-opensanctions",
-    "sourceCommit": "3f188d8901728d7cf6818789f74f19cade55a171",
+    "sourceCommit": "74b48ee573d278d853d380430ab0ba23d4576958",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
     "decisionSummary": "OpenSanctions 0.1.26 answers the owner report 'OpenSanction doesnt correctly claim HTTP-OUT \u2014 No grapple popup'. The claim path was never broken. A PowerBox claim is three steps, and the third \u2014 persisting the redeemed sturdyref through the cap-token store \u2014 lives behind the wallet-anchored keybox; without MELUSINA_INSTALL_TRUST_ROOT and MELUSINA_OPERATOR_WALLET_PUBKEY the keybox never opens, CapTokens is nil, no claim hook is registered, and the first two steps are wasted motion. The grain said so at boot in a log the owner cannot read, while the page rendered a Claim button that opened the dialog and discarded the answer. The connections slot now carries the reason and the exact missing inputs and the template renders that refusal instead of the control, across three states: unconfigured, configured-but-rejected, and configured. Supplying the runtime configuration remains an operator action in the Configuration Console (F-127); this cut is the code half only. The commit message on this exact dev-publish tip records the measurement and every mutation. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
@@ -27,7 +27,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "3f188d8901728d7cf6818789f74f19cade55a171",
+            "commit": "74b48ee573d278d853d380430ab0ba23d4576958",
             "outcome": "selected"
         },
         {

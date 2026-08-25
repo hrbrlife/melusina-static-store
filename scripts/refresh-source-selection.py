@@ -175,9 +175,31 @@ def main() -> int:
     root = args.source_root or os.environ.get("MEL_RELEASE_SOURCE_ROOT", "")
     if not root:
         raise Fail("pass --source-root or set MEL_RELEASE_SOURCE_ROOT")
-    clone = Path(root) / spec["source_path"]
-    if not (clone / ".git").exists():
-        raise Fail(f"{clone} is not a clone")
+    source = Path(root) / spec["source_path"]
+    if not source.is_dir() or source.is_symlink():
+        raise Fail(f"{source} is not a checked-out source path")
+    # A catalog source_path identifies the packaging directory, not
+    # necessarily the Git toplevel. Fineract, for example, packages the
+    # fineract-sidecar directory from the reviewed cca-tc-operator checkout.
+    # Git itself is authoritative here: `git -C <subdirectory>` resolves the
+    # containing checkout without pretending a nested package needs its own
+    # .git directory.
+    try:
+        git_root = Path(run([
+            "git", "-C", str(source), "rev-parse", "--show-toplevel",
+        ]).strip()).resolve(strict=True)
+        source_resolved = source.resolve(strict=True)
+    except (Fail, OSError) as exc:
+        raise Fail(f"{source} is not inside a checked-out Git source: {exc}") from exc
+    if git_root not in (source_resolved, *source_resolved.parents):
+        raise Fail(f"{source} is not below its Git checkout root")
+
+    actual_origin = run(["git", "-C", str(source), "remote", "get-url", "origin"]).strip()
+    expected_origin = spec["source_repository"].rstrip("/")
+    if actual_origin.rstrip("/").removesuffix(".git") != expected_origin.removesuffix(".git"):
+        raise Fail(
+            f"{source} has origin {actual_origin!r}, not the catalog source {expected_origin!r}"
+        )
 
     receipt_path = CATALOG.parent / spec["source_selection_receipt"]
     existing = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
@@ -196,8 +218,8 @@ def main() -> int:
     # Fetch first: ls-remote is the live advertisement the provider will
     # compare against, and a stale local clone is exactly what makes a
     # freshly written receipt fail on the very next call.
-    run(["git", "-C", str(clone), "fetch", "--quiet", "origin"])
-    raw = run(["git", "-C", str(clone), "ls-remote", "--heads", "origin"])
+    run(["git", "-C", str(source), "fetch", "--quiet", "origin"])
+    raw = run(["git", "-C", str(source), "ls-remote", "--heads", "origin"])
 
     heads: dict[str, str] = {}
     for line in raw.splitlines():
@@ -224,7 +246,7 @@ def main() -> int:
     if base_ref not in heads:
         raise Fail(f"origin has no {base_ref}, which the direct selection needs as its baseline")
 
-    relation = baseline_relation(clone, heads[base_ref], source_commit)
+    relation = baseline_relation(source, heads[base_ref], source_commit)
 
     receipt = {
         "schema": SCHEMA,

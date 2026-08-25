@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
     "sourceRepository": "https://github.com/hrbrlife/melusina_ccashconfig_app",
-    "sourceCommit": "869590a0a7fa79098a1b96aba128024e1cb18ca8",
+    "sourceCommit": "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "ancestor",
     "decisionSummary": "CCA.SH Configurator 0.0.82 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
@@ -43,38 +42,13 @@
             "outcome": "archive"
         },
         {
-            "ref": "refs/heads/codex/ccashconfig-0049-release-prep-20260721",
-            "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/tenant-lease-v2-secrets-20260721",
-            "commit": "52a016af0ef5c98fea83a0835ad6a060dc719b93",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/dev-publish",
-            "commit": "869590a0a7fa79098a1b96aba128024e1cb18ca8",
+            "commit": "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e",
             "outcome": "selected"
         },
         {
-            "ref": "refs/heads/feat/case-kyc-verifier-capability-20260726",
-            "commit": "5f59615ec89b65da6f41ee9da07bebb110ba57ad",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/codex-psp-configuration",
-            "commit": "eb6bed16d53e1c9e7e3b06d2b55a2204f39c9715",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/mel-release-health-ccashconfig",
-            "commit": "76a0bf22720430d2c878b3faa383eaba6db0f65d",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/namedcoin-root-capability-20260726",
-            "commit": "5d074dbeb52e2d59d263d73819aa609a905bf2ad",
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "403fd33d3000dea8a888214201a22552b9c69341",
             "outcome": "retained"
         },
         {
@@ -211,16 +185,8 @@
             "ref": "refs/heads/preserve/ccashconfig-legacy-20260814/fix/template-service-per-domain-20260812",
             "commit": "c7f92a56f9f725c8ab6c736f7ad7c4c2d598ea8f",
             "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/publish",
-            "commit": "ae7ca6eaeea536bbe62cabf8c9ae4d42c0785ed2",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/storekeeper/drop-ccash-domain-branding",
-            "commit": "fb7733800138aaedfc7b789dc34b7ead04cf4910",
-            "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

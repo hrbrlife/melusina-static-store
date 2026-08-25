@@ -1,40 +1,109 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
-  "sourceRepository": "https://github.com/hrbrlife/welcome-pearl",
-  "sourceCommit": "c9949d4946d04f134006c441fa2f02f107775531",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v0.1.30/appVersion-31 Lobby source is the newest valid forward source. It retains the selected build-bound runtime-contract, default-Bazaar fixture, and reproducible package controls while creating a distinct immutable version above the prior same-version byte divergence. Main remains an ancestor. Earlier preserved feature and fix lines were already reviewed as ancestors or historical evidence; none contains newer app-relevant work than this direct dev-publish tip. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean selected-source checkout with current origin heads",
-      "make test and go vet ./...",
-      "make verify-perms-pkgdef, make build, and make verify-no-residue",
-      "two byte-identical SPK packs from c9949d4946d04f134006c441fa2f02f107775531 matched SHA-256 8889078813a432c506c370f11d6cdcbd96e495dfdefc5af0ee06587385bfd13a with packageId synchronization and SPK verification",
-      "the governed Store build must bind the canonical appHash over this SPK and staged metadata before registration",
-      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "c9949d4946d04f134006c441fa2f02f107775531", "outcome": "selected"},
-    {"ref": "refs/heads/feat/welcome-pearl-strip", "commit": "0c28e891a05e342da63a0c8154c978fd42dc6a15", "outcome": "archive"},
-    {"ref": "refs/heads/fix/active-bazaar-operator-identity", "commit": "d2c39b4030f086708ed9a08466c0f453f692d184", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "5c3f431561d84516bf3e1c4ff530accd383817b8", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/_stash/1a3156a7ae43", "commit": "1a3156a7ae4386e715390b030aa0f5ef8392077a", "outcome": "not-app-relevant"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/teama-clientside-fixes-2026-06-26", "commit": "6242fde4755f974b74ee8716041cdd717851296e", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/wall4-subject-user-correlation-2026-07-08", "commit": "002eda1e6827443568639bf31ed0d2e3fd205814", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/welcome-pearl-strip", "commit": "0c28e891a05e342da63a0c8154c978fd42dc6a15", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/wp-shell-welcome-role3-0117", "commit": "477d1b8ab3b49615c640f1b3832fc70628395710", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/active-bazaar-operator-identity", "commit": "d2c39b4030f086708ed9a08466c0f453f692d184", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/paype-intake-and-screening", "commit": "01ae2eb2199189e11665150af421d26c4c3b4475", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/welcome-pearl-ux-forms", "commit": "f0546af48da9788f15ec702ba9c7c271d776088f", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/welcome-public-prequalifier-20260715", "commit": "97db8a82fa9a5c4543e9fd08aa1b4c0fa22d6c00", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/welcome-session-teardown-20260814", "commit": "bc8a6ffcac6ecfd1a0d50d7d7f1a92cc9a219fd5", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "bc8a6ffcac6ecfd1a0d50d7d7f1a92cc9a219fd5", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/polish/visitor-intake-ui", "commit": "3681dccaf8e542969af26a62a6b0c3afdfadd2ee", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding", "commit": "b17161b9935cb7f025beff886fffcc08b055e997", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+    "sourceRepository": "https://github.com/hrbrlife/welcome-pearl",
+    "sourceCommit": "0eaa57bed251af7427e850c3688503861b807dfe",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "The Aug 20 dev-publish v0.1.30/appVersion-31 Lobby source is the newest valid forward source. It retains the selected build-bound runtime-contract, default-Bazaar fixture, and reproducible package controls while creating a distinct immutable version above the prior same-version byte divergence. Main remains an ancestor. Earlier preserved feature and fix lines were already reviewed as ancestors or historical evidence; none contains newer app-relevant work than this direct dev-publish tip. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean selected-source checkout with current origin heads",
+            "make test and go vet ./...",
+            "make verify-perms-pkgdef, make build, and make verify-no-residue",
+            "two byte-identical SPK packs from c9949d4946d04f134006c441fa2f02f107775531 matched SHA-256 8889078813a432c506c370f11d6cdcbd96e495dfdefc5af0ee06587385bfd13a with packageId synchronization and SPK verification",
+            "the governed Store build must bind the canonical appHash over this SPK and staged metadata before registration",
+            "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "0eaa57bed251af7427e850c3688503861b807dfe",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/welcome-pearl-strip",
+            "commit": "0c28e891a05e342da63a0c8154c978fd42dc6a15",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/active-bazaar-operator-identity",
+            "commit": "d2c39b4030f086708ed9a08466c0f453f692d184",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "5c3f431561d84516bf3e1c4ff530accd383817b8",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/1a3156a7ae43",
+            "commit": "1a3156a7ae4386e715390b030aa0f5ef8392077a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-clientside-fixes-2026-06-26",
+            "commit": "6242fde4755f974b74ee8716041cdd717851296e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/wall4-subject-user-correlation-2026-07-08",
+            "commit": "002eda1e6827443568639bf31ed0d2e3fd205814",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/welcome-pearl-strip",
+            "commit": "0c28e891a05e342da63a0c8154c978fd42dc6a15",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/wp-shell-welcome-role3-0117",
+            "commit": "477d1b8ab3b49615c640f1b3832fc70628395710",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/active-bazaar-operator-identity",
+            "commit": "d2c39b4030f086708ed9a08466c0f453f692d184",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/paype-intake-and-screening",
+            "commit": "01ae2eb2199189e11665150af421d26c4c3b4475",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/welcome-pearl-ux-forms",
+            "commit": "f0546af48da9788f15ec702ba9c7c271d776088f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/welcome-public-prequalifier-20260715",
+            "commit": "97db8a82fa9a5c4543e9fd08aa1b4c0fa22d6c00",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/welcome-session-teardown-20260814",
+            "commit": "bc8a6ffcac6ecfd1a0d50d7d7f1a92cc9a219fd5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "bc8a6ffcac6ecfd1a0d50d7d7f1a92cc9a219fd5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/polish/visitor-intake-ui",
+            "commit": "3681dccaf8e542969af26a62a6b0c3afdfadd2ee",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/storekeeper/drop-ccash-domain-branding",
+            "commit": "b17161b9935cb7f025beff886fffcc08b055e997",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

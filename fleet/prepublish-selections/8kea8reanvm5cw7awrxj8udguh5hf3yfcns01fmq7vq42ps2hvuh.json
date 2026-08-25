@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-app",
-    "sourceCommit": "e250b0498086ea58507510da01979f68b2b5db21",
+    "sourceCommit": "11a85b297b594aea3e93f2216d374e1a461d8365",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "ancestor",
     "decisionSummary": "NamedCoin 0.1.38 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
@@ -18,23 +17,13 @@
     },
     "reviewedRefs": [
         {
-            "ref": "refs/heads/codex/namedcoin-reproducible-grain-restore-20260719",
-            "commit": "e9247a501252e43304128cfc3243c658e713d3e5",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/dev-publish",
-            "commit": "e250b0498086ea58507510da01979f68b2b5db21",
+            "commit": "11a85b297b594aea3e93f2216d374e1a461d8365",
             "outcome": "selected"
         },
         {
-            "ref": "refs/heads/feat/greenfield-ready",
-            "commit": "2c1af20ef869c96c5832ed812c14427c4f0ad686",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/mel-release-health-namedcoin",
-            "commit": "98fba12da7aa622c44a2debb73b3e7ab6efa7560",
+            "ref": "refs/heads/fix/golden-mvp-liveness-hardening",
+            "commit": "9fcdde5c872bc08d11d39777d312be25d90c7dd9",
             "outcome": "retained"
         },
         {
@@ -162,5 +151,7 @@
             "commit": "5d8d7a19e1e32496c29292773adea62b4bfe0ab7",
             "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

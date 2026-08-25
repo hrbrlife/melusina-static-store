@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-app-creeper",
-    "sourceCommit": "6edfb3ebc93fdce0c6723697f6acef8312bc3b19",
+    "sourceCommit": "cd6d8b2743ce48621a569d5e004baa27b994d8d3",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "ancestor",
     "decisionSummary": "Creeper 0.1.25 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
@@ -19,7 +18,7 @@
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "6edfb3ebc93fdce0c6723697f6acef8312bc3b19",
+            "commit": "cd6d8b2743ce48621a569d5e004baa27b994d8d3",
             "outcome": "selected"
         },
         {
@@ -67,5 +66,7 @@
             "commit": "3f05d80d72c37f345effe9d7fd1ee3eeb736528d",
             "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
     "sourceRepository": "https://github.com/hrbrlife/cyberteller",
-    "sourceCommit": "1fee2eb93eb55a9a3eb6e86e186a7325611b9e84",
+    "sourceCommit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "historical-divergent",
     "decisionSummary": "CyberTeller 0.1.98 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
@@ -83,18 +82,13 @@
             "outcome": "archive"
         },
         {
-            "ref": "refs/heads/codex/cyberteller-candidate-pack-20260719",
-            "commit": "6684308509cfdb807f11bfd631a0d7b6273b6e38",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/dev-publish",
-            "commit": "1fee2eb93eb55a9a3eb6e86e186a7325611b9e84",
+            "commit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/feat/ct-swap-vN153",
-            "commit": "77b1964b4f6734164c17574151107a99f3c97a36",
+            "commit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
             "outcome": "retained"
         },
         {
@@ -104,7 +98,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7",
+            "commit": "2fe962655fbb73a65af31fe048298d75dd1ba7da",
             "outcome": "baseline"
         },
         {
@@ -377,5 +371,7 @@
             "commit": "2acc7e4ad3ec7b44a8b64105a439d1d7e44279b7",
             "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "historical-divergent"
 }

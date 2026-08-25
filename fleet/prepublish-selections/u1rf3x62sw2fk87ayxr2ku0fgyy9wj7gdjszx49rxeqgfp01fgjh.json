@@ -1,40 +1,123 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
-  "sourceRepository": "https://github.com/hrbrlife/melusina-instaco-app",
-  "sourceCommit": "f1a0afea1defcfe756c89865ca9ebdeda84335a5",
-  "selectionMethod": "direct-dev",
-  "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The 2026-08-20 dev-publish source retains the current owner-role fixes and governed candidate packaging, and advances the canonical public InstaCo identity to v0.1.10/v17. main is its reviewed direct ancestor. Every advertised source head remains recorded: the divergent August 4 B03/clienthub/schema preservation lines are retained for a separate merge decision, while older integrated and historical ceremony lines are archived rather than selected by name or timestamp.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "fresh recursive clone at the selected source commit",
-      "make ci passed with pinned pnpm, client build, Go vet, Go tests, and the static grain build",
-      "all direct local release entry points refuse in favor of the governed Store release provider",
-      "make pack-local and spk verify",
-      "two independent committed-source package builds matched SHA-256 54fa2178468feaa0278f8994b1faea24acdda09c3ebecb0d3f08ded18f321964"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "f1a0afea1defcfe756c89865ca9ebdeda84335a5", "outcome": "selected"},
-    {"ref": "refs/heads/fix/instaco-hacksession-abi-20260815", "commit": "9de1441c563fbb590402c9aee8001667a985bac0", "outcome": "archive"},
-    {"ref": "refs/heads/main", "commit": "5d9347ce837ec423013bc17bd17ff3a60b7f39eb", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/049e469a1332", "commit": "049e469a1332c44c2f83ada88a0df790d235b66a", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/19e05de5a205", "commit": "19e05de5a205a4d8aafb141dab709b28f43bcf9c", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-instaco", "commit": "049e469a1332c44c2f83ada88a0df790d235b66a", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/evidence/b03-failure-injection-20260804", "commit": "7c63c62756ef7aae0a608c312b26f279438533a1", "outcome": "retained"},
-    {"ref": "refs/heads/preserve-local-20260814/evidence/b03-lifecycle-custody-20260804", "commit": "c3908f210d48fc90d5d72e9fa670dc15681ea47c", "outcome": "retained"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/t2-clienthub-v2-canonical-20260804", "commit": "69d18322dd50c0cfe1ac656d2b36c1449868f753", "outcome": "retained"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/golden-mvp-b00", "commit": "049e469a1332c44c2f83ada88a0df790d235b66a", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/instaco-session-teardown-20260814", "commit": "be27d8b7d6d1a7e2efdc69281c6c323e8afe05af", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/t2-instaco-packaging-20260804", "commit": "c4c4bfc636c42d882f9f537ca048db2f8b499dd1", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/golden/b00-main-reconciliation-20260804", "commit": "6fe0ef20a7ed916af06972fa8d20fa9a588efee3", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/golden/b03-schema-landing-20260804", "commit": "e45f7f6a082f7c4b7f77c95f1a82a23825c42ae1", "outcome": "retained"},
-    {"ref": "refs/heads/preserve-local-20260814/golden/mvp-b01-b03-v2", "commit": "049e469a1332c44c2f83ada88a0df790d235b66a", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "4e602cd8f0d9c70fd5a1a77e8af3238f750bee20", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/riker/a14-contract-20260804", "commit": "88aa3f5f028ff15cad1b624d5309daef0b44ca21", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/riker/b00-clienthub-fresh-20260804", "commit": "7174a793ba4e31e8f29868508efafce5d0310c88", "outcome": "retained"},
-    {"ref": "refs/heads/publish", "commit": "dfa2f8a15d312a37e20460902dc58522d174c021", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+    "sourceRepository": "https://github.com/hrbrlife/melusina-instaco-app",
+    "sourceCommit": "838a3729df2bde5c3cbfef094f914992e17c61ce",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "The 2026-08-20 dev-publish source retains the current owner-role fixes and governed candidate packaging, and advances the canonical public InstaCo identity to v0.1.10/v17. main is its reviewed direct ancestor. Every advertised source head remains recorded: the divergent August 4 B03/clienthub/schema preservation lines are retained for a separate merge decision, while older integrated and historical ceremony lines are archived rather than selected by name or timestamp.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "fresh recursive clone at the selected source commit",
+            "make ci passed with pinned pnpm, client build, Go vet, Go tests, and the static grain build",
+            "all direct local release entry points refuse in favor of the governed Store release provider",
+            "make pack-local and spk verify",
+            "two independent committed-source package builds matched SHA-256 54fa2178468feaa0278f8994b1faea24acdda09c3ebecb0d3f08ded18f321964"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "838a3729df2bde5c3cbfef094f914992e17c61ce",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/golden-mvp-instaco-payment-handoff",
+            "commit": "838a3729df2bde5c3cbfef094f914992e17c61ce",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/instaco-hacksession-abi-20260815",
+            "commit": "9de1441c563fbb590402c9aee8001667a985bac0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "5d9347ce837ec423013bc17bd17ff3a60b7f39eb",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/049e469a1332",
+            "commit": "049e469a1332c44c2f83ada88a0df790d235b66a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/19e05de5a205",
+            "commit": "19e05de5a205a4d8aafb141dab709b28f43bcf9c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-instaco",
+            "commit": "049e469a1332c44c2f83ada88a0df790d235b66a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/evidence/b03-failure-injection-20260804",
+            "commit": "7c63c62756ef7aae0a608c312b26f279438533a1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/evidence/b03-lifecycle-custody-20260804",
+            "commit": "c3908f210d48fc90d5d72e9fa670dc15681ea47c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/t2-clienthub-v2-canonical-20260804",
+            "commit": "69d18322dd50c0cfe1ac656d2b36c1449868f753",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/golden-mvp-b00",
+            "commit": "049e469a1332c44c2f83ada88a0df790d235b66a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/instaco-session-teardown-20260814",
+            "commit": "be27d8b7d6d1a7e2efdc69281c6c323e8afe05af",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-instaco-packaging-20260804",
+            "commit": "c4c4bfc636c42d882f9f537ca048db2f8b499dd1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/golden/b00-main-reconciliation-20260804",
+            "commit": "6fe0ef20a7ed916af06972fa8d20fa9a588efee3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/golden/b03-schema-landing-20260804",
+            "commit": "e45f7f6a082f7c4b7f77c95f1a82a23825c42ae1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/golden/mvp-b01-b03-v2",
+            "commit": "049e469a1332c44c2f83ada88a0df790d235b66a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "4e602cd8f0d9c70fd5a1a77e8af3238f750bee20",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/riker/a14-contract-20260804",
+            "commit": "88aa3f5f028ff15cad1b624d5309daef0b44ca21",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/riker/b00-clienthub-fresh-20260804",
+            "commit": "7174a793ba4e31e8f29868508efafce5d0310c88",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "dfa2f8a15d312a37e20460902dc58522d174c021",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
     "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-    "sourceCommit": "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36",
+    "sourceCommit": "0d16b36aa9285af42c531571f18cf4ec72d98ab6",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "ancestor",
     "decisionSummary": "DueProcess 0.1.77 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
     "internalControls": {
         "status": "passed",
@@ -18,6 +17,26 @@
         ]
     },
     "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-dueprocess-0158-clean-release-20260711",
+            "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-case-mint-bridge-20260715",
+            "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-issuance-template-20260715",
+            "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/publish",
+            "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
+            "outcome": "archive"
+        },
         {
             "ref": "refs/heads/archive/chore/v0.1.10-pre-stage-2026-05-21-20260814",
             "commit": "f8c73a60a27487cbdee9b0854481081b50d27fdb",
@@ -69,48 +88,13 @@
             "outcome": "archive"
         },
         {
-            "ref": "refs/heads/codex/dueprocess-0158-clean-release-20260711",
-            "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/dueprocess-candidate-pack-20260719",
-            "commit": "97a6064c6fa3697a6a2b62278e21d95867e61725",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/product-path-readiness-20260713",
-            "commit": "81bda6fecff1b7f06adfd073cc1b47a9e9bfe438",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/telescreen-ux-20260713",
-            "commit": "ff753b4e82c92743bbd45df81bc6c9331ae448d6",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/wp2-case-mint-bridge-20260715",
-            "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/wp2-issuance-template-20260715",
-            "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/dev-publish",
-            "commit": "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36",
+            "commit": "0d16b36aa9285af42c531571f18cf4ec72d98ab6",
             "outcome": "selected"
         },
         {
-            "ref": "refs/heads/feat/build-p0-c5.2-root",
-            "commit": "bacee63f98038e16106729f23fc0421b53b96ca6",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/mel-release-health-dueprocess",
-            "commit": "e849b487baa5a362c72649e0d2ac2d2d6a4e0815",
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "27dcd5f37f0a3d223f9f640ee12f894b5e4a3e8f",
             "outcome": "retained"
         },
         {
@@ -462,16 +446,8 @@
             "ref": "refs/heads/preserve/v18-worktree-detached-20260814",
             "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
             "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/publish",
-            "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/team1/a14-corrective-20260804",
-            "commit": "e55dc0abed3c8194a04db557dd54c4cdc98eb1d8",
-            "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

@@ -2,7 +2,7 @@
     "schema": "melusina-source-selection-v1",
     "appId": "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10",
     "sourceRepository": "https://github.com/hrbrlife/melusina_cybertellerconfig_app",
-    "sourceCommit": "0302051d0be4960e16e4f20b9ca6be2ee69cb12e",
+    "sourceCommit": "05667acf956ca622ba9cfa2577c52bb1d086d362",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
     "decisionSummary": "Cyberteller Config v0.1.18/appVersion-27 is the reviewed install-scoped ConfigGate provider cut. It advances the reviewed main baseline with the selected shared-protocol alignment and truthful eight-method lifecycle metadata; dev-publish is the current release authority.",
@@ -23,8 +23,13 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "0302051d0be4960e16e4f20b9ca6be2ee69cb12e",
+            "commit": "05667acf956ca622ba9cfa2577c52bb1d086d362",
             "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "41603a24d18f1c4eb5c44c554c1126471514dea8",
+            "outcome": "retained"
         },
         {
             "ref": "refs/heads/main",

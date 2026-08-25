@@ -2,10 +2,9 @@
     "schema": "melusina-source-selection-v1",
     "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
     "sourceRepository": "https://github.com/hrbrlife/ccash_domain_template",
-    "sourceCommit": "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b",
+    "sourceCommit": "4d81c5f269947cdcedfd0eb1259e91ca255223aa",
     "selectionMethod": "direct-dev",
-    "baselineBranch": "main",
-    "baselineRelation": "ancestor",
+    "mainBaselineRelation": "ancestor",
     "decisionSummary": "Selected the 2026-08-22 dev-publish DomainTemplate v0.5.89/v111 cut. It moves this app to melusina-msb-protocol minor 14, which every other MSB participant in the estate was already built against: paype.cc 0.3.191, CCA.SH Configurator 0.0.82 and NamedCoin Admin all pin v0.0.0-20260809143748-456e1ca0143f, and this app alone still pinned minor 12. capability/validate.go compares minors for EXACT equality, so the skew refused every participant enrolment with 'domain-participant provisioning seed protocolVersion is invalid' and blocked portal enrolment, StationFactory provisioning of the identity-verification station, and the two-user NamedCoin account-opening ceremony. Protocol 1.14 adds execution provider profiles; no production code in this app authors them (the only production reference validates a producer-supplied description, and dossier/deletion claims are copied wholesale via capnp CopyFrom), so the change is confined to test fixtures that build those structures, each profile bound to its signed root. main is the reviewed stable ancestor of this cut.",
     "internalControls": {
         "status": "passed",
@@ -21,6 +20,11 @@
         ]
     },
     "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-product-path-readiness-20260713",
+            "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
+            "outcome": "archive"
+        },
         {
             "ref": "refs/heads/archive/feat/killlist-dtg-b2-provider-routes-20260509",
             "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
@@ -42,43 +46,18 @@
             "outcome": "archive"
         },
         {
-            "ref": "refs/heads/codex/domain-template-ux-20260713",
-            "commit": "c3b715eb9679647046885938006554a28a685660",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/dtg-lease-issuer-20260721",
-            "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/codex/product-path-readiness-20260713",
-            "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/dev-publish",
-            "commit": "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b",
+            "commit": "4d81c5f269947cdcedfd0eb1259e91ca255223aa",
             "outcome": "selected"
         },
         {
-            "ref": "refs/heads/dtg-redeploy-0.5.58",
-            "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/feat/mel-release-health-ccash-domain-template",
-            "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/fix/prelaunch-domain-template-v109-greenfield",
-            "commit": "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a",
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "04c905d6577eaf877502d526137ef936e815f2bf",
             "outcome": "retained"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "e4132f2148fc7dd9c737f7fb3e2015d17a23f55c",
+            "commit": "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b",
             "outcome": "baseline"
         },
         {
@@ -240,11 +219,8 @@
             "ref": "refs/heads/preserve-local-20260814/wt/kb-3-domain-template-fix",
             "commit": "d54d7e38d386ab50877a0a8f620daabed31e02f1",
             "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/publish",
-            "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
-            "outcome": "retained"
         }
-    ]
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

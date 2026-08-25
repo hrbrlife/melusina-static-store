@@ -2010,12 +2010,12 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json"
     ), claude
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
-    assert namedcoin_admin["source_commit"] == "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8", namedcoin_admin
+    assert namedcoin_admin["source_commit"] == "c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638", namedcoin_admin
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
-    assert lobby["source_commit"] == "c9949d4946d04f134006c441fa2f02f107775531", lobby
+    assert lobby["source_commit"] == "0eaa57bed251af7427e850c3688503861b807dfe", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
@@ -2026,7 +2026,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]
     assert instaco["reconciliation_state"] == "source-pinned", instaco
-    assert instaco["source_commit"] == "f1a0afea1defcfe756c89865ca9ebdeda84335a5", instaco
+    assert instaco["source_commit"] == "838a3729df2bde5c3cbfef094f914992e17c61ce", instaco
     assert instaco["release_state"] == "ready", instaco
     assert instaco["source_selection_state"] == "direct-dev-verified", instaco
     botmother = entries["xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"]
@@ -2056,7 +2056,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert clientspace["release_state"] == "ready", clientspace
     assert clientspace["source_selection_state"] == "direct-dev-verified", clientspace
     creeper = entries["pm1afskzvf2vfasvxhwktk0u0sq7um0942psrdzdhf7w463n92eh"]
-    assert creeper["source_commit"] == "6edfb3ebc93fdce0c6723697f6acef8312bc3b19", creeper
+    assert creeper["source_commit"] == "cd6d8b2743ce48621a569d5e004baa27b994d8d3", creeper
     assert creeper["reconciliation_state"] == "source-pinned", creeper
     assert creeper["release_state"] == "ready", creeper
     assert creeper["source_selection_state"] == "direct-dev-verified", creeper
@@ -2077,7 +2077,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json"
     ), dashboard
     domain_template = entries["hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h"]
-    assert domain_template["source_commit"] == "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", domain_template
+    assert domain_template["source_commit"] == "4d81c5f269947cdcedfd0eb1259e91ca255223aa", domain_template
     assert domain_template["source_baseline_branch"] == "main", domain_template
     assert domain_template["runtime_contract_path"] == "RUNTIME-CONTRACT.json", domain_template
     assert domain_template["reconciliation_state"] == "source-pinned", domain_template
@@ -2088,7 +2088,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), domain_template
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
-    assert paype["source_commit"] == "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8", paype
+    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
     assert paype["source_baseline_branch"] == "main", paype
     assert paype["runtime_contract_path"] == "RUNTIME-CONTRACT.json", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
@@ -2196,7 +2196,9 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36", "DueProcess", "dueprocess"),
+            ("dueprocess", "0d16b36aa9285af42c531571f18cf4ec72d98ab6", "DueProcess", "dueprocess"),
+        "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
+            ("fineract-setup/fineract-sidecar", "f9dd15ab5646b761d8ec46809c091fe5f171f749", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "9b8f137dc65d85b8a4b423af73ba416677eb143e", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
@@ -2204,11 +2206,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
             ("INSTASYS_MAIL-main", "2f140345da03e3a756c91a96c1c2f7d12ec4c913", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
-            ("ccash-domain-template", "a6c1eb90938382c665fd63b0491d9c1cf0b26d9b", "ccash_domain_template", "cca-sh-domain-template"),
+            ("ccash-domain-template", "4d81c5f269947cdcedfd0eb1259e91ca255223aa", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
-            ("instaco", "f1a0afea1defcfe756c89865ca9ebdeda84335a5", "instaco-app", "instaco"),
+            ("instaco", "838a3729df2bde5c3cbfef094f914992e17c61ce", "instaco-app", "instaco"),
         CYBERTELLER_CONFIG_APP_ID:
-            ("cybertellerconfig", "0302051d0be4960e16e4f20b9ca6be2ee69cb12e", "melusina_cybertellerconfig_app", "cybertellerconfig"),
+            ("cybertellerconfig", "05667acf956ca622ba9cfa2577c52bb1d086d362", "melusina_cybertellerconfig_app", "cybertellerconfig"),
     }
     for app_id, (source_path, source_commit, repo, slug) in cases.items():
         app = entries[app_id]
@@ -2225,7 +2227,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "4aea50ff9058ac0bc42d5e98b4545d76d47b9d36", dueprocess
+    assert dueprocess["source_commit"] == "0d16b36aa9285af42c531571f18cf4ec72d98ab6", dueprocess
     assert dueprocess["source_baseline_branch"] == "main", dueprocess
     assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
     assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
@@ -2265,14 +2267,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
-    assert lobby["source_commit"] == "c9949d4946d04f134006c441fa2f02f107775531", lobby
+    assert lobby["source_commit"] == "0eaa57bed251af7427e850c3688503861b807dfe", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     ccashconfig = entries["6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"]
     assert ccashconfig["source_path"] == "ccashconfig", ccashconfig
     assert ccashconfig["source_repository"] == "https://github.com/hrbrlife/melusina_ccashconfig_app", ccashconfig
-    assert ccashconfig["source_commit"] == "869590a0a7fa79098a1b96aba128024e1cb18ca8", ccashconfig
+    assert ccashconfig["source_commit"] == "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e", ccashconfig
     assert ccashconfig["source_baseline_branch"] == "main", ccashconfig
     assert ccashconfig["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ccashconfig
     assert ccashconfig["reconciliation_state"] == "source-pinned", ccashconfig
@@ -2295,7 +2297,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "1fee2eb93eb55a9a3eb6e86e186a7325611b9e84", cyberteller
+    assert cyberteller["source_commit"] == "8449456e589555d32a5501fa4d91436c50d4d5cc", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
@@ -2307,7 +2309,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     cyberteller_config = entries[CYBERTELLER_CONFIG_APP_ID]
     assert cyberteller_config["group"] == "unreconciled-live-listings", cyberteller_config
     assert cyberteller_config["source_path"] == "cybertellerconfig", cyberteller_config
-    assert cyberteller_config["source_commit"] == "0302051d0be4960e16e4f20b9ca6be2ee69cb12e", cyberteller_config
+    assert cyberteller_config["source_commit"] == "05667acf956ca622ba9cfa2577c52bb1d086d362", cyberteller_config
     assert cyberteller_config["source_baseline_branch"] == "main", cyberteller_config
     assert cyberteller_config["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller_config
     assert cyberteller_config["reconciliation_state"] == "source-pinned", cyberteller_config
@@ -2319,7 +2321,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
     assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
-    assert paype["source_commit"] == "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8", paype
+    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
     assert paype["release_state"] == "ready", paype
     assert paype["source_selection_state"] == "direct-dev-verified", paype
@@ -2347,7 +2349,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
     opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
     assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
-    assert opensanctions["source_commit"] == "3f188d8901728d7cf6818789f74f19cade55a171", opensanctions
+    assert opensanctions["source_commit"] == "74b48ee573d278d853d380430ab0ba23d4576958", opensanctions
     assert opensanctions["source_baseline_branch"] == "main", opensanctions
     assert opensanctions["runtime_contract_path"] == "RUNTIME-CONTRACT.json", opensanctions
     assert opensanctions["reconciliation_state"] == "source-pinned", opensanctions

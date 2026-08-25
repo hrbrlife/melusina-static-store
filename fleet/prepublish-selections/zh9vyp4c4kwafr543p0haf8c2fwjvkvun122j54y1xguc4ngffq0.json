@@ -1,46 +1,133 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
-  "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-  "sourceCommit": "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v0.1.44/build-47 source is the newest valid forward NamedCoin Configurator source. It preserves the selected hermetic build, immutable namedcoin-admin identity, governed-only publish path, and synchronized metadata/runtime-contract/test cohort while advancing above the prior same-version byte divergence. Main is an ancestor. The product-path, case-workflow, release-health, and team-identity divergent lines remain preserved for deliberate later integration review; their aliases and detached/release history are evidence only and cannot silently become a release source. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "clean full-history source checkout; current main is an ancestor of selected dev-publish",
-      "make test-release-source-guard, go test ./... -count=1, go vet ./..., make verify-version-sync, make check-app-id, make check-anchor-encoder, and make check-e2e-envelope passed",
-      "the prior selected source's race and cross-repository capnp-drift checks remain recorded; this cut changes only the release cohort and declared visible version",
-      "two byte-identical SPK packs matched SHA-256 34a9cc9b0790c66da5471be2bd504b049d843a3ec6ab3c903e25fdb1b5ea8b77 and spk verify",
-      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/codex/product-path-readiness-20260713", "commit": "032a11ab7504a100cc082cd69a6d1cc1d87d9f75", "outcome": "hold"},
-    {"ref": "refs/heads/codex/wp2-issue-from-case-20260715", "commit": "ac6f7277bcdf53b93cb51a86b929da4f65fe6a21", "outcome": "hold"},
-    {"ref": "refs/heads/dev-publish", "commit": "df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8", "outcome": "selected"},
-    {"ref": "refs/heads/feat/mel-release-health-namedcoin-admin", "commit": "3150f61a7da2a85578e8637381dc7bfc43d452ac", "outcome": "hold"},
-    {"ref": "refs/heads/feat/teama-identity-2026-06-26", "commit": "2285e8f94293a8ac33416ad8f3915699be18468d", "outcome": "hold"},
-    {"ref": "refs/heads/main", "commit": "0dda2a0a89335e12ad86c70792585bc3006445d5", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/3b44ed63d1b4", "commit": "3b44ed63d1b4080e22f34d3947a491a0055b4fcf", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/d2cac55ca512", "commit": "d2cac55ca512a4d9d4c6f3a7f87633e7abf9ccfc", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/product-path-readiness-20260713", "commit": "032a11ab7504a100cc082cd69a6d1cc1d87d9f75", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-namedcoin", "commit": "b5343989e5c1cddb14d82d2496a0009ce0911d6b", "outcome": "not-app-relevant"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-namedcoin-admin", "commit": "3150f61a7da2a85578e8637381dc7bfc43d452ac", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/namedcoin-audit", "commit": "61ef4b626109fcf4b46598336c54a469cdb64e39", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/nc-admin-strip-stream-2026-06-07", "commit": "453280d1b6f82e183127ae32b8ffdb12e438b2a5", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/nm5-rpc-powerbox", "commit": "69948f5c507ea7c90de98d0ce1e98411559a9516", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/r2-real-kyc-attestation-uspaype", "commit": "7fe3c35b67b710f6a412c9f2d33f21c6f529d156", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/teama-identity-2026-06-26", "commit": "9e79ce7e735d0102f9d2f3b622bcac5429503e75", "outcome": "hold"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-bridge-2026-06-26", "commit": "5f396e1ab6d7d29a88d7c165e3ae3f45d7faff93", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-hardening-2026-06-26", "commit": "82ccccd53cd45301eb0d0bbedbc5552eea361bc8", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/namedcoin-4eyes-cosign-2026-06-16", "commit": "24c8f8c4fe7e4924149cf01b8165f088dceb6120", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "b093dd55ef539bb4e10684c142090ec3bc25e412", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "3d14870a80ec55e89fb672040e6a8bd98fb81810", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "e5ecb68f80de86ca17bc4dec662c40f032fbdd8d", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/respondent-outcome-v112-20260809", "commit": "2385e88aa176117d1214168096b7c42c4c3aac5c", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "e5ecb68f80de86ca17bc4dec662c40f032fbdd8d", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
+    "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
+    "sourceCommit": "c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "The Aug 20 dev-publish v0.1.44/build-47 source is the newest valid forward NamedCoin Configurator source. It preserves the selected hermetic build, immutable namedcoin-admin identity, governed-only publish path, and synchronized metadata/runtime-contract/test cohort while advancing above the prior same-version byte divergence. Main is an ancestor. The product-path, case-workflow, release-health, and team-identity divergent lines remain preserved for deliberate later integration review; their aliases and detached/release history are evidence only and cannot silently become a release source. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean full-history source checkout; current main is an ancestor of selected dev-publish",
+            "make test-release-source-guard, go test ./... -count=1, go vet ./..., make verify-version-sync, make check-app-id, make check-anchor-encoder, and make check-e2e-envelope passed",
+            "the prior selected source's race and cross-repository capnp-drift checks remain recorded; this cut changes only the release cohort and declared visible version",
+            "two byte-identical SPK packs matched SHA-256 34a9cc9b0790c66da5471be2bd504b049d843a3ec6ab3c903e25fdb1b5ea8b77 and spk verify",
+            "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/codex/wp2-issue-from-case-20260715",
+            "commit": "ac6f7277bcdf53b93cb51a86b929da4f65fe6a21",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/teama-identity-2026-06-26",
+            "commit": "2285e8f94293a8ac33416ad8f3915699be18468d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/golden-mvp-pbind-authority",
+            "commit": "8606e93c64b84d9fbb591b5cb76ba56aae575f23",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "07ed1ea60907ef3ffc56c4fc9f0be473a8e634ea",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/3b44ed63d1b4",
+            "commit": "3b44ed63d1b4080e22f34d3947a491a0055b4fcf",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/d2cac55ca512",
+            "commit": "d2cac55ca512a4d9d4c6f3a7f87633e7abf9ccfc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/product-path-readiness-20260713",
+            "commit": "032a11ab7504a100cc082cd69a6d1cc1d87d9f75",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-namedcoin",
+            "commit": "b5343989e5c1cddb14d82d2496a0009ce0911d6b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-namedcoin-admin",
+            "commit": "3150f61a7da2a85578e8637381dc7bfc43d452ac",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/namedcoin-audit",
+            "commit": "61ef4b626109fcf4b46598336c54a469cdb64e39",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/nc-admin-strip-stream-2026-06-07",
+            "commit": "453280d1b6f82e183127ae32b8ffdb12e438b2a5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/nm5-rpc-powerbox",
+            "commit": "69948f5c507ea7c90de98d0ce1e98411559a9516",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/r2-real-kyc-attestation-uspaype",
+            "commit": "7fe3c35b67b710f6a412c9f2d33f21c6f529d156",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-identity-2026-06-26",
+            "commit": "9e79ce7e735d0102f9d2f3b622bcac5429503e75",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-bridge-2026-06-26",
+            "commit": "5f396e1ab6d7d29a88d7c165e3ae3f45d7faff93",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-hardening-2026-06-26",
+            "commit": "82ccccd53cd45301eb0d0bbedbc5552eea361bc8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/namedcoin-4eyes-cosign-2026-06-16",
+            "commit": "24c8f8c4fe7e4924149cf01b8165f088dceb6120",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "b093dd55ef539bb4e10684c142090ec3bc25e412",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "3d14870a80ec55e89fb672040e6a8bd98fb81810",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "e5ecb68f80de86ca17bc4dec662c40f032fbdd8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/respondent-outcome-v112-20260809",
+            "commit": "2385e88aa176117d1214168096b7c42c4c3aac5c",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "historical-divergent"
 }

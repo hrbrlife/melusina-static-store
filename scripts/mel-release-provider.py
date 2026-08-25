@@ -993,6 +993,72 @@ def path_is_below(path: Path, root: Path) -> bool:
     return True
 
 
+def unselected_git_submodule_roots(selected_paths: dict[str, Path]) -> list[Path]:
+    """Return initialized Gitlink trees that are not a selected release source.
+
+    The duplicate-appId guard deliberately scans the whole governed source
+    root.  It must not, however, mistake a *registered dependency submodule*
+    (for example Fineract's QA copy of DueProcess) for another selectable
+    release source.  Only Git-indexed 160000 entries are excluded; an ordinary
+    directory, including a retained legacy package definition, remains a hard
+    duplicate-appId failure.  A submodule containing a selected source stays
+    in scope, so this exception cannot hide the package being released.
+    """
+    root = clean_source_root()
+    selected = [path.resolve(strict=True) for path in selected_paths.values()]
+    git_roots: set[Path] = set()
+    for source in selected:
+        try:
+            raw = run(["git", "-C", str(source), "rev-parse", "--show-toplevel"]).strip()
+        except ProviderError as exc:
+            # This helper is also exercised by in-memory pkgdef parser tests
+            # that intentionally use plain directories. Production cohort
+            # callers reached source_path() first, which has already required
+            # a clean Git checkout, so only those fixture directories may
+            # omit Git metadata here.
+            if "not a git repository" in str(exc):
+                continue
+            raise
+        try:
+            git_root = Path(raw).resolve(strict=True)
+        except OSError as exc:
+            raise ProviderError(f"cannot resolve selected Git root for {source}: {exc}") from exc
+        if not path_is_below(git_root, root):
+            raise ProviderError(f"selected Git root escapes MEL_RELEASE_SOURCE_ROOT: {git_root}")
+        git_roots.add(git_root)
+
+    ignored: set[Path] = set()
+    for git_root in sorted(git_roots):
+        index = run(["git", "-C", str(git_root), "ls-files", "--stage"])
+        for line in index.splitlines():
+            try:
+                stat, raw_path = line.split("\t", 1)
+                mode, _object_id, _stage = stat.split()
+            except ValueError as exc:
+                raise ProviderError(f"malformed Git index entry in {git_root}") from exc
+            if mode != "160000":
+                continue
+            relative = Path(raw_path)
+            if (relative.is_absolute() or "\\" in raw_path or
+                    any(part in {"", ".", ".."} for part in relative.parts)):
+                raise ProviderError(f"unsafe Gitlink path in {git_root}: {raw_path!r}")
+            try:
+                candidate = (git_root / relative).resolve(strict=True)
+            except OSError as exc:
+                raise ProviderError(f"registered Gitlink is not initialized: {git_root / relative}") from exc
+            if not path_is_below(candidate, root):
+                raise ProviderError(f"registered Gitlink escapes MEL_RELEASE_SOURCE_ROOT: {candidate}")
+            if any(path_is_below(source, candidate) for source in selected):
+                continue
+            ignored.add(candidate)
+
+    # Pruning the outermost Gitlink also prunes any nested Gitlinks.
+    return [
+        candidate for candidate in sorted(ignored)
+        if not any(candidate != parent and path_is_below(candidate, parent) for parent in ignored)
+    ]
+
+
 def strip_capnp_comments(text: str) -> str:
     """Remove Cap'n Proto comments without treating comment text as syntax."""
 
@@ -1153,8 +1219,16 @@ def catalog_pkgdef_source_findings(
     root = clean_source_root()
     findings: list[dict[str, str]] = []
     claims: list[PkgdefClaim] = []
+    ignored_submodules = unselected_git_submodule_roots(selected_paths)
     for directory, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(name for name in directories if name != ".git")
+        directory_path = Path(directory)
+        directories[:] = sorted(
+            name for name in directories
+            if name != ".git" and not any(
+                path_is_below(directory_path / name, submodule)
+                for submodule in ignored_submodules
+            )
+        )
         for filename in sorted(files):
             lower = filename.lower()
             if not (lower.endswith(".capnp") and "pkgdef" in lower):

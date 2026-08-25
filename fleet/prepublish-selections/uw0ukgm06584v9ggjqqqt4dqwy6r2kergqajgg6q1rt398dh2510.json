@@ -1,722 +1,633 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
-  "sourceRepository": "https://github.com/hrbrlife/ccash_go_htmx",
-  "sourceCommit": "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip is the newest valid forward paype.cc source. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to paype.cc without changing the immutable app identity or technical popaye release selector. Main is an ancestor. The relevant divergent work is integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "current main is an ancestor of selected dev-publish",
-      "full make ci passed, including vet, self-contained proof, no-CDN control, tests, and Linux build; make check-capnp-ordinal also passed",
-      "two clean make pack-local runs produced identical SHA-256 b22d9b2062116308eb79f5881d36c890154888af1ebc175132eda0e76c7ac692; spk verify and metadata/package-ID consistency passed on both",
-      "clean-checkout pack-local builds before packaging and derives its catalog package binding through the post-pack hook",
-      "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority; app SPK-key files remain package identity only"
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/ct-msb-fanout/msb-4-bo75",
-      "commit": "b1c1d07ba070ae0dc43b96fdcc1b6f72e421f439",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/fix/popaye-screening-tls-verify",
-      "commit": "2ff243ad194d998032e553032aa0f21b31f33bd5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/inflow-repeatable-subfield-conditions-20260716",
-      "commit": "c292bfc1f8a2e93d36f5d17cd57c1f5dcd4c7c27",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/issue-kyc-from-case-20260715",
-      "commit": "8d01f034e88154abf9c659c3fcbabca3769e2387",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/popaye-canary-transaction",
-      "commit": "54b8ee87b673fd444068a550fe7a422fd4adf2c3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/popaye-dtg-domain-20260715",
-      "commit": "4efca5e5002b9e2f3e90872bb189efdd713f5c86",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/popaye-ux-coherence-20260716",
-      "commit": "9bb6cfec6273eb779a4538f6e42f4ce5e1cee669",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/popaye-v178-participant-ui-20260810",
-      "commit": "29d587e7e4cc3498c8ec450d74791d3585a38c26",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/product-path-readiness-20260713",
-      "commit": "c0c68436cb258d71e90832c50eabe3560b157b16",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/deposit-gate/resign-bundle-tool",
-      "commit": "3fe924d6375b0fbea058f976bd045ff3782557ac",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "c7ca5a3f06684d50e8665cc3ea83883665eaa4d8",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/feat/account-opening-provision-3wallets",
-      "commit": "fb24345a54d7b68f7151b08126c42b864ca220c4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/codex-tenant-credential-leases",
-      "commit": "0be12b62549e5275a2fb205729020b955688f37f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/disposition-webhook",
-      "commit": "3e9b1249a2de49f05467f77d2b31d0b5ee33cca7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/dt2-popaye-egress-port",
-      "commit": "f5c7e8fc8b4b1de02c6c2a31df4f4d024d19a934",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/fineract-setup-0.2.4-consolidate",
-      "commit": "d7cf0bb19e33e78fae63d55e86d1f10918f2e4bb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/greenfield-ready",
-      "commit": "479dd66003505b5b702725da73116d5cfab45af7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/killlist-ccash-b4-provider-routes-20260509",
-      "commit": "a23401ea931721a43b225d8d72f761a649de4a25",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-popaye",
-      "commit": "470e89c358d1b520ff93062d5527c0ec7dfa3fdc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/teamb-banking-2026-06-26",
-      "commit": "d4e2ae3633e1fa15fbef271e710dd73b955c400a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/welcome-handoff-0.3.50",
-      "commit": "f5edd47bddd039ae25356673deed32bacc12c9c4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/fix/account-open-attestation-pda-onrelease-2026-07-24",
-      "commit": "fe4dfc7c0e061dbee46b011ecf906611c93a010a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/fix/fineract-shim-rawbytes-digest",
-      "commit": "e95b9cb0606e334b074124abac2b9a1a39b989bd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/otp-channel-onboarding",
-      "commit": "e4672ef427afe50d7c05da23b93cda4bb760368d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/polish/setup-kyb-deposit-ui",
-      "commit": "889ac896988d392450af281e7d1380799f02e480",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_alt/feat/iter-33-drop-before-delete-2026-05-15-aeb746be8a2a",
-      "commit": "aeb746be8a2af88e6ecc47f42765feb2591ab611",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_detached/0d7d483d7ccf",
-      "commit": "0d7d483d7ccfdd8cb60e07febb2dbda9b7999684",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_detached/a481a6276834",
-      "commit": "a481a62768343a6c000eb8f48924c87f55b143bd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/085a6dfedb62",
-      "commit": "085a6dfedb62b84156c8df0dd4e060f365a68ed8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/213484a57f35",
-      "commit": "213484a57f35ff0da29a6af9664ac0cd582621b9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/22fb170b7445",
-      "commit": "22fb170b744530da16ed947adcab399d0884a1c6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/279122a8c904",
-      "commit": "279122a8c9048ef2f541757c3fda156b01843929",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/2c9abf16c9f2",
-      "commit": "2c9abf16c9f2afe6d3ed5535dcd5fa56c3fa6723",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/33a83295a410",
-      "commit": "33a83295a41096901eff54debde04fcfa800c324",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/6e616b6f3d9a",
-      "commit": "6e616b6f3d9ad5d0508e6577ac8bf448c71a4cb9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/72c3aa6a2ea9",
-      "commit": "72c3aa6a2ea91da2c498e10860712b3472226dd9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/76e0c655c3fa",
-      "commit": "76e0c655c3fa81b1272838f933ef6b81a7de9376",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/863e758fe518",
-      "commit": "863e758fe518f774a4485436acc01989b0c0b9e4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/8c4c38b85a39",
-      "commit": "8c4c38b85a39f1761923aa0977ddd9a240ac6c20",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/9fff42c2baf7",
-      "commit": "9fff42c2baf79f4c927209547a21669267a3082e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/cf7ac4287862",
-      "commit": "cf7ac428786249b4cc76b71ed104121d90d73057",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/cf83bbe59218",
-      "commit": "cf83bbe592184ce80f882027f5ca887dca3d125e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/e120edae0659",
-      "commit": "e120edae065936815a389d989292d2b1ec059e20",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/e4c7b65b7fb1",
-      "commit": "e4c7b65b7fb1823d3e2794ed54dc38e96074088b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/ec13d1802321",
-      "commit": "ec13d1802321d9670ba4f8abe5cd74b465efe3c6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/f6a643d31996",
-      "commit": "f6a643d31996f997d473b26d7a888111b4ab5e1f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/inflow-repeatable-subfield-conditions-20260716",
-      "commit": "c292bfc1f8a2e93d36f5d17cd57c1f5dcd4c7c27",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/issue-kyc-from-case-20260715",
-      "commit": "8d01f034e88154abf9c659c3fcbabca3769e2387",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-governed-0171-20260721",
-      "commit": "f52fce5f7adb5f72b6f772bd7cfc337081263b63",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-rail-slice-20260721",
-      "commit": "6d4b6da4134bd8ea92453079283b21e54d63225f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-transaction",
-      "commit": "54b8ee87b673fd444068a550fe7a422fd4adf2c3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-clean-build-20260721",
-      "commit": "2c923c96d2b6bfcedc39eff6504e49303c83e3f2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-f4-governed-20260721",
-      "commit": "d3d71b4db0714dd62bc97df3aa605432dd27827e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-release-audit-20260719",
-      "commit": "9c11f9d2bbc85cd814c2f1126849a48dc8078ed5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/popaye-v178-participant-ui-20260810",
-      "commit": "29d587e7e4cc3498c8ec450d74791d3585a38c26",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/product-path-readiness-20260713",
-      "commit": "c0c68436cb258d71e90832c50eabe3560b157b16",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/ct-msb-fanout/msb-4-bo75",
-      "commit": "b1c1d07ba070ae0dc43b96fdcc1b6f72e421f439",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-popaye",
-      "commit": "cd0faa34db96ce923ea0f11d4e6c4629a2643239",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/3-11-send-migration",
-      "commit": "c4c2f685139e95e10084f97f166af78401a3349a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/account-opening-provision-3wallets",
-      "commit": "fb24345a54d7b68f7151b08126c42b864ca220c4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/account-opening-saga-v16-20260726",
-      "commit": "839273902c03424b6366fa93ad91c25497655ffb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/case-kyc-capability-consumer-20260726",
-      "commit": "839273902c03424b6366fa93ad91c25497655ffb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/codex-tenant-credential-leases",
-      "commit": "0be12b62549e5275a2fb205729020b955688f37f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
-      "commit": "3e9b1249a2de49f05467f77d2b31d0b5ee33cca7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt2-popaye-egress-port",
-      "commit": "c0974d3a4eb39876460430b784c314cc74283f4a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt5-configstation-osproxy",
-      "commit": "6cafa2348876b6df6fb709a9bfecdf997a16312b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt5-creeper-httpout",
-      "commit": "96619cb8d975de2edd953862c3e8eccb15f01c4d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/fiat-money-path-subledger",
-      "commit": "91a9237a618db5c152580da2e5c704f7ab201da7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/fineract-setup-0.2.4-consolidate",
-      "commit": "d7cf0bb19e33e78fae63d55e86d1f10918f2e4bb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
-      "commit": "0101d3df21a09d39bd714db706d10e4258a83f2d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
-      "commit": "479dd66003505b5b702725da73116d5cfab45af7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/identity-gate-adoption",
-      "commit": "63cd44c8831b5cff9533e5f19ec85b9b2b2529f5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15",
-      "commit": "51462192965aa256e63aeaa83dfe62d794a2ff94",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-audit-20260501T114701Z",
-      "commit": "0e4cda4d17a9772c1e44376683989424de21f7d3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a1-attestation-pane-20260509",
-      "commit": "25322d172b22b7e63c056b9674d3981fc8bbc6d2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a2-settlement-provider-20260509",
-      "commit": "ec31c2e59020b25e1a8162dcb194edb913f82bde",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a3-kyc-idempotency-20260509",
-      "commit": "9a21aaa62f823ce07cf90d3b0f98a89a4cb1d247",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-b4-provider-routes-20260509",
-      "commit": "a23401ea931721a43b225d8d72f761a649de4a25",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-fs-a1-apply-config-20260509",
-      "commit": "e77c9bfbef20f97e5af430e1d9beb0bcb62d3946",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-fs-a2-settlement-endpoint-20260509",
-      "commit": "640a05e3d6abf5edb370f7db10b7ec7c386e9cf3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-popaye",
-      "commit": "470e89c358d1b520ff93062d5527c0ec7dfa3fdc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/merchant-kyb-onboarding",
-      "commit": "a56807eb04c556cd0737509c2ce62bb6cb8837f9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/msb-v17-main-reconcile-20260727",
-      "commit": "60feeec67d597d37bd3d65008d065fe40c30d851",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/msb-v17-provider-catalog-mirror-20260727",
-      "commit": "89f21871ac0f31d8704748b3257c643551f2d6a8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ops-kb-gaps-2026-06-05",
-      "commit": "91d32a4c927e11550daa69c8be646c95aca974f4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ops7-path-a-2026-06-04",
-      "commit": "be4f9f3f4bbb6baa20b4e518b20ae2ff04018a40",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ops7-popaye-combined",
-      "commit": "a3fc482d85b8906e00cb9cde56516d63650f5809",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/popaye-0.3.147-dashboard-deposits",
-      "commit": "2f3c985b1edc2c476ec8b631163589f11fb7f84a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/popaye-egress-cutover-2026-06-28",
-      "commit": "53e2e7537c6a85e5d9b401f808ac2c0e37092cf3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/popaye-nav-stream-2026-06-08",
-      "commit": "b15118244c460b702acd0634db4ff7bbae8c4564",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/popaye-task6-fiat-detect",
-      "commit": "0bf34395f86c367a9c7a6083aba8078d25c26bbb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/qa-dtg-scenarios",
-      "commit": "3958f36a588464e5046760fd67beff6e26452721",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/swap-cap-transport-2026-06-06",
-      "commit": "9f79d11c4fe4e3c9ab0546671c7de70cba5735ef",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/tc-remote-issuer-20260513",
-      "commit": "57ba847471adaf1f5ae216f19dbcf2daaaffa436",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
-      "commit": "e60dc39044dd4076d695b39146ffee7158e35c32",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/welcome-handoff-0.3.50",
-      "commit": "f5edd47bddd039ae25356673deed32bacc12c9c4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/account-open-attestation-pda-2026-07-24",
-      "commit": "9257e991436410a07c55229edcadd329df45fd3d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/account-open-attestation-pda-onrelease-2026-07-24",
-      "commit": "fe4dfc7c0e061dbee46b011ecf906611c93a010a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/audit-f2-v4",
-      "commit": "9209b9627981c4afe6cdc81ec2da9dab6dffa124",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/ccash-funding-method-multiselect",
-      "commit": "4ff0d464b5d877b4a217b0e34e7ecc43d80a16e6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/dt5-use-after-release",
-      "commit": "8d9f61e9754be52aa946fcea80eb62b78482ea3b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/fineract-shim-rawbytes-digest",
-      "commit": "e95b9cb0606e334b074124abac2b9a1a39b989bd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/fineractbook-tls-verify",
-      "commit": "0c056e09ffabc23f31051dec23c3ad96c93e82ee",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/paype-intake-and-screening",
-      "commit": "5a4452437d6930e1d4fd57fd0e555776754d9c4d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/popaye-1d-namedcoin-binding-2026-07-24",
-      "commit": "09964646f2b3a3df9bd9ea431a32c5d939d6f0bc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/popaye-admin-config-recovery-20260719",
-      "commit": "9fc59de713942552c4649b0e12f45b4af2a75a5e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/popaye-screening-tls-verify",
-      "commit": "2ff243ad194d998032e553032aa0f21b31f33bd5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/popaye-screening-tls-verify-v2",
-      "commit": "a616e6a9cfdaf9d1110e28f540fa9f8400bb663c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-      "commit": "39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-sdk-appid-20260804",
-      "commit": "e95b9cb0606e334b074124abac2b9a1a39b989bd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/integration-killlist-20260509",
-      "commit": "96655a53ef39c5470d19bdf9ccf5c6bef85fe09b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "6a40809a1f41f76ac55192bd37603a4f957a3f8c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/melusina",
-      "commit": "a3ea7d8dde2e687445ddfc87087ed2ea258f1ac1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/otp-channel-onboarding",
-      "commit": "e4672ef427afe50d7c05da23b93cda4bb760368d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/polish/setup-kyb-deposit-ui",
-      "commit": "889ac896988d392450af281e7d1380799f02e480",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "729c2e542fbab0a38d0d5be30567162996b0035d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/reconcile/popaye-main",
-      "commit": "7b5228b5ed0e70a621ccb2e54e73d84f13d7ed61",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/release/popaye-0.3.168-governed",
-      "commit": "3c6347733eb0ed3a398ffb99efd8070a88520e86",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/release/popaye-0.3.168-reprofix",
-      "commit": "f8c2def2f9240629d3fdad4dc5d1f12d7935ec5f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
-      "commit": "2ffae95a14c3a71eb33b7c66b7b1e9106d226569",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/status/tc-issuer-cycles-17-28-20260513",
-      "commit": "e77c9bfbef20f97e5af430e1d9beb0bcb62d3946",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/tmp-greenfield-merge",
-      "commit": "e1490fb55d22be1761608e4c5ab6e7fa7b40dc77",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/uiux/popaye-demo-polish-2026-06-03",
-      "commit": "9d3c8cd8dae20a02e0eef0ab1c419e8e69b84788",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wip/msb-v17-emergency-snapshot-20260726",
-      "commit": "6c965efe8e8c652d5ffcc3cee80655a87480f938",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-a2e4ea09f2fed2920",
-      "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-a8ed6e4ced1f661f6",
-      "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-ab73d1ff09f47ac71",
-      "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-ad293ef1734eef2d7",
-      "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-ad95cabf7b4f4dfb3",
-      "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/worktree-agent-adac0b51b34e72ef6",
-      "commit": "4537b3c91a7da1794401fb987c4184b9036ab06c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wp1/f4-block-pin",
-      "commit": "d5e6f46d7e71c116dd052d7573596033dece654e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wp3/inc2b-producer",
-      "commit": "ef2b3c4ae9c1ca5effbd44f145fc8895387a2409",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/dt-4a-domtmpl",
-      "commit": "a5282fe90887279d2098e7045c8fdd8b25a9ec18",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/dt-4b",
-      "commit": "7104b7a86c491d887a0e666df29637cb366941d5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/nm-3",
-      "commit": "af509208ccc9bd8f1a66f76f5d9d37553fecfb06",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/ops-2-swap",
-      "commit": "da5a3755930ee1c6db8ef410dffc1e3c398f3f80",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/ops-4",
-      "commit": "c7298564c294b9db607d8d394015581842fce7c7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wt/ops-6-gl-repoint",
-      "commit": "886061585221f783a75c4ca82dedb9587aba6a36",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "729c2e542fbab0a38d0d5be30567162996b0035d",
-      "outcome": "archive"
-    }
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+    "sourceRepository": "https://github.com/hrbrlife/ccash_go_htmx",
+    "sourceCommit": "7ac65fd2905ad50a93211a12c3c3728d96883981",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip is the newest valid forward paype.cc source. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to paype.cc without changing the immutable app identity or technical popaye release selector. Main is an ancestor. The relevant divergent work is integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "current main is an ancestor of selected dev-publish",
+            "full make ci passed, including vet, self-contained proof, no-CDN control, tests, and Linux build; make check-capnp-ordinal also passed",
+            "two clean make pack-local runs produced identical SHA-256 b22d9b2062116308eb79f5881d36c890154888af1ebc175132eda0e76c7ac692; spk verify and metadata/package-ID consistency passed on both",
+            "clean-checkout pack-local builds before packaging and derives its catalog package binding through the post-pack hook",
+            "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority; app SPK-key files remain package identity only"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-popaye-dtg-domain-20260715",
+            "commit": "4efca5e5002b9e2f3e90872bb189efdd713f5c86",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/deposit-gate-resign-bundle-tool",
+            "commit": "3fe924d6375b0fbea058f976bd045ff3782557ac",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/feat-dt2-popaye-egress-port",
+            "commit": "f5c7e8fc8b4b1de02c6c2a31df4f4d024d19a934",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/feat-teamb-banking-2026-06-26",
+            "commit": "d4e2ae3633e1fa15fbef271e710dd73b955c400a",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/ct-msb-fanout/msb-4-bo75",
+            "commit": "b1c1d07ba070ae0dc43b96fdcc1b6f72e421f439",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/popaye-screening-tls-verify",
+            "commit": "2ff243ad194d998032e553032aa0f21b31f33bd5",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "7ac65fd2905ad50a93211a12c3c3728d96883981",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "f299f7631e93d522bbe60bbef30bb785ae790bfe",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "0670842bc8461f0780140950cdc468d8b41544dd",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_alt/feat/iter-33-drop-before-delete-2026-05-15-aeb746be8a2a",
+            "commit": "aeb746be8a2af88e6ecc47f42765feb2591ab611",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/0d7d483d7ccf",
+            "commit": "0d7d483d7ccfdd8cb60e07febb2dbda9b7999684",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/a481a6276834",
+            "commit": "a481a62768343a6c000eb8f48924c87f55b143bd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/085a6dfedb62",
+            "commit": "085a6dfedb62b84156c8df0dd4e060f365a68ed8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/213484a57f35",
+            "commit": "213484a57f35ff0da29a6af9664ac0cd582621b9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/22fb170b7445",
+            "commit": "22fb170b744530da16ed947adcab399d0884a1c6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/279122a8c904",
+            "commit": "279122a8c9048ef2f541757c3fda156b01843929",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/2c9abf16c9f2",
+            "commit": "2c9abf16c9f2afe6d3ed5535dcd5fa56c3fa6723",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/33a83295a410",
+            "commit": "33a83295a41096901eff54debde04fcfa800c324",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/6e616b6f3d9a",
+            "commit": "6e616b6f3d9ad5d0508e6577ac8bf448c71a4cb9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/72c3aa6a2ea9",
+            "commit": "72c3aa6a2ea91da2c498e10860712b3472226dd9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/76e0c655c3fa",
+            "commit": "76e0c655c3fa81b1272838f933ef6b81a7de9376",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/863e758fe518",
+            "commit": "863e758fe518f774a4485436acc01989b0c0b9e4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/8c4c38b85a39",
+            "commit": "8c4c38b85a39f1761923aa0977ddd9a240ac6c20",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/9fff42c2baf7",
+            "commit": "9fff42c2baf79f4c927209547a21669267a3082e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/cf7ac4287862",
+            "commit": "cf7ac428786249b4cc76b71ed104121d90d73057",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/cf83bbe59218",
+            "commit": "cf83bbe592184ce80f882027f5ca887dca3d125e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/e120edae0659",
+            "commit": "e120edae065936815a389d989292d2b1ec059e20",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/e4c7b65b7fb1",
+            "commit": "e4c7b65b7fb1823d3e2794ed54dc38e96074088b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/ec13d1802321",
+            "commit": "ec13d1802321d9670ba4f8abe5cd74b465efe3c6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/f6a643d31996",
+            "commit": "f6a643d31996f997d473b26d7a888111b4ab5e1f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/inflow-repeatable-subfield-conditions-20260716",
+            "commit": "c292bfc1f8a2e93d36f5d17cd57c1f5dcd4c7c27",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/issue-kyc-from-case-20260715",
+            "commit": "8d01f034e88154abf9c659c3fcbabca3769e2387",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-governed-0171-20260721",
+            "commit": "f52fce5f7adb5f72b6f772bd7cfc337081263b63",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-rail-slice-20260721",
+            "commit": "6d4b6da4134bd8ea92453079283b21e54d63225f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-canary-transaction",
+            "commit": "54b8ee87b673fd444068a550fe7a422fd4adf2c3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-clean-build-20260721",
+            "commit": "2c923c96d2b6bfcedc39eff6504e49303c83e3f2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-f4-governed-20260721",
+            "commit": "d3d71b4db0714dd62bc97df3aa605432dd27827e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-release-audit-20260719",
+            "commit": "9c11f9d2bbc85cd814c2f1126849a48dc8078ed5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/popaye-v178-participant-ui-20260810",
+            "commit": "29d587e7e4cc3498c8ec450d74791d3585a38c26",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/product-path-readiness-20260713",
+            "commit": "c0c68436cb258d71e90832c50eabe3560b157b16",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/ct-msb-fanout/msb-4-bo75",
+            "commit": "b1c1d07ba070ae0dc43b96fdcc1b6f72e421f439",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-popaye",
+            "commit": "cd0faa34db96ce923ea0f11d4e6c4629a2643239",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/3-11-send-migration",
+            "commit": "c4c2f685139e95e10084f97f166af78401a3349a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/account-opening-provision-3wallets",
+            "commit": "fb24345a54d7b68f7151b08126c42b864ca220c4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/account-opening-saga-v16-20260726",
+            "commit": "839273902c03424b6366fa93ad91c25497655ffb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/case-kyc-capability-consumer-20260726",
+            "commit": "839273902c03424b6366fa93ad91c25497655ffb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/codex-tenant-credential-leases",
+            "commit": "0be12b62549e5275a2fb205729020b955688f37f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
+            "commit": "3e9b1249a2de49f05467f77d2b31d0b5ee33cca7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt2-popaye-egress-port",
+            "commit": "c0974d3a4eb39876460430b784c314cc74283f4a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt5-configstation-osproxy",
+            "commit": "6cafa2348876b6df6fb709a9bfecdf997a16312b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt5-creeper-httpout",
+            "commit": "96619cb8d975de2edd953862c3e8eccb15f01c4d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/fiat-money-path-subledger",
+            "commit": "91a9237a618db5c152580da2e5c704f7ab201da7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/fineract-setup-0.2.4-consolidate",
+            "commit": "d7cf0bb19e33e78fae63d55e86d1f10918f2e4bb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
+            "commit": "0101d3df21a09d39bd714db706d10e4258a83f2d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "479dd66003505b5b702725da73116d5cfab45af7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/identity-gate-adoption",
+            "commit": "63cd44c8831b5cff9533e5f19ec85b9b2b2529f5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/iter-33-drop-before-delete-2026-05-15",
+            "commit": "51462192965aa256e63aeaa83dfe62d794a2ff94",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-audit-20260501T114701Z",
+            "commit": "0e4cda4d17a9772c1e44376683989424de21f7d3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a1-attestation-pane-20260509",
+            "commit": "25322d172b22b7e63c056b9674d3981fc8bbc6d2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a2-settlement-provider-20260509",
+            "commit": "ec31c2e59020b25e1a8162dcb194edb913f82bde",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-a3-kyc-idempotency-20260509",
+            "commit": "9a21aaa62f823ce07cf90d3b0f98a89a4cb1d247",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ccash-b4-provider-routes-20260509",
+            "commit": "a23401ea931721a43b225d8d72f761a649de4a25",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-fs-a1-apply-config-20260509",
+            "commit": "e77c9bfbef20f97e5af430e1d9beb0bcb62d3946",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-fs-a2-settlement-endpoint-20260509",
+            "commit": "640a05e3d6abf5edb370f7db10b7ec7c386e9cf3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-popaye",
+            "commit": "470e89c358d1b520ff93062d5527c0ec7dfa3fdc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/merchant-kyb-onboarding",
+            "commit": "a56807eb04c556cd0737509c2ce62bb6cb8837f9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/msb-v17-main-reconcile-20260727",
+            "commit": "60feeec67d597d37bd3d65008d065fe40c30d851",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/msb-v17-provider-catalog-mirror-20260727",
+            "commit": "89f21871ac0f31d8704748b3257c643551f2d6a8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ops-kb-gaps-2026-06-05",
+            "commit": "91d32a4c927e11550daa69c8be646c95aca974f4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ops7-path-a-2026-06-04",
+            "commit": "be4f9f3f4bbb6baa20b4e518b20ae2ff04018a40",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ops7-popaye-combined",
+            "commit": "a3fc482d85b8906e00cb9cde56516d63650f5809",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/popaye-0.3.147-dashboard-deposits",
+            "commit": "2f3c985b1edc2c476ec8b631163589f11fb7f84a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/popaye-egress-cutover-2026-06-28",
+            "commit": "53e2e7537c6a85e5d9b401f808ac2c0e37092cf3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/popaye-nav-stream-2026-06-08",
+            "commit": "b15118244c460b702acd0634db4ff7bbae8c4564",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/popaye-task6-fiat-detect",
+            "commit": "0bf34395f86c367a9c7a6083aba8078d25c26bbb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/qa-dtg-scenarios",
+            "commit": "3958f36a588464e5046760fd67beff6e26452721",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/swap-cap-transport-2026-06-06",
+            "commit": "9f79d11c4fe4e3c9ab0546671c7de70cba5735ef",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/tc-remote-issuer-20260513",
+            "commit": "57ba847471adaf1f5ae216f19dbcf2daaaffa436",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
+            "commit": "e60dc39044dd4076d695b39146ffee7158e35c32",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/welcome-handoff-0.3.50",
+            "commit": "f5edd47bddd039ae25356673deed32bacc12c9c4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/account-open-attestation-pda-2026-07-24",
+            "commit": "9257e991436410a07c55229edcadd329df45fd3d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/account-open-attestation-pda-onrelease-2026-07-24",
+            "commit": "fe4dfc7c0e061dbee46b011ecf906611c93a010a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/audit-f2-v4",
+            "commit": "9209b9627981c4afe6cdc81ec2da9dab6dffa124",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/ccash-funding-method-multiselect",
+            "commit": "4ff0d464b5d877b4a217b0e34e7ecc43d80a16e6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/dt5-use-after-release",
+            "commit": "8d9f61e9754be52aa946fcea80eb62b78482ea3b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/fineract-shim-rawbytes-digest",
+            "commit": "e95b9cb0606e334b074124abac2b9a1a39b989bd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/fineractbook-tls-verify",
+            "commit": "0c056e09ffabc23f31051dec23c3ad96c93e82ee",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/paype-intake-and-screening",
+            "commit": "5a4452437d6930e1d4fd57fd0e555776754d9c4d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/popaye-1d-namedcoin-binding-2026-07-24",
+            "commit": "09964646f2b3a3df9bd9ea431a32c5d939d6f0bc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/popaye-admin-config-recovery-20260719",
+            "commit": "9fc59de713942552c4649b0e12f45b4af2a75a5e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/popaye-screening-tls-verify",
+            "commit": "2ff243ad194d998032e553032aa0f21b31f33bd5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/popaye-screening-tls-verify-v2",
+            "commit": "a616e6a9cfdaf9d1110e28f540fa9f8400bb663c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "39805b90b9408ec6fcc3ebd1fe570f0ff7e4d694",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-sdk-appid-20260804",
+            "commit": "e95b9cb0606e334b074124abac2b9a1a39b989bd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/integration-killlist-20260509",
+            "commit": "96655a53ef39c5470d19bdf9ccf5c6bef85fe09b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "6a40809a1f41f76ac55192bd37603a4f957a3f8c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/melusina",
+            "commit": "a3ea7d8dde2e687445ddfc87087ed2ea258f1ac1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/otp-channel-onboarding",
+            "commit": "e4672ef427afe50d7c05da23b93cda4bb760368d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/polish/setup-kyb-deposit-ui",
+            "commit": "889ac896988d392450af281e7d1380799f02e480",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "729c2e542fbab0a38d0d5be30567162996b0035d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/reconcile/popaye-main",
+            "commit": "7b5228b5ed0e70a621ccb2e54e73d84f13d7ed61",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/release/popaye-0.3.168-governed",
+            "commit": "3c6347733eb0ed3a398ffb99efd8070a88520e86",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/release/popaye-0.3.168-reprofix",
+            "commit": "f8c2def2f9240629d3fdad4dc5d1f12d7935ec5f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "2ffae95a14c3a71eb33b7c66b7b1e9106d226569",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/status/tc-issuer-cycles-17-28-20260513",
+            "commit": "e77c9bfbef20f97e5af430e1d9beb0bcb62d3946",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/tmp-greenfield-merge",
+            "commit": "e1490fb55d22be1761608e4c5ab6e7fa7b40dc77",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/uiux/popaye-demo-polish-2026-06-03",
+            "commit": "9d3c8cd8dae20a02e0eef0ab1c419e8e69b84788",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wip/msb-v17-emergency-snapshot-20260726",
+            "commit": "6c965efe8e8c652d5ffcc3cee80655a87480f938",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-a2e4ea09f2fed2920",
+            "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-a8ed6e4ced1f661f6",
+            "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-ab73d1ff09f47ac71",
+            "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-ad293ef1734eef2d7",
+            "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-ad95cabf7b4f4dfb3",
+            "commit": "83bdf5a7d0e7dd396befb7c5231ba31d4f32cf8d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/worktree-agent-adac0b51b34e72ef6",
+            "commit": "4537b3c91a7da1794401fb987c4184b9036ab06c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wp1/f4-block-pin",
+            "commit": "d5e6f46d7e71c116dd052d7573596033dece654e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wp3/inc2b-producer",
+            "commit": "ef2b3c4ae9c1ca5effbd44f145fc8895387a2409",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/dt-4a-domtmpl",
+            "commit": "a5282fe90887279d2098e7045c8fdd8b25a9ec18",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/dt-4b",
+            "commit": "7104b7a86c491d887a0e666df29637cb366941d5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/nm-3",
+            "commit": "af509208ccc9bd8f1a66f76f5d9d37553fecfb06",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/ops-2-swap",
+            "commit": "da5a3755930ee1c6db8ef410dffc1e3c398f3f80",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/ops-4",
+            "commit": "c7298564c294b9db607d8d394015581842fce7c7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wt/ops-6-gl-repoint",
+            "commit": "886061585221f783a75c4ca82dedb9587aba6a36",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "historical-divergent"
 }

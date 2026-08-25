@@ -32,6 +32,11 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/fix/golden-mvp-telescreen-loopback-boundary-20260824",
+            "commit": "1d3073d3379721aae3d2f72544eec90c772f0399",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/main",
             "commit": "415766bed3137f37bb09c50b1cbaada5f43100cb",
             "outcome": "baseline"
@@ -99,11 +104,6 @@
         {
             "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
             "commit": "ea8a6b45669642f9e0acc578aebd21b06168de0a",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/publish",
-            "commit": "38fe46c7033492dbff9ef16b20bcb393dc5ef326",
             "outcome": "retained"
         }
     ],

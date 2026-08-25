@@ -93,7 +93,7 @@ groups:
         # source. It retains the build-bound runtime contract and default
         # Bazaar fixture repairs, while moving the selected source into a
         # distinct immutable package/release version.
-        source_commit: c9949d4946d04f134006c441fa2f02f107775531
+        source_commit: 0eaa57bed251af7427e850c3688503861b807dfe
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -119,7 +119,7 @@ groups:
         # CGO_ENABLED=0, go-sqlite3 requires cgo to work. This is a stub"
         # (F-265). NamedCoin itself was already pure-Go; the cgo driver came
         # from melusina-grain-restore, fixed at v0.1.2 and consumed here.
-        source_commit: e250b0498086ea58507510da01979f68b2b5db21
+        source_commit: 11a85b297b594aea3e93f2216d374e1a461d8365
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -148,7 +148,7 @@ groups:
         # v0.1.43/build-46 is the newest clean, source-bound dev-publish
         # candidate. It vendors its former workstation-only dependencies and
         # delegates promotion exclusively to the shared catalog authority.
-        source_commit: df0c5fd9a6857ffa7f54bc8b06c6ebfe4bf06fd8
+        source_commit: c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -175,7 +175,7 @@ groups:
         # v0.3.190/appVersion-182 is the current dev-publish tip. It
         # retains the selected KYB and conditional-procedure work, and its
         # bounded lossless advice-PNG export path passes the complete race suite.
-        source_commit: c7ca5a3f06684d50e8665cc3ea83883665eaa4d8
+        source_commit: 7ac65fd2905ad50a93211a12c3c3728d96883981
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -204,7 +204,7 @@ groups:
         # v0.0.81/appVersion-89 is the current dev-publish tip. It includes
         # the B06 issuer-provenance controls, passes a fresh recursive clone,
         # and keeps the source and public CCA.SH Configurator identity aligned.
-        source_commit: 869590a0a7fa79098a1b96aba128024e1cb18ca8
+        source_commit: 916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -231,7 +231,7 @@ groups:
         # receiver-bound, idempotent signed service path required for a
         # governed CyberTeller integration. Its fresh clone, test suite,
         # deterministic package, and shared-authority controls have passed.
-        source_commit: 4aea50ff9058ac0bc42d5e98b4545d76d47b9d36
+        source_commit: 0d16b36aa9285af42c531571f18cf4ec72d98ab6
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -287,7 +287,7 @@ groups:
         # source. It combines the reviewed corridor, signed DueProcess, and
         # release-health work with a synchronized public-name and pack-build
         # forward release; the full remote-head snapshot is in its receipt.
-        source_commit: 1fee2eb93eb55a9a3eb6e86e186a7325611b9e84
+        source_commit: 8449456e589555d32a5501fa4d91436c50d4d5cc
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -310,7 +310,7 @@ groups:
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
-        source_commit: 5787262ec25a47a9aecdbb98493f5bbc61bc53a9
+        source_commit: f9dd15ab5646b761d8ec46809c091fe5f171f749
         source_repository: https://github.com/hrbrlife/cca-tc-operator
         reconciliation_state: source-pinned
         release_state: ready
@@ -391,7 +391,7 @@ groups:
         # v0.1.10 / v17 governed candidate. The prior main is its reviewed
         # ancestor; older divergent preservation refs remain recorded in its
         # selection receipt instead of becoming an accidental source choice.
-        source_commit: f1a0afea1defcfe756c89865ca9ebdeda84335a5
+        source_commit: 838a3729df2bde5c3cbfef094f914992e17c61ce
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -802,7 +802,7 @@ groups:
         # source aligns its shared protocol dependency and advertises all
         # eight retained ConfigGate wire methods truthfully.
         source_path: cybertellerconfig
-        source_commit: 0302051d0be4960e16e4f20b9ca6be2ee69cb12e
+        source_commit: 05667acf956ca622ba9cfa2577c52bb1d086d362
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -830,7 +830,7 @@ groups:
         # byte-identically. The clean release source root contains this
         # repository at the named relative path.
         source_path: ccash-domain-template
-        source_commit: a6c1eb90938382c665fd63b0491d9c1cf0b26d9b
+        source_commit: 4d81c5f269947cdcedfd0eb1259e91ca255223aa
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -881,7 +881,7 @@ groups:
         source_path: melusina-app-creeper
         # Selected after a complete remote-head inventory and clean package
         # proof. The governed provider still rechecks this exact dev head.
-        source_commit: 6edfb3ebc93fdce0c6723697f6acef8312bc3b19
+        source_commit: cd6d8b2743ce48621a569d5e004baa27b994d8d3
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -931,7 +931,7 @@ groups:
         # v0.1.25/appVersion-27 is the current dev-publish tip. It integrates
         # the July screening/privacy forward work, passes recovery from a fresh
         # clone, and packs byte-identically.
-        source_commit: 3f188d8901728d7cf6818789f74f19cade55a171
+        source_commit: 74b48ee573d278d853d380430ab0ba23d4576958
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

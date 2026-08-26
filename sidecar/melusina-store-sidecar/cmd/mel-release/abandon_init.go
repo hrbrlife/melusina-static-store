@@ -79,7 +79,7 @@ func abandonInitState(c Config, app App) (string, error) {
 	if err := requireAbandonableInit(rec, app); err != nil {
 		return "", err
 	}
-	if err := requireInitOnlyStateTree(appDir); err != nil {
+	if err := requireAbandonableInitStateTree(appDir, rec); err != nil {
 		return "", err
 	}
 
@@ -150,9 +150,26 @@ func requireAbandonableInit(rec walReceipt, app App) error {
 	return nil
 }
 
-// An INIT WAL can have only a local build and provider candidate. Any other
-// top-level item implies historic or later-phase state, which must be handled by
-// the normal resume/terminal path rather than discarded here.
+// requireAbandonableInitStateTree accepts the ordinary INIT-only layout and one
+// strictly validated historical variant. A completed WAL is rotated by moving
+// {wal,candidate,terminal} into history/ before a new INIT is seeded. The old
+// native receipts intentionally remain at their stable paths so the terminal
+// can still point at them. A local build that then fails before the INIT->BUILT
+// journal boundary can overwrite build.json, leaving precisely that rotated
+// residue beside an INIT WAL. It is still safe to archive: the current WAL
+// proves it has no stage/proposal/register/promotion effects, while the residue
+// must prove it belongs to completed history rather than an untracked attempt.
+func requireAbandonableInitStateTree(appDir string, rec walReceipt) error {
+	if err := requireInitOnlyStateTree(appDir); err == nil {
+		return nil
+	} else if err := requireRotatedTerminalResidue(appDir, rec); err != nil {
+		return fmt.Errorf("INIT state is neither preflight-only nor validated rotated history: %w", err)
+	}
+	return nil
+}
+
+// An ordinary INIT WAL can have only a local build and provider candidate. Any
+// other top-level item is handled by requireRotatedTerminalResidue below.
 func requireInitOnlyStateTree(appDir string) error {
 	entries, err := os.ReadDir(appDir)
 	if err != nil {
@@ -170,6 +187,315 @@ func requireInitOnlyStateTree(appDir string) error {
 		}
 	}
 	return nil
+}
+
+type historicalTerminalResidue struct {
+	wal       walReceipt
+	candidate candidateReceipt
+	terminal  terminalReceipt
+}
+
+// requireRotatedTerminalResidue accepts only the layout that rotateCompletedWAL
+// leaves behind. It deliberately does not construct a provider or make a
+// network call: this command remains local-only. The caller may archive the
+// whole directory only after every retained receipt has been tied to a prior
+// DONE WAL and the current build, if present, is demonstrably local to this INIT
+// attempt.
+func requireRotatedTerminalResidue(appDir string, init walReceipt) error {
+	history, err := readHistoricalTerminalResidues(appDir, init.AppID)
+	if err != nil {
+		return err
+	}
+	selected, err := selectCurrentHistoricalResidue(appDir, history)
+	if err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(appDir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("INIT state contains symlink %q", entry.Name())
+		}
+		path := filepath.Join(appDir, entry.Name())
+		switch entry.Name() {
+		case "wal.json", "abandoned-init.json":
+			if !entry.Type().IsRegular() {
+				return fmt.Errorf("INIT state item %q is not a regular file", entry.Name())
+			}
+		case "history":
+			if !entry.IsDir() {
+				return errors.New("rotated history is not a directory")
+			}
+		case "provider":
+			if !entry.IsDir() {
+				return errors.New("local provider candidate is not a directory")
+			}
+			if err := requireNoSymlinkTree(path); err != nil {
+				return fmt.Errorf("provider candidate: %w", err)
+			}
+		case "build.json":
+			if err := validateInitOrHistoricalBuild(path, init, history); err != nil {
+				return err
+			}
+		case "final-release.json":
+			if err := validateHistoricalFinalRelease(path, selected); err != nil {
+				return fmt.Errorf("final release residue: %w", err)
+			}
+		case "release.json":
+			if _, _, err := readFinalReleaseJSON(path, selected.wal.NewAppHash, selected.wal.Version, selected.wal.ReleaseNonce); err != nil {
+				return fmt.Errorf("proposal release residue does not bind completed history: %w", err)
+			}
+		case "stage.json":
+			if err := validateHistoricalStage(path, selected); err != nil {
+				return err
+			}
+		case "propose.json":
+			if err := validateHistoricalProposal(path, selected); err != nil {
+				return err
+			}
+		case "register.json":
+			if err := validateHistoricalRegister(path, selected); err != nil {
+				return err
+			}
+		default:
+			if strings.HasPrefix(entry.Name(), "promote-") && strings.HasSuffix(entry.Name(), ".json") {
+				if err := validateHistoricalPromotion(path, history); err != nil {
+					return err
+				}
+				continue
+			}
+			if strings.HasPrefix(entry.Name(), "revoke-") && strings.HasSuffix(entry.Name(), ".json") {
+				if err := validateHistoricalRevoke(path, history); err != nil {
+					return err
+				}
+				continue
+			}
+			return fmt.Errorf("INIT state contains non-preflight item %q", entry.Name())
+		}
+	}
+	return nil
+}
+
+func requireNoSymlinkTree(root string) error {
+	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("contains symlink %s", path)
+		}
+		return nil
+	})
+}
+
+func readHistoricalTerminalResidues(appDir, appID string) ([]historicalTerminalResidue, error) {
+	root := filepath.Join(appDir, "history")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, fmt.Errorf("read rotated history: %w", err)
+	}
+	var out []historicalTerminalResidue
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("rotated history item %q is not a real directory", entry.Name())
+		}
+		dir := filepath.Join(root, entry.Name())
+		if err := requireHistoricalDirectory(dir); err != nil {
+			return nil, err
+		}
+		wal, ok, err := readWAL(filepath.Join(dir, "wal.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read historical WAL %s: %w", dir, err)
+		}
+		if !ok {
+			return nil, fmt.Errorf("historical release %s lacks wal.json", dir)
+		}
+		candidate, _, err := readCandidate(filepath.Join(dir, "candidate.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read historical candidate %s: %w", dir, err)
+		}
+		terminal, _, err := readTerminalReceipt(filepath.Join(dir, "terminal.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read historical terminal %s: %w", dir, err)
+		}
+		residue := historicalTerminalResidue{wal: wal, candidate: candidate, terminal: terminal}
+		if err := validateHistoricalTerminal(residue, appID); err != nil {
+			return nil, err
+		}
+		out = append(out, residue)
+	}
+	if len(out) == 0 {
+		return nil, errors.New("rotated INIT state has no completed history")
+	}
+	return out, nil
+}
+
+func requireHistoricalDirectory(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	allowed := map[string]bool{"wal.json": true, "candidate.json": true, "terminal.json": true}
+	for _, entry := range entries {
+		if !allowed[entry.Name()] || !entry.Type().IsRegular() || entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("historical release %s contains invalid item %q", dir, entry.Name())
+		}
+	}
+	for name := range allowed {
+		if _, err := os.Lstat(filepath.Join(dir, name)); err != nil {
+			return fmt.Errorf("historical release %s lacks %s", dir, name)
+		}
+	}
+	return nil
+}
+
+func validateHistoricalTerminal(h historicalTerminalResidue, appID string) error {
+	if h.wal.Schema != walSchema || h.wal.State != stateDone || h.wal.AppID != appID ||
+		strings.TrimSpace(h.wal.Version) == "" || !isLowerHex(h.wal.ReleaseNonce, 32) || !isLowerHex(h.wal.LedgerID, 32) {
+		return errors.New("historical WAL is not a completed release for this app")
+	}
+	c := h.candidate
+	if c.Schema != candidateSchema || c.AppID != h.wal.AppID || c.Version != h.wal.Version ||
+		c.ReleaseNonce != h.wal.ReleaseNonce || c.Component.ComponentID != h.wal.AppID ||
+		c.Component.ComponentClass != "app" || c.Component.ContentSHA256 != h.wal.NewAppHash ||
+		c.Component.SHA256 != h.wal.ArtifactSHA || c.Component.SizeBytes != h.wal.ArtifactSize ||
+		c.Component.ArtifactName != h.wal.PackageID || c.Component.ReleaseHash != h.wal.ReleaseHash ||
+		c.Component.StageID != h.wal.StageID || c.Component.Chain.ReleasePDA != h.wal.NewReleasePDA ||
+		c.SquadsProposal.TransactionPDA != h.wal.TransactionPDA || !sameArtifactRef(c.StageReceipt, h.wal.StageReceiptRef) {
+		return errors.New("historical candidate does not bind its completed WAL")
+	}
+	t := h.terminal
+	if t.Schema != "melusina-mel-release-terminal-receipt-v1" || t.Outcome != "accepted" || t.CompletedAtUnix <= 0 ||
+		t.AppID != h.wal.AppID || t.AppHash != h.wal.NewAppHash || t.Version != h.wal.Version ||
+		t.ReleaseHash != h.wal.ReleaseHash || t.ReleaseEntryPDA != h.wal.NewReleasePDA ||
+		t.StageID != h.wal.StageID || t.ServedAppHash != h.wal.NewAppHash {
+		return errors.New("historical terminal does not bind its completed WAL")
+	}
+	for _, active := range t.ActiveAfter {
+		if active.PDA == t.ReleaseEntryPDA && active.AppHash == t.AppHash && active.Version == t.Version {
+			return nil
+		}
+	}
+	return errors.New("historical terminal lacks its accepted Active release")
+}
+
+func selectCurrentHistoricalResidue(appDir string, history []historicalTerminalResidue) (historicalTerminalResidue, error) {
+	path := filepath.Join(appDir, "final-release.json")
+	var selected *historicalTerminalResidue
+	for i := range history {
+		h := &history[i]
+		ref, ok := h.terminal.NativeReceipts["releaseJson"]
+		if !ok || ref.Path != path {
+			continue
+		}
+		_, got, err := readFinalReleaseJSON(path, h.wal.NewAppHash, h.wal.Version, h.wal.ReleaseNonce)
+		if err != nil || !sameArtifactRef(ref, got) {
+			continue
+		}
+		if selected != nil {
+			return historicalTerminalResidue{}, errors.New("multiple completed histories bind the retained final release")
+		}
+		selected = h
+	}
+	if selected == nil {
+		return historicalTerminalResidue{}, errors.New("retained final release does not bind one completed history")
+	}
+	return *selected, nil
+}
+
+func validateInitOrHistoricalBuild(path string, init walReceipt, history []historicalTerminalResidue) error {
+	if build, _, err := readBuildReceipt(path, init.AppID, init.Version); err == nil {
+		if err := verifyAppHash(build); err != nil {
+			return fmt.Errorf("local INIT build does not reproduce its app hash: %w", err)
+		}
+		return nil
+	}
+	for _, h := range history {
+		if ref, ok := h.terminal.NativeReceipts["build"]; ok && ref.Path == path && verifyArtifactRef(ref) == nil {
+			return nil
+		}
+	}
+	return errors.New("build residue binds neither this INIT nor completed history")
+}
+
+func validateHistoricalFinalRelease(path string, h historicalTerminalResidue) error {
+	ref, ok := h.terminal.NativeReceipts["releaseJson"]
+	if !ok || ref.Path != path || verifyArtifactRef(ref) != nil {
+		return errors.New("final release receipt drifts from completed history")
+	}
+	_, got, err := readFinalReleaseJSON(path, h.wal.NewAppHash, h.wal.Version, h.wal.ReleaseNonce)
+	if err != nil || !sameArtifactRef(ref, got) {
+		return errors.New("final release receipt does not bind completed history")
+	}
+	return nil
+}
+
+func validateHistoricalStage(path string, h historicalTerminalResidue) error {
+	ref, ok := h.terminal.NativeReceipts["stage"]
+	if !ok || ref.Path != path || verifyArtifactRef(ref) != nil {
+		return errors.New("stage residue drifts from completed history")
+	}
+	_, got, err := readStageReceipt(path, h.wal.AppID, h.wal.NewAppHash, h.wal.ReleaseHash)
+	if err != nil || !sameArtifactRef(ref, got) {
+		return errors.New("stage residue does not bind completed history")
+	}
+	return nil
+}
+
+func validateHistoricalProposal(path string, h historicalTerminalResidue) error {
+	ref, ok := h.terminal.NativeReceipts["proposal"]
+	if !ok || ref.Path != path || verifyArtifactRef(ref) != nil {
+		return errors.New("proposal residue drifts from completed history")
+	}
+	_, got, err := readProposalReceipt(path, h.wal.NewReleasePDA)
+	if err != nil || !sameArtifactRef(ref, got) {
+		return errors.New("proposal residue does not bind completed history")
+	}
+	return nil
+}
+
+func validateHistoricalRegister(path string, h historicalTerminalResidue) error {
+	ref, ok := h.terminal.NativeReceipts["register"]
+	if !ok || ref.Path != path || verifyArtifactRef(ref) != nil {
+		return errors.New("register residue drifts from completed history")
+	}
+	got, err := readRegisterReceipt(path, h.wal.NewReleasePDA, h.wal.ReleaseHash)
+	if err != nil || !sameArtifactRef(ref, got) {
+		return errors.New("register residue does not bind completed history")
+	}
+	return nil
+}
+
+func validateHistoricalPromotion(path string, history []historicalTerminalResidue) error {
+	for _, h := range history {
+		ref, ok := h.terminal.NativeReceipts["promote"]
+		if !ok || ref.Path != path || verifyArtifactRef(ref) != nil {
+			continue
+		}
+		got, err := readPromoteReceipt(path, h.wal.AppID, h.wal.NewAppHash, h.wal.ReleaseHash, h.wal.StageID, h.wal.Version)
+		if err == nil && sameArtifactRef(ref, got) {
+			return nil
+		}
+	}
+	return errors.New("promotion residue does not bind completed history")
+}
+
+func validateHistoricalRevoke(path string, history []historicalTerminalResidue) error {
+	for _, h := range history {
+		for pda, ref := range h.terminal.RevokeReceipts {
+			if ref.Path != path || verifyArtifactRef(ref) != nil {
+				continue
+			}
+			got, err := readRevokeReceipt(path, pda, false)
+			if err == nil && sameArtifactRef(ref, got) {
+				return nil
+			}
+		}
+	}
+	return errors.New("revoke residue does not bind completed history")
 }
 
 func writeAbandonedInitMarker(path string, marker abandonedInitReceipt) error {

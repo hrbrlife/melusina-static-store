@@ -2,18 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-    "sourceCommit": "c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638",
+    "sourceCommit": "46ad20116c6c0aa8d356cb29bf15988084732747",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "The Aug 20 dev-publish v0.1.44/build-47 source is the newest valid forward NamedCoin Configurator source. It preserves the selected hermetic build, immutable namedcoin-admin identity, governed-only publish path, and synchronized metadata/runtime-contract/test cohort while advancing above the prior same-version byte divergence. Main is an ancestor. The product-path, case-workflow, release-health, and team-identity divergent lines remain preserved for deliberate later integration review; their aliases and detached/release history are evidence only and cannot silently become a release source. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
+    "decisionSummary": "The Aug 26 dev-publish v0.1.45/build-48 source is the current forward NamedCoin Configurator release cut. It preserves the governed-only Store path and fixes the operator form session handoff, preventing the rendered approval-policy submission from opening a new locked Pearl session.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean full-history source checkout; current main is an ancestor of selected dev-publish",
-            "make test-release-source-guard, go test ./... -count=1, go vet ./..., make verify-version-sync, make check-app-id, make check-anchor-encoder, and make check-e2e-envelope passed",
-            "the prior selected source's race and cross-repository capnp-drift checks remain recorded; this cut changes only the release cohort and declared visible version",
-            "two byte-identical SPK packs matched SHA-256 34a9cc9b0790c66da5471be2bd504b049d843a3ec6ab3c903e25fdb1b5ea8b77 and spk verify",
-            "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
+            "clean source checkout at the selected origin/dev-publish commit; main remains a preserved baseline",
+            "make test-release-source-guard, go test ./... -count=1, and go vet ./... passed on the selected source",
+            "two clean, separately located source clones produced byte-identical SPKs and each passed spk verify",
+            "the selected delta changes no Capn Proto source or generated binding; app identity, version metadata, and governed release boundary remain pinned",
+            "catalog provider retains the shared 3-of-4 Squads authority and rejects app-specific authority overrides"
         ]
     },
     "reviewedRefs": [
@@ -24,7 +24,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "c8eeb7fdd72367f57dcd2a5bc8c5f1c6ccbbf638",
+            "commit": "46ad20116c6c0aa8d356cb29bf15988084732747",
             "outcome": "selected"
         },
         {
@@ -39,7 +39,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "07ed1ea60907ef3ffc56c4fc9f0be473a8e634ea",
+            "commit": "71ab6da82b5fbf977ce483365ff2700a95e38d28",
             "outcome": "baseline"
         },
         {

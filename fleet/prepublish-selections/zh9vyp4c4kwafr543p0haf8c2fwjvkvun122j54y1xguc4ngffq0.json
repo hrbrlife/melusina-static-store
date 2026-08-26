@@ -2,17 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-    "sourceCommit": "46ad20116c6c0aa8d356cb29bf15988084732747",
+    "sourceCommit": "21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "The Aug 26 dev-publish v0.1.45/build-48 source is the current forward NamedCoin Configurator release cut. It preserves the governed-only Store path and fixes the operator form session handoff, preventing the rendered approval-policy submission from opening a new locked Pearl session.",
+    "decisionSummary": "The Aug 26 dev-publish v0.1.46/build-49 source is the strictly forward NamedCoin Configurator release cut. It preserves the governed-only Store path and carries the operator form session handoff fix in a version newer than the existing active release.",
     "internalControls": {
         "status": "passed",
         "checks": [
             "clean source checkout at the selected origin/dev-publish commit; main remains a preserved baseline",
             "make test-release-source-guard, go test ./... -count=1, and go vet ./... passed on the selected source",
-            "two clean, separately located source clones produced byte-identical SPKs and each passed spk verify",
-            "the selected delta changes no Capn Proto source or generated binding; app identity, version metadata, and governed release boundary remain pinned",
+            "the release-cohort metadata, pkgdef, runtime contract, changelog, and release-source guard agree on 0.1.46/build-49",
+            "the selected delta changes no Capn Proto source or generated binding; app identity and governed release boundary remain pinned",
             "catalog provider retains the shared 3-of-4 Squads authority and rejects app-specific authority overrides"
         ]
     },
@@ -24,7 +24,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "46ad20116c6c0aa8d356cb29bf15988084732747",
+            "commit": "21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea",
             "outcome": "selected"
         },
         {

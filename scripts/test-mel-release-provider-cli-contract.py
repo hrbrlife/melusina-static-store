@@ -574,6 +574,25 @@ def test_submit_allows_only_explicit_multipart_transport():
         restore_env(old)
 
 
+def test_submit_socks_proxy_is_loopback_only_and_scoped():
+    old = with_env({"MEL_RELEASE_SUBMIT_SOCKS5_PROXY": "socks5://127.0.0.1:1087"})
+    try:
+        assert provider.submit_transport_env() == {
+            "HTTP_PROXY": "socks5://127.0.0.1:1087",
+            "HTTPS_PROXY": "socks5://127.0.0.1:1087",
+            "NO_PROXY": "",
+        }
+        os.environ["MEL_RELEASE_SUBMIT_SOCKS5_PROXY"] = "socks5://proxy.example.test:1087"
+        try:
+            provider.submit_transport_env()
+        except provider.ProviderError as exc:
+            assert "MEL_RELEASE_SUBMIT_SOCKS5_PROXY" in str(exc), exc
+        else:
+            raise AssertionError("non-loopback submit proxy was accepted")
+    finally:
+        restore_env(old)
+
+
 def test_submit_refuses_missing_catalog_slot():
     old = with_env({
         "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
@@ -2979,6 +2998,7 @@ if __name__ == "__main__":
     test_propose_register_resumes_the_exact_state_without_advancing_index()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_allows_only_explicit_multipart_transport()
+    test_submit_socks_proxy_is_loopback_only_and_scoped()
     test_submit_refuses_missing_catalog_slot()
     test_submit_refuses_an_alternate_store_target()
     test_release_helper_owns_index_and_atomic_approval_commands()

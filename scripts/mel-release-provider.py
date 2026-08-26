@@ -153,6 +153,30 @@ def submit_timeout() -> str:
             f"signed lifetime over 30m (HTTP 401 check=envelope_ttl). Got {seconds}s"
         )
     return f"{seconds}s"
+
+
+def submit_transport_env() -> dict[str, str]:
+    """Return an explicitly-scoped local SOCKS proxy for ``cmd/submit``.
+
+    Provider verification also performs HTTPS reads through Python's urllib,
+    which deliberately does not implement SOCKS. Keep this opt-in transport
+    setting off the provider process itself and inject it only into the Go
+    submit client. The proxy is constrained to a loopback endpoint so a
+    release invocation cannot silently route signed material through an
+    arbitrary host.
+    """
+    proxy = env("MEL_RELEASE_SUBMIT_SOCKS5_PROXY", default="")
+    if not proxy:
+        return {}
+    match = re.fullmatch(r"socks5://(?:127\.0\.0\.1|localhost):([1-9][0-9]{0,4})", proxy)
+    if not match or int(match.group(1)) > 65535:
+        raise ProviderError(
+            "MEL_RELEASE_SUBMIT_SOCKS5_PROXY must be socks5://127.0.0.1:<port> "
+            "or socks5://localhost:<port>"
+        )
+    return {"HTTP_PROXY": proxy, "HTTPS_PROXY": proxy, "NO_PROXY": ""}
+
+
 CANONICAL_SOURCE_REPOSITORY_RE = re.compile(
     r"https://github\.com/hrbrlife/[A-Za-z0-9][A-Za-z0-9_.-]*"
 )
@@ -2154,7 +2178,10 @@ def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out
     release = rewrite_release(context, app_id, app_hash, release_hash, env("MEL_NEW_VERSION", required=True), nonce)
     context["releasePath"] = str(release)
     write_json(context_path(app_id), context)
-    run(submit_args(context, receipt_out, stage_only=True))
+    run(
+        submit_args(context, receipt_out, stage_only=True),
+        extra_env=submit_transport_env(),
+    )
 
 
 def configured_threshold() -> int:
@@ -2679,7 +2706,10 @@ def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_i
         raise ProviderError("promotion context no longer binds the staged candidate")
     if release.get("licenseSquadsVault") != authority["vault"]:
         raise ProviderError("promotion release does not bind the catalog-pinned shared Squads vault")
-    run(submit_args(context, receipt_out, stage_only=False))
+    run(
+        submit_args(context, receipt_out, stage_only=False),
+        extra_env=submit_transport_env(),
+    )
 
 
 def active_releases(app_id: str) -> None:

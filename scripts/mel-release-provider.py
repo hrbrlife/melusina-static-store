@@ -2126,6 +2126,9 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
     slot = context.get("catalogSlot")
     if not isinstance(slot, dict) or not all(isinstance(slot.get(k), str) and slot[k].strip() for k in ("developer", "repo", "slug")):
         raise ProviderError("provider context lacks immutable catalogSlot")
+    multipart = env("MEL_RELEASE_SUBMIT_MULTIPART", default="")
+    if multipart not in ("", "yes"):
+        raise ProviderError("MEL_RELEASE_SUBMIT_MULTIPART must be exactly 'yes' when set")
     args = [
         str(ensure_bin("submit", "./cmd/submit")), "--store", store_url,
         "--spk", str(context["spkPath"]), "--metadata", str(context["metadataPath"]),
@@ -2135,6 +2138,8 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
         "--domain", domain, "--rpc-url", rpc, "--timeout", submit_timeout(), "--receipt-out", str(receipt_out),
         "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
     ]
+    if multipart == "yes":
+        args.append("--multipart")
     if stage_only:
         args.append("--stage")
     return args

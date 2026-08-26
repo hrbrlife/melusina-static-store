@@ -540,6 +540,38 @@ def test_submit_binds_the_immutable_catalog_slot():
     assert args[args.index("--slug") + 1] == "popaye", args
     assert args[args.index("--runtime-contract") + 1] == "/tmp/RUNTIME-CONTRACT.json", args
     assert "--stage" in args, args
+    assert "--multipart" not in args, args
+
+
+def test_submit_allows_only_explicit_multipart_transport():
+    old_bin = provider.ensure_bin
+    old = with_env({
+        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
+        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+        "MEL_RELEASE_SUBMIT_MULTIPART": "yes",
+    })
+    context = {
+        "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
+        "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
+        "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
+    }
+    try:
+        provider.ensure_bin = lambda *_: Path("/tmp/submit")
+        args = provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=False)
+        assert "--multipart" in args, args
+        os.environ["MEL_RELEASE_SUBMIT_MULTIPART"] = "true"
+        try:
+            provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=False)
+        except provider.ProviderError as exc:
+            assert "MEL_RELEASE_SUBMIT_MULTIPART" in str(exc), exc
+        else:
+            raise AssertionError("invalid multipart mode was accepted")
+    finally:
+        provider.ensure_bin = old_bin
+        restore_env(old)
 
 
 def test_submit_refuses_missing_catalog_slot():
@@ -2946,6 +2978,7 @@ if __name__ == "__main__":
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()
     test_submit_binds_the_immutable_catalog_slot()
+    test_submit_allows_only_explicit_multipart_transport()
     test_submit_refuses_missing_catalog_slot()
     test_submit_refuses_an_alternate_store_target()
     test_release_helper_owns_index_and_atomic_approval_commands()

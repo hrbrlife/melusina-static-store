@@ -260,6 +260,10 @@ func requireRotatedTerminalResidue(appDir string, init walReceipt) error {
 			if err := validateHistoricalRegister(path, selected); err != nil {
 				return err
 			}
+		case "promote.json":
+			if err := validateHistoricalPromotion(path, history); err != nil {
+				return err
+			}
 		default:
 			if strings.HasPrefix(entry.Name(), "promote-") && strings.HasSuffix(entry.Name(), ".json") {
 				if err := validateHistoricalPromotion(path, history); err != nil {
@@ -373,6 +377,19 @@ func validateHistoricalTerminal(h historicalTerminalResidue, appID string) error
 		t.ReleaseHash != h.wal.ReleaseHash || t.ReleaseEntryPDA != h.wal.NewReleasePDA ||
 		t.StageID != h.wal.StageID || t.ServedAppHash != h.wal.NewAppHash {
 		return errors.New("historical terminal does not bind its completed WAL")
+	}
+	for name, want := range map[string]artifactRef{
+		"build":       h.wal.BuildReceipt,
+		"stage":       h.wal.StageReceiptRef,
+		"releaseJson": h.wal.ReleaseJSON,
+		"proposal":    h.wal.ProposalReceipt,
+		"register":    h.wal.RegisterReceipt,
+		"promote":     h.wal.PromoteReceipt,
+	} {
+		got, ok := t.NativeReceipts[name]
+		if !ok || !sameArtifactRef(got, want) {
+			return fmt.Errorf("historical terminal %s receipt does not bind its completed WAL", name)
+		}
 	}
 	for _, active := range t.ActiveAfter {
 		if active.PDA == t.ReleaseEntryPDA && active.AppHash == t.AppHash && active.Version == t.Version {

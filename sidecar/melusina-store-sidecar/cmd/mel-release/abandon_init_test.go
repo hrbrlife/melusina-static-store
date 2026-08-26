@@ -87,6 +87,15 @@ func TestAbandonInitArchivesValidatedRotatedTerminalResidue(t *testing.T) {
 	h := newHarness(t)
 	mustNoErr(t, "publish v1", h.publish("1.0.1"))
 	mustNoErr(t, "approve v1", h.approve())
+	// Older completed cuts used the appId-scoped promote.json name. Preserve a
+	// coherent instance of that legacy receipt so the test covers the exact
+	// rotated residue layout seen during a real failed local rebuild.
+	v1 := h.wal()
+	legacyPromote := filepath.Join(h.cfg.appStateDir(testAppID), "promote.json")
+	mustNoErr(t, "rename v1 promotion receipt", os.Rename(v1.PromoteReceipt.Path, legacyPromote))
+	v1.PromoteReceipt.Path = legacyPromote
+	mustNoErr(t, "journal legacy promotion path", journalWAL(h.cfg.walPath(testAppID), &v1))
+	mustNoErr(t, "rewrite v1 terminal with legacy promotion path", writeTerminal(h.cfg, v1, filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")))
 
 	// Model the exact interrupted second-cut layout: loadOrSeedWAL rotates the
 	// completed v1 {wal,candidate,terminal} into history, then the local v2

@@ -20,6 +20,8 @@ import (
 // The license-registry program the store pins for release_v2 authority.
 const defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 const defaultBazaarStoreID = "melusina-os-root-store"
+const defaultReleaseOpTimeoutSecs = 480
+const maxReleaseOpTimeoutSecs = 1800
 
 // Config is the fully-resolved, validated runtime configuration.
 type Config struct {
@@ -88,7 +90,14 @@ func loadConfig() (Config, error) {
 			*item.dst = value
 		}
 	}
-	c.OpTimeoutSecs = 480
+	c.OpTimeoutSecs = defaultReleaseOpTimeoutSecs
+	if raw := strings.TrimSpace(os.Getenv("MEL_RELEASE_OP_TIMEOUT_SECS")); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < defaultReleaseOpTimeoutSecs || value > maxReleaseOpTimeoutSecs {
+			return Config{}, fmt.Errorf("MEL_RELEASE_OP_TIMEOUT_SECS must be an integer in %d..%d when set", defaultReleaseOpTimeoutSecs, maxReleaseOpTimeoutSecs)
+		}
+		c.OpTimeoutSecs = value
+	}
 	if revoke := strings.TrimSpace(os.Getenv("MEL_RELEASE_ALLOW_GLOBAL_REVOKE")); revoke != "" {
 		if revoke != "yes" {
 			return Config{}, errors.New("MEL_RELEASE_ALLOW_GLOBAL_REVOKE must be exactly 'yes' when set")

@@ -470,6 +470,13 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 	if parsed.verifyReceiptPath != "/tmp/publish-receipt.json" {
 		t.Fatalf("unexpected receipt path: %q", parsed.verifyReceiptPath)
 	}
+	prepared, err := parseFlags(append(append([]string{}, base...), "--prepared-submission", "/tmp/prepared.json"))
+	if err != nil {
+		t.Fatalf("verify mode rejected a prepared submission: %v", err)
+	}
+	if prepared.preparedSubmission != "/tmp/prepared.json" {
+		t.Fatalf("unexpected prepared submission path: %q", prepared.preparedSubmission)
+	}
 	if _, err := parseFlags(append(base, "--publisher-key", "/tmp/publisher.json")); err == nil {
 		t.Fatal("verify mode accepted a publish credential")
 	}
@@ -480,6 +487,43 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 	}
 	if _, err := parseFlags(withoutDomain); err == nil {
 		t.Fatal("verify mode accepted a receipt without a serving domain")
+	}
+	if _, err := parseFlags([]string{"--prepared-submission", "/tmp/prepared.json"}); err == nil {
+		t.Fatal("publish mode accepted a prepared submission without --verify-receipt")
+	}
+}
+
+func TestPreparedSubmissionRoundTripAndConsistencyChecks(t *testing.T) {
+	master := randPubkeyB58(t)
+	spk, _, releaseBytes, claims := testRelease(t, master)
+	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 9, 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared := preparedSubmission{
+		Schema:   preparedSubmissionSchema,
+		Target:   appPromoteTarget,
+		Envelope: sig,
+		Expected: submittedReceiptIntent{
+			AppID: "app-1", AppHash: claims.AppHash, ReleaseHash: claims.ReleaseHash, StageID: "stage-1",
+		},
+	}
+	path := filepath.Join(t.TempDir(), "prepared.json")
+	if err := writePreparedSubmission(path, prepared); err != nil {
+		t.Fatalf("write prepared submission: %v", err)
+	}
+	got, err := readPreparedSubmission(path)
+	if err != nil {
+		t.Fatalf("read prepared submission: %v", err)
+	}
+	if got.Schema != prepared.Schema || got.Target != prepared.Target || got.Expected != prepared.Expected || got.Envelope.Payload.Target != appPromoteTarget {
+		t.Fatalf("prepared submission round trip drifted: %+v", got)
+	}
+	prepared.Target = appStageTarget
+	if err := writePreparedSubmission(filepath.Join(t.TempDir(), "inconsistent.json"), prepared); err == nil {
+		t.Fatal("inconsistent prepared submission was accepted")
 	}
 }
 

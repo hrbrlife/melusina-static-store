@@ -62,8 +62,9 @@ const programIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 const defaultChainID = "solana:devnet"
 
 const (
-	appPromoteTarget = "/publish"
-	appStageTarget   = "/publish/stage"
+	appPromoteTarget         = "/publish"
+	appStageTarget           = "/publish/stage"
+	preparedSubmissionSchema = "melusina-submit-prepared-v1"
 )
 
 // Receipt mirrors the store-signed provenance receipt JSON returned by the C2.3
@@ -166,10 +167,21 @@ type ReleaseClaims struct {
 // binding separately proves that the signer acknowledged this invocation's
 // candidate rather than returning a valid stale receipt for another publish.
 type submittedReceiptIntent struct {
-	AppID       string
-	AppHash     string
-	ReleaseHash string
-	StageID     string
+	AppID       string `json:"appId"`
+	AppHash     string `json:"appHash"`
+	ReleaseHash string `json:"releaseHash"`
+	StageID     string `json:"stageId"`
+}
+
+// preparedSubmission is a short-lived, locally signed handoff for a trusted
+// transport relay. The relay gets the envelope and public release artifacts,
+// never the publisher identity. Receipt acceptance still happens locally and
+// binds the store-signed response to this exact candidate.
+type preparedSubmission struct {
+	Schema   string                 `json:"schema"`
+	Target   string                 `json:"target"`
+	Envelope envelope.Signed        `json:"envelope"`
+	Expected submittedReceiptIntent `json:"expected"`
 }
 
 // publisherKeyFile is the on-disk publisher signing identity. It is the
@@ -223,6 +235,8 @@ type options struct {
 	slug                string
 	receiptOut          string
 	verifyReceiptPath   string
+	prepareOut          string
+	preparedSubmission  string
 	timeout             time.Duration
 }
 
@@ -247,6 +261,8 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.slug, "slug", "", "catalog app path segment (required with --developer/--repo for a first publish)")
 	fs.StringVar(&o.receiptOut, "receipt-out", "", "write the verified raw receipt JSON to this path")
 	fs.StringVar(&o.verifyReceiptPath, "verify-receipt", "", "verify a saved promotion or app-publish receipt against the on-chain store authority without publishing")
+	fs.StringVar(&o.prepareOut, "prepare-out", "", "write a signed publish handoff and exit without POSTing; use --verify-receipt --prepared-submission to accept the returned receipt")
+	fs.StringVar(&o.preparedSubmission, "prepared-submission", "", "prepared handoff to bind a --verify-receipt result to the exact submitted candidate")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "HTTP request timeout")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -257,7 +273,7 @@ func parseFlags(args []string) (options, error) {
 	if verifyMode {
 		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.runtimeContractPath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
-			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" {
+			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" || o.prepareOut != "" {
 			return o, errors.New("--verify-receipt cannot be combined with publish, stage, catalog, or receipt-output flags")
 		}
 		if o.licenseMint == "" {
@@ -276,6 +292,12 @@ func parseFlags(args []string) (options, error) {
 			return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
 		}
 		return o, nil
+	}
+	if o.preparedSubmission != "" {
+		return o, errors.New("--prepared-submission requires --verify-receipt")
+	}
+	if o.prepareOut != "" && o.receiptOut != "" {
+		return o, errors.New("--prepare-out cannot be combined with --receipt-out")
 	}
 	if o.store == "" {
 		missing = append(missing, "--store")
@@ -408,6 +430,16 @@ func run(args []string, stdout, stderr io.Writer) error {
 	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.verifiedSlot, envTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
+	}
+	if o.prepareOut != "" {
+		prepared := preparedSubmission{
+			Schema: preparedSubmissionSchema, Target: target, Envelope: sig, Expected: expectedReceipt,
+		}
+		if err := writePreparedSubmission(o.prepareOut, prepared); err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "PREPARED OK — signed publish handoff written to %s; no POST was made\n", o.prepareOut)
+		return nil
 	}
 
 	resp, status, err := postPublishWithRuntimeContract(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContract)
@@ -558,16 +590,78 @@ func runVerifyReceipt(o options, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("read receipt %s: %w", o.verifyReceiptPath, err)
 	}
+	client := verify.NewRPCClient(o.rpcURL)
+	if o.preparedSubmission != "" {
+		prepared, err := readPreparedSubmission(o.preparedSubmission)
+		if err != nil {
+			return err
+		}
+		switch prepared.Target {
+		case appPromoteTarget:
+			if _, err := acceptPromotionReceipt(context.Background(), client, o.licenseMint, o.domain, raw, prepared.Expected, ""); err != nil {
+				return fmt.Errorf("prepared promotion receipt verification: %w", err)
+			}
+		case appStageTarget:
+			if _, err := acceptStageReceipt(context.Background(), client, o.licenseMint, o.domain, raw, prepared.Expected, ""); err != nil {
+				return fmt.Errorf("prepared stage receipt verification: %w", err)
+			}
+		default:
+			return fmt.Errorf("prepared submission has unsupported target %q", prepared.Target)
+		}
+		fmt.Fprintf(stdout, "PREPARED RECEIPT OK — store proof verified against on-chain authority and exact handoff\n")
+		return nil
+	}
 	receipt, err := decodeReceiptForVerification(raw)
 	if err != nil {
 		return fmt.Errorf("decode receipt %s: %w", o.verifyReceiptPath, err)
 	}
-	client := verify.NewRPCClient(o.rpcURL)
 	if err := verifyReceipt(context.Background(), client, o.licenseMint, o.domain, receipt); err != nil {
 		return fmt.Errorf("receipt verification: %w", err)
 	}
 	fmt.Fprintf(stdout, "RECEIPT OK — saved promotion proof verified against on-chain store_authority\n")
 	return nil
+}
+
+func writePreparedSubmission(path string, prepared preparedSubmission) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("prepare-out path is required")
+	}
+	if prepared.Schema != preparedSubmissionSchema || (prepared.Target != appPromoteTarget && prepared.Target != appStageTarget) ||
+		prepared.Envelope.Payload.Target != prepared.Target || prepared.Expected.AppID == "" ||
+		prepared.Expected.AppHash == "" || prepared.Expected.ReleaseHash == "" || prepared.Expected.StageID == "" {
+		return errors.New("prepared submission is incomplete or internally inconsistent")
+	}
+	raw, err := json.MarshalIndent(prepared, "", "  ")
+	if err != nil {
+		return fmt.Errorf("prepare-out: encode: %w", err)
+	}
+	raw = append(raw, '\n')
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, raw, 0o600); err != nil {
+		return fmt.Errorf("prepare-out: write temp: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("prepare-out: rename: %w", err)
+	}
+	return nil
+}
+
+func readPreparedSubmission(path string) (preparedSubmission, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return preparedSubmission{}, fmt.Errorf("read prepared submission %s: %w", path, err)
+	}
+	var prepared preparedSubmission
+	if err := json.Unmarshal(raw, &prepared); err != nil {
+		return preparedSubmission{}, fmt.Errorf("decode prepared submission %s: %w", path, err)
+	}
+	if prepared.Schema != preparedSubmissionSchema || (prepared.Target != appPromoteTarget && prepared.Target != appStageTarget) ||
+		prepared.Envelope.Payload.Target != prepared.Target || prepared.Expected.AppID == "" ||
+		prepared.Expected.AppHash == "" || prepared.Expected.ReleaseHash == "" || prepared.Expected.StageID == "" {
+		return preparedSubmission{}, errors.New("prepared submission is incomplete or internally inconsistent")
+	}
+	return prepared, nil
 }
 
 func decodeReceiptForVerification(raw []byte) (Receipt, error) {

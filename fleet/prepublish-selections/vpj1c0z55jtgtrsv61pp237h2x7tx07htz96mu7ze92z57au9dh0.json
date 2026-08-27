@@ -5,15 +5,15 @@
     "sourceCommit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "CyberTeller 0.1.99/appVersion-176 is the selected dev-publish release cut. It carries the sealed corridor and one compatible protocol revision across packaged CyberTeller, Chainwatch, Custody, and sandbox-settlement components.",
+    "decisionSummary": "CyberTeller v0.1.99/appVersion-176 is retained only as a forensic source candidate and is release-held. Its source envelope coverage rejects an unauthenticated offline-signer HTTP call, and its only fiat deposit endpoints remain outside the sealed corridor while depending on legacy FINREACT env/secret material that ConfigGate v27 deliberately clears. A later versioned source cut must provide a typed sealed fiat-deposit authority and pass the full gates before it can be selected for release.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursively initialized checkout at the selected origin/dev-publish commit",
-            "make test passed at the selected source, including root packages and the common, Chainwatch, Custody, and sandbox-settlement sidecars",
-            "release metadata, package manifest, build sentinel, and Makefile agree on 0.1.99/appVersion-176",
-            "all packaged sidecars require the same protocol revision as the CyberTeller ConfigGate cohort, including the M6 settlement aggregate validation",
-            "the selected source remains unprovisioned without governed ConfigGate and AdminGate capability delivery; no legacy environment-file fallback exists"
+            "clean recursive detached clone at e16bb3c7a8a31cb855115762265aef98ad271e78; origin/dev-publish matched the catalog pin when this receipt was generated",
+            "make check-e2e-envelope fails closed at internal/offlinesign/client.go:68 (no signer or e2e:none), so this candidate cannot meet the release envelope gate",
+            "source inspection confirms fiat /api/deposits/fiat routes are deliberately outside the sealed corridor, while their legacy deposits.Orchestrator reads FINREACT configuration from loadCybertellerEnvFile and bridgeConfigGateToConstellationEnv",
+            "ConfigGate v27 publicEnvLocked and no_deploy_seed_seams clear the legacy Fineract/AITX secret fields; restoring that seam is prohibited, not a release workaround",
+            "catalog release_state=hold makes the governed provider refuse package, generation, and promotion operations for this app"
         ]
     },
     "reviewedRefs": [
@@ -99,7 +99,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "2fe962655fbb73a65af31fe048298d75dd1ba7da",
+            "commit": "fdfa056ab79d7a4971b3f9f7e5b1bd762dbeabbe",
             "outcome": "baseline"
         },
         {

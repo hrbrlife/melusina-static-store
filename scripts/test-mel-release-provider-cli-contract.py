@@ -2352,7 +2352,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
-    assert cyberteller["release_state"] == "ready", cyberteller
+    assert cyberteller["release_state"] == "hold", cyberteller
     assert cyberteller["source_selection_state"] == "direct-dev-verified", cyberteller
     assert cyberteller["source_selection_receipt"] == (
         "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"

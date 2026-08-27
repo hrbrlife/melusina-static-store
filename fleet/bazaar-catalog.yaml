@@ -283,14 +283,16 @@ groups:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
-        # v0.1.99/appVersion-176 is the current compatible forward
-        # dev-publish source. Its packaged CyberTeller and sidecars share the
-        # ConfigGate protocol revision, including M6 settlement validation.
+        # v0.1.99/appVersion-176 is retained as a source candidate but is
+        # RELEASE-HELD: its envelope gate rejects the offline signer, and its
+        # only FIAT deposit path still depends on a legacy secret/env seam that
+        # a sealed ConfigGate profile deliberately removes. Do not publish,
+        # upgrade, or approve it; a versioned sealed FIAT replacement is needed.
         source_commit: e16bb3c7a8a31cb855115762265aef98ad271e78
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
-        release_state: ready
+        release_state: hold
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json
         source_repository: https://github.com/hrbrlife/cyberteller

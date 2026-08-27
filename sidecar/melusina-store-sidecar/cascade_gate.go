@@ -240,9 +240,11 @@ const (
 )
 
 // sidecarSANTier maps one canonical GlobalSidecarApproval SAN to its local
-// scope enum.  The suffix is deliberately exact and case-sensitive: these are
-// signed protocol identifiers, not display DNS names to be normalized.
+// scope enum. It mirrors SidecarScope::from_san() in the deployed registry:
+// DNS names are case-insensitive, while the canonical sidecar suffix and a
+// non-empty prefix remain mandatory.
 func sidecarSANTier(san string) (byte, error) {
+	canonical := strings.ToLower(san)
 	for _, candidate := range []struct {
 		suffix string
 		scope  byte
@@ -256,7 +258,7 @@ func sidecarSANTier(san string) (byte, error) {
 		{".sidecar.remote.shared", sidecarScopeRemote},
 		{".sidecar.remote", sidecarScopeRemote},
 	} {
-		if strings.HasSuffix(san, candidate.suffix) && len(san) > len(candidate.suffix) {
+		if strings.HasSuffix(canonical, candidate.suffix) && len(canonical) > len(candidate.suffix) {
 			return candidate.scope, nil
 		}
 	}

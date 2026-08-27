@@ -210,6 +210,10 @@ func TestVerifyFiveFactCascadeRejectsAmbiguousOrMismatchedSANTier(t *testing.T) 
 			sans: []string{sidecarID + ".sidecar.host", sidecarID + ".sidecar.host.shared"},
 		},
 		{
+			name: "case_and_multilabel_global_san_match_registry_grammar",
+			sans: []string{"Fineract.Production." + sidecarID + ".SIDEcar.HOST.Shared"},
+		},
+		{
 			name: "global_hypervisor_cannot_authorize_host_local_scope",
 			sans: []string{sidecarID + ".sidecar.hypervisor"},
 			want: "SAN tier",

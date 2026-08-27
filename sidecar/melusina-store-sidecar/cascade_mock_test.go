@@ -206,6 +206,10 @@ func TestVerifyFiveFactCascadeRejectsAmbiguousOrMismatchedSANTier(t *testing.T) 
 		want       string
 	}{
 		{
+			name: "host_shared_and_unshared_sans_are_one_host_tier",
+			sans: []string{sidecarID + ".sidecar.host", sidecarID + ".sidecar.host.shared"},
+		},
+		{
 			name: "global_hypervisor_cannot_authorize_host_local_scope",
 			sans: []string{sidecarID + ".sidecar.hypervisor"},
 			want: "SAN tier",
@@ -253,6 +257,12 @@ func TestVerifyFiveFactCascadeRejectsAmbiguousOrMismatchedSANTier(t *testing.T) 
 
 			svc := &publishService{cr: m}
 			err = svc.verifyFiveFactCascade(context.Background(), componentReleaseChainView{sidecarID: sidecarID, licenseMint: license}, artifact)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("cascade rejected valid host SAN/scope binding: %v", err)
+				}
+				return
+			}
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("cascade accepted invalid SAN/scope binding, err=%v", err)
 			}

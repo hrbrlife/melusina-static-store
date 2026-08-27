@@ -247,9 +247,13 @@ func sidecarSANTier(san string) (byte, error) {
 		suffix string
 		scope  byte
 	}{
+		{".sidecar.host.shared", sidecarScopeHost},
 		{".sidecar.host", sidecarScopeHost},
+		{".sidecar.hypervisor.shared", sidecarScopeHypervisor},
 		{".sidecar.hypervisor", sidecarScopeHypervisor},
+		{".sidecar.local.shared", sidecarScopeLocal},
 		{".sidecar.local", sidecarScopeLocal},
+		{".sidecar.remote.shared", sidecarScopeRemote},
 		{".sidecar.remote", sidecarScopeRemote},
 	} {
 		if strings.HasSuffix(san, candidate.suffix) && len(san) > len(candidate.suffix) {

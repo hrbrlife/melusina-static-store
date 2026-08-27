@@ -159,9 +159,50 @@ def test_submit_refuses_missing_catalog_slot():
         restore_env(old)
 
 
+def release_entry_fixture(status, version="0.5.79"):
+    app_hash = bytes.fromhex("ab" * 32)
+    encoded_version = version.encode()
+    return b"".join([
+        b"\x00" * 8,       # Anchor discriminator
+        b"\x01" * 32,      # master_nft_mint
+        app_hash,
+        b"\x02" * 32,      # app_id
+        b"\x03" * 32,      # release_hash
+        len(encoded_version).to_bytes(4, "little"),
+        encoded_version,
+        b"\x04" * 32,      # publisher_squads_vault
+        b"\x05" * 32,      # publisher_ed25519_pubkey
+        b"\x06" * 64,      # signature
+        b"\x07" * 32,      # signed_payload_hash
+        b"\x08" * 32,      # registered_by
+        b"\x09" * 8,       # registered_at
+        bytes([status]),
+    ])
+
+
+def test_release_status_matches_attestation_enum_order():
+    pda = "release-pda"
+    for raw_status, expected in ((0, "Active"), (1, "Revoked"), (2, "Superseded")):
+        decoded = provider.decode_release_entry(release_entry_fixture(raw_status), pda)
+        assert decoded == {
+            "pda": pda,
+            "appHash": "ab" * 32,
+            "version": "0.5.79",
+            "status": expected,
+        }
+
+    try:
+        provider.decode_release_entry(release_entry_fixture(3), pda)
+    except provider.ProviderError as exc:
+        assert "unknown status 3" in str(exc), exc
+    else:
+        raise AssertionError("unknown ReleaseEntry status was accepted")
+
+
 if __name__ == "__main__":
     test_finalize_uses_only_supported_flags()
     test_propose_uses_only_supported_flags()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_refuses_missing_catalog_slot()
+    test_release_status_matches_attestation_enum_order()
     print("mel-release provider CLI-contract tests passed")

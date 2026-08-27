@@ -35,6 +35,12 @@ var errPolicyCancelled = errors.New("cancelled: auto-apply turned off before mut
 // EARLIER applied components.
 var errChainRefusedAtMutation = errors.New("refused: on-chain authority no longer attests this component at mutation time")
 
+// errOneShotAuthorizationRefusedAtMutation records that the purpose-bound
+// Store receipt was no longer freshly available at the final mutation seam.
+// Unlike an administrative auto-apply cancellation, this is a governance
+// refusal and must be visible as such in the resulting ApplyOutcome.
+var errOneShotAuthorizationRefusedAtMutation = errors.New("refused: one-shot authorization no longer validates at mutation time")
+
 // errInFlightLocked is returned (wrapped) by WAL.Open when the per-component WAL
 // lock is already held by another in-flight apply. NOTHING was staged or mutated
 // by THIS attempt — it is transient contention (e.g. an overlapping tick or a
@@ -134,6 +140,11 @@ func ApplyGeneration(ctx context.Context, gen componentrelease.DesiredGeneration
 		rb, err := deps.applyOne(ctx, gen.GenerationID, p.c, p.install, p.installed)
 		if err != nil {
 			switch {
+			case errors.Is(err, errOneShotAuthorizationRefusedAtMutation):
+				// The final Store freshness/revocation check ran after Stage+Verify
+				// and before StateApplying. No host mutation occurred.
+				outcomes[p.c.ComponentID].Status = ApplyStatusRefused
+				outcomes[p.c.ComponentID].Err = err
 			case errors.Is(err, errPolicyCancelled):
 				// Staged only, no mutation — the admin toggled auto-apply off.
 				outcomes[p.c.ComponentID].Status = ApplyStatusCancelled
@@ -280,6 +291,9 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 	if deps.BeforeMutation != nil {
 		if err := deps.BeforeMutation(ctx, c, install); err != nil {
 			_ = deps.WAL.discard(c.ComponentID)
+			if errors.Is(err, errOneShotAuthorizationRefusedAtMutation) {
+				return nil, fmt.Errorf("%w: %v", errOneShotAuthorizationRefusedAtMutation, err)
+			}
 			return nil, fmt.Errorf("%w: %v", errPolicyCancelled, err)
 		}
 	}
@@ -385,6 +399,12 @@ type ApplyDeps struct {
 	// crash/recovery cannot lose the fact that this was a bounded exception to
 	// the normal AutoApply=false policy.
 	OneShotAuthorization *OneShotAuthorizationBinding
+	// RevalidateOneShotAuthorization is required only by ApplyAuthorizedOnce.
+	// It is called after Stage+Verify and the normal final chain gate, immediately
+	// before StateApplying. The root-owned command wires it to a fresh,
+	// challenge-bound Store receipt fetch; nil fails closed for an authorized-once
+	// run so a previously downloaded bearer receipt cannot outlive revocation.
+	RevalidateOneShotAuthorization func(context.Context, OneShotAuthorizationBinding) error
 	// RuntimeGate binds the RUNNING process to the desired tuple after the adapter
 	// restart+Probe: it compares the component's structured /release-info report
 	// (schema+componentId+generationId+version+artifactSha256) against systemd

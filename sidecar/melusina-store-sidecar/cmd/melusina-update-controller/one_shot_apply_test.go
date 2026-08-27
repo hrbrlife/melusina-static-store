@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -129,6 +133,107 @@ func TestVerifiedOneShotBindingRefusesPathAndScopeConfusion(t *testing.T) {
 	registry.Components["other-sidecar"] = componentrelease.ComponentInstall{ComponentID: "other-sidecar", ComponentClass: componentrelease.ClassSidecar}
 	if _, err := verifiedOneShotBinding(cfg, pub, registry, vg, url, authorization, raw, controllerOneShotNow); err == nil {
 		t.Fatal("accepted receipt with a widened local registry")
+	}
+}
+
+func TestFetchOneShotReceiptRequiresFreshChallengeEcho(t *testing.T) {
+	cfg, _, _, _, _, _, raw := controllerOneShotFixture(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		if got := r.Header.Get("Cache-Control"); !strings.Contains(got, "no-cache") || !strings.Contains(got, "no-store") {
+			t.Errorf("cache request directive = %q", got)
+		}
+		challenges := r.Header.Values(oneShotReceiptFreshnessHeader)
+		if len(challenges) != 1 || !isLowerHex64Value(challenges[0]) {
+			t.Errorf("freshness request header = %#v", challenges)
+			http.Error(w, "bad challenge", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set(oneShotReceiptFreshnessHeader, challenges[0])
+		_, _ = w.Write(raw)
+	}))
+	defer server.Close()
+
+	cfg.BundleOrigin = server.URL
+	url := oneShotReceiptURLPrefix(cfg) + strings.Repeat("e", 64) + ".json"
+	_, got, err := fetchOneShotReceipt(context.Background(), cfg, url)
+	if err != nil {
+		t.Fatalf("fetchOneShotReceipt: %v", err)
+	}
+	if !bytes.Equal(got, raw) {
+		t.Fatal("fetched receipt bytes drifted")
+	}
+}
+
+func TestFetchOneShotReceiptRefusesMissingFreshChallengeEcho(t *testing.T) {
+	cfg, _, _, _, _, _, raw := controllerOneShotFixture(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// This models a valid old receipt returned by a cache or an endpoint that
+		// has not performed the Store's dynamic revalidation. The bytes themselves
+		// remain authentic; only the missing unpredictable echo distinguishes it.
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(raw)
+	}))
+	defer server.Close()
+
+	cfg.BundleOrigin = server.URL
+	url := oneShotReceiptURLPrefix(cfg) + strings.Repeat("e", 64) + ".json"
+	if _, _, err := fetchOneShotReceipt(context.Background(), cfg, url); err == nil || !strings.Contains(err.Error(), "did not prove a fresh") {
+		t.Fatalf("missing freshness echo = %v", err)
+	}
+}
+
+func TestFinalOneShotReceiptRevalidatorFailsClosedOnRevocationAndByteDrift(t *testing.T) {
+	cfg, pub, registry, vg, _, authorization, raw := controllerOneShotFixture(t)
+	mode := "good"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		challenge := r.Header.Values(oneShotReceiptFreshnessHeader)
+		if len(challenge) != 1 || !isLowerHex64Value(challenge[0]) {
+			http.Error(w, "missing freshness challenge", http.StatusBadRequest)
+			return
+		}
+		if mode == "revoked" {
+			http.NotFound(w, r)
+			return
+		}
+		body := raw
+		if mode == "byte-drift" {
+			var err error
+			body, err = json.MarshalIndent(authorization, "", "  ")
+			if err != nil {
+				t.Errorf("marshal drifted authorization: %v", err)
+				http.Error(w, "marshal failed", http.StatusInternalServerError)
+				return
+			}
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set(oneShotReceiptFreshnessHeader, challenge[0])
+		_, _ = w.Write(body)
+	}))
+	defer server.Close()
+
+	cfg.BundleOrigin = server.URL
+	url := oneShotReceiptURLPrefix(cfg) + authorization.AuthorizationID + ".json"
+	binding, err := verifiedOneShotBinding(cfg, pub, registry, vg, url, authorization, raw, controllerOneShotNow)
+	if err != nil {
+		t.Fatalf("initial binding: %v", err)
+	}
+	revalidate := finalOneShotReceiptRevalidator(cfg, pub, registry, vg, url, raw, binding, func() int64 { return controllerOneShotNow })
+	if err := revalidate(context.Background(), binding); err != nil {
+		t.Fatalf("fresh final receipt rejected: %v", err)
+	}
+
+	mode = "revoked"
+	if err := revalidate(context.Background(), binding); err == nil || !strings.Contains(err.Error(), "HTTP 404") {
+		t.Fatalf("revoked receipt final revalidation = %v, want HTTP refusal", err)
+	}
+
+	mode = "byte-drift"
+	if err := revalidate(context.Background(), binding); err == nil || !strings.Contains(err.Error(), "bytes differ") {
+		t.Fatalf("byte-drift final revalidation = %v, want exact-byte refusal", err)
 	}
 }
 

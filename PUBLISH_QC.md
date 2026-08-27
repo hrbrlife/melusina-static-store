@@ -8,6 +8,12 @@
 > `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md`.
 > A passing local checklist never substitutes for governed promotion, rendered
 > Store install, Upgrade Pearls, and a fresh-launch pin proof.
+>
+> **Current hold:** CyberTeller `0.1.99` / appVersion `176` is explicitly
+> `release_state: hold`. No result in this checklist authorizes its approval,
+> publish, install, or upgrade. It can leave hold only as a new versioned source
+> cut with a typed sealed fiat-deposit authority and fail-closed authenticated
+> signer path, followed by all governed release and UI proof gates.
 
 Comprehensive checklist for verifying any app before publishing to the Melusina App Bazaar.
 **Every item must pass** before an SPK is accepted into the store.

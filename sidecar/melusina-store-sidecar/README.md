@@ -5,6 +5,19 @@ For the current release, the only configured public target is
 `https://bazaar.melusina-os.org`. The binary remains parameterized by
 `store.yaml`/`store.config.json` + three attest shards (never a code fork):
 
+> **Authority boundary.** This component describes a guarded Store write
+> interface; it does not grant authority to use it. No README, local source
+> check, or reachable `POST /publish` authorizes an app approval, publish,
+> promotion, install, or upgrade. Those actions require the current selected
+> source, governed release provider, on-chain/catalog readback, and the real
+> Store/Admin UI path, including Upgrade Pearls and fresh-launch proof.
+>
+> In particular, CyberTeller `0.1.99` / appVersion `176` is held in the
+> default-Bazaar catalog. The Store must not be used to bypass its failed
+> offline-signer gate or legacy fiat secret/env seam. The only exit is a new
+> versioned cut with typed sealed fiat-deposit authority and a fail-closed
+> authenticated signer path, then the normal governed release proof.
+
 1. **ROOT / default** — `bazaar.melusina-os.org`. The foundation store (~40
    Squads-signed apps), baked into every shell as the default app source + the
    source for Sandstorm binary updates. `is_root=true`, no parent.

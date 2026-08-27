@@ -4,6 +4,24 @@ Static app store and update host for Melusina. Hosted on GitHub Pages from the `
 
 **Live store**: https://bazaar.melusina-os.org/
 
+> [!IMPORTANT]
+> **Current MSB release boundary — 2026-08-27.** This README preserves
+> local build mechanics; it does **not** authorize an approval, publish,
+> promotion, install, upgrade, or tenant change. The controlling customer
+> contract is `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md`;
+> measured operational truth is append-only in `RUNSTATE.md`.
+>
+> CyberTeller `0.1.99` / appVersion `176` is retained only as a source
+> candidate and is `release_state: hold` in the default-Bazaar catalog. Do not
+> approve, publish, install, or upgrade it. Its envelope gate rejects the
+> offline signer and its only fiat-deposit path depends on a legacy secret/env
+> seam deliberately absent from the sealed ConfigGate profile. The sole exit
+> is a **new versioned** CyberTeller cut with a typed sealed fiat-deposit
+> authority, fail-closed authenticated signer path, passing source gates, and
+> then the normal governed release, rendered Store/Admin-UI install, Upgrade
+> Pearls, package-pin, and fresh-launch proof. Documentation never substitutes
+> for any of those approvals or proofs.
+
 > **This checkout is a development mirror, not the canonical builder.**
 > Two `static_store` checkouts exist on this host with non-overlapping
 > app sets (this one has the bureau / cca.sh-Client / NamedCoin lane;
@@ -20,13 +38,14 @@ Static app store and update host for Melusina. Hosted on GitHub Pages from the `
 
 ---
 
-## Publish the store
+## Historical local build mechanics — not a current release procedure
 
 ```
 make publish
 ```
 
-That's it. One command. It does everything:
+The command below describes an older local build/publish mechanism. Do not
+invoke it as a current release procedure or infer authority from this document.
 
 1. Pulls latest from all app submodules (their `publish` branches)
 2. Runs `build-store.sh` (scans metadata, builds Vite frontend, assembles `dist-publish/`)
@@ -36,7 +55,9 @@ That's it. One command. It does everything:
 6. `make plan` — stages everything to `/tmp/melusina-publish-plan-<id>/` and writes a marker
 7. `make apply` — force-pushes the staged tree to the `publish` branch
 
-You must be on the `main` branch. Nothing else required.
+The old statement that being on `main` was sufficient is historical. Current
+release authority comes only from the selected source, governed provider,
+on-chain/catalog readback, and an approved change window.
 
 ### Plan / Apply (split publish)
 
@@ -75,7 +96,7 @@ up front. See `scripts/doctor.sh`.
 
 ---
 
-## Publish an individual app
+## Historical per-app build mechanics
 
 Every app repo has the same standardized Makefile. From any app repo:
 
@@ -92,7 +113,7 @@ make publish
 
 Then come back here and run `make publish` to deploy the store.
 
-### Full workflow (app change → live store)
+### Historical workflow sketch (app change → live store)
 
 ```bash
 # 1. In the app repo — make your changes, then:

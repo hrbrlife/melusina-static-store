@@ -470,13 +470,21 @@ func ValidateExecutedProposalTransaction(proposal Proposal, transaction VaultTra
 }
 
 // MemoOnlyPayload returns the sole memo instruction payload after proving that
-// this VaultTransaction cannot execute any other instruction.  It rejects
-// address-table lookups and ephemeral signer bumps too, so the transaction has
-// no hidden loaded accounts or extra signers beyond its one, account-free Memo
-// invocation.
-func (v VaultTransaction) MemoOnlyPayload(memoProgramID Pubkey) ([]byte, error) {
+// this VaultTransaction cannot execute any other instruction.  Squads v4 does
+// not execute the Memo as an account-free instruction: the stored inner
+// message must have the canonical [derived vault, Memo program] key list and
+// its one Memo instruction must pass [0], the writable vault signer.  This is
+// the exact @sqds/multisig shape exercised by the governed reference validator.
+//
+// programID must be the same Squads v4 program that owned and was used to
+// parse the account.  Callers must still bind v.Multisig and v.VaultIndex to
+// their purpose-specific configured authority before accepting the payload.
+func (v VaultTransaction) MemoOnlyPayload(programID, memoProgramID Pubkey) ([]byte, error) {
+	if isZero(programID) {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction Squads program id is zero")
+	}
 	if isZero(memoProgramID) {
-		return nil, fmt.Errorf("squadsproof: memo program id is zero")
+		return nil, fmt.Errorf("squadsproof: memo-only transaction Memo program id is zero")
 	}
 	if len(v.EphemeralSignerBumps) != 0 {
 		return nil, fmt.Errorf("squadsproof: memo-only transaction has ephemeral signer bumps")
@@ -484,18 +492,28 @@ func (v VaultTransaction) MemoOnlyPayload(memoProgramID Pubkey) ([]byte, error) 
 	if len(v.Message.AddressTableLookups) != 0 {
 		return nil, fmt.Errorf("squadsproof: memo-only transaction has address table lookups")
 	}
+	if v.Message.NumSigners != 1 || v.Message.NumWritableSigners != 1 || v.Message.NumWritableNonSigners != 0 {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction has non-canonical signer/writable header")
+	}
+	if len(v.Message.AccountKeys) != 2 {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction has %d account keys", len(v.Message.AccountKeys))
+	}
+	expectedVault, _, err := DeriveVaultPDA(v.Multisig, v.VaultIndex, programID)
+	if err != nil {
+		return nil, err
+	}
+	if v.Message.AccountKeys[0] != expectedVault || v.Message.AccountKeys[1] != memoProgramID {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction account keys are not [derived vault, Memo program]")
+	}
 	if len(v.Message.Instructions) != 1 {
 		return nil, fmt.Errorf("squadsproof: memo-only transaction has %d instructions", len(v.Message.Instructions))
 	}
 	instruction := v.Message.Instructions[0]
-	if int(instruction.ProgramIDIndex) >= len(v.Message.AccountKeys) {
-		return nil, fmt.Errorf("squadsproof: memo-only transaction has invalid program id index")
+	if instruction.ProgramIDIndex != 1 {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction program id index is %d, want 1", instruction.ProgramIDIndex)
 	}
-	if v.Message.AccountKeys[instruction.ProgramIDIndex] != memoProgramID {
-		return nil, fmt.Errorf("squadsproof: memo-only transaction does not invoke the expected Memo program")
-	}
-	if len(instruction.AccountIndexes) != 0 {
-		return nil, fmt.Errorf("squadsproof: memo-only transaction passes %d account indexes", len(instruction.AccountIndexes))
+	if len(instruction.AccountIndexes) != 1 || instruction.AccountIndexes[0] != 0 {
+		return nil, fmt.Errorf("squadsproof: memo-only transaction accounts are not [derived vault]")
 	}
 	return append([]byte(nil), instruction.Data...), nil
 }

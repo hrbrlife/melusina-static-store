@@ -2061,7 +2061,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json"
     ), claude
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
-    assert namedcoin_admin["source_commit"] == "21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea", namedcoin_admin
+    assert namedcoin_admin["source_commit"] == "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f", namedcoin_admin
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
@@ -2348,7 +2348,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "8449456e589555d32a5501fa4d91436c50d4d5cc", cyberteller
+    assert cyberteller["source_commit"] == "e16bb3c7a8a31cb855115762265aef98ad271e78", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller

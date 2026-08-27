@@ -2,17 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-    "sourceCommit": "21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea",
+    "sourceCommit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "The Aug 26 dev-publish v0.1.46/build-49 source is the strictly forward NamedCoin Configurator release cut. It preserves the governed-only Store path and carries the operator form session handoff fix in a version newer than the existing active release.",
+    "decisionSummary": "NamedCoin Configurator 0.1.47/build-50 is the selected dev-publish release cut. It delivers governed Enhanced and Full attestation cosigning through the signer plane, keeping the UI as the decision authority and eliminating the host-side issuance bypass.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean source checkout at the selected origin/dev-publish commit; main remains a preserved baseline",
+            "clean recursively initialized checkout at the selected origin/dev-publish commit",
             "make test-release-source-guard, go test ./... -count=1, and go vet ./... passed on the selected source",
-            "the release-cohort metadata, pkgdef, runtime contract, changelog, and release-source guard agree on 0.1.46/build-49",
-            "the selected delta changes no Capn Proto source or generated binding; app identity and governed release boundary remain pinned",
+            "release metadata, pkgdef, runtime contract, changelog, and release-source guard agree on 0.1.47/build-50",
+            "the governed cosign route requires a maker and a distinct checker, validates its ABI before dispatch, and refuses an unavailable checker key before RPC",
             "catalog provider retains the shared 3-of-4 Squads authority and rejects app-specific authority overrides"
         ]
     },
@@ -24,7 +24,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea",
+            "commit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
             "outcome": "selected"
         },
         {

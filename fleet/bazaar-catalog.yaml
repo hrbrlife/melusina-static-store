@@ -145,10 +145,10 @@ groups:
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
-        # v0.1.46/build-49 is the newest clean, source-bound dev-publish
-        # candidate. It preserves the governed release boundary and fixes the
-        # operator form session handoff in the current release cohort.
-        source_commit: 21eb66d9bd1f4cfa0df7aae0e8cc7f3ec02f1bea
+        # v0.1.47/build-50 is the newest clean, source-bound dev-publish
+        # candidate. It adds the governed enhanced-attestation cosign seam
+        # needed by the account-opening corridor without a host-side bypass.
+        source_commit: f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -156,7 +156,7 @@ groups:
         source_repository: https://github.com/hrbrlife/melusina-namedcoin-admin-app
         publish_slug: namedcoin-admin
         catalog_name: NamedCoin Configurator
-        live_version: 0.1.46
+        live_version: 0.1.47
         catalog_developer: hrbrlife
         catalog_repo: melusina-namedcoin-admin-app
         catalog_slug: namedcoin-admin
@@ -283,11 +283,10 @@ groups:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
-        # v0.1.97/appVersion-174 is the current valid forward dev-publish
-        # source. It combines the reviewed corridor, signed DueProcess, and
-        # release-health work with a synchronized public-name and pack-build
-        # forward release; the full remote-head snapshot is in its receipt.
-        source_commit: 8449456e589555d32a5501fa4d91436c50d4d5cc
+        # v0.1.99/appVersion-176 is the current compatible forward
+        # dev-publish source. Its packaged CyberTeller and sidecars share the
+        # ConfigGate protocol revision, including M6 settlement validation.
+        source_commit: e16bb3c7a8a31cb855115762265aef98ad271e78
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -297,7 +296,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: "0.1.98"
+        live_version: "0.1.99"
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller

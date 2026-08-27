@@ -2,17 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
     "sourceRepository": "https://github.com/hrbrlife/cyberteller",
-    "sourceCommit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
+    "sourceCommit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "CyberTeller 0.1.98 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "CyberTeller 0.1.99/appVersion-176 is the selected dev-publish release cut. It carries the sealed corridor and one compatible protocol revision across packaged CyberTeller, Chainwatch, Custody, and sandbox-settlement components.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes across all 40 packages, including the fail-closed route audit",
-            "the offline-signer onboarding path is exercised through the real HTTP handler and its signature verified by the unchanged /admin/onboard verifier; the earlier version of that guard drove the client helper instead and was rewritten after a mutation slipped past it",
-            "the signer's fail-closed refusal for an unknown wallet is asserted, and the new route's authz exemption is justified in place against two named tests"
+            "clean recursively initialized checkout at the selected origin/dev-publish commit",
+            "make test passed at the selected source, including root packages and the common, Chainwatch, Custody, and sandbox-settlement sidecars",
+            "release metadata, package manifest, build sentinel, and Makefile agree on 0.1.99/appVersion-176",
+            "all packaged sidecars require the same protocol revision as the CyberTeller ConfigGate cohort, including the M6 settlement aggregate validation",
+            "the selected source remains unprovisioned without governed ConfigGate and AdminGate capability delivery; no legacy environment-file fallback exists"
         ]
     },
     "reviewedRefs": [
@@ -83,7 +84,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
+            "commit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
             "outcome": "selected"
         },
         {

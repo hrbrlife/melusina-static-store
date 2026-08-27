@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -216,34 +217,63 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 		return fmt.Errorf("chain gate %s: identity binary_hash %s != artifact %s", c.ComponentID, hex32(id.BinaryHash), hex32(want))
 	}
 
-	gStatus, err := g.rpc.FetchGlobalSidecarStatus(ctx, globalPDA.Base58())
+	// Read each approval once and validate all of its coupled fields from the
+	// same raw account bytes. In particular, an Active Global approval is not
+	// enough: its SAN tier and the Active Local approval's explicit scope must
+	// name the same runtime plane (B13).
+	globalApproval, err := g.rpc.GetAccountInfo(ctx, globalPDA.Base58())
 	if err != nil {
-		return fmt.Errorf("chain gate %s: fetch GlobalSidecarApproval status: %w", c.ComponentID, err)
+		return fmt.Errorf("chain gate %s: fetch GlobalSidecarApproval: %w", c.ComponentID, err)
+	}
+	if globalApproval == nil {
+		return fmt.Errorf("chain gate %s: fetch GlobalSidecarApproval: %w", c.ComponentID, verify.ErrPDANotFound)
+	}
+	gStatus, err := verify.ReadSidecarApprovalStatusGlobal(globalApproval)
+	if err != nil {
+		return fmt.Errorf("chain gate %s: decode GlobalSidecarApproval status: %w", c.ComponentID, err)
 	}
 	if err := gStatus.RequireActive(); err != nil {
 		return fmt.Errorf("chain gate %s: global sidecar approval not Active: %w", c.ComponentID, err)
 	}
-	gHash, err := g.rpc.FetchGlobalSidecarBinaryHash(ctx, globalPDA.Base58())
+	gHash, err := verify.ReadGlobalSidecarBinaryHash(globalApproval)
 	if err != nil {
-		return fmt.Errorf("chain gate %s: fetch GlobalSidecarApproval binary_hash: %w", c.ComponentID, err)
+		return fmt.Errorf("chain gate %s: decode GlobalSidecarApproval binary_hash: %w", c.ComponentID, err)
 	}
 	if hex32(gHash) != hex32(want) {
 		return fmt.Errorf("chain gate %s: global approval binary_hash %s != artifact %s", c.ComponentID, hex32(gHash), hex32(want))
 	}
-
-	lStatus, err := g.rpc.FetchLocalSidecarStatus(ctx, localPDA.Base58())
+	globalTier, err := globalSidecarApprovalSANTier(globalApproval)
 	if err != nil {
-		return fmt.Errorf("chain gate %s: fetch LocalSidecarApproval status: %w", c.ComponentID, err)
+		return fmt.Errorf("chain gate %s: GlobalSidecarApproval SAN tier: %w", c.ComponentID, err)
+	}
+
+	localApproval, err := g.rpc.GetAccountInfo(ctx, localPDA.Base58())
+	if err != nil {
+		return fmt.Errorf("chain gate %s: fetch LocalSidecarApproval: %w", c.ComponentID, err)
+	}
+	if localApproval == nil {
+		return fmt.Errorf("chain gate %s: fetch LocalSidecarApproval: %w", c.ComponentID, verify.ErrPDANotFound)
+	}
+	lStatus, err := verify.ReadSidecarApprovalStatusLocal(localApproval)
+	if err != nil {
+		return fmt.Errorf("chain gate %s: decode LocalSidecarApproval status: %w", c.ComponentID, err)
 	}
 	if err := lStatus.RequireActive(); err != nil {
 		return fmt.Errorf("chain gate %s: local sidecar approval not Active: %w", c.ComponentID, err)
 	}
-	lHash, present, err := g.rpc.FetchLocalSidecarBinaryHash(ctx, localPDA.Base58())
+	lHash, present, err := verify.ReadLocalSidecarBinaryHash(localApproval)
 	if err != nil {
-		return fmt.Errorf("chain gate %s: fetch LocalSidecarApproval binary_hash: %w", c.ComponentID, err)
+		return fmt.Errorf("chain gate %s: decode LocalSidecarApproval binary_hash: %w", c.ComponentID, err)
 	}
 	if present && hex32(lHash) != hex32(want) {
 		return fmt.Errorf("chain gate %s: local approval binary_hash %s != artifact %s", c.ComponentID, hex32(lHash), hex32(want))
+	}
+	localScope, err := localSidecarApprovalScope(localApproval)
+	if err != nil {
+		return fmt.Errorf("chain gate %s: LocalSidecarApproval scope: %w", c.ComponentID, err)
+	}
+	if globalTier != localScope {
+		return fmt.Errorf("chain gate %s: GlobalSidecarApproval SAN tier %s != LocalSidecarApproval scope %s", c.ComponentID, globalTier, localScope)
 	}
 
 	// Phase 3 — LicenseEntry Active + pinned master, and the reseller entity +

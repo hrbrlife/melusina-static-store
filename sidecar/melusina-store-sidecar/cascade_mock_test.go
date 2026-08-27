@@ -6,11 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrbrlife/melusina-identity-gate/verify"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // fetchRawAccount is the mock's implementation of the cascade raw-read
-// capability. Seeded accounts are always owned by the pinned program.
+// capability. A test may override an owner for a purpose-specific foreign
+// program account (such as a Squads multisig); otherwise seeded accounts are
+// owned by the pinned registry program.
 func (m *mockChainReader) fetchRawAccount(_ context.Context, addr string) ([]byte, string, error) {
 	if m.rawAccounts == nil {
 		return nil, "", nil
@@ -19,7 +22,44 @@ func (m *mockChainReader) fetchRawAccount(_ context.Context, addr string) ([]byt
 	if !ok {
 		return nil, "", nil // absent
 	}
-	return data, programID.Base58(), nil
+	owner := programID.Base58()
+	if m.rawAccountOwners != nil && m.rawAccountOwners[addr] != "" {
+		owner = m.rawAccountOwners[addr]
+	}
+	return data, owner, nil
+}
+
+func (m *mockChainReader) fetchFinalizedHostApplyTransaction(_ context.Context, signature string) (hostApplyFinalizedTransaction, error) {
+	if m.hostApplyErr != nil {
+		return hostApplyFinalizedTransaction{}, m.hostApplyErr
+	}
+	tx, ok := m.hostApplyTransactions[signature]
+	if !ok {
+		return hostApplyFinalizedTransaction{}, verify.ErrPDANotFound
+	}
+	return tx, nil
+}
+
+func (m *mockChainReader) fetchFinalizedHostApplyAccounts(_ context.Context, addresses []string, minContextSlot uint64) (hostApplyFinalizedAccountCohort, error) {
+	if m.hostApplyErr != nil {
+		return hostApplyFinalizedAccountCohort{}, m.hostApplyErr
+	}
+	if m.hostApplyContextSlot < minContextSlot {
+		return hostApplyFinalizedAccountCohort{}, verify.ErrPDANotFound
+	}
+	out := hostApplyFinalizedAccountCohort{ContextSlot: m.hostApplyContextSlot, Accounts: make([]hostApplyFinalizedAccount, len(addresses))}
+	for i, address := range addresses {
+		data, ok := m.rawAccounts[address]
+		if !ok {
+			return hostApplyFinalizedAccountCohort{}, verify.ErrPDANotFound
+		}
+		owner := programID.Base58()
+		if m.rawAccountOwners != nil && m.rawAccountOwners[address] != "" {
+			owner = m.rawAccountOwners[address]
+		}
+		out.Accounts[i] = hostApplyFinalizedAccount{Address: address, Owner: owner, Data: data}
+	}
+	return out, nil
 }
 
 // ── cascade account layout builders (mirror the deployed Anchor layouts) ──────

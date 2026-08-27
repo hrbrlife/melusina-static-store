@@ -49,6 +49,8 @@ type publishService struct {
 	controlReceiptErr           error
 	hostApplyIssuances          *hostApplyIssuanceLedger
 	hostApplyIssuanceErr        error
+	hostApplyPlans              *hostApplyPlanStore
+	hostApplyPlanErr            error
 	listingRegistrar            listingRegistrar
 	listingRegistrationRequired bool
 	catalogGenerations          AppCatalogGenerationStore
@@ -311,8 +313,11 @@ func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, m
 	}
 	var hostApplyIssuances *hostApplyIssuanceLedger
 	var hostApplyIssuanceErr error
+	var hostApplyPlans *hostApplyPlanStore
+	var hostApplyPlanErr error
 	if operator != nil {
 		hostApplyIssuances, hostApplyIssuanceErr = openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir)
+		hostApplyPlans, hostApplyPlanErr = openOrInitializeHostApplyPlanStore(cfg.PrivateStageDir)
 	}
 
 	svc := &publishService{
@@ -326,6 +331,8 @@ func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, m
 		controlReceiptErr:           controlReceiptErr,
 		hostApplyIssuances:          hostApplyIssuances,
 		hostApplyIssuanceErr:        hostApplyIssuanceErr,
+		hostApplyPlans:              hostApplyPlans,
+		hostApplyPlanErr:            hostApplyPlanErr,
 		listingRegistrar:            newBoundedListingRegistrar(cfg, cr, operator),
 		listingRegistrationRequired: runtime.listingRegistrationRequired,
 		catalogGenerations:          runtime.catalogGenerations,
@@ -411,7 +418,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// documents: the root-owned controller is pinned to this exact origin and
 	// verifies the Store signature. Serve them through the issuance ledger,
 	// rather than letting arbitrary stale files under DistDir become receipts.
-	mux.HandleFunc(hostApplyReceiptPathPrefix, svc.handleOneShotApplyReceipt)
+	mux.HandleFunc(hostApplyReceiptPathPrefix, svc.handleHostApplyPlanReceipt)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -457,7 +464,7 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
-	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyIssue)
+	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyPlanRoute)
 	return mux
 }
 

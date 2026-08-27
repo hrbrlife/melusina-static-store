@@ -190,7 +190,7 @@ func collectInvalidRehydrationStages(cfg Config, record catalogRehydrationRecord
 			}
 			continue
 		}
-		if name == hostApplyIssuanceDirName {
+		if name == hostApplyIssuanceDirName || name == hostApplyPlanDirName || name == hostApplyProofDirName || name == hostApplyPlanIssuanceDir {
 			if _, err := openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir); err != nil {
 				return nil, fmt.Errorf("validate host apply issuance ledger: %w", err)
 			}

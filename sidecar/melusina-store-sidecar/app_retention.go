@@ -112,7 +112,7 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 				return plan, fmt.Errorf("validate control receipt ledger: %w", err)
 			}
 			continue
-		case name == hostApplyIssuanceDirName:
+		case name == hostApplyIssuanceDirName, name == hostApplyPlanDirName, name == hostApplyProofDirName, name == hostApplyPlanIssuanceDir:
 			// Host-apply issuance evidence is append-only, short-lived authority
 			// plus durable audit evidence. It is not an app candidate and must
 			// never be swept by app-stage retention, but a corrupt ledger still

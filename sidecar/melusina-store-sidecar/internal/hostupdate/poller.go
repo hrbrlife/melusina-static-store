@@ -39,6 +39,12 @@ const (
 	PollTriggerTimer  PollTrigger = "timer"
 	PollTriggerBell   PollTrigger = "bell"
 	PollTriggerManual PollTrigger = "manual"
+	// PollTriggerAuthorizedOnce is not a user-selectable polling mode.  It is
+	// emitted only by ApplyAuthorizedOnce after a separately verified,
+	// short-lived Store receipt has bound one component/generation/controller.
+	// Keeping it distinct makes a terminal WAL receipt unable to masquerade as
+	// an ordinary timer or manual update.
+	PollTriggerAuthorizedOnce PollTrigger = "authorized-once"
 )
 
 // ControllerState is the durable poll-loop state. LastSeen/Pending track the most

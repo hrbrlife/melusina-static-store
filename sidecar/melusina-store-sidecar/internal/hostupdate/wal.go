@@ -58,6 +58,33 @@ const (
 
 func (s WALState) terminal() bool { return s == StateApplied || s == StateRolledBack }
 
+// OneShotAuthorizationBinding is the audit/consumption identity of a verified
+// Store one-shot authorization.  The controller verifies the complete signed
+// receipt before constructing this value; the WAL retains only the immutable
+// references needed to make use and outcome auditable without copying a bearer
+// document into every recovery artifact.
+type OneShotAuthorizationBinding struct {
+	AuthorizationID     string `json:"authorizationId"`
+	ReceiptSHA256       string `json:"receiptSha256"`
+	TargetControllerID  string `json:"targetControllerId"`
+	ComponentID         string `json:"componentId"`
+	GovernanceReceiptID string `json:"governanceReceiptId"`
+	ExpiresAtUnix       int64  `json:"expiresAtUnix"`
+}
+
+func (b OneShotAuthorizationBinding) validate() error {
+	if !isLowerHex64(b.AuthorizationID) || !isLowerHex64(b.ReceiptSHA256) {
+		return errors.New("authorizationId and receiptSha256 must be lowercase sha256 values")
+	}
+	if !safeComponentToken(b.TargetControllerID) || !safeComponentToken(b.ComponentID) || !safeComponentToken(b.GovernanceReceiptID) {
+		return errors.New("one-shot authorization contains an unsafe controller, component, or governance receipt identity")
+	}
+	if b.ExpiresAtUnix <= 0 {
+		return errors.New("one-shot authorization expiresAtUnix must be positive")
+	}
+	return nil
+}
+
 // WALEntry is the durable intent + progress for one component apply.
 type WALEntry struct {
 	Schema         string `json:"schema"`
@@ -104,6 +131,11 @@ type WALEntry struct {
 	DeadlineUnix        int64           `json:"deadlineUnix,omitempty"`
 	Trigger             string          `json:"trigger,omitempty"`
 	RuntimeEvidence     RuntimeEvidence `json:"runtimeEvidence,omitempty"`
+	// OneShotAuthorization is present only for an authorized-once application.
+	// It binds the durable mutation/recovery record to the immutable Store
+	// receipt that admitted it, so a terminal result cannot be mistaken for a
+	// policy-driven automatic update and the receipt cannot be consumed twice.
+	OneShotAuthorization *OneShotAuthorizationBinding `json:"oneShotAuthorization,omitempty"`
 	// RuntimeMarker* persists the exact install-local EnvironmentFile rollback
 	// floor. It is written before the component restart so a fresh controller can
 	// restore the old generation/version marker before restarting the old binary.
@@ -135,6 +167,17 @@ func (e WALEntry) validate() error {
 	}
 	if e.DeepStableSeconds < 0 {
 		return errors.New("deepStableSeconds must be non-negative")
+	}
+	if e.OneShotAuthorization != nil {
+		if err := e.OneShotAuthorization.validate(); err != nil {
+			return fmt.Errorf("one-shot authorization binding: %w", err)
+		}
+		if PollTrigger(e.Trigger) != PollTriggerAuthorizedOnce {
+			return errors.New("one-shot authorization binding requires authorized-once trigger")
+		}
+	}
+	if PollTrigger(e.Trigger) == PollTriggerAuthorizedOnce && e.OneShotAuthorization == nil {
+		return errors.New("authorized-once trigger requires a one-shot authorization binding")
 	}
 	if e.RuntimeMarkerPath == "" {
 		if e.RuntimeMarkerPriorPath != "" || e.RuntimeMarkerPriorSHA256 != "" {
@@ -177,6 +220,13 @@ func (e WALEntry) validateTerminalReceiptBindings() error {
 	}
 	switch PollTrigger(e.Trigger) {
 	case PollTriggerTimer, PollTriggerBell, PollTriggerManual:
+		if e.OneShotAuthorization != nil {
+			return errors.New("ordinary terminal receipt must not carry a one-shot authorization binding")
+		}
+	case PollTriggerAuthorizedOnce:
+		if e.OneShotAuthorization == nil {
+			return errors.New("authorized-once terminal receipt lacks its authorization binding")
+		}
 	default:
 		return fmt.Errorf("terminal receipt has invalid trigger %q", e.Trigger)
 	}
@@ -411,6 +461,60 @@ func (w *WALStore) LoadAll() ([]WALEntry, error) {
 		}
 	}
 	return out, nil
+}
+
+// HasOneShotAuthorization reports whether this controller has already admitted
+// an authorization id into either an active WAL or an immutable terminal
+// receipt.  The controller singleton lock serializes callers; this durable scan
+// closes replay across process crashes and later invocations without inventing a
+// writable side ledger that could diverge from the actual mutation record.
+func (w *WALStore) HasOneShotAuthorization(authorizationID string) (bool, error) {
+	if !isLowerHex64(authorizationID) {
+		return false, errors.New("unsafe one-shot authorization id")
+	}
+	active, err := w.LoadAll()
+	if err != nil {
+		return false, fmt.Errorf("load active WALs: %w", err)
+	}
+	for _, entry := range active {
+		if entry.OneShotAuthorization != nil && entry.OneShotAuthorization.AuthorizationID == authorizationID {
+			return true, nil
+		}
+	}
+
+	entries, err := os.ReadDir(w.receiptDir)
+	if err != nil {
+		return false, fmt.Errorf("read receipt directory: %w", err)
+	}
+	for _, de := range entries {
+		if de.IsDir() || !strings.HasSuffix(de.Name(), ".json") {
+			continue
+		}
+		if de.Type()&os.ModeSymlink != 0 {
+			return false, fmt.Errorf("terminal receipt %s is a symlink", de.Name())
+		}
+		path := filepath.Join(w.receiptDir, de.Name())
+		f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+		if err != nil {
+			return false, fmt.Errorf("open terminal receipt %s: %w", de.Name(), err)
+		}
+		raw, readErr := io.ReadAll(io.LimitReader(f, maxWALBytes+1))
+		closeErr := f.Close()
+		if readErr != nil {
+			return false, fmt.Errorf("read terminal receipt %s: %w", de.Name(), readErr)
+		}
+		if closeErr != nil {
+			return false, fmt.Errorf("close terminal receipt %s: %w", de.Name(), closeErr)
+		}
+		entry, err := ParseTerminalReceipt(raw)
+		if err != nil {
+			return false, fmt.Errorf("parse terminal receipt %s: %w", de.Name(), err)
+		}
+		if entry.OneShotAuthorization != nil && entry.OneShotAuthorization.AuthorizationID == authorizationID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Advance transitions the active WAL to newState, applying mutate under the

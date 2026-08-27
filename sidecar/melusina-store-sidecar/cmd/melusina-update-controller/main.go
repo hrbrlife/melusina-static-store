@@ -35,11 +35,18 @@ func main() {
 	configPath := flag.String("config", "/etc/melusina/update-controller/config.json", "path to the root-owned controller config (JSON)")
 	trigger := flag.String("trigger", "timer", "poll trigger: timer (default, cadence-gated) | bell | manual")
 	recoverStalledSuccessor := flag.Bool("recover-stalled-successor", false, "one-time governed re-apply of an immediate signed successor blocked behind a pre-mutation refusal")
+	applyOnceReceipt := flag.String("apply-once-receipt", "", "origin-pinned Store one-shot receipt URL for the configured Fineract controller scope")
 	flag.Parse()
 
 	pollTrigger, err := parseTrigger(*trigger)
 	if err != nil {
 		log.Fatalf("controller: %v", err)
+	}
+	if *applyOnceReceipt != "" && *recoverStalledSuccessor {
+		log.Fatal("controller: --apply-once-receipt and --recover-stalled-successor are mutually exclusive")
+	}
+	if *applyOnceReceipt != "" && pollTrigger != hostupdate.PollTriggerTimer {
+		log.Fatal("controller: --apply-once-receipt does not accept --trigger; it records authorized-once provenance")
 	}
 
 	cfg, err := LoadControllerConfig(*configPath)
@@ -81,6 +88,44 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if *applyOnceReceipt != "" {
+		if cfg.OneShotApply == nil {
+			log.Fatal("controller: --apply-once-receipt requires a root-owned oneShotApply scope policy")
+		}
+		state, err := deps.State.Load(ctx)
+		if err != nil {
+			log.Fatalf("controller authorized-once state: %v", err)
+		}
+		vg, err := deps.FetchVerified(ctx)
+		if err != nil {
+			log.Fatalf("controller authorized-once fetch+verify generation: %v", err)
+		}
+		receipt, rawReceipt, err := fetchOneShotReceipt(ctx, cfg, *applyOnceReceipt)
+		if err != nil {
+			log.Fatalf("controller authorized-once fetch receipt: %v", err)
+		}
+		opKey, err := cfg.operatorKey()
+		if err != nil {
+			log.Fatalf("controller authorized-once operator key: %v", err)
+		}
+		now := time.Now().Unix()
+		binding, err := verifiedOneShotBinding(cfg, opKey, deps.Apply.Registry, vg, *applyOnceReceipt, receipt, rawReceipt, now)
+		if err != nil {
+			log.Fatalf("controller authorized-once receipt: %v", err)
+		}
+		outcomes, applyErr := hostupdate.ApplyAuthorizedOnce(ctx, vg, &state, binding, deps, now)
+		// Persist LastSeen/Pending even for a pre-mutation refusal.  It is the
+		// anti-equivocation evidence that prevents a later receipt from laundering
+		// a different byte stream under the same generation id.
+		if err := deps.State.Store(ctx, state); err != nil {
+			log.Fatalf("controller authorized-once persist state: %v", err)
+		}
+		if applyErr != nil {
+			log.Fatalf("controller authorized-once apply: %v", applyErr)
+		}
+		log.Printf("controller: authorized one-shot generation %d through governed WAL: %+v; awaiting normal deep-stable completion", vg.Doc.GenerationID, outcomes)
+		return
+	}
 	if *recoverStalledSuccessor {
 		state, err := deps.State.Load(ctx)
 		if err != nil {

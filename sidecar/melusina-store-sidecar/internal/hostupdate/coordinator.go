@@ -215,6 +215,7 @@ func (deps ApplyDeps) applyOne(ctx context.Context, generationID uint64, c compo
 		RawGenerationSHA256:      deps.RawGenerationSHA256,
 		DeadlineUnix:             deps.DeadlineUnix,
 		Trigger:                  string(deps.Trigger),
+		OneShotAuthorization:     deps.OneShotAuthorization,
 	}
 	if err := deps.WAL.Open(entry); err != nil {
 		return nil, err
@@ -379,6 +380,11 @@ type ApplyDeps struct {
 	RawGenerationSHA256 string
 	DeadlineUnix        int64
 	Trigger             PollTrigger
+	// OneShotAuthorization is non-nil only for the separately receipt-authorized
+	// ApplyAuthorizedOnce path.  It is copied into the WAL before staging so a
+	// crash/recovery cannot lose the fact that this was a bounded exception to
+	// the normal AutoApply=false policy.
+	OneShotAuthorization *OneShotAuthorizationBinding
 	// RuntimeGate binds the RUNNING process to the desired tuple after the adapter
 	// restart+Probe: it compares the component's structured /release-info report
 	// (schema+componentId+generationId+version+artifactSha256) against systemd

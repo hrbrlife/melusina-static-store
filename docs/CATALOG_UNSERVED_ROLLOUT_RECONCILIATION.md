@@ -24,6 +24,30 @@ following before it can write a receipt:
 4. The active catalog has a valid operator-signed pointer, selected bytes, and
    active governed release for every remaining durable rollout.
 
+### Planned maintenance boundary
+
+The serving Store deliberately holds the writer lock for its whole lifetime.
+`catalog-reconcile-unserved` therefore must not be run beside the listener: it
+will refuse rather than compete with a live publisher. Use one approved, short
+Store maintenance window **after** the boot-identity pin and the new Store
+binary have passed their ordinary release acceptance.
+
+1. Record the live generation name, index digest, app count, and healthy serve
+   surface before stopping anything.
+2. Stop only the Store systemd service through the normal host change procedure;
+   never remove the lock, edit catalog files, or copy a receipt into place.
+3. Run the exact installed binary with `--dry-run` and retain its JSON report
+   for independent review.
+4. If it is accepted, rerun the identical command with `--apply` and retain the
+   resulting receipt/report.
+5. Start the service through the same normal procedure. Prove its health and
+   publish-readiness endpoints, and prove that the active generation, public
+   index digest, and public app count did not change. Only the signed private
+   reconciliation receipt may be new.
+
+The command's writer-lock refusal is a safety result, not a reason to work
+around it with a second writer or a hand-edited lock file.
+
 Always begin with a dry run, retaining its JSON report as the operator record:
 
 ```sh

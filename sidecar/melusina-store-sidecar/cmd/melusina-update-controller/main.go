@@ -113,6 +113,20 @@ func main() {
 		if err != nil {
 			log.Fatalf("controller authorized-once receipt: %v", err)
 		}
+		// The initial receipt check only admits a candidate into this controller
+		// run. The hostupdate layer requires this independent final re-fetch after
+		// Stage+Verify and before any host mutation, so a Store-side revocation
+		// observed during the bounded apply window fails closed.
+		deps.Apply.RevalidateOneShotAuthorization = finalOneShotReceiptRevalidator(
+			cfg,
+			opKey,
+			deps.Apply.Registry,
+			vg,
+			*applyOnceReceipt,
+			rawReceipt,
+			binding,
+			func() int64 { return time.Now().Unix() },
+		)
 		outcomes, applyErr := hostupdate.ApplyAuthorizedOnce(ctx, vg, &state, binding, deps, now)
 		// Persist LastSeen/Pending even for a pre-mutation refusal.  It is the
 		// anti-equivocation evidence that prevents a later receipt from laundering

@@ -2,6 +2,7 @@ package hostupdate
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -81,6 +82,12 @@ func authorizedOnceSetup(t *testing.T) (PollDeps, *fakeAdapter, VerifiedGenerati
 		ComponentID:         "fineract-sidecar",
 		GovernanceReceiptID: "host-apply-governance-1",
 		ExpiresAtUnix:       authorizedOnceNow + policy.PromoteDeadlineSeconds + 60,
+	}
+	deps.Apply.RevalidateOneShotAuthorization = func(_ context.Context, got OneShotAuthorizationBinding) error {
+		if got != auth {
+			return errors.New("test revalidator received wrong authorization")
+		}
+		return nil
 	}
 	return deps, adapter, vg, auth
 }
@@ -181,6 +188,45 @@ func TestApplyAuthorizedOnceRechecksExpiryAtMutation(t *testing.T) {
 	}
 	if _, ok, loadErr := deps.Apply.WAL.Load("fineract-sidecar"); loadErr != nil || ok {
 		t.Fatalf("expired staged WAL should be discarded without terminalization: ok=%v err=%v", ok, loadErr)
+	}
+}
+
+func TestApplyAuthorizedOnceRequiresFinalReceiptRevalidation(t *testing.T) {
+	deps, adapter, vg, auth := authorizedOnceSetup(t)
+	deps.Apply.RevalidateOneShotAuthorization = nil
+	if _, err := ApplyAuthorizedOnce(context.Background(), vg, &ControllerState{}, auth, deps, authorizedOnceNow); err == nil || !strings.Contains(err.Error(), "final one-shot receipt revalidation") {
+		t.Fatalf("missing final receipt revalidation = %v", err)
+	}
+	if adapter.verifyCalls != 0 || adapter.applyCalls != 0 || adapter.installed["fineract-sidecar"] != authorizedOnceOldHash {
+		t.Fatalf("missing final revalidator reached host work: verify=%d apply=%d hash=%s", adapter.verifyCalls, adapter.applyCalls, adapter.installed["fineract-sidecar"])
+	}
+}
+
+func TestApplyAuthorizedOnceFinalReceiptRevalidationRefusesBeforeMutation(t *testing.T) {
+	deps, adapter, vg, auth := authorizedOnceSetup(t)
+	checks := 0
+	deps.Apply.RevalidateOneShotAuthorization = func(_ context.Context, got OneShotAuthorizationBinding) error {
+		checks++
+		if got != auth {
+			t.Fatalf("freshness revalidator received wrong binding: %+v", got)
+		}
+		if adapter.verifyCalls != 1 {
+			t.Fatalf("freshness revalidator ran before Stage+Verify: verify calls=%d", adapter.verifyCalls)
+		}
+		return errors.New("Store reports the authorization revoked")
+	}
+	outcomes, err := ApplyAuthorizedOnce(context.Background(), vg, &ControllerState{}, auth, deps, authorizedOnceNow)
+	if err == nil {
+		t.Fatal("accepted a revoked final one-shot receipt")
+	}
+	if checks != 1 || len(outcomes) != 1 || outcomes[0].Status != ApplyStatusRefused {
+		t.Fatalf("freshness refusal outcomes=%+v checks=%d", outcomes, checks)
+	}
+	if adapter.applyCalls != 0 || adapter.installed["fineract-sidecar"] != authorizedOnceOldHash {
+		t.Fatalf("freshness refusal mutated component: calls=%d hash=%s", adapter.applyCalls, adapter.installed["fineract-sidecar"])
+	}
+	if _, ok, loadErr := deps.Apply.WAL.Load("fineract-sidecar"); loadErr != nil || ok {
+		t.Fatalf("freshness-refused staged WAL should be discarded: ok=%v err=%v", ok, loadErr)
 	}
 }
 

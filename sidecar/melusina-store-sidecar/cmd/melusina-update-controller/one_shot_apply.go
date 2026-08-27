@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,6 +20,15 @@ import (
 )
 
 const maxOneShotReceiptBytes = 128 << 10
+
+const (
+	// oneShotReceiptFreshnessHeader carries a controller-generated challenge on
+	// every receipt GET. The Store echoes it only after it has revalidated the
+	// still-live issuance. A stale intermediary cannot manufacture a newly
+	// generated value, so this is stronger than advisory cache directives.
+	oneShotReceiptFreshnessHeader = "X-Melusina-One-Shot-Freshness"
+	oneShotReceiptFreshnessBytes  = 32
+)
 
 // oneShotReceiptURLPrefix is derived from the controller's pinned bundle origin;
 // the command-line flag is a selector under this origin, never an arbitrary URL.
@@ -36,6 +46,14 @@ func isLowerHex64Value(s string) bool {
 		}
 	}
 	return true
+}
+
+func newOneShotReceiptFreshnessChallenge() (string, error) {
+	buf := make([]byte, oneShotReceiptFreshnessBytes)
+	if _, err := rand.Read(buf); err != nil {
+		return "", fmt.Errorf("generate one-shot receipt freshness challenge: %w", err)
+	}
+	return hex.EncodeToString(buf), nil
 }
 
 // validateOneShotReceiptURL permits exactly one immutable receipt object under
@@ -63,6 +81,10 @@ func fetchOneShotReceipt(ctx context.Context, cfg ControllerConfig, receiptURL s
 	if _, err := validateOneShotReceiptURL(cfg, receiptURL); err != nil {
 		return zero, nil, err
 	}
+	challenge, err := newOneShotReceiptFreshnessChallenge()
+	if err != nil {
+		return zero, nil, err
+	}
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -73,6 +95,12 @@ func fetchOneShotReceipt(ctx context.Context, cfg ControllerConfig, receiptURL s
 	if err != nil {
 		return zero, nil, err
 	}
+	// The request directives tell compliant intermediaries to revalidate rather
+	// than reuse a prior object. The unpredictable echo below is the actual
+	// freshness proof and remains mandatory even if a cache ignores directives.
+	req.Header.Set("Cache-Control", "no-cache, no-store, max-age=0")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set(oneShotReceiptFreshnessHeader, challenge)
 	resp, err := client.Do(req)
 	if err != nil {
 		return zero, nil, fmt.Errorf("fetch one-shot receipt: %w", err)
@@ -80,6 +108,12 @@ func fetchOneShotReceipt(ctx context.Context, cfg ControllerConfig, receiptURL s
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return zero, nil, fmt.Errorf("fetch one-shot receipt: HTTP %d", resp.StatusCode)
+	}
+	if values := resp.Header.Values(oneShotReceiptFreshnessHeader); len(values) != 1 || values[0] != challenge {
+		return zero, nil, errors.New("fetch one-shot receipt: Store did not prove a fresh receipt response")
+	}
+	if !strings.Contains(strings.ToLower(resp.Header.Get("Cache-Control")), "no-store") {
+		return zero, nil, errors.New("fetch one-shot receipt: Store response is not no-store")
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxOneShotReceiptBytes+1))
 	if err != nil {
@@ -101,6 +135,49 @@ func fetchOneShotReceipt(ctx context.Context, cfg ControllerConfig, receiptURL s
 		return zero, nil, errors.New("one-shot receipt has trailing data")
 	}
 	return authorization, raw, nil
+}
+
+// finalOneShotReceiptRevalidator creates the narrow final gate for an
+// authorized-once controller run. It re-fetches the same canonical Store URL,
+// requires a live freshness challenge response, then re-verifies both the
+// signed authorization and the exact raw receipt bytes admitted at command
+// entry. The closure is invoked only after Stage+Verify and the final chain
+// gate, immediately before the controller records StateApplying.
+func finalOneShotReceiptRevalidator(
+	cfg ControllerConfig,
+	operator ed25519.PublicKey,
+	registry componentrelease.ComponentRegistry,
+	vg hostupdate.VerifiedGeneration,
+	receiptURL string,
+	expectedRaw []byte,
+	expected hostupdate.OneShotAuthorizationBinding,
+	now func() int64,
+) func(context.Context, hostupdate.OneShotAuthorizationBinding) error {
+	operator = append(ed25519.PublicKey(nil), operator...)
+	expectedRaw = append([]byte(nil), expectedRaw...)
+	if now == nil {
+		now = func() int64 { return time.Now().Unix() }
+	}
+	return func(ctx context.Context, binding hostupdate.OneShotAuthorizationBinding) error {
+		if binding != expected {
+			return errors.New("final one-shot receipt revalidation binding differs from admitted authorization")
+		}
+		receipt, raw, err := fetchOneShotReceipt(ctx, cfg, receiptURL)
+		if err != nil {
+			return err
+		}
+		refreshed, err := verifiedOneShotBinding(cfg, operator, registry, vg, receiptURL, receipt, raw, now())
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(raw, expectedRaw) {
+			return errors.New("final one-shot receipt bytes differ from admitted receipt")
+		}
+		if refreshed != expected {
+			return errors.New("final one-shot receipt binding differs from admitted authorization")
+		}
+		return nil
+	}
 }
 
 // verifiedOneShotBinding checks a fetched receipt against the exact generation

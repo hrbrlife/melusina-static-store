@@ -118,6 +118,9 @@ func ApplyAuthorizedOnce(ctx context.Context, vg VerifiedGeneration, state *Cont
 	if apply.ChainGate == nil {
 		return nil, errors.New("authorized-once apply requires a chain gate")
 	}
+	if apply.RevalidateOneShotAuthorization == nil {
+		return nil, errors.New("authorized-once apply requires final one-shot receipt revalidation")
+	}
 	if apply.Now == nil {
 		if deps.Now != nil {
 			apply.Now = deps.Now
@@ -149,7 +152,17 @@ func ApplyAuthorizedOnce(ctx context.Context, vg VerifiedGeneration, state *Cont
 		if apply.Now() >= authorization.ExpiresAtUnix {
 			return errors.New("authorized-once receipt expired before mutation")
 		}
-		return apply.ChainGate(ctx, c, install)
+		if err := apply.ChainGate(ctx, c, install); err != nil {
+			return err
+		}
+		// This must remain the last external gate before applyOne records
+		// StateApplying. It re-fetches the exact Store receipt under a fresh
+		// challenge, so a dynamic Store revocation after initial admission blocks
+		// this otherwise normal host mutation.
+		if err := apply.RevalidateOneShotAuthorization(ctx, authorization); err != nil {
+			return fmt.Errorf("%w: %v", errOneShotAuthorizationRefusedAtMutation, err)
+		}
+		return nil
 	}
 
 	state.LastTrigger = PollTriggerAuthorizedOnce

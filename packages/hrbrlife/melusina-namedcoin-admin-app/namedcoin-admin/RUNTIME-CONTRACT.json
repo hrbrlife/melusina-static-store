@@ -3,43 +3,63 @@
   "schema": "melusina-app-runtime-contract-v1",
   "app": {
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
-    "version": "0.1.36",
-    "spkSha256": "c3b9b0d3294f5004001ef7f19999c5fafe8f45deda874555ffbffcd347f71837",
-    "appHash": "736af129da4512aa579c35672eb786f02a01995c111800013aef932faef536e0"
+    "version": "0.1.40",
+    "spkSha256": "e04db0b9877876205d3413f0682be23c3c4ae795f3b4235eb9dbbc988f4062c4",
+    "appHash": "cd344959fa89a21df0583897a8d023fbf754b39a6436920c3a4ed54ab76d57ba"
   },
   "sidecars": [],
   "launchProbe": {
     "kind": "visible-ui",
     "steps": [
       {
-        "action": "Launch a new NamedCoin Admin console through its normal app action.",
-        "expectedResult": "The normal access screen renders without a 403, reset, blank page, or process failure."
+        "action": "Open Admin \u2192 Connect sidecar egress and confirm it reports that no outbound capability is granted yet, then open the credential-delivery page and confirm it refuses to promise delivery for the same reason.",
+        "expectedResult": "Both surfaces state, before anything is clicked, that this grain holds no outbound capability for the NamedCoin sidecar origin."
       },
       {
-        "action": "Complete the grain's normal local access setup and open the admin dashboard.",
-        "expectedResult": "The operator dashboard renders through the visible interface."
+        "action": "Click Grant egress, choose \u201cUse https://namedcoin.sidecar.host:9100\u201d in the Melusina address selector (not the grain picker), and confirm the grant.",
+        "expectedResult": "The shell renders the ADDRESS SELECTOR scoped to that exact origin, the claim is saved as a durable sturdyref, and both surfaces now report the origin as granted."
       },
       {
-        "action": "Open Issuer configuration and inspect the fresh-grain state.",
-        "expectedResult": "The page reports that issuance is disabled, names the missing required public identifiers, and shows the optional endpoint fields and pinned program id."
+        "action": "On the credential-delivery page choose Activate for tenant us.paype.cc against that sidecar origin.",
+        "expectedResult": "The pearl reaches the sidecar over the granted capability, both recipients return verified signed receipts, and the delivery commits ACTIVE \u2014 where before the grant the same click failed with an explicit no-outbound-capability refusal naming the origin."
       },
       {
-        "action": "Submit the issuer form with the required identifiers blank.",
-        "expectedResult": "The page returns visible field-level validation and remains usable without contacting a sidecar or submitting an on-chain transaction."
+        "action": "Ask the sidecar for its health and for one account-opening grant.",
+        "expectedResult": "Health no longer reports \u201ctenant lease unavailable or expired\u201d, and the account-opening grant endpoint issues a grant instead of 503."
+      },
+      {
+        "action": "Install this release from Bazaar and use the rendered shell controls to upgrade the configured NamedCoin Admin grain.",
+        "expectedResult": "The tenant package, owner launch pin, and existing grain all report version 0.1.38 / appVersion 41, and the configured issuer remains enabled after the cold restart."
+      },
+      {
+        "action": "Open the NamedCoin account-opening surface as an administrator.",
+        "expectedResult": "The page lists only fully verified, durably stored respondent identity material and offers no way to synthesize an identity outcome."
+      },
+      {
+        "action": "Prepare one handoff from the exact verified material using explicit case, application, relationship, and wallet-binding identifiers.",
+        "expectedResult": "The app preflights the signed authority, evidence source, KYC, consent, storage receipt, tenant, issuer, wallet, expiry, and revocation bindings, then persists one exact signed handoff before opening a picker."
+      },
+      {
+        "action": "Click Select participant and open case, choose the already-enrolled MSB Domain Template participant in the Powerbox, and confirm the provider grant.",
+        "expectedResult": "The case-bound outcome ingress is acquired and saved, the exact signed outcome is submitted, and the page renders application_received from the selected participant."
+      },
+      {
+        "action": "Restart NamedCoin Admin, Domain Template, and the selected Popaye grain through their shell Restart controls, then reopen the durable handoff and participant account-opening status.",
+        "expectedResult": "The same handoff remains completed, the participant remains enrolled, Popaye remains at application_received or a later valid phase, and no duplicate case or outcome is created."
       }
     ],
-    "expectedResult": "NamedCoin Admin launches and its local issuer-configuration interface behaves fail-closed without requiring a sidecar for this probe."
+    "expectedResult": "A human-granted PowerBox HTTP-OUT capability gives this grain its only outbound path, the NamedCoin sidecar tenant lease is delivered and verified over it, and a real verified NamedCoin identity is then handed to one enrolled MSB participant through the visible, signed, restart-durable v1.9 outcome lane and acknowledged as application_received."
   },
   "fixtures": [
     {
-      "name": "Fresh NamedCoin Admin grain",
-      "purpose": "Prove the packaged console and local issuer-configuration validation on empty state.",
-      "setup": "Install version 0.1.36, create a new owner grain, and do not preconfigure issuer identifiers or endpoint overrides."
+      "name": "Configured NamedCoin issuer with completed respondent identity material",
+      "purpose": "Prove that the release consumes existing verified identity evidence and opens the enrolled MSB case without fabricated state.",
+      "setup": "Use the configured us.paype.cc NamedCoin Admin grain, its completed respondent identity material, and the clean participant already enrolled in the live MSB Domain Template."
     }
   ],
   "cleanup": {
     "steps": [
-      "Delete the temporary acceptance-test grain after the visible launch probe completes."
+      "Retain the completed handoff, participant portal, and application_received receipt as durable MSB lifecycle evidence."
     ]
   }
 }

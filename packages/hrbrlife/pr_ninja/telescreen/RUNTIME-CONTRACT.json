@@ -1,0 +1,32 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
+    "version": "0.0.11",
+    "spkSha256": "faeeaac249639be920cbdae6aa79fca6dfbb292ebf24b89a026562d352cb4b84",
+    "appHash": "d3160d2242eceff0012bcd28cef6928e51c22675df021a30d22acf67cadb9ff4"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Create a TeleScreen Hub grain through its normal application action and open it as the grain owner.",
+        "expectedResult": "The Sandstorm shell opens the grain and the TeleScreen Hub application renders its own visible interface without a blank page, fatal process error, or authorization refusal."
+      },
+      {
+        "action": "Read the initial application surface and stop without configuring a provider, submitting a screening request, or approving any action.",
+        "expectedResult": "The initial TeleScreen Hub surface remains available. No screening result, external case, release, payment, or blockchain transaction is created by this launch-only probe."
+      }
+    ],
+    "expectedResult": "A human can launch TeleScreen Hub through its normal visible UI and reach the application surface; the probe stops before any screening or external mutation."
+  },
+  "fixtures": [],
+  "cleanup": {
+    "steps": [
+      "Delete the temporary TeleScreen Hub grain created for the launch probe.",
+      "No screening request or provider configuration is submitted during the probe, so there is no external case or transaction to clean up."
+    ]
+  }
+}

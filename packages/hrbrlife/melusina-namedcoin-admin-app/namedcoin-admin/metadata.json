@@ -1,15 +1,15 @@
 {
   "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
   "name": "NamedCoin Admin",
-  "version": "0.1.36",
-  "versionNumber": 39,
-  "packageId": "c3b9b0d3294f5004001ef7f19999c5fa",
+  "version": "0.1.40",
+  "versionNumber": 43,
+  "packageId": "e04db0b9877876205d3413f0682be23c",
   "shortDescription": "Operator console for KYC review, attestation issue/revoke, and consumer-trust editing",
   "categories": [
     "Productivity"
   ],
   "isOpenSource": false,
-  "license": "Melusina Public License v1.0 (source-available, not open source)",
+  "license": "Melusina Public License v1.0 (source-available, not open source) \u2014 see https://github.com/hrbrlife/melusina-license-component/blob/main/LICENSE.md",
   "webLink": "https://hrbr.life",
   "codeLink": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
   "upstreamAuthor": "hrbr.life",
@@ -20,7 +20,11 @@
     "twitterUsername": "",
     "picture": ""
   },
-  "marketingVersion": "0.1.36",
-  "sha256": "c3b9b0d3294f5004001ef7f19999c5fafe8f45deda874555ffbffcd347f71837",
-  "createdAt": 1780547509756
+  "marketingVersion": "0.1.40",
+  "sha256": "e04db0b9877876205d3413f0682be23c3c4ae795f3b4235eb9dbbc988f4062c4",
+  "createdAt": 1776300000000,
+  "tier": "admin",
+  "domains": [
+    "*"
+  ]
 }

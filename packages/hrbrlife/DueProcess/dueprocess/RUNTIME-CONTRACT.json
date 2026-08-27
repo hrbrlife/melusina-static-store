@@ -1,0 +1,45 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+    "version": "0.1.71",
+    "spkSha256": "fb3975019c4439ba08543378cefbe93044f2a9dc8e93a233d4898d82b91d9b1b",
+    "appHash": "35b4dfb0f35a044b02307e01264e2688ac0ec2f68d2e6633f8ab2158dc5fcde7"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Launch a new grain through the app's first action, \"Open compliance workspace\", and open it as the grain owner. The grain root redirects itself to /setup; no path is typed by hand.",
+        "expectedResult": "The grain serves the page titled \"Open a Compliance Workspace \u2014 DueProcess\", with the heading \"Open a Compliance Workspace\" and a sticky banner reading \"NETWORK UNVERIFIED \u2014 no network declared by the configuration owner. Do NOT assume this is a test network.\". No deployment artifact in this package sets MELUSINA_NETWORK, so an undeclared network is the state a fresh grain launches in, and the banner must say so rather than describe the chain as simulated \u2014 a banner reading \"TEST MODE \u2014 Simulated network\" (the pre-B08.6 default) is a FAILURE of this probe. It is served with a normal success status: no 403, no blank iframe, no supervisor reset. A fresh grain has never had a package selected, so the first-launch gate redirects every path except /setup, /static/* and /api/*."
+      },
+      {
+        "action": "Read the whole first screen and look for a case list, case queue, Kanban board, or any case data.",
+        "expectedResult": "There is none, and that absence is the pass condition. The page offers exactly two cards and nothing else: \"Activate a Compliance Procedure\" (button \"Pick a Procedure...\") and \"Configure a Custom Procedure\" (button \"Define Custom Procedure\"). This release ships no embedded domain catalogue \u2014 the DomainTemplate grain is the sole publisher of definitions \u2014 so a fresh grain that reaches a dashboard, a Kanban board, or any named procedure would mean an unsigned definition was activated locally, and is a FAILURE of this probe."
+      },
+      {
+        "action": "Reload the grain from the shell. Do not click \"Define Custom Procedure\": that POSTs /api/setup/blank and would configure the grain out of its fresh state.",
+        "expectedResult": "The same \"Open a Compliance Workspace\" setup screen renders again. The unconfigured state is read back from the grain's own persisted store \u2014 no package-selection record and an empty flow store, logged as \"flowstore: no templates \u2014 station is unconfigured (bind to Template grain)\" \u2014 rather than being a first-paint race that would later settle into a dashboard."
+      },
+      {
+        "action": "Launch a second grain through the app's other action, \"Open new case\", and open it as the grain owner.",
+        "expectedResult": "The page titled \"New Case \u2014 Setup Needed\" renders, reading \"This is a DueProcess Compliance process grain. It is waiting for a DueProcess Compliance Station grain to push a workflow template over Grapple before a case can be opened.\", followed by \"Operator steps to wire it up\". The page is terminal by design and carries no link, button, or form: a process grain cannot open a case until a Station pushes it a signed template."
+      },
+      {
+        "action": "From a popaye client account, submit the KYB profile so the Station spawns an account-opening case, then read the merchant's landing page.",
+        "expectedResult": "The merchant shows a real case reference instead of 'case pending creation'. Before this release the spawn aborted on 'record process initial context ... execution_mode=\"delegated\"; canonical integration evidence requires internal execution', so the caseID never reached the client even though the case existed and was Active on the Station dashboard."
+      }
+    ],
+    "expectedResult": "Both of the app's actions launch on a fresh grain and render their own explicit, human-readable unconfigured state under enforced authz. Neither invents a workflow definition locally. Reaching case data on a fresh grain would prove the retired embedded-template bypass had returned, and fails the probe."
+  },
+  "fixtures": [],
+  "cleanup": {
+    "steps": [
+      "Delete the probe grains created for the launch probe; each is a fresh grain created solely for this probe.",
+      "No external state is created: the probe never advances past the unconfigured setup screen, so no case, no template binding, and no sidecar record exists to retract.",
+      "No sidecar is contacted and no lease is minted, so nothing is retained off-grain. All probe state lives in the deleted grains' own /var."
+    ]
+  }
+}

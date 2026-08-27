@@ -69,7 +69,7 @@ const (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: canary-emit <operator-public|sign> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: canary-emit <operator-public|operator-seeds|sign-update-manifest|sign> [flags]")
 		os.Exit(2)
 	}
 	var err error
@@ -80,8 +80,10 @@ func main() {
 		err = runSign(os.Args[2:])
 	case "operator-seeds":
 		err = runOperatorSeeds(os.Args[2:])
+	case "sign-update-manifest":
+		err = runSignUpdateManifest(os.Args[2:])
 	default:
-		err = fmt.Errorf("unknown subcommand %q (want operator-public|sign)", os.Args[1])
+		err = fmt.Errorf("unknown subcommand %q (want operator-public|operator-seeds|sign-update-manifest|sign)", os.Args[1])
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "canary-emit: %v\n", err)
@@ -367,6 +369,82 @@ func runOperatorSeeds(args []string) error {
 	fmt.Fprintf(os.Stderr, "operator sign_pubkey_b58 = %s\n", reproduced.Public().SignPubkeyB58)
 	fmt.Fprintf(os.Stderr, "operator PDA             = %s (kv=%d)\n", ref.PDA, ref.KeyVersion)
 	fmt.Fprintf(os.Stderr, "publisher-identity (seeds, 0600) written = %s\n", *out)
+	return nil
+}
+
+// sign-update-manifest signs the legacy shell update manifest in place with
+// the live store operator identity. The checker canonicalizes the JSON by
+// removing `signature`, sorting keys, and using compact separators; Go's
+// encoding/json applies the same deterministic ordering to map keys. Deriving
+// and signing here keeps every shard and private-key byte on the store host.
+func runSignUpdateManifest(args []string) error {
+	fs := flag.NewFlagSet("sign-update-manifest", flag.ContinueOnError)
+	configPath := fs.String("config", "", "path to the LIVE store config JSON (required)")
+	shardsDir := fs.String("shards", "", "override boot_identity.shards_dir")
+	expect := fs.String("expect-sign-pubkey", "", "derived operator sign pubkey must equal this base58")
+	inputPath := fs.String("input", "", "unsigned update manifest JSON (required)")
+	outPath := fs.String("out", "", "signed update manifest JSON (required)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if strings.TrimSpace(*configPath) == "" || strings.TrimSpace(*inputPath) == "" || strings.TrimSpace(*outPath) == "" {
+		return errors.New("--config, --input, and --out are required")
+	}
+	cfg, err := loadStoreConfig(*configPath)
+	if err != nil {
+		return err
+	}
+	dir := strings.TrimSpace(*shardsDir)
+	if dir == "" {
+		dir = strings.TrimSpace(cfg.BootIdentity.ShardsDir)
+	}
+	if dir == "" {
+		return errors.New("no shards dir (neither --shards nor config boot_identity.shards_dir)")
+	}
+	ref, err := operatorRef(cfg)
+	if err != nil {
+		return err
+	}
+	shards, err := loadSidecarShards(dir)
+	if err != nil {
+		return fmt.Errorf("load shards: %w", err)
+	}
+	op, err := derive.DeriveSidecar(ref, shards)
+	if err != nil {
+		return fmt.Errorf("derive operator: %w", err)
+	}
+	pub := op.Public()
+	if e := strings.TrimSpace(*expect); e != "" && pub.SignPubkeyB58 != e {
+		return fmt.Errorf("derived operator sign pubkey %s != expected %s", pub.SignPubkeyB58, e)
+	}
+	raw, err := os.ReadFile(*inputPath)
+	if err != nil {
+		return fmt.Errorf("read input manifest: %w", err)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		return fmt.Errorf("parse input manifest: %w", err)
+	}
+	delete(manifest, "signature")
+	canonical, err := json.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("canonicalize manifest: %w", err)
+	}
+	sig := op.Sign(canonical)
+	if !pub.Verify(canonical, sig) {
+		return errors.New("internal signature verification failed")
+	}
+	manifest["signature"] = base64.StdEncoding.EncodeToString(sig)
+	signed, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode signed manifest: %w", err)
+	}
+	if err := os.WriteFile(*outPath, append(signed, '\n'), 0o644); err != nil {
+		return fmt.Errorf("write signed manifest: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "update manifest signed by = %s\n", pub.SignPubkeyB58)
+	fmt.Fprintf(os.Stderr, "canonical sha256         = %x\n", sha256.Sum256(canonical))
+	fmt.Fprintf(os.Stderr, "signed manifest written  = %s\n", *outPath)
 	return nil
 }
 

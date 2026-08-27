@@ -1,9 +1,9 @@
 {
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
   "name": "Fineract Setup",
-  "version": "0.2.9",
-  "versionNumber": 9,
-  "packageId": "bfae158da2ccf123efa754734490d38d",
+  "version": "0.2.11",
+  "versionNumber": 11,
+  "packageId": "90d2e5c6e96f3ba8da2c8e31d406acc1",
   "shortDescription": "Bootstrap wizard for Apache Fineract integration \u2014 configure, trust-bundle export.",
   "description": "",
   "categories": [
@@ -30,6 +30,6 @@
   "domains": [
     "*"
   ],
-  "marketingVersion": "0.2.9",
-  "sha256": "bfae158da2ccf123efa754734490d38d722b4de56d4bcb032c128486d5ec47d0"
+  "marketingVersion": "0.2.11",
+  "sha256": "90d2e5c6e96f3ba8da2c8e31d406acc159be36e216e63a248b2a13424814c5d0"
 }

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+    "version": "0.3.186",
+    "spkSha256": "49b15a8c824b1fefa7acbb9d9959acef3ab47a2704242c9901aed5ee5a34c497",
+    "appHash": "96b73466e0fad8eb9a5314bf33721f7c4e828e76e3482655e0316955d8242a23"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Launch a new popaye grain through its normal app action and open it as the grain owner from a Melusina account launcher.",
+        "expectedResult": "The grain serves a single standalone lock screen \u2014 not a dashboard, not a welcome page, not a setup wizard. The page is titled \"Unlock account\", headed \"Unlock to continue\", reads \"Sign the unlock challenge with your wallet to open this tab.\", names the signed-in operator and role, and offers exactly one control: \"Unlock with wallet\". The grain encrypts itself at mint, so every tab must unlock before anything is served. Reaching a dashboard, wallet list, contact list or any money screen on a fresh grain is a FAILURE. Opened outside a Melusina launcher the same curtain renders headed \"Open from your account launcher\" with no actionable control, which is also a correct locked state."
+      },
+      {
+        "action": "Read the whole lock screen and confirm what it exposes.",
+        "expectedResult": "It exposes only the operator's own display name, their role, and the unlock control. No balance, wallet, contact, transaction, case, fee schedule or configuration value is visible before the unlock. No 403, no reset, no blank page, no process failure."
+      },
+      {
+        "action": "Click \"Unlock with wallet\" and approve the one-time unlock challenge in the launcher's wallet popup.",
+        "expectedResult": "The signature is verified server-side against a fresh nonce and the tab unlocks and reloads. On a fresh grain this first unlock is also what registers the operator's Solana key with the account, so no separate onboarding form appears afterwards. The reloaded page is NOT a dashboard."
+      },
+      {
+        "action": "Read the page the grain renders after the unlock, and stop the probe there. Do not complete the connect dialog, do not paste an admin signing seed, and do not attempt any deposit, swap, withdrawal or approval.",
+        "expectedResult": "The grain renders \"We're getting things ready\" with the explanation that this account isn't fully set up yet and most pages aren't available. Because the probe runs as an admin, a \"Finish setup\" card is also present, stating that one connection still needs to be set up to bring this account online, with a \"Connect\u2026\" button and the note that the admin role is required; an operator-details disclosure names the reason, which on a fresh grain reports that the admin gate handshake failed because no configuration-service token is held. A second card reports that no admin signing key is set. This is the correct fresh-grain state: popaye holds no AdminGate binding, so cases, KYC, and every money surface are fail-closed and unreachable."
+      }
+    ],
+    "expectedResult": "A fresh popaye grain launches, presents an encrypted, fail-closed lock screen, accepts a real wallet-signed unlock, and then honestly reports itself not yet connected to its configuration service instead of showing an operator console. No account data, no case, and no money surface is reachable at any point in this probe, and the probe moves no money."
+  },
+  "fixtures": [
+    {
+      "name": "Fresh popaye grain on a Melusina launcher",
+      "purpose": "Prove the packaged app launches into its encrypted lock screen and, once unlocked by a real signature, reports its unconfigured state truthfully rather than rendering an operator console it cannot back.",
+      "setup": "Install this version and create a new grain, opened as its owner from a Melusina account launcher session that has a Solana wallet linked (the unlock is a real wallet signature; there is no bypass). Do not claim the AdminGate capability, do not save an admin signing seed, and do not write a deployer env file into the grain's /var. The package's own catalog defaults are enough for the grain to boot and serve the lock screen."
+    },
+    {
+      "name": "No configuration-service binding",
+      "purpose": "Bound the probe. Every operational surface in this app \u2014 cases, KYC, account opening, deposits, swaps, withdrawals \u2014 is gated behind a configuration-service binding that a fresh grain does not hold, so none of them can be exercised by a launch probe.",
+      "setup": "Assert the negative: confirm the post-unlock page is the not-ready page carrying the \"Finish setup\" card, and do not press it."
+    }
+  ],
+  "cleanup": {
+    "steps": [
+      "Delete the temporary acceptance-test grain after the visible launch probe completes.",
+      "The unlock in step 3 registers the probing operator's public key inside that grain only; deleting the grain removes it. No key material leaves the launcher and no private key is entered into the app.",
+      "No external state is created: the probe claims no capability, opens no case, contacts no sidecar, and makes no on-chain transaction."
+    ]
+  }
+}

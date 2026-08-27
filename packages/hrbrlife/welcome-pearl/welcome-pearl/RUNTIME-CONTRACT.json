@@ -1,0 +1,46 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+    "version": "0.1.25",
+    "spkSha256": "0ce700e9cf6c26c607e0927a4eb3e65ea80efe08a82ad92995c3778333061839",
+    "appHash": "655bc10f5171a7ce71a50e2c543000a48a16712897ccba5bbb2d65e5bec55eef"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Launch a new grain through the app's \"New Welcome Pearl\" action and open it as the grain owner.",
+        "expectedResult": "The grain serves a page titled \"Awaiting configuration\" whose heading reads \"This account-opening service\" and whose body reads \"This account-opening service is not configured yet \u2014 the operator must connect it to its DueProcess template before applications can be accepted.\", followed by a grey line naming the DueProcess template hydration call this release awaits. This is the correct fresh-grain state, served with a normal success status: no 403, no blank page, no reset, no process failure."
+      },
+      {
+        "action": "Read the whole first screen and look for any way to start an application.",
+        "expectedResult": "There is none, and that is the pass condition. The page carries no account-type choice, no country picker, no currency picker, no submit control, and no link or button of any kind. A fresh grain has never had an intake dataset hydrated from its DueProcess template, so this release fails closed to the notice instead of rendering a partly-hydrated or locally-defaulted questionnaire. A probe run that reaches a pre-qualifier questionnaire on a fresh grain is a FAILURE: it means a baked default profile was persisted."
+      },
+      {
+        "action": "Reload the grain from the shell.",
+        "expectedResult": "The same \"Awaiting configuration\" notice renders again. The unconfigured state is read from the grain's own persisted config (an empty tenant profile with no template-hydration timestamp), not a first-paint race that would settle into a form."
+      },
+      {
+        "action": "Open the operator surface by entering the grain-relative path \"admin\" as the grain owner. This step needs a typed path on purpose: the fail-closed landing deliberately exposes no navigation, so no click path to the operator surface exists on a fresh grain.",
+        "expectedResult": "The operator inbox renders with every tenant profile field blank and the client-onboarding section reporting \"AdminGate not connected \u2014 autospawn will fail closed\", with an unchecked autospawn setting. The page must not claim any binding is in place. A session without the administrator role gets \"Admin access required.\" instead."
+      }
+    ],
+    "expectedResult": "A fresh Welcome pearl grain launches, serves its intake front door, and correctly refuses to accept applications until an operator connects it to a DueProcess template \u2014 while its operator surface renders and honestly reports itself unconnected."
+  },
+  "fixtures": [
+    {
+      "name": "Fresh Welcome pearl grain",
+      "purpose": "Prove the packaged app launches and that its account-opening front door is fail-closed, rather than serving a hardcoded default tenant questionnaire, before any operator configuration exists.",
+      "setup": "Install this version, create a new grain, and open it as its owner. Do not connect an AdminGate capability, do not run a template refresh, and do not write /var/melusina/welcome.env. No sidecar, no Powerbox grant and no outbound network access is required for this probe."
+    }
+  ],
+  "cleanup": {
+    "steps": [
+      "Delete the temporary acceptance-test grain after the visible launch probe completes.",
+      "No external state is created: this probe writes only the grain's own /var (an empty config row and its per-grain callback secret), makes no outbound network call, and reaches no sidecar."
+    ]
+  }
+}

@@ -382,7 +382,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if appHashHex != wantAppHash {
 		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
-	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug)
+	expectedReceipt, err := buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract, claims, o.developer, o.repo, o.slug)
 	if err != nil {
 		return fmt.Errorf("check=receipt_submission: %w", err)
 	}
@@ -456,6 +456,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 }
 
 func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
+	return buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, nil, claims, developer, repo, slug)
+}
+
+func buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
 	var metadataIdentity struct {
 		AppID string `json:"appId"`
 	}
@@ -485,12 +489,23 @@ func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, dev
 
 	spkHash := sha256.Sum256(spk)
 	metadataHash := sha256.Sum256(metadata)
+	runtimeContractHash := sha256.Sum256(runtimeContract)
 	versionHash := sha256.Sum256([]byte(version))
 	masterMintHash := sha256.Sum256([]byte(masterMint))
 	stageHasher := sha256.New()
 	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
 	_, _ = stageHasher.Write(spkHash[:])
 	_, _ = stageHasher.Write(metadataHash[:])
+	binding := runtimecontract.Binding{SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version, ReleaseContractSHA256: claims.RuntimeContractSHA256, ReleaseContractSchema: claims.RuntimeContractSchema}
+	if runtimecontract.RequiresContract(binding) {
+		if _, err := runtimecontract.Validate(runtimeContract, binding); err != nil {
+			return submittedReceiptIntent{}, fmt.Errorf("runtime contract: %w", err)
+		}
+		_, _ = stageHasher.Write([]byte("runtime-contract-v1\x00"))
+		_, _ = stageHasher.Write(runtimeContractHash[:])
+	} else if len(runtimeContract) != 0 {
+		return submittedReceiptIntent{}, errors.New("runtime contract supplied but RELEASE.json does not bind one")
+	}
 	_, _ = stageHasher.Write(releaseHash[:])
 	_, _ = stageHasher.Write(versionHash[:])
 	_, _ = stageHasher.Write(masterMintHash[:])

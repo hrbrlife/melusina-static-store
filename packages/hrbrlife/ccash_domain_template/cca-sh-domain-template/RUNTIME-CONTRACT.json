@@ -1,0 +1,53 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+    "version": "0.5.84",
+    "spkSha256": "ad62e9cf671d6122bd2aa4a65afc937f1622d761f8c7149c0ac4601b40d353af",
+    "appHash": "cc0e03b9f07910ad5e0fb9f4d1f33c51449c887f4aef54679beb8c4b5d7d3940"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this release from the Bazaar, open the app details page, and use Upgrade Pearls so the Domain Template grain carrying the prepared account-opening launch moves to this version.",
+        "expectedResult": "The store pin, app index and grain package all report this release. The upgrade uses the rendered store control; no direct method call or side-load is an acceptable substitute."
+      },
+      {
+        "action": "As the grain administrator, open /admin/register-participant on a Domain Template grain that has a signed, prepared account-opening launch with no enrollment receipt.",
+        "expectedResult": "A 'Prepared launches awaiting a receipt' row renders with the exact participant, case, correlation and 64-hex request digest. The row is derived from the signed launch journal; it must not be reconstructed from form input."
+      },
+      {
+        "action": "NEGATIVE CONTROL \u2014 before using Resume, select the same portal in 'Launch account opening', fill every required field, and click 'Launch account opening'.",
+        "expectedResult": "The page refuses it with 'participant already has a prepared launch awaiting a receipt; resume request <the exact digest shown in the row>'. The prepared row remains the only launch, and Popaye receives no second enrollment call."
+      },
+      {
+        "action": "Click 'Resume prepared launch' for the exact no-receipt launch whose corrected three-hook document was rejected because its 15-minute validity window had already expired.",
+        "expectedResult": "The page reports an accepted enrollment receipt and reload removes that prepared row. Read-only signed-journal evidence shows the existing RouterDescription, ProcessTemplateSourceDescription and SourceObjectID, case, correlation, EnrollmentRequest and ConfigRevisionDigest remain byte-identical; exactly one current ProcessTemplateDocument candidate is appended before the RPC with issuedAt at retry time and expiry at min(retry+15 minutes, source expiry), and the receipt selects that candidate. No second router or launch file is created."
+      },
+      {
+        "action": "Restart the Domain Template grain and the enrolled Popaye grain through the shell, reopen /admin/register-participant, then open Popaye's /account-opening page.",
+        "expectedResult": "The prepared row stays gone after the Domain Template restart. Popaye boots normally and shows 'Waiting for your identity handoff' rather than system_down. Enrollment is durable, but it is not activation and still awaits the initial NamedCoin application outcome."
+      },
+      {
+        "action": "NEGATIVE CONTROL \u2014 in a browser session that can open the shared grain but is not its administrator, attempt to open /admin/register-participant.",
+        "expectedResult": "The page is refused as forbidden, no enrolment or launch control renders, and the signed launch journal remains unchanged."
+      }
+    ],
+    "expectedResult": "The exact existing prepared account-opening launch recovers through the visible Resume control using a current signed process document, while immutable router/source-description/request scope remains fixed and duplicate and non-admin UI paths remain refused."
+  },
+  "fixtures": [
+    {
+      "name": "Existing signed no-receipt launch",
+      "purpose": "Prove time-safe forward recovery of the exact existing prepared launch through the visible Resume action.",
+      "setup": "Use the existing Domain Template grain whose prepared participant-03 launch has no enrollment_receipt: candidate zero lacks the grant-issued hook and candidate one has all three hooks but retained the expired original timestamp. Its immutable ProcessTemplateSourceDescription remains live. Do not create or substitute another launch."
+    }
+  ],
+  "cleanup": {
+    "steps": [
+      "Keep the recovered participant and its signed receipt as protocol evidence; do not delete or rewrite its durable launch journal."
+    ]
+  }
+}

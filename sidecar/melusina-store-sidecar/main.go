@@ -65,6 +65,14 @@ func main() {
 		runCatalogRetireSubcommand(os.Args[2:])
 		return
 	}
+	// A signed, no-public-byte-change reconciliation for one durable rollout
+	// that is already absent from the current immutable catalog. This is not an
+	// app publish or a catalog editor; it makes that exact visibility fact
+	// durable so unrelated governed publishes can proceed safely.
+	if len(os.Args) > 1 && os.Args[1] == "catalog-reconcile-unserved" {
+		runCatalogReconcileUnservedSubcommand(os.Args[2:])
+		return
+	}
 	// A bounded, operator-signed recovery rail for a Store whose historical
 	// private candidates no longer match their already-attested release bytes.
 	// It is explicit and exits after rebuilding a fresh immutable generation;

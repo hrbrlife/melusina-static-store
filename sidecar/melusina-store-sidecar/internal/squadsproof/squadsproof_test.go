@@ -120,10 +120,19 @@ func TestSDKFixtureParsesAndBindsMemoOnlyProof(t *testing.T) {
 	if vaultTransaction.Multisig != multisig.Address || vaultTransaction.Index != proposal.TransactionIndex || vaultTransaction.Index != 7 {
 		t.Fatalf("vault transaction did not bind to parsed multisig/proposal: %#v", vaultTransaction)
 	}
+	if vaultTransaction.Message.NumSigners != 1 || vaultTransaction.Message.NumWritableSigners != 1 || vaultTransaction.Message.NumWritableNonSigners != 0 {
+		t.Fatalf("fixture has non-canonical memo header: %#v", vaultTransaction.Message)
+	}
+	if len(vaultTransaction.Message.AccountKeys) != 2 || vaultTransaction.Message.AccountKeys[0] != fixturePubkey(t, fixture.VaultAddress) || vaultTransaction.Message.AccountKeys[1] != DefaultMemoProgramID {
+		t.Fatalf("fixture has non-canonical memo key vector: %#v", vaultTransaction.Message.AccountKeys)
+	}
+	if len(vaultTransaction.Message.Instructions) != 1 || vaultTransaction.Message.Instructions[0].ProgramIDIndex != 1 || string(vaultTransaction.Message.Instructions[0].AccountIndexes) != string([]byte{0}) {
+		t.Fatalf("fixture has non-canonical memo instruction: %#v", vaultTransaction.Message.Instructions)
+	}
 	if err := ValidateExecutedProposalTransaction(proposal, vaultTransaction); err != nil {
 		t.Fatalf("bind executed proposal to vault transaction: %v", err)
 	}
-	payload, err := vaultTransaction.MemoOnlyPayload(DefaultMemoProgramID)
+	payload, err := vaultTransaction.MemoOnlyPayload(programID, DefaultMemoProgramID)
 	if err != nil {
 		t.Fatalf("extract memo-only payload: %v", err)
 	}
@@ -284,23 +293,38 @@ func TestMemoOnlyAndApprovalHelpersRefuseBroaderProofs(t *testing.T) {
 	t.Run("extra instruction", func(t *testing.T) {
 		broader := vaultTransaction
 		broader.Message.Instructions = append(append([]CompiledInstruction(nil), vaultTransaction.Message.Instructions...), CompiledInstruction{})
-		if _, err := broader.MemoOnlyPayload(DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "2 instructions") {
+		if _, err := broader.MemoOnlyPayload(programID, DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "2 instructions") {
 			t.Fatalf("error = %v, want instruction-count refusal", err)
 		}
 	})
 	t.Run("instruction accounts", func(t *testing.T) {
 		broader := vaultTransaction
 		broader.Message.Instructions = append([]CompiledInstruction(nil), vaultTransaction.Message.Instructions...)
-		broader.Message.Instructions[0].AccountIndexes = []byte{0}
-		if _, err := broader.MemoOnlyPayload(DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "account indexes") {
+		broader.Message.Instructions[0].AccountIndexes = []byte{1}
+		if _, err := broader.MemoOnlyPayload(programID, DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "accounts are not") {
 			t.Fatalf("error = %v, want account-index refusal", err)
 		}
 	})
 	t.Run("lookup table", func(t *testing.T) {
 		broader := vaultTransaction
 		broader.Message.AddressTableLookups = []AddressTableLookup{{}}
-		if _, err := broader.MemoOnlyPayload(DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "address table") {
+		if _, err := broader.MemoOnlyPayload(programID, DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "address table") {
 			t.Fatalf("error = %v, want lookup refusal", err)
+		}
+	})
+	t.Run("wrong vault key", func(t *testing.T) {
+		broader := vaultTransaction
+		broader.Message.AccountKeys = append([]Pubkey(nil), vaultTransaction.Message.AccountKeys...)
+		broader.Message.AccountKeys[0] = DefaultMemoProgramID
+		if _, err := broader.MemoOnlyPayload(programID, DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "account keys") {
+			t.Fatalf("error = %v, want vault-key refusal", err)
+		}
+	})
+	t.Run("wrong signer header", func(t *testing.T) {
+		broader := vaultTransaction
+		broader.Message.NumSigners = 0
+		if _, err := broader.MemoOnlyPayload(programID, DefaultMemoProgramID); err == nil || !strings.Contains(err.Error(), "signer/writable header") {
+			t.Fatalf("error = %v, want header refusal", err)
 		}
 	})
 	t.Run("proposal transaction mismatch", func(t *testing.T) {
@@ -323,7 +347,7 @@ func TestParsedDataDoesNotAliasCallerBytes(t *testing.T) {
 	for i := range vaultTransactionAccount.Data {
 		vaultTransactionAccount.Data[i] ^= 0xff
 	}
-	payload, err := vaultTransaction.MemoOnlyPayload(DefaultMemoProgramID)
+	payload, err := vaultTransaction.MemoOnlyPayload(programID, DefaultMemoProgramID)
 	if err != nil {
 		t.Fatal(err)
 	}

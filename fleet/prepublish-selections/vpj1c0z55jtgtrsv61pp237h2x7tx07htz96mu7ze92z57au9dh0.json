@@ -1,384 +1,378 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
-  "sourceRepository": "https://github.com/hrbrlife/cyberteller",
-  "sourceCommit": "4377e9f475532343325822393841faa4c6ed9f84",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 20 v0.1.97/appVersion-174 dev-publish tip is the newest valid forward CyberTeller source. It retains the reviewed sealed-corridor, signed DueProcess, runtime-contract, and release-health work; it aligns the signed source metadata with the approved public name CyberTeller, makes the shared candidate pack recipe build the binary first, and advances the immutable package version for the forward governed release. Main is an ancestor. Every reviewed divergent head remains either represented in this source or intentionally archived as superseded or unsafe history. CyberTeller uses the catalog-wide Squads publishing authority while retaining its distinct SPK signing identity.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "selected dev-publish commit 4377e9f475532343325822393841faa4c6ed9f84 is remotely advertised and main 8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7 is its ancestor",
-      "full make test and go vet passed at the selected source, including root packages and common, chainwatch, custody, and sandboxsettlement sidecars",
-      "make check-app-id check-e2e-envelope check-capnp-ordinal passed at the selected source",
-      "fresh recursive clone at the selected commit resolved spkmodule 83dcfb515139d4f11899cc414277b103a5ea4c88 and had a clean tracked tree before build",
-      "clean build-source injected source commit 4377e9f475532343325822393841faa4c6ed9f84; two pack-local runs matched SHA-256 99c36503ce0233aa34ba6063188893c3b9d414f65c1725a5093bc0d030852075 and packageId 99c36503ce0233aa34ba6063188893c3",
-      "the governed Store build must record the canonical appHash over this SPK and staged metadata before any registration",
-      "the selected Makefile and catalog provider enforce the shared Squads multisig 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V, vault 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3, and program SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf; the app-specific SPK identity is not an authority override"
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/feat/ct-fiat-require-ccashtxnid",
-      "commit": "539713d777fabb054d3019d095af673dfa34461c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/ct-gljournal-cap",
-      "commit": "9b42be5e816a03d3e80d846b292a31571727d403",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/ct-swap-v151-bundle",
-      "commit": "a26774a23c3e5348a0732f7db59df19a22e62849",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/cyberteller-dest-screener",
-      "commit": "f1b53a0916eccd85f3b990be2883e901856490cb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/drop-before-delete-iter29",
-      "commit": "fa8d5b868a78be6d498ee33ecaae70ec1c90d8cf",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/pass2-deposit-realism",
-      "commit": "8315ff5b76d365eceab8a5dba39af1887efab443",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/pass2-swap-flow",
-      "commit": "5b64f3e5189e9b99902010a45ebe85c9fafbea74",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/pass2-withdrawal-flow",
-      "commit": "d3e24f7fd2b13dd7b0de98f25b4e405671e34a61",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/sender-wallet-screen",
-      "commit": "22820d57ef75bafc4da68eefdea63028cc900404",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/settlement-statement",
-      "commit": "40733e2f952945581bf9b96e6b17437adbc301cd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/swap-withdrawal-human-ui",
-      "commit": "6943c172a08c59e5fa7582faf11bd4a9c880d35f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/fix/ct-swap-bundle-audience",
-      "commit": "d9b0cee2a081cd3d62a3b6629201ddd4f8429f59",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/minion/boot-hardening",
-      "commit": "f199b62a7b5b22a0dccdb7531280de0b9cdd4907",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/cyberteller-candidate-pack-20260719",
-      "commit": "6684308509cfdb807f11bfd631a0d7b6273b6e38",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "4377e9f475532343325822393841faa4c6ed9f84",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/feat/ct-swap-vN153",
-      "commit": "77b1964b4f6734164c17574151107a99f3c97a36",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-cyberteller",
-      "commit": "e6b139c6985866463da9b217cb94132a2461ebcc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "8cd83ed9a9a28aab633ccdf466cd89fdcbd7beb7",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/244262f9e5d8",
-      "commit": "244262f9e5d881a37d9f14624093a2c16920431a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/3346be78dc58",
-      "commit": "3346be78dc58f96f7938436ad90c6ba87e969f2f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/3a669cafa439",
-      "commit": "3a669cafa439ea85d9f9e45e75f6e3518dcb7235",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/56e8a2810c99",
-      "commit": "56e8a2810c9933ccb98e1e6200f9701505cbd657",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/57471b888d3b",
-      "commit": "57471b888d3b6c700d2fa72871b012494bde0c08",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/5cd95dd4315e",
-      "commit": "5cd95dd4315ef5e9075b0c552b66301016526c8a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/5de58d4aff53",
-      "commit": "5de58d4aff53a0975fb3a95aa92f93b7875930cf",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/613471e4beb8",
-      "commit": "613471e4beb8295b9fb1ff79029c8c5af0232b9f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/8535d49df59e",
-      "commit": "8535d49df59e5336b0163140711e884f6ade53fe",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/8b50efe47e23",
-      "commit": "8b50efe47e23012e5bac555b590114516293eadd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/d88b1238ffcd",
-      "commit": "d88b1238ffcdff350a3cf3ffb5792789873c22b3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/f0c91ca5af0d",
-      "commit": "f0c91ca5af0d47c108f3bec9c864f1c22cdad8ff",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/f97c3fdb1d31",
-      "commit": "f97c3fdb1d3193dd6df29afc924b6e6e6883c41c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/cyberteller-candidate-pack-20260719",
-      "commit": "6684308509cfdb807f11bfd631a0d7b6273b6e38",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/cyberteller-v168-governed-release",
-      "commit": "9a5a35cce394a11080711a092407927376b1c8ea",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-cyberteller",
-      "commit": "13e8d2f343aa696238b3f52f29113f76d8f0bdb8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/admin-auth-harmonize",
-      "commit": "edca562a5065466302b6c5b8c1cc524b68363ff9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/canon-2026-06-17-commission-treasury",
-      "commit": "9803cb2ff8b8b61f960ba46ae012cc1fef2ecc8c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-fiat-detect-cap10",
-      "commit": "9525c4fb213b6bf02d94c3281d733c7664679096",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-fiat-require-ccashtxnid",
-      "commit": "539713d777fabb054d3019d095af673dfa34461c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-gljournal-cap",
-      "commit": "9b42be5e816a03d3e80d846b292a31571727d403",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-perpair-fx-routing",
-      "commit": "ef3e70c8813230d4fd799eb5bb07c1f73eb34a15",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-v151-bundle",
-      "commit": "a26774a23c3e5348a0732f7db59df19a22e62849",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-vN153",
-      "commit": "840bce0df8479c9f2aa973b834c5d223ea47fa6c",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/cyberteller-crutch-readcap-2026-06-08",
-      "commit": "70a110c33bb5b62cad2704bd4ce7dbed8067222d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/cyberteller-dest-screener",
-      "commit": "f1b53a0916eccd85f3b990be2883e901856490cb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/depmon-envelope-required",
-      "commit": "65e88ef75bd14c6cb252e867b14e42652ebdc7ae",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
-      "commit": "2bc49169b5dee45eb298689ae71af9d0e09c1a46",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/drop-before-delete-iter29",
-      "commit": "6accd710838231fda6581240269724bc56ecc748",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt2-egress-cutover-2026-06-28",
-      "commit": "af06659718be8a4c2d94f5a677374833d08cbd93",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
-      "commit": "dd935653282b5f7041a3703c79ee38bcf7717034",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ct-a1-refund-event-20260509",
-      "commit": "8d0ed2e350e4e1f84fc9d673f2df17d055bc17b8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-cyberteller",
-      "commit": "e6b139c6985866463da9b217cb94132a2461ebcc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mermail-deploy-ready-2026-06-23",
-      "commit": "da93022853fdf42bb058e7a93fa1b2cb47a0e1e0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/ops-6-2026-06-05",
-      "commit": "3944c2592027c71895101d76908167e9dc6816dd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/pass2-deposit-realism",
-      "commit": "8315ff5b76d365eceab8a5dba39af1887efab443",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/pass2-swap-flow",
-      "commit": "5b64f3e5189e9b99902010a45ebe85c9fafbea74",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/pass2-withdrawal-flow",
-      "commit": "d3e24f7fd2b13dd7b0de98f25b4e405671e34a61",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/sender-wallet-screen",
-      "commit": "22820d57ef75bafc4da68eefdea63028cc900404",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/settlement-statement",
-      "commit": "40733e2f952945581bf9b96e6b17437adbc301cd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/swap-cap-transport-2026-06-06",
-      "commit": "31a0991bee6b9e8c190436d42ca72fba525f6193",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
-      "commit": "91ba8061ec759e48a5ecae1d8dfb37fd4ebdfea5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/tx-limits-tiered",
-      "commit": "6accd710838231fda6581240269724bc56ecc748",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/chainwatch-solana-skip-preflight-wave3",
-      "commit": "e2e471b6de8757e269d30fb727b30adf8456be12",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/coldgrain-drop-unreachable-slots-v104",
-      "commit": "2a9388567db4e57560f56daa06eb194334ce8eca",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/ct-swap-bundle-audience",
-      "commit": "d9b0cee2a081cd3d62a3b6629201ddd4f8429f59",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-      "commit": "c7c816ed6fe9551d4023fe59236d0546c0d65f16",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-b15-envelope-allowlist-20260804",
-      "commit": "f76e10b4cd7a074270f50ba19a401e74fef67921",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-ct-pkgdef-fileid-20260804",
-      "commit": "62dc5d031e8044366aee81c509d04565fe30f3b1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "c7c816ed6fe9551d4023fe59236d0546c0d65f16",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "2acc7e4ad3ec7b44a8b64105a439d1d7e44279b7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/scratch/ct-fiat-detect-1092-verify",
-      "commit": "c499a4ea646ba51f1b9d04cfda2a95b788fb5ad5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/uiux/cyberteller-demo-override-2026-06-03",
-      "commit": "eb01e8b9affea3d3d57d77d9b649c4c392312bc6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "2acc7e4ad3ec7b44a8b64105a439d1d7e44279b7",
-      "outcome": "archive"
-    }
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+    "sourceRepository": "https://github.com/hrbrlife/cyberteller",
+    "sourceCommit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "CyberTeller v0.1.99/appVersion-176 is the selected dev-publish release cut. It carries authenticated inbound M1 handling, signed screening responses, the sealed M6 settlement route, and one protocol revision across the packaged CyberTeller, Chainwatch, Custody, and sandbox-settlement components.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "clean recursive source checkout at the selected origin/dev-publish commit",
+            "make test passed at the selected source, including root packages and the common, Chainwatch, Custody, and sandbox-settlement sidecars",
+            "release metadata, package manifest, build sentinel, and Makefile agree on 0.1.99/appVersion-176",
+            "all packaged sidecars require the same protocol revision as the CyberTeller ConfigGate cohort, including the M6 settlement aggregate validation",
+            "the selected source remains unprovisioned without governed ConfigGate and AdminGate capability delivery; no legacy environment-file fallback exists"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/feat/ct-fiat-require-ccashtxnid",
+            "commit": "539713d777fabb054d3019d095af673dfa34461c",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/ct-gljournal-cap",
+            "commit": "9b42be5e816a03d3e80d846b292a31571727d403",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/ct-swap-v151-bundle",
+            "commit": "a26774a23c3e5348a0732f7db59df19a22e62849",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/cyberteller-dest-screener",
+            "commit": "f1b53a0916eccd85f3b990be2883e901856490cb",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/drop-before-delete-iter29",
+            "commit": "fa8d5b868a78be6d498ee33ecaae70ec1c90d8cf",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/pass2-deposit-realism",
+            "commit": "8315ff5b76d365eceab8a5dba39af1887efab443",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/pass2-swap-flow",
+            "commit": "5b64f3e5189e9b99902010a45ebe85c9fafbea74",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/pass2-withdrawal-flow",
+            "commit": "d3e24f7fd2b13dd7b0de98f25b4e405671e34a61",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/sender-wallet-screen",
+            "commit": "22820d57ef75bafc4da68eefdea63028cc900404",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/settlement-statement",
+            "commit": "40733e2f952945581bf9b96e6b17437adbc301cd",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/swap-withdrawal-human-ui",
+            "commit": "6943c172a08c59e5fa7582faf11bd4a9c880d35f",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/ct-swap-bundle-audience",
+            "commit": "d9b0cee2a081cd3d62a3b6629201ddd4f8429f59",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/minion/boot-hardening",
+            "commit": "f199b62a7b5b22a0dccdb7531280de0b9cdd4907",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/ct-swap-vN153",
+            "commit": "8449456e589555d32a5501fa4d91436c50d4d5cc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/feat/mel-release-health-cyberteller",
+            "commit": "e6b139c6985866463da9b217cb94132a2461ebcc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "2fe962655fbb73a65af31fe048298d75dd1ba7da",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/244262f9e5d8",
+            "commit": "244262f9e5d881a37d9f14624093a2c16920431a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/3346be78dc58",
+            "commit": "3346be78dc58f96f7938436ad90c6ba87e969f2f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/3a669cafa439",
+            "commit": "3a669cafa439ea85d9f9e45e75f6e3518dcb7235",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/56e8a2810c99",
+            "commit": "56e8a2810c9933ccb98e1e6200f9701505cbd657",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/57471b888d3b",
+            "commit": "57471b888d3b6c700d2fa72871b012494bde0c08",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/5cd95dd4315e",
+            "commit": "5cd95dd4315ef5e9075b0c552b66301016526c8a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/5de58d4aff53",
+            "commit": "5de58d4aff53a0975fb3a95aa92f93b7875930cf",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/613471e4beb8",
+            "commit": "613471e4beb8295b9fb1ff79029c8c5af0232b9f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/8535d49df59e",
+            "commit": "8535d49df59e5336b0163140711e884f6ade53fe",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/8b50efe47e23",
+            "commit": "8b50efe47e23012e5bac555b590114516293eadd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/d88b1238ffcd",
+            "commit": "d88b1238ffcdff350a3cf3ffb5792789873c22b3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/f0c91ca5af0d",
+            "commit": "f0c91ca5af0d47c108f3bec9c864f1c22cdad8ff",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/f97c3fdb1d31",
+            "commit": "f97c3fdb1d3193dd6df29afc924b6e6e6883c41c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/cyberteller-candidate-pack-20260719",
+            "commit": "6684308509cfdb807f11bfd631a0d7b6273b6e38",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/cyberteller-v168-governed-release",
+            "commit": "9a5a35cce394a11080711a092407927376b1c8ea",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-cyberteller",
+            "commit": "13e8d2f343aa696238b3f52f29113f76d8f0bdb8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/admin-auth-harmonize",
+            "commit": "edca562a5065466302b6c5b8c1cc524b68363ff9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/canon-2026-06-17-commission-treasury",
+            "commit": "9803cb2ff8b8b61f960ba46ae012cc1fef2ecc8c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-fiat-detect-cap10",
+            "commit": "9525c4fb213b6bf02d94c3281d733c7664679096",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-fiat-require-ccashtxnid",
+            "commit": "539713d777fabb054d3019d095af673dfa34461c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-gljournal-cap",
+            "commit": "9b42be5e816a03d3e80d846b292a31571727d403",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-perpair-fx-routing",
+            "commit": "ef3e70c8813230d4fd799eb5bb07c1f73eb34a15",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-v151-bundle",
+            "commit": "a26774a23c3e5348a0732f7db59df19a22e62849",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ct-swap-vN153",
+            "commit": "840bce0df8479c9f2aa973b834c5d223ea47fa6c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/cyberteller-crutch-readcap-2026-06-08",
+            "commit": "70a110c33bb5b62cad2704bd4ce7dbed8067222d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/cyberteller-dest-screener",
+            "commit": "f1b53a0916eccd85f3b990be2883e901856490cb",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/depmon-envelope-required",
+            "commit": "65e88ef75bd14c6cb252e867b14e42652ebdc7ae",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
+            "commit": "2bc49169b5dee45eb298689ae71af9d0e09c1a46",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/drop-before-delete-iter29",
+            "commit": "6accd710838231fda6581240269724bc56ecc748",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt2-egress-cutover-2026-06-28",
+            "commit": "af06659718be8a4c2d94f5a677374833d08cbd93",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "dd935653282b5f7041a3703c79ee38bcf7717034",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ct-a1-refund-event-20260509",
+            "commit": "8d0ed2e350e4e1f84fc9d673f2df17d055bc17b8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-cyberteller",
+            "commit": "e6b139c6985866463da9b217cb94132a2461ebcc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mermail-deploy-ready-2026-06-23",
+            "commit": "da93022853fdf42bb058e7a93fa1b2cb47a0e1e0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/ops-6-2026-06-05",
+            "commit": "3944c2592027c71895101d76908167e9dc6816dd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/pass2-deposit-realism",
+            "commit": "8315ff5b76d365eceab8a5dba39af1887efab443",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/pass2-swap-flow",
+            "commit": "5b64f3e5189e9b99902010a45ebe85c9fafbea74",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/pass2-withdrawal-flow",
+            "commit": "d3e24f7fd2b13dd7b0de98f25b4e405671e34a61",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/sender-wallet-screen",
+            "commit": "22820d57ef75bafc4da68eefdea63028cc900404",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/settlement-statement",
+            "commit": "40733e2f952945581bf9b96e6b17437adbc301cd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/swap-cap-transport-2026-06-06",
+            "commit": "31a0991bee6b9e8c190436d42ca72fba525f6193",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/teamb-banking-2026-06-26",
+            "commit": "91ba8061ec759e48a5ecae1d8dfb37fd4ebdfea5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/tx-limits-tiered",
+            "commit": "6accd710838231fda6581240269724bc56ecc748",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/chainwatch-solana-skip-preflight-wave3",
+            "commit": "e2e471b6de8757e269d30fb727b30adf8456be12",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/coldgrain-drop-unreachable-slots-v104",
+            "commit": "2a9388567db4e57560f56daa06eb194334ce8eca",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/ct-swap-bundle-audience",
+            "commit": "d9b0cee2a081cd3d62a3b6629201ddd4f8429f59",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "c7c816ed6fe9551d4023fe59236d0546c0d65f16",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-b15-envelope-allowlist-20260804",
+            "commit": "f76e10b4cd7a074270f50ba19a401e74fef67921",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-ct-pkgdef-fileid-20260804",
+            "commit": "62dc5d031e8044366aee81c509d04565fe30f3b1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "c7c816ed6fe9551d4023fe59236d0546c0d65f16",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "2acc7e4ad3ec7b44a8b64105a439d1d7e44279b7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/scratch/ct-fiat-detect-1092-verify",
+            "commit": "c499a4ea646ba51f1b9d04cfda2a95b788fb5ad5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/uiux/cyberteller-demo-override-2026-06-03",
+            "commit": "eb01e8b9affea3d3d57d77d9b649c4c392312bc6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "2acc7e4ad3ec7b44a8b64105a439d1d7e44279b7",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "historical-divergent"
 }

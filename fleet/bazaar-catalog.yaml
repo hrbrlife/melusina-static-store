@@ -255,11 +255,12 @@ groups:
       cyberteller:
         appId: vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0
         source_path: cyberteller
-        # v0.1.97/appVersion-174 is the current valid forward dev-publish
-        # source. It combines the reviewed corridor, signed DueProcess, and
-        # release-health work with a synchronized public-name and pack-build
-        # forward release; the full remote-head snapshot is in its receipt.
-        source_commit: 4377e9f475532343325822393841faa4c6ed9f84
+        # v0.1.99/appVersion-176 is the current valid forward dev-publish
+        # source. It carries the sealed M6 settlement route and aligns the
+        # packaged Chainwatch, Custody, and settlement sidecars to the current
+        # ConfigGate/CyberTeller protocol revision; its remote-head review is
+        # frozen in the source-selection receipt.
+        source_commit: e16bb3c7a8a31cb855115762265aef98ad271e78
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -269,7 +270,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: 0.1.97
+        live_version: 0.1.99
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller

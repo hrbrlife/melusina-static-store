@@ -453,16 +453,14 @@ func TestGlobalSANTierAndLocalScopeParsersFailClosed(t *testing.T) {
 		wantErr string
 	}{
 		{"one host SAN", []string{"fineract-v2.sidecar.host"}, sidecarScopeHost, ""},
-		{"one hypervisor SAN", []string{"fineract-v2.sidecar.hypervisor"}, sidecarScopeHypervisor, ""},
+		{"case-insensitive shared hypervisor", []string{"Fineract-V2.SideCar.HyPeRvIsOr.ShArEd"}, sidecarScopeHypervisor, ""},
 		{"one local SAN", []string{"fineract-v2.sidecar.local"}, sidecarScopeLocal, ""},
 		{"one remote SAN", []string{"fineract-v2.sidecar.remote"}, sidecarScopeRemote, ""},
-		{"same-tier distinct labels", []string{"fineract-v2.sidecar.host", "fineract-alt.sidecar.host"}, sidecarScopeHost, ""},
+		{"same-tier opaque prefixes", []string{"fineract-v2.extra.sidecar.host", "https://fineract-v2.sidecar.host"}, sidecarScopeHost, ""},
 		{"shared hypervisor", []string{"opensanctions.sidecar.hypervisor.shared"}, sidecarScopeHypervisor, ""},
 		{"empty list", nil, 0, "empty"},
 		{"unknown suffix", []string{"fineract-v2.example.test"}, 0, "unrecognized"},
-		{"multi-label prefix", []string{"fineract-v2.extra.sidecar.host"}, 0, "invalid sidecar SAN"},
-		{"URL instead of SAN", []string{"https://fineract-v2.sidecar.host"}, 0, "invalid sidecar SAN"},
-		{"wildcard instead of concrete label", []string{"*.sidecar.host"}, 0, "invalid sidecar SAN"},
+		{"empty prefix", []string{".sidecar.host"}, 0, "invalid sidecar SAN"},
 		{"mixed tiers", []string{"fineract-v2.sidecar.host", "fineract-v2.sidecar.hypervisor"}, 0, "mixes"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

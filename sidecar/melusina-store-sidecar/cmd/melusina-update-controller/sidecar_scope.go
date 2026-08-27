@@ -40,12 +40,15 @@ func (s sidecarScope) String() string {
 	}
 }
 
-// sidecarScopeForSAN accepts exactly the deployed sidecar SAN grammar:
-// <one DNS label>.sidecar.<tier>[.shared]. A shared suffix retains the base
-// B13 scope; it does not create a fifth authorization plane. In particular,
-// reject a multi-label prefix, URL, wildcard, or empty name rather than merely
-// matching a convenient suffix in malformed GlobalSidecarApproval data.
+// sidecarScopeForSAN mirrors the deployed SidecarScope::from_san grammar:
+// <non-empty prefix>.sidecar.<tier>[.shared], case-insensitive. The prefix is
+// deliberately opaque here: B13 treats it as a sidecar name, not a DNS-label
+// validator, so this controller must not reject an already valid Global
+// approval merely because the name contains multiple labels or another
+// deployed-compatible spelling. A shared suffix retains the base B13 scope; it
+// does not create a fifth authorization plane.
 func sidecarScopeForSAN(san string) (sidecarScope, error) {
+	canonical := strings.ToLower(san)
 	for _, candidate := range []struct {
 		suffix string
 		scope  sidecarScope
@@ -63,32 +66,15 @@ func sidecarScopeForSAN(san string) (sidecarScope, error) {
 		{".sidecar.local", sidecarScopeLocal},
 		{".sidecar.remote", sidecarScopeRemote},
 	} {
-		if strings.HasSuffix(san, candidate.suffix) {
-			label := strings.TrimSuffix(san, candidate.suffix)
-			if !validSidecarSANLabel(label) {
+		if strings.HasSuffix(canonical, candidate.suffix) {
+			prefix := strings.TrimSuffix(canonical, candidate.suffix)
+			if prefix == "" {
 				return 0, fmt.Errorf("invalid sidecar SAN %q", san)
 			}
 			return candidate.scope, nil
 		}
 	}
 	return 0, fmt.Errorf("unrecognized sidecar SAN tier %q", san)
-}
-
-func validSidecarSANLabel(label string) bool {
-	if len(label) == 0 || len(label) > 63 {
-		return false
-	}
-	for i := 0; i < len(label); i++ {
-		b := label[i]
-		if (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') {
-			continue
-		}
-		if b == '-' && i != 0 && i != len(label)-1 {
-			continue
-		}
-		return false
-	}
-	return true
 }
 
 func controllerSkip(data []byte, offset, n int) (int, error) {

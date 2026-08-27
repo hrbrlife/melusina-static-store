@@ -43,6 +43,110 @@ func gateAppendString(dst []byte, v string) []byte {
 	return append(dst, v...)
 }
 
+func gateGlobalSidecarApprovalFixture(sidecarID string, master primitives.Pubkey, hash [32]byte, sans ...string) []byte {
+	b := make([]byte, 8) // discriminator: readers validate the Borsh shape after it
+	b = gateAppendString(b, sidecarID)
+	b = append(b, hash[:]...)
+	b = gateAppendString(b, "fixture-v1")
+	b = gateAppendU32(b, uint32(len(sans)))
+	for _, san := range sans {
+		b = gateAppendString(b, san)
+	}
+	b = gateAppendU64(b, 0)            // required_permissions
+	b = append(b, make([]byte, 32)...) // author
+	b = append(b, master[:]...)        // master_nft_mint
+	b = append(b, make([]byte, 32)...) // approved_by
+	b = append(b, 0)                   // status = Active
+	b = gateAppendU64(b, 1)            // approved_at
+	b = append(b, 0, 0, 1)             // revoked_at=None, revoke_reason=None, bump
+	return b
+}
+
+func gateLocalSidecarApprovalFixture(sidecarID string, license primitives.Pubkey, scope sidecarScope, hash *[32]byte) []byte {
+	b := make([]byte, 8) // discriminator
+	b = gateAppendString(b, sidecarID)
+	b = append(b, license[:]...)
+	if hash == nil {
+		b = append(b, 0) // binary_hash=None
+	} else {
+		b = append(b, 1)
+		b = append(b, hash[:]...)
+	}
+	b = append(b, byte(scope))
+	b = append(b, make([]byte, 32)...) // approved_by
+	b = append(b, 0)                   // status = Active
+	b = gateAppendU64(b, 1)
+	b = append(b, 0, 1) // revoked_at=None, bump
+	return b
+}
+
+// tierGateRPC deliberately makes the legacy status/hash accessors look healthy
+// while serving raw Global/Local bytes that the new coupled-field check must
+// inspect. That proves an Active cascade alone cannot bypass the SAN/scope gate.
+type tierGateRPC struct {
+	want                  [32]byte
+	master                [32]byte
+	globalAddr, localAddr string
+	globalApproval        []byte
+	localApproval         []byte
+}
+
+var _ chainRPC = (*tierGateRPC)(nil)
+
+func (r *tierGateRPC) GetAccountInfo(_ context.Context, addr string) ([]byte, error) {
+	switch addr {
+	case r.globalAddr:
+		return r.globalApproval, nil
+	case r.localAddr:
+		return r.localApproval, nil
+	default:
+		return nil, nil
+	}
+}
+
+func (r *tierGateRPC) FetchGlobalSidecarBinaryHash(context.Context, string) ([32]byte, error) {
+	return r.want, nil
+}
+
+func (*tierGateRPC) FetchGlobalSidecarStatus(context.Context, string) (verify.ApprovalStatus, error) {
+	return verify.ApprovalStatusActive, nil
+}
+
+func (r *tierGateRPC) FetchInstallerReleaseEntry(context.Context, string) ([32]byte, verify.AttestationStatus, error) {
+	return r.want, verify.AttestationStatusActive, nil
+}
+
+func (r *tierGateRPC) FetchLicenseEntrySummary(context.Context, string) (verify.LicenseEntrySummary, error) {
+	return verify.LicenseEntrySummary{
+		MasterNftMint: r.master,
+		Status:        verify.ApprovalStatusActive,
+	}, nil
+}
+
+func (r *tierGateRPC) FetchLocalSidecarBinaryHash(context.Context, string) ([32]byte, bool, error) {
+	return [32]byte{}, false, nil
+}
+
+func (*tierGateRPC) FetchLocalSidecarStatus(context.Context, string) (verify.ApprovalStatus, error) {
+	return verify.ApprovalStatusActive, nil
+}
+
+func (r *tierGateRPC) FetchReleaseEntry(context.Context, string) ([32]byte, verify.AttestationStatus, error) {
+	return r.want, verify.AttestationStatusActive, nil
+}
+
+func (*tierGateRPC) FetchResellerEntryStatus(context.Context, string) (verify.ResellerStatus, error) {
+	return verify.ResellerStatusActive, nil
+}
+
+func (*tierGateRPC) FetchResellerSidecarStatus(context.Context, string) (verify.ApprovalStatus, error) {
+	return verify.ApprovalStatusActive, nil
+}
+
+func (r *tierGateRPC) FetchSidecarIdentity(context.Context, string) (verify.SidecarIdentity, error) {
+	return verify.SidecarIdentity{BinaryHash: r.want, Status: verify.AttestationStatusActive}, nil
+}
+
 // gateLicenseFixture contains exactly the Borsh fields walked by
 // verify.ReadLicenseEntrySummary. This direct-RPC test needs the deployed
 // layout, not a chain-program emulator.
@@ -268,6 +372,116 @@ func TestChainGateRefusesDocSuppliedSidecarPDAMismatch(t *testing.T) {
 				t.Fatalf("mismatch error did not name %s: %v", tc.record, err)
 			}
 		})
+	}
+}
+
+func TestGateSidecarCascadeRequiresMatchingGlobalSANTierAndLocalScope(t *testing.T) {
+	g, cfg := newOfflineGate(t)
+	program := mustPubkey(t, cfg.ProgramID)
+	master := mustPubkey(t, cfg.MasterNftMint)
+	license := mustPubkey(t, cfg.LicenseNftMint)
+	const sidecarID = "fineract-v2"
+	const keyVersion = uint32(1)
+	wantHex := strings.Repeat("ab", 32)
+	want, err := hashBytes(wantHex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	idPDA, _, err := primitives.DeriveSidecarIdentity(license, sidecarID, keyVersion, program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	globalPDA, _, err := primitives.DeriveGlobalSidecar(master, sidecarID, program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localPDA, _, err := primitives.DeriveLocalSidecar(license, sidecarID, program)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rpc := &tierGateRPC{
+		want:           want,
+		master:         [32]byte(master),
+		globalAddr:     globalPDA.Base58(),
+		localAddr:      localPDA.Base58(),
+		globalApproval: gateGlobalSidecarApprovalFixture(sidecarID, master, want, sidecarID+".sidecar.host"),
+		localApproval:  gateLocalSidecarApprovalFixture(sidecarID, license, sidecarScopeHost, nil),
+	}
+	g.rpc = rpc
+	release := componentrelease.ComponentRelease{
+		ComponentID:    "fineract-sidecar",
+		ComponentClass: componentrelease.ClassSidecar,
+		SHA256:         wantHex,
+		Chain: componentrelease.ChainAuthority{
+			Kind:              componentrelease.AuthoritySidecarIdentity,
+			Program:           cfg.ProgramID,
+			MasterNftMint:     cfg.MasterNftMint,
+			LicenseNftMint:    cfg.LicenseNftMint,
+			SidecarID:         sidecarID,
+			KeyVersion:        keyVersion,
+			IdentityPDA:       idPDA.Base58(),
+			GlobalApprovalPDA: globalPDA.Base58(),
+			LocalApprovalPDA:  localPDA.Base58(),
+		},
+	}
+	if err := g.gate(context.Background(), release, componentrelease.ComponentInstall{}); err != nil {
+		t.Fatalf("matching SAN tier and scope were rejected: %v", err)
+	}
+
+	// The status/hash accessors on tierGateRPC remain Active and correctly
+	// pinned. Only the raw Local scope changes, so this rejection specifically
+	// proves the new SAN/scope comparison is load-bearing.
+	rpc.localApproval = gateLocalSidecarApprovalFixture(sidecarID, license, sidecarScopeHypervisor, nil)
+	err = g.gate(context.Background(), release, componentrelease.ComponentInstall{})
+	if err == nil || !strings.Contains(err.Error(), "SAN tier host != LocalSidecarApproval scope hypervisor") {
+		t.Fatalf("mismatched Global SAN tier / Local scope was not refused: %v", err)
+	}
+}
+
+func TestGlobalSANTierAndLocalScopeParsersFailClosed(t *testing.T) {
+	var master, license primitives.Pubkey
+	var hash [32]byte
+	hash[0] = 1
+	const sidecarID = "fineract-v2"
+
+	for _, tc := range []struct {
+		name    string
+		sans    []string
+		want    sidecarScope
+		wantErr string
+	}{
+		{"one host SAN", []string{"fineract-v2.sidecar.host"}, sidecarScopeHost, ""},
+		{"one hypervisor SAN", []string{"fineract-v2.sidecar.hypervisor"}, sidecarScopeHypervisor, ""},
+		{"one local SAN", []string{"fineract-v2.sidecar.local"}, sidecarScopeLocal, ""},
+		{"one remote SAN", []string{"fineract-v2.sidecar.remote"}, sidecarScopeRemote, ""},
+		{"same-tier distinct labels", []string{"fineract-v2.sidecar.host", "fineract-alt.sidecar.host"}, sidecarScopeHost, ""},
+		{"shared hypervisor", []string{"opensanctions.sidecar.hypervisor.shared"}, sidecarScopeHypervisor, ""},
+		{"empty list", nil, 0, "empty"},
+		{"unknown suffix", []string{"fineract-v2.example.test"}, 0, "unrecognized"},
+		{"multi-label prefix", []string{"fineract-v2.extra.sidecar.host"}, 0, "invalid sidecar SAN"},
+		{"URL instead of SAN", []string{"https://fineract-v2.sidecar.host"}, 0, "invalid sidecar SAN"},
+		{"wildcard instead of concrete label", []string{"*.sidecar.host"}, 0, "invalid sidecar SAN"},
+		{"mixed tiers", []string{"fineract-v2.sidecar.host", "fineract-v2.sidecar.hypervisor"}, 0, "mixes"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := globalSidecarApprovalSANTier(gateGlobalSidecarApprovalFixture(sidecarID, master, hash, tc.sans...))
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("tier = %s, %v; want %s, nil", got, err, tc.want)
+			}
+		})
+	}
+
+	if _, err := localSidecarApprovalScope(gateLocalSidecarApprovalFixture(sidecarID, license, sidecarScope(9), nil)); err == nil ||
+		!strings.Contains(err.Error(), "unknown discriminant") {
+		t.Fatalf("unknown LocalSidecarApproval scope accepted: %v", err)
 	}
 }
 

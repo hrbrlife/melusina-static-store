@@ -21,6 +21,7 @@ import (
 // *verify.RPCClient satisfies it, so a single-endpoint deployment behaves exactly
 // as before.
 type chainRPC interface {
+	GetAccountInfo(ctx context.Context, addr string) ([]byte, error)
 	FetchGlobalSidecarBinaryHash(ctx context.Context, addr string) ([32]byte, error)
 	FetchGlobalSidecarStatus(ctx context.Context, addr string) (verify.ApprovalStatus, error)
 	FetchInstallerReleaseEntry(ctx context.Context, addr string) ([32]byte, verify.AttestationStatus, error)
@@ -95,6 +96,19 @@ func (f *failoverRPC) call(ctx context.Context, invoke func(context.Context, cha
 func (f *failoverRPC) FetchGlobalSidecarBinaryHash(ctx context.Context, addr string) (out [32]byte, err error) {
 	err = f.call(ctx, func(c context.Context, r chainRPC) error {
 		out, err = r.FetchGlobalSidecarBinaryHash(c, addr)
+		return err
+	})
+	return out, err
+}
+
+// GetAccountInfo is the raw-account read used where a chain gate must compare
+// two fields which the shared verifier currently exposes through separate
+// readers. It keeps the same transport-only failover discipline as every other
+// controller read: an absent/malformed account is a definitive fail-closed
+// answer, while only ErrRPCUnreachable advances to the next configured endpoint.
+func (f *failoverRPC) GetAccountInfo(ctx context.Context, addr string) (out []byte, err error) {
+	err = f.call(ctx, func(c context.Context, r chainRPC) error {
+		out, err = r.GetAccountInfo(c, addr)
 		return err
 	})
 	return out, err

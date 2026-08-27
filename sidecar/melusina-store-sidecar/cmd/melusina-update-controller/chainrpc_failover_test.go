@@ -51,6 +51,34 @@ func TestFailoverRPCAdvancesOnQuota429(t *testing.T) {
 	}
 }
 
+// Raw-account consumers (such as the coupled Global-SAN/Local-scope gate) use
+// the exact same transport-only failover classification as typed readers.
+func TestFailoverRPCGetAccountInfoAdvancesOnQuota429(t *testing.T) {
+	var primaryCalls, fallbackCalls atomic.Int32
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		primaryCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(quotaBody))
+	}))
+	defer primary.Close()
+	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fallbackCalls.Add(1)
+		absentAccount(w)
+	}))
+	defer fallback.Close()
+
+	f := newFailoverRPC(primary.URL, []string{fallback.URL}, 2)
+	f.delay = 0
+	raw, err := f.GetAccountInfo(context.Background(), "SomeGlobalApprovalPDA")
+	if err != nil || raw != nil {
+		t.Fatalf("raw account = %x, %v; want nil, nil from fallback", raw, err)
+	}
+	if primaryCalls.Load() != 2 || fallbackCalls.Load() != 1 {
+		t.Fatalf("primary=%d fallback=%d, want 2 and 1", primaryCalls.Load(), fallbackCalls.Load())
+	}
+}
+
 // A definitive chain verdict must NOT be retried elsewhere. Shopping other
 // endpoints after a real denial is equivocation-seeking, not resilience.
 func TestFailoverRPCDoesNotShopADefinitiveDenial(t *testing.T) {

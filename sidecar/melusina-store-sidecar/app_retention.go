@@ -112,6 +112,15 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 				return plan, fmt.Errorf("validate control receipt ledger: %w", err)
 			}
 			continue
+		case name == hostApplyIssuanceDirName:
+			// Host-apply issuance evidence is append-only, short-lived authority
+			// plus durable audit evidence. It is not an app candidate and must
+			// never be swept by app-stage retention, but a corrupt ledger still
+			// fails the whole retention plan closed.
+			if _, err := openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir); err != nil {
+				return plan, fmt.Errorf("validate host apply issuance ledger: %w", err)
+			}
+			continue
 		case validStageID(name):
 			if err := validateCommittedStageTree(path, expectedUID, expectedGID); err != nil {
 				return plan, fmt.Errorf("validate retained stage %s: %w", name, err)

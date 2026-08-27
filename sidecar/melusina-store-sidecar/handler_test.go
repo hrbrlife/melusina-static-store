@@ -71,6 +71,10 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 	if err != nil {
 		t.Fatalf("open control receipt ledger: %v", err)
 	}
+	hostApplyIssuances, err := openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir)
+	if err != nil {
+		t.Fatalf("open host apply issuance ledger: %v", err)
+	}
 	if cfg.CatalogGenerationRoot == "" {
 		cfg.CatalogGenerationRoot = t.TempDir()
 	}
@@ -98,6 +102,7 @@ func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.P
 		nonces:             envelope.NewMemoryNonceCache(),
 		appNonces:          appNonces,
 		controlReceipts:    controlReceipts,
+		hostApplyIssuances: hostApplyIssuances,
 		catalogGenerations: generations,
 		catalogExpectedUID: uint32(os.Getuid()),
 		catalogExpectedGID: uint32(os.Getgid()),

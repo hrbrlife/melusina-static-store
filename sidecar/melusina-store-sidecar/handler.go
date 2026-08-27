@@ -47,6 +47,8 @@ type publishService struct {
 	appNonces                   *publishNonceLedger
 	controlReceipts             *controlReceiptLedger
 	controlReceiptErr           error
+	hostApplyIssuances          *hostApplyIssuanceLedger
+	hostApplyIssuanceErr        error
 	listingRegistrar            listingRegistrar
 	listingRegistrationRequired bool
 	catalogGenerations          AppCatalogGenerationStore
@@ -307,6 +309,11 @@ func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, m
 	if operator != nil && runtime.appNonces != nil {
 		controlReceipts, controlReceiptErr = openOrInitializeControlReceiptLedger(cfg.PrivateStageDir)
 	}
+	var hostApplyIssuances *hostApplyIssuanceLedger
+	var hostApplyIssuanceErr error
+	if operator != nil {
+		hostApplyIssuances, hostApplyIssuanceErr = openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir)
+	}
 
 	svc := &publishService{
 		cfg:                         cfg,
@@ -317,6 +324,8 @@ func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, m
 		appNonces:                   runtime.appNonces,
 		controlReceipts:             controlReceipts,
 		controlReceiptErr:           controlReceiptErr,
+		hostApplyIssuances:          hostApplyIssuances,
+		hostApplyIssuanceErr:        hostApplyIssuanceErr,
 		listingRegistrar:            newBoundedListingRegistrar(cfg, cr, operator),
 		listingRegistrationRequired: runtime.listingRegistrationRequired,
 		catalogGenerations:          runtime.catalogGenerations,
@@ -369,6 +378,10 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// public sidecar probe when a production listener is configured.
 	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
 	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
+	// A host-apply decision is never a browser/catalog API, even in the
+	// combined development router. The actual private mTLS listener owns this
+	// prefix below; the public listener must not disclose that it exists.
+	mux.HandleFunc(hostApplyIssuePathPrefix, privateControlRouteOnly)
 	if exposeControl {
 		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	} else {
@@ -394,6 +407,11 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// verified document on every request, never maintained as a second pointer.
 	mux.HandleFunc("/update/generation.json", svc.handleDesiredGeneration)
 	mux.HandleFunc("/update/manifest.json", svc.handleLegacyManifest)
+	// One-shot receipts are intentionally public-but-unforgeable bearer
+	// documents: the root-owned controller is pinned to this exact origin and
+	// verifies the Store signature. Serve them through the issuance ledger,
+	// rather than letting arbitrary stale files under DistDir become receipts.
+	mux.HandleFunc(hostApplyReceiptPathPrefix, svc.handleOneShotApplyReceipt)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -439,6 +457,7 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
+	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyIssue)
 	return mux
 }
 

@@ -1,5 +1,14 @@
 # Melusina App Bazaar — Publish Quality Control
 
+> **Historical structural checklist; not sole current release authority.**
+> Retain it for metadata/package hygiene, but resolve current app identity,
+> source selection, package/version, approval, and Store readiness from the
+> canonical default-Bazaar release provider and current catalog/on-chain
+> readback. The product path and devnet/synthetic-only limits are in
+> `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md`.
+> A passing local checklist never substitutes for governed promotion, rendered
+> Store install, Upgrade Pearls, and a fresh-launch pin proof.
+
 Comprehensive checklist for verifying any app before publishing to the Melusina App Bazaar.
 **Every item must pass** before an SPK is accepted into the store.
 

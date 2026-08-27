@@ -1,4 +1,22 @@
-# pearl-Mode Onboarding Runbook
+# Pearl-mode onboarding runbook — historical reference
+
+> **Do not use this as a current app-release or customer-onboarding procedure.**
+> It describes an older offline-stub/`melusina-pearl-tool` lineage and is kept
+> only for forensic/source context. Current MSB customer onboarding is
+> login-first, NamedCoin-first, birth-bound to a vertical/case/template, and
+> governed by `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md`.
+>
+> Current app release discipline is: test only the selected source; explicitly
+> stage and commit; push app work to `dev-publish`; use the canonical
+> default-Bazaar provider and the current on-chain/catalog selection; install
+> and upgrade only through rendered Store/Admin UI; then prove package pin and
+> fresh Pearl launch. A promotion may need the documented listing-bootstrap
+> recovery when the Store catalog lacks its release listing. Treat that as a
+> controlled change window: exact current selection readback, dry-run,
+> Store-writer-lock handling, restart, catalog-200 readback, provider resume,
+> Store UI install, Upgrade Pearls, and fresh-launch proof. Never side-load,
+> edit Store state, reuse a historical package, or use a host CLI as a product
+> ceremony.
 
 ## When to use this
 Your app currently uses `spkmodule` in offline-stub mode and you want to migrate to greenfield pearl-mode (Squads-quorum signed releases).

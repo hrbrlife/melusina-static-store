@@ -1,4 +1,14 @@
-# HANDOFF — 2026-05-05 (afternoon session)
+# HANDOFF — 2026-05-05 (historical session record)
+
+> **Historical snapshot; not current MSB or Store-release authority.** The
+> entries below preserve evidence from the 2026-05-05 catalog lineage. Do not
+> run their commands, reuse their package IDs, or infer live state from them.
+> Current product architecture is
+> `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md`;
+> live operational facts are append-only in `RUNSTATE.md`. Use the canonical
+> default-Bazaar release provider, current catalog selection, on-chain checks,
+> and rendered Store/Admin UI—not a historical handoff—to stage, promote,
+> install, or upgrade an app.
 
 ## 2026-05-06 19:55 UTC — Teleport packages-v1 upload restored
 

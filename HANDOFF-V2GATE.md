@@ -1,4 +1,13 @@
-# v2 store gate — graft onto the LIVE lineage (fix/v2-gate-on-live-lineage)
+# v2 store gate — historical lineage note
+
+> **Historical source-trace note; not a release instruction.** It records a
+> past v2-envelope graft and its then-live lineage. The current Store release
+> rail is governed by the selected default-Bazaar source, the signed desired
+> generation, on-chain checks, and the current release-provider WAL. Do not
+> copy a SHA, command, signer assumption, or on-box path from this document
+> into a current release. The active MSB delivery contract is
+> `agentchat/scratchpad/msb-run/MSB_ONBOARDING_PRODUCT_CANON_2026-08-27.md` and
+> operational facts live in `RUNSTATE.md`.
 
 ## Read this before you publish anything
 

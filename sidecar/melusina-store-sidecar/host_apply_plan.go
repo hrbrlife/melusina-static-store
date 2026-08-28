@@ -292,12 +292,18 @@ type hostApplyCurrentFacts struct {
 	Policy         storeControlPolicyMeta
 	OperatorPubkey string
 	OperatorAuthz  string
-	License        primitives.Pubkey
-	Document       componentrelease.DesiredGeneration
-	RawGeneration  []byte
-	Component      componentrelease.ComponentRelease
-	Custody        hostApplyLicenseCustody
-	Multisig       squadsproof.Multisig
+	// TargetLicense is deliberately distinct from the Store's own configured
+	// license. The Store's operator authorization and policy remain rooted in
+	// cfg.LicenseNFTMint; the controlled Fineract component names the tenant
+	// license whose sidecar cascade, Squads custody, plan and receipt must bind.
+	// Collapsing those planes makes a multi-tenant Store unable to authorize a
+	// tenant-owned receiver even when every tenant-side fact is valid.
+	TargetLicense primitives.Pubkey
+	Document      componentrelease.DesiredGeneration
+	RawGeneration []byte
+	Component     componentrelease.ComponentRelease
+	Custody       hostApplyLicenseCustody
+	Multisig      squadsproof.Multisig
 }
 
 func hostApplySquadsStableConfigSHA256(multisig squadsproof.Multisig) string {
@@ -341,7 +347,7 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	if err != nil {
 		return zero, fmt.Errorf("store operator: %w", err)
 	}
-	_, license, err := VerifyStoreOperator(ctx, s.cr, s.cfg, operatorRaw, false)
+	_, storeLicense, err := VerifyStoreOperator(ctx, s.cr, s.cfg, operatorRaw, false)
 	if err != nil {
 		return zero, fmt.Errorf("store operator: %w", err)
 	}
@@ -349,7 +355,7 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	if err != nil {
 		return zero, fmt.Errorf("program id: %w", err)
 	}
-	authz, _, err := pda.StoreOperatorAuthorization(license, primitives.StoreDomainHash(s.cfg.Domain), program)
+	authz, _, err := pda.StoreOperatorAuthorization(storeLicense, primitives.StoreDomainHash(s.cfg.Domain), program)
 	if err != nil {
 		return zero, fmt.Errorf("derive store operator authorization: %w", err)
 	}
@@ -360,14 +366,14 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	if doc.StoreID != s.cfg.StoreID {
 		return zero, errors.New("generation store id does not match the serving Store")
 	}
-	component, err := verifyHostApplyCurrentComponent(doc, rawGeneration, license.Base58())
+	component, targetLicense, err := verifyHostApplyCurrentComponent(doc, rawGeneration)
 	if err != nil {
 		return zero, err
 	}
 	if err := s.verifyComponentReleaseOnChain(ctx, component); err != nil {
 		return zero, fmt.Errorf("component chain: %w", err)
 	}
-	licensePDA, _, err := primitives.DeriveLicense(license, program)
+	licensePDA, _, err := primitives.DeriveLicense(targetLicense, program)
 	if err != nil {
 		return zero, fmt.Errorf("derive LicenseEntry: %w", err)
 	}
@@ -378,7 +384,7 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	if len(licenseCohort.Accounts) != 1 {
 		return zero, errors.New("fetch finalized LicenseEntry: expected one account")
 	}
-	custody, err := readHostApplyLicenseCustody(licenseCohort.Accounts[0].Data, licenseCohort.Accounts[0].Owner, program, license)
+	custody, err := readHostApplyLicenseCustody(licenseCohort.Accounts[0].Data, licenseCohort.Accounts[0].Owner, program, targetLicense)
 	if err != nil {
 		return zero, err
 	}
@@ -405,25 +411,31 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	}
 	return hostApplyCurrentFacts{
 		Policy: policy, OperatorPubkey: primitives.EncodeBase58(operatorPub), OperatorAuthz: authz.Base58(),
-		License: license, Document: doc, RawGeneration: rawGeneration, Component: component,
+		TargetLicense: targetLicense, Document: doc, RawGeneration: rawGeneration, Component: component,
 		Custody: custody, Multisig: multisig,
 	}, nil
 }
 
 // verifyHostApplyCurrentComponent is the no-caller-input counterpart of the
 // old authorization binding. The selected component is always the exact
-// `fineract-v2` sidecar in Store's currently verified desired generation.
-func verifyHostApplyCurrentComponent(doc componentrelease.DesiredGeneration, raw []byte, licenseMint string) (componentrelease.ComponentRelease, error) {
+// `fineract-v2` sidecar in Store's currently verified desired generation. Its
+// tenant target is derived from that already signed component; neither a
+// browser nor the Store's root license can substitute a target here.
+func verifyHostApplyCurrentComponent(doc componentrelease.DesiredGeneration, raw []byte) (componentrelease.ComponentRelease, primitives.Pubkey, error) {
 	component, ok := doc.Component(hostApplyFineractComponentID)
 	if !ok || component.ComponentClass != componentrelease.ClassSidecar ||
 		component.Chain.Kind != componentrelease.AuthoritySidecarIdentity ||
-		component.Chain.SidecarID != hostApplyFineractSidecarID || component.Chain.LicenseNftMint != licenseMint {
-		return componentrelease.ComponentRelease{}, errors.New("current generation does not contain the governed fineract-v2 sidecar component")
+		component.Chain.SidecarID != hostApplyFineractSidecarID {
+		return componentrelease.ComponentRelease{}, primitives.Pubkey{}, errors.New("current generation does not contain the governed fineract-v2 sidecar component")
 	}
 	if len(raw) == 0 {
-		return componentrelease.ComponentRelease{}, errors.New("current generation has no exact raw bytes")
+		return componentrelease.ComponentRelease{}, primitives.Pubkey{}, errors.New("current generation has no exact raw bytes")
 	}
-	return component, nil
+	targetLicense, err := primitives.PubkeyFromBase58(strings.TrimSpace(component.Chain.LicenseNftMint))
+	if err != nil {
+		return componentrelease.ComponentRelease{}, primitives.Pubkey{}, errors.New("current generation has an invalid governed fineract-v2 tenant license")
+	}
+	return component, targetLicense, nil
 }
 
 func hostApplyPlanFromFacts(dossierID string, facts hostApplyCurrentFacts, now time.Time) (hostApplyPlan, error) {
@@ -433,7 +445,7 @@ func hostApplyPlanFromFacts(dossierID string, facts hostApplyCurrentFacts, now t
 		Schema: hostApplyPlanSchema, DossierID: dossierID, StoreID: facts.Document.StoreID,
 		StorePolicy: facts.Policy.PDA, PolicyEpoch: facts.Policy.PolicyEpoch,
 		StoreOperatorAuthorization: facts.OperatorAuthz, StoreOperatorPubkey: facts.OperatorPubkey,
-		TargetControllerID: hostApplyFineractControllerID, TargetLicenseNftMint: facts.License.Base58(),
+		TargetControllerID: hostApplyFineractControllerID, TargetLicenseNftMint: facts.TargetLicense.Base58(),
 		ComponentID: hostApplyFineractComponentID, SidecarID: hostApplyFineractSidecarID,
 		GenerationID: facts.Document.GenerationID, GenerationHash: facts.Document.GenerationHash,
 		RawGenerationSHA256: hex.EncodeToString(rawHash[:]), ComponentDigest: componentrelease.ComponentReleaseDigestHex(facts.Component),
@@ -460,7 +472,7 @@ func verifyHostApplyPlanAgainstFacts(plan hostApplyPlan, facts hostApplyCurrentF
 		"store id": {plan.StoreID, facts.Document.StoreID}, "store policy": {plan.StorePolicy, facts.Policy.PDA},
 		"store operator authorization": {plan.StoreOperatorAuthorization, facts.OperatorAuthz},
 		"store operator pubkey":        {plan.StoreOperatorPubkey, facts.OperatorPubkey},
-		"target license":               {plan.TargetLicenseNftMint, facts.License.Base58()},
+		"target license":               {plan.TargetLicenseNftMint, facts.TargetLicense.Base58()},
 		"generation hash":              {plan.GenerationHash, facts.Document.GenerationHash},
 		"raw generation sha256":        {plan.RawGenerationSHA256, hex.EncodeToString(rawHash[:])},
 		"component digest":             {plan.ComponentDigest, componentrelease.ComponentReleaseDigestHex(facts.Component)},

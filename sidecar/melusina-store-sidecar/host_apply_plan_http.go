@@ -272,7 +272,7 @@ func (s *publishService) verifyHostApplyPlanReceipt(receipt componentrelease.One
 	}
 	return componentrelease.VerifyOneShotApplyAuthorization(operatorKey, componentrelease.OneShotApplyExpectation{
 		ExpectedStoreID: s.cfg.StoreID, TargetControllerID: hostApplyFineractControllerID,
-		TargetLicenseNftMint: facts.License.Base58(), ComponentID: hostApplyFineractComponentID,
+		TargetLicenseNftMint: facts.TargetLicense.Base58(), ComponentID: hostApplyFineractComponentID,
 		GenerationID: facts.Document.GenerationID, GenerationHash: facts.Document.GenerationHash,
 		RawGenerationSHA256: plan.RawGenerationSHA256, Component: facts.Component, NowUnix: now.Unix(),
 	}, receipt)

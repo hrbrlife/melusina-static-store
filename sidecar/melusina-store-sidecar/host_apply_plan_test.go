@@ -47,6 +47,8 @@ type hostApplyPlanFixture struct {
 	proofProposal []byte
 	proofVaultTx  []byte
 	operatorAuthz string
+	storeLicense  string
+	targetLicense string
 }
 
 func mkHostApplyLicenseAccount(license, reseller, master, vault, multisig primitives.Pubkey) []byte {
@@ -136,6 +138,10 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	targetLicense, err := primitives.PubkeyFromBase58(randPubkeyB58(t))
+	if err != nil {
+		t.Fatal(err)
+	}
 	authority, err := primitives.PubkeyFromBase58(cfg.StoreAuthority)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +168,7 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	if err := os.WriteFile(filepath.Join(cfg.DistDir, "releases", "sidecar", name), artifact, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	identityPDA, _, err := pda.SidecarIdentity(license, hostApplyFineractSidecarID, 1, programID)
+	identityPDA, _, err := pda.SidecarIdentity(targetLicense, hostApplyFineractSidecarID, 1, programID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +178,7 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localPDA, _, err := primitives.DeriveLocalSidecar(license, hostApplyFineractSidecarID, programID)
+	localPDA, _, err := primitives.DeriveLocalSidecar(targetLicense, hostApplyFineractSidecarID, programID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,10 +187,10 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 		Version: "0.1.38-contract", Build: 1, ArtifactName: name, SHA256: sha, SizeBytes: int64(len(artifact)),
 		BundleURL: cfg.PublicBaseURL + "/releases/sidecar/" + name, ReleaseHash: strings.Repeat("d", 64),
 		StageID: strings.Repeat("e", 64), PreviousSHA256: strings.Repeat("f", 64), PreviousVersion: "0.1.37-contract",
-		Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthoritySidecarIdentity, Program: programID.Base58(), LicenseNftMint: cfg.LicenseNFTMint, MasterNftMint: testMaster, SidecarID: hostApplyFineractSidecarID, KeyVersion: 1, IdentityPDA: identityPDA.Base58(), GlobalApprovalPDA: globalPDA.Base58(), LocalApprovalPDA: localPDA.Base58()},
+		Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthoritySidecarIdentity, Program: programID.Base58(), LicenseNftMint: targetLicense.Base58(), MasterNftMint: testMaster, SidecarID: hostApplyFineractSidecarID, KeyVersion: 1, IdentityPDA: identityPDA.Base58(), GlobalApprovalPDA: globalPDA.Base58(), LocalApprovalPDA: localPDA.Base58()},
 	}
 	chain.sidecarIdentity[identityPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: sum}}
-	seedValidCascade(t, chain, license, hostApplyFineractSidecarID, sum)
+	seedValidCascade(t, chain, targetLicense, hostApplyFineractSidecarID, sum)
 
 	doc := componentrelease.DesiredGeneration{GenerationID: 77, StoreID: cfg.StoreID, BundleOrigin: cfg.PublicBaseURL, Channel: "dev", SignedAtUnix: now.Add(-time.Minute).Unix(), PreviousGeneration: 76, Components: []componentrelease.ComponentRelease{component}}
 	doc, err = componentrelease.Sign(op, doc)
@@ -234,18 +240,18 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	chain.rawAccountOwners[proposal.Base58()] = squadsproof.DefaultProgramIDBase58
 	chain.rawAccounts[vaultTx.Base58()] = proofVaultTx
 	chain.rawAccountOwners[vaultTx.Base58()] = squadsproof.DefaultProgramIDBase58
-	licensePDA, _, err := primitives.DeriveLicense(license, programID)
+	licensePDA, _, err := primitives.DeriveLicense(targetLicense, programID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var reseller primitives.Pubkey
 	reseller[0], reseller[1] = 0xAA, 0x01
-	chain.rawAccounts[licensePDA.Base58()] = mkHostApplyLicenseAccount(license, reseller, master, vault, multisig)
+	chain.rawAccounts[licensePDA.Base58()] = mkHostApplyLicenseAccount(targetLicense, reseller, master, vault, multisig)
 
 	svc := newTestService(t, cfg, chain, op)
 	svc.now = func() time.Time { return now }
 	signature := primitives.EncodeBase58(bytes.Repeat([]byte{0x42}, 64))
-	return hostApplyPlanFixture{svc: svc, chain: chain, component: component, now: now, signature: signature, multisig: multisig.Base58(), vault: vault.Base58(), proposal: proposal.Base58(), vaultTx: vaultTx.Base58(), proofMultisig: proofMultisig, proofProposal: proofProposal, proofVaultTx: proofVaultTx, operatorAuthz: authz.Base58()}
+	return hostApplyPlanFixture{svc: svc, chain: chain, component: component, now: now, signature: signature, multisig: multisig.Base58(), vault: vault.Base58(), proposal: proposal.Base58(), vaultTx: vaultTx.Base58(), proofMultisig: proofMultisig, proofProposal: proofProposal, proofVaultTx: proofVaultTx, operatorAuthz: authz.Base58(), storeLicense: license.Base58(), targetLicense: targetLicense.Base58()}
 }
 
 func hostApplyPlanRequest(t *testing.T, dossier string) *http.Request {
@@ -338,6 +344,9 @@ func TestHostApplyPlanIsPrivateAndProofBindsRealFinalizedSquadsExecution(t *test
 	if planned.Schema != hostApplyPlanResultSchema || planned.PlanDigest != planned.Plan.Digest() || planned.Memo != planned.Plan.Memo() || planned.Plan.SquadsTransactionIndexFloor != 6 || planned.Plan.SquadsThreshold < 2 {
 		t.Fatalf("invalid immutable plan: %+v", planned)
 	}
+	if planned.Plan.TargetLicenseNftMint != f.targetLicense || planned.Plan.TargetLicenseNftMint == f.storeLicense || planned.Plan.StoreOperatorAuthorization != f.operatorAuthz {
+		t.Fatalf("plan conflated Store and tenant authority planes: %+v", planned.Plan)
+	}
 	f.armProof(t, planned.Plan)
 
 	proofResponse := httptest.NewRecorder()
@@ -371,6 +380,26 @@ func TestHostApplyPlanIsPrivateAndProofBindsRealFinalizedSquadsExecution(t *test
 	}
 	if receipt.ComponentID != hostApplyFineractComponentID || receipt.GovernanceReceiptID != dossier || receipt.GovernanceReceiptSHA256 != planned.PlanDigest || receipt.ComponentSHA256 != f.component.SHA256 {
 		t.Fatalf("receipt lost immutable host-apply bindings: %+v", receipt)
+	}
+}
+
+func TestHostApplyCurrentComponentDerivesAndValidatesTenantTarget(t *testing.T) {
+	f := newHostApplyPlanFixture(t)
+	doc, raw, err := f.svc.loadVerifiedDesiredGeneration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	component, target, err := verifyHostApplyCurrentComponent(doc, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if component.ComponentID != hostApplyFineractComponentID || target.Base58() != f.targetLicense || target.Base58() == f.storeLicense {
+		t.Fatalf("component target did not remain tenant-scoped: component=%+v target=%s store=%s", component, target.Base58(), f.storeLicense)
+	}
+
+	doc.Components[0].Chain.LicenseNftMint = "not-a-solana-pubkey"
+	if _, _, err := verifyHostApplyCurrentComponent(doc, raw); err == nil {
+		t.Fatal("malformed tenant target was accepted")
 	}
 }
 

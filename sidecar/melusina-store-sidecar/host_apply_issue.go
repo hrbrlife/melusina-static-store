@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
@@ -447,17 +448,14 @@ func minHostApplyReceiptExpiry(now time.Time, approvalExpires time.Time) (int64,
 	return expires.Unix(), nil
 }
 
-func verifyHostApplyCurrentBinding(a hostApplyAuthorization, doc componentrelease.DesiredGeneration, raw []byte, licenseMint string) (componentrelease.ComponentRelease, error) {
-	component, ok := doc.Component(hostApplyFineractComponentID)
-	if !ok || component.ComponentClass != componentrelease.ClassSidecar ||
-		component.Chain.Kind != componentrelease.AuthoritySidecarIdentity ||
-		component.Chain.SidecarID != hostApplyFineractSidecarID ||
-		component.Chain.LicenseNftMint != licenseMint {
-		return componentrelease.ComponentRelease{}, errors.New("current generation does not contain the governed fineract-v2 sidecar component")
+func verifyHostApplyCurrentBinding(a hostApplyAuthorization, doc componentrelease.DesiredGeneration, raw []byte) (componentrelease.ComponentRelease, error) {
+	component, targetLicense, err := verifyHostApplyCurrentComponent(doc, raw)
+	if err != nil {
+		return componentrelease.ComponentRelease{}, err
 	}
 	rawHash := sha256.Sum256(raw)
 	for label, gotWant := range map[string][2]string{
-		"target license":           {a.TargetLicenseNftMint, licenseMint},
+		"target license":           {a.TargetLicenseNftMint, targetLicense.Base58()},
 		"generation hash":          {a.GenerationHash, doc.GenerationHash},
 		"raw generation sha256":    {a.RawGenerationSHA256, hex.EncodeToString(rawHash[:])},
 		"component digest":         {a.ComponentDigest, componentrelease.ComponentReleaseDigestHex(component)},
@@ -538,8 +536,7 @@ func (s *publishService) handleHostApplyIssue(w http.ResponseWriter, r *http.Req
 		http.Error(w, "check=store_operator: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, licenseMint, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, false)
-	if err != nil {
+	if _, _, err := VerifyStoreOperator(r.Context(), s.cr, s.cfg, operatorPub, false); err != nil {
 		http.Error(w, "check=store_operator: "+err.Error(), http.StatusForbidden)
 		return
 	}
@@ -548,9 +545,14 @@ func (s *publishService) handleHostApplyIssue(w http.ResponseWriter, r *http.Req
 		http.Error(w, "check=generation: "+err.Error(), http.StatusConflict)
 		return
 	}
-	component, err := verifyHostApplyCurrentBinding(authorization, doc, rawGeneration, licenseMint.Base58())
+	component, err := verifyHostApplyCurrentBinding(authorization, doc, rawGeneration)
 	if err != nil {
 		http.Error(w, "check=generation_binding: "+err.Error(), http.StatusConflict)
+		return
+	}
+	targetLicense, err := primitives.PubkeyFromBase58(strings.TrimSpace(component.Chain.LicenseNftMint))
+	if err != nil {
+		http.Error(w, "check=generation_binding: current component has invalid target license", http.StatusConflict)
 		return
 	}
 	if err := s.verifyComponentReleaseOnChain(r.Context(), component); err != nil {
@@ -622,7 +624,7 @@ func (s *publishService) handleHostApplyIssue(w http.ResponseWriter, r *http.Req
 	if err := componentrelease.VerifyOneShotApplyAuthorization(operatorKey, componentrelease.OneShotApplyExpectation{
 		ExpectedStoreID:      s.cfg.StoreID,
 		TargetControllerID:   hostApplyFineractControllerID,
-		TargetLicenseNftMint: licenseMint.Base58(),
+		TargetLicenseNftMint: targetLicense.Base58(),
 		ComponentID:          hostApplyFineractComponentID,
 		GenerationID:         doc.GenerationID,
 		GenerationHash:       doc.GenerationHash,

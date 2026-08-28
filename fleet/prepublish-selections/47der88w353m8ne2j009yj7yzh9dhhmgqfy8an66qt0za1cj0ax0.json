@@ -2,18 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
     "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-    "sourceCommit": "0d16b36aa9285af42c531571f18cf4ec72d98ab6",
+    "sourceCommit": "0deb7b9878285b20ccf335ce71c50e5fd68a19a3",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "DueProcess 0.1.77 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "DueProcess 0.1.78/appVersion 82 is the reproducible controlled-newborn-handoff producer required by the CCA v94 birth-bound cohort.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go build ./... clean and the pkg/station kanban suite passes (7 tests)",
-            "release cohort agrees across pkgdef, metadata.json, Makefile and changelog \u2014 the previous cut half-bumped and the rail correctly refused it",
-            "requestedMemoryGiB = 4 added so the process engine's SQLite WAL shared-memory mmap can open",
-            "kanban precedence inverted so the flow builder's panels lead, with a non-empty workflow lane carried over so no case is stranded; both directions proven by mutation"
+            "clean detached checkout at the selected current dev-publish commit",
+            "app-local Cap\u2019n Proto ordinal checker and full make ci passed",
+            "two fresh recursive clones produced byte-identical spk verify-clean packages"
         ]
     },
     "reviewedRefs": [
@@ -89,7 +87,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "0d16b36aa9285af42c531571f18cf4ec72d98ab6",
+            "commit": "0deb7b9878285b20ccf335ce71c50e5fd68a19a3",
             "outcome": "selected"
         },
         {
@@ -99,7 +97,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "a4f27e9737529c360782458d1ab9ed3563e7544b",
+            "commit": "ca8e57bca6bb907a55206e31777ba869285ef2cf",
             "outcome": "baseline"
         },
         {
@@ -438,6 +436,11 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/preserve-local-20260827/dueprocess-main-msb",
+            "commit": "3e427f1e3ae88e9bdc49a3857b726b6a0881e4aa",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/preserve/local-main-ahead2-20260814",
             "commit": "69d6341283369c30e10d02831180ccb924a82507",
             "outcome": "retained"
@@ -449,5 +452,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "historical-divergent"
 }

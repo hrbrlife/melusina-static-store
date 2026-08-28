@@ -2,25 +2,27 @@
     "schema": "melusina-source-selection-v1",
     "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
     "sourceRepository": "https://github.com/hrbrlife/welcome-pearl",
-    "sourceCommit": "0eaa57bed251af7427e850c3688503861b807dfe",
+    "sourceCommit": "89c9871907a06a9ef2682dc744c005eebb961e7c",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The Aug 20 dev-publish v0.1.30/appVersion-31 Lobby source is the newest valid forward source. It retains the selected build-bound runtime-contract, default-Bazaar fixture, and reproducible package controls while creating a distinct immutable version above the prior same-version byte divergence. Main remains an ancestor. Earlier preserved feature and fix lines were already reviewed as ancestors or historical evidence; none contains newer app-relevant work than this direct dev-publish tip. The app-specific SPK identity remains package identity only; publishing uses the catalog-wide shared Squads authority.",
+    "decisionSummary": "Welcome 0.1.31/appVersion 32 is the authenticated routing-only birth-bound successor with tenant/vertical scoped identity routes and truthful expired-handoff recovery.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean selected-source checkout with current origin heads",
-            "make test and go vet ./...",
-            "make verify-perms-pkgdef, make build, and make verify-no-residue",
-            "two byte-identical SPK packs from c9949d4946d04f134006c441fa2f02f107775531 matched SHA-256 8889078813a432c506c370f11d6cdcbd96e495dfdefc5af0ee06587385bfd13a with packageId synchronization and SPK verification",
-            "the governed Store build must bind the canonical appHash over this SPK and staged metadata before registration",
-            "the catalog provider rejects app-specific publishing authority overrides and requires the shared 3-of-4 Squads authority"
+            "clean detached checkout at the selected current dev-publish commit",
+            "make test, verify-no-residue, and verify-perms-pkgdef passed",
+            "two fresh recursive clones produced byte-identical spk verify-clean packages from the post-fix source tip"
         ]
     },
     "reviewedRefs": [
         {
+            "ref": "refs/heads/codex/welcome-auth-birth-v31-20260828",
+            "commit": "3c2faba3cef5e3154839322ab0dceff08673f80b",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/dev-publish",
-            "commit": "0eaa57bed251af7427e850c3688503861b807dfe",
+            "commit": "89c9871907a06a9ef2682dc744c005eebb961e7c",
             "outcome": "selected"
         },
         {

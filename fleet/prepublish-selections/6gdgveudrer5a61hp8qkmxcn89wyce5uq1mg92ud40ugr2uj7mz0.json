@@ -2,17 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0",
     "sourceRepository": "https://github.com/hrbrlife/melusina_ccashconfig_app",
-    "sourceCommit": "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e",
+    "sourceCommit": "f49980493a448d5f11326c9ccd4e2268bd899b38",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "CCA.SH Configurator 0.0.82 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "CCA.SH Configurator 0.0.86/appVersion 94 is the current paired release for two-recipient leases, controlled NamedCoin identity birth, and completed-handoff recovery.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes across all 21 packages, including the reproducible-build test",
-            "the key offered by the setup screen is proven to be one enrolment accepts, using an independently written base58 encoder so the round trip is not the decoder agreeing with itself",
-            "leading-zero truncation and a swallowed unreadable signer both fail by name under mutation"
+            "clean detached checkout at the selected current dev-publish commit",
+            "GOWORK=off make test vet check-drift passed",
+            "three independent builds produced the preserved reproducible candidate"
         ]
     },
     "reviewedRefs": [
@@ -43,7 +42,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e",
+            "commit": "f49980493a448d5f11326c9ccd4e2268bd899b38",
             "outcome": "selected"
         },
         {
@@ -53,7 +52,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "fe3f4f9aada9bab9ea4ff5d5d5e5393b509e9e84",
+            "commit": "2905575eba4c2bf9688e078dd3a678f169ec83f2",
             "outcome": "baseline"
         },
         {
@@ -188,5 +187,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "historical-divergent"
 }

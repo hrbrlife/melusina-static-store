@@ -2,23 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-app",
-    "sourceCommit": "11a85b297b594aea3e93f2216d374e1a461d8365",
+    "sourceCommit": "053e4be65e8f4926fa439e009fa0a5e6f4d2e81d",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "NamedCoin 0.1.38 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "historical-divergent",
+    "decisionSummary": "NamedCoin 0.1.40/appVersion 42 is the V1.18 birth-bound intake candidate with tenant/vertical scoped identity binding and historical-root refusal controls.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes across all 54 packages",
-            "the vault identity is persisted at creation, so the unlock challenge is stable across a grain restart before first use; a signature made before a restart is proven to authorize after it",
-            "reverting to the ephemeral identity fails two guards by name; a vault claiming a DEK with no key slot is still refused"
+            "clean detached checkout at the selected current dev-publish commit",
+            "GOWORK=off go test, vet, and race suites passed",
+            "two fresh recursive clones produced byte-identical devnet-only pack-msb-test packages"
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "11a85b297b594aea3e93f2216d374e1a461d8365",
+            "commit": "053e4be65e8f4926fa439e009fa0a5e6f4d2e81d",
             "outcome": "selected"
         },
         {
@@ -28,7 +27,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "f82c217f643bdfc217ba8b3ba91a4cbbf521ba55",
+            "commit": "ecffc8f31f9f3855616e5d6701dedb156b734b86",
             "outcome": "baseline"
         },
         {
@@ -153,5 +152,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "historical-divergent"
 }

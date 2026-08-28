@@ -89,11 +89,10 @@ groups:
       welcome:
         appId: 021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0
         source_path: welcome
-        # v0.1.30/appVersion-31 is the newest valid forward dev-publish
-        # source. It retains the build-bound runtime contract and default
-        # Bazaar fixture repairs, while moving the selected source into a
-        # distinct immutable package/release version.
-        source_commit: 0eaa57bed251af7427e850c3688503861b807dfe
+        # v0.1.31/appVersion-32 is the authenticated, birth-bound successor.
+        # It adds tenant/vertical scoped identity routes and honest expired
+        # handoff recovery while preserving the routing-only boundary.
+        source_commit: 89c9871907a06a9ef2682dc744c005eebb961e7c
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -114,12 +113,10 @@ groups:
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
-        # v39/0.1.37. v38/0.1.36 pinned correctly and NEVER ran: every grain
-        # died at "open grainrestore: create personas: Binary was compiled with
-        # CGO_ENABLED=0, go-sqlite3 requires cgo to work. This is a stub"
-        # (F-265). NamedCoin itself was already pure-Go; the cgo driver came
-        # from melusina-grain-restore, fixed at v0.1.2 and consumed here.
-        source_commit: 11a85b297b594aea3e93f2216d374e1a461d8365
+        # v0.1.40/appVersion-42 is the V1.18 birth-bound identity intake.
+        # Its positive authority fixture is rooted in the current protocol and
+        # preserves explicit historical-root refusal controls.
+        source_commit: 053e4be65e8f4926fa439e009fa0a5e6f4d2e81d
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -201,10 +198,10 @@ groups:
         # operator-supplied cohort root. Never bind this release to a
         # workstation-specific worktree path.
         source_path: ccashconfig
-        # v0.0.81/appVersion-89 is the current dev-publish tip. It includes
-        # the B06 issuer-provenance controls, passes a fresh recursive clone,
-        # and keeps the source and public CCA.SH Configurator identity aligned.
-        source_commit: 916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e
+        # v0.0.86/appVersion-94 is the paired CCA release: two-recipient
+        # lease content, controlled NamedCoin identity birth, and narrow
+        # completed-handoff recovery all come from this current source tip.
+        source_commit: f49980493a448d5f11326c9ccd4e2268bd899b38
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -227,11 +224,10 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # v0.1.76/appVersion-80 is the current dev-publish tip. It adds the
-        # receiver-bound, idempotent signed service path required for a
-        # governed CyberTeller integration. Its fresh clone, test suite,
-        # deterministic package, and shared-authority controls have passed.
-        source_commit: 0d16b36aa9285af42c531571f18cf4ec72d98ab6
+        # v0.1.78/appVersion-82 is the paired controlled-newborn-handoff
+        # producer consumed by CCA v94. Its app-local ordinal baseline makes
+        # the release contract self-contained and independently reproducible.
+        source_commit: 0deb7b9878285b20ccf335ce71c50e5fd68a19a3
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

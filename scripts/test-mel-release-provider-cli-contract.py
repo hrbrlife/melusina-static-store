@@ -2066,7 +2066,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
-    assert lobby["source_commit"] == "0eaa57bed251af7427e850c3688503861b807dfe", lobby
+    assert lobby["source_commit"] == "89c9871907a06a9ef2682dc744c005eebb961e7c", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
@@ -2247,7 +2247,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "0d16b36aa9285af42c531571f18cf4ec72d98ab6", "DueProcess", "dueprocess"),
+            ("dueprocess", "0deb7b9878285b20ccf335ce71c50e5fd68a19a3", "DueProcess", "dueprocess"),
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
             ("fineract-setup/fineract-sidecar", "f9dd15ab5646b761d8ec46809c091fe5f171f749", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
@@ -2278,7 +2278,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "0d16b36aa9285af42c531571f18cf4ec72d98ab6", dueprocess
+    assert dueprocess["source_commit"] == "0deb7b9878285b20ccf335ce71c50e5fd68a19a3", dueprocess
     assert dueprocess["source_baseline_branch"] == "main", dueprocess
     assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
     assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
@@ -2318,14 +2318,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby
-    assert lobby["source_commit"] == "0eaa57bed251af7427e850c3688503861b807dfe", lobby
+    assert lobby["source_commit"] == "89c9871907a06a9ef2682dc744c005eebb961e7c", lobby
     assert lobby["reconciliation_state"] == "source-pinned", lobby
     assert lobby["release_state"] == "ready", lobby
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     ccashconfig = entries["6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"]
     assert ccashconfig["source_path"] == "ccashconfig", ccashconfig
     assert ccashconfig["source_repository"] == "https://github.com/hrbrlife/melusina_ccashconfig_app", ccashconfig
-    assert ccashconfig["source_commit"] == "916fb3848cab0995e88c0ebb6a9e4f3d3fcda84e", ccashconfig
+    assert ccashconfig["source_commit"] == "f49980493a448d5f11326c9ccd4e2268bd899b38", ccashconfig
     assert ccashconfig["source_baseline_branch"] == "main", ccashconfig
     assert ccashconfig["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ccashconfig
     assert ccashconfig["reconciliation_state"] == "source-pinned", ccashconfig

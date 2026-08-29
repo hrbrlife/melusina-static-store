@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -443,6 +444,65 @@ func TestHostApplyProofAndReceiptFailClosedOnMemoOrLiveRevocation(t *testing.T) 
 	public.ServeHTTP(response, revoked)
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("revoked receipt must disappear = %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestHostApplyPlanReservesOneExactControllerUpgradeShape(t *testing.T) {
+	f := newHostApplyPlanFixture(t)
+	facts, err := fetchHostApplyCurrentFacts(context.Background(), f.svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := hostApplyPlanFromFacts("00112233445566778899aabb", facts, f.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	historicalDigest := base.Digest()
+	// New fields must not alter the digest of the historical sidecar plan, and
+	// validation must reject any attempt to smuggle them into that action.
+	base.CandidateArtifactName = "melusina-update-controller-1.0.56-linux-amd64"
+	if base.Digest() != historicalDigest {
+		t.Fatal("empty-action historical plan digest changed when successor fields were populated")
+	}
+	if err := base.Validate(f.now); err == nil {
+		t.Fatal("historical sidecar plan accepted controller-only fields")
+	}
+
+	plan, err := hostApplyPlanFromFacts("00112233445566778899aabb", facts, f.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Action = controllerUpgradeAction
+	plan.ComponentID = controllerUpgradeComponentID
+	plan.CandidateArtifactName = "melusina-update-controller-1.0.56-linux-amd64"
+	plan.CandidateSizeBytes = 4096
+	plan.ComponentSHA256 = strings.Repeat("a", 64)
+	plan.InstallerReleaseSHA256 = plan.ComponentSHA256
+	plan.InstallerReleasePDA = randPubkeyB58(t)
+	if err := plan.Validate(f.now); err != nil {
+		t.Fatalf("exact controller upgrade shape refused: %v", err)
+	}
+	if !strings.HasPrefix(plan.Memo(), controllerUpgradePlanMemoPrefix) {
+		t.Fatalf("controller upgrade memo=%q", plan.Memo())
+	}
+	if plan.Digest() == historicalDigest {
+		t.Fatal("controller upgrade plan reused the historical sidecar digest")
+	}
+
+	for name, mutate := range map[string]func(*hostApplyPlan){
+		"unknown action":       func(p *hostApplyPlan) { p.Action = "run-any-command" },
+		"wrong component":      func(p *hostApplyPlan) { p.ComponentID = hostApplyFineractComponentID },
+		"unsafe artifact":      func(p *hostApplyPlan) { p.CandidateArtifactName = "../controller" },
+		"zero candidate size":  func(p *hostApplyPlan) { p.CandidateSizeBytes = 0 },
+		"different chain hash": func(p *hostApplyPlan) { p.InstallerReleaseSHA256 = strings.Repeat("b", 64) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := plan
+			mutate(&bad)
+			if err := bad.Validate(f.now); err == nil {
+				t.Fatalf("invalid controller upgrade plan %q was accepted", name)
+			}
+		})
 	}
 }
 

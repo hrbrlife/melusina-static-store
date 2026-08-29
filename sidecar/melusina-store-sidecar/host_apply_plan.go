@@ -26,6 +26,15 @@ const (
 	hostApplySquadsProofSchema = "bazaar-control-host-apply-squads-proof-v1"
 	hostApplyPlanMemoPrefix    = "MELUSINA_HOST_APPLY_PLAN_V1:"
 
+	// controllerUpgradeAction is deliberately an additional, exact action on the
+	// existing immutable-plan substrate. It is not a general host operation: the
+	// component, tenant scope, memo prefix, artifact reference, and fixed flag
+	// surface are all checked below before a plan can be persisted.
+	controllerUpgradeAction                 = "upgrade-fineract-controller-v1"
+	controllerUpgradeComponentID            = "fineract-controller"
+	controllerUpgradePlanMemoPrefix         = "MELUSINA_FINERACT_CONTROLLER_UPGRADE_PLAN_V1:"
+	maxControllerUpgradeArtifactBytes int64 = 256 << 20
+
 	maxHostApplyPlanTTL = 30 * time.Minute
 	hostApplyPlanSkew   = 2 * time.Minute
 )
@@ -52,6 +61,11 @@ type hostApplyPlan struct {
 	StoreOperatorAuthorization string `json:"storeOperatorAuthorization"`
 	StoreOperatorPubkey        string `json:"storeOperatorPubkey"`
 
+	// Action is empty for the original Fineract sidecar apply plan. Keeping that
+	// historical representation preserves verification of any retained v1 plan.
+	// A non-empty action is admitted only for the one controller-upgrade operation
+	// below; callers never choose it.
+	Action               string `json:"action,omitempty"`
 	TargetControllerID   string `json:"targetControllerId"`
 	TargetLicenseNftMint string `json:"targetLicenseNftMint"`
 	ComponentID          string `json:"componentId"`
@@ -64,6 +78,15 @@ type hostApplyPlan struct {
 	ComponentSHA256        string `json:"componentSha256"`
 	ComponentVersion       string `json:"componentVersion"`
 	ExpectedPreviousSHA256 string `json:"expectedPreviousSha256"`
+
+	// These fields are populated only for controllerUpgradeAction. The component
+	// digest already commits them, but exposing them independently makes the
+	// browser review and receiver receipt bind one exact fetchable object rather
+	// than a digest whose artifact identity would otherwise be implicit.
+	CandidateArtifactName  string `json:"candidateArtifactName,omitempty"`
+	CandidateSizeBytes     int64  `json:"candidateSizeBytes,omitempty"`
+	InstallerReleasePDA    string `json:"installerReleasePda,omitempty"`
+	InstallerReleaseSHA256 string `json:"installerReleaseSha256,omitempty"`
 
 	SquadsProgramID             string                  `json:"squadsProgramId"`
 	SquadsMultisig              string                  `json:"squadsMultisig"`
@@ -106,13 +129,27 @@ func (p hostApplyPlan) Digest() string {
 		p.SquadsStableConfigSHA256, fmt.Sprint(p.SquadsTransactionIndexFloor),
 		p.CreatedAt.UTC().Format(time.RFC3339Nano), p.ExpiresAt.UTC().Format(time.RFC3339Nano),
 	}
+	// Do not append empty controller fields: historical sidecar-apply plans were
+	// signed before this narrowly scoped successor existed, and their immutable
+	// digest must remain stable when they are re-read.
+	if p.Action != "" {
+		parts = append(parts,
+			p.Action, p.CandidateArtifactName, fmt.Sprint(p.CandidateSizeBytes),
+			p.InstallerReleasePDA, p.InstallerReleaseSHA256,
+		)
+	}
 	for _, member := range p.SquadsMembers {
 		parts = append(parts, member.Pubkey, fmt.Sprint(member.Permissions))
 	}
 	return hostApplyDigest(parts)
 }
 
-func (p hostApplyPlan) Memo() string { return hostApplyPlanMemoPrefix + p.Digest() }
+func (p hostApplyPlan) Memo() string {
+	if p.Action == controllerUpgradeAction {
+		return controllerUpgradePlanMemoPrefix + p.Digest()
+	}
+	return hostApplyPlanMemoPrefix + p.Digest()
+}
 
 func (p hostApplySquadsProof) Digest() string {
 	parts := []string{
@@ -129,6 +166,18 @@ func isCanonicalBase58(s string, wantLen int) bool {
 	return err == nil && len(raw) == wantLen && primitives.EncodeBase58(raw) == s
 }
 
+func safeControllerUpgradeArtifactName(s string) bool {
+	if s == "" || len(s) > 255 || s[0] == '.' || strings.ContainsAny(s, "/\\") || strings.Contains(s, "..") {
+		return false
+	}
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
 func (p hostApplyPlan) Validate(now time.Time) error {
 	if p.Schema != hostApplyPlanSchema || !isLowerHex(p.DossierID, 24) {
 		return errors.New("host apply plan has an unknown schema or invalid dossier")
@@ -143,9 +192,25 @@ func (p hostApplyPlan) Validate(now time.Time) error {
 		}
 	}
 	if !safeHostApplyToken(p.StoreID) || !safeHostApplyToken(p.TargetControllerID) ||
-		!safeHostApplyToken(p.ComponentID) || p.TargetControllerID != hostApplyFineractControllerID ||
-		p.ComponentID != hostApplyFineractComponentID || p.SidecarID != hostApplyFineractSidecarID {
-		return errors.New("host apply plan is not scoped to the governed Fineract controller/component")
+		!safeHostApplyToken(p.ComponentID) || p.TargetControllerID != hostApplyFineractControllerID {
+		return errors.New("host apply plan is not scoped to the governed Fineract controller")
+	}
+	switch p.Action {
+	case "":
+		if p.ComponentID != hostApplyFineractComponentID || p.SidecarID != hostApplyFineractSidecarID ||
+			p.CandidateArtifactName != "" || p.CandidateSizeBytes != 0 || p.InstallerReleasePDA != "" || p.InstallerReleaseSHA256 != "" {
+			return errors.New("host apply plan is not scoped to the governed Fineract sidecar component")
+		}
+	case controllerUpgradeAction:
+		if p.ComponentID != controllerUpgradeComponentID || p.SidecarID != hostApplyFineractSidecarID ||
+			!safeControllerUpgradeArtifactName(p.CandidateArtifactName) ||
+			p.CandidateSizeBytes <= 0 || p.CandidateSizeBytes > maxControllerUpgradeArtifactBytes ||
+			!isCanonicalBase58(p.InstallerReleasePDA, 32) || !isLowerHex(p.InstallerReleaseSHA256, 64) ||
+			p.ComponentSHA256 != p.InstallerReleaseSHA256 {
+			return errors.New("controller upgrade plan has invalid immutable candidate bindings")
+		}
+	default:
+		return errors.New("host apply plan has an unknown governed action")
 	}
 	if p.PolicyEpoch == 0 || p.GenerationID == 0 {
 		return errors.New("host apply plan has an invalid policy epoch or generation id")

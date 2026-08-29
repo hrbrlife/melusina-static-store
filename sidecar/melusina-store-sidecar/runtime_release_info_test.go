@@ -92,7 +92,7 @@ func TestStoreGenerationBundleCarriesConstrainedListingSignerUnit(t *testing.T) 
 func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	valid := map[string]string{
 		"RRS_RUNTIME_SCHEMA":  componentrelease.RuntimeReleaseInfoSchema,
-		"RRS_COMPONENT_ID":    "rrs-store",
+		"RRS_COMPONENT_ID":    storeRuntimeComponentID,
 		"RRS_GENERATION_ID":   "41",
 		"RRS_SIDECAR_VERSION": "gen-41-aabbccdd",
 		"RRS_ARTIFACT_SHA256": strings.Repeat("a", 64),
@@ -102,14 +102,15 @@ func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid marker refused: %v", err)
 	}
-	if info.GenerationID != 41 || info.PID != 1234 || info.ComponentID != "rrs-store" {
+	if info.GenerationID != 41 || info.PID != 1234 || info.ComponentID != storeRuntimeComponentID {
 		t.Fatalf("valid marker decoded incorrectly: %+v", info)
 	}
 	for name, mutate := range map[string]func(map[string]string){
-		"missing schema":   func(m map[string]string) { m["RRS_RUNTIME_SCHEMA"] = "" },
-		"zero generation":  func(m map[string]string) { m["RRS_GENERATION_ID"] = "0" },
-		"unsafe component": func(m map[string]string) { m["RRS_COMPONENT_ID"] = "rrs-store\nBAD=x" },
-		"bad hash":         func(m map[string]string) { m["RRS_ARTIFACT_SHA256"] = strings.Repeat("z", 64) },
+		"missing schema":    func(m map[string]string) { m["RRS_RUNTIME_SCHEMA"] = "" },
+		"zero generation":   func(m map[string]string) { m["RRS_GENERATION_ID"] = "0" },
+		"foreign component": func(m map[string]string) { m["RRS_COMPONENT_ID"] = "fineract-sidecar" },
+		"unsafe component":  func(m map[string]string) { m["RRS_COMPONENT_ID"] = "melusina-store-sidecar\nBAD=x" },
+		"bad hash":          func(m map[string]string) { m["RRS_ARTIFACT_SHA256"] = strings.Repeat("z", 64) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := make(map[string]string, len(valid))
@@ -137,7 +138,7 @@ func TestRuntimeReleaseInfoHTTPNeverFabricatesIdentity(t *testing.T) {
 	}
 
 	t.Setenv("RRS_RUNTIME_SCHEMA", componentrelease.RuntimeReleaseInfoSchema)
-	t.Setenv("RRS_COMPONENT_ID", "rrs-store")
+	t.Setenv("RRS_COMPONENT_ID", storeRuntimeComponentID)
 	t.Setenv("RRS_GENERATION_ID", "42")
 	t.Setenv("RRS_SIDECAR_VERSION", "gen-42-bbbbbbbb")
 	t.Setenv("RRS_ARTIFACT_SHA256", strings.Repeat("b", 64))

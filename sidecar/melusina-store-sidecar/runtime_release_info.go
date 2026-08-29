@@ -14,6 +14,8 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
 
+const storeRuntimeComponentID = "melusina-store-sidecar"
+
 // runtimeReleaseInfo is the exact six-field runtime contract consumed by the
 // external controller.  It is deliberately sourced from systemd's local
 // EnvironmentFile, not reconstructed from an unsigned config, the catalog, or
@@ -64,8 +66,8 @@ func currentRuntimeReleaseInfo(getenv func(string) string, pid int) (runtimeRele
 	if info.Schema != componentrelease.RuntimeReleaseInfoSchema {
 		return runtimeReleaseInfo{}, fmt.Errorf("schema %q is not %q", info.Schema, componentrelease.RuntimeReleaseInfoSchema)
 	}
-	if !safeRuntimeToken(info.ComponentID) {
-		return runtimeReleaseInfo{}, errors.New("component id is missing or unsafe")
+	if info.ComponentID != storeRuntimeComponentID {
+		return runtimeReleaseInfo{}, fmt.Errorf("component id %q is not %q", info.ComponentID, storeRuntimeComponentID)
 	}
 	if !safeRuntimeToken(info.Version) {
 		return runtimeReleaseInfo{}, errors.New("version is missing or unsafe")

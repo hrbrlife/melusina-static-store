@@ -48,7 +48,9 @@ type Receipt struct {
 	TenantLicenseNftMint   string   `json:"tenantLicenseNftMint"`
 	TargetControllerID     string   `json:"targetControllerId"`
 	CandidateVersion       string   `json:"candidateVersion"`
+	CandidateArtifactName  string   `json:"candidateArtifactName"`
 	CandidateSHA256        string   `json:"candidateSha256"`
+	CandidateSizeBytes     int64    `json:"candidateSizeBytes"`
 	ExpectedPreviousSHA256 string   `json:"expectedPreviousSha256"`
 	InstallerReleasePDA    string   `json:"installerReleasePda"`
 	InstallerReleaseSHA256 string   `json:"installerReleaseSha256"`
@@ -72,7 +74,9 @@ func (r Receipt) SigningText() string {
 		r.TenantLicenseNftMint,
 		r.TargetControllerID,
 		r.CandidateVersion,
+		r.CandidateArtifactName,
 		r.CandidateSHA256,
+		fmt.Sprint(r.CandidateSizeBytes),
 		r.ExpectedPreviousSHA256,
 		r.InstallerReleasePDA,
 		r.InstallerReleaseSHA256,
@@ -143,7 +147,9 @@ func (r Receipt) Verify(cfg VerificationConfig, expectedChallenge string) error 
 	if r.TargetControllerID != TargetControllerID {
 		return errors.New("controller upgrade receipt is not scoped to the Fineract controller")
 	}
-	if !SafeVersion(r.CandidateVersion) || !canonicalBase58(r.InstallerReleasePDA, ed25519.PublicKeySize) {
+	if !SafeVersion(r.CandidateVersion) || !SafeArtifactName(r.CandidateArtifactName) ||
+		!canonicalBase58(r.InstallerReleasePDA, ed25519.PublicKeySize) ||
+		r.CandidateSizeBytes <= 0 || r.CandidateSizeBytes > 256<<20 {
 		return errors.New("controller upgrade receipt has an unsafe candidate reference")
 	}
 	if !exactRequiredFlags(r.RequiredFlags) {
@@ -263,6 +269,20 @@ func LowerHex(s string, length int) bool {
 // command fragment.
 func SafeVersion(s string) bool {
 	if len(s) == 0 || len(s) > 128 || s[0] == '.' || strings.Contains(s, "..") {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+// SafeArtifactName permits one opaque artifact filename under the receiver's
+// pinned Store origin. It is never a URL or a local filesystem path.
+func SafeArtifactName(s string) bool {
+	if len(s) == 0 || len(s) > 255 || s[0] == '.' || strings.Contains(s, "..") {
 		return false
 	}
 	for _, r := range s {

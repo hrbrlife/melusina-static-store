@@ -25,7 +25,8 @@ func testReceipt(t *testing.T, now time.Time) (Receipt, VerificationConfig, ed25
 	r := Receipt{
 		Schema: ReceiptSchema, ReceiptID: testHex, TenantLicenseNftMint: testTenant,
 		TargetControllerID: TargetControllerID, CandidateVersion: "1.0.56",
-		CandidateSHA256: testHex, ExpectedPreviousSHA256: testHex2,
+		CandidateArtifactName: "melusina-update-controller-1.0.56-linux-amd64",
+		CandidateSHA256:       testHex, CandidateSizeBytes: 4096, ExpectedPreviousSHA256: testHex2,
 		InstallerReleasePDA: testPDA, InstallerReleaseSHA256: testHex,
 		PlanDigest: testHex2, SquadsProofDigest: testHex,
 		RequiredFlags: append([]string(nil), RequiredControllerFlags...), Challenge: testHex2,
@@ -44,10 +45,15 @@ func TestReceiptSignVerifyAndRejectsScopeWidening(t *testing.T) {
 		t.Fatalf("Verify() error = %v", err)
 	}
 	for name, mutate := range map[string]func(*Receipt){
-		"wrong tenant": func(got *Receipt) { got.TenantLicenseNftMint = "11111111111111111111111111111112" },
-		"flag downgrade": func(got *Receipt) { got.RequiredFlags = got.RequiredFlags[:3] },
-		"wrong controller": func(got *Receipt) { got.TargetControllerID = "fineract-sidecar" },
-		"expired": func(got *Receipt) { got.IssuedAtUnix = now.Add(-20 * time.Minute).Unix(); got.ExpiresAtUnix = now.Add(-time.Minute).Unix() },
+		"wrong tenant":         func(got *Receipt) { got.TenantLicenseNftMint = "11111111111111111111111111111112" },
+		"flag downgrade":       func(got *Receipt) { got.RequiredFlags = got.RequiredFlags[:3] },
+		"wrong controller":     func(got *Receipt) { got.TargetControllerID = "fineract-sidecar" },
+		"unsafe artifact name": func(got *Receipt) { got.CandidateArtifactName = "../controller" },
+		"zero artifact size":   func(got *Receipt) { got.CandidateSizeBytes = 0 },
+		"expired": func(got *Receipt) {
+			got.IssuedAtUnix = now.Add(-20 * time.Minute).Unix()
+			got.ExpiresAtUnix = now.Add(-time.Minute).Unix()
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got := r

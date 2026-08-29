@@ -529,6 +529,13 @@ func hostApplyPlanFromFacts(dossierID string, facts hostApplyCurrentFacts, now t
 }
 
 func verifyHostApplyPlanAgainstFacts(plan hostApplyPlan, facts hostApplyCurrentFacts, now time.Time) error {
+	// This verifier owns only the historical Fineract sidecar action.  A
+	// controller-replacement plan has a different component and receipt class,
+	// so it must pass through the dedicated verifier below rather than relying
+	// on an accidental field overlap with this older route.
+	if plan.Action != "" {
+		return errors.New("host apply plan is not the governed Fineract sidecar action")
+	}
 	if err := plan.Validate(now); err != nil {
 		return err
 	}

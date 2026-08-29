@@ -2,6 +2,7 @@ package hostupdate
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,43 @@ import (
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+type recordingControllerStateStore struct {
+	state  ControllerState
+	stored []ControllerState
+}
+
+func (s *recordingControllerStateStore) Load(context.Context) (ControllerState, error) {
+	return s.state, nil
+}
+
+func (s *recordingControllerStateStore) Store(_ context.Context, state ControllerState) error {
+	s.state = state
+	s.stored = append(s.stored, state)
+	return nil
+}
+
+func TestPollOncePersistsServicedStateBeforeDiscoveryFailure(t *testing.T) {
+	store := &recordingControllerStateStore{state: ControllerState{
+		LastCommitted: &GenerationCursor{GenerationID: 200, RawSHA256: strings.Repeat("a", 64)},
+	}}
+	const now = int64(1_800_000_000)
+	deps := PollDeps{
+		State:      store,
+		Now:        func() int64 { return now },
+		LoadPolicy: func(context.Context) (UpdatePolicy, error) { return DefaultUpdatePolicy(), nil },
+		FetchVerified: func(context.Context) (VerifiedGeneration, error) {
+			return VerifiedGeneration{}, errors.New("transient discovery failure")
+		},
+	}
+	err := PollOnce(context.Background(), PollTriggerTimer, deps)
+	if err == nil || !strings.Contains(err.Error(), "transient discovery failure") {
+		t.Fatalf("PollOnce error = %v", err)
+	}
+	if len(store.stored) != 1 || store.stored[0].LastTimerTickUnix != now || store.stored[0].LastCommitted.GenerationID != 200 {
+		t.Fatalf("serviced state was not persisted before discovery: %#v", store.stored)
+	}
+}
 
 func TestServiceActiveGenerationsUsesPollClockForTerminalReceipt(t *testing.T) {
 	root := secureWALRoot(t)

@@ -198,6 +198,13 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 		return err
 	}
 	state.LastTimerTickUnix = now
+	// Persist recovery/completion before any network discovery. A terminal WAL
+	// receipt is already durable at this point; leaving its matching cursor only
+	// in memory would let a transient fetch failure strand sequence state behind
+	// the filesystem truth and could cause the same generation to be re-applied.
+	if err := deps.State.Store(ctx, state); err != nil {
+		return fmt.Errorf("persist serviced controller state: %w", err)
+	}
 
 	// Discovery cadence: a timer tick FETCHES only when the persisted 5-minute
 	// discovery window has elapsed; a bell/manual trigger bypasses the cadence.
@@ -205,7 +212,7 @@ func PollOnce(ctx context.Context, trigger PollTrigger, deps PollDeps) error {
 		state.LastDiscoveryUnix == 0 ||
 		now-state.LastDiscoveryUnix >= policy.PollIntervalSeconds
 	if trigger == PollTriggerTimer && !discoveryDue {
-		return deps.State.Store(ctx, state) // base tick only, no fetch
+		return nil // base tick only; serviced state was persisted above
 	}
 
 	vg, err := deps.FetchVerified(ctx)

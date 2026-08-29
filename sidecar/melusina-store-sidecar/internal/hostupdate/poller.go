@@ -542,9 +542,11 @@ func procExeSHA256(pid int) (string, error) {
 //     active WALs by generation and rolls the WHOLE affected generation back rather
 //     than completing one member while a sibling is mid-swap;
 //   - the steady-state deep-stable finalize seals a generation ONLY once EVERY
-//     member is StateHealthyUnstable past its DeepStableSeconds window, re-verifies
-//     the chain for ALL members before sealing ANY, and either Completes all or
-//     RollbackFromWAL-rolls-back all — never a mixed commit.
+//     member is StateHealthyUnstable past its DeepStableSeconds window and still
+//     inside its signed promotion deadline, re-verifies the chain for ALL members
+//     before sealing ANY, and either Completes all or RollbackFromWAL-rolls-back
+//     all — never a mixed commit. A missed deadline is an atomic rollback, never a
+//     backdated success or a permanently stranded healthy-unstable WAL.
 //
 // LastCommitted advances only for a generation sealed terminal-applied; any rollback
 // leaves the durable committed cursor untouched. A nil WAL (the unit-test poll with
@@ -615,6 +617,16 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 	// deep-stable window. Finalize each generation atomically, lowest id first.
 	for _, gid := range sortedGenerationIDs(entries) {
 		members := membersOfGeneration(entries, gid)
+		if generationDeadlineExpired(members, now) {
+			outcomes := ad.rollbackWholeGeneration(ctx, members, installFor, "generation transaction: promotion deadline elapsed before terminal success")
+			advanceCommittedForCompletedGenerations(state, members, outcomes)
+			for _, outcome := range outcomes {
+				if outcome.Err != nil {
+					return fmt.Errorf("rollback expired generation %d component %s: %w", gid, outcome.ComponentID, outcome.Err)
+				}
+			}
+			continue
+		}
 		if !generationDeepStable(members, now) {
 			continue // a member is still inside its deep-stable window — leave the generation
 		}
@@ -625,6 +637,19 @@ func serviceActiveGenerations(ctx context.Context, deps PollDeps, state *Control
 		}
 	}
 	return nil
+}
+
+// generationDeadlineExpired reports whether any member can no longer produce a
+// truthful applied receipt. Generation application is atomic, so one expired
+// member expires the whole generation. Equality remains admissible because the
+// receipt validator accepts terminalAtUnix == deadlineUnix.
+func generationDeadlineExpired(members []WALEntry, now int64) bool {
+	for _, entry := range members {
+		if entry.DeadlineUnix > 0 && now > entry.DeadlineUnix {
+			return true
+		}
+	}
+	return false
 }
 
 // componentHealthy is the later-tick/recovery equivalent of RuntimeGate. A

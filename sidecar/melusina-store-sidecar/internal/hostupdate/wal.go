@@ -204,10 +204,13 @@ func (e WALEntry) validate() error {
 
 // validateTerminalReceiptBindings makes a terminal WAL receipt a proof artifact
 // rather than a state-transition log. The raw signed-generation digest, bounded
-// deadline, and actual trigger are required for every terminal result; a success
-// additionally needs the runtime tuple that was bound to the running process at
-// apply time. Rollback receipts intentionally may lack runtime evidence because
-// an unhealthy or interrupted new process has no truthful target runtime tuple.
+// deadline, and actual trigger are required for every terminal result. A success
+// must occur within the promotion deadline and additionally needs the runtime
+// tuple that was bound to the running process at apply time. A rollback may be
+// recorded after that deadline: expiry is itself a reason to restore the prior
+// artifact, and refusing to record an honest late rollback would strand the WAL
+// forever. Rollback receipts intentionally may lack runtime evidence because an
+// unhealthy or interrupted new process has no truthful target runtime tuple.
 func (e WALEntry) validateTerminalReceiptBindings() error {
 	if !isLowerHex64(e.RawGenerationSHA256) {
 		return errors.New("terminal receipt rawGenerationSha256 must be 64 lowercase hex chars")
@@ -215,8 +218,11 @@ func (e WALEntry) validateTerminalReceiptBindings() error {
 	if e.OpenedAtUnix <= 0 || e.DeadlineUnix <= e.OpenedAtUnix {
 		return errors.New("terminal receipt deadlineUnix must be after openedAtUnix")
 	}
-	if e.TerminalAtUnix <= 0 || e.TerminalAtUnix > e.DeadlineUnix {
-		return errors.New("terminal receipt timestamp exceeds deadlineUnix")
+	if e.TerminalAtUnix <= 0 {
+		return errors.New("terminal receipt timestamp must be positive")
+	}
+	if e.State == StateApplied && e.TerminalAtUnix > e.DeadlineUnix {
+		return errors.New("applied receipt timestamp exceeds deadlineUnix")
 	}
 	switch PollTrigger(e.Trigger) {
 	case PollTriggerTimer, PollTriggerBell, PollTriggerManual:
@@ -282,6 +288,13 @@ func RecoveryDecision(e WALEntry, observedRunningHash string, healthy bool, nowU
 		// always restore the prior artifact.
 		return RecoverRollback
 	case StateRestarted, StateHealthyUnstable:
+		// Deadline is a terminal-success bound, not a license to leave the
+		// newly-installed bytes running forever. Once it has elapsed, recovery
+		// must restore the exact WAL-retained prior artifact and record the real
+		// (possibly late) rollback time; it may never backdate an applied receipt.
+		if e.DeadlineUnix > 0 && nowUnix > e.DeadlineUnix {
+			return RecoverRollback
+		}
 		if atTarget && healthy {
 			applied := e.AppliedAtUnix
 			if applied == 0 {

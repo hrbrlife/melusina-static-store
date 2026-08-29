@@ -53,7 +53,7 @@ func TestAppRetentionStageWindowAndStrictSevenDayBoundary(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, old.StageID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("strictly old unreferenced stage remains: %v", err)
 	}
-	for _, reserved := range []string{publishNonceLedgerDirName, controlReceiptDirName, hostApplyIssuanceDirName, hostApplyPlanDirName, hostApplyProofDirName, hostApplyPlanIssuanceDir, "rollouts"} {
+	for _, reserved := range []string{publishNonceLedgerDirName, controlReceiptDirName, hostApplyIssuanceDirName, hostApplyPlanDirName, hostApplyProofDirName, hostApplyPlanIssuanceDir, controllerUpgradeReceiptDir, "rollouts"} {
 		if _, err := os.Stat(filepath.Join(cfg.PrivateStageDir, reserved)); err != nil {
 			t.Fatalf("reserved namespace %s removed: %v", reserved, err)
 		}

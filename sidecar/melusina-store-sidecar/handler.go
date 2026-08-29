@@ -389,6 +389,10 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// combined development router. The actual private mTLS listener owns this
 	// prefix below; the public listener must not disclose that it exists.
 	mux.HandleFunc(hostApplyIssuePathPrefix, privateControlRouteOnly)
+	// Controller replacement is a distinct governed action. Its private
+	// plan/proof route must never be reachable through the browser/catalog
+	// listener or the historical sidecar-apply surface.
+	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
 	if exposeControl {
 		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	} else {
@@ -419,6 +423,9 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// verifies the Store signature. Serve them through the issuance ledger,
 	// rather than letting arbitrary stale files under DistDir become receipts.
 	mux.HandleFunc(hostApplyReceiptPathPrefix, svc.handleHostApplyPlanReceipt)
+	// Controller receipts are generated only after a receiver-local freshness
+	// challenge and a fresh revalidation of the retained plan/proof.
+	mux.HandleFunc(controllerUpgradeReceiptPathPrefix, svc.handleControllerUpgradeReceipt)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -465,6 +472,7 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyPlanRoute)
+	mux.HandleFunc(controllerUpgradeIssuePathPrefix, svc.handleControllerUpgradeRoute)
 	return mux
 }
 

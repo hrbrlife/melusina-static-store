@@ -19,17 +19,20 @@ import (
 )
 
 const (
-	hostApplyPlanDirName        = "host-apply-plans-v1"
-	hostApplyProofDirName       = "host-apply-proofs-v1"
-	hostApplyPlanIssuanceDir    = "host-apply-plan-issuances-v1"
-	hostApplyPlanRecordSchema   = "bazaar-control-host-apply-plan-record-v1"
-	hostApplyProofRecordSchema  = "bazaar-control-host-apply-proof-record-v1"
-	hostApplyPlanIssuanceSchema = "bazaar-control-host-apply-plan-issuance-v1"
+	hostApplyPlanDirName                    = "host-apply-plans-v1"
+	hostApplyProofDirName                   = "host-apply-proofs-v1"
+	hostApplyPlanIssuanceDir                = "host-apply-plan-issuances-v1"
+	controllerUpgradeReceiptDir             = "controller-upgrade-receipts-v1"
+	hostApplyPlanRecordSchema               = "bazaar-control-host-apply-plan-record-v1"
+	hostApplyProofRecordSchema              = "bazaar-control-host-apply-proof-record-v1"
+	hostApplyPlanIssuanceSchema             = "bazaar-control-host-apply-plan-issuance-v1"
+	controllerUpgradeReceiptReferenceSchema = "bazaar-control-controller-upgrade-receipt-reference-v1"
 
-	maxHostApplyPlanRecordBytes   = 128 << 10
-	maxHostApplyProofRecordBytes  = 128 << 10
-	maxHostApplyPlanIssuanceBytes = 192 << 10
-	maxHostApplyPlanRecords       = 4096
+	maxHostApplyPlanRecordBytes               = 128 << 10
+	maxHostApplyProofRecordBytes              = 128 << 10
+	maxHostApplyPlanIssuanceBytes             = 192 << 10
+	maxControllerUpgradeReceiptReferenceBytes = 32 << 10
+	maxHostApplyPlanRecords                   = 4096
 )
 
 type hostApplyPlanRecord struct {
@@ -58,6 +61,22 @@ type hostApplyPlanIssuance struct {
 	ReceiptSHA256   string    `json:"receiptSha256"`
 	ReceiptB64      string    `json:"receiptB64"`
 	CreatedAt       time.Time `json:"createdAt"`
+}
+
+// controllerUpgradeReceiptReference is intentionally not a stored receipt.
+// A controller receiver creates a CSPRNG challenge only at the moment it is
+// ready to mutate. Store then creates a short-lived signed receipt bound to
+// that challenge after it has re-proved the immutable plan and the finalized
+// Squads execution. This durable reference lets the public, origin-pinned
+// receiver route find that one approved transaction without turning a stored
+// response into a replayable bearer document.
+type controllerUpgradeReceiptReference struct {
+	Schema      string    `json:"schema"`
+	ReceiptID   string    `json:"receiptId"`
+	DossierID   string    `json:"dossierId"`
+	PlanDigest  string    `json:"planDigest"`
+	ProofDigest string    `json:"proofDigest"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 func (r hostApplyPlanRecord) Validate() error {
@@ -116,11 +135,24 @@ func (r hostApplyPlanIssuance) Validate(plan hostApplyPlan, proof hostApplySquad
 	return nil
 }
 
+func (r controllerUpgradeReceiptReference) Validate(plan hostApplyPlan, proof hostApplySquadsProof) error {
+	if r.Schema != controllerUpgradeReceiptReferenceSchema || !isLowerHex(r.ReceiptID, 64) ||
+		!isLowerHex(r.DossierID, 24) || !isLowerHex(r.PlanDigest, 64) || !isLowerHex(r.ProofDigest, 64) ||
+		r.DossierID != plan.DossierID || r.PlanDigest != plan.Digest() || r.ProofDigest != proof.Digest() || r.CreatedAt.IsZero() {
+		return errors.New("controller upgrade receipt reference has invalid immutable bindings")
+	}
+	if r.ReceiptID != controllerUpgradeReceiptReferenceID(plan, proof) {
+		return errors.New("controller upgrade receipt reference has a non-canonical identity")
+	}
+	return nil
+}
+
 type hostApplyPlanStore struct {
-	plansRoot     string
-	proofsRoot    string
-	issuancesRoot string
-	mu            sync.Mutex
+	plansRoot              string
+	proofsRoot             string
+	issuancesRoot          string
+	controllerReceiptsRoot string
+	mu                     sync.Mutex
 }
 
 func openOrInitializeHostApplyPlanStore(privateStageRoot string) (*hostApplyPlanStore, error) {
@@ -159,7 +191,11 @@ func openOrInitializeHostApplyPlanStore(privateStageRoot string) (*hostApplyPlan
 	if err != nil {
 		return nil, fmt.Errorf("host apply plan issuance directory: %w", err)
 	}
-	store := &hostApplyPlanStore{plansRoot: plans, proofsRoot: proofs, issuancesRoot: issuances}
+	controllerReceipts, err := openDir(controllerUpgradeReceiptDir)
+	if err != nil {
+		return nil, fmt.Errorf("controller upgrade receipt directory: %w", err)
+	}
+	store := &hostApplyPlanStore{plansRoot: plans, proofsRoot: proofs, issuancesRoot: issuances, controllerReceiptsRoot: controllerReceipts}
 	if err := store.validateLayout(); err != nil {
 		return nil, err
 	}
@@ -249,13 +285,32 @@ func readHostApplyPlanIssuance(path string) (hostApplyPlanIssuance, bool, error)
 	return record, true, nil
 }
 
+func readControllerUpgradeReceiptReference(path string) (controllerUpgradeReceiptReference, bool, error) {
+	var record controllerUpgradeReceiptReference
+	raw, err := readBoundedRegular(path, 0o600, maxControllerUpgradeReceiptReferenceBytes)
+	if errors.Is(err, os.ErrNotExist) {
+		return record, false, nil
+	}
+	if err != nil {
+		return record, false, err
+	}
+	if err := decodeStrictHostApplyJSON(raw, &record); err != nil {
+		return record, false, err
+	}
+	if record.Schema != controllerUpgradeReceiptReferenceSchema || !isLowerHex(record.ReceiptID, 64) ||
+		!isLowerHex(record.DossierID, 24) || !isLowerHex(record.PlanDigest, 64) || !isLowerHex(record.ProofDigest, 64) || record.CreatedAt.IsZero() {
+		return record, false, errors.New("controller upgrade receipt reference has invalid structural fields")
+	}
+	return record, true, nil
+}
+
 func (s *hostApplyPlanStore) validateLayout() error {
 	if s == nil {
 		return errors.New("host apply plan store is nil")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, root := range []string{s.plansRoot, s.proofsRoot, s.issuancesRoot} {
+	for _, root := range []string{s.plansRoot, s.proofsRoot, s.issuancesRoot, s.controllerReceiptsRoot} {
 		if err := requireSecureDirectory(root, 0o700); err != nil {
 			return err
 		}
@@ -268,6 +323,10 @@ func (s *hostApplyPlanStore) validateLayout() error {
 		{s.plansRoot, 24, func(path string) (bool, error) { _, found, err := readHostApplyPlanRecord(path); return found, err }},
 		{s.proofsRoot, 64, func(path string) (bool, error) { _, found, err := readHostApplyProofRecord(path); return found, err }},
 		{s.issuancesRoot, 24, func(path string) (bool, error) { _, found, err := readHostApplyPlanIssuance(path); return found, err }},
+		{s.controllerReceiptsRoot, 64, func(path string) (bool, error) {
+			_, found, err := readControllerUpgradeReceiptReference(path)
+			return found, err
+		}},
 	}
 	for _, check := range checks {
 		names, err := readBoundedDirectoryNames(check.root, maxHostApplyPlanRecords)
@@ -491,4 +550,63 @@ func (s *hostApplyPlanStore) findIssuanceByAuthorizationID(id string) (hostApply
 		}
 	}
 	return zero, false, nil
+}
+
+// loadControllerUpgradeReceiptReference deliberately performs only structural
+// validation. The caller must then load the referenced immutable plan and
+// proof and call reference.Validate(plan, proof) before it can issue a live
+// receipt. Keeping those reads separate avoids trusting a filename-selected
+// dossier or plan digest.
+func (s *hostApplyPlanStore) loadControllerUpgradeReceiptReference(receiptID string) (controllerUpgradeReceiptReference, bool, error) {
+	var zero controllerUpgradeReceiptReference
+	path, err := hostApplyPlanFile(s.controllerReceiptsRoot, receiptID, 64)
+	if err != nil {
+		return zero, false, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record, found, err := readControllerUpgradeReceiptReference(path)
+	return record, found, err
+}
+
+func (s *hostApplyPlanStore) createControllerUpgradeReceiptReference(candidate controllerUpgradeReceiptReference, plan hostApplyPlan, proof hostApplySquadsProof) (controllerUpgradeReceiptReference, bool, error) {
+	var zero controllerUpgradeReceiptReference
+	if err := candidate.Validate(plan, proof); err != nil {
+		return zero, false, err
+	}
+	path, err := hostApplyPlanFile(s.controllerReceiptsRoot, candidate.ReceiptID, 64)
+	if err != nil {
+		return zero, false, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if existing, found, err := readControllerUpgradeReceiptReference(path); err != nil || found {
+		if err != nil {
+			return zero, false, err
+		}
+		if err := existing.Validate(plan, proof); err != nil {
+			return zero, false, err
+		}
+		return existing, false, nil
+	}
+	if names, err := readBoundedDirectoryNames(s.controllerReceiptsRoot, maxHostApplyPlanRecords); err != nil || len(names) >= maxHostApplyPlanRecords {
+		if err != nil {
+			return zero, false, err
+		}
+		return zero, false, errors.New("controller upgrade receipt capacity is exhausted")
+	}
+	if err := writeHostApplyImmutable(path, candidate, maxControllerUpgradeReceiptReferenceBytes); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			existing, found, readErr := readControllerUpgradeReceiptReference(path)
+			if readErr != nil || !found {
+				return zero, false, fmt.Errorf("read raced controller upgrade receipt reference: %w", readErr)
+			}
+			if err := existing.Validate(plan, proof); err != nil {
+				return zero, false, err
+			}
+			return existing, false, nil
+		}
+		return zero, false, err
+	}
+	return candidate, true, nil
 }

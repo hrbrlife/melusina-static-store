@@ -2,10 +2,33 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+// sidecarAuthorityIdentity returns the immutable on-chain identity represented
+// by a sidecar generation member. ComponentID is deliberately excluded: it is
+// the install-local registry name and may be corrected without creating a
+// second sidecar identity. All chain-bound fields are included so two tenants,
+// key versions, or approval cascades can never collapse into one component.
+func sidecarAuthorityIdentity(c componentrelease.ComponentRelease) (string, bool) {
+	if c.ComponentClass != componentrelease.ClassSidecar ||
+		c.Chain.Kind != componentrelease.AuthoritySidecarIdentity {
+		return "", false
+	}
+	return strings.Join([]string{
+		c.Chain.Program,
+		c.Chain.MasterNftMint,
+		c.Chain.LicenseNftMint,
+		c.Chain.SidecarID,
+		strconv.FormatUint(uint64(c.Chain.KeyVersion), 10),
+		c.Chain.IdentityPDA,
+		c.Chain.GlobalApprovalPDA,
+		c.Chain.LocalApprovalPDA,
+	}, "\x00"), true
+}
 
 // ── canonical publisher: generation compose + monotonic CAS (task B core) ─────
 //
@@ -48,6 +71,9 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 //   - mints generationId = current+1 (1 at genesis) and previousGeneration=current;
 //   - takes the id set = union(current, updates), each id appearing once, MINUS
 //     any app component the current generation still carries;
+//   - treats an exact sidecar-authority match under a corrected ComponentID as
+//     an identity-bound rename, replacing the historical alias rather than
+//     carrying two install names for one physical/on-chain sidecar;
 //   - for an updated id uses the update entry, minting a version if it is empty;
 //   - for an unchanged id carries the current entry forward verbatim;
 //   - on an UPDATE generation, preserves an explicitly supplied rollback floor
@@ -105,6 +131,47 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 		return componentrelease.DesiredGeneration{}, fmt.Errorf("a generation must publish at least one component update")
 	}
 
+	// A sidecar's on-chain identity is stronger than its install-local
+	// ComponentID. If an update presents the exact same immutable identity under
+	// a corrected component name, treat it as a rename: replace the historical
+	// name rather than carrying two aliases for one physical sidecar forever.
+	// This is intentionally unavailable to shell/data components and requires
+	// byte-for-byte equality of the full identity/cascade tuple.
+	supersededCurrent := make(map[string]string)
+	renamedFrom := make(map[string]componentrelease.ComponentRelease)
+	updateAuthorityOwner := make(map[string]string)
+	for _, updateID := range updOrder {
+		u := updByID[updateID]
+		identity, ok := sidecarAuthorityIdentity(u)
+		if !ok {
+			continue
+		}
+		if prior, exists := updateAuthorityOwner[identity]; exists && prior != updateID {
+			return componentrelease.DesiredGeneration{}, fmt.Errorf("component updates %q and %q claim the same sidecar authority identity", prior, updateID)
+		}
+		updateAuthorityOwner[identity] = updateID
+		for currentID, currentComponent := range curByID {
+			if currentID == updateID {
+				continue
+			}
+			currentIdentity, currentOK := sidecarAuthorityIdentity(currentComponent)
+			if !currentOK || currentIdentity != identity {
+				continue
+			}
+			if _, alsoUpdated := updByID[currentID]; alsoUpdated {
+				return componentrelease.DesiredGeneration{}, fmt.Errorf("component updates %q and %q both target one current sidecar authority identity", currentID, updateID)
+			}
+			if priorTarget, exists := supersededCurrent[currentID]; exists && priorTarget != updateID {
+				return componentrelease.DesiredGeneration{}, fmt.Errorf("current component %q is superseded by more than one update", currentID)
+			}
+			if prior, exists := renamedFrom[updateID]; exists && prior.ComponentID != currentID {
+				return componentrelease.DesiredGeneration{}, fmt.Errorf("component update %q ambiguously matches current aliases %q and %q", updateID, prior.ComponentID, currentID)
+			}
+			supersededCurrent[currentID] = updateID
+			renamedFrom[updateID] = currentComponent
+		}
+	}
+
 	// Deterministic union order: current components first (stable), then any
 	// brand-new ids from updates. componentrelease.Sign canonically re-sorts, so
 	// this order only affects readability, never the signature.
@@ -119,6 +186,9 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 
 	components := make([]componentrelease.ComponentRelease, 0, len(ids))
 	for _, id := range ids {
+		if _, superseded := supersededCurrent[id]; superseded {
+			continue
+		}
 		var c componentrelease.ComponentRelease
 		updated := false
 		if u, ok := updByID[id]; ok {
@@ -138,6 +208,9 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 			} else if cur, ok := curByID[id]; ok {
 				c.PreviousSHA256 = cur.SHA256
 				c.PreviousVersion = cur.Version
+			} else if prior, renamed := renamedFrom[id]; renamed {
+				c.PreviousSHA256 = prior.SHA256
+				c.PreviousVersion = prior.Version
 			} else {
 				// A brand-new component has no older artifact; its rollback floor
 				// is itself (nothing older to fall back to).

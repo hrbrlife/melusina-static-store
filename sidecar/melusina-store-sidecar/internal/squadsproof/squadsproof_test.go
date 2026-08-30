@@ -141,6 +141,33 @@ func TestSDKFixtureParsesAndBindsMemoOnlyProof(t *testing.T) {
 	}
 }
 
+func TestMultisigAcceptsOnlyCanonicalUnsetRentCollectorPadding(t *testing.T) {
+	_, programID, multisig, _, _ := fixtureAccounts(t)
+
+	canonical := multisig
+	canonical.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 32)...)
+	parsed, err := ParseMultisig(canonical, programID)
+	if err != nil {
+		t.Fatalf("parse canonical unset-rent-collector padding: %v", err)
+	}
+	if parsed.RentCollector != nil {
+		t.Fatal("canonical padded fixture unexpectedly set rent collector")
+	}
+
+	nonzero := canonical
+	nonzero.Data = append([]byte(nil), canonical.Data...)
+	nonzero.Data[len(nonzero.Data)-1] = 1
+	if _, err := ParseMultisig(nonzero, programID); err == nil || !strings.Contains(err.Error(), "nonzero unset rent collector padding") {
+		t.Fatalf("nonzero padding error = %v", err)
+	}
+
+	wrongLength := multisig
+	wrongLength.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 31)...)
+	if _, err := ParseMultisig(wrongLength, programID); err == nil || !strings.Contains(err.Error(), "trailing 31 bytes") {
+		t.Fatalf("wrong-length padding error = %v", err)
+	}
+}
+
 // The expected addresses and bumps in this test were emitted by the installed
 // @sqds/multisig v2.1.4 SDK's get*Pda helpers.  This keeps the Go helpers tied
 // to the actual JS client that creates the production Squads accounts.

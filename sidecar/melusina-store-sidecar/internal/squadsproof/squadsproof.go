@@ -291,7 +291,7 @@ func ParseMultisig(account Account, programID Pubkey) (Multisig, error) {
 			voteMembers++
 		}
 	}
-	if err := d.done("multisig"); err != nil {
+	if err := d.doneMultisig(out.RentCollector); err != nil {
 		return Multisig{}, err
 	}
 	if out.Threshold == 0 || int(out.Threshold) > voteMembers {
@@ -756,6 +756,29 @@ func (d *decoder) done(kind string) error {
 		return fmt.Errorf("squadsproof: %s: trailing %d bytes", kind, d.remaining())
 	}
 	return nil
+}
+
+// doneMultisig accepts the one allocation-only suffix emitted by Squads v4.
+// Multisig::size reserves 32 bytes for rent_collector even when its Borsh
+// Option is None. In that case Anchor serializes only the zero option tag and
+// leaves the reserved bytes as a zero suffix. No other suffix is accepted:
+// the length must be exact, the decoded option must be None, and every byte
+// must remain zero.
+func (d *decoder) doneMultisig(rentCollector *Pubkey) error {
+	const unsetRentCollectorReservedBytes = 32
+	if d.remaining() == 0 {
+		return nil
+	}
+	if rentCollector == nil && d.remaining() == unsetRentCollectorReservedBytes {
+		for _, b := range d.data[d.off:] {
+			if b != 0 {
+				return fmt.Errorf("squadsproof: multisig: nonzero unset rent collector padding")
+			}
+		}
+		d.off = len(d.data)
+		return nil
+	}
+	return d.done("multisig")
 }
 
 func requireDistinctPubkeys(keys []Pubkey, field string) error {

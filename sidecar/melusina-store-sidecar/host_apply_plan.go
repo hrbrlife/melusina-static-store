@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	hostApplyPlanSchema        = "bazaar-control-host-apply-plan-v1"
-	hostApplySquadsProofSchema = "bazaar-control-host-apply-squads-proof-v1"
-	hostApplyPlanMemoPrefix    = "MELUSINA_HOST_APPLY_PLAN_V1:"
+	hostApplyPlanSchema         = "bazaar-control-host-apply-plan-v1"
+	controllerUpgradePlanSchema = "melusina-store-controller-upgrade-plan-v1"
+	hostApplySquadsProofSchema  = "bazaar-control-host-apply-squads-proof-v1"
+	hostApplyPlanMemoPrefix     = "MELUSINA_HOST_APPLY_PLAN_V1:"
 
 	// controllerUpgradeAction is deliberately an additional, exact action on the
 	// existing immutable-plan substrate. It is not a general host operation: the
@@ -179,11 +180,11 @@ func safeControllerUpgradeArtifactName(s string) bool {
 }
 
 func (p hostApplyPlan) Validate(now time.Time) error {
-	if p.Schema != hostApplyPlanSchema || !isLowerHex(p.DossierID, 24) {
+	if !isLowerHex(p.DossierID, 24) {
 		return errors.New("host apply plan has an unknown schema or invalid dossier")
 	}
 	for label, value := range map[string]string{
-		"store id": p.StoreID, "store policy": p.StorePolicy,
+		"store id":                     p.StoreID,
 		"store operator authorization": p.StoreOperatorAuthorization,
 		"target license":               p.TargetLicenseNftMint, "component version": p.ComponentVersion,
 	} {
@@ -197,12 +198,14 @@ func (p hostApplyPlan) Validate(now time.Time) error {
 	}
 	switch p.Action {
 	case "":
-		if p.ComponentID != hostApplyFineractComponentID || p.SidecarID != hostApplyFineractSidecarID ||
+		if p.Schema != hostApplyPlanSchema || !isCanonicalBase58(p.StorePolicy, 32) || p.PolicyEpoch == 0 ||
+			p.ComponentID != hostApplyFineractComponentID || p.SidecarID != hostApplyFineractSidecarID ||
 			p.CandidateArtifactName != "" || p.CandidateSizeBytes != 0 || p.InstallerReleasePDA != "" || p.InstallerReleaseSHA256 != "" {
 			return errors.New("host apply plan is not scoped to the governed Fineract sidecar component")
 		}
 	case controllerUpgradeAction:
-		if p.ComponentID != controllerUpgradeComponentID || p.SidecarID != hostApplyFineractSidecarID ||
+		if p.Schema != controllerUpgradePlanSchema || p.StorePolicy != "" || p.PolicyEpoch != 0 ||
+			p.ComponentID != controllerUpgradeComponentID || p.SidecarID != hostApplyFineractSidecarID ||
 			!safeControllerUpgradeArtifactName(p.CandidateArtifactName) ||
 			p.CandidateSizeBytes <= 0 || p.CandidateSizeBytes > maxControllerUpgradeArtifactBytes ||
 			!isCanonicalBase58(p.InstallerReleasePDA, 32) || !isLowerHex(p.InstallerReleaseSHA256, 64) ||
@@ -212,8 +215,8 @@ func (p hostApplyPlan) Validate(now time.Time) error {
 	default:
 		return errors.New("host apply plan has an unknown governed action")
 	}
-	if p.PolicyEpoch == 0 || p.GenerationID == 0 {
-		return errors.New("host apply plan has an invalid policy epoch or generation id")
+	if p.GenerationID == 0 {
+		return errors.New("host apply plan has an invalid generation id")
 	}
 	for label, value := range map[string]string{
 		"generation hash": p.GenerationHash, "raw generation sha256": p.RawGenerationSHA256,
@@ -225,7 +228,7 @@ func (p hostApplyPlan) Validate(now time.Time) error {
 			return fmt.Errorf("host apply plan %s is not canonical", label)
 		}
 	}
-	if !isCanonicalBase58(p.StorePolicy, 32) || !isCanonicalBase58(p.StoreOperatorAuthorization, 32) ||
+	if !isCanonicalBase58(p.StoreOperatorAuthorization, 32) ||
 		!isCanonicalBase58(p.StoreOperatorPubkey, 32) || !isCanonicalBase58(p.TargetLicenseNftMint, 32) ||
 		!isCanonicalBase58(p.SquadsProgramID, 32) || !isCanonicalBase58(p.SquadsMultisig, 32) || !isCanonicalBase58(p.SquadsVault, 32) {
 		return errors.New("host apply plan has an invalid canonical public key")
@@ -353,12 +356,11 @@ func bytesEqual(left, right []byte) bool {
 	return diff == 0
 }
 
-type hostApplyCurrentFacts struct {
-	Policy         storeControlPolicyMeta
+type hostApplyBaseFacts struct {
 	OperatorPubkey string
 	OperatorAuthz  string
 	// TargetLicense is deliberately distinct from the Store's own configured
-	// license. The Store's operator authorization and policy remain rooted in
+	// license. The Store's operator authorization remains rooted in
 	// cfg.LicenseNFTMint; the controlled Fineract component names the tenant
 	// license whose sidecar cascade, Squads custody, plan and receipt must bind.
 	// Collapsing those planes makes a multi-tenant Store unable to authorize a
@@ -369,6 +371,16 @@ type hostApplyCurrentFacts struct {
 	Component     componentrelease.ComponentRelease
 	Custody       hostApplyLicenseCustody
 	Multisig      squadsproof.Multisig
+}
+
+// hostApplyCurrentFacts retains the Bazaar policy for the historical sidecar
+// apply action. Controller replacement deliberately consumes only the base
+// facts above: Bazaar Control is not an authority for a tenant-owned controller
+// binary, and an unenrolled Bazaar policy must not block the tenant's Squads
+// ceremony.
+type hostApplyCurrentFacts struct {
+	Policy storeControlPolicyMeta
+	hostApplyBaseFacts
 }
 
 func hostApplySquadsStableConfigSHA256(multisig squadsproof.Multisig) string {
@@ -395,18 +407,14 @@ func hostApplyMembersFromMultisig(multisig squadsproof.Multisig) []hostApplySqua
 	return members
 }
 
-func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApplyCurrentFacts, error) {
-	var zero hostApplyCurrentFacts
+func fetchHostApplyBaseFacts(ctx context.Context, s *publishService) (hostApplyBaseFacts, error) {
+	var zero hostApplyBaseFacts
 	if s == nil || s.operator == nil || s.cr == nil {
 		return zero, errors.New("host apply dependencies are unavailable")
 	}
 	proofReader, ok := s.cr.(hostApplySquadsProofReader)
 	if !ok {
 		return zero, errors.New("chain reader lacks finalized Squads proof support")
-	}
-	policy, err := fetchActiveStoreControlPolicy(ctx, s.cfg, s.cr)
-	if err != nil {
-		return zero, fmt.Errorf("policy: %w", err)
 	}
 	operatorRaw, err := signPubkey32(s.operator.Public())
 	if err != nil {
@@ -474,11 +482,24 @@ func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApp
 	if err != nil {
 		return zero, fmt.Errorf("store operator signing key: %w", err)
 	}
-	return hostApplyCurrentFacts{
-		Policy: policy, OperatorPubkey: primitives.EncodeBase58(operatorPub), OperatorAuthz: authz.Base58(),
+	return hostApplyBaseFacts{
+		OperatorPubkey: primitives.EncodeBase58(operatorPub), OperatorAuthz: authz.Base58(),
 		TargetLicense: targetLicense, Document: doc, RawGeneration: rawGeneration, Component: component,
 		Custody: custody, Multisig: multisig,
 	}, nil
+}
+
+func fetchHostApplyCurrentFacts(ctx context.Context, s *publishService) (hostApplyCurrentFacts, error) {
+	var zero hostApplyCurrentFacts
+	base, err := fetchHostApplyBaseFacts(ctx, s)
+	if err != nil {
+		return zero, err
+	}
+	policy, err := fetchActiveStoreControlPolicy(ctx, s.cfg, s.cr)
+	if err != nil {
+		return zero, fmt.Errorf("policy: %w", err)
+	}
+	return hostApplyCurrentFacts{Policy: policy, hostApplyBaseFacts: base}, nil
 }
 
 // verifyHostApplyCurrentComponent is the no-caller-input counterpart of the

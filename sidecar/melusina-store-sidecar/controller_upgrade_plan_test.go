@@ -12,6 +12,7 @@ import (
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 func (f hostApplyPlanFixture) addControllerUpgradeCandidate(t *testing.T) componentrelease.ComponentRelease {
@@ -79,10 +80,11 @@ func TestControllerUpgradePlanDerivesTenantScopeFromFineractAndBindsOneDataArtif
 	if err := verifyControllerUpgradePlanAgainstFacts(plan, facts, f.now); err != nil {
 		t.Fatalf("current controller plan did not verify: %v", err)
 	}
-	if err := verifyHostApplyPlanAgainstFacts(plan, facts.Host, f.now); err == nil {
+	if err := verifyHostApplyPlanAgainstFacts(plan, hostApplyCurrentFacts{hostApplyBaseFacts: facts.Host}, f.now); err == nil {
 		t.Fatal("historical sidecar verifier accepted controller action")
 	}
-	if plan.Action != controllerUpgradeAction || plan.ComponentID != controllerUpgradeComponentID ||
+	if plan.Schema != controllerUpgradePlanSchema || plan.StorePolicy != "" || plan.PolicyEpoch != 0 ||
+		plan.Action != controllerUpgradeAction || plan.ComponentID != controllerUpgradeComponentID ||
 		plan.CandidateArtifactName != candidate.ArtifactName || plan.CandidateSizeBytes != candidate.SizeBytes ||
 		plan.InstallerReleasePDA != candidate.Chain.ReleasePDA || plan.InstallerReleaseSHA256 != candidate.SHA256 {
 		t.Fatalf("plan lost immutable controller bindings: %+v", plan)
@@ -93,6 +95,8 @@ func TestControllerUpgradePlanDerivesTenantScopeFromFineractAndBindsOneDataArtif
 		"wrong artifact":          func(p *hostApplyPlan) { p.CandidateArtifactName = "other-controller.bin" },
 		"wrong installer release": func(p *hostApplyPlan) { p.InstallerReleaseSHA256 = strings.Repeat("b", 64) },
 		"wrong incumbent":         func(p *hostApplyPlan) { p.ExpectedPreviousSHA256 = strings.Repeat("c", 64) },
+		"Bazaar policy injected":  func(p *hostApplyPlan) { p.StorePolicy = randPubkeyB58(t) },
+		"Bazaar epoch injected":   func(p *hostApplyPlan) { p.PolicyEpoch = 1 },
 	} {
 		t.Run(name, func(t *testing.T) {
 			bad := plan
@@ -101,6 +105,35 @@ func TestControllerUpgradePlanDerivesTenantScopeFromFineractAndBindsOneDataArtif
 				t.Fatalf("controller plan mutation %q was accepted", name)
 			}
 		})
+	}
+}
+
+func TestControllerUpgradeFactsDoNotRequireDeferredBazaarPolicy(t *testing.T) {
+	f := newHostApplyPlanFixture(t)
+	f.addControllerUpgradeCandidate(t)
+	storeLicense, err := primitives.PubkeyFromBase58(f.svc.cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyPDA, err := deriveStoreControlPolicy(storeLicense, primitives.StoreDomainHash(f.svc.cfg.Domain), programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(f.chain.rawAccounts, policyPDA.Base58())
+
+	facts, err := fetchControllerUpgradeCurrentFacts(context.Background(), f.svc)
+	if err != nil {
+		t.Fatalf("controller facts inherited deferred Bazaar policy: %v", err)
+	}
+	plan, err := controllerUpgradePlanFromFacts("00112233445566778899aabb", facts, f.now)
+	if err != nil {
+		t.Fatalf("controller plan inherited deferred Bazaar policy: %v", err)
+	}
+	if plan.StorePolicy != "" || plan.PolicyEpoch != 0 {
+		t.Fatalf("controller plan carried Bazaar policy fields: %+v", plan)
+	}
+	if _, err := fetchHostApplyCurrentFacts(context.Background(), f.svc); err == nil {
+		t.Fatal("historical Bazaar sidecar plan stopped requiring its Store policy")
 	}
 }
 

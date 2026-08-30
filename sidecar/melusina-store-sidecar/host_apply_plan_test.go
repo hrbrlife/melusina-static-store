@@ -472,6 +472,9 @@ func TestHostApplyPlanReservesOneExactControllerUpgradeShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	plan.Schema = controllerUpgradePlanSchema
+	plan.StorePolicy = ""
+	plan.PolicyEpoch = 0
 	plan.Action = controllerUpgradeAction
 	plan.ComponentID = controllerUpgradeComponentID
 	plan.CandidateArtifactName = "melusina-update-controller-1.0.56-linux-amd64"
@@ -495,6 +498,8 @@ func TestHostApplyPlanReservesOneExactControllerUpgradeShape(t *testing.T) {
 		"unsafe artifact":      func(p *hostApplyPlan) { p.CandidateArtifactName = "../controller" },
 		"zero candidate size":  func(p *hostApplyPlan) { p.CandidateSizeBytes = 0 },
 		"different chain hash": func(p *hostApplyPlan) { p.InstallerReleaseSHA256 = strings.Repeat("b", 64) },
+		"Bazaar policy":        func(p *hostApplyPlan) { p.StorePolicy = randPubkeyB58(t) },
+		"Bazaar policy epoch":  func(p *hostApplyPlan) { p.PolicyEpoch = 1 },
 	} {
 		t.Run(name, func(t *testing.T) {
 			bad := plan

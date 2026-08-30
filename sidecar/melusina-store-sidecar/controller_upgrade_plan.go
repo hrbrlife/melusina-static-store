@@ -2,9 +2,10 @@ package main
 
 // The controller replacement is deliberately modelled as a second, exact
 // action on the proven Fineract plan/proof substrate. It shares the tenant
-// scope, Store-policy and Squads-custody observations with a Fineract-v2
-// sidecar apply, but selects a separately attested data artifact. That keeps a
-// Store-wide controller binary from becoming an implicit tenant authority.
+// scope, Store-operator and Squads-custody observations with a Fineract-v2
+// sidecar apply, but selects a separately attested data artifact. Bazaar
+// Control policy remains on the legacy Bazaar-governed paths and is not a
+// prerequisite for a tenant-owned controller ceremony.
 
 import (
 	"context"
@@ -19,13 +20,13 @@ import (
 )
 
 type controllerUpgradeCurrentFacts struct {
-	Host       hostApplyCurrentFacts
+	Host       hostApplyBaseFacts
 	Controller componentrelease.ComponentRelease
 }
 
 func fetchControllerUpgradeCurrentFacts(ctx context.Context, s *publishService) (controllerUpgradeCurrentFacts, error) {
 	var zero controllerUpgradeCurrentFacts
-	host, err := fetchHostApplyCurrentFacts(ctx, s)
+	host, err := fetchHostApplyBaseFacts(ctx, s)
 	if err != nil {
 		return zero, err
 	}
@@ -42,7 +43,7 @@ func fetchControllerUpgradeCurrentFacts(ctx context.Context, s *publishService) 
 // verifyControllerUpgradeCurrentComponent admits exactly one data-class
 // InstallerRelease artifact. Its target tenant is never taken from this
 // component: tenant scope derives solely from the current fineract-v2 sidecar
-// component in fetchHostApplyCurrentFacts.
+// component in fetchHostApplyBaseFacts.
 func verifyControllerUpgradeCurrentComponent(doc componentrelease.DesiredGeneration, raw []byte) (componentrelease.ComponentRelease, error) {
 	component, ok := doc.Component(controllerUpgradeComponentID)
 	if !ok || component.ComponentClass != componentrelease.ClassData ||
@@ -60,12 +61,10 @@ func controllerUpgradePlanFromFacts(dossierID string, facts controllerUpgradeCur
 	rawHash := sha256.Sum256(facts.Host.RawGeneration)
 	controller := facts.Controller
 	plan := hostApplyPlan{
-		Schema:    hostApplyPlanSchema,
+		Schema:    controllerUpgradePlanSchema,
 		DossierID: dossierID,
 		StoreID:   facts.Host.Document.StoreID,
 
-		StorePolicy:                facts.Host.Policy.PDA,
-		PolicyEpoch:                facts.Host.Policy.PolicyEpoch,
 		StoreOperatorAuthorization: facts.Host.OperatorAuthz,
 		StoreOperatorPubkey:        facts.Host.OperatorPubkey,
 
@@ -115,7 +114,6 @@ func verifyControllerUpgradePlanAgainstFacts(plan hostApplyPlan, facts controlle
 	controller := facts.Controller
 	for label, values := range map[string][2]string{
 		"store id":                     {plan.StoreID, facts.Host.Document.StoreID},
-		"store policy":                 {plan.StorePolicy, facts.Host.Policy.PDA},
 		"store operator authorization": {plan.StoreOperatorAuthorization, facts.Host.OperatorAuthz},
 		"store operator pubkey":        {plan.StoreOperatorPubkey, facts.Host.OperatorPubkey},
 		"target license":               {plan.TargetLicenseNftMint, facts.Host.TargetLicense.Base58()},
@@ -136,10 +134,10 @@ func verifyControllerUpgradePlanAgainstFacts(plan hostApplyPlan, facts controlle
 			return fmt.Errorf("controller upgrade plan %s no longer matches current facts", label)
 		}
 	}
-	if plan.CandidateSizeBytes != controller.SizeBytes || plan.PolicyEpoch != facts.Host.Policy.PolicyEpoch ||
-		plan.GenerationID != facts.Host.Document.GenerationID || plan.SquadsThreshold != facts.Host.Multisig.Threshold ||
+	if plan.CandidateSizeBytes != controller.SizeBytes || plan.GenerationID != facts.Host.Document.GenerationID ||
+		plan.SquadsThreshold != facts.Host.Multisig.Threshold ||
 		facts.Host.Multisig.TransactionIndex < plan.SquadsTransactionIndexFloor {
-		return errors.New("controller upgrade plan no longer matches current policy, generation, artifact, or Squads floor")
+		return errors.New("controller upgrade plan no longer matches current generation, artifact, or Squads floor")
 	}
 	if len(plan.SquadsMembers) != len(facts.Host.Multisig.Members) {
 		return errors.New("controller upgrade plan Squads roster no longer matches current facts")

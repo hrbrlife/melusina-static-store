@@ -1,17 +1,35 @@
 // Command list-active-releases enumerates EVERY Active on-chain ReleaseEntry
 // for a given app_id — the same getProgramAccounts(memcmp app_id) query
-// store_rpc_reader.go's FetchActiveReleaseEntriesByAppID runs — so a revoke
-// pass can retire ALL stale entries, not just the one a 409 happened to name.
-// verifyReleaseVersionForward (release_version.go) rejects a publish while
-// ANY other Active entry exists for the same app_id, so a single missed
-// leftover (e.g. an old 0.1.44 nobody remembers) would 409 all over again.
+// store_rpc_reader.go's FetchActiveReleaseEntriesByAppID runs — so an operator
+// can see the COMPLETE Active set, not just the entry a 409 happened to name.
+//
+// Several Active entries at once is NORMAL. It is not, by itself, a defect to
+// be cleaned up. verifyReleaseVersionForward (release_version.go) does NOT
+// require a single Active entry: it requires only that the submitted version be
+// strictly greater than every OTHER Active entry for the same app_id, and it
+// returns nil with older Active entries still in place. That is deliberate, and
+// the tail of that function says why — a strictly older Active release is
+// intentional during the bounded rollout window, because existing grains still
+// need its Active ReleaseEntry to cold-open under authz while the new package
+// is canaried. The signed catalog, not the Active set, selects the package for
+// new installs; the superseded entry is revoked only after rollout acceptance.
+//
+// So do NOT read a second Active row in this output as "one of these has to
+// go". Revoking a superseded entry before rollout acceptance breaks cold-open
+// authz for every existing grain still running the old app_hash.
+//
+// (An earlier version of this comment claimed a publish was rejected while ANY
+// other Active entry existed for the app_id. That has not been true since
+// 3785b77, "fix(store): allow overlapping exact-current releases".)
 //
 // Usage:
 //
-//	list-active-releases -rpc-url <url> -known-pda <any-known-ReleaseEntry-PDA-for-this-app>
+//	list-active-releases -rpc-url <url> (-app-id <Sandstorm-appId> | -known-pda <pda>)
 //
-// Prints one JSON line per Active entry: {pda, version, appHash}. Read-only —
-// makes zero on-chain writes.
+// Prints one JSON line per Active entry: {pda, version, appHash}. This tool is
+// purely informational: run below opens no signer, proposes nothing, and makes
+// ZERO on-chain writes — it only reads (GetAccountInfo, getProgramAccounts) and
+// encodes the result to stdout.
 package main
 
 import (

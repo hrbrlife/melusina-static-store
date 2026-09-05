@@ -925,10 +925,13 @@ groups:
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
         source_path: melusina-app-opensanctions
-        # v0.1.25/appVersion-27 is the current dev-publish tip. It integrates
-        # the July screening/privacy forward work, passes recovery from a fresh
-        # clone, and packs byte-identically.
-        source_commit: 74b48ee573d278d853d380430ab0ba23d4576958
+        # v0.1.27/appVersion-29. Carries the PowerBox targetOrigin fix: the
+        # grain posted its grant request to a document.referrer-derived origin,
+        # which inside a Sandstorm iframe is the GRAIN's own ui-<hash> origin,
+        # so the browser dropped the message, the shell never opened the
+        # address-selector, and Claim hung at "Waiting for approval..." forever
+        # — the pearl could never reach its sanctions sidecar.
+        source_commit: a4ab5a12aaa877105c93bec8bdcf8d5bfa934401
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

@@ -2,21 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-app-opensanctions",
-    "sourceCommit": "74b48ee573d278d853d380430ab0ba23d4576958",
+    "sourceCommit": "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "OpenSanctions 0.1.26 answers the owner report 'OpenSanction doesnt correctly claim HTTP-OUT \u2014 No grapple popup'. The claim path was never broken. A PowerBox claim is three steps, and the third \u2014 persisting the redeemed sturdyref through the cap-token store \u2014 lives behind the wallet-anchored keybox; without MELUSINA_INSTALL_TRUST_ROOT and MELUSINA_OPERATOR_WALLET_PUBKEY the keybox never opens, CapTokens is nil, no claim hook is registered, and the first two steps are wasted motion. The grain said so at boot in a log the owner cannot read, while the page rendered a Claim button that opened the dialog and discarded the answer. The connections slot now carries the reason and the exact missing inputs and the template renders that refusal instead of the control, across three states: unconfigured, configured-but-rejected, and configured. Supplying the runtime configuration remains an operator action in the Configuration Console (F-127); this cut is the code half only. The commit message on this exact dev-publish tip records the measurement and every mutation. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "0.1.27 / appVersion 29 carries the PowerBox targetOrigin fix. The grain posted its grant request to a document.referrer-derived origin, which inside a Sandstorm iframe is the grain's own ui-<hash> origin, so the browser dropped the message, the shell never opened the address-selector, and Claim hung at 'Waiting for approval' forever - the pearl could never reach its sanctions sidecar. Diagnosed from the live browser console on us.paype.cc and fixed to post with '*', matching the working sibling implementation in melusina-app-creeper.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test ./... passes",
-            "mutation: removing the reason from BuildConnectionSlots, and making the template render the claim button anyway, each fail by name",
-            "positive control on every assertion: a configured slot must still offer Claim, so 'no claim button' cannot pass on a page that can never claim at all",
-            "the pre-existing claim-xor-release test now establishes the configured state, because that question is only about a grain that CAN claim; its other half is a new case asserting a degraded grain offers neither button and names the missing input on the page",
-            "the block is a reason, not a mutilated slot: the descriptor and claim URL survive, so the page works the moment configuration arrives",
-            "the release cohort guard held three literal copies of two numbers, one of which had drifted a release behind and made the guard assert that metadata.json disagrees with itself; all comparisons now derive from the cohort constants and a half-bump of either file fails by name",
-            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+            "clean detached checkout at the selected commit; git status --porcelain --untracked-files=all is empty",
+            "full go test ./... suite passes at this commit",
+            "version cohort moves together: metadata.json version/versionNumber/marketingVersion, pkgdef appVersion/appMarketingVersion, and the release_candidate_test.go constants that pin them",
+            "powerbox targetOrigin regression guard added and mutation-proven: restoring the referrer logic fails the test and names the offending line"
         ]
     },
     "reviewedRefs": [
@@ -27,7 +23,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "74b48ee573d278d853d380430ab0ba23d4576958",
+            "commit": "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401",
             "outcome": "selected"
         },
         {

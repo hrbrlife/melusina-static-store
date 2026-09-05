@@ -20,7 +20,14 @@ readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 readonly DEFAULT_RUNTIME_ENV="/home/user/Desktop/Melusina/deployer/state/default-bazaar-release.env"
 readonly DEFAULT_STATE_DIR="/home/user/Desktop/Melusina/deployer/state/mel-release-default-bazaar"
 readonly DEFAULT_WALLETS="/home/user/Desktop/Melusina/test-wallets/core-app-team"
-readonly DEFAULT_NODE_MODULES="/home/user/Desktop/worktrees/deployer-shell-tenant-license-deployment-20260819/scripts/node_modules"
+# Sibling of MEL_RELEASE_SQUADS_EXECUTOR below, which is the canonical
+# deployer. The previous default pointed into
+# worktrees/deployer-shell-tenant-license-deployment-20260819, whose
+# scripts/node_modules was never installed (the worktree itself still exists,
+# which is why this reads as a live path), so every release run died on
+# "MEL_RELEASE_SQUADS_NODE_MODULES is not a real directory" before doing
+# anything. Keep the executor and its node_modules in the same tree.
+readonly DEFAULT_NODE_MODULES="/home/user/Desktop/Melusina/deployer/scripts/node_modules"
 
 die() { printf 'default-bazaar-release: %s\n' "$*" >&2; exit 2; }
 

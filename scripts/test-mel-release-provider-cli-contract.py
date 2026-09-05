@@ -2177,7 +2177,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["reconciliation_state"] == "source-pinned", paint
     assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
-    assert paint["release_state"] == "ready", paint
+    assert paint["release_state"] == "hold", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon

@@ -642,7 +642,8 @@ groups:
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
         live_version: 2.0.34
-        release_state: ready
+        # Owner requested AiLagoon vision composition before this release.
+        release_state: hold
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json
         catalog_developer: hrbrlife

@@ -2,18 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
     "sourceRepository": "https://github.com/hrbrlife/cca-tc-operator",
-    "sourceCommit": "f9dd15ab5646b761d8ec46809c091fe5f171f749",
+    "sourceCommit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The Aug 20 dev-publish tip is canonical: it retains the tested lease-only setup controls and advances the governed public identity to Fineract Configurator v0.2.20. The divergent July authority/lease lines and Aug salvage were inspected; their older or stripped layouts are superseded by the current source's tested lease, recipient-identity, runtime-contract, and release-portability controls.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Select dev-publish 1519b78 for Configurator 0.2.21: exact inner API signatures preserve independent Go and Java enforcement; lease credentials stay server-side.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh recursive clone at the selected source commit",
-            "make release-cohort-check release-cohort-mutation-test vet test sidecar-vet sidecar-test",
-            "MEL_RELEASE_PACK_APP_CANDIDATE=pack-app-candidate.sh MEL_RELEASE_GREENFIELD_PACK=1 make provider-pack-contract-test",
-            "provider-pack contract candidate SHA-256 3e3ed58a3ebb151fb569658e32ab67d24e279014b04695cdc12bc20f2e7f7c2c",
-            "a second committed-source package build produced the same SHA-256"
+            "Clean detached source at 1519b7849e6b9879cfa9dd37f8781f4667a30fbf; main and dev-publish independently read back at the same commit.",
+            "Full Go sidecar and wizard tests and vet pass; focused sidecar race checks pass.",
+            "71 Java security tests pass on pinned Apache Fineract 1.15.0, including actual Go bridge to production Java filter, replay, tamper and missing-signature controls.",
+            "Six compiling guard mutations caught; release cohort verifies 0.2.21/v21; no live provider or account result claimed."
         ]
     },
     "reviewedRefs": [
@@ -29,12 +28,12 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "f9dd15ab5646b761d8ec46809c091fe5f171f749",
+            "commit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "d8ccf4e49b314e535ebc4d6762d6d6e2bd6c8c7f",
+            "commit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
             "outcome": "baseline"
         },
         {
@@ -109,5 +108,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

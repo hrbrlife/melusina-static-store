@@ -305,7 +305,7 @@ groups:
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
-        source_commit: f9dd15ab5646b761d8ec46809c091fe5f171f749
+        source_commit: 1519b7849e6b9879cfa9dd37f8781f4667a30fbf
         source_repository: https://github.com/hrbrlife/cca-tc-operator
         reconciliation_state: source-pinned
         release_state: ready

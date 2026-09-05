@@ -2,17 +2,15 @@
     "schema": "melusina-source-selection-v1",
     "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
     "sourceRepository": "https://github.com/hrbrlife/melusina_bureau_cal_app",
-    "sourceCommit": "26146db1438dd244d2d675a7bd24f5e74b4b84b4",
+    "sourceCommit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "Bureau Calendar 0.22.2 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Current Calendar release adds the same bundled 60 FOSS fonts and six icon families as every Bureau app; both release branches preserve their histories at this source cut.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test ./... passes across all 3 packages including the release cohort guard",
-            "every zone the selector offers is proven to load under the same time.LoadLocation the POST handler validates with, so the control cannot offer a value the form then rejects",
-            "the currently selected zone is always retained even when outside both lists, so a CalDAV-synced event is not rewritten on save; both properties fail by name under mutation"
+            "Complete Go tests and vet pass; HTTP mux verifies every embedded font and license hash.",
+            "Two independent clean clone paths produce identical SPKs at the source commit epoch."
         ]
     },
     "reviewedRefs": [
@@ -28,7 +26,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "26146db1438dd244d2d675a7bd24f5e74b4b84b4",
+            "commit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
             "outcome": "selected"
         },
         {
@@ -43,7 +41,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "037623b707098e4bdaa538971f9dfe30934c90fc",
+            "commit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
             "outcome": "baseline"
         },
         {
@@ -73,5 +71,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "historical-divergent"
+    "baselineRelation": "same"
 }

@@ -1,0 +1,70 @@
+{
+    "schema": "melusina-source-selection-v1",
+    "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
+    "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-diagram-app",
+    "sourceCommit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Restore the retained draw.io Bureau Diagram identity through the governed Store rail, carrying the common offline 60-font and six-icon-family bundle. Source main and dev-publish select the same reviewed rich app implementation.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "225 Python tests and all five release mutation controls passed; font tables and indexed icon glyphs audited.",
+            "Local rendered UI applied font and icon changes, saved the diagram, and restored both after reload."
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/codex/canonical-release-diagram-assets-20260713",
+            "commit": "89193c7642c6c82d6619a17e081b5535d78fcfa0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/feat/greenfield-ready",
+            "commit": "c145c58b607f4d5b8231c2920becb2b2dd577c26",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/fix/metadata-defects-2026-08-05",
+            "commit": "2fbc4459eae69da6241245750b820b4d525f2bc0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/bazaar-repair-bureau-diagram-20260711",
+            "commit": "999c6f366c44b3fd35de2b907e9aa3d1821cfb21",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/metadata-defects-2026-08-05",
+            "commit": "2fbc4459eae69da6241245750b820b4d525f2bc0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "b19f9edabd412c27c50448f89aa46844ea8b8ce5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "de3181b553873dcd78a1dd9a8a5758f76a6fdeb7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "57183b74b6e9fe3c168c1cbe005f011e3435e07e",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "same"
+}

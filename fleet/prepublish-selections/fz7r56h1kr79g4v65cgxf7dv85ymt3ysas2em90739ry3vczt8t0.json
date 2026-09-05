@@ -2,34 +2,29 @@
     "schema": "melusina-source-selection-v1",
     "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
     "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
-    "sourceCommit": "6a823a296ef86a4f8571cad30a533f81d25e0b7b",
+    "sourceCommit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Bureau Sheets 2.1.8 makes every Bureau grain attachable to an AI consumer. The owner reported 'nope I cannot add a bureau sheets pearl to Jinn' and the PowerBox picker showed nothing for a grain that was running and healthy. matchRequests is what a grain OFFERS; every Bureau grain implements GrainContext over capnp and the interface id was already defined in grainlinkd, but no grain type ever put it in matchRequests, so the shell was never told and a consumer requesting GrainContext saw 'No matching pearls found'. Spreadsheet, document and minipaint now advertise it, spreadsheet and document keep the AIAgent entry they already had, and the client grain still advertises nothing at all. The commit message on this exact dev-publish tip records the measurement and the guards. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Published rich Sheets implementation with the common bundled 60 FOSS fonts and six icon families, unified format controls, icon insertion, and XLSX font preservation.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test ./... passes in grain/go/grainlinkd",
-            "capabilities_test.go fails by name for each affected grain type when the GrainContext entry is dropped from New()",
-            "negative control: the client grain type must still advertise zero matchRequests, so the fix cannot be satisfied by handing the entry to every grain type indiscriminately",
-            "the advertised id is pinned to the canonical GrainContext interface id 0x91283d5a5fde4380 that Jinn requests and gitpearl advertises, not to the schema FILE id \u2014 the exact mistake that made MiniGit unattachable for months",
-            "the pre-existing AIAgent entry is separately guarded so adding GrainContext cannot silently drop it",
-            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+            "Full Python suites, release guards, font mutation controls and XLSX round-trip checks pass.",
+            "Local rendered UI loads all 66 families offline; font and icon formatting survives save and reload."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "6a823a296ef86a4f8571cad30a533f81d25e0b7b",
+            "commit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "6a93620f66d2a7a3fd9e23d26f28a742c1b52b04",
+            "commit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
             "outcome": "baseline"
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

@@ -2,18 +2,15 @@
     "schema": "melusina-source-selection-v1",
     "appId": "trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh",
     "sourceRepository": "https://github.com/hrbrlife/melusina_bureau_contacts_app",
-    "sourceCommit": "a1cd0be902a5b148d1a22f6272284417dd7d1daa",
+    "sourceCommit": "af378d96765f8041c4c51a80e803377256a91f6d",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "Bureau Contacts 0.17.0 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Current Contacts release adds the same bundled 60 FOSS fonts and six icon families as every Bureau app; both release branches preserve their histories at this source cut.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test ./... passes across all 3 packages including the release cohort guard",
-            "structured vCard N is stored, encoded and decoded; a round trip preserves given/additional/family, and the legacy first-space split is reached only for a contact with no structured parts",
-            "three mutations fail by name: unconditional legacy split, dropped N: decode case, and a model field that never reaches SQLite",
-            "the country catalogue is the estate's own identity.countries v1.0.0 vendored as generated Go, checked for uniqueness and ordering, with unrecognised free text reported as unmatched so the form keeps it verbatim"
+            "Complete Go tests and vet pass; HTTP mux verifies every embedded font and license hash.",
+            "Two independent clean clone paths produce identical SPKs at the source commit epoch."
         ]
     },
     "reviewedRefs": [
@@ -24,7 +21,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "a1cd0be902a5b148d1a22f6272284417dd7d1daa",
+            "commit": "af378d96765f8041c4c51a80e803377256a91f6d",
             "outcome": "selected"
         },
         {
@@ -34,7 +31,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "591c1d6cc126a78b478ac11ef99350ce3bd27e43",
+            "commit": "af378d96765f8041c4c51a80e803377256a91f6d",
             "outcome": "baseline"
         },
         {
@@ -69,5 +66,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "historical-divergent"
+    "baselineRelation": "same"
 }

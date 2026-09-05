@@ -12,7 +12,9 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-20T12:41:34Z
 catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
-expected_live_app_count: 34
+# The source ledger includes Bureau Diagram for governed restoration.
+# Its absence from the observed live projection is not a retirement decision.
+expected_live_app_count: 35
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -593,7 +595,7 @@ groups:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: 6a823a296ef86a4f8571cad30a533f81d25e0b7b
+        source_commit: 3aa0926d5dbfe8e0201b00d378645c7143878391
         source_repository: https://github.com/hrbrlife/CHEESESPREAD
         reconciliation_state: source-pinned
         release_state: ready
@@ -614,15 +616,7 @@ groups:
       doc-bureau:
         appId: v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h
         source_path: doc-bureau
-        # v31/2.0.36. v30/2.0.35 installed and pinned correctly but NO grain
-        # ever ran it: launcher.sh called `mkdir -p /var` and then probed the
-        # backend with `sleep 1` + `kill -0`, and the sandbox image ships no
-        # coreutils, so bash exited 127 and the supervisor restarted forever
-        # (F-252, observed live on a fresh grain). Both calls are removed and
-        # this cut is byte-reproducible across two clean clones at different
-        # paths. Same shape as Bureau Paint 2.0.34, proven end-to-end on the
-        # tenant with a fresh grain that runs.
-        source_commit: f2c6df1fbb4466292616b3b7343cc1ff46d51aa9
+        source_commit: 45e10e1b29f525c2c5a2803b9f608ae68c8f4019
         reconciliation_state: source-pinned
         source_repository: https://github.com/hrbrlife/melusina-bureau-doc-app
         publish_slug: doc-bureau
@@ -631,9 +625,6 @@ groups:
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h.json
-        # This exact historical slot contains the same immutable appId at an
-        # older rich release. It is a target only; v26 source metadata and
-        # runtime contract come solely from the pinned clean source checkout.
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-doc-app
         catalog_slug: doc-bureau
@@ -646,13 +637,7 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # v27/2.0.34. v26/2.0.33 installed and pinned correctly but NO grain
-        # ever ran it: the launcher probed the backend with `sleep 1` + `kill
-        # -0` and the sandbox image ships no coreutils, so bash exited 127 and
-        # the supervisor restarted forever (F-252, observed live on a fresh
-        # grain). This cut removes that probe and is byte-reproducible across
-        # two clean clones at different paths.
-        source_commit: bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3
+        source_commit: 4fe245183b31de5045bae69af53a5908accec939
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
@@ -665,6 +650,29 @@ groups:
         catalog_slug: paint-bureau
         source_repository: https://github.com/hrbrlife/melusina-bureau-paint-app
         role: rich-minipaint-layers-filters-snapshots-powerbox-import
+        audience: workspace
+        install_mode: self-service
+        pearl_role: workspace
+        client_access: self-owned
+        admin_surface: same-pearl
+      diagram-bureau:
+        appId: sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420
+        source_path: diagram-bureau
+        source_commit: 9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1
+        source_repository: https://github.com/hrbrlife/melusina-bureau-diagram-app
+        reconciliation_state: source-pinned
+        release_state: ready
+        source_selection_state: direct-dev-verified
+        source_selection_receipt: prepublish-selections/sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420.json
+        publish_slug: diagram-bureau
+        catalog_name: Bureau Diagram
+        # Last retained governed catalog version at gitlink d29851b; currently unlisted.
+        # The release provider independently checks every active on-chain version.
+        live_version: "2.0.16"
+        catalog_developer: hrbrlife
+        catalog_repo: melusina-bureau-diagram-app
+        catalog_slug: diagram-bureau
+        role: rich-drawio-diagrams-collaboration-snapshots
         audience: workspace
         install_mode: self-service
         pearl_role: workspace
@@ -734,10 +742,7 @@ groups:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
         source_path: melusina-bureau-cal-app
-        # The current dev-publish v0.22.1/version-23 source adds a permanent
-        # cross-file Calendar identity guard while retaining the verified
-        # runtime-contract and deterministic package controls.
-        source_commit: 26146db1438dd244d2d675a7bd24f5e74b4b84b4
+        source_commit: fafcf3c7536495b08dad59229ceb8b2d519541b9
         reconciliation_state: source-pinned
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
@@ -758,11 +763,7 @@ groups:
       bureau-contacts:
         appId: trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh
         source_path: melusina-bureau-contacts-app
-        # The current dev-publish v0.16/version-16 source passed a fresh
-        # recursive-clone proof, source controls, and deterministic candidate
-        # packages. The separately recorded historical main baseline is not a
-        # substitute for this selected source.
-        source_commit: a1cd0be902a5b148d1a22f6272284417dd7d1daa
+        source_commit: af378d96765f8041c4c51a80e803377256a91f6d
         reconciliation_state: source-pinned
         publish_slug: bureau-contacts
         catalog_name: Bureau Contacts

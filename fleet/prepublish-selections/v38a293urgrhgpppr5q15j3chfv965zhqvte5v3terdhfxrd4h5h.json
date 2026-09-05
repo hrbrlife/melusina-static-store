@@ -2,21 +2,15 @@
     "schema": "melusina-source-selection-v1",
     "appId": "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h",
     "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-doc-app",
-    "sourceCommit": "f2c6df1fbb4466292616b3b7343cc1ff46d51aa9",
+    "sourceCommit": "45e10e1b29f525c2c5a2803b9f608ae68c8f4019",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Bureau Doc 2.0.39 fixes two owner-reported defects, both of them wiring that was never completed rather than behaviour that broke. First, a document came back empty after a restart: backend/server.js passed a persistence option to y-websocket's setupWSConnection, whose signature destructures docName and gc only and silently drops every other key, so the option configured nothing, no error was raised anywhere, rooms synced live between connected clients, and not one byte was written. Persistence is module state and is now registered once via setPersistence() against the LevelDB handle the grain already owns. Second, the font dropdown restyled the whole document because it set a React state variable that a useEffect wrote onto a CSS custom property; a local TipTap FontFamily extension on the textStyle mark Color already rides now applies the typeface to the selection, and the choice lives in the Y.Doc so it survives a reload and reaches collaborators. The commit message on this exact dev-publish tip records both measurements and the mutations run against every guard. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "Published rich Doc implementation with the common bundled 60 FOSS fonts and six icon families, selection-aware insertion, embedded-font HTML export, and direct canonical-asset packaging.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "the persistence guard drives the real y-websocket binding against a real LevelDB and reads the bytes back through a SECOND handle \u2014 the disk is the assertion, because the wrong call and the right call are indistinguishable to review and to the compiler",
-            "its control proves the same edit is LOST with no binding registered, so the test cannot pass because something else happens to be writing",
-            "mutation: restoring the ignored persistence option fails the shipped-call-site guard by name; removing the setPersistence registration fails it by name",
-            "the font guard runs headless against the real ProseMirror schema and asserts on the document, not on rendered HTML, so 'only the selected range is marked' is checked where it is a fact",
-            "mutation: reverting the dropdown to the React state setter, dropping the attribute from textStyle, and rendering a style for a null font each fail by name",
-            "the client bundle was rebuilt and the stale asset removed, so the shipped frontend carries the fix rather than the source alone",
-            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+            "Full Python/integration tests, frontend checks, font/export tests and Yjs persistence binding pass.",
+            "Local rendered UI loads all 66 families offline; formatted text and icon survive save and reload."
         ]
     },
     "reviewedRefs": [
@@ -32,7 +26,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "f2c6df1fbb4466292616b3b7343cc1ff46d51aa9",
+            "commit": "45e10e1b29f525c2c5a2803b9f608ae68c8f4019",
             "outcome": "selected"
         },
         {
@@ -47,7 +41,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "ea232d48cc837bdc65b1886ab41ca5109e6c8a69",
+            "commit": "45e10e1b29f525c2c5a2803b9f608ae68c8f4019",
             "outcome": "baseline"
         },
         {
@@ -87,5 +81,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

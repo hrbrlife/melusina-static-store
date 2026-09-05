@@ -1958,8 +1958,8 @@ def checked_in_catalog_entries():
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 34, document
-    assert len(entries) == 34, entries
+    assert document["expected_live_app_count"] == 35, document
+    assert len(entries) == 35, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert document["installation_policy_version"] == 1, document
@@ -1984,6 +1984,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": "Bureau Sheets",
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": "Bureau Doc",
         "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": "Bureau Paint",
+        "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420": "Bureau Diagram",
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h": "DomainTemplate",
         "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0": "ClientSpace",
         "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh": "Vintage",
@@ -2013,6 +2014,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
+        "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
         "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0": ("workspace", "self-service", "workspace", "self-owned", "same-pearl"),
@@ -2043,7 +2045,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     assert paint["live_version"] == "2.0.34", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
@@ -2053,7 +2055,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     claude = entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]
     assert claude["group"] == "platform-tools", claude
     assert claude["source_path"] == "claude-melusina", claude
-    assert claude["source_commit"] == "204a0ddbb2b99b108ce3dbc83bf28faf7cdd5142", claude
+    assert claude["source_commit"] == "185ca3c5df28ff1a33429ef32969090ce443f01b", claude
     assert claude["source_baseline_branch"] == "main", claude
     assert claude["reconciliation_state"] == "source-pinned", claude
     assert claude["release_state"] == "ready", claude
@@ -2073,7 +2075,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert lobby["source_selection_state"] == "direct-dev-verified", lobby
     doc = entries["v38a293urgrhgpppr5q15j3chfv965zhqvte5v3terdhfxrd4h5h"]
     assert doc["reconciliation_state"] == "source-pinned", doc
-    assert doc["source_commit"] == "f2c6df1fbb4466292616b3b7343cc1ff46d51aa9", doc
+    assert doc["source_commit"] == "45e10e1b29f525c2c5a2803b9f608ae68c8f4019", doc
     assert doc["release_state"] == "ready", doc
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]
@@ -2088,7 +2090,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert botmother["source_selection_state"] == "direct-dev-verified", botmother
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["reconciliation_state"] == "source-pinned", cratelink
-    assert cratelink["source_commit"] == "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", cratelink
+    assert cratelink["source_commit"] == "147165e48dadbb53e552bd8e94bd85f243031298", cratelink
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     telescreen = entries["55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"]
@@ -2159,27 +2161,27 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
+    assert canboard["source_commit"] == "7862d297c943e604a5d65c6196b421b9581d0c82", canboard
     assert canboard["release_state"] == "ready", canboard
     assert canboard["source_selection_state"] == "direct-dev-verified", canboard
     contacts = entries["trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh"]
     assert contacts["reconciliation_state"] == "source-pinned", contacts
-    assert contacts["source_commit"] == "a1cd0be902a5b148d1a22f6272284417dd7d1daa", contacts
+    assert contacts["source_commit"] == "af378d96765f8041c4c51a80e803377256a91f6d", contacts
     assert contacts["release_state"] == "ready", contacts
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
     assert calendar["reconciliation_state"] == "source-pinned", calendar
-    assert calendar["source_commit"] == "26146db1438dd244d2d675a7bd24f5e74b4b84b4", calendar
+    assert calendar["source_commit"] == "fafcf3c7536495b08dad59229ceb8b2d519541b9", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     assert paint["release_state"] == "ready", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
-    assert ai_lagoon["source_commit"] == "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5", ai_lagoon
+    assert ai_lagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
 
@@ -2272,7 +2274,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
-    assert ai_lagoon["source_commit"] == "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5", ai_lagoon
+    assert ai_lagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ai_lagoon
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
@@ -2310,7 +2312,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "bf04f6e06e72c57c7aff7e0726f3e1f6d78740e3", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
@@ -2338,7 +2340,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ailagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ailagoon["source_path"] == "ai-lagoon-main", ailagoon
     assert ailagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ailagoon
-    assert ailagoon["source_commit"] == "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5", ailagoon
+    assert ailagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ailagoon
     assert ailagoon["source_baseline_branch"] == "main", ailagoon
     assert ailagoon["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ailagoon
     assert ailagoon["reconciliation_state"] == "source-pinned", ailagoon
@@ -2380,7 +2382,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["source_path"] == "cratelink", cratelink
     assert cratelink["source_repository"] == "https://github.com/hrbrlife/melusina_cratelink_app", cratelink
-    assert cratelink["source_commit"] == "ed57ba014cb9d44a81ee58e0dc831afb0e925e77", cratelink
+    assert cratelink["source_commit"] == "147165e48dadbb53e552bd8e94bd85f243031298", cratelink
     assert cratelink["reconciliation_state"] == "source-pinned", cratelink
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
@@ -2398,7 +2400,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["source_path"] == "melusina-canboard-app", canboard
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
+    assert canboard["source_commit"] == "7862d297c943e604a5d65c6196b421b9581d0c82", canboard
     opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
     assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
     assert opensanctions["source_commit"] == "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401", opensanctions

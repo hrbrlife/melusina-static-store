@@ -2,7 +2,7 @@
     "schema": "melusina-source-selection-v1",
     "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
     "sourceRepository": "https://github.com/hrbrlife/Claude-Melusina",
-    "sourceCommit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
+    "sourceCommit": "715d5c2b2f95d5d45c14e186fa2f4cab0d56db64",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
     "decisionSummary": "Release 0.2.3/v5 from the common main and dev-publish head: protected setup-token sign-in, descriptor-only runtime credential delivery, persistent private directories, and safe sign-out. Shell 105 supplies the declared private procfs. Publication and installation require governed terminal receipts and live UI acceptance.",
@@ -17,7 +17,7 @@
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
+            "commit": "715d5c2b2f95d5d45c14e186fa2f4cab0d56db64",
             "outcome": "selected"
         },
         {
@@ -27,7 +27,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
+            "commit": "715d5c2b2f95d5d45c14e186fa2f4cab0d56db64",
             "outcome": "baseline"
         }
     ],

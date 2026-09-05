@@ -520,7 +520,7 @@ groups:
         # credential by descriptor, and maintains private persistent /var state.
         # The bundled runtime requires the package-declared private procfs of
         # shell build 105. This pin selects source; the rail proves publication.
-        source_commit: 61ea1f5e3d661114010b7fbeeda83313a22e585e
+        source_commit: 715d5c2b2f95d5d45c14e186fa2f4cab0d56db64
         source_baseline_branch: main
         reconciliation_state: source-pinned
         release_state: ready

@@ -295,7 +295,7 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	}
 	if claude.AppID != "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h" ||
 		claude.SourcePath != "claude-melusina" ||
-		claude.SourceCommit != "61ea1f5e3d661114010b7fbeeda83313a22e585e" ||
+		claude.SourceCommit != "715d5c2b2f95d5d45c14e186fa2f4cab0d56db64" ||
 		claude.CatalogDeveloper != "hrbrlife" ||
 		claude.CatalogRepo != "Claude-Melusina" ||
 		claude.CatalogSlug != "claude-melusina" {

@@ -688,15 +688,13 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
       mermail:
-        # MerMail 0.6.1 ceremony completed with ReleaseEntry
-        # 8GYNpnYBZfCgijyyz8Rj3u6fDXH1eB4cSu61kokSHRCr Active for appHash
-        # <served>. Its exact a7b170b2456ac59bda598c5d9dbb2e7a package, final
-        # release receipt and materialized runtime contract are recorded in the
-        # catalog slot submodule. Adds settings-gated live refresh of the open
-        # mailbox and a Sandstorm new-mail notification for closed mailboxes.
+        # MerMail 0.6.2/v25 source fixes Station HTTP response ownership.
+        # Decoder-release tests and two clean clones prove preserved bodies
+        # and reproducible packages. The served release remains 0.6.1 until
+        # the governed candidate is approved and independently read back.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
-        source_commit: 2f140345da03e3a756c91a96c1c2f7d12ec4c913
+        source_commit: b24608f2217cfc8e10c819bc8d447a19b54556c8
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

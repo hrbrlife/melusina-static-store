@@ -2,18 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
     "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
-    "sourceCommit": "2f140345da03e3a756c91a96c1c2f7d12ec4c913",
+    "sourceCommit": "b24608f2217cfc8e10c819bc8d447a19b54556c8",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "MerMail 0.6.1 adds live UI refresh on incoming mail and Sandstorm new-mail notifications (activity event surfaced in the shell bell when the mailbox is closed), both configurable on the Settings page.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "MerMail 0.6.2/v25 preserves HTTP response storage across Capnp RPC release. dev-publish and main both select b24608f; all other refs retained as evidence.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test -tags=melusina ./... passes; settings round-trip and nil-view notify safety are guard-tested",
-            "new 'newMail' activity eventType declared in GetViewInfo; delivery posts SandstormApi.backgroundActivity gated by the per-mailbox NotifyOnNewMail setting",
-            "folder view live-poll gated by AutoRefreshSeconds setting (0=off)",
-            "verify-release-inputs.py self-test 8 mutations; verify-unified-package.sh asserts the unpacked SPK"
+            "Station and Mailbox suites passed; Station race and vet passed.",
+            "Success and binary error decoder-release controls fail with NUL corruption when each copy is removed.",
+            "Two independent remote clones at different paths produced sha256 ad83a3ce687f12f76669800a2f1e1a516bd1681cdb7cacf3c5a17f7c6f0e94e8, 10599672 bytes, and passed package identity checks."
         ]
     },
     "reviewedRefs": [
@@ -31,6 +29,11 @@
             "ref": "refs/heads/agent/mermail-source-metadata-20260812",
             "commit": "255fb87d93153f37c1d9b8813f0dd5be893bea1d",
             "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/archive/codex-20260827-mermail-v0.5.1",
+            "commit": "e2601396ae4d354222e631d28be3fbbf5ec15f00",
+            "outcome": "archive"
         },
         {
             "ref": "refs/heads/archive/codex/research-and-suggest-project-gameplan",
@@ -69,7 +72,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "2f140345da03e3a756c91a96c1c2f7d12ec4c913",
+            "commit": "b24608f2217cfc8e10c819bc8d447a19b54556c8",
             "outcome": "selected"
         },
         {
@@ -79,7 +82,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+            "commit": "b24608f2217cfc8e10c819bc8d447a19b54556c8",
             "outcome": "baseline"
         },
         {
@@ -144,10 +147,10 @@
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "e2b98283e0b6c316f4ac9898542bf596d969b43f",
+            "commit": "fe01c908cda452b34b6ce411c7567c34aae472e5",
             "outcome": "retained"
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

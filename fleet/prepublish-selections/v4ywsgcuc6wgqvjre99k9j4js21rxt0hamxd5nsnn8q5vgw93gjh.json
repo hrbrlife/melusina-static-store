@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
     "sourceRepository": "https://github.com/hrbrlife/ai-lagoon",
-    "sourceCommit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
+    "sourceCommit": "ddced6b1442676f54942319e1c563f196ac8890b",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "AiLagoon 0.7.30/appVersion 38 on dev-publish speaks the authz daemon's grain-auth v3 wire; main was fast-forwarded to the same commit so it again contains the live cut.",
+    "decisionSummary": "v0.7.31/appVersion-39 on main==dev-publish at ddced6b1: the v3 grain-auth client pins the daemon's authz identity from /run/melusina/authz-identity.pub; v38 crash-looped at connect on us.paype.cc because the v3 client refuses to construct without it.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at 02f849742f048acccc49e9d5d3ddec3cb16245f3",
-            "go vet and full go test pass including the release cohort guard",
-            "built grain binary carries v3 wire markers; the live 0.7.28 bytes on the tenant carry none and carry the v2 marker instead"
+            "clean recursive checkout at ddced6b1442676f54942319e1c563f196ac8890b",
+            "go vet and full go test pass, including the identity-loader positive control and per-refusal mutation cases (two guard mutations fail by name)",
+            "unpacked candidate binary carries the v3 wire markers, the identity loader and the /run/melusina/authz-identity.pub path; zero v2 markers"
         ]
     },
     "reviewedRefs": [
@@ -42,7 +42,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
+            "commit": "ddced6b1442676f54942319e1c563f196ac8890b",
             "outcome": "selected"
         },
         {
@@ -62,7 +62,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
+            "commit": "ddced6b1442676f54942319e1c563f196ac8890b",
             "outcome": "baseline"
         },
         {

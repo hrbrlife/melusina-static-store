@@ -248,10 +248,10 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        # v0.7.29/appVersion-37 is the current validated dev-publish source.
-        # It keeps tenant binding shell-owned and makes local vision-provider
-        # readiness/provenance explicit without claiming an identity verdict.
-        source_commit: 02f849742f048acccc49e9d5d3ddec3cb16245f3
+        # v0.7.31/appVersion-39: the v3 client now pins the daemon's authz identity
+        # from /run/melusina/authz-identity.pub; v38 crash-looped at connect on the
+        # tenant because the v3 client refuses to construct without it.
+        source_commit: ddced6b1442676f54942319e1c563f196ac8890b
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -524,7 +524,11 @@ groups:
         # pin is provenance only: it does not claim a v0.2.1 package, listing,
         # public pointer, install, or target-Pearl response exists yet.
         source_path: claude-melusina
-        source_commit: 204a0ddbb2b99b108ce3dbc83bf28faf7cdd5142
+        # v0.2.2/appVersion-4: ships the proc/melusina-requires-procfs opt-in marker
+        # (inert until the shell honours it) and a `claude` shell builtin so the
+        # packaged runtime is reachable from the grain shell. Provenance only: it
+        # does not claim a package, listing or install exists until the rail says so.
+        source_commit: 185ca3c5df28ff1a33429ef32969090ce443f01b
         source_baseline_branch: main
         reconciliation_state: source-pinned
         release_state: ready
@@ -558,10 +562,10 @@ groups:
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink
-        # The current v16 dev-publish tip is the newest valid forward source.
-        # It was built, package-verified, and reproduced from a fresh
-        # recursive checkout on 2026-08-19.
-        source_commit: 3bb6d7b41b25ee5761976262a03de6dc271100cf
+        # v0.3.6/appVersion-18: the v3 client now pins the daemon's authz identity
+        # from /run/melusina/authz-identity.pub; v17 exits at connect on next boot
+        # because the v3 client refuses to construct without it.
+        source_commit: 147165e48dadbb53e552bd8e94bd85f243031298
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -779,9 +783,10 @@ groups:
       canboard:
         appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
         source_path: melusina-canboard-app
-        # The current dev-publish v0.2.5/version-12 source passed a fresh
-        # recursive-clone proof, vet/test, and deterministic candidate packs.
-        source_commit: 2895a5ee5caef4eec0beda33963dd9583b8f9ba8
+        # v0.2.8/appVersion-15: the v3 client now pins the daemon's authz identity
+        # from /run/melusina/authz-identity.pub; v14 exits at connect on next boot
+        # because the v3 client refuses to construct without it.
+        source_commit: 7862d297c943e604a5d65c6196b421b9581d0c82
         reconciliation_state: source-pinned
         publish_slug: canboard
         catalog_name: CanBoard

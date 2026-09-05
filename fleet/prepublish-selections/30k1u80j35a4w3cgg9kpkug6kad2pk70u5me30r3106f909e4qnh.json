@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
     "sourceRepository": "https://github.com/hrbrlife/melusina_canboard_app",
-    "sourceCommit": "2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
+    "sourceCommit": "7862d297c943e604a5d65c6196b421b9581d0c82",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "CanBoard 0.2.7/appVersion 14 on dev-publish speaks the authz daemon's grain-auth v3 wire and its cohort guard is satisfiable again (cohortPackageID had equalled livePackageID).",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "v0.2.8/appVersion-15 on main==dev-publish at 7862d297: the v3 grain-auth client pins the daemon's authz identity from /run/melusina/authz-identity.pub; v14 exits at connect on next boot because the v3 client refuses to construct without it. cohortPackageID re-derived from the v15 pack (e99072166473484375078568e64b4fc1), live is v14.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at 2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
-            "go vet and full go test pass; packageId 1b0affc3fa43c2e1a8e4fb248f1a00a6 reproduced on two packs",
-            "grain binary carries v3 wire markers and zero v2 markers"
+            "clean recursive checkout at 7862d297c943e604a5d65c6196b421b9581d0c82",
+            "go vet and full go test pass, including the cohort guard and the identity-loader positive control and per-refusal mutation cases",
+            "unpacked candidate binary carries the v3 wire markers, the identity loader and the /run/melusina/authz-identity.pub path; zero v2 markers"
         ]
     },
     "reviewedRefs": [
@@ -22,7 +22,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
+            "commit": "7862d297c943e604a5d65c6196b421b9581d0c82",
             "outcome": "selected"
         },
         {
@@ -32,7 +32,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "1767fc3cdee3d08d2910d8564336baf5381f74e8",
+            "commit": "7862d297c943e604a5d65c6196b421b9581d0c82",
             "outcome": "baseline"
         },
         {
@@ -52,7 +52,7 @@
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "ffe6859b7c2ce45620ee3eee80e6fb1ed84ac6b2",
+            "commit": "2f3c4b6457b2d08061f4fe00bd39a8f1e1ba5ea6",
             "outcome": "retained"
         },
         {
@@ -62,5 +62,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

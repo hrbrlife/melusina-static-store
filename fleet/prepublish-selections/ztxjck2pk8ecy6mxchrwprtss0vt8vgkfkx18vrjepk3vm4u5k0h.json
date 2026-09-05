@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h",
     "sourceRepository": "https://github.com/hrbrlife/melusina_cratelink_app",
-    "sourceCommit": "3bb6d7b41b25ee5761976262a03de6dc271100cf",
+    "sourceCommit": "147165e48dadbb53e552bd8e94bd85f243031298",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "CrateLink 0.3.5/appVersion 17 on dev-publish speaks the authz daemon's grain-auth v3 wire (same class as AiLagoon).",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "v0.3.6/appVersion-18 on main==dev-publish at 147165e4: the v3 grain-auth client pins the daemon's authz identity from /run/melusina/authz-identity.pub; v17 exits at connect on next boot because the v3 client refuses to construct without it.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at 3bb6d7b41b25ee5761976262a03de6dc271100cf",
-            "go vet and full go test pass including the release cohort guard",
-            "cmd/server binary carries v3 wire markers and zero v2 markers"
+            "clean recursive checkout at 147165e48dadbb53e552bd8e94bd85f243031298",
+            "go vet and full go test pass, including the identity-loader positive control and per-refusal mutation cases",
+            "unpacked candidate bin/server carries the v3 wire markers, the identity loader and the /run/melusina/authz-identity.pub path; zero v2 markers"
         ]
     },
     "reviewedRefs": [
@@ -32,20 +32,20 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "3bb6d7b41b25ee5761976262a03de6dc271100cf",
+            "commit": "147165e48dadbb53e552bd8e94bd85f243031298",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "95d27ba095eae4589f290b2e3857d6ad92174ddb",
+            "commit": "147165e48dadbb53e552bd8e94bd85f243031298",
             "outcome": "baseline"
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "df253a9239669ecb85baa34d6eeea460d0e38234",
+            "commit": "6256c38b1171f8fa6048679c0128cd8accc50bc0",
             "outcome": "retained"
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

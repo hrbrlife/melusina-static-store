@@ -405,6 +405,51 @@ def _looks_like_terminal_output(text: str) -> bool:
     return False
 
 
+# The Squads/web3.js helpers are native-heavy and are NOT safe on every Node
+# major. Measured on this workstation:
+#
+#   /home/user/.local/bin/node v26.8.1   next-index -> 1942, then SIGSEGV (139)
+#                                        propose    -> "free(): invalid size"
+#   /usr/bin/node              v20.19.2  next-index -> 1942, rc=0, clean
+#
+# PATH puts v26 first, so the rail silently ran the unsupported runtime and
+# every release died in stage with a heap error. Pin the interpreter instead of
+# inheriting whatever PATH offers, and refuse an unsupported major outright
+# rather than discovering it as memory corruption mid-ceremony.
+SUPPORTED_NODE_MAJORS = {18, 20, 22}
+
+
+def node_bin() -> str:
+    """Absolute path to a Node the Squads helpers are known to survive on."""
+    configured = os.environ.get("MEL_RELEASE_NODE_BIN", "").strip()
+    candidates = [configured] if configured else ["/usr/bin/node", "/bin/node", "node"]
+    problems = []
+    for candidate in candidates:
+        resolved = shutil.which(candidate) if not candidate.startswith("/") else candidate
+        if not resolved or not os.path.isfile(resolved):
+            problems.append(f"{candidate}: not found")
+            continue
+        try:
+            out = subprocess.run([resolved, "--version"], capture_output=True, text=True, timeout=30)
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"{candidate}: {exc}")
+            continue
+        version = (out.stdout or "").strip()
+        match = re.match(r"^v(\d+)\.", version)
+        if not match:
+            problems.append(f"{candidate}: unreadable version {version!r}")
+            continue
+        major = int(match.group(1))
+        if major in SUPPORTED_NODE_MAJORS:
+            return resolved
+        problems.append(f"{candidate}: Node {version} (major {major}) is not supported")
+    raise ProviderError(
+        "no supported Node runtime for the Squads helpers "
+        f"(supported majors: {sorted(SUPPORTED_NODE_MAJORS)}); tried: " + "; ".join(problems)
+        + ". Set MEL_RELEASE_NODE_BIN to a supported interpreter."
+    )
+
+
 def run(cmd: list[str], *, cwd: Path | None = None, extra_env: dict[str, str] | None = None) -> str:
     run_env = os.environ.copy()
     if extra_env:
@@ -2343,7 +2388,7 @@ def last_json(raw: str) -> dict[str, Any]:
 def live_quorum_policy() -> dict[str, Any]:
     """Read and validate the current governed policy without signing."""
     authority = require_shared_squads_authority()
-    raw = run(["node", str(register_executor()), "policy"], extra_env=policy_executor_env())
+    raw = run([node_bin(), str(register_executor()), "policy"], extra_env=policy_executor_env())
     result = last_json(raw)
     multisig = result.get("multisig")
     vault = result.get("vault")
@@ -2414,7 +2459,7 @@ def next_index(multisig: str, vault: str) -> int:
     authority = require_shared_squads_authority()
     if multisig != authority["multisig"] or vault != authority["vault"]:
         raise ProviderError("next-index authority does not match the catalog-pinned shared authority")
-    raw = run(["node", str(register_executor()), "next-index"], extra_env=register_executor_env()).strip()
+    raw = run([node_bin(), str(register_executor()), "next-index"], extra_env=register_executor_env()).strip()
     try:
         index = int(raw)
     except ValueError as exc:
@@ -2618,7 +2663,7 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
             raise ProviderError("prepared ceremony state lacks register_release_entry instruction")
         register_path = state_path.with_name("register-release-entry.ix.json")
         write_json(register_path, register_ix)
-        raw = run(["node", str(register_executor()), "propose", str(state_path)], extra_env=register_executor_env())
+        raw = run([node_bin(), str(register_executor()), "propose", str(state_path)], extra_env=register_executor_env())
         result = last_json(raw)
         if result.get("status") == "ForeignTransactionIndex":
             foreign_indices.append(int(state["transactionIndex"]))
@@ -2668,7 +2713,7 @@ def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_
     already_registered = release_entry_exists(str(state["releaseEntryPda"]))
     result: dict[str, Any] = {"transactionSignatures": []}
     if not already_registered:
-        raw = run(["node", str(register_executor()), "approve-execute", str(context["statePath"])], extra_env=register_executor_env())
+        raw = run([node_bin(), str(register_executor()), "approve-execute", str(context["statePath"])], extra_env=register_executor_env())
         result = last_json(raw)
         if result.get("alreadyExecuted") is not False or not result.get("executeSignature") or not result.get("transactionSignatures"):
             raise ProviderError("Squads did not execute the registered proposal")
@@ -2712,7 +2757,7 @@ def reject_register(app_id: str, app_hash: str, release_hash: str, version: str,
             state.get("multisigPda") != authority["multisig"] or
             state.get("licenseSquadsVault") != authority["vault"]):
         raise ProviderError("rejection ceremony state does not bind the catalog-pinned shared authority")
-    raw = run(["node", str(register_executor()), "reject-proposed", str(context["statePath"])],
+    raw = run([node_bin(), str(register_executor()), "reject-proposed", str(context["statePath"])],
               extra_env=register_executor_env())
     result = last_json(raw)
     if (result.get("status") != "Rejected" or result.get("transactionPda") != transaction_pda or
@@ -2857,7 +2902,7 @@ def revoke(pda: str, receipt_out: Path) -> None:
             {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
         ], "data": discriminator,
     })
-    result = last_json(run(["node", str(generic_executor()), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
+    result = last_json(run([node_bin(), str(generic_executor()), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
     if result.get("status") != "executed":
         raise ProviderError("stale ReleaseEntry revoke did not execute")
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})

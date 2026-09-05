@@ -686,10 +686,9 @@ groups:
         client_access: self-owned
         admin_surface: same-pearl
       mermail:
-        # MerMail 0.6.2/v25 source fixes Station HTTP response ownership.
-        # Decoder-release tests and two clean clones prove preserved bodies
-        # and reproducible packages. The served release remains 0.6.1 until
-        # the governed candidate is approved and independently read back.
+        # MerMail 0.6.3/v26 retains the Station fix and repairs compose/autosave.
+        # Governed 0.6.3 release accepted; served package and terminal hashes
+        # independently verified. Catalog publish checkpoint is archived.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL
         source_commit: cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0

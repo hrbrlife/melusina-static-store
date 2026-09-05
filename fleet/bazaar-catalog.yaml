@@ -545,7 +545,7 @@ groups:
         pack_profile: claude-melusina-packaged-runtime
         publish_slug: claude-melusina
         catalog_name: Claude-Melusina
-        live_version: "0.1.0"
+        live_version: "0.2.1"
         catalog_developer: hrbrlife
         catalog_repo: Claude-Melusina
         catalog_slug: claude-melusina

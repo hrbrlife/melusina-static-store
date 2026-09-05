@@ -1,11 +1,11 @@
 {
   "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
   "name": "Claude-Melusina",
-  "version": "0.1.0",
-  "versionNumber": 1,
-  "marketingVersion": "0.1.0",
-  "shortDescription": "A shell and Claude Code, streamed to the browser, running out of the grain's own /var.",
-  "description": "EXPERIMENTAL. Claude-Melusina turns the grain sandbox's constraints into its design. /var is the only writable, persistent mount, and it is exec-capable, so the Claude Code binary and its loader are staged there once and survive restarts and package upgrades. A grain cannot allocate a PTY, so the shell is a pure-Go POSIX interpreter whose pipes stream to the browser over the WebSession response's streamed body arm, journalled to /var so a dropped connection or a grain restart costs nothing but a reconnect. A grain has no network, so model egress is a PowerBox HTTP-out capability granted from the setup screen and fronted by a loopback proxy.",
+  "version": "0.2.1",
+  "versionNumber": 3,
+  "marketingVersion": "0.2.1",
+  "shortDescription": "A self-contained Claude Code workspace, streamed to the browser.",
+  "description": "EXPERIMENTAL. Claude-Melusina ships Claude Code, its loader, and its exact shared-library closure in the signed package. A grain has no network, so one PowerBox HTTP-out capability grants api.anthropic.com through a loopback proxy. After that, users sign in through Claude Code\u2019s browser-link flow; this app never requests an API key. Its governed DiagnosticProbe v1 can only validate an exact target package through read-only contract and health methods; it is not a generic Pearl connector. /var holds only the persistent workspace and Claude Code\u2019s own login/session state.",
   "categories": [
     "Developer Tools"
   ],
@@ -27,6 +27,6 @@
   "license": "Melusina Public License v3.0 (MPL-MEL-3.0) \u2014 source-available, not open source",
   "tier": "experimental",
   "domains": [],
-  "packageId": "5ac624283edf56e5031cb3c765a40ac4",
-  "sha256": "5ac624283edf56e5031cb3c765a40ac42f9d9a8221ef5ac5ae1d14a159ba51d0"
+  "packageId": "057953a237541702b26d345dc3834762",
+  "sha256": "057953a237541702b26d345dc3834762cd8a6d4486383a699ca33f6b0e35393c"
 }

@@ -2,19 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh",
     "sourceRepository": "https://github.com/hrbrlife/jinn",
-    "sourceCommit": "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c",
+    "sourceCommit": "c71fc38466996270b57244c82442b8882a9a40fa",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Jinn 0.0.17 answers the second half of an owner report filed against the live tenant on 2026-08-22. With a Domain Template Grain and a mini-git pearl both attached and healthy the assistant said it had no way to enumerate its connections; it was right, because the chat catalog is assembled from GrainContext-speaking pearls and a pearl contributes tool entries but never a fact about itself, while a DTG speaks no GrainContext at all. pearls.list reads the registry instead, and reports granted authority as a sentence rather than an enum so the assistant repeats a fact instead of translating one. It never returns the sturdyref token. The same line's 0.0.16 built the write-authority path the first half of that report needed. The commit message on this exact dev-publish tip records both, with the mutations run against every guard. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "dev-publish retains the reviewed reporting-assistant baseline and adds explicit bounded Vintage Inspect/Control in admin chat, no mutation replay, redacted browser argument auditing, and verified readable authority controls.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "full go test ./... passes; go vet clean",
-            "pearls.list never returns the sturdyref token \u2014 the guard pairs the leak check with a positive control, so an empty listing cannot pass it",
-            "the DTG case is covered explicitly: a pearl the chat catalog structurally cannot show is the reason a registry-reading tool is not redundant with the catalog",
-            "all three write-authority tiers plus the non-GrainContext case that must claim none of them; include_inactive; an explicit zero count; the three argument shapes a model emits for a no-argument tool",
-            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+            "Complete make verify-recovery passed at bea6ae5: codegen, vet, all integration packages, production build and two identical SPKs; main package1059.045s",
+            "Final package b46c47f30657d880b0fdc9bb4895a27ba856a5e89ce369f9f877b178dad77d6c is recorded by metadata-only c71fc384",
+            "Actual Go-rendered template and static assets pass admin Inspect-to-Control form plus collaborator/auditor assertions at1280px and390px in isolated Chromium"
         ]
     },
     "reviewedRefs": [
@@ -80,7 +77,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c",
+            "commit": "c71fc38466996270b57244c82442b8882a9a40fa",
             "outcome": "selected"
         },
         {

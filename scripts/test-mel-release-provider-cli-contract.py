@@ -2049,7 +2049,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["live_version"] == "2.0.34", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c", jinn
+    assert jinn["source_commit"] == "c71fc38466996270b57244c82442b8882a9a40fa", jinn
     assert jinn["release_state"] == "ready", jinn
     assert jinn["source_selection_state"] == "direct-dev-verified", jinn
     claude = entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]
@@ -2116,7 +2116,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert creeper["source_selection_state"] == "direct-dev-verified", creeper
     vintage = entries["yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh"]
     assert vintage["source_path"] == "vintage-test-dec", vintage
-    assert vintage["source_commit"] == "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36", vintage
+    assert vintage["source_commit"] == "096a73926586d7841594d831263bb3b0f0db426a", vintage
     assert vintage["reconciliation_state"] == "source-pinned", vintage
     assert vintage["release_state"] == "ready", vintage
     assert vintage["source_selection_state"] == "direct-dev-verified", vintage
@@ -2317,7 +2317,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
     assert jinn["reconciliation_state"] == "source-pinned", jinn
-    assert jinn["source_commit"] == "3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c", jinn
+    assert jinn["source_commit"] == "c71fc38466996270b57244c82442b8882a9a40fa", jinn
     lobby = entries["021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"]
     assert lobby["source_path"] == "welcome", lobby
     assert lobby["source_repository"] == "https://github.com/hrbrlife/welcome-pearl", lobby

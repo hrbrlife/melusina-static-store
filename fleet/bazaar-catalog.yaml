@@ -492,15 +492,10 @@ groups:
       jinn:
         appId: vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh
         source_path: jinn
-        # dev-publish v17 adds `pearls.list`, so the assistant can answer
-        # "what am I attached to?" from the registry instead of inferring it
-        # from its own tool names — it got that wrong in both directions on
-        # 2026-08-22. v16, in the same line, added per-pearl AI write
-        # authority: every attached pearl stays read-only on arrival, and a
-        # mutating provider operation reaches the assistant only after an
-        # admin raises that pearl's write_mode, and only as far as the
-        # PowerBox grant itself reaches.
-        source_commit: 3028d6cfdbc3f3dc3dfdad39427d2a19ee064c7c
+        # v18 adds explicit browser Inspect/Control policy, scoped native
+        # capability restore and no blind replay of uncertain browser writes.
+        # Publication and live installation remain separate gates.
+        source_commit: c71fc38466996270b57244c82442b8882a9a40fa
         reconciliation_state: source-pinned
         publish_slug: jinn
         catalog_name: Jinn
@@ -990,12 +985,11 @@ groups:
       vintage:
         appId: yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh
         source_path: vintage-test-dec
-        # The current dev-publish v1.3.4/version-23 source has a tracked
-        # runtime contract, byte-identical clean-checkout package proof, a
-        # CGO-free desktop binary, and no staged sidecar state or tenant
-        # authority. The current public catalog is still v1.3.3/version-22,
-        # so this remains a valid forward candidate without an artificial bump.
-        source_commit: 0b0f6d96c620acb1eb6feaeea6bca82e0079cb36
+        # v1.3.5/version-24 adds scoped same-session browser control,
+        # private station ownership, and explicit persistence/template UI.
+        # Two clean paths reproduce the package. Runtime installation is
+        # separately gated on the matching protocol-2 station and launcher.
+        source_commit: 096a73926586d7841594d831263bb3b0f0db426a
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
